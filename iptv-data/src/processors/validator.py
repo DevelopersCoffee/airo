@@ -25,13 +25,13 @@ class StreamValidator:
     async def validate(
         self, channels: list[NormalizedChannel]
     ) -> tuple[list[NormalizedChannel], int]:
-        """Validate all channels and return valid ones.
+        """Validate all channels and retain unavailable entries.
 
         Args:
             channels: List of channels to validate.
 
         Returns:
-            Tuple of (valid channels, count of dead streams removed).
+            Tuple of (all channels with status, count detected unavailable).
         """
         if not self.config.enabled:
             logger.info("Stream validation is disabled")
@@ -43,7 +43,7 @@ class StreamValidator:
         tasks = [self._validate_channel(channel) for channel in channels]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        valid_channels = []
+        preserved_channels = []
         dead_count = 0
 
         for channel, result in zip(channels, results, strict=True):
@@ -52,14 +52,16 @@ class StreamValidator:
                 channel.validation_status = ValidationStatus.INVALID
                 dead_count += 1
             elif result:
-                valid_channels.append(channel)
+                pass
             else:
                 dead_count += 1
+            preserved_channels.append(channel)
 
         logger.info(
-            f"Validation complete: {len(valid_channels)} valid, {dead_count} dead"
+            f"Validation complete: {len(channels) - dead_count} live, "
+            f"{dead_count} unavailable but preserved"
         )
-        return valid_channels, dead_count
+        return preserved_channels, dead_count
 
     async def _validate_channel(self, channel: NormalizedChannel) -> bool:
         """Validate a single channel."""
@@ -141,4 +143,3 @@ class StreamValidator:
                     return False
         except Exception:
             return False
-

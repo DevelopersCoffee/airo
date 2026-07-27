@@ -324,15 +324,16 @@ https://cdn.example.com/worker-news.m3u8
         cached.single.streamUrl,
         'https://cdn.example.com/worker-news.m3u8',
       );
-      // M3U parsing runs through the Rust core (Dart fallback here, since
-      // the test host has no compiled bridge); only cache encode/decode
-      // still crosses the worker boundary.
-      expect(workerExecutor.calls, 2);
+      // Rust parses; lossless variant merging and cache encode/decode use the
+      // platform worker boundary.
+      expect(workerExecutor.calls, 3);
       expect(workerExecutor.kinds, [
+        AiroWorkerJobKind.playlistImport,
         AiroWorkerJobKind.playlistImport,
         AiroWorkerJobKind.playlistImport,
       ]);
       expect(workerExecutor.debugNames, [
+        'm3u_file_variant_merge',
         'm3u_playlist_cache_encode',
         'm3u_playlist_cache_decode',
       ]);
@@ -380,6 +381,7 @@ https://cdn.example.com/structured-news.m3u8
       expect(payload, isA<Map<String, dynamic>>());
       expect(payload['channels'], isA<List<dynamic>>());
       expect(workerExecutor.debugNames, [
+        'm3u_file_variant_merge',
         'm3u_playlist_cache_encode',
         'm3u_playlist_cache_decode',
       ]);

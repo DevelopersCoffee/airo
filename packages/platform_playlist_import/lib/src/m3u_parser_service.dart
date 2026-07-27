@@ -11,6 +11,8 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'channel_variant_classifier.dart';
+
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
   static const String _playlistUrlKey = 'iptv_user_playlist_url';
@@ -332,9 +334,15 @@ class M3UParserService {
   /// retained in the stats result.
   Future<M3UParseResult> parseM3UWithStatsOffMain(String content) async {
     if (!kIsWeb) {
-      final result = await parseM3uChannelsWithStatsNative(content);
+      final result = await parseM3uPlaylistWithStatsNative(content);
+      final channels = await workerExecutor.run<List<IPTVChannel>>(
+        debugName: 'm3u_variant_merge',
+        kind: AiroWorkerJobKind.playlistImport,
+        computation: () =>
+            const ChannelVariantClassifier().merge(result.playlist.entries),
+      );
       return M3UParseResult(
-        channels: _channelsFromNativeM3uChannels(result.channels),
+        channels: channels,
         stats: M3UParseStats(
           parsedCount: result.stats.parsedCount,
           skippedCount: result.stats.skippedCount,
@@ -347,9 +355,11 @@ class M3UParserService {
       debugName: 'm3u_playlist_parse',
       kind: AiroWorkerJobKind.playlistImport,
       computation: () {
-        final result = parseM3uChannelsWithStats(content);
+        final result = parseM3uPlaylistWithStats(content);
         return M3UParseResult(
-          channels: _channelsFromNativeM3uChannels(result.channels),
+          channels: const ChannelVariantClassifier().merge(
+            result.playlist.entries,
+          ),
           stats: M3UParseStats(
             parsedCount: result.stats.parsedCount,
             skippedCount: result.stats.skippedCount,
@@ -368,9 +378,15 @@ class M3UParserService {
   /// deterministic behavior when the native library is unavailable.
   Future<M3UParseResult> parseM3UFileWithStatsOffMain(String path) async {
     if (!kIsWeb) {
-      final result = await parseM3uFileChannelsWithStatsNative(path);
+      final result = await parseM3uPlaylistFileWithStatsNative(path);
+      final channels = await workerExecutor.run<List<IPTVChannel>>(
+        debugName: 'm3u_file_variant_merge',
+        kind: AiroWorkerJobKind.playlistImport,
+        computation: () =>
+            const ChannelVariantClassifier().merge(result.playlist.entries),
+      );
       return M3UParseResult(
-        channels: _channelsFromNativeM3uChannels(result.channels),
+        channels: channels,
         stats: M3UParseStats(
           parsedCount: result.stats.parsedCount,
           skippedCount: result.stats.skippedCount,
@@ -383,9 +399,11 @@ class M3UParserService {
       debugName: 'm3u_playlist_file_parse',
       kind: AiroWorkerJobKind.playlistImport,
       computation: () {
-        final result = parseM3uChannelsWithStats(File(path).readAsStringSync());
+        final result = parseM3uPlaylistWithStats(File(path).readAsStringSync());
         return M3UParseResult(
-          channels: _channelsFromNativeM3uChannels(result.channels),
+          channels: const ChannelVariantClassifier().merge(
+            result.playlist.entries,
+          ),
           stats: M3UParseStats(
             parsedCount: result.stats.parsedCount,
             skippedCount: result.stats.skippedCount,
@@ -581,30 +599,12 @@ Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
 /// tests and the web fallback; native production paths use
 /// [parseM3UChannelsNative].
 List<IPTVChannel> parseM3UChannels(String content) =>
-    _channelsFromNativeM3uChannels(parseM3uChannelsWithStats(content).channels);
+    const ChannelVariantClassifier().merge(parseM3uEntries(content));
 
 /// Parse M3U content through the single Rust core parser, falling back to the
 /// Dart parser when the native bridge is unavailable (e.g. host-only test
 /// runs without the compiled library).
 Future<List<IPTVChannel>> parseM3UChannelsNative(String content) async {
-  final result = await parseM3uChannelsWithStatsNative(content);
-  return _channelsFromNativeM3uChannels(result.channels);
-}
-
-List<IPTVChannel> _channelsFromNativeM3uChannels(
-  Iterable<NativeM3uChannel> channels,
-) {
-  return channels
-      .map(
-        (channel) => IPTVChannel.fromM3U(
-          name: channel.name,
-          url: channel.url,
-          logo: channel.logo,
-          group: channel.group,
-          tvgId: channel.tvgId,
-          tvgName: channel.tvgName,
-          language: channel.language,
-        ),
-      )
-      .toList(growable: false);
+  final result = await parseM3uPlaylistWithStatsNative(content);
+  return const ChannelVariantClassifier().merge(result.playlist.entries);
 }

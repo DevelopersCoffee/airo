@@ -143,11 +143,23 @@ class TestIptvOrgLoader:
             {
                 "channel": "SonyYay.in",
                 "url": "https://example.com/sony-yay.m3u8",
-            }
+                "feed": "main",
+            },
+            {
+                "channel": "SonyYay.in",
+                "url": "https://example.com/sony-yay-backup.m3u8",
+                "feed": "backup",
+            },
         ]
 
-        channel = loader._process_channels()[0]
+        channels = loader._process_channels()
+        channel = channels[0]
 
+        assert len(channels) == 2
+        assert [item.extra_attrs["feed_id"] for item in channels] == [
+            "main",
+            "backup",
+        ]
         assert channel.group_title == "kids"
         assert channel.extra_attrs["categories"] == ["kids"]
         assert channel.extra_attrs["alt_names"] == ["Sony YAY"]

@@ -113,7 +113,8 @@ class TestNormalizer:
 
         result = normalizer._normalize_channel(raw)
         assert result.id  # Should have generated ID
-        assert len(result.id) == 12  # MD5 hash truncated to 12 chars
+        assert result.id.startswith("unmatched-")
+        assert len(result.id) == 26  # prefix + stable scoped SHA-256 fragment
 
     def test_composite_key(self, normalizer: Normalizer) -> None:
         """Test composite key generation."""
@@ -154,4 +155,3 @@ class TestNormalizer:
 
         result = normalizer._normalize_channel(raw)
         assert result.country == "IN"
-

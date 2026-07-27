@@ -2,6 +2,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 
 void main() {
+  test('round-trips import provenance and ordered stream sources', () {
+    const channel = IPTVChannel(
+      id: 'stable',
+      name: 'News One',
+      streamUrl: 'https://live.example/stream',
+      provenance: ChannelImportProvenance.unmatched,
+      categories: ['news', 'general'],
+      streamSources: [
+        ChannelStreamSource(
+          url: 'https://live.example/stream',
+          health: ChannelSourceHealth.available,
+          labelCorrect: true,
+          framesPerSecond: 50,
+          height: 720,
+        ),
+        ChannelStreamSource(
+          url: 'https://backup.example/stream',
+          health: ChannelSourceHealth.unchecked,
+        ),
+      ],
+    );
+
+    final decoded = IPTVChannel.fromJson(channel.toJson());
+
+    expect(decoded.provenance, ChannelImportProvenance.unmatched);
+    expect(decoded.categories, channel.categories);
+    expect(decoded.streamSources, channel.streamSources);
+  });
+
   group('IPTVChannel group normalization', () {
     test('fromM3U maps sentinel "Undefined" group to Uncategorized', () {
       final channel = IPTVChannel.fromM3U(

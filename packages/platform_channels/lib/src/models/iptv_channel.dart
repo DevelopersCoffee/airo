@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'channel_stream_source.dart';
+
 /// Video quality levels for adaptive bitrate streaming
 enum VideoQuality {
   auto('Auto', 0),
@@ -120,6 +122,9 @@ class IPTVChannel extends Equatable {
   final ChannelHeaders? headers;
   final List<String> sources;
   final List<String> altNames;
+  final List<String> categories;
+  final ChannelImportProvenance provenance;
+  final List<ChannelStreamSource> streamSources;
 
   const IPTVChannel({
     required this.id,
@@ -140,6 +145,9 @@ class IPTVChannel extends Equatable {
     this.headers,
     this.sources = const [],
     this.altNames = const [],
+    this.categories = const [],
+    this.provenance = ChannelImportProvenance.unknown,
+    this.streamSources = const [],
   });
 
   /// Create from preprocessed JSON (from IPTV Sanity Agent)
@@ -169,6 +177,18 @@ class IPTVChannel extends Equatable {
       sources: (json['sources'] as List<dynamic>?)?.cast<String>() ?? const [],
       altNames:
           (json['altNames'] as List<dynamic>?)?.cast<String>() ?? const [],
+      categories:
+          (json['categories'] as List<dynamic>?)?.cast<String>() ?? const [],
+      provenance: ChannelImportProvenance.fromJson(json['provenance']),
+      streamSources:
+          (json['streamSources'] as List<dynamic>?)
+              ?.map(
+                (source) => ChannelStreamSource.fromJson(
+                  (source as Map).cast<String, Object?>(),
+                ),
+              )
+              .toList(growable: false) ??
+          const [],
     );
   }
 
@@ -191,6 +211,12 @@ class IPTVChannel extends Equatable {
     if (headers != null) 'headers': headers!.toJson(),
     if (sources.isNotEmpty) 'sources': sources,
     if (altNames.isNotEmpty) 'altNames': altNames,
+    if (categories.isNotEmpty) 'categories': categories,
+    'provenance': provenance.name,
+    if (streamSources.isNotEmpty)
+      'streamSources': streamSources
+          .map((source) => source.toJson())
+          .toList(growable: false),
   };
 
   /// Check if channel supports multiple quality levels
@@ -396,6 +422,9 @@ class IPTVChannel extends Equatable {
     ChannelHeaders? headers,
     List<String>? sources,
     List<String>? altNames,
+    List<String>? categories,
+    ChannelImportProvenance? provenance,
+    List<ChannelStreamSource>? streamSources,
   }) {
     return IPTVChannel(
       id: id ?? this.id,
@@ -416,6 +445,9 @@ class IPTVChannel extends Equatable {
       headers: headers ?? this.headers,
       sources: sources ?? this.sources,
       altNames: altNames ?? this.altNames,
+      categories: categories ?? this.categories,
+      provenance: provenance ?? this.provenance,
+      streamSources: streamSources ?? this.streamSources,
     );
   }
 

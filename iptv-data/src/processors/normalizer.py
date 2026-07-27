@@ -46,14 +46,15 @@ class Normalizer:
         # Normalize the name
         normalized_name = self._normalize_name(channel.tvg_name or channel.name)
 
-        # Generate stable ID
-        channel_id = self._generate_id(normalized_name, channel)
-
         # Extract country
         country = self._extract_country(channel)
 
         # Extract language
         language = self._extract_language(channel)
+
+        # Generate stable ID after scope resolution. URL/source priority never
+        # participates, so reordering a merged failover set cannot break state.
+        channel_id = self._generate_id(normalized_name, channel, country, language)
 
         return NormalizedChannel(
             id=channel_id,
@@ -97,15 +98,21 @@ class Normalizer:
 
         return result.strip()
 
-    def _generate_id(self, normalized_name: str, channel: RawChannel) -> str:
+    def _generate_id(
+        self,
+        normalized_name: str,
+        channel: RawChannel,
+        country: str,
+        language: str,
+    ) -> str:
         """Generate a stable ID for the channel."""
         # Use tvg_id if available
         if channel.tvg_id:
             return channel.tvg_id
 
-        # Otherwise, generate from normalized name + source
-        id_source = f"{normalized_name}:{channel.source.value}"
-        return hashlib.md5(id_source.encode()).hexdigest()[:12]
+        # Otherwise, generate from the conservative identity scope.
+        id_source = f"{normalized_name}:{country}:{language}"
+        return f"unmatched-{hashlib.sha256(id_source.encode()).hexdigest()[:16]}"
 
     def _extract_country(self, channel: RawChannel) -> str:
         """Extract country code from channel."""

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "canonicalCases": [
+    {"input": "Sony SAB", "expected": "sonysab"},
+    {"input": "SONY SAB HD", "expected": "sonysab"},
+    {"input": "Sony Sab (1080p)", "expected": "sonysab"},
+    {"input": "BBC.World_News 4K", "expected": "bbcworldnews"}
+  ],
+  "scopeCases": [
+    {
+      "left": {"name": "News One HD", "country": "IN", "language": "hi"},
+      "right": {"name": "News One", "country": "IN", "language": "hi"},
+      "sameChannel": true
+    },
+    {
+      "left": {"name": "News One HD", "country": "IN", "language": "hi"},
+      "right": {"name": "News One", "country": "GB", "language": "en"},
+      "sameChannel": false
+    }
+  ]
+}

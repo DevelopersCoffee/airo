@@ -101,6 +101,10 @@ class ProcessedChannel:
     alt_names: list[str]
     headers: ChannelHeaders | None
     sources: list[str]  # Source types that contributed to this channel
+    provenance: str = "unknown"
+    stream_sources: list[dict[str, Any]] = field(default_factory=list)
+    is_working: bool = True
+    categories: list[str] = field(default_factory=list)
     network: str | None = None
     owners: list[str] = field(default_factory=list)
     website: str | None = None
@@ -120,6 +124,10 @@ class ProcessedChannel:
             "qualityUrls": self.quality_urls,
             "altNames": self.alt_names,
             "sources": self.sources,
+            "provenance": self.provenance,
+            "streamSources": self.stream_sources,
+            "isWorking": self.is_working,
+            "categories": self.categories or [self.category],
         }
         if self.network:
             result["network"] = self.network
@@ -147,6 +155,7 @@ class PipelineMetadata:
     dead_streams_removed: int
     duplicates_merged: int
     processing_time_seconds: float
+    dead_streams_detected: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON export."""
@@ -157,6 +166,7 @@ class PipelineMetadata:
             "channelsByFlavor": self.channels_by_flavor,
             "sourcesUsed": self.sources_used,
             "deadStreamsRemoved": self.dead_streams_removed,
+            "deadStreamsDetected": self.dead_streams_detected,
             "duplicatesMerged": self.duplicates_merged,
             "processingTimeSeconds": self.processing_time_seconds,
         }

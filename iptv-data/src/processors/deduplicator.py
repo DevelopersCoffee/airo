@@ -2,11 +2,24 @@
 
 import re
 
-from ..models import NormalizedChannel, ProcessedChannel, SourceType
+from ..models import (
+    NormalizedChannel,
+    ProcessedChannel,
+    SourceType,
+    ValidationStatus,
+)
 from ..utils import get_logger
 from ..utils.config import DeduplicationConfig
 
 logger = get_logger(__name__)
+
+
+def canonical_channel_name(value: str) -> str:
+    """Canonical identity spelling shared with the Dart golden fixture."""
+    value = value.strip().lower()
+    value = re.sub(r"\(\s*(?:\d{3,4}p|hd|fhd|uhd|4k|sd)\s*\)\s*$", "", value)
+    value = re.sub(r"[\s._-]+(?:\d{3,4}p|hd|fhd|uhd|4k|sd)$", "", value)
+    return re.sub(r"[^a-z0-9]+", "", value)
 
 
 class Deduplicator:
@@ -42,6 +55,14 @@ class Deduplicator:
             return index
 
         def union(left: int, right: int) -> None:
+            left_channel = channels[left]
+            right_channel = channels[right]
+            if (
+                left_channel.source is SourceType.IPTV_ORG
+                and right_channel.source is SourceType.IPTV_ORG
+                and left_channel.id != right_channel.id
+            ):
+                return
             left_root = find(left)
             right_root = find(right)
             if left_root != right_root:
@@ -77,8 +98,7 @@ class Deduplicator:
 
     def _merge_group(self, group: list[NormalizedChannel]) -> ProcessedChannel:
         """Merge a group of duplicate channels into one."""
-        # Sort by priority (lower is better)
-        sorted_group = sorted(group, key=lambda c: self._get_priority(c.source))
+        sorted_group = sorted(group, key=self._source_rank)
 
         # Use highest priority channel as base
         base = sorted_group[0]
@@ -90,6 +110,8 @@ class Deduplicator:
         network = base.extra_attrs.get("network")
         owners = set(base.extra_attrs.get("owners", []))
         website = base.extra_attrs.get("website")
+        stream_sources: list[dict[str, object]] = []
+        categories = set()
 
         for channel in sorted_group:
             sources.add(channel.source.value)
@@ -101,6 +123,9 @@ class Deduplicator:
             network = network or channel.extra_attrs.get("network")
             owners.update(channel.extra_attrs.get("owners", []))
             website = website or channel.extra_attrs.get("website")
+            stream_sources.append(self._stream_source(channel))
+            categories.add(channel.category)
+            categories.update(channel.extra_attrs.get("categories", []))
 
             # Prefer logo from higher priority source
             if not base.logo_url and channel.logo_url:
@@ -110,10 +135,21 @@ class Deduplicator:
             for quality, url in channel.quality_urls.items():
                 if quality not in quality_urls:
                     quality_urls[quality] = url
+        ordered_stream_sources = self._unique_stream_sources(stream_sources)
+        stable_id = next(
+            (
+                channel.id
+                for channel in sorted(group, key=lambda item: item.id)
+                if not channel.id.startswith("unmatched-")
+            ),
+            base.id,
+        )
+        for index, source in enumerate(ordered_stream_sources[1:], start=1):
+            quality_urls.setdefault(f"source-{index}", str(source["url"]))
 
         # Create merged channel
         return ProcessedChannel(
-            id=base.id,
+            id=stable_id,
             name=base.name,
             stream_url=base.stream_url,
             logo_url=base.logo_url,
@@ -129,19 +165,78 @@ class Deduplicator:
             network=network,
             owners=sorted(owners),
             website=website,
+            provenance=(
+                "matched"
+                if any(channel.source is SourceType.IPTV_ORG for channel in group)
+                else "unmatched"
+            ),
+            stream_sources=ordered_stream_sources,
+            is_working=ordered_stream_sources[0]["health"] != "unavailable",
+            categories=sorted(categories),
         )
 
     def _get_priority(self, source: SourceType) -> int:
         """Get priority for a source type."""
         return self.priority_map.get(source.value, 999)
 
+    def _source_rank(self, channel: NormalizedChannel) -> tuple[object, ...]:
+        health_rank = {
+            ValidationStatus.VALID: 0,
+            ValidationStatus.SKIPPED: 2,
+            ValidationStatus.UNKNOWN: 2,
+            ValidationStatus.TIMEOUT: 3,
+            ValidationStatus.INVALID: 3,
+        }
+        attrs = channel.extra_attrs
+        status = str(attrs.get("status") or "").lower()
+        explicit_rank = {
+            "live": 0,
+            "available": 0,
+            "geoblocked": 1,
+            "restricted": 1,
+            "dead": 3,
+            "unavailable": 3,
+        }.get(status, health_rank[channel.validation_status])
+        return (
+            explicit_rank,
+            0 if attrs.get("label_correct") is True else 1,
+            -float(attrs.get("fps") or -1),
+            -int(attrs.get("height") or -1),
+            -int(attrs.get("bitrate") or -1),
+            self._get_priority(channel.source),
+            channel.stream_url,
+        )
+
+    def _stream_source(self, channel: NormalizedChannel) -> dict[str, object]:
+        rank = self._source_rank(channel)[0]
+        health = {0: "available", 1: "restricted", 3: "unavailable"}.get(
+            rank, "unchecked"
+        )
+        attrs = channel.extra_attrs
+        return {
+            "url": channel.stream_url,
+            "health": health,
+            "feedId": attrs.get("feed_id"),
+            "labelCorrect": attrs.get("label_correct") is True,
+            "framesPerSecond": attrs.get("fps"),
+            "height": attrs.get("height"),
+            "bitrate": attrs.get("bitrate"),
+        }
+
+    def _unique_stream_sources(
+        self, sources: list[dict[str, object]]
+    ) -> list[dict[str, object]]:
+        by_url: dict[str, dict[str, object]] = {}
+        for source in sources:
+            by_url.setdefault(str(source["url"]), source)
+        return list(by_url.values())
+
     def _dedup_keys(self, channel: NormalizedChannel) -> set[str]:
         """Build conservative alias keys scoped to country and language."""
         names = [channel.normalized_name, *channel.alt_names]
         keys = set()
         for name in names:
-            normalized = re.sub(r"[^\w]+", "", name.lower())
-            normalized = re.sub(r"(?:4k|fhd|uhd|hd|sd|\d{3,4}p)$", "", normalized)
+            normalized = canonical_channel_name(name)
             if normalized:
                 keys.add(f"{normalized}:{channel.country}:{channel.language}")
         return keys or {channel.composite_key()}
@@ -165,6 +260,17 @@ class Deduplicator:
             network=channel.extra_attrs.get("network"),
             owners=list(channel.extra_attrs.get("owners", [])),
             website=channel.extra_attrs.get("website"),
+            provenance=(
+                "matched" if channel.source is SourceType.IPTV_ORG else "unmatched"
+            ),
+            stream_sources=[self._stream_source(channel)],
+            is_working=self._source_rank(channel)[0] != 3,
+            categories=sorted(
+                {
+                    channel.category,
+                    *channel.extra_attrs.get("categories", []),
+                }
+            ),
         )
 
     def _convert_all(self, channels: list[NormalizedChannel]) -> list[ProcessedChannel]:

@@ -81,11 +81,13 @@ async def run_pipeline(
     logger.info(f"Normalized {len(normalized_channels)} channels")
 
     # Step 3: Validate streams (optional)
-    dead_streams_removed = 0
+    dead_streams_detected = 0
     if not skip_validation and config.validation.enabled:
         logger.info("Step 3: Validating streams...")
         validator = StreamValidator(config.validation)
-        normalized_channels, dead_streams_removed = await validator.validate(normalized_channels)
+        normalized_channels, dead_streams_detected = await validator.validate(
+            normalized_channels
+        )
     else:
         logger.info("Step 3: Skipping stream validation")
 
@@ -126,7 +128,8 @@ async def run_pipeline(
         channels_by_category=dict(Counter(c.category for c in processed_channels)),
         channels_by_flavor=dict(Counter(c.flavor for c in processed_channels)),
         sources_used=list({s for c in processed_channels for s in c.sources}),
-        dead_streams_removed=dead_streams_removed,
+        dead_streams_removed=0,
+        dead_streams_detected=dead_streams_detected,
         duplicates_merged=duplicates_merged,
         processing_time_seconds=round(processing_time, 2),
     )

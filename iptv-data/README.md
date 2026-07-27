@@ -100,6 +100,20 @@ The pipeline produces:
 - `output/current/manifest.json` - Version metadata
 - `output/reports/pipeline_report.json` - Run statistics
 
+Merged channel records retain a deterministic `streamSources` failover list.
+Each source carries its URL, explicit health bucket, optional feed ID, and
+available quality metrics. Ordering is live, restricted/geoblocked, unchecked,
+then unavailable, followed by label, frame-rate, resolution, bitrate, provider
+priority, and URL tie-breakers. `streamUrl` is the first source and
+`qualityUrls` retains the remaining URLs for current clients.
+
+`provenance` is `matched` only for a trusted upstream identity; unjoined
+M3U/custom entries are exported as `unmatched` without changing their
+name/group. Unavailable-only channels are exported with `isWorking: false`.
+The report distinguishes `deadStreamsDetected` from the legacy
+`deadStreamsRemoved`, which remains zero because validation no longer deletes
+user-visible content.
+
 ## 🔄 GitHub Actions
 
 The pipeline runs automatically via `.github/workflows/iptv_sanity.yml`:

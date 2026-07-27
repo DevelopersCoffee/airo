@@ -181,6 +181,46 @@ class TestDeduplicator:
         assert len(result) == 2
         assert merged_count == 0
 
+    def test_health_orders_sources_and_preserves_dead_alternative(
+        self, deduplicator: Deduplicator
+    ) -> None:
+        live = self._make_channel("Sports One HD", SourceType.IPTV_ORG)
+        live.stream_url = "https://live.example/stream"
+        live.category = "sports"
+        live.extra_attrs = {"status": "live", "height": 720, "fps": 50}
+        dead = self._make_channel("Sports One", SourceType.M3U)
+        dead.stream_url = "https://dead.example/stream"
+        dead.validation_status = ValidationStatus.INVALID
+        dead.category = "regional"
+        dead.extra_attrs = {"height": 1080}
+
+        result, merged_count = deduplicator.deduplicate([dead, live])
+
+        assert merged_count == 1
+        assert result[0].stream_url == live.stream_url
+        assert result[0].id == live.id
+        assert [source["health"] for source in result[0].stream_sources] == [
+            "available",
+            "unavailable",
+        ]
+        assert result[0].quality_urls["source-1"] == dead.stream_url
+        assert result[0].is_working is True
+        assert result[0].categories == ["regional", "sports"]
+
+    def test_unmatched_single_is_preserved_with_provenance(
+        self, deduplicator: Deduplicator
+    ) -> None:
+        unknown = self._make_channel("Mystery ++", SourceType.CUSTOM)
+        unknown.group = "Odd Group"
+
+        result, merged_count = deduplicator.deduplicate([unknown])
+
+        assert merged_count == 0
+        assert result[0].name == "Mystery ++"
+        assert result[0].group == "Odd Group"
+        assert result[0].provenance == "unmatched"
+        assert result[0].stream_sources[0]["url"] == unknown.stream_url
+
     def test_disabled_deduplication(self) -> None:
         """Test that disabled deduplication returns all channels."""
         config = DeduplicationConfig(enabled=False)

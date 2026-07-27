@@ -123,32 +123,36 @@ class IptvOrgLoader(BaseLoader):
             if not streams:
                 continue  # Skip channels without streams
 
-            # Use first available stream
-            stream = streams[0]
-            stream_url = stream.get("url", "")
-            if not stream_url:
-                continue
-
-            channel = RawChannel(
-                name=channel_data.get("name", ""),
-                stream_url=stream_url,
-                source=SourceType.IPTV_ORG,
-                tvg_id=channel_id,
-                tvg_name=channel_data.get("name"),
-                tvg_logo=channel_data.get("logo"),
-                group_title=", ".join(channel_data.get("categories", [])),
-                country=country,
-                language=", ".join(channel_data.get("languages", [])),
-                extra_attrs={
-                    "iptv_org_id": channel_id,
-                    "alt_names": channel_data.get("alt_names", []),
-                    "categories": channel_data.get("categories", []),
-                    "is_nsfw": channel_data.get("is_nsfw", False),
-                    "network": channel_data.get("network"),
-                    "owners": channel_data.get("owners", []),
-                    "website": channel_data.get("website"),
-                },
-            )
-            channels.append(channel)
+            for stream in streams:
+                stream_url = stream.get("url", "")
+                if not stream_url:
+                    continue
+                channel = RawChannel(
+                    name=channel_data.get("name", ""),
+                    stream_url=stream_url,
+                    source=SourceType.IPTV_ORG,
+                    tvg_id=channel_id,
+                    tvg_name=channel_data.get("name"),
+                    tvg_logo=channel_data.get("logo"),
+                    group_title=", ".join(channel_data.get("categories", [])),
+                    country=country,
+                    language=", ".join(channel_data.get("languages", [])),
+                    extra_attrs={
+                        "iptv_org_id": channel_id,
+                        "feed_id": stream.get("feed"),
+                        "alt_names": channel_data.get("alt_names", []),
+                        "categories": channel_data.get("categories", []),
+                        "is_nsfw": channel_data.get("is_nsfw", False),
+                        "network": channel_data.get("network"),
+                        "owners": channel_data.get("owners", []),
+                        "website": channel_data.get("website"),
+                        "status": stream.get("status"),
+                        "width": stream.get("width"),
+                        "height": stream.get("height"),
+                        "bitrate": stream.get("bitrate"),
+                        "fps": stream.get("fps"),
+                    },
+                )
+                channels.append(channel)
 
         return channels
