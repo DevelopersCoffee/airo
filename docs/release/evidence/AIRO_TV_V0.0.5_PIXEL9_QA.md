@@ -1,7 +1,7 @@
 # Airo TV v0.0.5 Pixel 9 QA Evidence
 
-Date: 2026-07-26  
-Device: Pixel 9 (`tokay`), Android 17, physical device over wireless ADB  
+Date: 2026-07-26
+Device: Pixel 9 (`tokay`), Android 17, physical device over wireless ADB
 Playlist fixture: `https://iptv-org.github.io/iptv/index.m3u`
 
 ## Published artifact baseline
