@@ -158,6 +158,27 @@ Steps 4–8 are the ones that get skipped and quietly defeat the guarantee. An
 embedding of a destroyed note is a lossy copy of that note. Test coverage for
 derived-state purge is a release gate, not a nice-to-have.
 
+Derived state also includes several things outside the app's own storage, all
+of which must be swept:
+
+- OS share, QuickLook, and thumbnail caches, and system-wide search indexes
+  outside the app sandbox
+- Notification content, clipboard contents, and undo stacks
+- Crash-reporter and analytics payloads that captured content
+- The `recoverable` recycle context from §4.2 — a destroy must sweep the
+  30-day holding area, not merely stop showing it
+
+Two things are permanently outside a destroy's reach and must be named in the
+confirmation dialog rather than silently omitted: **previously exported
+Recovery Packages and capsules.** They are files the user already placed
+elsewhere; nothing in this design can recall them.
+
+Finally, the runtime does not currently *enforce* steps 4–8 anywhere. Marking
+the purge directive `#[must_use]` is a nudge that any caller defeats with
+`let _ =`. Making revocation transactional — incomplete until every
+derived-state owner acknowledges — is a Phase 2 requirement, and until it lands
+the honest statement is that purge is convention, not mechanism.
+
 ## 5. Capabilities
 
 ### 5.1 A capability is data, not code
@@ -415,6 +436,23 @@ Nothing is decryptable before the revocation replay completes. A Vault backup
 format without a monotonic revocation epoch can never be made safe, so this is
 a v1 format requirement.
 
+Type-state enforcement of this ordering closes the "caller forgot" hole but not
+the "caller supplied an empty ledger" hole. The revocation source must
+therefore carry provenance — replayed from the log, package-only, or
+explicitly acknowledged as blind — and a blind restore must warn the user.
+
+### 6.3 The bound on erasure
+
+Erasure durability is bounded by the freshness of the revocation ledger a
+restoring device can obtain. A device restoring from a stale backup with no
+access to the operation log cannot know about destructions performed elsewhere,
+and will decrypt content the user believes is gone.
+
+This is a permanent property of a serverless architecture, not a defect
+awaiting a fix. There is no authority to ask. Product copy must not imply
+otherwise — see the permitted wording in
+`2026-07-27-airo-mind-roadmap.md` §5.
+
 ## 7. Trust boundary — v1
 
 There is exactly **one trust domain: the user's own device mesh.**
@@ -440,6 +478,21 @@ mechanism:
 Human-to-human key delegation with revocation is not in v1. Once a key reaches
 a device the user does not control, revocation is unenforceable — the holder
 already has plaintext. Claiming otherwise would be a false security promise.
+
+Permitted capsule copy: *"You choose what to include. Once exported, it is
+theirs — it cannot be recalled."* The words "revocable", "time limited", and
+"you stay in control" are prohibited on this surface.
+
+Two further constraints follow from the single trust domain:
+
+- **Device revocation is required, not optional.** A stolen or compromised
+  device that cannot be evicted makes this boundary decorative. Revocation must
+  cover devices and context keys, not only content, and a restored backup must
+  not resurrect a revoked device certificate.
+- **Key material never crosses the FFI boundary**, with exactly one
+  acknowledged exception: the recovery mnemonic, at onboarding and at restore.
+  Those two paths are prohibited from logging, crash-reporter capture, and
+  analytics.
 
 ## 8. Runtime / Experience separation
 
