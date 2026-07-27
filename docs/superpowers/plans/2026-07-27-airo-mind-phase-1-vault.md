@@ -266,6 +266,9 @@ pub enum VaultError {
 
     #[error("value too long to encode")]
     ValueTooLong,
+
+    #[error("device certificate is not signed by this identity")]
+    UntrustedCertificate,
 }
 
 #[cfg(test)]
@@ -322,7 +325,9 @@ chacha20poly1305 = { version = "0.10", features = ["getrandom"] }
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "rand_core", "zeroize"] }
 # RUSTSEC-2024-0344: timing variability in Scalar29/Scalar52 subtraction.
 # 4.1.3 is the patched release. Floored explicitly so a downgrade fails.
-curve25519-dalek = ">=4.1.3"
+# Caret, never an open floor: `>=4.1.3` lets a future 5.0 resolve beside
+# the `^4.1` ed25519-dalek needs, linking two copies of the curve.
+curve25519-dalek = "4.1.3"
 hkdf = "0.12"
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1", features = ["derive"] }
@@ -336,7 +341,11 @@ zeroize = { version = "1", features = ["derive"] }
 Create `rust/airo_mind/src/lib.rs`:
 
 ```rust
+#![forbid(unsafe_code)]
 //! Airo Mind runtime.
+//!
+//! `forbid(unsafe_code)` is the point: "pure Rust, no FFI" is otherwise a
+//! description rather than a property, and nothing enforces a description.
 //!
 //! The runtime understands seven primitives and no domain concepts:
 //! Identity, Operation, Content, Context, Capability, Projection, Vault.
@@ -497,7 +506,7 @@ wordlist, 2048 entries, public domain, verbatim from the specification:
 //! Do not sort, reformat, or "clean up". Index order *is* the encoding — a
 //! single reordered entry silently changes every mnemonic ever generated.
 
-pub const WORDS: [&str; 2048] = [
+pub static WORDS: [&str; 2048] = [
     "abandon", "ability", "able", "about", "above", "absent",
     // ... 2042 more, in specification order ...
     "zebra", "zero", "zone", "zoo",
@@ -694,7 +703,7 @@ fn validate_mnemonic(phrase: &str) -> Result<Vec<&str>, VaultError> {
 /// Guards the bit-packing arithmetic. 256 entropy bits + 8 checksum bits = 264,
 /// which is exactly 24 * 11. If `ENTROPY_BYTES` ever changes, a short final
 /// chunk would silently fold to a small word index instead of failing.
-const _: () = assert!((ENTROPY_BYTES * 8 + ENTROPY_BYTES * 8 / 32) % 11 == 0);
+const _: () = assert!((ENTROPY_BYTES * 8 + ENTROPY_BYTES * 8 / 32).is_multiple_of(11));
 
 /// PBKDF2-HMAC-SHA512 producing exactly 64 bytes — one block, since SHA-512's
 /// output is 64 bytes, so the block-index loop collapses to a single pass.
@@ -831,10 +840,10 @@ mod tests {
         let phrase = generate_mnemonic().unwrap();
         let mut words: Vec<&str> = phrase.split_whitespace().collect();
         words[5] = if words[5] == "zoo" { "abandon" } else { "zoo" };
-        assert_eq!(
+        assert!(matches!(
             seed_from_mnemonic(&words.join(" ")),
             Err(VaultError::InvalidMnemonic)
-        );
+        ));
     }
 
     #[test]
@@ -858,20 +867,20 @@ mod tests {
         let phrase = generate_mnemonic().unwrap();
         let mut words: Vec<&str> = phrase.split_whitespace().collect();
         words[0] = "notabip39word";
-        assert_eq!(
+        assert!(matches!(
             seed_from_mnemonic(&words.join(" ")),
             Err(VaultError::InvalidMnemonic)
-        );
+        ));
     }
 
     #[test]
     fn wrong_word_count_is_rejected() {
         let phrase = generate_mnemonic().unwrap();
         let short: Vec<&str> = phrase.split_whitespace().take(23).collect();
-        assert_eq!(
+        assert!(matches!(
             seed_from_mnemonic(&short.join(" ")),
             Err(VaultError::InvalidMnemonic)
-        );
+        ));
     }
 
     fn hex_bytes(hex: &str) -> Vec<u8> {
@@ -883,10 +892,10 @@ mod tests {
 
     #[test]
     fn invalid_mnemonic_is_rejected() {
-        assert_eq!(
+        assert!(matches!(
             seed_from_mnemonic("not a real mnemonic phrase at all"),
             Err(VaultError::InvalidMnemonic)
-        );
+        ));
     }
 
     fn hex_lower(bytes: &[u8]) -> String {
@@ -999,7 +1008,7 @@ Create `rust/airo_mind/src/vault/identity.rs`:
 ```rust
 //! Root identity. Derived from the seed, signs device certificates.
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::Sha512;
 use zeroize::ZeroizeOnDrop;
@@ -1058,7 +1067,7 @@ pub fn verify(public_key: &[u8; 32], msg: &[u8], signature: &[u8; 64]) -> bool {
         return false;
     };
     verifying_key
-        .verify(msg, &Signature::from_bytes(signature))
+        .verify_strict(msg, &Signature::from_bytes(signature))
         .is_ok()
 }
 
@@ -1190,10 +1199,12 @@ Create `rust/airo_mind/src/vault/device.rs`:
 //! cannot present a certificate signed by the root identity cannot write.
 
 use ed25519_dalek::{Signer, SigningKey};
-use rand_core::OsRng;
+use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::ZeroizeOnDrop;
 
+use super::domain;
+use super::error::VaultError;
 use super::identity::{verify, RootIdentity};
 
 /// A per-device signing key, generated on the device that owns it.
@@ -1207,17 +1218,19 @@ pub struct DeviceKey {
     signing_key: SigningKey,
 }
 
-impl Default for DeviceKey {
-    fn default() -> Self {
-        Self::generate()
-    }
-}
-
+// No `impl Default`. `SigningKey::generate` goes through `fill_bytes`, which
+// panics on RNG failure — and a `Default` that mints a private key means any
+// future `#[derive(Default)]` on a containing struct silently generates key
+// material.
 impl DeviceKey {
-    pub fn generate() -> Self {
-        Self {
-            signing_key: SigningKey::generate(&mut OsRng),
-        }
+    pub fn generate() -> Result<Self, VaultError> {
+        let mut bytes = [0u8; 32];
+        rand_core::OsRng
+            .try_fill_bytes(&mut bytes)
+            .map_err(|_| VaultError::RngUnavailable)?;
+        Ok(Self {
+            signing_key: SigningKey::from_bytes(&bytes),
+        })
     }
 
     pub fn public_key(&self) -> [u8; 32] {
@@ -1297,13 +1310,13 @@ mod tests {
 
     #[test]
     fn two_generated_device_keys_differ() {
-        assert_ne!(DeviceKey::generate().public_key(), DeviceKey::generate().public_key());
+        assert_ne!(DeviceKey::generate().unwrap().public_key(), DeviceKey::generate().unwrap().public_key());
     }
 
     #[test]
     fn issued_certificate_verifies_against_the_issuing_root() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let device = DeviceKey::generate();
+        let device = DeviceKey::generate().unwrap();
         let certificate = DeviceCertificate::issue(&root, &device, 1);
         assert!(certificate.verify_against(&root.public_key()));
     }
@@ -1315,22 +1328,22 @@ mod tests {
             &seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap(),
         )
         .unwrap();
-        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate(), 1);
+        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
         assert!(!certificate.verify_against(&stranger.public_key()));
     }
 
     #[test]
     fn swapping_the_public_key_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate(), 1);
-        certificate.device_public_key = DeviceKey::generate().public_key();
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
+        certificate.device_public_key = DeviceKey::generate().unwrap().public_key();
         assert!(!certificate.verify_against(&root.public_key()));
     }
 
     #[test]
     fn device_id_must_match_the_public_key() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate(), 1);
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
         certificate.device_id = "deadbeef".into();
         assert!(!certificate.verify_against(&root.public_key()));
     }
@@ -1338,7 +1351,7 @@ mod tests {
     #[test]
     fn changing_the_issue_epoch_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate(), 1);
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
         certificate.issued_at_epoch = 99;
         assert!(!certificate.verify_against(&root.public_key()));
     }
@@ -1358,7 +1371,57 @@ pub use device::{DeviceCertificate, DeviceKey};
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind device`
 Expected: FAIL to compile — module not declared.
 
-- [ ] **Step 3: Reconcile serde on fixed-size arrays**
+- [ ] **Step 3: Use the decided fixed-array encoding — do not choose one**
+
+`[u8; 64]` has no `Serialize` in serde 1 (its array impls stop at 32). This is
+the **on-disk Recovery Package format v1, frozen in this phase**. Leaving the
+choice to the implementer means two implementers can satisfy "pick one" with
+two incompatible wire formats.
+
+Create `rust/airo_mind/src/vault/encoding.rs` and use it everywhere a
+fixed-size array is serialized (Tasks 4, 8, 9):
+
+```rust
+//! Serde helpers for fixed-size byte arrays, and length-prefixing.
+//!
+//! serde 1 has no array impl above 32 bytes and no feature that adds one.
+//! Hand-written rather than pulling `serde_bytes` or `serde-big-array`: a new
+//! crate on the crypto path needs a governance scorecard (Constitution §6),
+//! and this is twenty lines.
+//!
+//! Encoding: lowercase hex string. Chosen over a byte array so the package
+//! stays inspectable in a text editor, which matters for a file users are
+//! told to store themselves.
+
+pub mod hex_array_64 {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(bytes: &[u8; 64], s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&bytes.iter().map(|b| format!("{b:02x}")).collect::<String>())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 64], D::Error> {
+        use serde::de::Error;
+        let text = String::deserialize(d)?;
+        if text.len() != 128 {
+            return Err(D::Error::custom("expected 128 hex chars"));
+        }
+        let mut out = [0u8; 64];
+        for (i, slot) in out.iter_mut().enumerate() {
+            *slot = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16)
+                .map_err(|_| D::Error::custom("invalid hex"))?;
+        }
+        Ok(out)
+    }
+}
+```
+
+Apply with `#[serde(with = "crate::vault::encoding::hex_array_64")]` on
+`DeviceCertificate::signature`. Write the `[u8; 32]` twin the same way.
+
+**Do not add `serde_bytes`, `serde-big-array`, or `serde_arrays`.**
+
+- [ ] **Step 3b: (removed — the encoding is decided above)**
 
 `[u8; 64]` does not implement `Serialize`/`Deserialize` by default in serde 1. Either enable a serde feature that supports large arrays, or add `#[serde(with = "...")]` helpers converting to `Vec<u8>` with a length check on deserialize. Pick one and apply it consistently — Tasks 5, 7, and 8 all serialize fixed-size arrays.
 
@@ -1415,7 +1478,7 @@ use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::domain;
 use super::error::VaultError;
@@ -2143,7 +2206,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod revocation;
 
-pub use revocation::RevocationLedger;
+pub use revocation::{RevocationLedger, RevocationSubject};
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2387,13 +2450,15 @@ impl Vault {
 
     /// Records a device certificate after verifying it against the root.
     /// Returns whether the certificate was accepted.
-    pub fn trust_device(&mut self, certificate: DeviceCertificate) -> bool {
+    /// Returns `Result`, not `bool`. `vault.trust_device(cert);` discarding a
+    /// security decision must not compile silently.
+    pub fn trust_device(&mut self, certificate: DeviceCertificate) -> Result<(), VaultError> {
         if !certificate.verify_against(&self.root_public_key) {
-            return false;
+            return Err(VaultError::UntrustedCertificate);
         }
         self.device_certificates.retain(|c| c.device_id != certificate.device_id);
         self.device_certificates.push(certificate);
-        true
+        Ok(())
     }
 
     pub fn trusted_devices(&self) -> &[DeviceCertificate] {
@@ -2462,7 +2527,10 @@ mod tests {
 
         let directive = vault.destroy_content("note-1").unwrap();
 
-        assert_eq!(directive.content_id, "note-1");
+        assert_eq!(
+            directive.subject,
+            RevocationSubject::Content("note-1".into())
+        );
         assert_eq!(directive.epoch, 1);
         assert!(vault.revocations().is_content_revoked("note-1"));
         assert!(!vault.envelopes.contains_key("note-1"));
@@ -2491,7 +2559,7 @@ mod tests {
     #[test]
     fn an_unsigned_device_certificate_is_rejected() {
         use crate::vault::{DeviceCertificate, DeviceKey};
-        let device = DeviceKey::generate();
+        let device = DeviceKey::generate().unwrap();
         let forged = DeviceCertificate {
             device_id: device.device_id(),
             device_public_key: device.public_key(),
@@ -2500,7 +2568,7 @@ mod tests {
         };
 
         let mut vault = vault();
-        assert!(!vault.trust_device(forged));
+        assert!(vault.trust_device(forged).is_err());
         assert!(vault.trusted_devices().is_empty());
     }
 }
@@ -2586,9 +2654,6 @@ use super::{DeviceCertificate, Vault};
 
 pub const RECOVERY_PACKAGE_FORMAT_VERSION: u32 = 1;
 
-/// Domain separation for the package encryption key.
-
-
 /// The serializable interior of a Vault.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct VaultPayload {
@@ -2643,22 +2708,24 @@ impl RecoveryPackage {
     ///
     /// `kdf_*` and `passphrase_used` are bound too, so a downgrade attack
     /// cannot strip a future passphrase by flipping the flag.
-    fn header_aad(&self) -> Vec<u8> {
+    fn header_aad(&self) -> Result<Vec<u8>, VaultError> {
         let mut aad = Vec::new();
         aad.extend_from_slice(domain::PACKAGE_HEADER);
         aad.extend_from_slice(&self.format_version.to_be_bytes());
         aad.extend_from_slice(&self.identity_public_key);
         aad.extend_from_slice(&self.revocation_epoch.to_be_bytes());
         aad.push(u8::from(self.passphrase_used));
-        aad.extend_from_slice(&(self.kdf_params.len() as u32).to_be_bytes());
+        let count = u32::try_from(self.kdf_params.len()).map_err(|_| VaultError::ValueTooLong)?;
+        aad.extend_from_slice(&count.to_be_bytes());
         for (key, value) in &self.kdf_params {
-            aad.extend_from_slice(&(key.len() as u32).to_be_bytes());
-            aad.extend_from_slice(key.as_bytes());
+            // The checked helper, at every site the invariant applies to. A
+            // helper built and used at one of two sites is worse than none —
+            // it reads as done.
+            push_len_prefixed(&mut aad, key.as_bytes())?;
             aad.extend_from_slice(&value.to_be_bytes());
         }
-        aad.extend_from_slice(&(self.kdf_salt.len() as u32).to_be_bytes());
-        aad.extend_from_slice(&self.kdf_salt);
-        aad
+        push_len_prefixed(&mut aad, &self.kdf_salt)?;
+        Ok(aad)
     }
 
     pub fn export(vault: &Vault, seed: &Seed) -> Result<Self, VaultError> {
@@ -2696,7 +2763,7 @@ impl RecoveryPackage {
                 XNonce::from_slice(&nonce_bytes),
                 Payload {
                     msg: plaintext.as_slice(),
-                    aad: &package.header_aad(),
+                    aad: &package.header_aad()?,
                 },
             )
             .map_err(|_| VaultError::SerializationFailed)?;
@@ -2718,7 +2785,7 @@ impl RecoveryPackage {
                     XNonce::from_slice(&nonce_bytes),
                     Payload {
                         msg: self.ciphertext.as_slice(),
-                        aad: &self.header_aad(),
+                        aad: &self.header_aad()?,
                     },
                 )
                 .map_err(|_| VaultError::DecryptionFailed)?,
@@ -3046,6 +3113,20 @@ pub enum RevocationProvenance {
     AcknowledgedBlind,
 }
 
+/// Proof that a ledger was replayed from the operation log to head.
+///
+/// The field is private, so only this crate's log module can construct one.
+/// `pub(crate)` until Phase 2 provides that module — see #1260.
+pub struct LogHead(pub(crate) String);
+
+#[cfg(test)]
+impl LogHead {
+    /// Tests only. Production callers get a `LogHead` from the log.
+    pub(crate) fn for_test(id: &str) -> Self {
+        Self(id.to_string())
+    }
+}
+
 /// A revocation ledger plus where it came from.
 pub struct RevocationSource {
     ledger: RevocationLedger,
@@ -3053,10 +3134,20 @@ pub struct RevocationSource {
 }
 
 impl RevocationSource {
-    pub fn replayed_from_log(ledger: RevocationLedger, head_operation_id: String) -> Self {
+    /// Only the operation log can mint a `LogHead`, so this constructor cannot
+    /// be used to *assert* provenance the caller does not have.
+    ///
+    /// Revision 3 took a bare `RevocationLedger` and a free `String`, and the
+    /// plan's own test then built one from an EMPTY ledger and asserted
+    /// `!was_blind()` — reaching R1's original bypass through the constructor
+    /// named "trustworthy". Provenance was a claim, not a proof: the same
+    /// shape as `RevocationSubject` before the tag.
+    pub fn replayed_from_log(ledger: RevocationLedger, head: LogHead) -> Self {
         Self {
             ledger,
-            provenance: RevocationProvenance::ReplayedFromLog { head_operation_id },
+            provenance: RevocationProvenance::ReplayedFromLog {
+                head_operation_id: head.0,
+            },
         }
     }
 
@@ -3261,7 +3352,7 @@ mod tests {
 
         let restored = SealedRestore::load(&stale_backup, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(current_revocations, "op-42".into()));
+            .apply_revocations(&RevocationSource::replayed_from_log(current_revocations, LogHead::for_test("op-42")));
 
         assert_eq!(
             restored.purged(),
@@ -3306,16 +3397,16 @@ mod tests {
         // stolen laptop walked back into the mesh on every restore.
         use crate::vault::{DeviceCertificate, DeviceKey};
         let identity = RootIdentity::from_seed(&seed()).unwrap();
-        let device = DeviceKey::generate();
+        let device = DeviceKey::generate().unwrap();
         let device_id = device.device_id();
 
         let mut vault = Vault::new(identity.public_key());
-        assert!(vault.trust_device(DeviceCertificate::issue(&identity, &device, 1)));
+        vault.trust_device(DeviceCertificate::issue(&identity, &device, 1)).unwrap();
         let stale_backup = RecoveryPackage::export(&vault, &seed()).unwrap();
 
         // ... the laptop is stolen and revoked on the phone.
         let mut live = Vault::new(identity.public_key());
-        live.trust_device(DeviceCertificate::issue(&identity, &device, 1));
+        live.trust_device(DeviceCertificate::issue(&identity, &device, 1)).unwrap();
         live.revoke_device(&device_id).unwrap();
 
         let restored = SealedRestore::load(&stale_backup, &seed())
@@ -3338,13 +3429,13 @@ mod tests {
 
         let once = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), "op-42".into()));
+            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42")));
         let vault = once.into_vault();
 
         let repackaged = RecoveryPackage::export(&vault, &seed()).unwrap();
         let twice = SealedRestore::load(&repackaged, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), "op-42".into()));
+            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42")));
 
         assert!(twice.purged().is_empty());
         assert!(!twice.into_vault().has_content("hiv-test-result"));
@@ -3560,7 +3651,10 @@ established:
 - [ ] `crate-type = ["rlib"]`; no `flutter_rust_bridge` dependency
 - [ ] Third-party notices updated for BSD-3-Clause, and for CC0 if Path A was chosen
 - [ ] `[profile.release]` added to `rust/Cargo.toml` — measured at 650 KB → 424 KB, and free
-- [ ] Rust Architect has recorded an explicit "third-party audited `unsafe`, accepted" note for `curve25519-dalek`, `subtle`, and `fiat-crypto`, which trip the unreviewed-`unsafe` criterion transitively
+- [ ] **The plan's code compiles.** Paste every Rust block into a scratch crate and run `cargo clippy --all-targets -- -D warnings`. Under ten minutes including dependency build. **Revision 4 does not circulate without this** — three prior revisions shipped code that could not compile, and two reviewers' time was spent finding `E0433`.
+- [ ] `#![forbid(unsafe_code)]` present in `lib.rs`
+- [ ] Rust Architect's accepted-transitive-`unsafe` note is recorded and names the crates actually in `cargo tree` — `curve25519-dalek` (35 sites) and `subtle` (2 sites, `black_box` shims that exist *to preserve* the constant-time property), plus the RustCrypto set. **`fiat-crypto` is NOT in the tree** and was struck: it resolves only under `--cfg curve25519_dalek_backend="fiat"`, which nothing sets. Setting that cfg requires a fresh note.
+- [ ] `[profile.release]` shaped per rust-architect — `lto`/`strip` workspace-wide, `opt-level`/`codegen-units` under `[profile.release.package.airo_mind]` only. **Never `panic = "abort"`**: `airo_core` is a `cdylib` whose FRB bridge relies on `catch_unwind` to turn panics into Dart errors. Chief Performance Officer signs the `airo_core` half.
 
 Deferred with reasons: `packages/benchmarks` entry (Constitution §4 attaches the
 benchmark requirement to merge and replay, which land in Phases 2–3); FFI
