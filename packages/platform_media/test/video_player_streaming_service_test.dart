@@ -220,7 +220,16 @@ void main() {
     }
 
     VideoPlayerStreamingService serviceWith(AiroPlaybackEngine scripted) {
-      final svc = VideoPlayerStreamingService(engine: scripted);
+      // Zero retryDelay: these tests assert retry()'s failover-selection
+      // logic (does it advance to the next source, does exhaustion surface
+      // correctly), not the debounce timing covered separately by the
+      // 'retry debounce' group below -- an instant programmatic retry()
+      // call here should not be mistaken for the human button-mashing the
+      // debounce guards against.
+      final svc = VideoPlayerStreamingService(
+        engine: scripted,
+        config: const StreamingConfig(retryDelay: Duration.zero),
+      );
       addTearDown(svc.dispose);
       return svc;
     }
@@ -443,7 +452,15 @@ void main() {
       final scripted = _ScriptedOpenFailureEngine(
         AiroPlaybackErrorCode.networkUnavailable,
       );
-      final svc = VideoPlayerStreamingService(engine: scripted);
+      // Zero retryDelay: asserts retry-count/exhaustion logic across
+      // repeated retry() calls, not debounce timing (covered separately).
+      // maxRetries: 5 preserves this test's original assumption (the
+      // previously-implicit StreamingConfig.youtube default) -- the plain
+      // StreamingConfig() constructor's own default is 3, not 5.
+      final svc = VideoPlayerStreamingService(
+        engine: scripted,
+        config: const StreamingConfig(retryDelay: Duration.zero, maxRetries: 5),
+      );
       addTearDown(svc.dispose);
 
       await svc.playChannel(channel());
@@ -468,6 +485,79 @@ void main() {
         svc.currentState.errorMessage,
       );
       expect(svc.currentState.diagnostic?.retryEligible, isFalse);
+    });
+  });
+
+  group('VideoPlayerStreamingService retry debounce', () {
+    // StreamingConfig.retryDelay existed but was never read anywhere --
+    // retry() now uses it to rate-limit how fast a manual "Try Again" tap
+    // can resubmit, without making retry auto-triggered (that would
+    // reverse the deliberate manual-only decision documented on
+    // _handleError).
+    IPTVChannel channel() {
+      return const IPTVChannel(
+        id: 'chan-1',
+        name: 'Test Channel',
+        streamUrl: 'https://example.com/live.m3u8',
+      );
+    }
+
+    test('a retry within retryDelay of the last failure is a no-op', () async {
+      final engine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.networkUnavailable,
+      );
+      final svc = VideoPlayerStreamingService(
+        engine: engine,
+        config: const StreamingConfig(retryDelay: Duration(seconds: 1)),
+      );
+      addTearDown(svc.dispose);
+
+      await svc.playChannel(channel());
+      expect(svc.currentState.playbackState, PlaybackState.error);
+      expect(svc.currentState.retryCount, 1);
+
+      await svc.retry();
+
+      // Debounced: no new attempt, retryCount unchanged.
+      expect(svc.currentState.retryCount, 1);
+    });
+
+    test('a retry after retryDelay has elapsed proceeds normally', () async {
+      final engine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.networkUnavailable,
+      );
+      final svc = VideoPlayerStreamingService(
+        engine: engine,
+        config: const StreamingConfig(retryDelay: Duration(milliseconds: 50)),
+      );
+      addTearDown(svc.dispose);
+
+      await svc.playChannel(channel());
+      expect(svc.currentState.retryCount, 1);
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await svc.retry();
+
+      expect(svc.currentState.retryCount, 2);
+    });
+
+    test('a retry while still loading is a no-op', () async {
+      final engine = _PendingOpenEngine();
+      final svc = VideoPlayerStreamingService(
+        engine: engine,
+        config: const StreamingConfig(retryDelay: Duration.zero),
+      );
+      addTearDown(svc.dispose);
+
+      final playFuture = svc.playChannel(channel());
+      await Future<void>.delayed(Duration.zero);
+      expect(svc.currentState.playbackState, PlaybackState.loading);
+
+      await svc.retry();
+      expect(engine.openCallCount, 1);
+
+      engine.completeOpen();
+      await playFuture;
     });
   });
 
@@ -906,6 +996,87 @@ class _StallableMultiSourceEngine implements AiroPlaybackEngine {
     );
     _controller.add(_state);
     return _state;
+  }
+
+  @override
+  Future<AiroPlaybackState> play() async => _state;
+
+  @override
+  Future<AiroPlaybackState> pause() async => _state;
+
+  @override
+  Future<AiroPlaybackState> stop() async => _state;
+
+  @override
+  Future<AiroPlaybackState> seek(Duration position) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setVolume(double volume) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setPlaybackSpeed(double speed) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectQuality(String qualityId) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async => _state;
+
+  @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async => _state;
+
+  @override
+  Future<AiroPlaybackDiagnostics> diagnostics() async =>
+      AiroPlaybackDiagnostics(backendId: backendKind.stableId);
+
+  @override
+  Future<AiroPlaybackState> enterPictureInPicture() async => _state;
+
+  @override
+  Future<AiroPlaybackState> exitPictureInPicture() async => _state;
+
+  @override
+  Widget? buildView() => null;
+
+  @override
+  Future<void> dispose() async => _controller.close();
+}
+
+/// An [AiroPlaybackEngine] whose `open()` never resolves until the test
+/// calls [completeOpen] -- used to hold [VideoPlayerStreamingService] in
+/// `PlaybackState.loading` so a concurrent retry() call during that window
+/// can be observed as a no-op.
+class _PendingOpenEngine implements AiroPlaybackEngine {
+  int openCallCount = 0;
+  final _openCompleter = Completer<AiroPlaybackState>();
+  final _controller = StreamController<AiroPlaybackState>.broadcast();
+  AiroPlaybackState _state = AiroPlaybackState.idle(
+    backendKind: AiroPlaybackBackendKind.fake,
+  );
+
+  void completeOpen() {
+    _state = _state.copyWith(phase: AiroPlaybackEnginePhase.open);
+    if (!_openCompleter.isCompleted) _openCompleter.complete(_state);
+  }
+
+  @override
+  AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.fake;
+
+  @override
+  Stream<AiroPlaybackState> get states => _controller.stream;
+
+  @override
+  AiroPlaybackState get currentState => _state;
+
+  @override
+  Future<AiroPlaybackState> open(AiroMediaOpenRequest request) async {
+    openCallCount++;
+    return _openCompleter.future;
   }
 
   @override
