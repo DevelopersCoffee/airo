@@ -258,7 +258,7 @@ Options:
   --skip-gh-labels            Do not call gh for labels
   --discussions <decision>    unknown, enabled, or not_required
   --codeowners <decision>     unknown, present, or not_required
-  --funding <decision>        unknown, present, or intentionally_absent
+  --funding <decision>        unknown, present, not_required, or intentionally_absent
   --output-json <path>        Write JSON report
   --output-markdown <path>    Write markdown report
   --help                      Show this help

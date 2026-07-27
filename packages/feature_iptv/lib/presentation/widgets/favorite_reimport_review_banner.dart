@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,19 +46,27 @@ class FavoriteReimportReviewBanner extends ConsumerWidget {
                       '"${candidate.candidate.name}" now. Keep as favorite?',
                     ),
                   ),
-                  TextButton(
-                    key: ValueKey(
-                      'favorite-reimport-accept-${candidate.oldChannel.id}',
+                  TvFocusable(
+                    semanticLabel: 'Keep as favorite',
+                    onSelect: () => _accept(ref, candidate),
+                    child: TextButton(
+                      key: ValueKey(
+                        'favorite-reimport-accept-${candidate.oldChannel.id}',
+                      ),
+                      onPressed: () => _accept(ref, candidate),
+                      child: const Text('Keep'),
                     ),
-                    onPressed: () => _accept(ref, candidate),
-                    child: const Text('Keep'),
                   ),
-                  TextButton(
-                    key: ValueKey(
-                      'favorite-reimport-dismiss-${candidate.oldChannel.id}',
+                  TvFocusable(
+                    semanticLabel: 'Dismiss',
+                    onSelect: () => _dismiss(ref, candidate),
+                    child: TextButton(
+                      key: ValueKey(
+                        'favorite-reimport-dismiss-${candidate.oldChannel.id}',
+                      ),
+                      onPressed: () => _dismiss(ref, candidate),
+                      child: const Text('Dismiss'),
                     ),
-                    onPressed: () => _dismiss(ref, candidate),
-                    child: const Text('Dismiss'),
                   ),
                 ],
               ),

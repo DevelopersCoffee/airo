@@ -8,11 +8,17 @@ import 'dart:async';
 /// machine, error taxonomy translation, source-handle handling) live in the
 /// engine adapter, not here.
 abstract class MpvPlayerFacade {
-  /// Load a source URL. Returns the observed post-open metadata (duration,
-  /// hardware-accel flag). Throw an [Object] to signal a decoder/codec
-  /// failure — the engine adapter maps that to a typed
-  /// [AiroPlaybackErrorCode.decoderFailed].
-  Future<MpvOpenResult> open(String url);
+  /// Load a source URL, sending [httpHeaders] with the request. Returns the
+  /// observed post-open metadata (duration, hardware-accel flag). Throw an
+  /// [Object] to signal a decoder/codec failure — the engine adapter maps
+  /// that to a typed [AiroPlaybackErrorCode.decoderFailed].
+  ///
+  /// [httpHeaders] carries the playlist's own `http-user-agent`/referrer
+  /// attributes. Providers that require them answer 403 without them.
+  Future<MpvOpenResult> open(
+    String url, {
+    Map<String, String> httpHeaders = const {},
+  });
 
   Future<void> play();
 

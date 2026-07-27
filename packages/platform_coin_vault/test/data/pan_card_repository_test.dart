@@ -19,7 +19,10 @@ void main() {
   setUp(() async {
     vaultDb = VaultDatabase(databaseFactory: databaseFactoryFfi);
     await vaultDb.open(path: inMemoryDatabasePath);
-    repository = PanCardRepository(database: vaultDb, fieldCipher: FieldCipher());
+    repository = PanCardRepository(
+      database: vaultDb,
+      fieldCipher: FieldCipher(),
+    );
     keyBytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
   });
 
@@ -43,7 +46,11 @@ void main() {
   });
 
   test('stored pan_number_enc column is never plaintext', () async {
-    final record = PanCardRecord(id: null, panNumber: 'ABCDE1234F', nameOnCard: 'Jane Doe');
+    final record = PanCardRecord(
+      id: null,
+      panNumber: 'ABCDE1234F',
+      nameOnCard: 'Jane Doe',
+    );
     final createResult = await repository.create(record, keyBytes);
 
     final rows = await vaultDb.db.query(VaultTables.panCards);
@@ -51,20 +58,23 @@ void main() {
     expect(createResult.isSuccess, isTrue);
   });
 
-  test('cardImageBlob roundtrips through encryption, including bytes >= 128', () async {
-    final blob = [0, 127, 128, 200, 255];
-    final record = PanCardRecord(
-      id: null,
-      panNumber: 'ABCDE1234F',
-      nameOnCard: 'Jane Doe',
-      cardImageBlob: blob,
-    );
+  test(
+    'cardImageBlob roundtrips through encryption, including bytes >= 128',
+    () async {
+      final blob = [0, 127, 128, 200, 255];
+      final record = PanCardRecord(
+        id: null,
+        panNumber: 'ABCDE1234F',
+        nameOnCard: 'Jane Doe',
+        cardImageBlob: blob,
+      );
 
-    final createResult = await repository.create(record, keyBytes);
-    final fetched = await repository.getById(createResult.value, keyBytes);
+      final createResult = await repository.create(record, keyBytes);
+      final fetched = await repository.getById(createResult.value, keyBytes);
 
-    expect(fetched.value?.cardImageBlob, blob);
-  });
+      expect(fetched.value?.cardImageBlob, blob);
+    },
+  );
 
   test(
     'create leaves no placeholder row behind when encryption throws mid-create',
@@ -73,7 +83,11 @@ void main() {
         database: vaultDb,
         fieldCipher: _ThrowingFieldCipher(),
       );
-      final record = PanCardRecord(id: null, panNumber: 'ABCDE1234F', nameOnCard: 'Jane Doe');
+      final record = PanCardRecord(
+        id: null,
+        panNumber: 'ABCDE1234F',
+        nameOnCard: 'Jane Doe',
+      );
 
       final result = await throwingRepository.create(record, keyBytes);
       expect(result.isFailure, isTrue);

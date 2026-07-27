@@ -1,10 +1,9 @@
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import '../../../../core/providers/app_theme_provider.dart';
 import 'audio_settings_screen.dart';
+import 'theme_settings_screen.dart';
 
 /// Resolves a section descriptor from the shared
 /// [iptvSettingsSections] manifest by [id] — the same manifest
@@ -56,28 +55,22 @@ class SettingsHubScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text(
-              _section(IptvSettingsSectionId.theme).labelFor(ShellId.mobile),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            RadioGroup<AppThemeId>(
-              groupValue: ref.watch(appThemeProvider),
-              onChanged: (themeId) {
-                if (themeId != null) {
-                  ref.read(appThemeProvider.notifier).setTheme(themeId);
-                }
-              },
-              child: Column(
-                children: [
-                  for (final theme in AppTheme.themes)
-                    RadioListTile<AppThemeId>(
-                      value: theme.id,
-                      title: Text(theme.name),
-                      subtitle: Text(theme.description),
-                    ),
-                ],
+            ListTile(
+              leading: Icon(
+                _section(IptvSettingsSectionId.theme).iconFor(ShellId.mobile),
               ),
+              title: Text(
+                _section(IptvSettingsSectionId.theme).labelFor(ShellId.mobile),
+              ),
+              subtitle: const Text('Choose your visual theme'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ThemeSettingsScreen(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),

@@ -16,15 +16,17 @@ governance decisions. To produce passing evidence after those decisions are
 made, set:
 
 ```bash
-AIRO_REPO_DISCUSSIONS=enabled \
+AIRO_REPO_DISCUSSIONS=<enabled|not_required> \
 AIRO_REPO_CODEOWNERS=present \
-AIRO_REPO_FUNDING=intentionally_absent \
+AIRO_REPO_FUNDING=present \
 dart run melos run release:repo-health-preflight
 ```
 
-Use `AIRO_REPO_CODEOWNERS=present` when a root or `.github/CODEOWNERS` file is
-added. Use `AIRO_REPO_FUNDING=present` because `.github/FUNDING.yml` is now
-present in the repository.
+Use `AIRO_REPO_CODEOWNERS=present` because a `.github/CODEOWNERS` file is
+present in the repository. Use `AIRO_REPO_FUNDING=present` because
+`.github/FUNDING.yml` is present. Set `AIRO_REPO_DISCUSSIONS` to `enabled` if
+GitHub Discussions are turned on for this release wave, or `not_required` if
+the release manager intentionally defers Discussions.
 
 ## Verified Repo-Visible Files
 

@@ -2,12 +2,15 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, KeyDownEvent, KeyUpEvent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/channel_warmup_policy.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
+import '../../application/providers/dead_link_report_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -31,6 +34,19 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool initiallyFullscreen;
   final bool enableTouchGestures;
   final PlayerBrightnessController? brightnessController;
+
+  /// Whether to offer system Picture-in-Picture (the floating-window
+  /// control and the TV settings toggle). PiP is a phone/tablet
+  /// multitasking concept -- Android TV and Fire TV don't have a
+  /// multi-window model for it to floated into, so TV callers pass
+  /// `false`. Defaults to `true` for phone/tablet callers.
+  final bool showPictureInPicture;
+
+  /// Renders the AiroTV D-pad design's TRANSPORT control bar (metadata row
+  /// + Play/Pause, Restart, Audio, Subtitles, Favourite, Info) instead of
+  /// the touch-oriented VOL/CH pillar layout. TV callers pass `true`; phone
+  /// and tablet callers default to the existing touch layout unchanged.
+  final bool useTvTransportBar;
 
   /// Invoked when the new [PlayerOverlay] chrome's back button is tapped.
   /// Defaults to [onFullscreenToggle] when not supplied, since today's only
@@ -56,6 +72,8 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.enableTouchGestures = true,
+    this.showPictureInPicture = true,
+    this.useTvTransportBar = false,
     this.brightnessController,
     this.onBack,
     this.setAudioOnlyMode,
@@ -91,6 +109,26 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Timer? _channelChangeOverlayTimer;
   Timer? _adjacentChannelWarmupDebounce;
   String _adjacentChannelWarmupSignature = '';
+
+  // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
+  //
+  // On real Fire TV hardware, KEYCODE_MENU never reaches the app -- Fire OS
+  // intercepts it at the system level for its own overlay (confirmed via
+  // on-device logcat: com.amazon.device.controller consumes it before
+  // Flutter's embedding sees it). Long-press Select/OK is the standard Fire
+  // TV convention for "more options" (Prime Video, Netflix, etc. all use
+  // it), and unlike Menu it's guaranteed to reach the app, so it's wired
+  // as the real-world trigger; TvInputKey.menu stays wired too for
+  // Android TV remotes that do have a working menu key.
+  bool _showContextMenu = false;
+  Timer? _selectLongPressTimer;
+  bool _selectConsumedByLongPress = false;
+
+  // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
+  // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
+  // on up/down: browsing now stops on a channel instead of committing to
+  // it, and OK is what actually switches.
+  _TvQuickBrowse? _quickBrowse;
 
   // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
   bool _isLocked = false;
@@ -138,6 +176,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
+    _selectLongPressTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
     unawaited(_resetBrightnessSafely());
@@ -384,36 +423,269 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
 
     switch (key) {
-      // Channel surfing on up/down is the player's contract (CV-008
-      // UC-002) — it stays active whether or not the controls are shown.
+      // UP opens the Mini Guide, DOWN opens Recent Channels — browsing
+      // stops on a channel instead of committing to it; OK inside the
+      // overlay is what actually switches (AiroTV D-pad design).
       case TvInputKey.up:
-        _goToPreviousChannel();
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
+            null) {
+          return TvInputResult.notHandled;
+        }
+        setState(() => _quickBrowse = _TvQuickBrowse.miniGuide);
         return TvInputResult.handled;
       case TvInputKey.down:
-        _goToNextChannel();
+        setState(() => _quickBrowse = _TvQuickBrowse.recent);
         return TvInputResult.handled;
+      case TvInputKey.menu:
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
+            null) {
+          return TvInputResult.notHandled;
+        }
+        setState(() => _showContextMenu = !_showContextMenu);
+        return TvInputResult.handled;
+      case TvInputKey.back:
+        if (_showContextMenu) {
+          setState(() => _showContextMenu = false);
+          return TvInputResult.handled;
+        }
+        if (_quickBrowse != null) {
+          setState(() => _quickBrowse = null);
+          return TvInputResult.handled;
+        }
+        return TvInputResult.notHandled;
       // Left/right walk the visible controls via normal focus traversal
       // (the buttons are TvFocusable); with the overlay hidden there are
       // no focus candidates (ExcludeFocus), so the keys are inert.
-      case TvInputKey.select:
-        if (controlsVisible) {
-          // A focused control's own TvFocusable consumes select before
-          // this listener; reaching here means nothing was focused yet.
-          if (_centerControlFocusNode.canRequestFocus) {
-            _centerControlFocusNode.requestFocus();
-          }
-          return TvInputResult.handled;
-        }
-        // Controls hidden: OK reveals them with focus on play/pause, the
-        // same pattern as every mainstream TV player.
-        _showControls();
-        if (_centerControlFocusNode.canRequestFocus) {
-          _centerControlFocusNode.requestFocus();
-        }
-        return TvInputResult.handled;
+      //
+      // Select is deliberately NOT handled here: TvInputHandler fires on
+      // every key-down, which would reveal controls the instant Select is
+      // pressed -- including the down-stroke of what turns out to be a
+      // long-press. That doubled the short-press action on top of the
+      // context menu opening (issues/01-remote-focus-contract.md
+      // acceptance criterion 5: "Holding Select does not also trigger the
+      // short-press action"). _detectSelectLongPress below owns Select
+      // entirely and only fires the short-press reveal on a clean key-up.
       default:
         return TvInputResult.notHandled;
     }
+  }
+
+  /// The short-press Select action: reveal controls (or move focus onto
+  /// them if already visible). Only invoked from [_detectSelectLongPress]
+  /// on a key-up that wasn't consumed by the long-press timer.
+  void _revealControlsForSelect() {
+    if (_showControlsOverlay && widget.showControls) {
+      // A focused control's own TvFocusable consumes select before this
+      // listener; reaching here means nothing was focused yet.
+      if (_centerControlFocusNode.canRequestFocus) {
+        _centerControlFocusNode.requestFocus();
+      }
+      return;
+    }
+    // Controls hidden: OK reveals them with focus on play/pause, the same
+    // pattern as every mainstream TV player.
+    _showControls();
+    if (_centerControlFocusNode.canRequestFocus) {
+      _centerControlFocusNode.requestFocus();
+    }
+  }
+
+  static const _miniGuideWindowSize = 12;
+
+  List<IPTVChannel> _miniGuideChannels(IPTVChannel current) {
+    final all = ref.read(filteredChannelsProvider);
+    if (all.isEmpty) return const [];
+    final currentIndex = all.indexWhere((c) => c.id == current.id);
+    if (currentIndex < 0) {
+      return all.take(_miniGuideWindowSize).toList(growable: false);
+    }
+    final start = (currentIndex - _miniGuideWindowSize ~/ 2).clamp(
+      0,
+      all.length,
+    );
+    final end = (start + _miniGuideWindowSize).clamp(0, all.length);
+    return all.sublist(start, end);
+  }
+
+  static const _selectLongPressDuration = Duration(milliseconds: 500);
+
+  /// Owns Select/OK end to end: starts the long-press timer on key-down,
+  /// and on key-up either leaves it to the context menu it already opened
+  /// (long-press) or fires the short-press reveal-controls action (clean
+  /// tap) -- never both, per issues/01-remote-focus-contract.md acceptance
+  /// criterion 5. Always returns `ignored` since nothing else needs this
+  /// key event once decided.
+  KeyEventResult _detectSelectLongPress(FocusNode node, KeyEvent event) {
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key != TvInputKey.select) return KeyEventResult.ignored;
+
+    if (event is KeyDownEvent) {
+      _selectLongPressTimer ??= Timer(_selectLongPressDuration, () {
+        _selectLongPressTimer = null;
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel !=
+            null) {
+          _selectConsumedByLongPress = true;
+          setState(() => _showContextMenu = true);
+        }
+      });
+    } else if (event is KeyUpEvent) {
+      final wasStillPending = _selectLongPressTimer != null;
+      _selectLongPressTimer?.cancel();
+      _selectLongPressTimer = null;
+      if (_selectConsumedByLongPress) {
+        _selectConsumedByLongPress = false;
+      } else if (wasStillPending) {
+        _revealControlsForSelect();
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _playChannelFromQuickBrowse(IPTVChannel channel) {
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    streamingService.playChannel(channel);
+    _showChannelChangeOverlay(channel.name);
+    _scheduleAdjacentChannelWarmupFor(channel);
+    setState(() => _quickBrowse = null);
+  }
+
+  Future<void> _toggleFavoriteForCurrentChannel() async {
+    final channel = ref
+        .read(streamingStateProvider)
+        .asData
+        ?.value
+        .currentChannel;
+    if (channel == null) return;
+    final toggle = ref.read(channelFavoriteTogglerProvider);
+    final isNowFavorite = await toggle(channel.id);
+    if (!mounted) return;
+    setState(() => _showContextMenu = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            isNowFavorite
+                ? '${channel.name} added to favorites'
+                : '${channel.name} removed from favorites',
+          ),
+        ),
+      );
+  }
+
+  Future<void> _refreshPlaylistFromContextMenu() async {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Refreshing playlist…')));
+    try {
+      await ref.read(refreshChannelsProvider(true).future);
+      ref.invalidate(iptvChannelsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Playlist refreshed')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Playlist refresh failed')),
+        );
+    }
+  }
+
+  void _selectAudioTrackFromContextMenu(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    setState(() => _showContextMenu = false);
+    _showTrackSelectorFor(
+      context,
+      service,
+      state,
+      kind: AiroPlaybackTrackKind.audio,
+    );
+  }
+
+  void _selectSubtitlesFromContextMenu(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    setState(() => _showContextMenu = false);
+    _showTrackSelector(context, service, state);
+  }
+
+  void _showChannelInfoFromContextMenu(StreamingState state) {
+    setState(() => _showContextMenu = false);
+    final channel = state.currentChannel;
+    if (channel == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(channel.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (channel.group.isNotEmpty) Text('Group: ${channel.group}'),
+            Text('Quality: ${state.currentQuality.label}'),
+            Text(state.isLiveStream ? 'Live' : 'On demand'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDiagnosticsFromContextMenu(StreamingState state) {
+    setState(() => _showContextMenu = false);
+    final channel = state.currentChannel;
+    final metrics = state.metrics;
+    final redactedSource = redactedUriForLog(
+      channel == null ? null : Uri.tryParse(channel.streamUrl),
+    );
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Diagnostics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Source: $redactedSource'),
+            Text('Quality: ${state.currentQuality.label}'),
+            if (metrics != null) ...[
+              Text('Bitrate: ${metrics.currentBitrate} kbps'),
+              Text('Network: ${metrics.networkQuality.label}'),
+            ],
+            Text('Buffer health: ${state.bufferStatus.bufferHealth}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyStreamLinkFromContextMenu(StreamingState state) async {
+    final channel = state.currentChannel;
+    final redacted = redactedUriForLog(
+      channel == null ? null : Uri.tryParse(channel.streamUrl),
+    );
+    await Clipboard.setData(ClipboardData(text: redacted));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Stream link copied')));
   }
 
   void _showChannelChangeOverlay(String text) {
@@ -518,143 +790,231 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ],
     );
 
-    return TvInputHandler(
-      onInput: _handleSurfInput,
-      // Focus.onKeyEvent always ignores so the event bubbles up to
-      // TvInputHandler's own listener above -- this node exists purely to
-      // hold primary focus by default, since nothing else in the player
-      // (controls auto-hide) reliably claims it otherwise. The state-owned
-      // node lets the hide timer reclaim focus from on-screen controls.
-      child: Focus(
-        focusNode: _playerFocusNode,
-        autofocus: true,
-        onKeyEvent: (node, event) => KeyEventResult.ignored,
-        child: MouseRegion(
-          onHover: (_) => _showControls(),
-          onEnter: (_) => _showControls(),
-          child: GestureDetector(
-            onTap: _showControls,
-            child: Container(
-              color: Colors.black,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Video display + Netflix-style brightness/volume drag
-                  // gestures. Left half of the video area adjusts brightness,
-                  // right half adjusts volume; disabled while locked. The video
-                  // surface itself is the engine-driven view (CV-016 migration);
-                  // when it's null we fall through to loading/diagnostic/
-                  // placeholder inside the same gesture-enabled stack.
-                  widget.enableTouchGestures
-                      ? PlayerGestureOverlay(
-                          locked: _isLocked,
-                          brightness: _brightness,
-                          volume: state.isMuted ? 0.0 : state.volume,
-                          onTap: _showControls,
-                          onBrightnessChanged: _onBrightnessGestureChanged,
-                          onVolumeChanged: (value) {
-                            if (state.isMuted) service.toggleMute();
-                            service.setVolume(value);
-                          },
-                          child: playerSurface,
-                        )
-                      : playerSurface,
+    // TvInputHandler observes raw key events via a KeyboardListener, which
+    // is passive -- it cannot consume/stop the platform BACK button. So
+    // even though _handleSurfInput's TvInputKey.back case closes the
+    // context menu / quick-browse overlay via setState, the real Android
+    // back press keeps propagating past it and exits the Activity (there's
+    // no route to pop). PopScope is what actually intercepts the platform
+    // back button; block it exactly when an overlay needs BACK to close it
+    // instead of leaving the app.
+    return PopScope(
+      canPop: !_showContextMenu && _quickBrowse == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() {
+          _showContextMenu = false;
+          _quickBrowse = null;
+        });
+      },
+      child: TvInputHandler(
+        onInput: _handleSurfInput,
+        // Focus.onKeyEvent always ignores so the event bubbles up to
+        // TvInputHandler's own listener above -- this node exists purely to
+        // hold primary focus by default, since nothing else in the player
+        // (controls auto-hide) reliably claims it otherwise. The state-owned
+        // node lets the hide timer reclaim focus from on-screen controls.
+        child: Focus(
+          focusNode: _playerFocusNode,
+          autofocus: true,
+          onKeyEvent: _detectSelectLongPress,
+          child: MouseRegion(
+            onHover: (_) => _showControls(),
+            onEnter: (_) => _showControls(),
+            child: GestureDetector(
+              onTap: _showControls,
+              child: Container(
+                color: Colors.black,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Video display + Netflix-style brightness/volume drag
+                    // gestures. Left half of the video area adjusts brightness,
+                    // right half adjusts volume; disabled while locked. The video
+                    // surface itself is the engine-driven view (CV-016 migration);
+                    // when it's null we fall through to loading/placeholder
+                    // inside the same gesture-enabled stack -- except a
+                    // diagnostic error, whose own recovery buttons need to
+                    // win every tap outright rather than compete with this
+                    // overlay's translucent drag detector for the same
+                    // gesture arena.
+                    widget.enableTouchGestures &&
+                            !(state.hasError && state.diagnostic != null)
+                        ? PlayerGestureOverlay(
+                            locked: _isLocked,
+                            brightness: _brightness,
+                            volume: state.isMuted ? 0.0 : state.volume,
+                            onTap: _showControls,
+                            onBrightnessChanged: _onBrightnessGestureChanged,
+                            onVolumeChanged: (value) {
+                              if (state.isMuted) service.toggleMute();
+                              service.setVolume(value);
+                            },
+                            child: playerSurface,
+                          )
+                        : playerSurface,
 
-                  // Failover toast only. Airo TV owns one visible control
-                  // system below; keeping PlayerOverlay's old back/title layer
-                  // mounted here caused a second set of controls to reappear
-                  // after the floating controls faded.
-                  if (!_isLocked && !isPipActive && !compactInlinePlayer)
-                    PlayerOverlay(
-                      state: _toPlayerViewState(state),
-                      onBack:
-                          widget.onBack ?? widget.onFullscreenToggle ?? () {},
-                      onPlayPause: () {
-                        if (state.isPlaying) {
-                          service.pause();
-                        } else {
-                          service.resume();
-                        }
-                      },
-                      onReveal: _showControls,
-                      showTopChrome: false,
-                      showCenterControls: false,
-                      showBottomBar: false,
-                    ),
-
-                  // Controls overlay with fade animation — hidden entirely while
-                  // locked so only the lock button remains interactive.
-                  if (!_isLocked && !isPipActive)
-                    AnimatedOpacity(
-                      opacity: (widget.showControls && _showControlsOverlay)
-                          ? 1.0
-                          : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: IgnorePointer(
-                        ignoring: !widget.showControls || !_showControlsOverlay,
-                        // Hidden controls must be invisible to D-pad focus
-                        // too, or arrow keys traverse buttons nobody can see
-                        // while the surface expects channel-surf input.
-                        child: ExcludeFocus(
-                          excluding:
-                              !widget.showControls || !_showControlsOverlay,
-                          child: _buildControlsOverlay(context, service, state),
-                        ),
+                    // Failover toast only. Airo TV owns one visible control
+                    // system below; keeping PlayerOverlay's old back/title layer
+                    // mounted here caused a second set of controls to reappear
+                    // after the floating controls faded.
+                    if (!_isLocked && !isPipActive && !compactInlinePlayer)
+                      PlayerOverlay(
+                        state: _toPlayerViewState(state),
+                        onBack:
+                            widget.onBack ?? widget.onFullscreenToggle ?? () {},
+                        onPlayPause: () {
+                          if (state.isPlaying) {
+                            service.pause();
+                          } else {
+                            service.resume();
+                          }
+                        },
+                        onReveal: _showControls,
+                        showTopChrome: false,
+                        showCenterControls: false,
+                        showBottomBar: false,
                       ),
-                    ),
 
-                  // Lock button: touch-only concept, hidden entirely when
-                  // enableTouchGestures is false (e.g. TV/remote input).
-                  if (widget.enableTouchGestures && !isPipActive)
-                    Positioned(
-                      top: 8,
-                      right: 56,
-                      child: AnimatedOpacity(
-                        opacity: (_isLocked || _showControlsOverlay)
+                    // Controls overlay with fade animation — hidden entirely while
+                    // locked so only the lock button remains interactive, and
+                    // while a diagnostic error owns the screen (there's no
+                    // video to control, and its own recovery buttons occupy
+                    // the same vertical band the center play/pause button
+                    // would otherwise sit in and silently swallow taps for).
+                    if (!_isLocked &&
+                        !isPipActive &&
+                        !(state.hasError && state.diagnostic != null))
+                      AnimatedOpacity(
+                        opacity: (widget.showControls && _showControlsOverlay)
                             ? 1.0
                             : 0.0,
                         duration: const Duration(milliseconds: 300),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: PlayerLockButton(
-                            key: const ValueKey('iptv-player-lock-button'),
-                            locked: _isLocked,
-                            onToggle: _toggleLocked,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Channel change overlay
-                  if (_channelChangeOverlayText != null)
-                    Positioned(
-                      child: AnimatedOpacity(
-                        opacity: _channelChangeOverlayText != null ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _channelChangeOverlayText!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                        child: IgnorePointer(
+                          ignoring:
+                              !widget.showControls || !_showControlsOverlay,
+                          // Hidden controls must be invisible to D-pad focus
+                          // too, or arrow keys traverse buttons nobody can see
+                          // while the surface expects channel-surf input.
+                          child: ExcludeFocus(
+                            excluding:
+                                !widget.showControls || !_showControlsOverlay,
+                            child: _buildControlsOverlay(
+                              context,
+                              service,
+                              state,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+
+                    // Lock button: touch-only concept, hidden entirely when
+                    // enableTouchGestures is false (e.g. TV/remote input).
+                    if (widget.enableTouchGestures && !isPipActive)
+                      Positioned(
+                        top: 8,
+                        right: 56,
+                        child: AnimatedOpacity(
+                          opacity: (_isLocked || _showControlsOverlay)
+                              ? 1.0
+                              : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black45,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: PlayerLockButton(
+                              key: const ValueKey('iptv-player-lock-button'),
+                              locked: _isLocked,
+                              onToggle: _toggleLocked,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Channel change overlay
+                    if (_channelChangeOverlayText != null)
+                      Positioned(
+                        child: AnimatedOpacity(
+                          opacity: _channelChangeOverlayText != null
+                              ? 1.0
+                              : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _channelChangeOverlayText!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Context menu (MENU key) — right-side overlay, matching
+                    // the AiroTV D-pad design's "CONTEXT MENU (MENU key)"
+                    // screen. Only rendered while open; doesn't touch layout
+                    // otherwise.
+                    if (_showContextMenu && state.currentChannel != null)
+                      _ContextMenuOverlay(
+                        channel: state.currentChannel!,
+                        onToggleFavorite: _toggleFavoriteForCurrentChannel,
+                        onRefreshPlaylist: _refreshPlaylistFromContextMenu,
+                        onSelectAudioTrack: () =>
+                            _selectAudioTrackFromContextMenu(service, state),
+                        onSelectSubtitles: () =>
+                            _selectSubtitlesFromContextMenu(service, state),
+                        onShowChannelInfo: () =>
+                            _showChannelInfoFromContextMenu(state),
+                        onShowDiagnostics: () =>
+                            _showDiagnosticsFromContextMenu(state),
+                        onCopyStreamLink: () =>
+                            _copyStreamLinkFromContextMenu(state),
+                        onClose: () => setState(() => _showContextMenu = false),
+                      ),
+
+                    // UP/DOWN quick-browse overlays.
+                    if (_quickBrowse == _TvQuickBrowse.miniGuide &&
+                        state.currentChannel != null)
+                      _QuickBrowseOverlay(
+                        title: 'Mini guide',
+                        channels: _miniGuideChannels(state.currentChannel!),
+                        currentChannelId: state.currentChannel!.id,
+                        onSelected: _playChannelFromQuickBrowse,
+                      ),
+                    if (_quickBrowse == _TvQuickBrowse.recent)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final recent = ref.watch(
+                            recentlyWatchedChannelsProvider,
+                          );
+                          return recent.when(
+                            data: (channels) => channels.isEmpty
+                                ? const SizedBox.shrink()
+                                : _QuickBrowseOverlay(
+                                    title: 'Recently watched',
+                                    channels: channels,
+                                    currentChannelId: state.currentChannel?.id,
+                                    onSelected: _playChannelFromQuickBrowse,
+                                  ),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, _) => const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -694,34 +1054,87 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           colors: [Colors.blueGrey.shade900, Colors.black87],
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PlaybackDiagnosticOverlay(
-            diagnostic: diagnostic,
-            retryAttempt: state.retryCount > 0 ? state.retryCount : null,
-            maxRetryAttempts: 3,
-          ),
-          if (!diagnostic.retryEligible || state.retryCount == 0)
-            ElevatedButton.icon(
-              onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueGrey.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+      // The transport controls overlay (play/pause, scrub bar) is always
+      // present in the same Stack, faded in/out by opacity rather than
+      // removed — a vertically-centered error message can grow tall enough
+      // to sit under the bottom control bar. Anchoring to the upper band
+      // guarantees no collision regardless of message length.
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PlaybackDiagnosticOverlay(
+                diagnostic: diagnostic,
+                retryAttempt: state.retryCount > 0 ? state.retryCount : null,
+                maxRetryAttempts: 3,
               ),
-            ),
-        ],
+              const SizedBox(height: 16),
+              // issues/04-recovery-states.md acceptance criterion 1: three
+              // distinct outcomes, not just retry -- and every one of them
+              // must be D-pad reachable (the old ElevatedButton had no
+              // TvFocusable, so a remote-only viewer could never reach it).
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  if (!diagnostic.retryEligible || state.retryCount == 0)
+                    _RecoveryActionButton(
+                      key: const ValueKey('diagnostic-error-retry'),
+                      icon: Icons.refresh_rounded,
+                      label: 'Try Again',
+                      autofocus: true,
+                      onSelect: () =>
+                          ref.read(iptvStreamingServiceProvider).retry(),
+                    ),
+                  _RecoveryActionButton(
+                    key: const ValueKey('diagnostic-error-skip'),
+                    icon: Icons.skip_next_rounded,
+                    label: 'Skip channel',
+                    autofocus: diagnostic.retryEligible && state.retryCount > 0,
+                    onSelect: _goToNextChannel,
+                  ),
+                  _RecoveryActionButton(
+                    key: const ValueKey('diagnostic-error-report'),
+                    icon: Icons.flag_outlined,
+                    label: 'Report dead link',
+                    onSelect: () => _saveDeadLinkReport(state, diagnostic),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> _saveDeadLinkReport(
+    StreamingState state,
+    AiroPlaybackDiagnostic diagnostic,
+  ) async {
+    final channel = state.currentChannel;
+    if (channel == null) return;
+    await ref
+        .read(deadLinkReportStorageProvider)
+        .save(
+          DeadLinkReport(
+            channelName: channel.name,
+            diagnosticCode: diagnostic.code.name,
+            userMessage: diagnostic.userMessage,
+            technicalDetail: diagnostic.technicalDetail,
+            reportedAt: DateTime.now(),
+          ),
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Saved locally — nothing was sent')),
+      );
   }
 
   Widget _buildError(String message) {
@@ -776,22 +1189,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 24),
-              // Retry button with better styling
-              ElevatedButton.icon(
-                onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey.shade700,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+              // TvFocusable-wrapped so a remote-only viewer can reach it --
+              // the bare ElevatedButton this replaced was the same class of
+              // bug already fixed for the diagnostic error screen below.
+              _RecoveryActionButton(
+                key: const ValueKey('iptv-player-error-retry'),
+                icon: Icons.refresh_rounded,
+                label: 'Try Again',
+                autofocus: true,
+                onSelect: () => ref.read(iptvStreamingServiceProvider).retry(),
               ),
               const SizedBox(height: 12),
               // Hint text
@@ -879,6 +1285,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     if (_usesCompactInlinePlayer(context)) {
       return _buildCompactControlButtons(context, service, state);
     }
+    if (widget.useTvTransportBar) {
+      return _buildTvTransportBar(context, service, state);
+    }
     return _buildExpandedControlButtons(context, service, state);
   }
 
@@ -913,16 +1322,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   iconSize: 24,
                   backgroundAlpha: 0.48,
                 ),
-                const SizedBox(width: 10),
-                _PlayerRoundControlButton(
-                  key: const ValueKey('iptv-player-pip-button'),
-                  icon: Icons.picture_in_picture_alt_outlined,
-                  tooltip: 'Picture-in-picture',
-                  onPressed: _requestPictureInPicture,
-                  diameter: 44,
-                  iconSize: 22,
-                  backgroundAlpha: 0.48,
-                ),
+                if (widget.showPictureInPicture) ...[
+                  const SizedBox(width: 10),
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-pip-button'),
+                    icon: Icons.picture_in_picture_alt_outlined,
+                    tooltip: 'Picture-in-picture',
+                    onPressed: _requestPictureInPicture,
+                    diameter: 44,
+                    iconSize: 22,
+                    backgroundAlpha: 0.48,
+                  ),
+                ],
                 const SizedBox(width: 10),
                 _PlayerRoundControlButton(
                   key: const ValueKey('iptv-player-random-channel-button'),
@@ -1031,6 +1442,249 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ],
     );
+  }
+
+  /// AiroTV D-pad design's TRANSPORT (OK) screen: a metadata row that never
+  /// overlaps the button row below it, six action buttons matching the
+  /// prototype exactly (Pause, Restart, Audio, Subtitles, Favourite, Info),
+  /// and a "MENU for more actions" hint. Every button is wired to a real,
+  /// already-existing capability -- Info opens the same context menu MENU
+  /// itself opens, rather than a new stub panel.
+  Widget _buildTvTransportBar(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final channel = state.currentChannel;
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [Colors.black87, Colors.transparent],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Metadata row — sits above the buttons, never overlaps them.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      (channel?.name.trim().isNotEmpty ?? false)
+                          ? channel!.name.trim()[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            if (state.isLiveStream)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'LIVE',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                              ),
+                            if (state.isLiveStream) const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                [
+                                  if (channel?.group.trim().isNotEmpty ?? false)
+                                    channel!.group,
+                                  state.currentQuality.label,
+                                ].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          channel?.name ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Buttons row. The button group scrolls horizontally instead
+              // of being a fixed Row -- six buttons (two labeled with
+              // longer strings than the prototype's placeholder text) plus
+              // the MENU hint don't reliably fit the safe-area width on
+              // every real panel size, and overflowing here would crash
+              // the frame rather than just clip.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  ..._buildTvTransportButtons(context, service, state),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Text(
+                      'MENU for more actions',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildTvTransportButtons(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final channel = state.currentChannel;
+    final favoriteIds = ref.watch(favoriteChannelIdsProvider).asData?.value;
+    final isFavorite =
+        channel != null && (favoriteIds?.contains(channel.id) ?? false);
+    final canRewind =
+        state.canSeekBack ||
+        (!state.isLiveStream && state.position > Duration.zero);
+
+    return [
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-play-pause'),
+        focusNode: _centerControlFocusNode,
+        autofocus: true,
+        onSelect: () {
+          if (state.isLiveStream && state.isBehindLive && state.isPlaying) {
+            service.goLive();
+          } else if (state.isPlaying) {
+            service.pause();
+          } else {
+            service.resume();
+          }
+        },
+        borderRadius: 10,
+        semanticLabel: state.isPlaying ? 'Pause' : 'Play',
+        child: _TvTransportButton(
+          icon: state.isPlaying
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
+        ),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-restart'),
+        onSelect: canRewind ? () => _seekBackward10(service, state) : null,
+        borderRadius: 10,
+        semanticLabel: state.isLiveStream
+            ? 'Rewind 10 seconds'
+            : 'Back 10 seconds',
+        child: const _TvTransportButton(icon: Icons.skip_previous_rounded),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-audio'),
+        onSelect: () => _showTrackSelectorFor(
+          context,
+          service,
+          state,
+          kind: AiroPlaybackTrackKind.audio,
+        ),
+        borderRadius: 10,
+        semanticLabel: 'Audio',
+        child: const _TvTransportButton(
+          icon: Icons.volume_up_outlined,
+          label: 'Audio',
+        ),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-subtitles'),
+        onSelect: () => _showTrackSelector(context, service, state),
+        borderRadius: 10,
+        semanticLabel: 'Subtitles',
+        child: const _TvTransportButton(
+          icon: Icons.subtitles_outlined,
+          label: 'Subtitles',
+        ),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-favourite'),
+        onSelect: channel == null ? null : _toggleFavoriteForCurrentChannel,
+        borderRadius: 10,
+        semanticLabel: isFavorite
+            ? 'Remove from favourites'
+            : 'Add to favourites',
+        child: _TvTransportButton(
+          icon: isFavorite
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
+          label: 'Favourite',
+        ),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-tv-transport-info'),
+        onSelect: channel == null
+            ? null
+            : () => setState(() => _showContextMenu = true),
+        borderRadius: 10,
+        semanticLabel: 'Info',
+        child: const _TvTransportButton(
+          icon: Icons.info_outline_rounded,
+          label: 'Info',
+        ),
+      ),
+    ];
   }
 
   Widget _buildCompactControlButtons(
@@ -1278,27 +1932,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 title: Text('Player actions'),
                 subtitle: Text('Secondary controls for this stream'),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-pip-menu-action'),
-                leading: const Icon(Icons.picture_in_picture_alt_outlined),
-                title: const Text('Picture-in-picture'),
-                onTap: () => unawaited(afterSheet(_requestPictureInPicture)),
-              ),
+              if (widget.showPictureInPicture)
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-pip-menu-action'),
+                  leading: const Icon(Icons.picture_in_picture_alt_outlined),
+                  title: const Text('Picture-in-picture'),
+                  onSelect: () =>
+                      unawaited(afterSheet(_requestPictureInPicture)),
+                ),
               if (hasQualityChoices)
-                ListTile(
-                  key: const ValueKey('iptv-player-quality-menu-action'),
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-quality-menu-action'),
                   leading: const Icon(Icons.hd_outlined),
                   title: const Text('Quality'),
                   subtitle: Text(state.currentQuality.label),
-                  onTap: () => unawaited(
+                  onSelect: () => unawaited(
                     afterSheet(
                       () => _showQualitySelector(context, service, state),
                     ),
                   ),
                 ),
               if (hasSubtitles)
-                ListTile(
-                  key: const ValueKey('iptv-player-subtitle-menu-action'),
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-subtitle-menu-action'),
                   leading: Icon(
                     state.selectedTrackIds.containsKey(
                           AiroPlaybackTrackKind.subtitle,
@@ -1307,25 +1963,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         : Icons.subtitles_off_outlined,
                   ),
                   title: const Text('Subtitles'),
-                  onTap: () => unawaited(
+                  onSelect: () => unawaited(
                     afterSheet(
                       () => _showTrackSelector(context, service, state),
                     ),
                   ),
                 ),
-              ListTile(
-                key: const ValueKey('iptv-player-audio-only-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-audio-only-menu-action'),
+                // Always rendered regardless of PiP/quality/subtitles
+                // availability, so it's the one deterministic focus target
+                // this sheet can always autofocus.
+                autofocus: true,
                 leading: Icon(
                   _isAudioOnly ? Icons.hearing : Icons.hearing_disabled,
                 ),
                 title: Text(_isAudioOnly ? 'Exit audio-only' : 'Listen only'),
-                onTap: () => unawaited(afterSheet(_toggleAudioOnly)),
+                onSelect: () => unawaited(afterSheet(_toggleAudioOnly)),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-aspect-ratio-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-aspect-ratio-menu-action'),
                 leading: const Icon(Icons.aspect_ratio),
                 title: const Text('Aspect ratio'),
-                onTap: () => unawaited(
+                onSelect: () => unawaited(
                   afterSheet(
                     () => ref
                         .read(videoAspectRatioProvider.notifier)
@@ -1333,23 +1993,23 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   ),
                 ),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-cinema-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-cinema-menu-action'),
                 leading: Icon(_isCinemaMode ? Icons.wb_sunny : Icons.theaters),
                 title: Text(_isCinemaMode ? 'Standard mode' : 'Cinema mode'),
-                onTap: () => unawaited(
+                onSelect: () => unawaited(
                   afterSheet(
                     () => setState(() => _isCinemaMode = !_isCinemaMode),
                   ),
                 ),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-fullscreen-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-fullscreen-menu-action'),
                 leading: Icon(
                   _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                 ),
                 title: Text(_isFullscreen ? 'Exit fullscreen' : 'Fullscreen'),
-                onTap: () => unawaited(afterSheet(_toggleFullscreen)),
+                onSelect: () => unawaited(afterSheet(_toggleFullscreen)),
               ),
             ],
           ),
@@ -1432,38 +2092,93 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    final subtitleTracks = _subtitleTracksFor(state);
+    _showTrackSelectorFor(
+      context,
+      service,
+      state,
+      kind: AiroPlaybackTrackKind.subtitle,
+      offLabel: 'Off',
+      offIcon: Icons.subtitles_off_outlined,
+    );
+  }
+
+  /// Shared by the subtitle picker (kept above for its existing call site)
+  /// and the TV transport bar's Audio button -- same engine concept
+  /// (`state.tracks`/`selectTrack`), just filtered to a different
+  /// [AiroPlaybackTrackKind]. Audio has no "Off" row: unlike subtitles,
+  /// there's no meaningful silent-track state to offer.
+  void _showTrackSelectorFor(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state, {
+    required AiroPlaybackTrackKind kind,
+    String? offLabel,
+    IconData? offIcon,
+  }) {
+    final tracks = state.tracks
+        .where((track) => track.kind == kind)
+        .toList(growable: false);
     showModalBottomSheet<void>(
       context: context,
       builder: (context) {
+        final noneSelected = state.selectedTrackIds[kind] == null;
+        // Autofocus the selected row; if nothing is selected and there's
+        // no "Off" row to fall back to, autofocus the first track so the
+        // sheet is never opened with nothing D-pad-focused.
+        final autofocusOff = offLabel != null && noneSelected;
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
             children: [
-              ListTile(
-                leading: const Icon(Icons.subtitles_off_outlined),
-                title: const Text('Off'),
-                trailing:
-                    state.selectedTrackIds[AiroPlaybackTrackKind.subtitle] ==
-                        null
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () {
-                  service.clearTrackSelection(AiroPlaybackTrackKind.subtitle);
-                  Navigator.of(context).pop();
-                },
-              ),
-              for (final track in subtitleTracks)
-                ListTile(
-                  title: Text(track.label),
-                  subtitle: track.isExternal ? const Text('External') : null,
-                  trailing: state.selectedTrackIds[track.kind] == track.id
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    service.selectTrack(kind: track.kind, trackId: track.id);
+              if (offLabel != null)
+                TvFocusable(
+                  autofocus: autofocusOff,
+                  semanticLabel: offLabel,
+                  onSelect: () {
+                    service.clearTrackSelection(kind);
                     Navigator.of(context).pop();
                   },
+                  child: ListTile(
+                    leading: offIcon == null ? null : Icon(offIcon),
+                    title: Text(offLabel),
+                    trailing: noneSelected ? const Icon(Icons.check) : null,
+                    onTap: () {
+                      service.clearTrackSelection(kind);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              for (var i = 0; i < tracks.length; i++)
+                TvFocusable(
+                  autofocus:
+                      !autofocusOff &&
+                      (state.selectedTrackIds[tracks[i].kind] == tracks[i].id ||
+                          (noneSelected && offLabel == null && i == 0)),
+                  semanticLabel: tracks[i].label,
+                  onSelect: () {
+                    service.selectTrack(
+                      kind: tracks[i].kind,
+                      trackId: tracks[i].id,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  child: ListTile(
+                    title: Text(tracks[i].label),
+                    subtitle: tracks[i].isExternal
+                        ? const Text('External')
+                        : null,
+                    trailing:
+                        state.selectedTrackIds[tracks[i].kind] == tracks[i].id
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () {
+                      service.selectTrack(
+                        kind: tracks[i].kind,
+                        trackId: tracks[i].id,
+                      );
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 ),
             ],
           ),
@@ -1486,12 +2201,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             shrinkWrap: true,
             children: [
               for (final quality in options)
-                ListTile(
+                _TvSheetListTile(
                   title: Text(quality.label),
+                  autofocus: state.selectedQuality == quality,
                   trailing: state.selectedQuality == quality
                       ? const Icon(Icons.check)
                       : null,
-                  onTap: () {
+                  onSelect: () {
                     service.setQuality(quality);
                     Navigator.of(context).pop();
                   },
@@ -1846,6 +2562,475 @@ class _PlayerStepperPillar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// MENU-key context menu: right-side overlay panel for actions on the
+/// currently-playing channel. AiroTV D-pad design's "CONTEXT MENU (MENU
+/// key)" screen.
+enum _TvQuickBrowse { miniGuide, recent }
+
+/// Bottom-docked horizontal browse strip for UP (Mini Guide) and DOWN
+/// (Recent Channels). AiroTV D-pad design: "◀ ▶ browse · OK switch".
+class _QuickBrowseOverlay extends StatelessWidget {
+  const _QuickBrowseOverlay({
+    required this.title,
+    required this.channels,
+    required this.currentChannelId,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<IPTVChannel> channels;
+  final String? currentChannelId;
+  final ValueChanged<IPTVChannel> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.97),
+              Colors.black.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Text(
+                  '◀ ▶ browse   OK switch',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: channels.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final channel = channels[index];
+                  final isCurrent = channel.id == currentChannelId;
+                  return TvFocusable(
+                    key: ValueKey('quick-browse-${channel.id}'),
+                    autofocus: isCurrent || index == 0,
+                    semanticLabel: channel.name,
+                    onSelect: () => onSelected(channel),
+                    child: Container(
+                      width: 130,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? Colors.white.withValues(alpha: 0.16)
+                            : Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (isCurrent)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                'ON NOW',
+                                style: TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            channel.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContextMenuOverlay extends ConsumerWidget {
+  const _ContextMenuOverlay({
+    required this.channel,
+    required this.onToggleFavorite,
+    required this.onRefreshPlaylist,
+    required this.onSelectAudioTrack,
+    required this.onSelectSubtitles,
+    required this.onShowChannelInfo,
+    required this.onShowDiagnostics,
+    required this.onCopyStreamLink,
+    required this.onClose,
+  });
+
+  final IPTVChannel channel;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onRefreshPlaylist;
+  final VoidCallback onSelectAudioTrack;
+  final VoidCallback onSelectSubtitles;
+  final VoidCallback onShowChannelInfo;
+  final VoidCallback onShowDiagnostics;
+  final VoidCallback onCopyStreamLink;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoriteIds = ref.watch(favoriteChannelIdsProvider).asData?.value;
+    final isFavorite = favoriteIds?.contains(channel.id) ?? false;
+
+    return Positioned(
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: 280,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+            colors: [
+              Colors.black.withValues(alpha: 0.96),
+              Colors.black.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions for',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 12,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              channel.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TvFocusable(
+                      key: const ValueKey('context-menu-favorite'),
+                      autofocus: true,
+                      semanticLabel: isFavorite
+                          ? 'Remove from favorites'
+                          : 'Add to favorites',
+                      onSelect: onToggleFavorite,
+                      child: _ContextMenuItem(
+                        icon: isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        label: isFavorite
+                            ? 'Remove from favorites'
+                            : 'Add to favorites',
+                        onTap: onToggleFavorite,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-refresh-playlist'),
+                      semanticLabel: 'Refresh playlist',
+                      onSelect: onRefreshPlaylist,
+                      child: _ContextMenuItem(
+                        icon: Icons.refresh,
+                        label: 'Refresh playlist',
+                        onTap: onRefreshPlaylist,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-audio-track'),
+                      semanticLabel: 'Audio track',
+                      onSelect: onSelectAudioTrack,
+                      child: _ContextMenuItem(
+                        icon: Icons.audiotrack_outlined,
+                        label: 'Audio track',
+                        onTap: onSelectAudioTrack,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-subtitles'),
+                      semanticLabel: 'Subtitles',
+                      onSelect: onSelectSubtitles,
+                      child: _ContextMenuItem(
+                        icon: Icons.subtitles_outlined,
+                        label: 'Subtitles',
+                        onTap: onSelectSubtitles,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-channel-info'),
+                      semanticLabel: 'Channel info',
+                      onSelect: onShowChannelInfo,
+                      child: _ContextMenuItem(
+                        icon: Icons.info_outline,
+                        label: 'Channel info',
+                        onTap: onShowChannelInfo,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-diagnostics'),
+                      semanticLabel: 'Diagnostics',
+                      onSelect: onShowDiagnostics,
+                      child: _ContextMenuItem(
+                        icon: Icons.medical_information_outlined,
+                        label: 'Diagnostics',
+                        onTap: onShowDiagnostics,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-copy-stream-link'),
+                      semanticLabel: 'Copy stream link',
+                      onSelect: onCopyStreamLink,
+                      child: _ContextMenuItem(
+                        icon: Icons.link,
+                        label: 'Copy stream link',
+                        onTap: onCopyStreamLink,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-close'),
+                      semanticLabel: 'Close menu',
+                      onSelect: onClose,
+                      child: _ContextMenuItem(
+                        icon: Icons.close,
+                        label: 'Close',
+                        onTap: onClose,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContextMenuItem extends StatelessWidget {
+  const _ContextMenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Colors.white),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One button in the TV transport bar. Visual only -- focus, selection, and
+/// the actual action live on the [TvFocusable] wrapping it; this just draws
+/// the pill matching the AiroTV D-pad design's transport button style
+/// (icon-only when unlabeled, icon+label otherwise).
+/// A D-pad-reachable recovery action for [_buildDiagnosticError] --
+/// TvFocusable-wrapped so remote-only viewers (no touch input) can actually
+/// reach it, unlike a bare ElevatedButton.
+/// A D-pad-reachable row for the player-actions / track-selector bottom
+/// sheets -- wraps a [ListTile] in [TvFocusable] so a remote-only viewer
+/// can actually reach it. Bare [ListTile]s in these sheets were previously
+/// unreachable by D-pad despite the buttons that open them being focusable.
+class _TvSheetListTile extends StatelessWidget {
+  const _TvSheetListTile({
+    this.itemKey,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.onSelect,
+    this.autofocus = false,
+  });
+
+  final Key? itemKey;
+  final Widget? leading;
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final VoidCallback onSelect;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      autofocus: autofocus,
+      onSelect: onSelect,
+      child: ListTile(
+        key: itemKey,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: trailing,
+        onTap: onSelect,
+      ),
+    );
+  }
+}
+
+class _RecoveryActionButton extends StatelessWidget {
+  const _RecoveryActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onSelect,
+    this.autofocus = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onSelect;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      autofocus: autofocus,
+      onSelect: onSelect,
+      semanticLabel: label,
+      borderRadius: 8,
+      child: ElevatedButton.icon(
+        onPressed: onSelect,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueGrey.shade700,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+}
+
+class _TvTransportButton extends StatelessWidget {
+  const _TvTransportButton({required this.icon, this.label});
+
+  final IconData icon;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 16),
+      constraints: BoxConstraints(minWidth: label == null ? 48 : 0),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          if (label != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              label!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

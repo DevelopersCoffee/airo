@@ -2,6 +2,7 @@ library;
 
 export "src/media_capability_models.dart";
 export "src/media_asset_profile_models.dart";
+export "src/media_asset_profile_codec.dart";
 export "src/media_error_taxonomy_models.dart";
 export "src/local_media_asset_analyzer.dart";
 export "src/platform_media_logger.dart";

@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
 TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
+PLUGIN_REGISTRANT="${AIRO_TV_PLUGIN_REGISTRANT:-$ROOT_DIR/app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java}"
 MIN_TARGET_SDK="${AIRO_TV_MIN_TARGET_SDK:-34}"
 TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-io.airo.app.tv}"
 
@@ -33,8 +34,33 @@ grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$TV_MANIFEST" || fail "TV m
 grep -q 'android:banner="@drawable/tv_banner"' "$TV_MANIFEST" || fail "TV manifest missing TV banner"
 grep -q "\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" || fail "TV applicationId must be $TV_PACKAGE_NAME"
 
+check_plugin_registrant() {
+  [[ -f "$PLUGIN_REGISTRANT" ]] || fail "Generated plugin registrant not found: $PLUGIN_REGISTRANT"
+  grep -q 'VideoPlayerPlugin' "$PLUGIN_REGISTRANT" ||
+    fail "TV registrant must include the enabled video_player Android plugin"
+  if grep -qE 'MediaKitLibsAndroidVideoPlugin|media_kit_libs_android_video' "$PLUGIN_REGISTRANT"; then
+    fail "TV registrant includes media_kit although its native libraries are excluded"
+  fi
+}
+
+check_apk_native_media_contract() {
+  local apk="$1"
+  command -v unzip >/dev/null 2>&1 || fail "unzip is required to inspect TV APK native libraries"
+
+  local entries
+  entries="$(unzip -Z1 "$apk")"
+  if grep -Eq '(^|/)lib/[^/]+/(libmpv|libmediakitandroidhelper)\.so$' <<<"$entries"; then
+    fail "video_player-only TV APK unexpectedly packages media_kit native libraries"
+  fi
+}
+
+if [[ -f "$PLUGIN_REGISTRANT" || -n "${AIRO_TV_RELEASE_APK:-}" ]]; then
+  check_plugin_registrant
+fi
+
 if [[ -n "${AIRO_TV_RELEASE_APK:-}" ]]; then
   [[ -s "$AIRO_TV_RELEASE_APK" ]] || fail "Release APK not found or empty: $AIRO_TV_RELEASE_APK"
+  check_apk_native_media_contract "$AIRO_TV_RELEASE_APK"
 fi
 
 if [[ -n "${AIRO_TV_RELEASE_AAB:-}" ]]; then

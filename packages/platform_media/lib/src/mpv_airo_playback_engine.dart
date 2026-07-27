@@ -54,7 +54,10 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
 
     late MpvOpenResult result;
     try {
-      result = await player.open(request.sourceHandle.value);
+      result = await player.open(
+        request.sourceHandle.value,
+        httpHeaders: request.httpHeaders,
+      );
     } on Object {
       return _fail(AiroPlaybackErrorCode.decoderFailed, 'open', request);
     }

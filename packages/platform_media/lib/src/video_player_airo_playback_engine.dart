@@ -62,6 +62,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(request.sourceHandle.value),
+      httpHeaders: request.httpHeaders,
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: request.mixWithOthers,
         allowBackgroundPlayback: request.allowBackgroundPlayback,
@@ -92,6 +93,8 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     await controller.setVolume(_state.volume);
     await controller.setPlaybackSpeed(_state.playbackSpeed);
     controller.addListener(_onControllerValueChanged);
+    final videoSize = controller.value.size;
+    final hasVideoSize = videoSize.width > 0 && videoSize.height > 0;
 
     _emit(
       _state.copyWith(
@@ -99,10 +102,29 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
         request: request,
         position: request.startPosition,
         duration: controller.value.duration,
+        qualityOptions: hasVideoSize
+            ? [
+                AiroPlaybackQualityOption(
+                  id: 'source',
+                  label:
+                      '${videoSize.width.round()}x${videoSize.height.round()}',
+                  width: videoSize.width.round(),
+                  height: videoSize.height.round(),
+                ),
+              ]
+            : const [],
+        selectedQualityId: hasVideoSize ? 'source' : null,
         tracks: externalSubtitleTracksFor(request),
         diagnostics: AiroPlaybackDiagnostics(
           backendId: backendKind.stableId,
-          hardwareAccelerated: true,
+          // The video_player plugin doesn't expose which decode path
+          // ExoPlayer actually chose -- it auto-selects hardware vs.
+          // software per-codec with no signal surfaced to this layer.
+          // hardwareAccelerated stays null (unknown) rather than a
+          // fabricated true, since a diagnostic value someone might use
+          // to debug a decode problem must not lie about the one thing
+          // it's meant to report.
+          hardwareAccelerated: null,
         ),
       ),
     );

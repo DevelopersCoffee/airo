@@ -40,105 +40,85 @@ void main() {
       keyManager: keyManager,
       fieldCipher: fieldCipher,
     );
-    bankAccounts = BankAccountRepository(database: vaultDb, fieldCipher: fieldCipher);
+    bankAccounts = BankAccountRepository(
+      database: vaultDb,
+      fieldCipher: fieldCipher,
+    );
     panCards = PanCardRepository(database: vaultDb, fieldCipher: fieldCipher);
-    secureDocuments = SecureDocumentRepository(database: vaultDb, fieldCipher: fieldCipher);
+    secureDocuments = SecureDocumentRepository(
+      database: vaultDb,
+      fieldCipher: fieldCipher,
+    );
   });
 
   tearDown(() async {
     await vaultDb.close();
   });
 
-  test('rotateKeyWithReencryption re-encrypts existing data so it remains readable under the new key', () async {
-    final oldKey = (await keyManager.getDatabaseKey()).value;
+  test(
+    'rotateKeyWithReencryption re-encrypts existing data so it remains readable under the new key',
+    () async {
+      final oldKey = (await keyManager.getDatabaseKey()).value;
 
-    await bankAccounts.create(
-      BankAccountRecord(
-        id: null,
-        nickname: 'HDFC Salary',
-        bankName: 'HDFC Bank',
-        accountHolderName: 'Jane Doe',
-        accountNumber: '1234567890',
-        ifscCode: 'HDFC0001234',
-        accountType: 'savings',
-        notes: 'primary account',
-      ),
-      oldKey,
-    );
-    final panResult = await panCards.create(
-      PanCardRecord(id: null, panNumber: 'ABCDE1234F', nameOnCard: 'Jane Doe'),
-      oldKey,
-    );
-    await secureDocuments.create(
-      SecureDocumentRecord(
-        id: null,
-        nickname: 'Form 16 FY24-25',
-        category: DocumentCategory.incomeProof,
-        notes: 'Employer TDS certificate',
-        createdAt: DateTime(2026, 7, 19),
-      ),
-      oldKey,
-    );
+      await bankAccounts.create(
+        BankAccountRecord(
+          id: null,
+          nickname: 'HDFC Salary',
+          bankName: 'HDFC Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '1234567890',
+          ifscCode: 'HDFC0001234',
+          accountType: 'savings',
+          notes: 'primary account',
+        ),
+        oldKey,
+      );
+      final panResult = await panCards.create(
+        PanCardRecord(
+          id: null,
+          panNumber: 'ABCDE1234F',
+          nameOnCard: 'Jane Doe',
+        ),
+        oldKey,
+      );
+      await secureDocuments.create(
+        SecureDocumentRecord(
+          id: null,
+          nickname: 'Form 16 FY24-25',
+          category: DocumentCategory.incomeProof,
+          notes: 'Employer TDS certificate',
+          createdAt: DateTime(2026, 7, 19),
+        ),
+        oldKey,
+      );
 
-    final rotateResult = await rotationService.rotateKeyWithReencryption();
-    expect(rotateResult.isSuccess, isTrue);
+      final rotateResult = await rotationService.rotateKeyWithReencryption();
+      expect(rotateResult.isSuccess, isTrue);
 
-    final newKey = (await keyManager.getDatabaseKey()).value;
-    expect(newKey, isNot(equals(oldKey)));
+      final newKey = (await keyManager.getDatabaseKey()).value;
+      expect(newKey, isNot(equals(oldKey)));
 
-    final fetchedBank = await bankAccounts.getByNickname('HDFC Salary', newKey);
-    final fetchedPan = await panCards.getById(panResult.value, newKey);
-    final fetchedDocument = await secureDocuments.getByNickname('Form 16 FY24-25', newKey);
+      final fetchedBank = await bankAccounts.getByNickname(
+        'HDFC Salary',
+        newKey,
+      );
+      final fetchedPan = await panCards.getById(panResult.value, newKey);
+      final fetchedDocument = await secureDocuments.getByNickname(
+        'Form 16 FY24-25',
+        newKey,
+      );
 
-    expect(fetchedBank.value?.accountNumber, '1234567890');
-    expect(fetchedBank.value?.notes, 'primary account');
-    expect(fetchedPan.value?.panNumber, 'ABCDE1234F');
-    expect(fetchedDocument.value?.notes, 'Employer TDS certificate');
-  });
-
-  test('data is no longer decryptable under the old key after rotation', () async {
-    final oldKey = (await keyManager.getDatabaseKey()).value;
-
-    await bankAccounts.create(
-      BankAccountRecord(
-        id: null,
-        nickname: 'HDFC Salary',
-        bankName: 'HDFC Bank',
-        accountHolderName: 'Jane Doe',
-        accountNumber: '1234567890',
-        ifscCode: 'HDFC0001234',
-        accountType: 'savings',
-      ),
-      oldKey,
-    );
-
-    await rotationService.rotateKeyWithReencryption();
-
-    final fetchedWithOldKey = await bankAccounts.getByNickname('HDFC Salary', oldKey);
-
-    expect(fetchedWithOldKey.isFailure, isTrue);
-  });
+      expect(fetchedBank.value?.accountNumber, '1234567890');
+      expect(fetchedBank.value?.notes, 'primary account');
+      expect(fetchedPan.value?.panNumber, 'ABCDE1234F');
+      expect(fetchedDocument.value?.notes, 'Employer TDS certificate');
+    },
+  );
 
   test(
-    'rotateKeyWithReencryption requires exactly one successful authenticate() call, '
-    'not two, so a denied second prompt can never brick the vault',
+    'data is no longer decryptable under the old key after rotation',
     () async {
-      var authCallCount = 0;
-      final countingKeyManager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async {
-          authCallCount++;
-          return true;
-        },
-      );
-      final countingRotationService = VaultKeyRotationService(
-        database: vaultDb,
-        keyManager: countingKeyManager,
-        fieldCipher: fieldCipher,
-      );
-
-      final oldKey = (await countingKeyManager.getDatabaseKey()).value;
-      authCallCount = 0; // reset after the setup auth above
+      final oldKey = (await keyManager.getDatabaseKey()).value;
 
       await bankAccounts.create(
         BankAccountRecord(
@@ -153,19 +133,62 @@ void main() {
         oldKey,
       );
 
-      final rotateResult = await countingRotationService.rotateKeyWithReencryption();
+      await rotationService.rotateKeyWithReencryption();
 
-      expect(rotateResult.isSuccess, isTrue);
-      expect(
-        authCallCount,
-        1,
-        reason:
-            'rotation must authenticate exactly once for the whole operation — a '
-            'second re-auth before persisting the new key is what previously let a '
-            'denied prompt brick the vault after data was already re-encrypted',
+      final fetchedWithOldKey = await bankAccounts.getByNickname(
+        'HDFC Salary',
+        oldKey,
       );
+
+      expect(fetchedWithOldKey.isFailure, isTrue);
     },
   );
+
+  test('rotateKeyWithReencryption requires exactly one successful authenticate() call, '
+      'not two, so a denied second prompt can never brick the vault', () async {
+    var authCallCount = 0;
+    final countingKeyManager = VaultKeyManager.forTesting(
+      secureStorage: secureStorage,
+      authenticate: () async {
+        authCallCount++;
+        return true;
+      },
+    );
+    final countingRotationService = VaultKeyRotationService(
+      database: vaultDb,
+      keyManager: countingKeyManager,
+      fieldCipher: fieldCipher,
+    );
+
+    final oldKey = (await countingKeyManager.getDatabaseKey()).value;
+    authCallCount = 0; // reset after the setup auth above
+
+    await bankAccounts.create(
+      BankAccountRecord(
+        id: null,
+        nickname: 'HDFC Salary',
+        bankName: 'HDFC Bank',
+        accountHolderName: 'Jane Doe',
+        accountNumber: '1234567890',
+        ifscCode: 'HDFC0001234',
+        accountType: 'savings',
+      ),
+      oldKey,
+    );
+
+    final rotateResult = await countingRotationService
+        .rotateKeyWithReencryption();
+
+    expect(rotateResult.isSuccess, isTrue);
+    expect(
+      authCallCount,
+      1,
+      reason:
+          'rotation must authenticate exactly once for the whole operation — a '
+          'second re-auth before persisting the new key is what previously let a '
+          'denied prompt brick the vault after data was already re-encrypted',
+    );
+  });
 
   test(
     '_encryptedColumnsByTable stays in sync with every actual *_enc column in the schema',

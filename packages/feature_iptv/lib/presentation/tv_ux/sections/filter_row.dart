@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
 import 'filter_dialogs.dart';
+import 'search_overlay.dart';
 
 class FilterRow extends ConsumerWidget {
   const FilterRow({super.key, required this.dimensions});
@@ -14,13 +15,16 @@ class FilterRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(channelFiltersProvider);
     final notifier = ref.read(channelFiltersProvider.notifier);
+    final recent = ref.watch(recentFilterValuesProvider);
+    final recentNotifier = ref.read(recentFilterValuesProvider.notifier);
     final chips = <Widget>[
       _FilterChip(
         key: const ValueKey('filter-chip-search'),
         label: filters.search.isEmpty ? 'Search' : filters.search,
         active: filters.search.isNotEmpty,
         icon: Icons.search,
-        onSelected: () => _showSearchDialog(context, notifier, filters.search),
+        onSelected: () =>
+            _showSearchOverlay(context, dimensions, notifier, filters.search),
       ),
       if (dimensions.categories.isNotEmpty)
         _FilterChip(
@@ -28,12 +32,16 @@ class FilterRow extends ConsumerWidget {
           label: filters.category ?? 'Category',
           active: filters.category != null,
           icon: Icons.category_outlined,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Category',
             options: dimensions.categories.toList(growable: false),
             selectedValue: filters.category,
-            onSelected: notifier.setCategory,
+            recentValues: recent.categories,
+            onSelected: (value) {
+              notifier.setCategory(value);
+              recentNotifier.record(ChannelFilterDimension.category, value);
+            },
             onClear: () => notifier.setCategory(null),
           ),
         ),
@@ -43,12 +51,16 @@ class FilterRow extends ConsumerWidget {
           label: countryDisplayLabel(filters.country),
           active: filters.country != null,
           icon: Icons.flag,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Country',
             options: dimensions.countries.toList(growable: false),
             selectedValue: filters.country,
-            onSelected: notifier.setCountry,
+            recentValues: recent.countries,
+            onSelected: (value) {
+              notifier.setCountry(value);
+              recentNotifier.record(ChannelFilterDimension.country, value);
+            },
             onClear: () => notifier.setCountry(null),
             optionLabel: countryDisplayLabel,
           ),
@@ -59,12 +71,16 @@ class FilterRow extends ConsumerWidget {
           label: languageDisplayLabel(filters.language),
           active: filters.language != null,
           icon: Icons.translate,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Language',
             options: dimensions.languages.toList(growable: false),
             selectedValue: filters.language,
-            onSelected: notifier.setLanguage,
+            recentValues: recent.languages,
+            onSelected: (value) {
+              notifier.setLanguage(value);
+              recentNotifier.record(ChannelFilterDimension.language, value);
+            },
             onClear: () => notifier.setLanguage(null),
             optionLabel: languageDisplayLabel,
           ),
@@ -118,50 +134,20 @@ class FilterRow extends ConsumerWidget {
   }
 }
 
-Future<void> _showSearchDialog(
+Future<void> _showSearchOverlay(
   BuildContext context,
+  ChannelFilterDimensions dimensions,
   ChannelFiltersNotifier notifier,
   String initialValue,
-) async {
-  var searchText = initialValue;
-  await showDialog<void>(
+) {
+  return showDialog<void>(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Search channels'),
-        content: TextFormField(
-          key: const ValueKey('filter-search-field'),
-          initialValue: initialValue,
-          autofocus: true,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Search by channel name',
-          ),
-          textInputAction: TextInputAction.search,
-          onChanged: (value) => searchText = value,
-          onFieldSubmitted: (value) {
-            notifier.setSearch(value);
-            Navigator.of(dialogContext).pop();
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              notifier.setSearch('');
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Clear'),
-          ),
-          FilledButton(
-            onPressed: () {
-              notifier.setSearch(searchText);
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      );
-    },
+    useSafeArea: false,
+    builder: (dialogContext) => SearchOverlay(
+      dimensions: dimensions,
+      notifier: notifier,
+      initialQuery: initialValue,
+    ),
   );
 }
 
@@ -195,6 +181,7 @@ class _FilterChip extends StatelessWidget {
     return TvFocusable(
       semanticLabel: label,
       onSelect: onSelected,
+      borderRadius: 12,
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(12),

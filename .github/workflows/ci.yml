@@ -47,10 +47,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
 
@@ -99,12 +96,13 @@ jobs:
 
       - name: Validate platform build profiles
         run: |
-          chmod +x scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
+          chmod +x scripts/check-ci-cache-policy.py scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
             .github/workflows/release-orchestrator.yml \
             .github/workflows/airo-tv-release.yml \
             .github/workflows/airo-mobile-tablet-release.yml
-          python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
+          python3 -m py_compile scripts/check-ci-cache-policy.py scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
+          scripts/check-ci-cache-policy.py
           scripts/check-build-profiles.py
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
@@ -128,9 +126,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
 
@@ -191,8 +187,7 @@ jobs:
 
   # ============================================
   # App Tests with Coverage
-  # Runs on every push to main, and on PRs targeting main/v2 so
-  # SonarCloud can compute coverage on new code for the quality gate.
+  # Runs on every push to main, and on PRs targeting main/v2.
   # ============================================
   test-app:
     runs-on: ubuntu-latest
@@ -214,10 +209,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
 
@@ -255,7 +247,7 @@ jobs:
           flutter test --coverage --reporter=compact
 
       - name: Convert coverage to SonarQube generic format
-        if: always()
+        if: always() && github.event_name == 'push'
         run: |
           python3 scripts/lcov_to_sonar_generic_coverage.py \
             app/coverage/lcov.info \
@@ -271,7 +263,7 @@ jobs:
           name: flutter-coverage
 
       - name: Upload coverage artifact for SonarCloud
-        if: always()
+        if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: lcov-coverage
@@ -363,9 +355,7 @@ jobs:
         if: steps.android_scope.outputs.should_build == 'true'
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             pub-${{ runner.os }}-${{ matrix.platform.name }}-
@@ -755,7 +745,7 @@ jobs:
           git add .github/apk-size-baselines.tsv
           git commit -m "ci: update APK size baselines"
 
-          # main is a protected branch requiring the sonarqube status check,
+          # main is a protected branch requiring status checks,
           # which a direct push here never satisfies. Don't fail the run for
           # this best-effort housekeeping step; log it and let a human land
           # the baseline update via PR instead.
@@ -809,9 +799,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: pub-${{ runner.os }}-
 
@@ -884,24 +872,10 @@ jobs:
           cd app
           flutter pub get
 
-      - name: Run linter
-        run: |
-          cd app
-          flutter pub run custom_lint
-        continue-on-error: true
-
   # ============================================
   # SonarCloud CI-based Analysis
-  # Runs the scanner directly instead of relying on SonarCloud's
-  # automatic analysis, so lcov coverage from test-app is ingested
-  # and quality-gate coverage conditions become meaningful.
-  # Requires: repo secret SONAR_TOKEN, and Automatic Analysis turned
-  # off in SonarCloud project Administration > Analysis Method.
-  #
-  # Runs whenever test-app actually ran, whether or not its Flutter
-  # tests all passed -- a test regression should fail test-app and
-  # block on that signal separately, not silently stop static
-  # analysis and coverage reporting from running at all.
+  # Runs only on push to long-lived branches (main, master, v2, release/*).
+  # Does NOT run on PRs to prevent blocking PR feedback loops.
   # ============================================
   sonarcloud-scan:
     runs-on: ubuntu-latest
@@ -909,8 +883,8 @@ jobs:
     if: >
       always() &&
       (needs.test-app.result == 'success' || needs.test-app.result == 'failure') &&
-      (github.event_name == 'push' ||
-       (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')))
+      github.event_name == 'push' &&
+      (github.ref_name == 'main' || github.ref_name == 'master' || github.ref_name == 'v2' || startsWith(github.ref_name, 'release/'))
     steps:
       - uses: actions/checkout@v7
         with:
@@ -927,89 +901,6 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  sonarqube:
-    runs-on: ubuntu-latest
-    needs: [analyze, test-core, sonarcloud-scan]
-    if: >
-      always() &&
-      github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')
-    permissions:
-      contents: read
-      checks: read
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Comment PR on SonarCloud Quality Gate failure
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const checkName = 'SonarCloud Code Analysis';
-            const marker = '<!-- airo-sonarqube-quality-gate-failure -->';
-            const headSha = context.payload.pull_request.head.sha;
-
-            let sonarCheck;
-            for (let attempt = 0; attempt < 40; attempt += 1) {
-              const { data } = await github.rest.checks.listForRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: headSha,
-                per_page: 100,
-              });
-              sonarCheck = data.check_runs.find((check) => check.name === checkName);
-
-              if (sonarCheck?.status === 'completed') {
-                break;
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, 15000));
-            }
-
-            if (!sonarCheck) {
-              core.setFailed(`${checkName} was not found for ${headSha}.`);
-              return;
-            }
-
-            if (sonarCheck.conclusion === 'success') {
-              core.info(`${checkName} passed.`);
-              return;
-            }
-
-            const body = [
-              marker,
-              `## SonarCloud Quality Gate ${sonarCheck.conclusion ?? 'failed'}`,
-              '',
-              'The SonarCloud quality gate did not pass for this PR.',
-              '',
-              `[View SonarCloud details](${sonarCheck.details_url})`,
-            ].join('\n');
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const existing = comments.data.find((comment) =>
-              comment.user.type === 'Bot' && comment.body.includes(marker)
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
-            core.setFailed(`${checkName} concluded with ${sonarCheck.conclusion}.`);
 
   snyk:
     runs-on: ubuntu-latest

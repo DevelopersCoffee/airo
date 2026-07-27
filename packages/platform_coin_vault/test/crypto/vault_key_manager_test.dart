@@ -11,17 +11,20 @@ void main() {
   });
 
   group('VaultKeyManager', () {
-    test('getDatabaseKey generates and persists a 32-byte key on first call', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => true,
-      );
+    test(
+      'getDatabaseKey generates and persists a 32-byte key on first call',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => true,
+        );
 
-      final result = await manager.getDatabaseKey();
+        final result = await manager.getDatabaseKey();
 
-      expect(result.isSuccess, isTrue);
-      expect(result.value, hasLength(32));
-    });
+        expect(result.isSuccess, isTrue);
+        expect(result.value, hasLength(32));
+      },
+    );
 
     test('getDatabaseKey returns the same key on repeated calls', () async {
       final manager = VaultKeyManager.forTesting(
@@ -35,17 +38,20 @@ void main() {
       expect(second.value, equals(first.value));
     });
 
-    test('getDatabaseKey fails when biometric authentication is denied', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => false,
-      );
+    test(
+      'getDatabaseKey fails when biometric authentication is denied',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => false,
+        );
 
-      final result = await manager.getDatabaseKey();
+        final result = await manager.getDatabaseKey();
 
-      expect(result.isFailure, isTrue);
-      expect(result.failure, isA<AuthFailure>());
-    });
+        expect(result.isFailure, isTrue);
+        expect(result.failure, isA<AuthFailure>());
+      },
+    );
 
     test('rotateKey generates a different key and persists it', () async {
       final manager = VaultKeyManager.forTesting(
@@ -69,73 +75,90 @@ void main() {
 
       await manager.getDatabaseKey();
       await manager.clearKeys();
-      final containsKey = await secureStorage.containsKey('airo_coin_wrapped_dek');
+      final containsKey = await secureStorage.containsKey(
+        'airo_coin_wrapped_dek',
+      );
 
       expect(containsKey.value, isFalse);
     });
 
-    test('isEncryptionAvailable reports false when biometrics are unavailable, blocking vault creation', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => false,
-      );
+    test(
+      'isEncryptionAvailable reports false when biometrics are unavailable, blocking vault creation',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => false,
+        );
 
-      final result = await manager.getDatabaseKey();
+        final result = await manager.getDatabaseKey();
 
-      expect(result.isFailure, isTrue);
-      expect(result.failure, isA<AuthFailure>());
-    });
+        expect(result.isFailure, isTrue);
+        expect(result.failure, isA<AuthFailure>());
+      },
+    );
 
-    test('getDatabaseKey fails closed when local_auth throws (e.g. no biometrics enrolled)', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => throw Exception('platform unavailable'),
-      );
+    test(
+      'getDatabaseKey fails closed when local_auth throws (e.g. no biometrics enrolled)',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => throw Exception('platform unavailable'),
+        );
 
-      final result = await manager.getDatabaseKey();
+        final result = await manager.getDatabaseKey();
 
-      expect(result.isFailure, isTrue);
-      expect(result.failure, isA<AuthFailure>());
-    });
+        expect(result.isFailure, isTrue);
+        expect(result.failure, isA<AuthFailure>());
+      },
+    );
 
-    test('rotateKey fails closed when local_auth throws (e.g. no biometrics enrolled)', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => throw Exception('platform unavailable'),
-      );
+    test(
+      'rotateKey fails closed when local_auth throws (e.g. no biometrics enrolled)',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => throw Exception('platform unavailable'),
+        );
 
-      final result = await manager.rotateKey();
+        final result = await manager.rotateKey();
 
-      expect(result.isFailure, isTrue);
-      expect(result.failure, isA<AuthFailure>());
-    });
+        expect(result.isFailure, isTrue);
+        expect(result.failure, isA<AuthFailure>());
+      },
+    );
 
-    test('isEncryptionAvailable uses the injected isAvailable seam when provided', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => true,
-        isAvailable: () async => false,
-      );
+    test(
+      'isEncryptionAvailable uses the injected isAvailable seam when provided',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => true,
+          isAvailable: () async => false,
+        );
 
-      final available = await manager.isEncryptionAvailable();
-      final keyResult = await manager.getDatabaseKey();
+        final available = await manager.isEncryptionAvailable();
+        final keyResult = await manager.getDatabaseKey();
 
-      expect(available, isFalse);
-      expect(keyResult.isSuccess, isTrue);
-    });
+        expect(available, isFalse);
+        expect(keyResult.isSuccess, isTrue);
+      },
+    );
 
-    test('generateCandidateKey returns a 32-byte key without persisting it', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => true,
-      );
+    test(
+      'generateCandidateKey returns a 32-byte key without persisting it',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => true,
+        );
 
-      final candidate = manager.generateCandidateKey();
-      final stored = await secureStorage.containsKey('airo_coin_wrapped_dek');
+        final candidate = manager.generateCandidateKey();
+        final stored = await secureStorage.containsKey('airo_coin_wrapped_dek');
 
-      expect(candidate, hasLength(32));
-      expect(stored.value, isFalse);
-    });
+        expect(candidate, hasLength(32));
+        expect(stored.value, isFalse);
+      },
+    );
 
     test('commitRotatedKey persists the given key as the active DEK', () async {
       final manager = VaultKeyManager.forTesting(
@@ -151,16 +174,19 @@ void main() {
       expect(active.value, equals(candidate));
     });
 
-    test('commitRotatedKey fails closed when authentication is denied', () async {
-      final manager = VaultKeyManager.forTesting(
-        secureStorage: secureStorage,
-        authenticate: () async => false,
-      );
+    test(
+      'commitRotatedKey fails closed when authentication is denied',
+      () async {
+        final manager = VaultKeyManager.forTesting(
+          secureStorage: secureStorage,
+          authenticate: () async => false,
+        );
 
-      final result = await manager.commitRotatedKey(List<int>.filled(32, 1));
+        final result = await manager.commitRotatedKey(List<int>.filled(32, 1));
 
-      expect(result.isFailure, isTrue);
-      expect(result.failure, isA<AuthFailure>());
-    });
+        expect(result.isFailure, isTrue);
+        expect(result.failure, isA<AuthFailure>());
+      },
+    );
   });
 }

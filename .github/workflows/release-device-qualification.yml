@@ -73,10 +73,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: release-qualification-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: release-qualification-pub-${{ runner.os }}-
 

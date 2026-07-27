@@ -1,0 +1,8 @@
+name: media_kit_libs_android_video
+description: No-native media_kit Android bundle for video_player-only Airo TV builds
+version: 1.3.8
+publish_to: none
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"

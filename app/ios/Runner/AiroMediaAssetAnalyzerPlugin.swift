@@ -1,11 +1,13 @@
 import AVFoundation
 import CoreMedia
 import CoreVideo
+import Darwin
 import Flutter
 import Foundation
 
 final class AiroMediaAssetAnalyzerPlugin: NSObject {
   static let channelName = "com.airo.media_asset_analyzer"
+  private var analysisTasks = [String: Task<Void, Never>]()
 
   func register(with messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: Self.channelName, binaryMessenger: messenger)
@@ -15,6 +17,15 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
   }
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method == "cancel" {
+      let arguments = call.arguments as? [String: Any]
+      let analysisId = arguments?["analysisId"] as? String
+      if let analysisId {
+        analysisTasks.removeValue(forKey: analysisId)?.cancel()
+      }
+      result(nil)
+      return
+    }
     guard call.method == "analyze" else {
       result(FlutterMethodNotImplemented)
       return
@@ -32,16 +43,27 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       return
     }
 
-    Task {
-      let payload = await analyze(request)
+    let task = Task { [weak self] in
+      guard let self else { return }
+      let payload = await self.analyze(request)
       await MainActor.run {
+        self.analysisTasks.removeValue(forKey: request.analysisId)
         result(payload)
       }
     }
+    analysisTasks[request.analysisId] = task
   }
 
   private func analyze(_ request: MediaAssetAnalysisRequest) async -> [String: Any] {
     let startedAt = Date()
+    let startingMemoryBytes = residentMemoryBytes()
+    if Task.isCancelled {
+      return cancelledPayload(
+        startedAt: startedAt,
+        startingMemoryBytes: startingMemoryBytes,
+        didUseMetadataProbe: false
+      )
+    }
     var warnings = OrderedStringSet()
     let container = request.containerStableId()
     let fileSizeBytes = request.fileSizeBytesHint ?? fileSize(request.filePath)
@@ -61,6 +83,13 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       var subtitleTracks = [[String: Any]]()
 
       for (index, track) in tracks.enumerated() {
+        if Task.isCancelled {
+          return cancelledPayload(
+            startedAt: startedAt,
+            startingMemoryBytes: startingMemoryBytes,
+            didUseMetadataProbe: true
+          )
+        }
         let mediaType = track.mediaType
         let estimatedDataRate = Int((try? await track.load(.estimatedDataRate)).map { $0.rounded() } ?? 0)
         if estimatedDataRate > 0 {
@@ -159,9 +188,17 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
           "didUseMetadataProbe": true,
           "fileSizeBytes": fileSizeBytes as Any,
           "estimatedBytesRead": NSNull(),
+          "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
         ],
       ]
     } catch {
+      if Task.isCancelled {
+        return cancelledPayload(
+          startedAt: startedAt,
+          startingMemoryBytes: startingMemoryBytes,
+          didUseMetadataProbe: true
+        )
+      }
       warnings.append("metadata_probe_failed")
       return [
         "status": "inspection_failed",
@@ -183,9 +220,45 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
           "didUseMetadataProbe": true,
           "fileSizeBytes": fileSizeBytes as Any,
           "estimatedBytesRead": NSNull(),
+          "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
         ],
       ]
     }
+  }
+
+  private func cancelledPayload(
+    startedAt: Date,
+    startingMemoryBytes: Int,
+    didUseMetadataProbe: Bool
+  ) -> [String: Any] {
+    [
+      "status": "cancelled",
+      "diagnostics": [
+        "elapsedMs": Int(Date().timeIntervalSince(startedAt) * 1000.0),
+        "didUseMetadataProbe": didUseMetadataProbe,
+        "fileSizeBytes": NSNull(),
+        "estimatedBytesRead": NSNull(),
+        "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
+      ],
+    ]
+  }
+
+  private func residentMemoryBytes() -> Int {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(
+      MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size
+    )
+    let status = withUnsafeMutablePointer(to: &info) { infoPointer in
+      infoPointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(
+          mach_task_self_,
+          task_flavor_t(MACH_TASK_BASIC_INFO),
+          $0,
+          &count
+        )
+      }
+    }
+    return status == KERN_SUCCESS ? Int(info.resident_size) : 0
   }
 
   private func fileSize(_ filePath: String) -> Int? {
@@ -203,44 +276,18 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     guard let description else {
       return "unknown"
     }
-    switch CMFormatDescriptionGetMediaSubType(description) {
-    case kCMVideoCodecType_H264:
-      return "h264"
-    case kCMVideoCodecType_HEVC:
-      return "hevc"
-    case kCMVideoCodecType_AV1:
-      return "av1"
-    case kCMVideoCodecType_VP9:
-      return "vp9"
-    case makeFourCC("dvh1"), makeFourCC("dvhe"):
-      return "hevc"
-    default:
-      return "unknown"
-    }
+    return MediaAssetFormatNormalizer.videoCodecStableId(
+      subtype: CMFormatDescriptionGetMediaSubType(description)
+    )
   }
 
   private func audioCodecStableId(_ description: CMFormatDescription?) -> String {
     guard let description else {
       return "unknown"
     }
-    switch CMFormatDescriptionGetMediaSubType(description) {
-    case kAudioFormatMPEG4AAC, kAudioFormatMPEG4AAC_HE:
-      return "aac"
-    case kAudioFormatAC3:
-      return "ac3"
-    case kAudioFormatEnhancedAC3:
-      return "eac3"
-    case makeFourCC("dtsc"), makeFourCC("dtsh"), makeFourCC("dtsl"):
-      return "dts"
-    case kAudioFormatOpus:
-      return "opus"
-    case kAudioFormatMPEGLayer3:
-      return "mp3"
-    case makeFourCC("mlpa"):
-      return "truehd"
-    default:
-      return "unknown"
-    }
+    return MediaAssetFormatNormalizer.audioCodecStableId(
+      subtype: CMFormatDescriptionGetMediaSubType(description)
+    )
   }
 
   private func audioChannelCount(_ description: CMFormatDescription?) -> Int? {
@@ -268,34 +315,23 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
   }
 
   private func dynamicRangeStableId(_ description: CMFormatDescription?, codec: String) -> String {
-    if codec == "hevc",
-       let description,
-       let extensions = CMFormatDescriptionGetExtensions(description) as? [CFString: Any],
-       let transferFunction = extensions[kCVImageBufferTransferFunctionKey]
-    {
-      let transferFunctionValue = String(describing: transferFunction)
-      switch transferFunctionValue {
-      case String(describing: kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ):
-        return "hdr10"
-      case String(describing: kCVImageBufferTransferFunction_ITU_R_2100_HLG):
-        return "hlg"
-      default:
-        break
-      }
+    let subtype = description.map(CMFormatDescriptionGetMediaSubType)
+    let extensions = description.flatMap {
+      CMFormatDescriptionGetExtensions($0) as? [CFString: Any]
     }
-    if codec == "hevc",
-       let description
-    {
-      let subtype = CMFormatDescriptionGetMediaSubType(description)
-      if subtype == makeFourCC("dvh1") || subtype == makeFourCC("dvhe") {
-        return "dolby_vision"
-      }
+    let transferFunction = extensions?[kCVImageBufferTransferFunctionKey].map {
+      String(describing: $0)
     }
-    return "unknown"
+    return MediaAssetFormatNormalizer.dynamicRangeStableId(
+      codec: codec,
+      subtype: subtype,
+      transferFunction: transferFunction
+    )
   }
 }
 
 private struct MediaAssetAnalysisRequest {
+  let analysisId: String
   let assetId: String
   let filePath: String
   let fileName: String?
@@ -303,11 +339,13 @@ private struct MediaAssetAnalysisRequest {
   let mimeTypeHint: String?
 
   init?(arguments: [String: Any]) {
-    guard let assetId = arguments["assetId"] as? String,
+    guard let analysisId = arguments["analysisId"] as? String,
+          let assetId = arguments["assetId"] as? String,
           let filePath = arguments["filePath"] as? String
     else {
       return nil
     }
+    self.analysisId = analysisId
     self.assetId = assetId
     self.filePath = filePath
     self.fileName = arguments["fileName"] as? String
@@ -316,12 +354,83 @@ private struct MediaAssetAnalysisRequest {
   }
 
   func containerStableId() -> String {
-    let mimeType = mimeTypeHint?.lowercased() ?? ""
-    if mimeType.contains("matroska") || mimeType.contains("x-mkv") { return "mkv" }
-    if mimeType.contains("webm") { return "webm" }
-    if mimeType.contains("mp4") { return "mp4" }
-    if mimeType.contains("quicktime") { return "mov" }
-    if mimeType.contains("mpegts") || mimeType.contains("mp2t") { return "ts" }
+    MediaAssetFormatNormalizer.containerStableId(
+      mimeType: mimeTypeHint,
+      fileName: fileName
+    )
+  }
+}
+
+enum MediaAssetFormatNormalizer {
+  static func videoCodecStableId(subtype: FourCharCode) -> String {
+    switch subtype {
+    case kCMVideoCodecType_H264:
+      return "h264"
+    case kCMVideoCodecType_HEVC:
+      return "hevc"
+    case kCMVideoCodecType_AV1:
+      return "av1"
+    case kCMVideoCodecType_VP9:
+      return "vp9"
+    case makeFourCC("dvh1"), makeFourCC("dvhe"):
+      return "hevc"
+    default:
+      return "unknown"
+    }
+  }
+
+  static func audioCodecStableId(subtype: FourCharCode) -> String {
+    switch subtype {
+    case kAudioFormatMPEG4AAC, kAudioFormatMPEG4AAC_HE:
+      return "aac"
+    case kAudioFormatAC3:
+      return "ac3"
+    case kAudioFormatEnhancedAC3:
+      return "eac3"
+    case makeFourCC("dtsc"), makeFourCC("dtsh"), makeFourCC("dtsl"):
+      return "dts"
+    case kAudioFormatOpus:
+      return "opus"
+    case kAudioFormatMPEGLayer3:
+      return "mp3"
+    case makeFourCC("mlpa"):
+      return "truehd"
+    default:
+      return "unknown"
+    }
+  }
+
+  static func dynamicRangeStableId(
+    codec: String,
+    subtype: FourCharCode?,
+    transferFunction: String?
+  ) -> String {
+    guard codec == "hevc" else { return "unknown" }
+    switch transferFunction {
+    case String(describing: kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ):
+      return "hdr10"
+    case String(describing: kCVImageBufferTransferFunction_ITU_R_2100_HLG):
+      return "hlg"
+    default:
+      break
+    }
+    if subtype == makeFourCC("dvh1") || subtype == makeFourCC("dvhe") {
+      return "dolby_vision"
+    }
+    return "unknown"
+  }
+
+  static func containerStableId(mimeType: String?, fileName: String?) -> String {
+    let normalizedMimeType = mimeType?.lowercased() ?? ""
+    if normalizedMimeType.contains("matroska") || normalizedMimeType.contains("x-mkv") {
+      return "mkv"
+    }
+    if normalizedMimeType.contains("webm") { return "webm" }
+    if normalizedMimeType.contains("mp4") { return "mp4" }
+    if normalizedMimeType.contains("quicktime") { return "mov" }
+    if normalizedMimeType.contains("mpegts") || normalizedMimeType.contains("mp2t") {
+      return "ts"
+    }
 
     let ext = (fileName as NSString?)?.pathExtension.lowercased() ?? ""
     switch ext {
@@ -350,6 +459,6 @@ private struct OrderedStringSet {
   }
 }
 
-private func makeFourCC(_ string: String) -> FourCharCode {
+func makeFourCC(_ string: String) -> FourCharCode {
   string.utf8.reduce(0) { ($0 << 8) + FourCharCode($1) }
 }

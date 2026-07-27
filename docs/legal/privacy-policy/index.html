@@ -1,0 +1,381 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Airo TV | DevelopersCoffee</title>
+  <meta name="description" content="Privacy Policy for Airo TV — a local-first IPTV player by DevelopersCoffee. We collect no personal data.">
+  <meta name="theme-color" content="#071010">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developerscoffee.github.io/airo/legal/privacy-policy/">
+  <meta property="og:title" content="Privacy Policy — Airo TV">
+  <meta property="og:description" content="Airo TV collects no personal data. All playlist and preference data stays on your device.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/airo-tv/airo-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/airo-tv/site.css">
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
+  <script defer src="../../assets/airo-tv/site.js"></script>
+  <style>
+    /* ── Legal prose ───────────────────────────────────────── */
+    .legal-hero {
+      padding: calc(var(--header) + 56px) 0 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-hero .eyebrow { margin-bottom: 12px; }
+    .legal-hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin: 0 0 16px;
+      line-height: 1.1;
+    }
+    .legal-hero .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .legal-body {
+      padding: 64px 0 96px;
+    }
+    .legal-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 48px 64px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .legal-grid { grid-template-columns: 1fr; }
+      .legal-toc  { display: none; }
+    }
+
+    /* Table of contents */
+    .legal-toc {
+      position: sticky;
+      top: calc(var(--header) + 24px);
+    }
+    .legal-toc h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .legal-toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .legal-toc a {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      line-height: 1.5;
+      display: block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border-left: 2px solid transparent;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .legal-toc a:hover {
+      color: var(--text);
+      border-left-color: var(--green);
+      background: var(--surface);
+    }
+
+    /* Prose */
+    .legal-prose { min-width: 0; }
+    .legal-prose section { margin-bottom: 56px; }
+    .legal-prose h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: calc(var(--header) + 24px);
+    }
+    .legal-prose h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 24px 0 10px;
+      color: var(--text);
+    }
+    .legal-prose p {
+      color: var(--muted);
+      margin: 0 0 14px;
+      line-height: 1.7;
+    }
+    .legal-prose ul, .legal-prose ol {
+      color: var(--muted);
+      padding-left: 20px;
+      margin: 0 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      line-height: 1.6;
+    }
+    .legal-prose strong { color: var(--text); }
+    .legal-prose a { color: var(--green); text-decoration: none; }
+    .legal-prose a:hover { text-decoration: underline; }
+    .legal-prose code {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .875em;
+      color: var(--text);
+    }
+
+    /* Callout boxes */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 0 0 20px;
+    }
+    .callout.callout-warn { border-left-color: var(--gold); }
+    .callout p { margin: 0; }
+
+    /* Back link */
+    .legal-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-bottom: 32px;
+      transition: color .15s;
+    }
+    .legal-back:hover { color: var(--green); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="../../" aria-label="Airo home">
+        <img src="../../assets/airo-tv/airo-icon.svg" alt="">
+        <span>Airo <small>Modular platform</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false" data-menu-button>
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary navigation" data-navigation>
+        <a href="../../#architecture">Architecture</a>
+        <a href="../../#foundations">Foundations</a>
+        <a href="../../#modules">Modules</a>
+        <a href="../../#community">Community</a>
+        <a href="../../#roadmap">Roadmap</a>
+        <a class="button button-discord" href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg> Discord</a>
+        <a class="button button-primary" href="../../tv/">Explore Airo TV <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+
+    <div class="legal-hero">
+      <div class="container">
+        <p class="eyebrow">Legal</p>
+        <h1>Privacy Policy</h1>
+        <p class="meta">Last updated: <time datetime="2026-07-26">July 26, 2026</time> &nbsp;·&nbsp; Airo TV by DevelopersCoffee</p>
+      </div>
+    </div>
+
+    <div class="legal-body">
+      <div class="container">
+        <a class="legal-back" href="../../">
+          <i data-lucide="arrow-left" aria-hidden="true"></i> Back to Airo
+        </a>
+
+        <div class="legal-grid">
+
+          <!-- Table of contents -->
+          <aside class="legal-toc" aria-label="Page contents">
+            <h2>Contents</h2>
+            <ol>
+              <li><a href="#introduction">Introduction</a></li>
+              <li><a href="#data-collection">Information We Collect</a></li>
+              <li><a href="#on-device">On-Device Processing</a></li>
+              <li><a href="#network">Network Connections</a></li>
+              <li><a href="#content-disclaimer">Content Disclaimer</a></li>
+              <li><a href="#log-data">Log Data</a></li>
+              <li><a href="#cookies">Cookies</a></li>
+              <li><a href="#service-providers">Service Providers</a></li>
+              <li><a href="#data-retention">Data Retention</a></li>
+              <li><a href="#your-rights">Your Rights</a></li>
+              <li><a href="#security">Security</a></li>
+              <li><a href="#children">Children's Privacy</a></li>
+              <li><a href="#links">Links to Other Sites</a></li>
+              <li><a href="#changes">Changes to This Policy</a></li>
+              <li><a href="#contact">Contact Us</a></li>
+            </ol>
+          </aside>
+
+          <!-- Prose -->
+          <article class="legal-prose">
+
+            <section id="introduction">
+              <h2>Introduction</h2>
+              <p>Airo TV is built by <strong>DevelopersCoffee</strong> as a free application provided at no cost and intended for use "as is".</p>
+              <p>This page informs you of our policies regarding the collection, use, and disclosure of personal information when you use our service. If you choose to use our service you agree to the collection and use of information in relation to this policy. The terms used here have the same meanings as in our <a href="../terms-conditions/">Terms and Conditions</a> unless otherwise defined.</p>
+            </section>
+
+            <section id="data-collection">
+              <h2>Information We Collect</h2>
+              <div class="callout">
+                <p><strong>Short version:</strong> All data Airo TV stores stays on your device. We collect nothing on our servers.</p>
+              </div>
+              <p>For a better experience while using our service, the app may store certain data locally on your device. The information that we store is <strong>not collected by us</strong> in any way.</p>
+
+              <h3>Data stored on-device only</h3>
+              <ul>
+                <li><strong>User preferences</strong> — stored locally on your device</li>
+                <li><strong>IPTV playlist URLs</strong> — user-provided, stored locally</li>
+                <li><strong>Playback and playlist cache data</strong> — stored locally for app functionality</li>
+                <li><strong>Favourites and channel filter selections</strong> — stored locally</li>
+                <li><strong>EPG data</strong> — downloaded from the XMLTV source you configure, parsed and cached on-device</li>
+              </ul>
+              <p>None of the above is transmitted to DevelopersCoffee. It stays on your device and is removed when you uninstall the app or clear its storage.</p>
+
+              <h3>Data we do NOT collect</h3>
+              <ul>
+                <li>Personal identification information (name, email, address)</li>
+                <li>Location data</li>
+                <li>Contact information</li>
+                <li>Financial or payment information</li>
+                <li>Viewing habits, watch history, or analytics sent to external servers</li>
+                <li>Advertising identifiers</li>
+              </ul>
+              <p>Airo TV integrates no advertising, analytics, or attribution SDK of any kind. There is no Google Analytics, Firebase Analytics, or Crashlytics in the application.</p>
+
+              <h3>Permissions requested</h3>
+              <p>The Airo TV build requests only what a network media player requires: internet and network-state access, multicast (for local network stream discovery), foreground-service and wake-lock (to keep playback alive), notification posting (for playback controls), and boot-completed. It does <strong>not</strong> request contacts, calendar, location, camera, microphone, or device storage access.</p>
+            </section>
+
+            <section id="on-device">
+              <h2>On-Device Processing</h2>
+              <p>Airo TV processes all data locally on your device:</p>
+              <ul>
+                <li><strong>IPTV playlist parsing</strong> is performed entirely on-device.</li>
+                <li><strong>Channel matching and enrichment</strong> is performed entirely on-device.</li>
+                <li><strong>Cast analytics logging is disabled</strong> when initialising Google Cast support.</li>
+                <li><strong>No user data is transmitted</strong> to DevelopersCoffee servers or any third-party analytics services.</li>
+              </ul>
+              <p>Your streaming content and playlist URLs <strong>never leave your device</strong> except when your device requests the stream or playlist URL that you chose to load.</p>
+            </section>
+
+            <section id="network">
+              <h2>Network Connections</h2>
+              <p>Airo TV contacts the following hosts. We list them so you know exactly what the app talks to and what is — and is not — sent.</p>
+
+              <h3>Servers you choose</h3>
+              <p>The M3U playlist URL and the XMLTV program-guide URL you enter are requested directly by your device, along with the stream URLs those playlists contain. Airo TV does not proxy, mirror, or inspect this traffic, and it is not routed through DevelopersCoffee. The operators of those servers will see your IP address, as they would with any media player.</p>
+
+              <h3><code>iptv-org.github.io</code></h3>
+              <p>To display channel names, countries, and languages, Airo TV downloads three public catalogue files from the community-maintained iptv-org project. This is a plain download of public data. <strong>Your playlist is not uploaded and your channel list is not sent anywhere</strong> — the catalogue is fetched in full and matched against your channels entirely on your own device.</p>
+
+              <h3>Google Firebase</h3>
+              <p>Airo TV includes the Firebase core library so the app can initialise at startup. It does <strong>not</strong> include Firebase Analytics, Crashlytics, or Cloud Messaging, so no usage data, crash data, or push tokens are gathered through Firebase. Where Firebase generates a <strong>Firebase installation ID</strong>, that is a random, per-installation identifier that is not linked to you, not tied to any account, and reset when you uninstall the app or clear its data. It is never combined with your playlist data and is never used for advertising or cross-app tracking. Google's handling of it is governed by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>. Airo TV generates and shares no other identifier.</p>
+            </section>
+
+            <section id="content-disclaimer">
+              <h2>IPTV Content Disclaimer</h2>
+              <div class="callout callout-warn">
+                <p>Airo TV is a <strong>media player only</strong>. It does <strong>not</strong> provide, host, or distribute any content, channels, playlists, or streams.</p>
+              </div>
+              <ul>
+                <li>All content displayed in Airo TV is <strong>added by the user</strong>.</li>
+                <li>Users are solely responsible for ensuring that the content they access through Airo TV is legal in their jurisdiction.</li>
+                <li>DevelopersCoffee does <strong>not</strong> endorse, promote, or facilitate the streaming of copyright-protected material without proper authorisation from the rights holder.</li>
+              </ul>
+            </section>
+
+            <section id="log-data">
+              <h2>Log Data</h2>
+              <p>In the event of an error in the app, we may collect data and information (through third-party products) on your device called Log Data. This Log Data may include information such as your device's Internet Protocol ("IP") address, device name, operating system version, the configuration of the app when utilising our service, the time and date of your use of the service, and other statistics. This data is used solely for diagnosing crashes and improving app stability.</p>
+            </section>
+
+            <section id="cookies">
+              <h2>Cookies</h2>
+              <p>This service does not use cookies explicitly. However, the app may use third-party code and libraries that use cookies to collect information and improve their services. You have the option to accept or refuse these cookies and know when a cookie is being sent to your device. If you refuse cookies, you may not be able to use some portions of this service.</p>
+            </section>
+
+            <section id="service-providers">
+              <h2>Service Providers</h2>
+              <p>We do not employ third parties to process personal data on our behalf, and no third party receives personal information about you from us.</p>
+              <p>The only external services Airo TV interacts with are named under <a href="#network">Network Connections</a> above: Google Firebase (core library only, no analytics or crash reporting), the public iptv-org catalogue, and whatever playlist, program-guide, and stream servers you configure.</p>
+            </section>
+
+            <section id="data-retention">
+              <h2>Data Retention</h2>
+              <p>Because Airo TV keeps your data on your device rather than on our servers, retention is under your control:</p>
+              <ul>
+                <li><strong>Preferences, playlist URLs, favourites, and filter selections</strong> are kept until you change them, clear the app's storage, or uninstall the app.</li>
+                <li><strong>Playlist and EPG caches</strong> are kept until refreshed or superseded, and are removed with the app's storage.</li>
+                <li><strong>The Firebase installation ID</strong> persists for the life of the installation and is reset when you clear the app's data or uninstall.</li>
+              </ul>
+              <p>DevelopersCoffee holds no user data, so there is nothing for us to retain or delete on your behalf.</p>
+            </section>
+
+            <section id="your-rights">
+              <h2>Your Privacy Rights</h2>
+              <p>Rights such as access, correction, deletion, portability, restriction, and objection under the GDPR, and the rights to know, delete, correct, and opt out of sale or sharing under the CCPA/CPRA, generally apply to data a company holds about you.</p>
+              <p><strong>DevelopersCoffee does not collect, receive, or store personal data about Airo TV users</strong>, so there is no profile for us to disclose, export, correct, or erase. We do not sell or share personal information, and we never have.</p>
+              <p>You can exercise the practical equivalent of these rights directly: clear the app's storage or uninstall Airo TV to erase everything it holds, and edit or remove your playlist and EPG sources in Settings. If you believe we nonetheless hold information about you, contact us at the address below and we will respond within 30 days. Users in the EU/EEA and the UK also have the right to lodge a complaint with their local supervisory authority.</p>
+            </section>
+
+            <section id="security">
+              <h2>Security</h2>
+              <p>We value your trust and strive to use commercially acceptable means of protecting your information. Remember that no method of transmission over the internet, or method of electronic storage, is 100% secure and reliable.</p>
+              <p>One point worth understanding about stream security: many real-world IPTV providers serve playlists and streams over plain, unencrypted HTTP. Airo TV permits cleartext connections so those sources remain playable. This means that <strong>if the playlist or stream URL you supply uses <code>http://</code> rather than <code>https://</code>, that traffic is not encrypted</strong> and may be visible to your network operator or internet provider. Airo TV's own connections use HTTPS. Prefer <code>https://</code> sources where your provider offers them.</p>
+            </section>
+
+            <section id="children">
+              <h2>Children's Privacy</h2>
+              <p>This service does not address anyone under the age of 16. We do not knowingly collect personally identifiable information from children under 16 years of age. If we discover that a child under 16 has provided us with personal information, we immediately delete it from our records. If you are a parent or guardian and you are aware that your child has provided us with personal information, please contact us so that we will be able to take the necessary actions.</p>
+            </section>
+
+            <section id="links">
+              <h2>Links to Other Sites</h2>
+              <p>This service may contain links to other sites. If you click on a third-party link, you will be directed to that site. Note that these external sites are not operated by us. Therefore, we strongly advise you to review the Privacy Policy of those websites. We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party sites or services.</p>
+            </section>
+
+            <section id="changes">
+              <h2>Changes to This Privacy Policy</h2>
+              <p>We may update our Privacy Policy from time to time. You are advised to review this page periodically for any changes. We will notify you of any changes by posting the new Privacy Policy on this page.</p>
+              <p>This policy is effective as of <strong>July 26, 2026</strong>.</p>
+            </section>
+
+            <section id="contact">
+              <h2>Contact Us</h2>
+              <p>If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us:</p>
+              <ul>
+                <li><strong>Developer:</strong> DevelopersCoffee</li>
+                <li><strong>Email:</strong> <a href="mailto:coffee.devloper@gmail.com">coffee.devloper@gmail.com</a></li>
+                <li><strong>GitHub:</strong> <a href="https://github.com/DevelopersCoffee/airo" target="_blank" rel="noopener noreferrer">github.com/DevelopersCoffee/airo</a></li>
+                <li><strong>Discord:</strong> <a href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer">discord.gg/62r67VcMzM</a></li>
+              </ul>
+            </section>
+
+          </article>
+        </div><!-- .legal-grid -->
+      </div><!-- .container -->
+    </div><!-- .legal-body -->
+
+  </main>
+
+  <footer class="site-footer"><div class="container"><div class="footer-grid"><div><a class="brand" href="../../"><img src="../../assets/airo-tv/airo-icon.svg" alt=""><span>Airo</span></a><h2>Focused experiences. Shared foundations.</h2><p>Airo TV is the first focused product in the Airo ecosystem.</p></div><div class="footer-col"><h3>Platform</h3><a href="../../#architecture">Architecture</a><a href="../../#foundations">Foundations</a><a href="../../#modules">Modules</a></div><div class="footer-col"><h3>Explore</h3><a href="../../tv/">Airo TV</a><a href="../../#community">Community</a><a href="../../#roadmap">Roadmap</a><a href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer">Discord ↗</a></div><div class="footer-col"><h3>Trust</h3><a href="../privacy-policy/">Privacy</a><a href="../terms-conditions/">Terms</a><a href="mailto:coffee.devloper@gmail.com">Support</a></div></div><div class="footer-bottom"><span>&copy; <span data-current-year>2026</span> DevelopersCoffee</span><span>Airo is built in public. Roadmap scope may change as evidence changes.</span></div></div></footer>
+</body>
+</html>

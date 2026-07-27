@@ -1,6 +1,7 @@
 // ignore_for_file: depend_on_referenced_packages
 
 import 'package:airo_app/core/routing/app_router.dart';
+import 'package:airo_app/main.dart';
 import 'package:core_data/core_data.dart';
 import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,10 @@ void main() {
     String initialLocation,
   ) async {
     SharedPreferences.setMockInitialValues({'is_logged_in': true});
-    final router = AppRouter.createRouter(initialLocation: initialLocation);
+    final router = AppRouter.createRouter(
+      moduleRegistry: buildMainModuleRegistry(),
+      initialLocation: initialLocation,
+    );
 
     await tester.pumpWidget(
       ProviderScope(
