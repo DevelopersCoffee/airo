@@ -109,50 +109,72 @@ final activeDownloadsProvider =
 
 class ActiveDownloadsNotifier
     extends StateNotifier<Map<String, ModelDownloadProgress>> {
-  ActiveDownloadsNotifier(this._ref) : super({});
+  ActiveDownloadsNotifier(this._ref) : super({}) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    _globalSubscription = service.globalProgressStream.listen(_applyProgress);
+    unawaited(
+      service.restoreQueue(catalogModels: ModelCatalog.bundledModels).then((
+        entries,
+      ) {
+        for (final progress in entries) {
+          _applyProgress(progress);
+        }
+      }),
+    );
+  }
 
   final Ref _ref;
-  final Map<String, StreamSubscription<ModelDownloadProgress>> _subscriptions =
-      {};
+  StreamSubscription<ModelDownloadProgress>? _globalSubscription;
 
   void startDownload(OfflineModelInfo model) {
     final service = _ref.read(modelDownloadServiceProvider);
-    final stream = service.downloadModel(model);
+    service.downloadModel(model);
+  }
 
-    _subscriptions[model.id]?.cancel();
-    _subscriptions[model.id] = stream.listen((progress) async {
-      state = {...state, model.id: progress};
+  Future<void> pauseDownload(String modelId) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    return service.pauseDownload(modelId);
+  }
 
-      if (progress.isComplete) {
-        final registry = _ref.read(modelRegistryProvider);
+  Future<void> resumeDownload(String modelId) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    return service.resumeDownload(modelId);
+  }
+
+  Future<void> retryDownload(String modelId) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    return service.retryDownload(modelId);
+  }
+
+  Future<void> cancelDownload(String modelId) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    return service.cancelDownload(modelId);
+  }
+
+  Future<void> _applyProgress(ModelDownloadProgress progress) async {
+    state = {...state, progress.modelId: progress};
+    if (progress.isComplete) {
+      final registry = _ref.read(modelRegistryProvider);
+      final model = registry.getModel(progress.modelId);
+      if (model != null) {
+        final service = _ref.read(modelDownloadServiceProvider);
         final modelPath = await service.getModelPath(model.id, model: model);
         registry.markAsDownloaded(model.id, modelPath);
       }
-
-      if (progress.isComplete ||
-          progress.isFailed ||
-          progress.status == ModelDownloadStatus.cancelled) {
-        _subscriptions[model.id]?.cancel();
-        _subscriptions.remove(model.id);
-
-        Future.delayed(const Duration(seconds: 2), () {
-          state = Map.from(state)..remove(model.id);
-        });
-      }
-    });
-  }
-
-  void cancelDownload(String modelId) {
-    final service = _ref.read(modelDownloadServiceProvider);
-    service.cancelDownload(modelId);
+    }
+    if (progress.isComplete ||
+        progress.status == ModelDownloadStatus.cancelled) {
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          state = Map.from(state)..remove(progress.modelId);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    for (final sub in _subscriptions.values) {
-      sub.cancel();
-    }
-    _subscriptions.clear();
+    _globalSubscription?.cancel();
     super.dispose();
   }
 }

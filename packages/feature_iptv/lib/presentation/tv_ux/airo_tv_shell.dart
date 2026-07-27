@@ -38,6 +38,8 @@ class AiroTvShell extends ConsumerStatefulWidget {
     required this.channels,
     required this.videoStage,
     required this.onChannelSelected,
+    this.showVideoStage = true,
+    this.focusPlayDelay,
     this.currentChannel,
     this.metadataByChannelId = const {},
     this.availabilityByChannelId = const {},
@@ -51,6 +53,8 @@ class AiroTvShell extends ConsumerStatefulWidget {
   final List<IPTVChannel> channels;
   final Widget videoStage;
   final ValueChanged<IPTVChannel> onChannelSelected;
+  final bool showVideoStage;
+  final Duration? focusPlayDelay;
   final IPTVChannel? currentChannel;
   final Map<String, ChannelBrowseMetadata> metadataByChannelId;
   final Map<String, StreamAvailability> availabilityByChannelId;
@@ -135,6 +139,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         snapshot.visibleChannels,
         availabilityByChannelId,
       ),
+      focusPlayDelay: widget.focusPlayDelay,
       onVisibleChannelsChanged: _scheduleVisibleChannelScan,
       multiviewChannelIds: {
         for (final session in multiview.sessions) session.id,
@@ -214,7 +219,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
-              Flexible(flex: 3, child: videoStage),
+              if (widget.showVideoStage) Flexible(flex: 3, child: videoStage),
               ...compactChrome,
               if (showPlaylist) Expanded(flex: 4, child: table),
             ],
@@ -224,40 +229,41 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
             .clamp(320.0, 480.0)
             .toDouble();
         final previewHeight = previewWidth * 9 / 16;
-        final panelWidth = (constraints.maxWidth * 0.88)
-            .clamp(720.0, 1120.0)
-            .toDouble();
+        final panelWidth = widget.showVideoStage
+            ? (constraints.maxWidth * 0.88).clamp(720.0, 1120.0).toDouble()
+            : constraints.maxWidth;
 
         return Container(
           key: const ValueKey('airo-tv-explorer-wide-shell'),
           color: Colors.black,
           child: Column(
             children: [
-              Flexible(
-                flex: 3,
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    child: SizedBox(
-                      key: const ValueKey('airo-tv-explorer-video-stage'),
-                      width: previewWidth,
-                      height: previewHeight,
-                      child: ClipRect(
-                        child: FittedBox(
-                          fit: BoxFit.contain,
-                          child: SizedBox(
-                            width: 640,
-                            height: 360,
-                            child: videoStage,
+              if (widget.showVideoStage)
+                Flexible(
+                  flex: 3,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        key: const ValueKey('airo-tv-explorer-video-stage'),
+                        width: previewWidth,
+                        height: previewHeight,
+                        child: ClipRect(
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            child: SizedBox(
+                              width: 640,
+                              height: 360,
+                              child: videoStage,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
               Expanded(
-                flex: 5,
+                flex: widget.showVideoStage ? 5 : 1,
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(

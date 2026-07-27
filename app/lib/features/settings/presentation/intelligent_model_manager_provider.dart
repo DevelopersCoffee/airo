@@ -1,6 +1,66 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/local_runtime_preloader_service.dart';
+import '../../../core/services/model_preload_preferences.dart';
+import '../../agent_chat/application/assistant_model_preferences.dart';
+import '../../agent_chat/domain/models/assistant_model_selection.dart';
 import '../application/ai_model_management.dart';
+
+class _AiroModelWarmupGateway implements ModelWarmupGateway {
+  _AiroModelWarmupGateway(this._preloader);
+
+  final LocalRuntimePreloaderService _preloader;
+
+  @override
+  Set<String> get residentModelIds =>
+      _preloader.currentResidents.map((resident) => resident.id).toSet();
+
+  @override
+  Future<ModelWarmupResult> warm(OfflineModelInfo model) async {
+    final report = await _preloader.warmModel(model);
+    final entry = report.entries.first;
+    final status = switch (entry.status) {
+      ModelPreloadEntryStatus.warmed =>
+        entry.reason == 'already_resident'
+            ? ModelWarmupStatus.alreadyResident
+            : ModelWarmupStatus.warmed,
+      ModelPreloadEntryStatus.skipped => ModelWarmupStatus.unavailable,
+      ModelPreloadEntryStatus.failed => ModelWarmupStatus.failed,
+    };
+    return ModelWarmupResult(
+      modelId: model.id,
+      status: status,
+      detail: entry.reason,
+    );
+  }
+}
+
+class _AiroModelActivationGateway implements ModelActivationGateway {
+  _AiroModelActivationGateway(this._ref);
+
+  final Ref _ref;
+
+  @override
+  Future<void> activate(OfflineModelInfo model) async {
+    await _ref
+        .read(selectedModelIdProvider.notifier)
+        .setSelectedModel(model.id);
+    await _ref
+        .read(selectedAssistantModelIdProvider.notifier)
+        .select(assistantModelIdForOfflineModel(model.id));
+  }
+
+  @override
+  Future<void> clear(OfflineModelInfo model) async {
+    if (_ref.read(selectedModelIdProvider) == model.id) {
+      await _ref.read(selectedModelIdProvider.notifier).setSelectedModel(null);
+    }
+    final assistantModelId = assistantModelIdForOfflineModel(model.id);
+    if (_ref.read(selectedAssistantModelIdProvider) == assistantModelId) {
+      await _ref.read(selectedAssistantModelIdProvider.notifier).select(null);
+    }
+  }
+}
 
 /// Provider for [ModelStorageManager].
 final modelStorageManagerProvider = Provider<ModelStorageManager>((ref) {
@@ -14,19 +74,37 @@ final intelligentModelManagerProvider = Provider<IntelligentModelManager>((
   final storageManager = ref.watch(modelStorageManagerProvider);
   final registry = ref.watch(modelRegistryProvider);
   final downloadService = ref.watch(modelDownloadServiceProvider);
+  final preloadPreferences = SharedPreferencesModelPreloadPreferences();
+  final preloader = LocalRuntimePreloaderService(
+    preloadPreferences: preloadPreferences,
+    selectedModelId: () => ref.read(selectedModelIdProvider),
+  );
 
-  return IntelligentModelManager(storageManager, registry, downloadService);
+  return IntelligentModelManager(
+    storageManager,
+    registry,
+    downloadService,
+    preloadPreferences: preloadPreferences,
+    warmupGateway: _AiroModelWarmupGateway(preloader),
+    activationGateway: _AiroModelActivationGateway(ref),
+  );
 });
 
-/// Rebuilding provider of the [ModelEntry] list, reacting to registry and download changes.
-final intelligentModelsListProvider = FutureProvider<List<ModelEntry>>((
-  ref,
-) async {
-  final manager = ref.watch(intelligentModelManagerProvider);
-  // Rebuild the list if the model registry changes.
-  ref.watch(modelRegistryEventsProvider);
-  // Rebuild the list if active download progress is updated.
-  ref.watch(activeDownloadsProvider);
+final intelligentModelManagerSnapshotProvider =
+    FutureProvider<ModelManagerSnapshot>((ref) async {
+      final manager = ref.watch(intelligentModelManagerProvider);
+      // Rebuild the list if the model registry changes.
+      ref.watch(modelRegistryEventsProvider);
+      final selectedModelId = ref.watch(selectedModelIdProvider);
 
-  return manager.listModels();
+      return manager.snapshot(activeModelId: selectedModelId);
+    });
+
+/// Compatibility projection for callers that only need the catalog list.
+final intelligentModelsListProvider = Provider<AsyncValue<List<ModelEntry>>>((
+  ref,
+) {
+  return ref
+      .watch(intelligentModelManagerSnapshotProvider)
+      .whenData((snapshot) => snapshot.models);
 });

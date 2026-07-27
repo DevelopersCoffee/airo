@@ -35,6 +35,7 @@ import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../../../core/services/local_runtime_preloader_service.dart';
+import '../../../../core/services/model_preload_preferences.dart';
 import 'model_library_screen.dart';
 
 /// Chat message model
@@ -111,6 +112,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _localRuntimePreloader =
         widget.localRuntimePreloader ??
         LocalRuntimePreloaderService(
+          preloadPreferences: SharedPreferencesModelPreloadPreferences(),
           geminiNano: _geminiNano,
           liteRtLm: _liteRtLm,
           loadAssistantModelLibrary: () =>

@@ -14,9 +14,8 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final modelsAsync = ref.watch(intelligentModelsListProvider);
+    final snapshotAsync = ref.watch(intelligentModelManagerSnapshotProvider);
     final activeDownloads = ref.watch(activeDownloadsProvider);
-    final selectedModelId = ref.watch(selectedModelIdProvider);
     final registry = ref.watch(modelRegistryProvider);
 
     return AiroResponsiveScaffold(
@@ -42,8 +41,15 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             ],
           ),
         ),
-        child: modelsAsync.when(
-          data: (models) {
+        child: snapshotAsync.when(
+          data: (snapshot) {
+            final models = snapshot.models;
+            final visibleQueue = activeDownloads.isEmpty
+                ? snapshot.downloadQueue
+                : (activeDownloads.values.toList()..sort(
+                    (left, right) => (left.queuePosition ?? 0x7fffffff)
+                        .compareTo(right.queuePosition ?? 0x7fffffff),
+                  ));
             if (models.isEmpty) {
               return const EmptyStateWidget(
                 icon: Icons.smart_toy_outlined,
@@ -51,40 +57,134 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
               );
             }
 
-            return ListView.builder(
+            return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: models.length,
-              itemBuilder: (context, index) {
-                final model = models[index];
-                final modelInfo = registry.getModel(model.id);
-                if (modelInfo == null) return const SizedBox.shrink();
+              children: [
+                _buildManagerSummary(context, snapshot),
+                if (visibleQueue.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildQueueSummary(context, visibleQueue),
+                ],
+                const SizedBox(height: 20),
+                for (final model in models) ...[
+                  Builder(
+                    builder: (context) {
+                      final modelInfo = registry.getModel(model.id);
+                      if (modelInfo == null) return const SizedBox.shrink();
 
-                final downloadProgress = activeDownloads[model.id];
-                final isDownloading = downloadProgress?.isActive ?? false;
-                final isActive = model.id == selectedModelId;
+                      final downloadProgress = activeDownloads[model.id];
+                      final isDownloading =
+                          downloadProgress?.isActive == true ||
+                          downloadProgress?.isFailed == true;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildGlassModelCard(
-                    context,
-                    ref,
-                    model: model,
-                    modelInfo: modelInfo,
-                    isActive: isActive,
-                    isDownloading: isDownloading,
-                    downloadProgress: downloadProgress,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildGlassModelCard(
+                          context,
+                          ref,
+                          model: model,
+                          modelInfo: modelInfo,
+                          isActive: model.isActive,
+                          isDownloading: isDownloading,
+                          downloadProgress: downloadProgress,
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(
             child: ErrorView(
               message: AiroVoice.errorGeneric.pickWith(detail: '$err'),
-              onRetry: () => ref.refresh(intelligentModelsListProvider),
+              onRetry: () =>
+                  ref.refresh(intelligentModelManagerSnapshotProvider),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManagerSummary(
+    BuildContext context,
+    ModelManagerSnapshot snapshot,
+  ) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 24,
+          runSpacing: 12,
+          children: [
+            _buildSummaryMetric(
+              context,
+              Icons.inventory_2_outlined,
+              'Installed',
+              '${snapshot.installedModels.length}',
+            ),
+            _buildSummaryMetric(
+              context,
+              Icons.storage_outlined,
+              'Model storage',
+              _formatBytes(snapshot.storageUsedBytes),
+            ),
+            _buildSummaryMetric(
+              context,
+              Icons.recommend_outlined,
+              'Recommended',
+              '${snapshot.recommendedModels.length}',
+            ),
+            Text(
+              'Downloads continue in the background and restore after restart.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryMetric(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Text('$label: $value'),
+      ],
+    );
+  }
+
+  Widget _buildQueueSummary(
+    BuildContext context,
+    List<ModelDownloadProgress> queue,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Download queue',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            for (final item in queue)
+              Text(
+                '${item.queuePosition == null ? '•' : '#${item.queuePosition! + 1}'} '
+                '${item.modelId} — ${item.statusDisplay}',
+              ),
+          ],
         ),
       ),
     );
@@ -146,16 +246,54 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                model.name,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Text(
+                                  model.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               _buildVersionBadge(context, model.version),
                             ],
                           ),
+                          if (model.isRecommended ||
+                              model.updateState !=
+                                  ModelUpdateState.notInstalled) ...[
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              children: [
+                                if (model.isRecommended)
+                                  const Chip(
+                                    label: Text('Recommended'),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                if (model.hasUpdate)
+                                  const Chip(
+                                    label: Text('Update available'),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                if (model.isResident)
+                                  const Chip(
+                                    avatar: Icon(Icons.memory, size: 16),
+                                    label: Text('Warm'),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                if (model.updateState ==
+                                    ModelUpdateState.unknown)
+                                  const Tooltip(
+                                    message:
+                                        'Installed before version receipts were available',
+                                    child: Chip(
+                                      label: Text('Version unknown'),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Text(
                             modelInfo.author != null
@@ -170,19 +308,26 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (isActive)
-                      _buildActiveBadge(context)
-                    else if (model.isDownloaded)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        color: theme.colorScheme.error,
-                        tooltip: 'Delete Model',
-                        onPressed: () => _showDeleteConfirmation(
-                          context,
-                          ref,
-                          model,
-                          modelInfo,
-                        ),
+                    if (model.isDownloaded)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isActive) ...[
+                            _buildActiveBadge(context),
+                            const SizedBox(width: 4),
+                          ],
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            color: theme.colorScheme.error,
+                            tooltip: 'Delete Model',
+                            onPressed: () => _showDeleteConfirmation(
+                              context,
+                              ref,
+                              model,
+                              modelInfo,
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),
@@ -378,25 +523,49 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${progress.speedDisplay} • ETA: ${progress.etaDisplay}',
+              '${progress.speedDisplay} • ETA: '
+              '${progress.etaDisplay ?? 'calculating'}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            TextButton.icon(
-              onPressed: () {
-                ref
-                    .read(activeDownloadsProvider.notifier)
-                    .cancelDownload(model.id);
-              },
-              icon: const Icon(Icons.cancel_outlined, size: 16),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(50, 30),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
+            Wrap(
+              spacing: 4,
+              children: [
+                if (progress.canPause)
+                  IconButton(
+                    tooltip: 'Pause',
+                    onPressed: () => ref
+                        .read(activeDownloadsProvider.notifier)
+                        .pauseDownload(model.id),
+                    icon: const Icon(Icons.pause),
+                  ),
+                if (progress.canResume)
+                  IconButton(
+                    tooltip: 'Resume',
+                    onPressed: () => ref
+                        .read(activeDownloadsProvider.notifier)
+                        .resumeDownload(model.id),
+                    icon: const Icon(Icons.play_arrow),
+                  ),
+                if (progress.canRetry)
+                  IconButton(
+                    tooltip: 'Retry',
+                    onPressed: () => ref
+                        .read(activeDownloadsProvider.notifier)
+                        .retryDownload(model.id),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                if (progress.canCancel)
+                  IconButton(
+                    tooltip: 'Cancel',
+                    color: theme.colorScheme.error,
+                    onPressed: () => ref
+                        .read(activeDownloadsProvider.notifier)
+                        .cancelDownload(model.id),
+                    icon: const Icon(Icons.cancel_outlined),
+                  ),
+              ],
             ),
           ],
         ),
@@ -412,17 +581,57 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     bool isActive,
   ) {
     if (model.isDownloaded) {
-      if (isActive) {
-        return const SizedBox.shrink();
-      }
-
-      return AppButton(
-        label: 'Activate Model',
-        icon: Icons.bolt,
-        isExpanded: true,
-        onPressed: () async {
-          await activateOfflineModel(ref, modelInfo);
-        },
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (!isActive)
+                FilledButton.icon(
+                  onPressed: () async {
+                    await ref
+                        .read(intelligentModelManagerProvider)
+                        .activateModel(model.id);
+                    ref.invalidate(intelligentModelManagerSnapshotProvider);
+                  },
+                  icon: const Icon(Icons.bolt),
+                  label: const Text('Activate'),
+                ),
+              OutlinedButton.icon(
+                onPressed: () => _warmModel(context, ref, model.id),
+                icon: const Icon(Icons.memory),
+                label: const Text('Warm now'),
+              ),
+              if (model.hasUpdate)
+                OutlinedButton.icon(
+                  onPressed: () => ref
+                      .read(activeDownloadsProvider.notifier)
+                      .startDownload(modelInfo),
+                  icon: const Icon(Icons.system_update_alt),
+                  label: const Text('Update'),
+                ),
+            ],
+          ),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Preload when frequently used'),
+              subtitle: const Text(
+                'Loads at the next runtime warm-up when memory permits.',
+              ),
+              value: model.preloadFrequentlyUsed,
+              onChanged: (enabled) async {
+                await ref
+                    .read(intelligentModelManagerProvider)
+                    .setPreloadFrequentlyUsed(model.id, enabled);
+                ref.invalidate(intelligentModelManagerSnapshotProvider);
+              },
+            ),
+          ),
+        ],
       );
     }
 
@@ -434,6 +643,28 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
         ref.read(activeDownloadsProvider.notifier).startDownload(modelInfo);
       },
     );
+  }
+
+  Future<void> _warmModel(
+    BuildContext context,
+    WidgetRef ref,
+    String modelId,
+  ) async {
+    final result = await ref
+        .read(intelligentModelManagerProvider)
+        .warmModel(modelId);
+    if (!context.mounted) return;
+    final message = switch (result.status) {
+      ModelWarmupStatus.warmed => 'Model warmed and ready.',
+      ModelWarmupStatus.alreadyResident => 'Model is already warm.',
+      ModelWarmupStatus.unavailable =>
+        'Model could not be warmed: ${result.detail ?? 'runtime unavailable'}.',
+      ModelWarmupStatus.failed =>
+        'Model warm-up failed: ${result.detail ?? 'unknown error'}.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showDeleteConfirmation(
@@ -465,10 +696,8 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
               await ref
                   .read(intelligentModelManagerProvider)
                   .deleteModel(model.id);
-              // Clear selections if deleted model was active
-              await clearOfflineModelSelections(ref, modelInfo);
               // Refresh model list
-              ref.invalidate(intelligentModelsListProvider);
+              ref.invalidate(intelligentModelManagerSnapshotProvider);
             },
             child: const Text('Delete'),
           ),

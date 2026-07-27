@@ -25,6 +25,8 @@ class AiroRailCard extends StatelessWidget {
     this.thumbnailHeight = 104,
     this.onTap,
     this.onLongPress,
+    this.onFocus,
+    this.onUnfocus,
     this.autofocus = false,
   });
 
@@ -45,6 +47,8 @@ class AiroRailCard extends StatelessWidget {
   final double thumbnailHeight;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onFocus;
+  final VoidCallback? onUnfocus;
   final bool autofocus;
 
   @override
@@ -57,6 +61,9 @@ class AiroRailCard extends StatelessWidget {
 
     return TvFocusable(
       onSelect: onTap,
+      onSecondaryAction: onLongPress,
+      onFocus: onFocus,
+      onUnfocus: onUnfocus,
       autofocus: autofocus,
       borderRadius: 12,
       focusColor: focusColor,

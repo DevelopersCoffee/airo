@@ -14,6 +14,7 @@ class LocalRuntimePreloaderService {
     Future<AssistantModelLibraryState> Function()? loadAssistantModelLibrary,
     String? Function()? selectedModelId,
     bool Function()? isGenerationActive,
+    ModelPreloadPreferences? preloadPreferences,
   }) {
     final resolvedResidencyManager =
         residencyManager ??
@@ -31,6 +32,8 @@ class LocalRuntimePreloaderService {
       loadAssistantModelLibrary:
           loadAssistantModelLibrary ?? _defaultAssistantModelLibraryState,
       selectedModelId: selectedModelId ?? (() => null),
+      preloadPreferences:
+          preloadPreferences ?? const EmptyModelPreloadPreferences(),
     );
   }
 
@@ -41,6 +44,7 @@ class LocalRuntimePreloaderService {
     required this._preloader,
     required this._loadAssistantModelLibrary,
     required this._selectedModelId,
+    required this._preloadPreferences,
   });
 
   final GeminiNanoService _geminiNano;
@@ -50,6 +54,7 @@ class LocalRuntimePreloaderService {
   final Future<AssistantModelLibraryState> Function()
   _loadAssistantModelLibrary;
   final String? Function() _selectedModelId;
+  final ModelPreloadPreferences _preloadPreferences;
 
   void abortPreload() {
     _preloader.abortPreload();
@@ -61,6 +66,13 @@ class LocalRuntimePreloaderService {
     return _preloader.preloadSelectedModels(adapters: adapters);
   }
 
+  /// Explicitly warms one installed package through the shared residency gate.
+  Future<ModelPreloadReport> warmModel(OfflineModelInfo model) {
+    return _preloader.preloadSelectedModels(
+      adapters: [_LiteRtPackageWarmupAdapter(_liteRtLm, model)],
+    );
+  }
+
   Future<List<ModelWarmupAdapter>> _buildAdapters(
     AssistantModelLibraryState library,
   ) async {
@@ -69,14 +81,23 @@ class LocalRuntimePreloaderService {
         ? null
         : library.candidateById(selectedModelId);
     final selectedPackage = selectedCandidate?.package;
+    final frequentIds = await _preloadPreferences.loadModelIds();
+    final frequentPackages = ModelCatalog.bundledModels
+        .where(
+          (model) =>
+              frequentIds.contains(model.id) && model.id != selectedPackage?.id,
+        )
+        .toList(growable: false);
 
     return [
       _GeminiNanoWarmupAdapter(_geminiNano),
       if (selectedPackage != null &&
           selectedCandidate?.id != geminiNanoAssistantModelId)
         _LiteRtPackageWarmupAdapter(_liteRtLm, selectedPackage)
-      else
+      else if (frequentPackages.isEmpty)
         _LiteRtInstalledWarmupAdapter(_liteRtLm),
+      for (final model in frequentPackages)
+        _LiteRtPackageWarmupAdapter(_liteRtLm, model),
       NoOpWarmupAdapter(
         const ModelResidentSpec(
           id: 'assistant-tts-hook',
@@ -184,9 +205,7 @@ class _LiteRtPackageWarmupAdapter implements ModelWarmupAdapter {
   @override
   ModelResidentSpec get residentSpec => ModelResidentSpec(
     id: _package.id,
-    residentType: _package.supportsVision
-        ? ResidentRuntimeType.image
-        : ResidentRuntimeType.text,
+    residentType: ResidentRuntimeType.text,
     estimatedMemoryBytes:
         _package.recommendedMemoryBytes ??
         _package.minMemoryBytes ??

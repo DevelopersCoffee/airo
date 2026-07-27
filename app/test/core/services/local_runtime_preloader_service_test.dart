@@ -56,6 +56,34 @@ void main() {
       ]),
     );
   });
+
+  test('adds user-selected frequent models to startup warm-up', () async {
+    final preloader = _RecordingPreloader();
+    final frequentModel = ModelCatalog.bundledModels.first;
+    final service = LocalRuntimePreloaderService(
+      preloader: preloader,
+      preloadPreferences: _FixedPreloadPreferences({frequentModel.id}),
+    );
+
+    await service.preloadSelectedModels();
+
+    expect(
+      preloader.lastAdapters.map((adapter) => adapter.residentSpec.id),
+      contains(frequentModel.id),
+    );
+  });
+}
+
+class _FixedPreloadPreferences implements ModelPreloadPreferences {
+  _FixedPreloadPreferences(this.ids);
+
+  final Set<String> ids;
+
+  @override
+  Future<Set<String>> loadModelIds() async => ids;
+
+  @override
+  Future<void> setEnabled(String modelId, bool enabled) async {}
 }
 
 class _RecordingPreloader extends ModelPreloader {

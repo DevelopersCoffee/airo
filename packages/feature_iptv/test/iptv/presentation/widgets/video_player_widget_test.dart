@@ -139,8 +139,19 @@ void main() {
       expect(find.text('Mini guide'), findsOneWidget);
       expect(find.text('Stadium Sports'), findsWidgets);
       expect(service.currentState.currentChannel?.id, 'news-1');
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'quick browse City News Live',
+      );
 
-      await tester.tap(find.text('Stadium Sports').first);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'quick browse Stadium Sports',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
       expect(service.currentState.currentChannel?.id, 'sports-1');
@@ -827,9 +838,12 @@ void main() {
       await tester.tap(find.widgetWithText(ListTile, '720p'));
       await tester.pumpAndSettle();
       expect(service.currentState.selectedQuality, VideoQuality.high);
+      expect(find.text('Player actions'), findsOneWidget);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player action Quality',
+      );
 
-      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
-      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('iptv-player-pip-menu-action')),
       );

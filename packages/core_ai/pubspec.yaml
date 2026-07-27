@@ -17,6 +17,8 @@ dependencies:
   path: 1.9.1
   path_provider: ^2.1.6
   crypto: ^3.0.3
+  platform_downloads:
+    path: ../platform_downloads
 
 dev_dependencies:
   flutter_test:
