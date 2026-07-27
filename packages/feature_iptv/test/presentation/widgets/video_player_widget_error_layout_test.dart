@@ -25,7 +25,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     const mapper = AiroPlaybackDiagnosticMapper();
     final diagnostic = mapper.map(
-      const AiroPlaybackFailureEvent(httpStatusCode: 403),
+      const AiroPlaybackFailureEvent(
+        overrideCode: AiroPlaybackDiagnosticCode.providerAuthDenied,
+      ),
     );
     const currentChannel = IPTVChannel(
       id: 'news-1',
@@ -201,7 +203,9 @@ void main() {
       addTearDown(service.dispose);
       const mapper = AiroPlaybackDiagnosticMapper();
       final diagnostic = mapper.map(
-        const AiroPlaybackFailureEvent(httpStatusCode: 403),
+        const AiroPlaybackFailureEvent(
+          overrideCode: AiroPlaybackDiagnosticCode.providerAuthDenied,
+        ),
       );
       const channel = IPTVChannel(
         id: 'news-1',
