@@ -1216,22 +1216,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 24),
-              // Retry button with better styling
-              ElevatedButton.icon(
-                onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey.shade700,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+              // TvFocusable-wrapped so a remote-only viewer can reach it --
+              // the bare ElevatedButton this replaced was the same class of
+              // bug already fixed for the diagnostic error screen below.
+              _RecoveryActionButton(
+                key: const ValueKey('iptv-player-error-retry'),
+                icon: Icons.refresh_rounded,
+                label: 'Try Again',
+                autofocus: true,
+                onSelect: () => ref.read(iptvStreamingServiceProvider).retry(),
               ),
               const SizedBox(height: 12),
               // Hint text
@@ -1967,27 +1960,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 subtitle: Text('Secondary controls for this stream'),
               ),
               if (widget.showPictureInPicture)
-                ListTile(
-                  key: const ValueKey('iptv-player-pip-menu-action'),
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-pip-menu-action'),
                   leading: const Icon(Icons.picture_in_picture_alt_outlined),
                   title: const Text('Picture-in-picture'),
-                  onTap: () => unawaited(afterSheet(_requestPictureInPicture)),
+                  onSelect: () =>
+                      unawaited(afterSheet(_requestPictureInPicture)),
                 ),
               if (hasQualityChoices)
-                ListTile(
-                  key: const ValueKey('iptv-player-quality-menu-action'),
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-quality-menu-action'),
                   leading: const Icon(Icons.hd_outlined),
                   title: const Text('Quality'),
                   subtitle: Text(state.currentQuality.label),
-                  onTap: () => unawaited(
+                  onSelect: () => unawaited(
                     afterSheet(
                       () => _showQualitySelector(context, service, state),
                     ),
                   ),
                 ),
               if (hasSubtitles)
-                ListTile(
-                  key: const ValueKey('iptv-player-subtitle-menu-action'),
+                _TvSheetListTile(
+                  itemKey: const ValueKey('iptv-player-subtitle-menu-action'),
                   leading: Icon(
                     state.selectedTrackIds.containsKey(
                           AiroPlaybackTrackKind.subtitle,
@@ -1996,25 +1990,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         : Icons.subtitles_off_outlined,
                   ),
                   title: const Text('Subtitles'),
-                  onTap: () => unawaited(
+                  onSelect: () => unawaited(
                     afterSheet(
                       () => _showTrackSelector(context, service, state),
                     ),
                   ),
                 ),
-              ListTile(
-                key: const ValueKey('iptv-player-audio-only-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-audio-only-menu-action'),
+                // Always rendered regardless of PiP/quality/subtitles
+                // availability, so it's the one deterministic focus target
+                // this sheet can always autofocus.
+                autofocus: true,
                 leading: Icon(
                   _isAudioOnly ? Icons.hearing : Icons.hearing_disabled,
                 ),
                 title: Text(_isAudioOnly ? 'Exit audio-only' : 'Listen only'),
-                onTap: () => unawaited(afterSheet(_toggleAudioOnly)),
+                onSelect: () => unawaited(afterSheet(_toggleAudioOnly)),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-aspect-ratio-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-aspect-ratio-menu-action'),
                 leading: const Icon(Icons.aspect_ratio),
                 title: const Text('Aspect ratio'),
-                onTap: () => unawaited(
+                onSelect: () => unawaited(
                   afterSheet(
                     () => ref
                         .read(videoAspectRatioProvider.notifier)
@@ -2022,23 +2020,23 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   ),
                 ),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-cinema-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-cinema-menu-action'),
                 leading: Icon(_isCinemaMode ? Icons.wb_sunny : Icons.theaters),
                 title: Text(_isCinemaMode ? 'Standard mode' : 'Cinema mode'),
-                onTap: () => unawaited(
+                onSelect: () => unawaited(
                   afterSheet(
                     () => setState(() => _isCinemaMode = !_isCinemaMode),
                   ),
                 ),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-fullscreen-menu-action'),
+              _TvSheetListTile(
+                itemKey: const ValueKey('iptv-player-fullscreen-menu-action'),
                 leading: Icon(
                   _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                 ),
                 title: Text(_isFullscreen ? 'Exit fullscreen' : 'Fullscreen'),
-                onTap: () => unawaited(afterSheet(_toggleFullscreen)),
+                onSelect: () => unawaited(afterSheet(_toggleFullscreen)),
               ),
             ],
           ),
@@ -2150,33 +2148,64 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     showModalBottomSheet<void>(
       context: context,
       builder: (context) {
+        final noneSelected = state.selectedTrackIds[kind] == null;
+        // Autofocus the selected row; if nothing is selected and there's
+        // no "Off" row to fall back to, autofocus the first track so the
+        // sheet is never opened with nothing D-pad-focused.
+        final autofocusOff = offLabel != null && noneSelected;
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
             children: [
               if (offLabel != null)
-                ListTile(
-                  leading: offIcon == null ? null : Icon(offIcon),
-                  title: Text(offLabel),
-                  trailing: state.selectedTrackIds[kind] == null
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
+                TvFocusable(
+                  autofocus: autofocusOff,
+                  semanticLabel: offLabel,
+                  onSelect: () {
                     service.clearTrackSelection(kind);
                     Navigator.of(context).pop();
                   },
+                  child: ListTile(
+                    leading: offIcon == null ? null : Icon(offIcon),
+                    title: Text(offLabel),
+                    trailing: noneSelected ? const Icon(Icons.check) : null,
+                    onTap: () {
+                      service.clearTrackSelection(kind);
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 ),
-              for (final track in tracks)
-                ListTile(
-                  title: Text(track.label),
-                  subtitle: track.isExternal ? const Text('External') : null,
-                  trailing: state.selectedTrackIds[track.kind] == track.id
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    service.selectTrack(kind: track.kind, trackId: track.id);
+              for (var i = 0; i < tracks.length; i++)
+                TvFocusable(
+                  autofocus:
+                      !autofocusOff &&
+                      (state.selectedTrackIds[tracks[i].kind] == tracks[i].id ||
+                          (noneSelected && offLabel == null && i == 0)),
+                  semanticLabel: tracks[i].label,
+                  onSelect: () {
+                    service.selectTrack(
+                      kind: tracks[i].kind,
+                      trackId: tracks[i].id,
+                    );
                     Navigator.of(context).pop();
                   },
+                  child: ListTile(
+                    title: Text(tracks[i].label),
+                    subtitle: tracks[i].isExternal
+                        ? const Text('External')
+                        : null,
+                    trailing:
+                        state.selectedTrackIds[tracks[i].kind] == tracks[i].id
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () {
+                      service.selectTrack(
+                        kind: tracks[i].kind,
+                        trackId: tracks[i].id,
+                      );
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 ),
             ],
           ),
@@ -2199,12 +2228,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             shrinkWrap: true,
             children: [
               for (final quality in options)
-                ListTile(
+                _TvSheetListTile(
                   title: Text(quality.label),
+                  autofocus: state.selectedQuality == quality,
                   trailing: state.selectedQuality == quality
                       ? const Icon(Icons.check)
                       : null,
-                  onTap: () {
+                  onSelect: () {
                     service.setQuality(quality);
                     Navigator.of(context).pop();
                   },
@@ -2919,6 +2949,46 @@ class _ContextMenuItem extends StatelessWidget {
 /// A D-pad-reachable recovery action for [_buildDiagnosticError] --
 /// TvFocusable-wrapped so remote-only viewers (no touch input) can actually
 /// reach it, unlike a bare ElevatedButton.
+/// A D-pad-reachable row for the player-actions / track-selector bottom
+/// sheets -- wraps a [ListTile] in [TvFocusable] so a remote-only viewer
+/// can actually reach it. Bare [ListTile]s in these sheets were previously
+/// unreachable by D-pad despite the buttons that open them being focusable.
+class _TvSheetListTile extends StatelessWidget {
+  const _TvSheetListTile({
+    this.itemKey,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.onSelect,
+    this.autofocus = false,
+  });
+
+  final Key? itemKey;
+  final Widget? leading;
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final VoidCallback onSelect;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      autofocus: autofocus,
+      onSelect: onSelect,
+      child: ListTile(
+        key: itemKey,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: trailing,
+        onTap: onSelect,
+      ),
+    );
+  }
+}
+
 class _RecoveryActionButton extends StatelessWidget {
   const _RecoveryActionButton({
     super.key,

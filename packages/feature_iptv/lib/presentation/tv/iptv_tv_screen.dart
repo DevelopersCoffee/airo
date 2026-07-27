@@ -21,6 +21,7 @@ import '../tv_ux/iptv_resume_gate.dart';
 import '../widgets/channel_initials.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
+import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 
 enum _TvChannelViewMode { grid, list }
@@ -65,6 +66,15 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
 
   Future<void> _showPlaylistSheet() async {
     await showPlaylistSourceSheet(context, ref);
+  }
+
+  Future<void> _showQrPairingDialog() async {
+    final submittedUrl = await showDialog<String>(
+      context: context,
+      builder: (_) => const TvPlaylistQrDialog(),
+    );
+    if (submittedUrl == null || !mounted) return;
+    await showPlaylistSourceSheet(context, ref, initialUrl: submittedUrl);
   }
 
   Future<void> _showPlaylistGuideDialog() async {
@@ -129,6 +139,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
                   child: _TvEmptyPlaylistState(
                     onPlaylistSourceTap: _showPlaylistSheet,
                     onPlaylistHelpTap: _showPlaylistGuideDialog,
+                    onScanWithPhoneTap: _showQrPairingDialog,
                   ),
                 );
               }
@@ -2289,10 +2300,17 @@ class _TvEmptyPlaylistState extends StatelessWidget {
   const _TvEmptyPlaylistState({
     required this.onPlaylistSourceTap,
     required this.onPlaylistHelpTap,
+    required this.onScanWithPhoneTap,
   });
 
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onPlaylistHelpTap;
+
+  /// issues/04-recovery-states.md's "phone QR" onboarding. USB is
+  /// intentionally absent from this screen: `file_picker` is a hard no-op
+  /// stub on TV builds (packages/stubs/file_picker_stub), so a USB button
+  /// here would be exactly the "disabled focus bait" that issue forbids.
+  final VoidCallback onScanWithPhoneTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2344,6 +2362,11 @@ class _TvEmptyPlaylistState extends StatelessWidget {
                     label: 'Add Playlist URL',
                     onSelect: onPlaylistSourceTap,
                     autofocus: true,
+                  ),
+                  _TvActionButton(
+                    icon: Icons.qr_code_2,
+                    label: 'Scan with phone',
+                    onSelect: onScanWithPhoneTap,
                   ),
                   _TvActionButton(
                     icon: Icons.help_outline,

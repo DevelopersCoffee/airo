@@ -82,6 +82,7 @@ class MainActivity : AudioServiceFragmentActivity() {
                         val telephony = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
                     }
+                    "openWifiSettings" -> openWifiSettings(result)
                     else -> result.notImplemented()
                 }
             }
@@ -348,6 +349,15 @@ class MainActivity : AudioServiceFragmentActivity() {
             "can_request" to !granted,
             "permission" to Manifest.permission.READ_CALENDAR
         ))
+    }
+
+    private fun openWifiSettings(result: MethodChannel.Result) {
+        try {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+            result.success(mapOf("opened" to true))
+        } catch (error: android.content.ActivityNotFoundException) {
+            result.success(mapOf("opened" to false))
+        }
     }
 
     private fun openCalendarPermissionSettings(result: MethodChannel.Result) {

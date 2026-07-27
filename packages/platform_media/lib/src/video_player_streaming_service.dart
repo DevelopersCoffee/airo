@@ -462,6 +462,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   void _startBufferMonitoring() {
     _bufferMonitor?.cancel();
+    _bufferingSince = null;
     _bufferMonitor = Timer.periodic(const Duration(seconds: 1), (_) {
       final engineState = _engine.currentState;
       final position = engineState.position;
@@ -481,16 +482,83 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
               .clamp(0, 100)
               .toInt();
 
+      final isBuffering =
+          engineState.phase == AiroPlaybackEnginePhase.buffering;
+
       _updateState(
         _state.copyWith(
           bufferStatus: BufferStatus(
             bufferedAhead: bufferedAhead,
             bufferHealth: bufferHealth,
-            isBuffering: engineState.phase == AiroPlaybackEnginePhase.buffering,
+            isBuffering: isBuffering,
           ),
         ),
       );
+
+      _trackStall(isBuffering);
     });
+  }
+
+  /// Reports sustained buffering to the already-built, already-wired-for-
+  /// open-time-errors `AiroMultiSourceFailoverController` -- the stall
+  /// half of its trigger surface (`recordBuffering`) was previously never
+  /// called. A transient buffering blip that clears on its own never
+  /// reaches the controller at all; only a continuous stall does.
+  void _trackStall(bool isBuffering) {
+    if (!isBuffering) {
+      _bufferingSince = null;
+      return;
+    }
+    final since = _bufferingSince;
+    if (since == null) {
+      _bufferingSince = DateTime.now();
+      return;
+    }
+    if (_isHandlingStall) return;
+
+    final controller = _failoverController;
+    final currentSourceId = controller?.state.currentSourceId;
+    final channel = _state.currentChannel;
+    if (controller == null || currentSourceId == null || channel == null) {
+      return;
+    }
+
+    final decision = controller.recordBuffering(
+      sourceId: currentSourceId,
+      duration: DateTime.now().difference(since),
+    );
+    unawaited(_handleStallDecision(decision, channel));
+  }
+
+  Future<void> _handleStallDecision(
+    AiroFailoverDecision decision,
+    IPTVChannel channel,
+  ) async {
+    switch (decision.code) {
+      case AiroFailoverDecisionCode.ignored:
+        return;
+      case AiroFailoverDecisionCode.switched:
+        _isHandlingStall = true;
+        _updateState(
+          _state.copyWith(failover: _failoverProgressFor(decision.state)),
+        );
+        try {
+          await _playChannel(
+            channel,
+            preserveFailover: true,
+            resetRetryCount: false,
+          );
+        } finally {
+          _isHandlingStall = false;
+        }
+      case AiroFailoverDecisionCode.exhausted:
+        _isHandlingStall = true;
+        try {
+          await _handleError('Playback stalled on every available source.');
+        } finally {
+          _isHandlingStall = false;
+        }
+    }
   }
 
   void _startMetricsCollection() {
@@ -547,6 +615,16 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   /// Flag to prevent duplicate error handling
   bool _isHandlingError = false;
+
+  /// When the current buffering episode started, or `null` when not
+  /// currently buffering. Reset whenever `_startBufferMonitoring` (re)starts
+  /// so a fresh source (post-failover, post-retry) begins a fresh episode.
+  DateTime? _bufferingSince;
+
+  /// Prevents the 1s buffer-monitor tick from calling `recordBuffering`
+  /// again while a stall-triggered source switch/error is already in
+  /// flight -- mirrors [_isHandlingError]'s reentrancy guard.
+  bool _isHandlingStall = false;
 
   /// Maps a failure to its structured diagnostic. Shared by the playChannel
   /// failover loop (which needs `retryEligible` to decide whether to
@@ -753,6 +831,18 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> retry() async {
     final channel = _state.currentChannel;
     if (channel == null) return;
+    // Retry stays fully manual/user-triggered (see _handleError's comment
+    // on that deliberate choice) -- this only rate-limits how fast a tap
+    // can resubmit, using the same StreamingConfig.retryDelay that was
+    // previously unread anywhere. A mid-flight retry (playbackState still
+    // loading) or one within retryDelay of the last failure is a no-op,
+    // not a queued/duplicate attempt.
+    if (_state.playbackState == PlaybackState.loading) return;
+    final lastError = _state.lastError;
+    if (lastError != null &&
+        DateTime.now().difference(lastError) < _config.retryDelay) {
+      return;
+    }
     _isHandlingError = false;
 
     // Fail over before resubmitting: if the failed channel has an untried
