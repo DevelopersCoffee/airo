@@ -187,8 +187,7 @@ jobs:
 
   # ============================================
   # App Tests with Coverage
-  # Runs on every push to main, and on PRs targeting main/v2 so
-  # SonarCloud can compute coverage on new code for the quality gate.
+  # Runs on every push to main, and on PRs targeting main/v2.
   # ============================================
   test-app:
     runs-on: ubuntu-latest
@@ -247,14 +246,6 @@ jobs:
           cd app
           flutter test --coverage --reporter=compact
 
-      - name: Convert coverage to SonarQube generic format
-        if: always()
-        run: |
-          python3 scripts/lcov_to_sonar_generic_coverage.py \
-            app/coverage/lcov.info \
-            --prefix "app/" \
-            --out app/coverage/sonar-generic-coverage.xml
-
       - name: Upload coverage
         if: always()
         uses: codecov/codecov-action@v7
@@ -262,17 +253,6 @@ jobs:
           files: ./app/coverage/lcov.info
           flags: flutter
           name: flutter-coverage
-
-      - name: Upload coverage artifact for SonarCloud
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: lcov-coverage
-          path: |
-            app/coverage/lcov.info
-            app/coverage/sonar-generic-coverage.xml
-          retention-days: 1
-          if-no-files-found: warn
 
   # ============================================
   # Build Android - Multi-Platform Matrix
@@ -746,7 +726,7 @@ jobs:
           git add .github/apk-size-baselines.tsv
           git commit -m "ci: update APK size baselines"
 
-          # main is a protected branch requiring the sonarqube status check,
+          # main is a protected branch requiring status checks,
           # which a direct push here never satisfies. Don't fail the run for
           # this best-effort housekeeping step; log it and let a human land
           # the baseline update via PR instead.
@@ -879,126 +859,7 @@ jobs:
           flutter pub run custom_lint
         continue-on-error: true
 
-  # ============================================
-  # SonarCloud CI-based Analysis
-  # Runs the scanner directly instead of relying on SonarCloud's
-  # automatic analysis, so lcov coverage from test-app is ingested
-  # and quality-gate coverage conditions become meaningful.
-  # Requires: repo secret SONAR_TOKEN, and Automatic Analysis turned
-  # off in SonarCloud project Administration > Analysis Method.
-  #
-  # Runs whenever test-app actually ran, whether or not its Flutter
-  # tests all passed -- a test regression should fail test-app and
-  # block on that signal separately, not silently stop static
-  # analysis and coverage reporting from running at all.
-  # ============================================
-  sonarcloud-scan:
-    runs-on: ubuntu-latest
-    needs: [test-app]
-    if: >
-      always() &&
-      (needs.test-app.result == 'success' || needs.test-app.result == 'failure') &&
-      (github.event_name == 'push' ||
-       (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')))
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
-      - name: Download coverage artifact
-        continue-on-error: true
-        uses: actions/download-artifact@v6
-        with:
-          name: lcov-coverage
-          path: app/coverage
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  sonarqube:
-    runs-on: ubuntu-latest
-    needs: [analyze, test-core, sonarcloud-scan]
-    if: >
-      always() &&
-      github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')
-    permissions:
-      contents: read
-      checks: read
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Comment PR on SonarCloud Quality Gate failure
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const checkName = 'SonarCloud Code Analysis';
-            const marker = '<!-- airo-sonarqube-quality-gate-failure -->';
-            const headSha = context.payload.pull_request.head.sha;
-
-            let sonarCheck;
-            for (let attempt = 0; attempt < 40; attempt += 1) {
-              const { data } = await github.rest.checks.listForRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: headSha,
-                per_page: 100,
-              });
-              sonarCheck = data.check_runs.find((check) => check.name === checkName);
-
-              if (sonarCheck?.status === 'completed') {
-                break;
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, 15000));
-            }
-
-            if (!sonarCheck) {
-              core.setFailed(`${checkName} was not found for ${headSha}.`);
-              return;
-            }
-
-            if (sonarCheck.conclusion === 'success') {
-              core.info(`${checkName} passed.`);
-              return;
-            }
-
-            const body = [
-              marker,
-              `## SonarCloud Quality Gate ${sonarCheck.conclusion ?? 'failed'}`,
-              '',
-              'The SonarCloud quality gate did not pass for this PR.',
-              '',
-              `[View SonarCloud details](${sonarCheck.details_url})`,
-            ].join('\n');
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const existing = comments.data.find((comment) =>
-              comment.user.type === 'Bot' && comment.body.includes(marker)
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
-            core.setFailed(`${checkName} concluded with ${sonarCheck.conclusion}.`);
 
   snyk:
     runs-on: ubuntu-latest
