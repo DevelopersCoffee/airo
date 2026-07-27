@@ -79,7 +79,20 @@ operations, or the trust boundary.
 
 ## Runtime checklist
 
-Applied by chief-architect to every capability and every runtime change.
+Applied by the **Runtime Architect** to every capability and every runtime
+change. This is a distinct council role from chief-architect and
+chief-security-officer, added because neither was asking its questions:
+`DriftMeetingRepository` passed both and would have been caught here on the
+first line.
+
+Its six questions, in order:
+
+1. Does this introduce a second source of truth?
+2. Does this bypass the operation log?
+3. Does this bypass the Vault?
+4. Does this bypass projections?
+5. Does this create feature-owned state?
+6. Does this violate I1–I6?
 
 ### The question that governs everything
 - [ ] **Can this be implemented entirely by emitting operations and consuming projections?** If no: either the runtime is missing something generic that should be added once for everyone, or the feature is bypassing the runtime. There is no third branch and no "this feature is special".
@@ -105,6 +118,16 @@ Applied by chief-architect to every capability and every runtime change.
 - [ ] Every device running the same migration chain reaches the same state
 - [ ] Merge strategy does not change within a compatible version
 - [ ] Schema fingerprint changes when and only when the schema changes
+
+### Invariants are testable (I5)
+- [ ] Every invariant this change claims has a **failing form**: a compile error or a test that fails when it is violated. Documentation alone is not evidence.
+- [ ] The test was written before the claim was recorded as applied — three review cycles found properties marked done that were absent from the code
+
+### Canonicalization (I6)
+- [ ] Externally-supplied values pass through a canonicalizer before anything else sees them; nothing below that layer receives raw input
+- [ ] Canonicalization happens **exactly once**, not defensively re-applied at each layer — re-canonicalizing hides the layer that forgot
+- [ ] No function accepts a raw and a canonical value at the same type; the type distinguishes them or the raw form is unreachable past the boundary
+- [ ] Applies to identifiers and derivation inputs, not just user text: entity, context, capability and package IDs, paths, URLs
 
 ### Ontology discipline
 - [ ] Capability entities extend the core ontology, never an archetype directly
@@ -141,6 +164,12 @@ Applied by rust-architect to any change under `rust/`.
 - [ ] Merge is commutative, associative, and idempotent
 - [ ] Replay of any operation permutation converges
 - [ ] Revocation is monotonic — applying it twice equals applying it once
+
+### Types over comments
+- [ ] Where a comment asserts a property, ask whether a type could hold it instead — `RevocationSubject` existed while the API still took `&str`, so the invariant never became enforceable
+- [ ] Impossible states are unrepresentable, not merely untested: no route to a guarded value via `Debug`, `Clone`, serde, a public field, or a pattern match
+- [ ] A convenience overload that accepts the looser type re-opens what the newtype closed
+- [ ] APIs cannot be called in the wrong order — prefer consuming methods and typestate over documented sequencing
 
 ### `unsafe`
 - [ ] The crate itself contains no `unsafe`

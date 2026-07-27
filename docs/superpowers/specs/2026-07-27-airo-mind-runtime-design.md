@@ -687,6 +687,62 @@ Known violations at the time of writing: `DriftMeetingRepository`,
 `features/coins/`, `features/money/`, and the settings AI-storage dashboard.
 Migration is tracked on #1293.
 
+### I5 — An invariant is not complete until it can fail
+
+**An architectural invariant is not complete until there is a compile-time
+constraint or an automated test that fails when it is violated.**
+
+Documentation alone is not evidence. This is not a style preference — it is the
+conclusion of three consecutive review cycles on the Phase 1 Vault plan, each
+of which found a property *recorded as applied* that was absent from the code:
+the header AAD, the revocation subject rewrite, and the `ContentNotFound`
+variants that were declared and never constructed.
+
+| Invariant | What makes it complete |
+|---|---|
+| Header authenticated | Tamper test — modify the field, assert failure |
+| Canonical mnemonic | Normalization test — messy input derives the same seed |
+| Revocation | Replay test — a stale backup does not resurrect |
+| No feature persistence | Architecture CI (§11b) |
+| Runtime-only storage | Static analysis |
+
+The failing form comes **first**. An invariant added to a document without its
+test is an invariant that will be recorded as applied and will not be.
+
+### I6 — Canonicalize exactly once, at the boundary
+
+Every externally-supplied value passes through a canonicalizer before anything
+else sees it. Nothing below that layer ever receives raw input.
+
+```
+User / external input
+        ↓
+   Canonicalizer
+        ↓
+Canonical representation
+        ↓
+   Everything else
+```
+
+The mnemonic bug is the worked example: `seed_from_mnemonic` validated the
+words but handed the *raw string* to PBKDF2, so a pasted phrase with a trailing
+newline derived a different seed and surfaced as "wrong seed" while the user's
+mnemonic was correct.
+
+Applies to every identifier and every derivation input, not just mnemonics:
+
+| Value | Canonical form |
+|---|---|
+| Recovery mnemonic | NFKD, single-space-joined, trimmed |
+| Entity / context IDs | Slug-validated, case-fixed, no traversal sequences |
+| Capability / package IDs | Same, plus filesystem-safe on every OS |
+| Paths | Resolved, symlinks followed, confined to a granted root |
+| URLs | Scheme and host lowercased, normalized, percent-encoding settled |
+
+A function that accepts a raw value **and** a canonical one at the same type is
+a defect: the type must distinguish them, or the raw form must be unreachable
+past the boundary.
+
 ## 11b. Architecture compliance
 
 Invariants that only a reviewer can check are invariants that erode. Every
@@ -723,15 +779,24 @@ only catchable by a rebuild test, so `projection` modules must have one.
 surface:
 
 ```rust
-create_operation()
+emit_operation()
 attach_content()
 query_projection()
 instantiate_context()
-emit_event()
+replay()
+sync()
 ```
 
-Nothing else. No SQL. No filesystem. No encryption primitives. No sync. No key
-material.
+Nothing else. No SQL. No filesystem. No encryption primitives. No key material.
+
+`replay()` and `sync()` are on the list deliberately: they are the same
+operation stream at different scope, not two mechanisms. See §11d.
+
+When a capability needs something outside this surface, the **default
+assumption is that the runtime is missing a generic primitive** — not that the
+capability should reach around it. Adding it to the runtime serves every
+capability; adding it to the capability serves one and creates an exception
+that outlives whoever approved it.
 
 This is what makes I2 and I4 enforceable rather than aspirational: a Tier 1
 capability is declarative data and has no way to reach a filesystem, and a
@@ -760,6 +825,40 @@ special". Meeting intelligence is the current test of this: it is a capability
 that captures audio, transcribes, extracts entities, emits operations, and
 builds notes, tasks, and calendar events. It is **not** a runtime feature, and
 it gets no privileged storage path.
+
+## 11d. One sync model
+
+**Decided: one model. Everything is an operation.**
+
+```
+Capture
+   ↓
+Operation
+   ↓
+Operation Log
+   ↓
+Local Replay
+   ↓
+Remote Replay
+```
+
+Single-device mode replays only local operations. Multi-device mode replays
+local plus remote operations. That is the entire difference — there is no
+second storage model, no second merge engine, and no second code path.
+
+The alternative was live: `rust/airo_core` already ships a state-based CRDT
+store — `compare_vector_clocks()` in `api/native_engine.rs` and
+`api/relational_store.rs` (rusqlite, entity + field model, per-field
+last-write-wins, tombstones, SQL migrations). Keeping both was a real option
+and is rejected.
+
+**Every additional sync model doubles the testing matrix**, and the two would
+drift. `relational_store` is also durable user state that does not originate
+from the runtime, which makes it an I4 case on its own terms.
+
+Consequence for existing code: `relational_store` migrates onto the operation
+log via the shared adapter in #1293, alongside the feature-owned stores. It is
+not a parallel substrate to build on. Tracked on #1297.
 
 ## 12. Open decisions, assigned to subsystem specs
 
