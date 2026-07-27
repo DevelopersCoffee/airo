@@ -51,7 +51,29 @@ class _PhoneMediaPlayOnTvSheetState extends State<PhoneMediaPlayOnTvSheet> {
     _sessionSubscription = widget.castController.sessionStateStream.listen((
       state,
     ) {
-      if (mounted) setState(() => _session = state);
+      if (!mounted) return;
+      setState(() {
+        _session = state;
+        _phase = switch (state.phase) {
+          AiroCastSessionPhase.playing ||
+          AiroCastSessionPhase.paused => _HandoffPhase.playing,
+          // An explicit failure signal always surfaces as failed. But
+          // `disconnected`/`idle` are also this controller's normal
+          // *starting* state before any device has been picked -- mapping
+          // them to failed unconditionally showed the "Couldn't play on
+          // your TV" error the instant the sheet opened, before the user
+          // had done anything. Only treat them as a failure when a
+          // connection was actually in flight and dropped.
+          AiroCastSessionPhase.failed => _HandoffPhase.failed,
+          (AiroCastSessionPhase.disconnected || AiroCastSessionPhase.idle)
+              when _phase == _HandoffPhase.connecting ||
+                  _phase == _HandoffPhase.starting ||
+                  _phase == _HandoffPhase.playing =>
+            _HandoffPhase.failed,
+          AiroCastSessionPhase.stopped => _HandoffPhase.idle,
+          _ => _phase,
+        };
+      });
     });
     if (!_session.isConnected) {
       unawaited(_startDiscovery());
@@ -114,7 +136,15 @@ class _PhoneMediaPlayOnTvSheetState extends State<PhoneMediaPlayOnTvSheet> {
     if (!mounted) return;
     setState(() {
       _phase = switch (result) {
-        PhoneMediaHandoffStarted() => _HandoffPhase.playing,
+        PhoneMediaHandoffStarted() =>
+          switch (widget.castController.currentSessionState.phase) {
+            AiroCastSessionPhase.playing ||
+            AiroCastSessionPhase.paused => _HandoffPhase.playing,
+            AiroCastSessionPhase.failed ||
+            AiroCastSessionPhase.disconnected ||
+            AiroCastSessionPhase.idle => _HandoffPhase.failed,
+            _ => _HandoffPhase.starting,
+          },
         PhoneMediaHandoffUnsupported() => _HandoffPhase.unsupported,
         PhoneMediaHandoffFailed() => _HandoffPhase.failed,
       };

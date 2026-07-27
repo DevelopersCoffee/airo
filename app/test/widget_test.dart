@@ -11,13 +11,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airo_app/core/app/airo_app.dart';
+import 'package:airo_app/core/routing/app_router.dart';
+import 'package:airo_app/main.dart';
 
 void main() {
   testWidgets('Airo app smoke test', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
 
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const ProviderScope(child: AiroApp()));
+    final router = AppRouter.createRouter(
+      moduleRegistry: buildMainModuleRegistry(),
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(ProviderScope(child: AiroApp(router: router)));
 
     // Wait for the app to initialize
     await tester.pumpAndSettle();

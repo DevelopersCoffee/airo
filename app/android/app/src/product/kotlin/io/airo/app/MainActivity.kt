@@ -44,6 +44,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
     private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
+    private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -76,6 +77,7 @@ class MainActivity : AudioServiceFragmentActivity() {
                 when (call.method) {
                     "isTV" -> result.success(isTvDevice())
                     "getTvPlatform" -> result.success(getTvPlatform())
+                    "openWifiSettings" -> openWifiSettings(result)
                     else -> result.notImplemented()
                 }
             }
@@ -120,6 +122,9 @@ class MainActivity : AudioServiceFragmentActivity() {
 
         phoneMediaPickerPlugin = PhoneMediaPickerPlugin(this)
         phoneMediaPickerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        mediaAssetAnalyzerPlugin = AiroMediaAssetAnalyzerPlugin(this)
+        mediaAssetAnalyzerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
@@ -339,6 +344,15 @@ class MainActivity : AudioServiceFragmentActivity() {
             "can_request" to !granted,
             "permission" to Manifest.permission.READ_CALENDAR
         ))
+    }
+
+    private fun openWifiSettings(result: MethodChannel.Result) {
+        try {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+            result.success(mapOf("opened" to true))
+        } catch (error: android.content.ActivityNotFoundException) {
+            result.success(mapOf("opened" to false))
+        }
     }
 
     private fun openCalendarPermissionSettings(result: MethodChannel.Result) {

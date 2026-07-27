@@ -25,6 +25,8 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onSort,
     this.onChannelSelected,
     this.onVisibleChannelsChanged,
+    this.multiviewChannelIds = const {},
+    this.onMultiviewToggle,
   });
 
   final List<IPTVChannel> channels;
@@ -34,6 +36,8 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ValueChanged<ChannelSortColumn>? onSort;
   final ValueChanged<IPTVChannel>? onChannelSelected;
   final ValueChanged<List<IPTVChannel>>? onVisibleChannelsChanged;
+  final Set<String> multiviewChannelIds;
+  final ValueChanged<IPTVChannel>? onMultiviewToggle;
 
   @override
   State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
@@ -122,12 +126,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
               child: _LibrarySortRow(sort: widget.sort, onSort: widget.onSort),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                12,
-                4,
-                12,
-                _gridSpacing,
-              ),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, _gridSpacing),
               sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
@@ -146,6 +145,10 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                         availability:
                             widget.availabilityByChannelId[channel.id],
                         onSelected: widget.onChannelSelected,
+                        inMultiview: widget.multiviewChannelIds.contains(
+                          channel.id,
+                        ),
+                        onMultiviewToggle: widget.onMultiviewToggle,
                       ),
                     );
                   },
@@ -225,12 +228,16 @@ class _ChannelTile extends StatelessWidget {
     required this.metadata,
     required this.availability,
     this.onSelected,
+    required this.inMultiview,
+    this.onMultiviewToggle,
   });
 
   final IPTVChannel channel;
   final ChannelBrowseMetadata? metadata;
   final StreamAvailability? availability;
   final ValueChanged<IPTVChannel>? onSelected;
+  final bool inMultiview;
+  final ValueChanged<IPTVChannel>? onMultiviewToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +259,37 @@ class _ChannelTile extends StatelessWidget {
           left: 7,
           child: _AvailabilityDot(availability: availability),
         ),
+        if (onMultiviewToggle != null)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: TvFocusable(
+              key: ValueKey('channel-multiview-${channel.id}'),
+              semanticLabel: inMultiview
+                  ? 'Remove ${channel.name} from multiview'
+                  : 'Add ${channel.name} to multiview',
+              onSelect: () => onMultiviewToggle!(channel),
+              borderRadius: 20,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.68),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: inMultiview
+                      ? 'Remove from multiview'
+                      : 'Add to multiview',
+                  onPressed: () => onMultiviewToggle!(channel),
+                  icon: Icon(
+                    inMultiview ? Icons.remove_from_queue : Icons.add_to_queue,
+                    size: 18,
+                    color: inMultiview
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -306,7 +344,8 @@ class _AvailabilityDot extends StatelessWidget {
         'Channel may be restricted',
       ),
       StreamAvailability.cancelled => (Colors.amber, 'Channel check pending'),
-      StreamAvailability.unverified || null => (null, 'Channel not checked yet'),
+      StreamAvailability.unverified ||
+      null => (null, 'Channel not checked yet'),
     };
     if (color == null) return const SizedBox.shrink();
     return Tooltip(

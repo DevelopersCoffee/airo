@@ -1,12 +1,18 @@
 # Airo User Guide
 
-Welcome to the public user guide for Airo, a Flutter super app for on-device AI,
-money workflows, media, games, and task-oriented file analysis.
+Welcome to the public user guide for Airo, a modular, local-first platform for
+focused experiences.
 
-Airo combines an assistant surface with practical app modules: split bills,
-track expenses, upload files for AI-assisted quests, play games, listen to
-music, watch TV streams, and manage offline AI models where device support is
-available.
+Airo TV is the available focused product. Other module areas have their own
+public claim states: Airo Coins is **in development**, while additional AI,
+productivity, media, and entertainment directions remain subject to release
+evidence. The wiki must not be read as proof that code present in the
+repository is available in a published app.
+
+For the current product hierarchy and claim states, start with the
+[Airo public site](https://developerscoffee.github.io/airo/). For the finance
+direction and its explicit boundaries, see
+[Airo Coins](https://developerscoffee.github.io/airo/coins/).
 
 Start here:
 

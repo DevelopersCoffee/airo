@@ -36,6 +36,23 @@ void main() {
       expect(engine.backendKind, AiroPlaybackBackendKind.videoPlayer);
     });
 
+    test('open reports the real initialized video dimensions', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+
+      final state = await engine.open(request());
+
+      expect(state.selectedQualityId, 'source');
+      expect(state.qualityOptions, const [
+        AiroPlaybackQualityOption(
+          id: 'source',
+          label: '1920x1080',
+          width: 1920,
+          height: 1080,
+        ),
+      ]);
+      await engine.dispose();
+    });
+
     test(
       'platform decoder failure surfaces as a typed decoderFailed error',
       () async {
@@ -170,17 +187,19 @@ void main() {
       },
     );
 
-    test(
-      'diagnostics reports hardware-accelerated after a successful open',
-      () async {
-        final engine = VideoPlayerAiroPlaybackEngine();
-        await engine.open(request());
+    test('diagnostics reports hardwareAccelerated as unknown (null), never a '
+        'fabricated value', () async {
+      // video_player exposes no signal for which decode path ExoPlayer
+      // actually chose -- reporting a hardcoded true would be a fake
+      // diagnostic value someone could use to wrongly rule out a
+      // software-decode-related bug.
+      final engine = VideoPlayerAiroPlaybackEngine();
+      await engine.open(request());
 
-        final diagnostics = await engine.diagnostics();
-        expect(diagnostics.hardwareAccelerated, isTrue);
-        await engine.dispose();
-      },
-    );
+      final diagnostics = await engine.diagnostics();
+      expect(diagnostics.hardwareAccelerated, isNull);
+      await engine.dispose();
+    });
 
     test('buildView is null before open, non-null after', () async {
       final engine = VideoPlayerAiroPlaybackEngine();

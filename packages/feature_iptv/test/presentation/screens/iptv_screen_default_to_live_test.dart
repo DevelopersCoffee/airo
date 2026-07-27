@@ -146,6 +146,36 @@ void main() {
     expect(resumePlayed, isEmpty);
   });
 
+  testWidgets('deep-link intent restores filters before tuning', (
+    tester,
+  ) async {
+    const filters = ChannelFilters(
+      search: 'channel',
+      category: 'News',
+      country: 'in',
+      language: 'Hindi',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _providerOverrides(played: <IPTVChannel>[]),
+        child: const MaterialApp(
+          home: IPTVScreen(
+            deepLinkIntent: IptvDeepLinkIntent(
+              channelId: 'c1',
+              filters: filters,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(IPTVScreen)),
+    );
+    expect(container.read(channelFiltersProvider), filters);
+  });
+
   testWidgets(
     'deepLinkChannelId for a missing channel falls back to the browse grid',
     (tester) async {
@@ -163,6 +193,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+      expect(
+        find.text(
+          'That shared channel is no longer available. Browse to choose another.',
+        ),
+        findsOneWidget,
+      );
     },
   );
 

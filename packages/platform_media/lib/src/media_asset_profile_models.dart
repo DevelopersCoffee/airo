@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 const String kMediaAssetProfileSchemaVersion = '1.0.0';
@@ -305,12 +307,14 @@ class MediaAssetAnalysisDiagnostics extends Equatable {
     required this.didUseMetadataProbe,
     this.fileSizeBytes,
     this.estimatedBytesRead,
+    this.peakMemoryBytes,
   });
 
   final Duration elapsed;
   final bool didUseMetadataProbe;
   final int? fileSizeBytes;
   final int? estimatedBytesRead;
+  final int? peakMemoryBytes;
 
   @override
   List<Object?> get props => [
@@ -318,6 +322,7 @@ class MediaAssetAnalysisDiagnostics extends Equatable {
     didUseMetadataProbe,
     fileSizeBytes,
     estimatedBytesRead,
+    peakMemoryBytes,
   ];
 }
 
@@ -328,6 +333,7 @@ class MediaAssetAnalysisRequest extends Equatable {
     this.fileName,
     this.fileSizeBytesHint,
     this.mimeTypeHint,
+    this.cancellationToken,
   });
 
   final String assetId;
@@ -335,6 +341,7 @@ class MediaAssetAnalysisRequest extends Equatable {
   final String? fileName;
   final int? fileSizeBytesHint;
   final String? mimeTypeHint;
+  final MediaAssetAnalysisCancellationToken? cancellationToken;
 
   String get fileExtension {
     final name = fileName;
@@ -362,6 +369,18 @@ class MediaAssetAnalysisRequest extends Equatable {
     fileSizeBytesHint,
     mimeTypeHint,
   ];
+}
+
+/// Cooperative cancellation shared by Dart and native media inspectors.
+class MediaAssetAnalysisCancellationToken {
+  final Completer<void> _cancelled = Completer<void>();
+
+  bool get isCancelled => _cancelled.isCompleted;
+  Future<void> get whenCancelled => _cancelled.future;
+
+  void cancel() {
+    if (!_cancelled.isCompleted) _cancelled.complete();
+  }
 }
 
 class MediaAssetAnalysisResult extends Equatable {

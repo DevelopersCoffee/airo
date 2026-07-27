@@ -17,6 +17,7 @@ that platform contract aligned before changing release workflows.
 | `full` | `io.airo.app` | `app/lib/main.dart` | `app/pubspec.yaml` | Airo phone and tablet builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
 | `tv` | `io.airo.app.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | Android TV, Google TV, Fire TV-compatible APK testing | APK, Play Store AAB | GitHub Release, Firebase App Distribution where supported, Play TV track after credentials |
 | `tv` | `com.developerscoffee.airo.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | macOS Airo TV IPTV build | ZIP, DMG, Homebrew Cask metadata | GitHub Release direct download, Homebrew Cask after notarization |
+| `coins` | `io.airo.app.coins` | `app/lib/main_coins.dart` | `app/pubspec_coins.yaml` | Focused Android phone architecture/size qualification | APK | Local validation only; public distribution deferred |
 | `ios-spm` | `com.developerscoffee.airo` | `app/lib/main.dart` | `app/pubspec_ios_spm.yaml` | iOS/iPadOS validation profile | Deferred | Not part of the first v2 Android publishing wave |
 | `web-validation` | `web` | `app/lib/main.dart` | `app/pubspec.yaml` | Browser validation only | Deferred | Local validation only |
 

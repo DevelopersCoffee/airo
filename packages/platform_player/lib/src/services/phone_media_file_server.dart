@@ -6,6 +6,7 @@ import 'package:core_media_routing/core_media_routing.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/phone_media_diagnostic_models.dart';
+import 'phone_media_seekable_source.dart';
 
 /// A network interface candidate for LAN binding: OS name plus its addresses.
 typedef PhoneMediaLanInterface = ({
@@ -24,7 +25,8 @@ typedef PhoneMediaLanInterface = ({
 class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
   PhoneMediaFileServer({
     required AiroTemporaryMobileServerSnapshot snapshot,
-    required this.filePath,
+    String? filePath,
+    PhoneMediaSeekableSource? source,
     required this.contentType,
     this._servingPolicy = const AiroTemporaryMobileServerServingPolicy(),
     this._bindAddress,
@@ -33,13 +35,15 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     DateTime Function()? now,
     this.onDiagnosticEvent,
     this.onSessionEvent,
-  }) : _initialSnapshot = snapshot,
+  }) : assert(filePath != null || source != null),
+       _initialSnapshot = snapshot,
+       _source = source ?? FilePhoneMediaSeekableSource(filePath!),
        _interfaceLister = interfaceLister ?? _systemInterfaces,
        _sessionToken = sessionToken ?? _generateSessionToken(),
        _now = now ?? DateTime.now;
 
-  final String filePath;
   final String contentType;
+  final PhoneMediaSeekableSource _source;
   final AiroTemporaryMobileServerSnapshot _initialSnapshot;
   final AiroTemporaryMobileServerServingPolicy _servingPolicy;
   final InternetAddress? _bindAddress;
@@ -303,14 +307,12 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
         return;
       }
 
-      final file = File(filePath);
-      if (!await file.exists()) {
+      if (!_source.isAvailable) {
         response.statusCode = HttpStatus.notFound;
         await response.close();
         return;
       }
-      final stat = await file.stat();
-      final length = stat.size;
+      final length = await _source.length();
       // Nonce-based validator: stable for the session, changes with length,
       // and never exposes the file mtime to LAN peers.
       final etag = '"$_entityTagNonce-${length.toRadixString(16)}"';
@@ -394,9 +396,28 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
 
       final start = range?.start ?? 0;
       final end = range == null ? length : range.end + 1;
-      await response.addStream(file.openRead(start, end));
+      await response.addStream(_source.openRead(start, end));
       _lastActivityAt = _now();
       await response.close();
+    } on PhoneMediaSourceException catch (error) {
+      _emit(
+        PhoneMediaDiagnosticEvent(
+          kind: PhoneMediaDiagnosticEventKind.requestError,
+          errorType: 'source_${error.code.stableId}',
+        ),
+      );
+      try {
+        response.statusCode = switch (error.code) {
+          PhoneMediaSourceFailureCode.unavailable => HttpStatus.notFound,
+          PhoneMediaSourceFailureCode.closed => HttpStatus.gone,
+          PhoneMediaSourceFailureCode.permissionLost => HttpStatus.forbidden,
+          PhoneMediaSourceFailureCode.readFailed =>
+            HttpStatus.internalServerError,
+        };
+        await response.close();
+      } catch (_) {
+        // Response headers or socket may already be committed.
+      }
     } catch (error) {
       _emit(
         PhoneMediaDiagnosticEvent(
@@ -455,7 +476,9 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     if (legacyHandler != null) {
       legacyHandler(event.kind.stableId, event.toPublicMap());
     } else {
-      debugPrint('[PhoneMediaServer] ${event.kind.stableId} ${event.toPublicMap()}');
+      debugPrint(
+        '[PhoneMediaServer] ${event.kind.stableId} ${event.toPublicMap()}',
+      );
     }
   }
 

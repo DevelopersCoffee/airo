@@ -30,6 +30,7 @@ export 'src/widgets/empty_state_widget.dart';
 export 'src/widgets/airo_responsive_scaffold.dart';
 export 'src/widgets/tv_focus_manager.dart';
 export 'src/widgets/tv_focusable.dart';
+export 'src/widgets/tv_overscan_safe_area.dart';
 
 // Adaptive UI
 export 'src/adaptive/adaptive_ui_models.dart';
