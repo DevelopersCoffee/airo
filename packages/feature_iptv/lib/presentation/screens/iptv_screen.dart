@@ -269,9 +269,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      // Exiting fullscreen
+      // Exiting fullscreen -- restore system-default orientation instead of
+      // forcing portrait, so tablets/foldables already using landscape as
+      // their default layout aren't rotated out of it.
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setPreferredOrientations([]);
     }
   }
 
@@ -968,9 +970,11 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      // Exiting fullscreen
+      // Exiting fullscreen -- restore system-default orientation instead of
+      // forcing portrait, so tablets/foldables already using landscape as
+      // their default layout aren't rotated out of it.
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setPreferredOrientations([]);
     }
   }
 
