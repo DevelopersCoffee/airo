@@ -117,6 +117,26 @@ void main() {
     },
   );
 
+  test('a non-Google sign-in result cannot enable cloud mode', () async {
+    final identity = _FakeIdentity(
+      signInResult: const CoinsSignInResult.success(
+        CoinsUser(id: 'local-user', isGoogleIdentity: false, username: 'local'),
+      ),
+    );
+    final container = _containerWith(identity);
+    await _settled(container);
+
+    final enabled = await container
+        .read(coinsCloudModeControllerProvider.notifier)
+        .enableCloudMode();
+
+    expect(enabled, isFalse);
+    final state = container.read(coinsCloudModeControllerProvider).value!;
+    expect(state.mode, CoinsStorageMode.local);
+    expect(state.hasGoogleIdentity, isFalse);
+    expect(state.errorMessage, 'A Google identity is required');
+  });
+
   test(
     'an already-Google identity enables cloud mode without a new sign-in',
     () async {

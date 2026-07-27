@@ -71,17 +71,19 @@ class CoinsCloudModeController
       var user = _identity.current;
       if (user?.isGoogleIdentity != true) {
         final result = await _identity.signInWithGoogle();
-        if (!result.isSuccess) {
+        final signedInUser = result.user;
+        if (signedInUser?.isGoogleIdentity != true) {
           state = AsyncValue.data(
             CoinsCloudModeState(
               mode: CoinsStorageMode.local,
               user: _identity.current,
-              errorMessage: result.errorMessage ?? 'Google sign-in failed',
+              errorMessage:
+                  result.errorMessage ?? 'A Google identity is required',
             ),
           );
           return false;
         }
-        user = result.user;
+        user = signedInUser;
       }
 
       final prefs = await SharedPreferences.getInstance();
