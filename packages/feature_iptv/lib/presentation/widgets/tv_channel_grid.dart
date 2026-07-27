@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/tv_font_mode_provider.dart';
+import '../../domain/channel_region_availability.dart';
 import "package:platform_channels/platform_channels.dart";
 import '../tv/iptv_tv.dart';
 import 'iptv_icon_placeholder.dart';
@@ -242,7 +243,7 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
 /// TV-optimized channel card with focus support
 ///
 /// Includes semantic labels for screen reader support (CP-AC-003)
-class _TvChannelCard extends StatelessWidget {
+class _TvChannelCard extends ConsumerWidget {
   final IPTVChannel channel;
   final TvUiDimensions dimensions;
   final double fontScale;
@@ -265,10 +266,15 @@ class _TvChannelCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final likelyBlocked =
+        ref.watch(channelRegionAvailabilityProvider(channel)) ==
+        ChannelRegionAvailability.likelyBlocked;
     // Build semantic label for screen readers (CP-AC-003)
     final semanticLabel = isPlaying
         ? '${channel.name}, currently playing'
+        : likelyBlocked
+        ? '${channel.name}, not available in your region'
         : channel.name;
     final semanticHint = isPlaying
         ? 'Press OK to view controls'
@@ -294,6 +300,7 @@ class _TvChannelCard extends StatelessWidget {
             dimensions: dimensions,
             fontScale: fontScale,
             isPlaying: isPlaying,
+            likelyBlocked: likelyBlocked,
           ),
         ),
       ),
@@ -306,12 +313,14 @@ class _TvChannelCardContent extends StatelessWidget {
   final TvUiDimensions dimensions;
   final double fontScale;
   final bool isPlaying;
+  final bool likelyBlocked;
 
   const _TvChannelCardContent({
     required this.channel,
     required this.dimensions,
     required this.fontScale,
     required this.isPlaying,
+    required this.likelyBlocked,
   });
 
   @override
@@ -361,6 +370,18 @@ class _TvChannelCardContent extends StatelessWidget {
                             : FontWeight.normal,
                       ),
                     ),
+                    if (likelyBlocked) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Not available in your region',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 10 * dimensions.textScaleFactor * fontScale,
+                        ),
+                      ),
+                    ],
                     if (isPlaying) ...[
                       const SizedBox(height: 4),
                       FittedBox(

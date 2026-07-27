@@ -7,6 +7,7 @@ import 'playback_engine_models.dart';
 enum AiroPlaybackDiagnosticCode {
   networkUnavailable('network_unavailable'),
   providerAuthDenied('provider_auth_denied'),
+  regionRestricted('region_restricted'),
   providerNotFound('provider_not_found'),
   providerRateLimited('provider_rate_limited'),
   providerServerError('provider_server_error'),
@@ -130,9 +131,8 @@ class AiroPlaybackDiagnosticMapper {
   }
 
   AiroPlaybackDiagnosticCode _codeForHttpStatus(int status) {
-    if (status == 401 || status == 403) {
-      return AiroPlaybackDiagnosticCode.providerAuthDenied;
-    }
+    if (status == 401) return AiroPlaybackDiagnosticCode.providerAuthDenied;
+    if (status == 403) return AiroPlaybackDiagnosticCode.regionRestricted;
     if (status == 404) return AiroPlaybackDiagnosticCode.providerNotFound;
     if (status == 429) return AiroPlaybackDiagnosticCode.providerRateLimited;
     if (status >= 500) return AiroPlaybackDiagnosticCode.providerServerError;
@@ -167,6 +167,7 @@ class AiroPlaybackDiagnosticMapper {
       AiroPlaybackDiagnosticCode.playerInitFailed ||
       AiroPlaybackDiagnosticCode.sourceInvalid ||
       AiroPlaybackDiagnosticCode.providerAuthDenied ||
+      AiroPlaybackDiagnosticCode.regionRestricted ||
       AiroPlaybackDiagnosticCode.providerNotFound =>
         AiroPlaybackDiagnosticSeverity.fatal,
       _ => AiroPlaybackDiagnosticSeverity.recoverable,
@@ -176,6 +177,7 @@ class AiroPlaybackDiagnosticMapper {
   bool _retryEligibleFor(AiroPlaybackDiagnosticCode code) {
     return switch (code) {
       AiroPlaybackDiagnosticCode.providerAuthDenied ||
+      AiroPlaybackDiagnosticCode.regionRestricted ||
       AiroPlaybackDiagnosticCode.providerNotFound ||
       AiroPlaybackDiagnosticCode.codecUnsupported ||
       AiroPlaybackDiagnosticCode.playerInitFailed ||
@@ -190,6 +192,8 @@ class AiroPlaybackDiagnosticMapper {
         'Network connection lost. Reconnecting…',
       AiroPlaybackDiagnosticCode.providerAuthDenied =>
         'Your provider rejected this stream. Check your playlist credentials.',
+      AiroPlaybackDiagnosticCode.regionRestricted =>
+        'This channel may not be available in your region.',
       AiroPlaybackDiagnosticCode.providerNotFound =>
         'This channel is missing from your provider right now.',
       AiroPlaybackDiagnosticCode.providerRateLimited =>

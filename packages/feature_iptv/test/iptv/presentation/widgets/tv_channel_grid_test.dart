@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_device_profile/platform_device_profile.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,6 +18,7 @@ void main() {
       streamUrl: 'https://example.com/news.m3u8',
       group: 'News',
       category: ChannelCategory.news,
+      country: 'IN',
     ),
     IPTVChannel(
       id: 'sports-1',
@@ -24,6 +26,7 @@ void main() {
       streamUrl: 'https://example.com/sports.m3u8',
       group: 'Sports',
       category: ChannelCategory.sports,
+      country: 'US',
     ),
     IPTVChannel(
       id: 'music-1',
@@ -34,11 +37,19 @@ void main() {
     ),
   ];
 
-  Widget buildGrid({SharedPreferences? prefs}) {
+  Widget buildGrid({SharedPreferences? prefs, String? regionCountry}) {
     return ProviderScope(
       overrides: [
         if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => channels),
+        if (regionCountry != null)
+          regionResolutionProvider.overrideWith(
+            (ref) async => RegionResolution(
+              countryCode: regionCountry,
+              source: RegionResolutionSource.locale,
+              resolvedAt: DateTime.utc(2026, 7, 27),
+            ),
+          ),
         streamingStateProvider.overrideWith(
           (ref) => Stream.value(
             StreamingState(
@@ -69,6 +80,22 @@ void main() {
       ),
     );
   }
+
+  testWidgets('labels a conflicting country channel as region unavailable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildGrid(regionCountry: 'IN'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not available in your region'), findsOneWidget);
+    final semantics = tester.getSemantics(find.text('Stadium Sports'));
+    expect(semantics.label, contains('not available in your region'));
+  });
 
   testWidgets('long-pressing a channel tile hides its group (CV-021)', (
     tester,

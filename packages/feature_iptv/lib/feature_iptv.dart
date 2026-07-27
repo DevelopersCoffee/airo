@@ -49,6 +49,7 @@ export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/mobile_favorites_screen.dart";
 export "presentation/screens/settings/country_settings_tile.dart";
 export 'domain/regional_discovery.dart';
+export 'domain/channel_region_availability.dart';
 export 'application/providers/regional_discovery_providers.dart';
 export 'application/providers/richer_context_providers.dart';
 export 'presentation/widgets/richer_context_prototype.dart';

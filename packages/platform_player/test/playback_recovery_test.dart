@@ -19,22 +19,22 @@ void main() {
       expect(diagnostic.retryEligible, isTrue);
     });
 
-    test(
-      'maps HTTP 401 and 403 to a non-retryable provider auth diagnostic',
-      () {
-        for (final status in [401, 403]) {
-          final diagnostic = mapper.map(
-            AiroPlaybackFailureEvent(httpStatusCode: status),
-          );
+    test('maps HTTP 401 to a non-retryable provider auth diagnostic', () {
+      final diagnostic = mapper.map(
+        const AiroPlaybackFailureEvent(httpStatusCode: 401),
+      );
+      expect(diagnostic.code, AiroPlaybackDiagnosticCode.providerAuthDenied);
+      expect(diagnostic.retryEligible, isFalse);
+    });
 
-          expect(
-            diagnostic.code,
-            AiroPlaybackDiagnosticCode.providerAuthDenied,
-          );
-          expect(diagnostic.retryEligible, isFalse);
-        }
-      },
-    );
+    test('maps HTTP 403 to an honest non-retryable region diagnostic', () {
+      final diagnostic = mapper.map(
+        const AiroPlaybackFailureEvent(httpStatusCode: 403),
+      );
+      expect(diagnostic.code, AiroPlaybackDiagnosticCode.regionRestricted);
+      expect(diagnostic.userMessage, contains('region'));
+      expect(diagnostic.retryEligible, isFalse);
+    });
 
     test('maps HTTP 404 to a non-retryable provider not-found diagnostic', () {
       final diagnostic = mapper.map(

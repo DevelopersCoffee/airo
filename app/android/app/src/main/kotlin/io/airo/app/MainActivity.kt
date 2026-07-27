@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
+import android.telephony.TelephonyManager
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -77,6 +78,10 @@ class MainActivity : AudioServiceFragmentActivity() {
                 when (call.method) {
                     "isTV" -> result.success(isTvDevice())
                     "getTvPlatform" -> result.success(getTvPlatform())
+                    "getSimCountryIso" -> {
+                        val telephony = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                        result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
+                    }
                     else -> result.notImplemented()
                 }
             }

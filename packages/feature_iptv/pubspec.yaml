@@ -32,6 +32,8 @@ dependencies:
   flutter_riverpod: ^3.3.2
   platform_channels:
     path: ../platform_channels
+  platform_device_profile:
+    path: ../platform_device_profile
   platform_epg:
     path: ../platform_epg
   platform_favorites:

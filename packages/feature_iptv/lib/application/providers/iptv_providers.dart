@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dio/dio.dart';
 import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
@@ -11,11 +13,13 @@ import "package:platform_channels/platform_channels.dart";
 import "package:platform_epg/platform_epg.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import 'package:platform_device_profile/platform_device_profile.dart';
 import "package:platform_playlist/platform_playlist.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
 import '../content_source_store.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import '../../domain/favorite_reimport_coordinator.dart';
+import '../../domain/channel_region_availability.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'content_source_providers.dart';
 
@@ -31,6 +35,31 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
     'Override in main with SharedPreferences.getInstance()',
   );
 });
+
+final hostPlatformRegionSignalProvider = Provider<HostPlatformRegionSignal>((
+  ref,
+) {
+  return HostPlatformRegionSignal();
+});
+
+final regionLocaleCountryProvider = Provider<String?>((ref) {
+  return PlatformDispatcher.instance.locale.countryCode;
+});
+
+/// Privacy-safe runtime region. Network lookup is intentionally absent from
+/// the production composition; SIM and locale answers short-circuit locally.
+final regionResolutionProvider = FutureProvider<RegionResolution>((ref) {
+  return RegionResolver(
+    simCountry: ref.watch(hostPlatformRegionSignalProvider).simCountry,
+    localeCountry: () async => ref.read(regionLocaleCountryProvider),
+  ).resolve();
+});
+
+final channelRegionAvailabilityProvider =
+    Provider.family<ChannelRegionAvailability, IPTVChannel>((ref, channel) {
+      final country = ref.watch(regionResolutionProvider).value?.countryCode;
+      return classifyChannelRegion(channel, country);
+    });
 
 /// Global fullscreen mode provider - when true, hides bottom navigation and app bar
 final isFullscreenModeProvider = StateProvider<bool>((ref) => false);
@@ -297,10 +326,15 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
       ) ??
       const [];
 
-  if (hiddenGroupIds.isEmpty) return channels;
-  return channels
-      .where((channel) => !hiddenGroupIds.contains(channel.group))
-      .toList(growable: false);
+  final visible = hiddenGroupIds.isEmpty
+      ? channels
+      : channels
+            .where((channel) => !hiddenGroupIds.contains(channel.group))
+            .toList(growable: false);
+  return sortChannelsForRegion(
+    visible,
+    ref.watch(regionResolutionProvider).value?.countryCode,
+  );
 });
 
 /// Channels filtered by specific flavor
