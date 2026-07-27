@@ -46,6 +46,7 @@ void main() {
     WidgetTester tester,
     double width, {
     double height = 720,
+    bool showVideoStage = true,
     bool isOnline = true,
     IPTVChannel? currentChannel,
     StreamingState? streamingState,
@@ -76,6 +77,7 @@ void main() {
               child: AiroTvShell(
                 channels: channels,
                 currentChannel: currentChannel,
+                showVideoStage: showVideoStage,
                 videoStage: const SizedBox(key: ValueKey('video-stage')),
                 onChannelSelected: (_) {},
                 onShareVideoFrame: onShareVideoFrame,
@@ -292,6 +294,26 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(
       find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('grid-first TV layout reclaims the small preview area', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, showVideoStage: false);
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('video-stage')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('airo-tv-channel-library')),
       findsOneWidget,
     );
   });
@@ -520,9 +542,7 @@ class _FakeConnectivityService implements ConnectivityService {
 }
 
 class _FakeWifiSettingsLauncher extends WifiSettingsLauncher {
-  _FakeWifiSettingsLauncher({required bool opened, bool isSupported = true})
-    : _opened = opened,
-      _isSupported = isSupported;
+  _FakeWifiSettingsLauncher({required this._opened, this._isSupported = true});
 
   final bool _opened;
   final bool _isSupported;

@@ -11,67 +11,132 @@ import '../../domain/favorite_reimport_coordinator.dart';
 /// are never applied automatically (see [applyFavoriteRemapOnReimport]).
 ///
 /// Renders nothing when [favoriteReimportReviewCandidatesProvider] is empty.
-class FavoriteReimportReviewBanner extends ConsumerWidget {
+class FavoriteReimportReviewBanner extends ConsumerStatefulWidget {
   const FavoriteReimportReviewBanner({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FavoriteReimportReviewBanner> createState() =>
+      _FavoriteReimportReviewBannerState();
+}
+
+class _FavoriteReimportReviewBannerState
+    extends ConsumerState<FavoriteReimportReviewBanner> {
+  final FocusScopeNode _scopeNode = FocusScopeNode(
+    debugLabel: 'favorite reimport review',
+    directionalTraversalEdgeBehavior: TraversalEdgeBehavior.closedLoop,
+  );
+  final Map<String, FocusNode> _keepFocusNodes = {};
+  final Map<String, FocusNode> _dismissFocusNodes = {};
+  String? _focusedCandidateId;
+
+  FocusNode _keepFocusNode(String id) => _keepFocusNodes.putIfAbsent(
+    id,
+    () => FocusNode(debugLabel: 'favorite review Keep'),
+  );
+
+  FocusNode _dismissFocusNode(String id) => _dismissFocusNodes.putIfAbsent(
+    id,
+    () => FocusNode(debugLabel: 'favorite review Dismiss'),
+  );
+
+  @override
+  void dispose() {
+    _scopeNode.dispose();
+    for (final node in [
+      ..._keepFocusNodes.values,
+      ..._dismissFocusNodes.values,
+    ]) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final candidates = ref.watch(favoriteReimportReviewCandidatesProvider);
-    if (candidates.isEmpty) return const SizedBox.shrink();
+    if (candidates.isEmpty) {
+      _focusedCandidateId = null;
+      return const SizedBox.shrink();
+    }
+
+    final firstCandidateId = candidates.first.oldChannel.id;
+    if (_focusedCandidateId != firstCandidateId) {
+      _focusedCandidateId = firstCandidateId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            _focusedCandidateId != firstCandidateId ||
+            !_keepFocusNode(firstCandidateId).canRequestFocus) {
+          return;
+        }
+        _keepFocusNode(firstCandidateId).requestFocus();
+      });
+    }
 
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final candidate in candidates)
-            Padding(
-              key: ValueKey(
-                'favorite-reimport-review-${candidate.oldChannel.id}',
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '"${candidate.oldChannel.name}" looks like '
-                      '"${candidate.candidate.name}" now. Keep as favorite?',
-                    ),
+    return FocusTraversalGroup(
+      policy: WidgetOrderTraversalPolicy(),
+      child: FocusScope(
+        node: _scopeNode,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final candidate in candidates)
+                Padding(
+                  key: ValueKey(
+                    'favorite-reimport-review-${candidate.oldChannel.id}',
                   ),
-                  TvFocusable(
-                    semanticLabel: 'Keep as favorite',
-                    onSelect: () => _accept(ref, candidate),
-                    child: TextButton(
-                      key: ValueKey(
-                        'favorite-reimport-accept-${candidate.oldChannel.id}',
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '"${candidate.oldChannel.name}" looks like '
+                          '"${candidate.candidate.name}" now. Keep as favorite?',
+                        ),
                       ),
-                      onPressed: () => _accept(ref, candidate),
-                      child: const Text('Keep'),
-                    ),
-                  ),
-                  TvFocusable(
-                    semanticLabel: 'Dismiss',
-                    onSelect: () => _dismiss(ref, candidate),
-                    child: TextButton(
-                      key: ValueKey(
-                        'favorite-reimport-dismiss-${candidate.oldChannel.id}',
+                      TvFocusable(
+                        focusNode: _keepFocusNode(candidate.oldChannel.id),
+                        semanticLabel: 'Keep as favorite',
+                        onSelect: () => _accept(ref, candidate),
+                        child: ExcludeFocus(
+                          child: TextButton(
+                            key: ValueKey(
+                              'favorite-reimport-accept-${candidate.oldChannel.id}',
+                            ),
+                            onPressed: () => _accept(ref, candidate),
+                            child: const Text('Keep'),
+                          ),
+                        ),
                       ),
-                      onPressed: () => _dismiss(ref, candidate),
-                      child: const Text('Dismiss'),
-                    ),
+                      TvFocusable(
+                        focusNode: _dismissFocusNode(candidate.oldChannel.id),
+                        semanticLabel: 'Dismiss',
+                        onSelect: () => _dismiss(ref, candidate),
+                        child: ExcludeFocus(
+                          child: TextButton(
+                            key: ValueKey(
+                              'favorite-reimport-dismiss-${candidate.oldChannel.id}',
+                            ),
+                            onPressed: () => _dismiss(ref, candidate),
+                            child: const Text('Dismiss'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-        ],
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

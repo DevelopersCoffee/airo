@@ -1,6 +1,7 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/widgets/favorite_reimport_review_banner.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -68,6 +69,79 @@ void main() {
 
     expect(find.textContaining('BBC One HD'), findsOneWidget);
     expect(find.textContaining('bbc-one'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Keep visibly autofocuses and RIGHT traverses without leaking behind banner',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+      container.read(favoriteReimportReviewCandidatesProvider.notifier).state =
+          [candidate];
+
+      await pumpBanner(tester, container);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'favorite review Keep',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'favorite review Dismiss',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'favorite review Keep',
+        reason: 'the banner focus scope must close-loop instead of leaking',
+      );
+    },
+  );
+
+  testWidgets('CENTER on Keep remaps the favorite exactly once', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    final storage = container.read(favoriteChannelsStorageProvider);
+    await storage.addFavorite(oldChannel.id);
+    container.read(favoriteReimportReviewCandidatesProvider.notifier).state = [
+      candidate,
+    ];
+
+    await pumpBanner(tester, container);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(await storage.getFavoriteChannelIds(), {'b9'});
+    expect(container.read(favoriteReimportReviewCandidatesProvider), isEmpty);
+  });
+
+  testWidgets('CENTER on Dismiss keeps the old favorite', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    final storage = container.read(favoriteChannelsStorageProvider);
+    await storage.addFavorite(oldChannel.id);
+    container.read(favoriteReimportReviewCandidatesProvider.notifier).state = [
+      candidate,
+    ];
+
+    await pumpBanner(tester, container);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(await storage.getFavoriteChannelIds(), {'a1'});
+    expect(container.read(favoriteReimportReviewCandidatesProvider), isEmpty);
   });
 
   testWidgets(

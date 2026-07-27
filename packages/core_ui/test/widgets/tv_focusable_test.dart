@@ -116,6 +116,55 @@ void main() {
     expect(secondaryCount, 1);
   });
 
+  testWidgets('handled global D-pad input does not traverse a second time', (
+    tester,
+  ) async {
+    final nodes = List.generate(3, (_) => FocusNode());
+    addTearDown(() {
+      for (final node in nodes) {
+        node.dispose();
+      }
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TvInputHandler(
+          onInput: (key) {
+            if (key == TvInputKey.right) {
+              FocusManager.instance.primaryFocus!.focusInDirection(
+                TraversalDirection.right,
+              );
+              return TvInputResult.handled;
+            }
+            return TvInputResult.notHandled;
+          },
+          child: Row(
+            children: [
+              for (var index = 0; index < nodes.length; index++)
+                TvFocusable(
+                  focusNode: nodes[index],
+                  autofocus: index == 0,
+                  child: Text('Box $index'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(nodes[0].hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+
+    expect(nodes[1].hasFocus, isTrue);
+    expect(
+      nodes[2].hasFocus,
+      isFalse,
+      reason: 'one Fire TV key press must advance exactly one visual box',
+    );
+  });
+
   testWidgets(
     'TvFocusable scrolls itself into view when it gains focus off-screen '
     '(D-pad through a long list must not leave focus invisible)',

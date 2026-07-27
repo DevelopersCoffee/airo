@@ -90,6 +90,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   final FocusNode _fullscreenFocusNode = FocusNode(
     debugLabel: 'IPTV fullscreen back handler',
   );
+  DateTime? _lastFullscreenBackAt;
 
   /// Guards the postFrameCallback below to fire once per fullscreen entry,
   /// not on every rebuild. Live playback rebuilds constantly (buffering,
@@ -228,9 +229,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 
   @override
   Future<bool> didPopRoute() async {
-    if (!ref.read(isFullscreenModeProvider)) return false;
-    _exitFullscreen();
-    return true;
+    if (ref.read(isFullscreenModeProvider)) {
+      _lastFullscreenBackAt = DateTime.now();
+      _exitFullscreen();
+      return true;
+    }
+    final lastFullscreenBackAt = _lastFullscreenBackAt;
+    if (lastFullscreenBackAt != null &&
+        DateTime.now().difference(lastFullscreenBackAt) <
+            const Duration(seconds: 1)) {
+      // Fire OS can dispatch one remote BACK as two pop-route callbacks.
+      // Consume the duplicate so returning to browse never closes the app.
+      _lastFullscreenBackAt = null;
+      return true;
+    }
+    return false;
   }
 
   KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
@@ -238,9 +251,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.browserBack) {
+    // Android/Fire OS also sends BACK through didPopRoute. Consuming GoBack
+    // here exits fullscreen on key-down, then the platform pop-route closes
+    // the newly exposed browse route. Escape remains useful for desktop/web;
+    // Android BACK is handled exactly once by didPopRoute/PopScope.
+    if (key == LogicalKeyboardKey.escape) {
       _exitFullscreen();
       return KeyEventResult.handled;
     }
@@ -279,6 +294,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
+    _lastFullscreenBackAt = DateTime.now();
     _toggleFullscreen();
   }
 
@@ -634,10 +650,20 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isPlaying =
         ref.watch(streamingStateProvider).value?.isPlaying == true;
     Widget guardRouteBack(Widget child) {
+      final lastFullscreenBackAt = _lastFullscreenBackAt;
+      final suppressDuplicateBack =
+          lastFullscreenBackAt != null &&
+          DateTime.now().difference(lastFullscreenBackAt) <
+              const Duration(seconds: 1);
       return PopScope<void>(
-        canPop: !isFullscreen,
+        canPop: !isFullscreen && !suppressDuplicateBack,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _exitFullscreen();
+          if (didPop) return;
+          if (isFullscreen) {
+            _exitFullscreen();
+          } else if (suppressDuplicateBack) {
+            _lastFullscreenBackAt = null;
+          }
         },
         child: child,
       );
@@ -750,7 +776,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
-              showPictureInPicture: !widget.tenFootMode,
+              // The Fire TV acceptance contract keeps Picture-in-picture
+              // in Player actions even when the platform ultimately
+              // reports it unavailable; hiding the row made the required
+              // seven-row remote traversal impossible.
+              showPictureInPicture: true,
               useTvTransportBar: widget.tenFootMode,
             ),
           ),
@@ -906,6 +936,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   final FocusNode _fullscreenFocusNode = FocusNode(
     debugLabel: 'IPTV body fullscreen back handler',
   );
+  DateTime? _lastFullscreenBackAt;
 
   /// See _IPTVScreenState's identical field: guards the postFrameCallback
   /// below to fire once per fullscreen entry, not on every rebuild.
@@ -935,9 +966,19 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
 
   @override
   Future<bool> didPopRoute() async {
-    if (!ref.read(isFullscreenModeProvider)) return false;
-    _exitFullscreen();
-    return true;
+    if (ref.read(isFullscreenModeProvider)) {
+      _lastFullscreenBackAt = DateTime.now();
+      _exitFullscreen();
+      return true;
+    }
+    final lastFullscreenBackAt = _lastFullscreenBackAt;
+    if (lastFullscreenBackAt != null &&
+        DateTime.now().difference(lastFullscreenBackAt) <
+            const Duration(seconds: 1)) {
+      _lastFullscreenBackAt = null;
+      return true;
+    }
+    return false;
   }
 
   KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
@@ -945,9 +986,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.browserBack) {
+    if (key == LogicalKeyboardKey.escape) {
       _exitFullscreen();
       return KeyEventResult.handled;
     }
@@ -980,6 +1019,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
 
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
+    _lastFullscreenBackAt = DateTime.now();
     _toggleFullscreen();
   }
 
@@ -1164,6 +1204,7 @@ class _StreamTabContent extends ConsumerWidget {
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
         onPlaylistSourceTap: onPlaylistSourceTap,
+        tenFootMode: playlistSourceInInfoBar,
       );
     }
 
@@ -1171,6 +1212,10 @@ class _StreamTabContent extends ConsumerWidget {
       channels: channels,
       enrichMetadata: true,
       currentChannel: activeChannel,
+      showVideoStage: !playlistSourceInInfoBar,
+      focusPlayDelay: playlistSourceInInfoBar
+          ? const Duration(milliseconds: 1200)
+          : null,
       onChannelSelected: onChannelTap,
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       onWaysToWatchTap: onWaysToWatchTap,
@@ -1260,6 +1305,8 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   String? _errorText;
   StreamSubscription<ImportProgress>? _importSubscription;
   ImportProgress? _importProgress;
+  List<IPTVChannel> _channelsBeforeImport = const [];
+  bool _isCompletingImport = false;
 
   @override
   void initState() {
@@ -1285,6 +1332,11 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
 
   Future<void> _save() async {
     final parser = ref.read(m3uParserProvider);
+    // Capture the provider-backed list before changing the source. The staged
+    // parser persists playlist B directly, so waiting until `ready` would lose
+    // playlist A and make CV-017 favorite remapping impossible.
+    _channelsBeforeImport =
+        ref.read(iptvChannelsProvider).value ?? const <IPTVChannel>[];
     try {
       await parser.setPlaylistUrl(_controller.text);
     } on ArgumentError catch (error) {
@@ -1316,13 +1368,40 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   void _onImportProgress(ImportProgress progress) {
     if (!mounted) return;
     setState(() => _importProgress = progress);
-    if (progress.stage == ImportStage.ready) {
-      // The staged import already persisted the new channels; refresh both
-      // the channel list and the derived rails so BrowseScreen picks them
-      // up immediately instead of waiting for the next cold read.
+    if (progress.stage == ImportStage.ready && !_isCompletingImport) {
+      unawaited(_completeImport());
+    }
+  }
+
+  Future<void> _completeImport() async {
+    _isCompletingImport = true;
+    try {
+      // The staged import already persisted the new channels. Rebuild the
+      // provider first, then reconcile favorites against the pre-import
+      // snapshot before closing the sheet or rebuilding derived rails.
       ref.invalidate(iptvChannelsProvider);
+      final newChannels = await ref.read(iptvChannelsProvider.future);
+      final needsReview = await applyFavoriteRemapOnReimport(
+        favoriteStorage: ref.read(favoriteChannelsStorageProvider),
+        coordinator: ref.read(favoriteReimportCoordinatorProvider),
+        oldChannels: _channelsBeforeImport,
+        newChannels: newChannels,
+      );
+      ref.read(favoriteReimportReviewCandidatesProvider.notifier).state =
+          needsReview;
+      ref.invalidate(favoriteChannelIdsProvider);
       ref.invalidate(railsProvider);
-      Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _importProgress = ImportProgress(
+          stage: ImportStage.failed,
+          error: error,
+        );
+      });
+    } finally {
+      _isCompletingImport = false;
     }
   }
 
@@ -1600,54 +1679,99 @@ class _PlaylistSourceInfoCallout extends StatelessWidget {
 }
 
 class _BringYourOwnPlaylistView extends StatelessWidget {
-  const _BringYourOwnPlaylistView({required this.onPlaylistSourceTap});
+  const _BringYourOwnPlaylistView({
+    required this.onPlaylistSourceTap,
+    required this.tenFootMode,
+  });
 
   final VoidCallback onPlaylistSourceTap;
+  final bool tenFootMode;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final scrollView = SingleChildScrollView(
+      padding: tenFootMode ? EdgeInsets.zero : const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Add your playlist',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              button: true,
+              label: 'Add a playlist URL',
+              hint: 'Opens playlist source setup.',
+              child: tenFootMode
+                  ? TvFocusable(
+                      key: const ValueKey('iptv-empty-add-playlist'),
+                      autofocus: true,
+                      semanticLabel: 'Add a playlist URL',
+                      onSelect: onPlaylistSourceTap,
+                      borderRadius: 20,
+                      child: Material(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: onPlaylistSourceTap,
+                          canRequestFocus: false,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Add playlist URL',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : FilledButton.icon(
+                      onPressed: onPlaylistSourceTap,
+                      icon: const Icon(Icons.link),
+                      label: const Text('Add playlist URL'),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: 'Playlist setup',
       hint: 'Add a playlist URL to browse your channels.',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Add your playlist',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Semantics(
-                button: true,
-                label: 'Add a playlist URL',
-                hint: 'Opens playlist source setup.',
-                child: FilledButton.icon(
-                  onPressed: onPlaylistSourceTap,
-                  icon: const Icon(Icons.link),
-                  label: const Text('Add playlist URL'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: tenFootMode ? TvOverscanSafeArea(child: scrollView) : scrollView,
     );
   }
 }
