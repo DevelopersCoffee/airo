@@ -16,6 +16,7 @@ import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 
 /// Provider for current TV navigation index
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
+const _tvNavigationRailWidth = 88.0;
 
 /// Non-live destinations the sidebar can show. Rendered as an overlay on
 /// top of [TvShell.child] instead of being routed to — routing away would
@@ -54,7 +55,14 @@ class _TvShellState extends ConsumerState<TvShell> {
           // The routed content (the live TV screen on the common path).
           // Never removed from the tree by a sidebar tap — only a direct
           // deep link to a different route replaces it.
-          Positioned.fill(child: widget.child),
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
+              ),
+              child: widget.child,
+            ),
+          ),
           if (!isPlayerFullscreen) ...[
             if (_overlay != null)
               Positioned.fill(
@@ -64,7 +72,7 @@ class _TvShellState extends ConsumerState<TvShell> {
                 // left inset the old Row gave them, so their content doesn't
                 // render underneath the now-floating rail.
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 88),
+                  padding: const EdgeInsets.only(left: _tvNavigationRailWidth),
                   child: _buildOverlay(_overlay!),
                 ),
               ),
@@ -151,7 +159,7 @@ class _TvNavigationRail extends StatelessWidget {
 
     return Container(
       key: const Key('tv-sidebar-nav'),
-      width: 88,
+      width: _tvNavigationRailWidth,
       padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
         color: chromeSurface,

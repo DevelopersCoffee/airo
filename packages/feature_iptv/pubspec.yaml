@@ -13,6 +13,7 @@ dependencies:
     path: ../core_entitlements
   cached_network_image: 3.4.1
   collection: ^1.19.0
+  connectivity_plus: ^7.2.0
   core_data:
     path: ../core_data
   core_edge_intelligence:

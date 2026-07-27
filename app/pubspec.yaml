@@ -84,6 +84,8 @@ dependencies:
     path: ../packages/core_entitlements
   core_product_shell:
     path: ../packages/core_product_shell
+  platform_downloads:
+    path: ../packages/platform_downloads
 
   # Local packages - Features
   airo:

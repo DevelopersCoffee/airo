@@ -22,7 +22,10 @@ void main() {
     WidgetTester tester,
     ValueKey<String> key,
   ) async {
-    tester.widget<ListTile>(find.byKey(key)).onTap?.call();
+    final action = find.byKey(key);
+    Focus.of(tester.element(action)).requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }

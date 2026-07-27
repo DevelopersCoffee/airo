@@ -134,17 +134,21 @@ class _TvInputHandlerState extends State<TvInputHandler> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    return KeyboardListener(
+    return Focus(
       focusNode: _focusNode,
+      canRequestFocus: false,
       onKeyEvent: _handleKeyEvent,
       child: widget.child,
     );
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
-    if (key != null) widget.onInput?.call(key);
+    if (key == null) return KeyEventResult.ignored;
+    return widget.onInput?.call(key) == TvInputResult.handled
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 }
 

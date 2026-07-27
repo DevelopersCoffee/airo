@@ -199,6 +199,8 @@ PODS:
     - Flutter
   - permission_handler_apple (9.4.8):
     - Flutter
+  - platform_downloads (0.1.0):
+    - Flutter
   - PromisesObjC (2.4.0)
   - PromisesSwift (2.4.0):
     - PromisesObjC (= 2.4.0)
@@ -285,6 +287,7 @@ DEPENDENCIES:
   - patrol (from `.symlinks/plugins/patrol/darwin`)
   - pdfx (from `.symlinks/plugins/pdfx/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - platform_downloads (from `.symlinks/plugins/platform_downloads/ios`)
   - screen_brightness_ios (from `.symlinks/plugins/screen_brightness_ios/ios`)
   - screen_protector (from `.symlinks/plugins/screen_protector/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
@@ -386,6 +389,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/pdfx/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
+  platform_downloads:
+    :path: ".symlinks/plugins/platform_downloads/ios"
   screen_brightness_ios:
     :path: ".symlinks/plugins/screen_brightness_ios/ios"
   screen_protector:
@@ -458,6 +463,7 @@ SPEC CHECKSUMS:
   patrol: 09773d9cd563ec54230813755b3231b2e8252aac
   pdfx: 77f4dddc48361fbb01486fa2bdee4532cbb97ef3
   permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
+  platform_downloads: 2b405fad8e16c3ff250ad1384d41e30e983f0a5e
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   PromisesSwift: 9d77319bbe72ebf6d872900551f7eeba9bce2851
   Protobuf: aa5f936835ca2a6186fad0a2d3986a60722c83ab

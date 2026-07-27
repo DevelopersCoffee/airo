@@ -1,0 +1,45 @@
+group = "io.airo.platform_downloads"
+version = "0.1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:9.2.1"
+    }
+}
+
+apply plugin: "com.android.library"
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+android {
+    namespace = "io.airo.platform_downloads"
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+        test.java.srcDirs += "src/test/kotlin"
+    }
+
+    dependencies {
+        implementation "androidx.work:work-runtime-ktx:2.11.2"
+        implementation "com.squareup.okhttp3:okhttp:5.4.0"
+        testImplementation "junit:junit:4.13.2"
+    }
+}

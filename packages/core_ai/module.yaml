@@ -6,6 +6,7 @@ reviewers:
   - Chief QA Officer
 allowed_dependencies:
   - core_domain
+  - platform_downloads
 forbidden_dependencies:
   - app
 quality_gates: {}
