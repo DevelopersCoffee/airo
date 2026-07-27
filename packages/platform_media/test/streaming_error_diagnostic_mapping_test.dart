@@ -15,15 +15,16 @@ void main() {
       expect(diagnostic.retryEligible, isTrue);
     });
 
-    test('maps a 401/403-bearing message to non-retryable provider auth', () {
-      for (final message in [
-        'HttpException: 401',
+    test('distinguishes provider auth 401 from regional 403 denial', () {
+      final unauthorized = mapStreamingErrorToDiagnostic('HttpException: 401');
+      final forbidden = mapStreamingErrorToDiagnostic(
         'PlatformException(VideoError, Exceeds error code, 403 Forbidden)',
-      ]) {
-        final diagnostic = mapStreamingErrorToDiagnostic(message);
-        expect(diagnostic.code, AiroPlaybackDiagnosticCode.providerAuthDenied);
-        expect(diagnostic.retryEligible, isFalse);
-      }
+      );
+
+      expect(unauthorized.code, AiroPlaybackDiagnosticCode.providerAuthDenied);
+      expect(forbidden.code, AiroPlaybackDiagnosticCode.regionRestricted);
+      expect(unauthorized.retryEligible, isFalse);
+      expect(forbidden.retryEligible, isFalse);
     });
 
     test('maps a 404-bearing message to non-retryable provider not-found', () {
