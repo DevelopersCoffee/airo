@@ -18,6 +18,11 @@ input.
    - one stream exposing at least two qualities;
    - one stream exposing at least two audio tracks and two subtitle tracks.
 
+The checked-in A/B fixtures also carry the current iptv-org entries for
+**Vevo Pop**, **YRF Music**, and **B4U Music** as the real-stream playback set.
+Before device use, confirm their URLs still return an HLS manifest because
+public playlist endpoints can change independently of Airo.
+
 ## Player actions and selectors
 
 1. Start the playable stream and enter fullscreen.
@@ -56,13 +61,19 @@ proves Keep/Dismiss focus, closed-loop traversal, and separate CENTER actions.
 
 For physical verification:
 
-1. Import playlist A containing channel id `favorite-old`, name
-   `Fixture News HD`, and a working URL.
+1. From the repository root, serve `docs/testing/fixtures` on the verification
+   LAN (for example, `python3 -m http.server 8765 --directory
+   docs/testing/fixtures`). Import
+   `http://<host-lan-ip>:8765/fire-tv-cv017-playlist-a.m3u`. Its working
+   `Fixture News HD` channel deliberately has no `tvg-id`; the URL-derived
+   channel id will therefore change in playlist B.
 2. Open the fullscreen transport bar, choose **Info**, and add the channel to
    favorites from the channel-actions overlay.
-3. Reimport playlist B with `favorite-old` removed and channel id
-   `favorite-new` named `fixture-news` so it requires name-based review rather
-   than an exact-id remap.
+3. Reimport
+   `http://<host-lan-ip>:8765/fire-tv-cv017-playlist-b.m3u`. Its URL-derived
+   id differs and its normalized name `fixture-news` matches
+   `Fixture News HD`, forcing name-based review rather than an exact-id or
+   `tvg-id` remap.
 4. Open Favorites and confirm the review banner appears.
 5. Confirm Keep visibly owns focus, RIGHT moves to Dismiss, and another RIGHT
    does not leak behind the banner.
@@ -102,4 +113,3 @@ After the checks above:
 3. On a fresh install, confirm the empty-playlist heading, copy, and Add
    playlist action clear the permanent rail at 1920×1080 and the focused
    action ring is not clipped.
-

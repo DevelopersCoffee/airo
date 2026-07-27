@@ -1265,6 +1265,8 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   String? _errorText;
   StreamSubscription<ImportProgress>? _importSubscription;
   ImportProgress? _importProgress;
+  List<IPTVChannel> _channelsBeforeImport = const [];
+  bool _isCompletingImport = false;
 
   @override
   void initState() {
@@ -1290,6 +1292,11 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
 
   Future<void> _save() async {
     final parser = ref.read(m3uParserProvider);
+    // Capture the provider-backed list before changing the source. The staged
+    // parser persists playlist B directly, so waiting until `ready` would lose
+    // playlist A and make CV-017 favorite remapping impossible.
+    _channelsBeforeImport =
+        ref.read(iptvChannelsProvider).value ?? const <IPTVChannel>[];
     try {
       await parser.setPlaylistUrl(_controller.text);
     } on ArgumentError catch (error) {
@@ -1321,13 +1328,40 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   void _onImportProgress(ImportProgress progress) {
     if (!mounted) return;
     setState(() => _importProgress = progress);
-    if (progress.stage == ImportStage.ready) {
-      // The staged import already persisted the new channels; refresh both
-      // the channel list and the derived rails so BrowseScreen picks them
-      // up immediately instead of waiting for the next cold read.
+    if (progress.stage == ImportStage.ready && !_isCompletingImport) {
+      unawaited(_completeImport());
+    }
+  }
+
+  Future<void> _completeImport() async {
+    _isCompletingImport = true;
+    try {
+      // The staged import already persisted the new channels. Rebuild the
+      // provider first, then reconcile favorites against the pre-import
+      // snapshot before closing the sheet or rebuilding derived rails.
       ref.invalidate(iptvChannelsProvider);
+      final newChannels = await ref.read(iptvChannelsProvider.future);
+      final needsReview = await applyFavoriteRemapOnReimport(
+        favoriteStorage: ref.read(favoriteChannelsStorageProvider),
+        coordinator: ref.read(favoriteReimportCoordinatorProvider),
+        oldChannels: _channelsBeforeImport,
+        newChannels: newChannels,
+      );
+      ref.read(favoriteReimportReviewCandidatesProvider.notifier).state =
+          needsReview;
+      ref.invalidate(favoriteChannelIdsProvider);
       ref.invalidate(railsProvider);
-      Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _importProgress = ImportProgress(
+          stage: ImportStage.failed,
+          error: error,
+        );
+      });
+    } finally {
+      _isCompletingImport = false;
     }
   }
 
