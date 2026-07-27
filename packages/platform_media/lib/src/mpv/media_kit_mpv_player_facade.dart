@@ -25,8 +25,14 @@ class MediaKitMpvPlayerFacade implements MpvPlayerFacade {
   final Player _player;
 
   @override
-  Future<MpvOpenResult> open(String url) async {
-    await _player.open(Media(url), play: false);
+  Future<MpvOpenResult> open(
+    String url, {
+    Map<String, String> httpHeaders = const {},
+  }) async {
+    await _player.open(
+      Media(url, httpHeaders: httpHeaders.isEmpty ? null : httpHeaders),
+      play: false,
+    );
     Duration duration = Duration.zero;
     try {
       duration = _player.state.duration;

@@ -63,3 +63,9 @@ final vaultKeyManagerProvider = Provider<VaultKeyManager>((ref) {
 final localAuthenticationProvider = Provider<LocalAuthentication>(
   (ref) => LocalAuthentication(),
 );
+
+/// Route prefix the vault's internal navigation pushes against (add/edit
+/// flows). Defaults to the super-app's historical mount point; a shell
+/// that mounts the vault elsewhere overrides this alongside its route
+/// table so `feature_coin` never hardcodes a host app's URL structure.
+final vaultRoutePrefixProvider = Provider<String>((ref) => '/money/vault');

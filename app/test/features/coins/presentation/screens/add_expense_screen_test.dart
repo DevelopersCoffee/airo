@@ -1,10 +1,9 @@
-import 'package:airo_app/core/utils/currency_formatter.dart';
-import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:airo_app/features/coins/domain/entities/account.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
-import 'package:airo_app/features/coins/domain/services/quick_add_expense_parser.dart';
+import 'package:feature_coins_core/src/entities/account.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
+import 'package:feature_coins_core/src/services/quick_add_expense_parser.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

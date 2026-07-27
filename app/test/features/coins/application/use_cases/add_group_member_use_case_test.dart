@@ -1,5 +1,5 @@
-import 'package:airo_app/features/coins/application/use_cases/add_group_member_use_case.dart';
-import 'package:airo_app/features/coins/domain/entities/group_member.dart';
+import 'package:feature_coins_core/src/application/use_cases/add_group_member_use_case.dart';
+import 'package:feature_coins_core/src/entities/group_member.dart';
 import 'package:airo_app/features/coins/domain/repositories/group_repository.dart'
     hide Result;
 import 'package:flutter_test/flutter_test.dart';

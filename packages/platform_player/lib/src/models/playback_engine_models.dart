@@ -193,8 +193,10 @@ class AiroMediaOpenRequest extends Equatable {
     List<AiroPlaybackExternalSubtitle> externalSubtitles = const [],
     this.mixWithOthers = false,
     this.allowBackgroundPlayback = false,
+    Map<String, String> httpHeaders = const {},
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
-  }) : externalSubtitles = List.unmodifiable(externalSubtitles);
+  }) : externalSubtitles = List.unmodifiable(externalSubtitles),
+       httpHeaders = Map.unmodifiable(httpHeaders);
 
   final String schemaVersion;
   final String requestId;
@@ -214,6 +216,14 @@ class AiroMediaOpenRequest extends Equatable {
   /// `VideoPlayerOptions.allowBackgroundPlayback` on the videoPlayer engine.
   /// Typically true for audio-only/radio-style content.
   final bool allowBackgroundPlayback;
+
+  /// Request headers the playlist declared for this stream, e.g. the
+  /// `http-user-agent` and `http-referrer` attributes on an `#EXTINF` line.
+  ///
+  /// Many IPTV providers reject requests that omit them, so these must reach
+  /// the engine: dropping them makes a stream that the availability probe
+  /// verified as reachable fail at playback with a 403.
+  final Map<String, String> httpHeaders;
 
   @override
   String toString() {
@@ -240,6 +250,7 @@ class AiroMediaOpenRequest extends Equatable {
     externalSubtitles,
     mixWithOthers,
     allowBackgroundPlayback,
+    httpHeaders,
   ];
 }
 

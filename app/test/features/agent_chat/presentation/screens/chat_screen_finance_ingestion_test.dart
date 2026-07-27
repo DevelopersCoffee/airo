@@ -1,12 +1,11 @@
-import 'package:airo_app/core/utils/currency_formatter.dart';
-import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/agent_chat/application/assistant_model_preferences.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:airo_app/features/coins/domain/entities/account.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
+import 'package:feature_coins_core/src/entities/account.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

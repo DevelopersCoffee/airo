@@ -14,7 +14,11 @@ class PanCardRecord extends Equatable {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now() {
     if (!isValidPan(panNumber)) {
-      throw ArgumentError.value(panNumber, 'panNumber', 'Not a valid PAN number');
+      throw ArgumentError.value(
+        panNumber,
+        'panNumber',
+        'Not a valid PAN number',
+      );
     }
   }
 

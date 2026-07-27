@@ -8,7 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 // only — no controls overlay, lock button, or other chrome that would
 // clutter the floating window.
 void main() {
-  Future<void> pumpPlayer(WidgetTester tester, {required bool pipActive}) async {
+  Future<void> pumpPlayer(
+    WidgetTester tester, {
+    required bool pipActive,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 

@@ -62,4 +62,20 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+
+  # Several MLKit pods (MLKitCommon, MLKitVision, MLImage, GoogleMLKit) ship no
+  # arm64 iOS Simulator slice, so CocoaPods excludes arm64 for iphonesimulator on
+  # the Pods-Runner target. When xcodebuild is invoked without an explicit
+  # -arch/-destination, Xcode's cross-project dependency resolution silently drops
+  # the Pods-Runner umbrella target instead of falling back to the one arch it can
+  # build (x86_64), so Runner still links but "ld: framework 'Pods_Runner' not
+  # found" fails. Pinning ARCHS explicitly on Runner.xcodeproj removes that
+  # ambiguity so Pods-Runner and Runner always resolve to the same simulator arch.
+  runner_project = Xcodeproj::Project.open(File.join(__dir__, 'Runner.xcodeproj'))
+  runner_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+    end
+  end
+  runner_project.save
 end

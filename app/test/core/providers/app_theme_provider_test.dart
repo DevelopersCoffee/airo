@@ -1,4 +1,4 @@
-import 'package:airo_app/core/providers/app_theme_provider.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

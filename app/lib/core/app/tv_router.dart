@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
+import '../platform/device_form_factor.dart';
 import 'tv_shell.dart';
 
 /// TV-specific routes
@@ -147,14 +148,24 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
       return IPTVScreen(onSettings: () => context.go(TvRouteNames.settings));
     }
 
-    if (const bool.fromEnvironment('AIRO_TV_UX_SHELL')) {
-      return const IPTVScreen();
-    }
-    return const IptvTvScreen();
+    // Wide layouts get the 10-foot AiroTvShell path with phone chrome
+    // (app bar, drawer, cast entry) suppressed — the TvShell sidebar owns
+    // navigation. The older IptvTvScreen remains only as a reference until
+    // it is removed.
+    return const IPTVScreen(tenFootMode: true);
   }
 }
 
 bool _usesCompactPhoneLayout(BuildContext context) {
+  // A detected TV always gets the 10-foot layout. TV sticks commonly render
+  // 1080p at density 2.0, so their *logical* viewport (960x540) is smaller
+  // than a phone's — the size heuristic alone would misclassify every one
+  // of them (seen on Fire TV Stick: phone drawer + cast chrome on a TV).
+  // Detection is warmed at startup by configureTvSystemChrome(), so the
+  // synchronous cached read is populated before the router ever builds.
+  if (DeviceFormFactorDetector.detectSync(context) == DeviceFormFactor.tv) {
+    return false;
+  }
   final size = MediaQuery.sizeOf(context);
   return size.width < 900 || size.height < 600;
 }

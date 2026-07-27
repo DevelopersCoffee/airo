@@ -1,23 +1,18 @@
-/// Entrypoint stub for the Airo Coins shell.
+/// Entrypoint for the Airo Coins shell.
 ///
-/// Phase 1 of the SSOT migration (ADR-0011,
-/// `docs/adr/0011-super-app-modular-shell-ssot.md`) only requires that the
-/// shared shell contract in `package:core_product_shell` accept a third
-/// shell identifier as data, not that Airo Coins ship real UI or features.
-/// This entrypoint proves exactly that: it boots a `ModuleRegistry` scoped to
-/// `ShellId.coins` with zero modules registered, and renders a placeholder
-/// screen. No real Airo Coin UI, routes, or business logic exist here.
+/// Phase 2 of the SSOT migration: the stub proved the shared shell
+/// contract (`package:core_product_shell`) accepts a third [ShellId]; this
+/// entrypoint now consumes it for real. It registers [CoinVaultModule] —
+/// the ADR-0010 package-first vault from `package:feature_coin` — with a
+/// registry scoped to [ShellId.coins] and routes entirely from
+/// `registry.allRoutes`, the same way `main_tv.dart` consumes
+/// `packages/feature_iptv` rather than forking screens.
 ///
 /// Per ADR-0010 (`docs/adr/0010-airo-coin-package-first-development.md`),
-/// the existing `app/lib/features/coins` tree is legacy, divergent
-/// super-app finance code — a migration *source*, never a target for new
-/// behavior. This entrypoint intentionally does not import it. Real Airo
-/// Coins behavior belongs in a future package-first extraction
-/// (`packages/feature_coin`-style), consumed here the same way
-/// `main_tv.dart` consumes `packages/feature_iptv` — not by forking the
-/// legacy screens.
+/// the legacy `app/lib/features/coins` tree stays a migration source only;
+/// nothing here imports it.
 ///
-/// Build command (once a real build target exists):
+/// Build command (no dedicated store build target yet):
 /// ```bash
 /// flutter build apk --release \
 ///   --target=lib/main_coins.dart \
@@ -25,33 +20,74 @@
 /// ```
 library;
 
+import 'dart:async';
+
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-/// The Airo Coins shell's module registry. Empty today — this only proves
-/// the shared contract accepts a shell identifier beyond mobile/TV.
-final ShellId coinsShellId = ShellId.coins;
-
-final ModuleRegistry coinsModuleRegistry = ModuleRegistry(shell: ShellId.coins);
+import 'core/coins/coin_vault_module.dart';
+import 'core/pro/pro_bootstrap_runner.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AiroCoinsStubApp());
+  runApp(AiroCoinsApp(registry: buildCoinsModuleRegistry()));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(runProBootstrap());
+  });
 }
 
-/// Placeholder root widget for the Airo Coins shell. Replace with a real
-/// app shell (routes, providers, theme) once Airo Coins features are
-/// extracted package-first, per ADR-0010.
-class AiroCoinsStubApp extends StatelessWidget {
-  const AiroCoinsStubApp({super.key});
+/// Builds the Airo Coins shell's module registry. Split out (and returning
+/// a fresh instance per call) so tests can exercise the exact registration
+/// this entrypoint performs without sharing static state.
+@visibleForTesting
+ModuleRegistry buildCoinsModuleRegistry() {
+  final registry = ModuleRegistry(shell: ShellId.coins)
+    // Standalone shell owns its URL space: mount the vault at /vault
+    // instead of inheriting the super-app's /money/vault prefix. The
+    // module overrides feature_coin's vaultRoutePrefixProvider to match.
+    ..register(CoinVaultModule(basePath: '/vault'));
+  return registry;
+}
+
+/// Root widget for the Airo Coins shell: a vault-first app whose routes
+/// come entirely from the module registry, not hand-wired screens.
+class AiroCoinsApp extends StatefulWidget {
+  const AiroCoinsApp({super.key, required this.registry});
+
+  final ModuleRegistry registry;
+
+  @override
+  State<AiroCoinsApp> createState() => _AiroCoinsAppState();
+}
+
+class _AiroCoinsAppState extends State<AiroCoinsApp> {
+  late final GoRouter _router = GoRouter(
+    initialLocation: '/vault',
+    routes: widget.registry.allRoutes,
+  );
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Airo Coins — coming soon', key: Key('airo-coins-stub')),
+    return ProviderScope(
+      overrides: widget.registry.allProviderOverrides,
+      child: MaterialApp.router(
+        title: 'Airo Coins',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFB8860B),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
         ),
+        routerConfig: _router,
       ),
     );
   }

@@ -60,6 +60,22 @@ Store-only AAB artifacts require build integrity, checksum, and upload-result
 evidence before production store submission. Play upload automation is tracked
 separately in #681.
 
+### Airo TV Native Media Contract
+
+The Airo TV Android profile is video_player-only. Its TV-specific pubspec
+replaces the transitive `media_kit_libs_android_video` native bundle with a
+no-plugin stub, while Gradle excludes the corresponding mpv/helper libraries.
+Release qualification runs `scripts/check-android-tv-release.sh` against the
+generated plugin registrant and final APK. It fails if video_player is absent,
+media-kit is registered, or an excluded `libmpv.so` or
+`libmediakitandroidhelper.so` is packaged.
+
+Run the deterministic contract fixtures locally with:
+
+```bash
+scripts/test-check-android-tv-native-media.sh
+```
+
 ### Airo TV Viewport Evidence
 
 The Airo TV IPTV browser release audit additionally requires responsive

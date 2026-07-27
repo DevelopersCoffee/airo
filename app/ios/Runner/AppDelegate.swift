@@ -1,4 +1,3 @@
-import EventKit
 import EventKitUI
 import Flutter
 import EventKit
@@ -11,6 +10,7 @@ import UIKit
   private var pendingCreateEventResult: FlutterResult?
   private let pictureInPicturePlugin = AiroPictureInPicturePlugin()
   private let backgroundAudioPlugin = AiroBackgroundAudioPlugin()
+  private let mediaAssetAnalyzerPlugin = AiroMediaAssetAnalyzerPlugin()
 
   override func application(
     _ application: UIApplication,
@@ -18,17 +18,19 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
 
-    if let controller = window?.rootViewController as? FlutterViewController {
+    if let registrar = registrar(forPlugin: "AiroAppDelegate") {
+      let messenger = registrar.messenger()
       let channel = FlutterMethodChannel(
         name: agentConnectorsChannel,
-        binaryMessenger: controller.binaryMessenger
+        binaryMessenger: messenger
       )
       channel.setMethodCallHandler { [weak self] call, result in
         self?.handleAgentConnectorCall(call, result: result)
       }
 
-      pictureInPicturePlugin.register(with: controller.binaryMessenger)
-      backgroundAudioPlugin.register(with: controller.binaryMessenger)
+      pictureInPicturePlugin.register(with: messenger)
+      backgroundAudioPlugin.register(with: messenger)
+      mediaAssetAnalyzerPlugin.register(with: messenger)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

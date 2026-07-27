@@ -9,30 +9,24 @@ void main() {
 
     test('mobile sees theme, playback, playlistSource, epgGuideSource, '
         'country, audio — matching settings_hub_screen.dart today', () {
-      expect(
-        visibleOn(ShellId.mobile).map((s) => s.id).toSet(),
-        {
-          IptvSettingsSectionId.theme,
-          IptvSettingsSectionId.playback,
-          IptvSettingsSectionId.playlistSource,
-          IptvSettingsSectionId.epgGuideSource,
-          IptvSettingsSectionId.country,
-          IptvSettingsSectionId.audio,
-        },
-      );
+      expect(visibleOn(ShellId.mobile).map((s) => s.id).toSet(), {
+        IptvSettingsSectionId.theme,
+        IptvSettingsSectionId.playback,
+        IptvSettingsSectionId.playlistSource,
+        IptvSettingsSectionId.epgGuideSource,
+        IptvSettingsSectionId.country,
+        IptvSettingsSectionId.audio,
+      });
     });
 
     test('TV sees theme, playback, sources, accessibility — matching '
         'tv_settings_screen.dart today', () {
-      expect(
-        visibleOn(ShellId.tv).map((s) => s.id).toList(),
-        const [
-          IptvSettingsSectionId.theme,
-          IptvSettingsSectionId.playback,
-          IptvSettingsSectionId.sources,
-          IptvSettingsSectionId.accessibility,
-        ],
-      );
+      expect(visibleOn(ShellId.tv).map((s) => s.id).toList(), const [
+        IptvSettingsSectionId.theme,
+        IptvSettingsSectionId.playback,
+        IptvSettingsSectionId.sources,
+        IptvSettingsSectionId.accessibility,
+      ]);
     });
 
     test('theme section renders as "Appearance" on mobile and "Theme" on '
@@ -50,7 +44,10 @@ void main() {
         (s) => s.id == IptvSettingsSectionId.playback,
       );
 
-      expect(playback.iconFor(ShellId.mobile).codePoint, isNot(playback.icon.codePoint));
+      expect(
+        playback.iconFor(ShellId.mobile).codePoint,
+        isNot(playback.icon.codePoint),
+      );
       expect(playback.iconFor(ShellId.tv).codePoint, playback.icon.codePoint);
     });
 

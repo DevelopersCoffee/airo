@@ -12,57 +12,112 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import 'tv_router.dart';
+import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 
 /// Provider for current TV navigation index
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
 
+/// Non-live destinations the sidebar can show. Rendered as an overlay on
+/// top of [TvShell.child] instead of being routed to — routing away would
+/// unmount whatever live playback [child] holds (AiroTV D-pad design:
+/// "VIDEO LAYER always present, never destroyed" / "Playback never
+/// stops"). Only index 0 (Home) ever calls [GoRouter.go]: it's the one
+/// case where returning to the live route is actually correct even if it
+/// means building a fresh live screen (e.g. after a deep link landed the
+/// shell on a non-live route).
+enum _TvOverlayScreen { guide, vod, favorites, settings }
+
 /// TV Shell with sidebar navigation
-class TvShell extends ConsumerWidget {
+class TvShell extends ConsumerStatefulWidget {
   final Widget child;
 
   const TvShell({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TvShell> createState() => _TvShellState();
+}
+
+class _TvShellState extends ConsumerState<TvShell> {
+  _TvOverlayScreen? _overlay;
+
+  @override
+  Widget build(BuildContext context) {
     final currentIndex = ref.watch(tvNavigationIndexProvider);
+    // Zen mode: once the player goes fullscreen, no shell chrome at all —
+    // the sidebar was painted on top of the video and also stole D-pad
+    // focus that should land on the player's own transport controls.
+    final isPlayerFullscreen = ref.watch(isFullscreenModeProvider);
 
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          // Sidebar navigation rail
-          _TvNavigationRail(
-            currentIndex: currentIndex,
-            onDestinationSelected: (index) {
-              ref.read(tvNavigationIndexProvider.notifier).state = index;
-              _navigateToIndex(context, index);
-            },
-          ),
-          // Main content
-          Expanded(child: child),
+          // The routed content (the live TV screen on the common path).
+          // Never removed from the tree by a sidebar tap — only a direct
+          // deep link to a different route replaces it.
+          Positioned.fill(child: widget.child),
+          if (!isPlayerFullscreen) ...[
+            if (_overlay != null)
+              Positioned.fill(
+                // The rail stays visible (painted after this, so on top) and
+                // isn't docked in a layout row anymore, so it no longer
+                // reserves space of its own — give overlay screens the same
+                // left inset the old Row gave them, so their content doesn't
+                // render underneath the now-floating rail.
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 88),
+                  child: _buildOverlay(_overlay!),
+                ),
+              ),
+            // The rail is painted on top instead of docked in a Row, so it
+            // never claims layout width from the content beneath it.
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: _TvNavigationRail(
+                currentIndex: currentIndex,
+                onDestinationSelected: (index) =>
+                    _selectDestination(context, index),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  void _navigateToIndex(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go(TvRouteNames.live);
-        break;
-      case 1:
-        context.go(TvRouteNames.guide);
-        break;
-      case 2:
-        context.go(TvRouteNames.vod);
-        break;
-      case 3:
-        context.go(TvRouteNames.favorites);
-        break;
-      case 4:
-        context.go(TvRouteNames.settings);
-        break;
+  void _selectDestination(BuildContext context, int index) {
+    ref.read(tvNavigationIndexProvider.notifier).state = index;
+    if (index == 0) {
+      setState(() => _overlay = null);
+      GoRouter.of(context).go('/live');
+      return;
     }
+    setState(() {
+      _overlay = switch (index) {
+        1 => _TvOverlayScreen.guide,
+        2 => _TvOverlayScreen.vod,
+        3 => _TvOverlayScreen.favorites,
+        _ => _TvOverlayScreen.settings,
+      };
+    });
+  }
+
+  void _closeOverlay() {
+    ref.read(tvNavigationIndexProvider.notifier).state = 0;
+    setState(() => _overlay = null);
+  }
+
+  Widget _buildOverlay(_TvOverlayScreen overlay) {
+    return switch (overlay) {
+      _TvOverlayScreen.guide => IptvGuideScreen(
+        overrideFormFactor: AiroFormFactor.tv,
+        onChannelSelected: _closeOverlay,
+      ),
+      _TvOverlayScreen.vod => const VodTvScreen(),
+      _TvOverlayScreen.favorites => const TvFavoritesScreen(),
+      _TvOverlayScreen.settings => const TvSettingsScreen(),
+    };
   }
 }
 

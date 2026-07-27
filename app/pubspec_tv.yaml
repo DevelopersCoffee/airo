@@ -71,6 +71,12 @@ dependencies:
     path: ../packages/core_ai
   core_auth:
     path: ../packages/core_auth
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
+  core_app_shell:
+    path: ../packages/core_app_shell
+  core_entitlements:
+    path: ../packages/core_entitlements
   core_product_shell:
     path: ../packages/core_product_shell
 
@@ -171,6 +177,12 @@ dependency_overrides:
     path: ../packages/stubs/permission_handler_stub
   flutter_local_notifications:
     path: ../packages/stubs/flutter_local_notifications_stub
+  # platform_media stays in the shared IPTV graph, but Airo TV intentionally
+  # ships video_player only. Replace media_kit's Android native bundle with a
+  # no-plugin package so Flutter does not register a plugin whose excluded
+  # libmpv/helper binaries cannot load.
+  media_kit_libs_android_video:
+    path: ../packages/stubs/media_kit_libs_android_video_stub
   timezone:
     path: ../packages/stubs/timezone_stub
   pdfx:

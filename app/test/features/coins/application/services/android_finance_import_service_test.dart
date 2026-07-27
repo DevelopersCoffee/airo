@@ -1,9 +1,9 @@
 import 'package:airo_app/features/coins/application/services/android_finance_import_preferences.dart';
-import 'package:airo_app/features/coins/application/services/android_finance_import_service.dart';
-import 'package:airo_app/features/coins/application/services/finance_chat_ingestion_service.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
-import 'package:airo_app/features/coins/domain/services/finance_message_parser.dart';
+import 'package:feature_coins_core/src/application/services/android_finance_import_service.dart';
+import 'package:feature_coins_core/src/application/services/finance_chat_ingestion_service.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
+import 'package:feature_coins_core/src/services/finance_message_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

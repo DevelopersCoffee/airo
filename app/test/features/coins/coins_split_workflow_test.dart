@@ -1,15 +1,15 @@
 import 'package:airo_app/core/database/app_database.dart';
-import 'package:airo_app/features/coins/application/use_cases/add_split_use_case.dart';
-import 'package:airo_app/features/coins/application/use_cases/create_group_use_case.dart';
+import 'package:feature_coins_core/src/application/use_cases/add_split_use_case.dart';
+import 'package:feature_coins_core/src/application/use_cases/create_group_use_case.dart';
 import 'package:airo_app/features/coins/data/datasources/coins_local_datasource_impl.dart';
-import 'package:airo_app/features/coins/data/mappers/group_mapper.dart';
-import 'package:airo_app/features/coins/data/repositories/group_repository_impl.dart';
-import 'package:airo_app/features/coins/domain/entities/group.dart';
-import 'package:airo_app/features/coins/domain/entities/group_member.dart';
-import 'package:airo_app/features/coins/domain/entities/split_entry.dart';
-import 'package:airo_app/features/coins/domain/services/split_calculator.dart';
-import 'package:airo_app/features/coins/domain/entities/settlement.dart';
-import 'package:airo_app/features/coins/domain/services/balance_engine.dart';
+import 'package:feature_coins_core/src/data/mappers/group_mapper.dart';
+import 'package:feature_coins_core/src/data/repositories/group_repository_impl.dart';
+import 'package:feature_coins_core/src/entities/group.dart';
+import 'package:feature_coins_core/src/entities/group_member.dart';
+import 'package:feature_coins_core/src/entities/split_entry.dart';
+import 'package:feature_coins_core/src/services/split_calculator.dart';
+import 'package:feature_coins_core/src/entities/settlement.dart';
+import 'package:feature_coins_core/src/services/balance_engine.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 

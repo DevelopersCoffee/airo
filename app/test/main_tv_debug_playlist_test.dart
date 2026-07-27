@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:airo_app/core/platform/device_form_factor.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/main_tv.dart';
 import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';

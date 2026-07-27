@@ -24,7 +24,8 @@ class VaultKeyManager implements EncryptionKeyManager {
        )),
        _localAuth = localAuth,
        _secureStorage = secureStorage,
-       _isAvailable = null;
+       _isAvailable = null,
+       _hasEnrolled = null;
 
   /// Test-only constructor: bypasses the real `local_auth` plugin and
   /// `flutter_secure_storage` platform channel, both of which are
@@ -33,10 +34,12 @@ class VaultKeyManager implements EncryptionKeyManager {
     required SecureStorage secureStorage,
     required Future<bool> Function() authenticate,
     Future<bool> Function()? isAvailable,
+    Future<bool> Function()? hasEnrolled,
   }) : _secureStorage = secureStorage,
        _authenticate = authenticate,
        _localAuth = null,
-       _isAvailable = isAvailable;
+       _isAvailable = isAvailable,
+       _hasEnrolled = hasEnrolled;
 
   final SecureStorage _secureStorage;
   final Future<bool> Function() _authenticate;
@@ -48,6 +51,9 @@ class VaultKeyManager implements EncryptionKeyManager {
   /// existing tests passing unchanged, while the production constructor
   /// always exercises the real `local_auth` checks below.
   final Future<bool> Function()? _isAvailable;
+
+  /// Test-only seam for [hasEnrolledBiometrics]; see [_isAvailable].
+  final Future<bool> Function()? _hasEnrolled;
 
   @override
   Future<Result<List<int>>> getDatabaseKey() async {
@@ -161,6 +167,30 @@ class VaultKeyManager implements EncryptionKeyManager {
     final canCheck = await _localAuth.canCheckBiometrics;
     final deviceSupported = await _localAuth.isDeviceSupported();
     return canCheck && deviceSupported;
+  }
+
+  /// Whether the user has actually enrolled a biometric.
+  ///
+  /// [isEncryptionAvailable] only reports hardware capability: on a device
+  /// with a fingerprint sensor but no enrolled print (and no screen lock,
+  /// which Android requires before enrolment), it still returns true. The
+  /// authentication attempt then fails, and without this signal the vault
+  /// reports a generic "authentication failed" — implying a bad scan —
+  /// when the real problem is that there is nothing to scan against.
+  ///
+  /// Used to classify failures, never to gate the attempt: `authenticate`
+  /// runs with `biometricOnly: false`, so a device credential is a valid
+  /// factor even when this returns false.
+  Future<bool> hasEnrolledBiometrics() async {
+    final localAuth = _localAuth;
+    if (localAuth == null) return _hasEnrolled?.call() ?? true;
+    try {
+      final enrolled = await localAuth.getAvailableBiometrics();
+      return enrolled.isNotEmpty;
+    } catch (_) {
+      // Never let a diagnostic probe change the outcome of an unlock.
+      return true;
+    }
   }
 
   @override

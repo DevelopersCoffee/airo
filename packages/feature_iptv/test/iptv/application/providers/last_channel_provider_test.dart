@@ -8,11 +8,8 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-IPTVChannel channel(String id, {String name = 'Test'}) => IPTVChannel(
-  id: id,
-  name: name,
-  streamUrl: 'https://example.com/$id.m3u8',
-);
+IPTVChannel channel(String id, {String name = 'Test'}) =>
+    IPTVChannel(id: id, name: name, streamUrl: 'https://example.com/$id.m3u8');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +27,10 @@ void main() {
     });
 
     test('returns null when id is null', () {
-      expect(findResumeChannel(lastChannelId: null, channels: channels), isNull);
+      expect(
+        findResumeChannel(lastChannelId: null, channels: channels),
+        isNull,
+      );
     });
 
     test('returns null when the channel is gone from the list', () {

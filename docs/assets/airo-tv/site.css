@@ -265,6 +265,31 @@ button,
   background: var(--surface-2);
 }
 
+.button-discord {
+  background: #5865F2;
+  color: #fff;
+  border-color: #5865F2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.button-discord:hover {
+  background: #4752C4;
+  border-color: #4752C4;
+  color: #fff;
+}
+
+.community-item-discord {
+  border-color: #5865F2;
+  background: color-mix(in oklch, #5865F2 8%, var(--surface));
+}
+
+.community-item-discord svg {
+  color: #5865F2;
+  flex-shrink: 0;
+}
+
 .hero {
   position: relative;
   display: flex;
@@ -2000,6 +2025,124 @@ button,
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* Airo product choice and Coins public concept surface. */
+.product-choice-band {
+  background: linear-gradient(90deg, color-mix(in oklch, var(--green), transparent 96%), transparent 45%), var(--surface);
+}
+
+.product-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--border);
+}
+
+.product-choice {
+  min-height: 430px;
+  padding: 36px;
+  background: var(--bg);
+}
+
+.product-choice + .product-choice { border-left: 1px solid var(--border); }
+.product-choice-coins { background: radial-gradient(circle at 85% 10%, color-mix(in oklch, var(--gold), transparent 82%), transparent 38%), var(--bg); }
+.product-choice-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.product-mark { display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid color-mix(in oklch, var(--green), var(--border) 52%); border-radius: 50%; color: var(--green); background: var(--green-soft); }
+.product-mark-coins { border-color: color-mix(in oklch, var(--gold), var(--border) 52%); color: var(--gold); background: color-mix(in oklch, var(--gold), transparent 88%); }
+.product-kicker { margin: 58px 0 0; color: var(--quiet); font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.product-choice h3 { margin: 8px 0 12px; font-size: 44px; line-height: 1.02; }
+.product-choice > p:not(.product-kicker) { max-width: 46ch; margin: 0 0 28px; color: var(--muted); }
+.button-coins { border-color: var(--gold); background: var(--gold); color: #15100a; }
+.button-coins:visited { color: #15100a; }
+.button-coins:hover { border-color: color-mix(in oklch, var(--gold), white 18%); background: color-mix(in oklch, var(--gold), white 18%); }
+.product-choice-note, .evidence-note { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 0; color: var(--quiet); font-size: 13px; }
+.product-choice-note svg, .evidence-note svg { flex: 0 0 auto; width: 18px; margin-top: 1px; }
+.module-item-coins { box-shadow: inset 3px 0 0 var(--gold); }
+
+.coins-page { --gold: oklch(0.78 0.13 78); }
+.coins-page .site-header { background: color-mix(in oklch, #100c08, transparent 4%); }
+.coins-hero { position: relative; overflow: hidden; padding: calc(var(--header) + 90px) 0 96px; border-bottom: 1px solid var(--border); background: radial-gradient(circle at 82% 28%, color-mix(in oklch, var(--gold), transparent 78%), transparent 31%), linear-gradient(135deg, #100c08, var(--bg) 55%); }
+.coins-hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(color-mix(in oklch, var(--border), transparent 70%) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--border), transparent 70%) 1px, transparent 1px); background-size: 56px 56px; mask-image: linear-gradient(to right, transparent, black 58%, transparent); }
+.coins-hero-grid { position: relative; display: grid; grid-template-columns: minmax(0, .92fr) minmax(380px, .72fr); gap: 80px; align-items: center; }
+.coins-hero-copy .status { margin-bottom: 28px; }
+.coins-hero-copy h1 { max-width: 12ch; margin: 12px 0 20px; font-size: clamp(54px, 7vw, 92px); line-height: .96; letter-spacing: -.055em; }
+.coins-hero-copy .hero-lede { max-width: 620px; color: var(--text); }
+.coins-concept { overflow: hidden; border: 1px solid color-mix(in oklch, var(--gold), var(--border) 62%); border-radius: 22px; background: color-mix(in oklch, var(--surface), #100c08 28%); box-shadow: 0 34px 90px rgba(0, 0, 0, .42); transform: rotate(1.5deg); }
+.concept-topbar, .concept-records > div { display: flex; align-items: center; }
+.concept-topbar { justify-content: space-between; gap: 16px; min-height: 58px; padding: 0 20px; border-bottom: 1px solid var(--border); color: var(--quiet); font-size: 12px; font-weight: 700; }
+.concept-topbar span:first-child { display: inline-flex; align-items: center; gap: 7px; color: var(--gold); }
+.concept-balance { padding: 34px 24px 28px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, color-mix(in oklch, var(--gold), transparent 88%), transparent); }
+.concept-balance span, .concept-balance strong, .concept-balance small { display: block; }
+.concept-balance span { color: var(--quiet); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.concept-balance strong { margin: 12px 0 8px; font-size: 40px; letter-spacing: .12em; }
+.concept-balance small, .concept-records small { color: var(--muted); }
+.concept-records { padding: 8px 20px; }
+.concept-records > div { min-height: 78px; gap: 14px; border-bottom: 1px solid var(--border); }
+.concept-records > div:last-child { border-bottom: 0; }
+.concept-records p { flex: 1; margin: 0; }
+.concept-records strong, .concept-records small { display: block; }
+.concept-records small { margin-top: 2px; color: var(--quiet); }
+.concept-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in oklch, var(--gold), transparent 88%); color: var(--gold); }
+.concept-caption { margin: 0; padding: 12px 20px; border-top: 1px solid var(--border); color: var(--quiet); font-size: 11px; text-align: center; }
+.coins-disclosure { border-bottom: 1px solid color-mix(in oklch, var(--gold), var(--border) 64%); background: color-mix(in oklch, var(--gold), transparent 92%); }
+.coins-disclosure .container { display: flex; align-items: flex-start; gap: 14px; padding-block: 22px; }
+.coins-disclosure svg { flex: 0 0 auto; margin-top: 2px; color: var(--gold); }
+.coins-disclosure p { margin: 0; color: var(--muted); }
+.coins-disclosure strong { color: var(--text); }
+.coins-principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.coins-principles article { position: relative; min-height: 330px; padding: 28px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.coins-principles article > span { position: absolute; inset: 24px 24px auto auto; color: var(--quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+.coins-principles article > svg { width: 34px; height: 34px; color: var(--gold); }
+.coins-principles h3 { margin: 104px 0 10px; font-size: 24px; }
+.coins-principles p { color: var(--muted); }
+.coins-journey { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); list-style: none; }
+.coins-journey li { min-height: 280px; padding: 24px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.coins-journey li > span { color: var(--gold); font-size: 12px; font-weight: 700; }
+.coins-journey strong { display: block; margin-top: 80px; font-size: 20px; }
+.coins-journey p { color: var(--muted); }
+.boundary-ledger { border-top: 1px solid var(--border); }
+.boundary-ledger > div { display: grid; grid-template-columns: 40px minmax(220px, .72fr) minmax(300px, 1.28fr); gap: 20px; align-items: center; min-height: 88px; border-bottom: 1px solid var(--border); }
+.boundary-ledger svg { color: var(--gold); }
+.boundary-ledger span { color: var(--muted); }
+.coins-roadmap-shell, .coins-next .container { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.2fr); gap: 70px; align-items: start; }
+.coins-roadmap-shell h2, .coins-next h2 { margin: 12px 0 18px; font-size: 48px; line-height: 1.06; }
+.coins-roadmap-shell p, .coins-next p { color: var(--muted); }
+.coins-roadmap-links { border-top: 1px solid var(--border); }
+.coins-roadmap-links a { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 88px; border-bottom: 1px solid var(--border); color: var(--text); text-decoration: none; }
+.coins-roadmap-links a:visited { color: var(--text); }
+.coins-roadmap-links strong, .coins-roadmap-links small { display: block; }
+.coins-roadmap-links small { margin-top: 3px; color: var(--quiet); font-size: 13px; }
+.coins-next { background: linear-gradient(90deg, color-mix(in oklch, var(--green), transparent 91%), transparent); }
+.coins-next .container { align-items: center; }
+.coins-next .button { justify-self: end; }
+
+@media (max-width: 1040px) {
+  .coins-hero-grid { gap: 44px; }
+  .coins-principles, .coins-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 780px) {
+  .product-choice-grid, .coins-hero-grid, .coins-roadmap-shell, .coins-next .container { grid-template-columns: 1fr; }
+  .product-choice + .product-choice { border-left: 0; border-top: 1px solid var(--border); }
+  .product-choice { min-height: 0; padding: 28px 24px; }
+  .product-kicker { margin-top: 44px; }
+  .coins-hero { padding: calc(var(--header) + 56px) 0 68px; }
+  .coins-concept { transform: none; }
+  .coins-roadmap-shell, .coins-next .container { gap: 38px; }
+  .coins-next .button { justify-self: start; }
+  .boundary-ledger > div { grid-template-columns: 36px 1fr; gap: 12px; padding: 18px 0; }
+  .boundary-ledger > div span { grid-column: 2; }
+}
+
+@media (max-width: 520px) {
+  .coins-principles, .coins-journey { grid-template-columns: 1fr; }
+  .coins-principles article, .coins-journey li { min-height: 240px; }
+  .coins-hero-copy h1 { font-size: 52px; }
+  .concept-balance strong { font-size: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coins-concept { transform: none; }
 }
 
 /* Airo platform home */

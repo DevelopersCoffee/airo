@@ -1,22 +1,36 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:collection/collection.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
+import '../../application/providers/connectivity_provider.dart';
+import '../../application/providers/control_row_visibility_provider.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
 import 'sections/channel_info_bar.dart';
-import 'sections/channel_table.dart';
+import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
+import 'sections/multiview_stage.dart';
+import 'sections/playback_stats_bar.dart';
+import 'sections/shell_help_dialog.dart';
+import 'sections/shell_settings_dialog.dart';
+
+typedef VideoFrameEncoder =
+    Future<Uint8List> Function(RenderRepaintBoundary boundary);
 
 class AiroTvShell extends ConsumerStatefulWidget {
   const AiroTvShell({
@@ -28,6 +42,10 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.metadataByChannelId = const {},
     this.availabilityByChannelId = const {},
     this.enrichMetadata = false,
+    this.onPlaylistSourceTap,
+    this.onWaysToWatchTap,
+    this.onShareVideoFrame,
+    this.videoFrameEncoder,
   });
 
   final List<IPTVChannel> channels;
@@ -38,6 +56,20 @@ class AiroTvShell extends ConsumerStatefulWidget {
   final Map<String, StreamAvailability> availabilityByChannelId;
   final bool enrichMetadata;
 
+  /// Opens the playlist-source sheet from the LIVE bar. Wired on TV where
+  /// the phone app bar is suppressed; null hides the entry.
+  final VoidCallback? onPlaylistSourceTap;
+
+  /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
+  final VoidCallback? onWaysToWatchTap;
+
+  /// Host-owned delivery for a frame-only PNG capture.
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
+
+  /// Test seam for deterministic rendering validation. Production uses the
+  /// boundary's PNG encoder.
+  final VideoFrameEncoder? videoFrameEncoder;
+
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
 }
@@ -47,6 +79,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   bool _countryPromptShowing = false;
   Timer? _visibleScanDebounce;
   String _visibleScanSignature = '';
+  final _videoCaptureKey = GlobalKey();
 
   @override
   void dispose() {
@@ -65,6 +98,13 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final sort = ref.watch(channelSortProvider);
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
+    final rowVisibility = ref.watch(controlRowVisibilityProvider);
+    final multiview = ref.watch(multiviewProvider);
+    final playbackStats = ref
+        .watch(streamingStateProvider)
+        .asData
+        ?.value
+        .playbackStats;
     final autoScanState = ref.watch(channelAutoScanProvider);
     final availabilityByChannelId = {
       ...widget.availabilityByChannelId,
@@ -81,8 +121,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       dimensions: snapshot.dimensions,
       countryPrompt: countryPrompt,
     );
-    final table = ChannelTable(
-      key: const ValueKey('airo-tv-channel-table'),
+    final table = ChannelLibraryGrid(
+      key: const ValueKey('airo-tv-channel-library'),
       channels: snapshot.visibleChannels,
       metadataByChannelId: metadata,
       availabilityByChannelId: availabilityByChannelId,
@@ -96,29 +136,84 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         availabilityByChannelId,
       ),
       onVisibleChannelsChanged: _scheduleVisibleChannelScan,
+      multiviewChannelIds: {
+        for (final session in multiview.sessions) session.id,
+      },
+      onMultiviewToggle: (channel) => _toggleMultiview(context, channel),
     );
-    final infoBar = ChannelInfoBar(channel: widget.currentChannel);
+    final infoBar = ChannelInfoBar(
+      channel: widget.currentChannel,
+      onPlaylistSourceTap: widget.onPlaylistSourceTap,
+      onWaysToWatchTap: widget.onWaysToWatchTap,
+      onScreenshotTap: widget.onShareVideoFrame == null
+          ? null
+          : () => _captureVideoFrame(context),
+    );
     final hotbar = Hotbar(
       channels: widget.channels,
       onChannelSelected: widget.onChannelSelected,
     );
     final filterRow = FilterRow(dimensions: snapshot.dimensions);
+    final videoStage = _VideoStageWithActions(
+      child: KeyedSubtree(
+        key: const ValueKey('airo-tv-video-capture-scope'),
+        child: RepaintBoundary(
+          key: _videoCaptureKey,
+          child: multiview.sessions.isEmpty
+              ? widget.videoStage
+              : MultiviewStage(
+                  sessions: multiview.sessions,
+                  featuredChannelId: multiview.featuredChannelId,
+                  onPromote: (channelId) =>
+                      ref.read(multiviewProvider.notifier).promote(channelId),
+                ),
+        ),
+      ),
+      onSettings: () => showAiroTvShellSettingsDialog(context),
+      onHelp: () => showAiroTvShellHelpDialog(context),
+    );
+    final showChannel = rowVisibility.isVisible(AiroTvControlRow.channel);
+    final showStats =
+        rowVisibility.isVisible(AiroTvControlRow.stats) &&
+        widget.currentChannel != null &&
+        playbackStats != null &&
+        playbackStats.hasValues;
+    final showHotbar =
+        rowVisibility.isVisible(AiroTvControlRow.hotbar) && hasHotbar;
+    final showFilter = rowVisibility.isVisible(AiroTvControlRow.filter);
+    final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final chrome = [
-          _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
-          if (hasHotbar)
+          const _OfflineBanner(),
+          if (showChannel)
+            _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
+          if (showStats)
+            _ExplorerSection(
+              label: 'STATS',
+              height: 48,
+              child: PlaybackStatsBar(stats: playbackStats),
+            ),
+          if (showHotbar)
             _ExplorerSection(label: 'HOTBAR', height: 56, child: hotbar),
-          _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
+          if (showFilter)
+            _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
         ];
-        final compactChrome = [infoBar, if (hasHotbar) hotbar, filterRow];
+        final compactChrome = [
+          const _OfflineBanner(),
+          if (showChannel) infoBar,
+          if (showStats)
+            SizedBox(height: 48, child: PlaybackStatsBar(stats: playbackStats)),
+          if (showHotbar) hotbar,
+          if (showFilter) filterRow,
+        ];
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
-              Flexible(flex: 3, child: widget.videoStage),
+              Flexible(flex: 3, child: videoStage),
               ...compactChrome,
-              Expanded(flex: 4, child: table),
+              if (showPlaylist) Expanded(flex: 4, child: table),
             ],
           );
         }
@@ -150,7 +245,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                           child: SizedBox(
                             width: 640,
                             height: 360,
-                            child: widget.videoStage,
+                            child: videoStage,
                           ),
                         ),
                       ),
@@ -173,7 +268,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                       child: Column(
                         children: [
                           ...chrome,
-                          Expanded(child: table),
+                          if (showPlaylist) Expanded(child: table),
                         ],
                       ),
                     ),
@@ -185,6 +280,66 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         );
       },
     );
+  }
+
+  Future<void> _toggleMultiview(
+    BuildContext context,
+    IPTVChannel channel,
+  ) async {
+    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    if (!context.mounted) return;
+    final message = switch (result) {
+      MultiviewToggleResult.added => '${channel.name} added to multiview',
+      MultiviewToggleResult.removed => '${channel.name} removed from multiview',
+      MultiviewToggleResult.capacityReached =>
+        'This device supports up to '
+            '${ref.read(multiviewProvider).capacity} multiview streams.',
+      MultiviewToggleResult.failed =>
+        '${channel.name} could not be opened in multiview.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _captureVideoFrame(BuildContext context) async {
+    final share = widget.onShareVideoFrame;
+    final boundary =
+        _videoCaptureKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (share == null || boundary == null) {
+      _showCaptureMessage(context, 'Video frame is not ready to share.');
+      return;
+    }
+    try {
+      final bytes =
+          await (widget.videoFrameEncoder?.call(boundary) ??
+              _encodeVideoBoundary(boundary));
+      await share(bytes);
+      if (!context.mounted) return;
+      _showCaptureMessage(context, 'Video frame ready to share.');
+    } catch (error) {
+      debugPrint('[AiroTvShell] video-frame capture failed: $error');
+      if (!context.mounted) return;
+      _showCaptureMessage(context, 'Could not capture this video frame.');
+    }
+  }
+
+  Future<Uint8List> _encodeVideoBoundary(RenderRepaintBoundary boundary) async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) throw StateError('PNG encoding failed');
+      return data.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  }
+
+  void _showCaptureMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _selectChannel(
@@ -283,7 +438,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       }
 
       final notifier = ref.read(channelFiltersProvider.notifier);
-      await showFilterOptionDialog(
+      await showTvLongListPicker(
         context: context,
         title: 'Choose your country',
         options: dimensions.countries.toList(growable: false),
@@ -297,6 +452,80 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         _countryPromptShowing = false;
       }
     });
+  }
+}
+
+class _VideoStageWithActions extends StatelessWidget {
+  const _VideoStageWithActions({
+    required this.child,
+    required this.onSettings,
+    required this.onHelp,
+  });
+
+  final Widget child;
+  final VoidCallback onSettings;
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        child,
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _StageAction(
+                key: const ValueKey('airo-tv-shell-help-action'),
+                icon: Icons.help_outline,
+                tooltip: 'Airo TV Help',
+                onPressed: onHelp,
+              ),
+              const SizedBox(width: 4),
+              _StageAction(
+                key: const ValueKey('airo-tv-shell-settings-action'),
+                icon: Icons.tune,
+                tooltip: 'Explorer rows',
+                onPressed: onSettings,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StageAction extends StatelessWidget {
+  const _StageAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      semanticLabel: tooltip,
+      onSelect: onPressed,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.56),
+        shape: const CircleBorder(),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: Icon(icon, color: Colors.white),
+        ),
+      ),
+    );
   }
 }
 
@@ -345,6 +574,144 @@ class _ExplorerSection extends StatelessWidget {
             Expanded(child: child),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// AiroTV D-pad design's "OFFLINE" screen, condensed to a non-blocking
+/// banner instead of a full-screen takeover: the playlist is cached, so
+/// channels stay browsable and (if already playing) video keeps playing —
+/// only new stream starts would actually need the connection. Renders
+/// nothing while online.
+class _OfflineBanner extends ConsumerStatefulWidget {
+  const _OfflineBanner();
+
+  @override
+  ConsumerState<_OfflineBanner> createState() => _OfflineBannerState();
+}
+
+class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
+  bool _checking = false;
+
+  // issues/04-recovery-states.md acceptance criterion 4: Retry must report
+  // success or failure, not just spin -- and must not be a fake button
+  // (isOnlineProvider is watched from the same ConnectivityService this
+  // re-checks, so a real change is what actually dismisses the banner).
+  Future<void> _retry() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    final isConnected = await ref.read(connectivityServiceProvider).isConnected;
+    if (!mounted) return;
+    setState(() => _checking = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            isConnected
+                ? 'Back online'
+                : 'Still no connection — check your network and try again',
+          ),
+        ),
+      );
+  }
+
+  // issues/04-recovery-states.md acceptance criterion 4, second half: a
+  // real platform adapter, or omitted where unsupported -- never a
+  // disabled button (WifiSettingsLauncher.isSupported gates whether this
+  // renders at all, see build()).
+  Future<void> _openWifiSettings() async {
+    final opened = await ref.read(wifiSettingsLauncherProvider).open();
+    if (!mounted || opened) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text("Couldn't open Wi-Fi settings")),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOnline = ref.watch(isOnlineProvider).asData?.value ?? true;
+    if (isOnline) return const SizedBox.shrink();
+    final wifiSettingsSupported = ref
+        .watch(wifiSettingsLauncherProvider)
+        .isSupported;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: const Color(0xFF3A2A0A),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 16, color: Colors.amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'No network connection — your playlist is cached, but '
+              'streams need a connection.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.amber.shade100),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TvFocusable(
+            key: const ValueKey('offline-banner-retry'),
+            semanticLabel: 'Retry connection',
+            onSelect: _checking ? null : _retry,
+            borderRadius: 6,
+            child: TextButton.icon(
+              onPressed: _checking ? null : _retry,
+              icon: _checking
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.refresh_rounded,
+                      size: 16,
+                      color: Colors.amber,
+                    ),
+              label: Text(
+                'Retry',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.amber),
+              ),
+            ),
+          ),
+          if (wifiSettingsSupported) ...[
+            const SizedBox(width: 4),
+            TvFocusable(
+              key: const ValueKey('offline-banner-wifi-settings'),
+              semanticLabel: 'Open Wi-Fi settings',
+              onSelect: _openWifiSettings,
+              borderRadius: 6,
+              child: TextButton.icon(
+                onPressed: _openWifiSettings,
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  size: 16,
+                  color: Colors.amber,
+                ),
+                label: Text(
+                  'Wi-Fi Settings',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.amber),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -1,0 +1,87 @@
+name: VirusTotal release scan
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: GitHub Release tag containing the APK
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: virustotal-release-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  scan-release-apk:
+    name: Scan release APK
+    runs-on: ubuntu-latest
+    env:
+      APK_NAME: Airo-TV-0.0.5.apk
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+    steps:
+      - name: Check out release automation
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "$APK_NAME" \
+            --dir release-assets \
+            --clobber
+          test -f "release-assets/$APK_NAME"
+
+      - name: Scan APK with VirusTotal
+        id: virustotal
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          python3 scripts/scan_virustotal.py \
+            --apk-path "release-assets/$APK_NAME" \
+            --certificate-output "$RUNNER_TEMP/virustotal-certificate.md" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Update GitHub Release trust certificate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CERTIFICATE_PATH: ${{ runner.temp }}/virustotal-certificate.md
+        run: |
+          gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json body \
+            --jq .body > "$RUNNER_TEMP/release-body.md"
+          python3 - "$RUNNER_TEMP/release-body.md" "$CERTIFICATE_PATH" <<'PY'
+          from pathlib import Path
+          import sys
+
+          start = "<!-- airo-virustotal-certificate:start -->"
+          end = "<!-- airo-virustotal-certificate:end -->"
+          body_path = Path(sys.argv[1])
+          certificate = Path(sys.argv[2]).read_text(encoding="utf-8").strip()
+          body = body_path.read_text(encoding="utf-8").rstrip()
+          block = f"{start}\n{certificate}\n{end}"
+          if start in body and end in body:
+              prefix, remainder = body.split(start, 1)
+              _, suffix = remainder.split(end, 1)
+              body = f"{prefix.rstrip()}\n\n{block}{suffix}"
+          else:
+              body = f"{body}\n\n{block}" if body else block
+          body_path.write_text(body.rstrip() + "\n", encoding="utf-8")
+          PY
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file "$RUNNER_TEMP/release-body.md"

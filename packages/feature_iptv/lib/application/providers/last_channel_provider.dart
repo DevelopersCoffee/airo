@@ -27,9 +27,7 @@ class LastChannelRecorder extends StateNotifier<String?> {
         .watch(streamingStateStreamProvider)
         .listen(_recordCurrentChannel);
     _ref.onDispose(subscription.cancel);
-    _recordCurrentChannel(
-      _ref.read(iptvStreamingServiceProvider).currentState,
-    );
+    _recordCurrentChannel(_ref.read(iptvStreamingServiceProvider).currentState);
   }
 
   final Ref _ref;

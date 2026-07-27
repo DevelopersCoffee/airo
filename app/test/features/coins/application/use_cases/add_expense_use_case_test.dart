@@ -1,7 +1,7 @@
 import 'package:airo_app/features/coins/application/use_cases/add_expense_use_case.dart'
     hide Result;
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

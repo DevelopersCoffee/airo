@@ -1,7 +1,7 @@
-import 'package:airo_app/features/coins/domain/entities/budget.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/models/budget_status.dart';
-import 'package:airo_app/features/coins/domain/services/finance_insight_service.dart';
+import 'package:feature_coins_core/src/entities/budget.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/models/budget_status.dart';
+import 'package:feature_coins_core/src/services/finance_insight_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

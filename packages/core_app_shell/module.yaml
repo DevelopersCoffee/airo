@@ -1,0 +1,11 @@
+name: core_app_shell
+owner: Chief Architect
+reviewers:
+  - Flutter Architect
+  - Chief QA Officer
+allowed_dependencies:
+  - core_data
+  - core_ui
+forbidden_dependencies:
+  - app
+quality_gates: {}

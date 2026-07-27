@@ -1,14 +1,9 @@
-import 'dart:async';
-
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/filter_dialogs.dart';
-import '../../../../core/providers/app_theme_provider.dart';
 import 'audio_settings_screen.dart';
-import 'playback_settings_screen.dart';
+import 'theme_settings_screen.dart';
 
 /// Resolves a section descriptor from the shared
 /// [iptvSettingsSections] manifest by [id] — the same manifest
@@ -60,28 +55,22 @@ class SettingsHubScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text(
-              _section(IptvSettingsSectionId.theme).labelFor(ShellId.mobile),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            RadioGroup<AppThemeId>(
-              groupValue: ref.watch(appThemeProvider),
-              onChanged: (themeId) {
-                if (themeId != null) {
-                  ref.read(appThemeProvider.notifier).setTheme(themeId);
-                }
-              },
-              child: Column(
-                children: [
-                  for (final theme in AppTheme.themes)
-                    RadioListTile<AppThemeId>(
-                      value: theme.id,
-                      title: Text(theme.name),
-                      subtitle: Text(theme.description),
-                    ),
-                ],
+            ListTile(
+              leading: Icon(
+                _section(IptvSettingsSectionId.theme).iconFor(ShellId.mobile),
               ),
+              title: Text(
+                _section(IptvSettingsSectionId.theme).labelFor(ShellId.mobile),
+              ),
+              subtitle: const Text('Choose your visual theme'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ThemeSettingsScreen(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),
@@ -126,7 +115,7 @@ class SettingsHubScreen extends ConsumerWidget {
               },
             ),
 
-            const _CountrySettingsTile(),
+            const CountrySettingsTile(),
 
             ListTile(
               leading: Icon(
@@ -162,68 +151,6 @@ class SettingsHubScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CountrySettingsTile extends ConsumerWidget {
-  const _CountrySettingsTile();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final filters = ref.watch(channelFiltersProvider);
-    final channelsAsync = ref.watch(iptvChannelsProvider);
-    final channels = channelsAsync.value ?? const <IPTVChannel>[];
-    final dimensions = channelFilterDimensions(
-      channels: channels,
-      metadataByChannelId: const {},
-    );
-    final canPickCountry =
-        dimensions.countries.isNotEmpty || filters.country != null;
-
-    final country = _section(IptvSettingsSectionId.country);
-    return ListTile(
-      leading: Icon(country.iconFor(ShellId.mobile)),
-      title: Text(country.labelFor(ShellId.mobile)),
-      subtitle: Text(
-        filters.country != null
-            ? countryDisplayLabel(filters.country)
-            : channelsAsync.isLoading
-            ? 'Loading countries…'
-            : dimensions.countries.isEmpty
-            ? 'Load channels first to choose a country'
-            : 'Choose your default channel country',
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      enabled: canPickCountry,
-      onTap: !canPickCountry
-          ? null
-          : () => _showCountryPicker(context, ref, dimensions, filters.country),
-    );
-  }
-
-  Future<void> _showCountryPicker(
-    BuildContext context,
-    WidgetRef ref,
-    ChannelFilterDimensions dimensions,
-    String? selectedCountry,
-  ) {
-    final filters = ref.read(channelFiltersProvider.notifier);
-    final countryPrompt = ref.read(channelCountryPromptProvider.notifier);
-    return showFilterOptionDialog(
-      context: context,
-      title: 'Country',
-      options: dimensions.countries.toList(growable: false),
-      selectedValue: selectedCountry,
-      onSelected: (country) {
-        filters.setCountry(country);
-        unawaited(countryPrompt.markCompleted());
-      },
-      onClear: () {
-        filters.setCountry(null);
-        unawaited(countryPrompt.markCompleted());
-      },
-      optionLabel: countryDisplayLabel,
     );
   }
 }

@@ -1,0 +1,34 @@
+name: feature_iptv_core
+description: >
+  Platform-agnostic IPTV domain logic (navigation/settings manifests, search,
+  VOD grouping/resume, favorite reimport, wakelock debouncing) shared by
+  every shell that renders IPTV UI. No Flutter widget classes or per-shell
+  presentation code lives here.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_product_shell:
+    path: ../core_product_shell
+  equatable: ^2.0.8
+  flutter:
+    sdk: flutter
+  platform_channels:
+    path: ../platform_channels
+  platform_epg:
+    path: ../platform_epg
+  platform_history:
+    path: ../platform_history
+  platform_playlist:
+    path: ../platform_playlist
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

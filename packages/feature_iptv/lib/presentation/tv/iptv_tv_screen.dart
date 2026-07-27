@@ -21,6 +21,7 @@ import '../tv_ux/iptv_resume_gate.dart';
 import '../widgets/channel_initials.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
+import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 
 enum _TvChannelViewMode { grid, list }
@@ -65,6 +66,15 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
 
   Future<void> _showPlaylistSheet() async {
     await showPlaylistSourceSheet(context, ref);
+  }
+
+  Future<void> _showQrPairingDialog() async {
+    final submittedUrl = await showDialog<String>(
+      context: context,
+      builder: (_) => const TvPlaylistQrDialog(),
+    );
+    if (submittedUrl == null || !mounted) return;
+    await showPlaylistSourceSheet(context, ref, initialUrl: submittedUrl);
   }
 
   Future<void> _showPlaylistGuideDialog() async {
@@ -129,6 +139,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
                   child: _TvEmptyPlaylistState(
                     onPlaylistSourceTap: _showPlaylistSheet,
                     onPlaylistHelpTap: _showPlaylistGuideDialog,
+                    onScanWithPhoneTap: _showQrPairingDialog,
                   ),
                 );
               }
@@ -2227,8 +2238,7 @@ class _TvEmptyPlaylistLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
+    return TvOverscanSafeArea(
       child: Column(
         children: [
           _TvLiteReceiverShellHeader(productProfile: productProfile),
@@ -2290,79 +2300,95 @@ class _TvEmptyPlaylistState extends StatelessWidget {
   const _TvEmptyPlaylistState({
     required this.onPlaylistSourceTap,
     required this.onPlaylistHelpTap,
+    required this.onScanWithPhoneTap,
   });
 
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onPlaylistHelpTap;
+
+  /// issues/04-recovery-states.md's "phone QR" onboarding. USB is
+  /// intentionally absent from this screen: `file_picker` is a hard no-op
+  /// stub on TV builds (packages/stubs/file_picker_stub), so a USB button
+  /// here would be exactly the "disabled focus bait" that issue forbids.
+  final VoidCallback onScanWithPhoneTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Scrollable so short logical viewports (TV sticks render 1080p at
+    // density 2.0 → 540 logical height) don't overflow the hero column.
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.live_tv, size: 88, color: colorScheme.primary),
-            const SizedBox(height: 24),
-            Text('Airo TV', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 12),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'Import any M3U playlist and get a clean, ',
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.live_tv, size: 88, color: colorScheme.primary),
+              const SizedBox(height: 24),
+              Text('Airo TV', style: theme.textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  TextSpan(
-                    text: 'smart TV experience',
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                  children: [
+                    const TextSpan(
+                      text: 'Import any M3U playlist and get a clean, ',
                     ),
+                    TextSpan(
+                      text: 'smart TV experience',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(text: ' — instantly.'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _TvActionButton(
+                    icon: Icons.link,
+                    label: 'Add Playlist URL',
+                    onSelect: onPlaylistSourceTap,
+                    autofocus: true,
                   ),
-                  const TextSpan(text: ' — instantly.'),
+                  _TvActionButton(
+                    icon: Icons.qr_code_2,
+                    label: 'Scan with phone',
+                    onSelect: onScanWithPhoneTap,
+                  ),
+                  _TvActionButton(
+                    icon: Icons.help_outline,
+                    label: 'How to add',
+                    onSelect: onPlaylistHelpTap,
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _TvActionButton(
-                  icon: Icons.link,
-                  label: 'Add Playlist URL',
-                  onSelect: onPlaylistSourceTap,
-                  autofocus: true,
-                ),
-                _TvActionButton(
-                  icon: Icons.help_outline,
-                  label: 'How to add',
-                  onSelect: onPlaylistHelpTap,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 20,
-              runSpacing: 8,
-              children: const [
-                _EmptyStateChecklistItem(label: 'No account required'),
-                _EmptyStateChecklistItem(label: 'Dead links removed'),
-                _EmptyStateChecklistItem(label: 'Duplicates merged'),
-                _EmptyStateChecklistItem(label: 'Smart rails built'),
-              ],
-            ),
-          ],
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 8,
+                children: const [
+                  _EmptyStateChecklistItem(label: 'No account required'),
+                  _EmptyStateChecklistItem(label: 'Dead links removed'),
+                  _EmptyStateChecklistItem(label: 'Duplicates merged'),
+                  _EmptyStateChecklistItem(label: 'Smart rails built'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

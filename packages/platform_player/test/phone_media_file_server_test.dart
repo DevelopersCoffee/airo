@@ -150,6 +150,73 @@ void main() {
     expect(body, mediaBytes.sublist(3996));
   });
 
+  test(
+    'serves a bounded high-offset range through a seekable source',
+    () async {
+      const mediaLength = 6 * 1024 * 1024 * 1024;
+      const start = 5 * 1024 * 1024 * 1024;
+      const endInclusive = start + 1023;
+      final source = _RecordingSeekableSource(mediaLength);
+      final server = PhoneMediaFileServer(
+        snapshot: snapshotFor(),
+        source: source,
+        contentType: 'video/mp4',
+        bindAddress: InternetAddress.loopbackIPv4,
+        sessionToken: 'seekable-source-token',
+      );
+      final url = await server.start();
+      addTearDown(server.stopServer);
+
+      final response = await request(url, range: 'bytes=$start-$endInclusive');
+      expect(response.statusCode, HttpStatus.partialContent);
+      expect(
+        response.headers.value(HttpHeaders.contentRangeHeader),
+        'bytes $start-$endInclusive/$mediaLength',
+      );
+      final body = await response.fold<List<int>>([], (a, b) => a..addAll(b));
+      expect(body, hasLength(1024));
+      expect(source.reads, [(start: start, end: endInclusive + 1)]);
+    },
+  );
+
+  for (final fixture in [
+    (code: PhoneMediaSourceFailureCode.closed, status: HttpStatus.gone),
+    (
+      code: PhoneMediaSourceFailureCode.permissionLost,
+      status: HttpStatus.forbidden,
+    ),
+    (
+      code: PhoneMediaSourceFailureCode.readFailed,
+      status: HttpStatus.internalServerError,
+    ),
+  ]) {
+    test(
+      'maps ${fixture.code.stableId} source failures deterministically',
+      () async {
+        final events = <PhoneMediaDiagnosticEvent>[];
+        final server = PhoneMediaFileServer(
+          snapshot: snapshotFor(),
+          source: _FailingSeekableSource(fixture.code),
+          contentType: 'video/mp4',
+          bindAddress: InternetAddress.loopbackIPv4,
+          sessionToken: 'source-failure-token',
+          onDiagnosticEvent: events.add,
+        );
+        final url = await server.start();
+        addTearDown(server.stopServer);
+
+        final response = await request(url, method: 'HEAD');
+
+        expect(response.statusCode, fixture.status);
+        final error = events.singleWhere(
+          (event) => event.kind == PhoneMediaDiagnosticEventKind.requestError,
+        );
+        expect(error.errorType, 'source_${fixture.code.stableId}');
+        expect(error.toString(), isNot(contains('source-failure-token')));
+      },
+    );
+  }
+
   test('rejects unsatisfiable ranges with 416', () async {
     final server = serverFor();
     final url = await server.start();
@@ -535,4 +602,42 @@ void main() {
     expect(event.toString(), isNot(contains('/Users/')));
     expect(event.toPublicMap().toString(), isNot(contains('http://')));
   });
+}
+
+class _RecordingSeekableSource implements PhoneMediaSeekableSource {
+  _RecordingSeekableSource(this.mediaLength);
+
+  final int mediaLength;
+  final List<({int start, int end})> reads = [];
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<int> length() async => mediaLength;
+
+  @override
+  Stream<List<int>> openRead(int start, int end) {
+    reads.add((start: start, end: end));
+    return Stream.value(
+      List<int>.generate(end - start, (index) => (start + index) % 251),
+    );
+  }
+}
+
+class _FailingSeekableSource implements PhoneMediaSeekableSource {
+  _FailingSeekableSource(this.code);
+
+  final PhoneMediaSourceFailureCode code;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<int> length() async {
+    throw PhoneMediaSourceException(code);
+  }
+
+  @override
+  Stream<List<int>> openRead(int start, int end) => const Stream.empty();
 }

@@ -102,8 +102,15 @@ class IPTVChannel extends Equatable {
   final String group;
   final ChannelCategory category;
   final ChannelFlavor flavor;
-  final String country;
+
+  /// ISO country code supplied by the playlist, or null when it declares none.
+  /// Never defaulted: an invented value is indistinguishable from a real one
+  /// and surfaces as a bogus filter option while enrichment is still loading.
+  final String? country;
   final bool isAudioOnly;
+
+  /// Languages supplied by the playlist; empty when it declares none. Left
+  /// empty rather than assumed for the same reason as [country].
   final List<String> languages;
   final Map<String, String>? qualityUrls;
   final int? tvgId;
@@ -122,9 +129,9 @@ class IPTVChannel extends Equatable {
     this.group = 'Uncategorized',
     this.category = ChannelCategory.all,
     this.flavor = ChannelFlavor.general,
-    this.country = 'IN',
+    this.country,
     this.isAudioOnly = false,
-    this.languages = const ['en'],
+    this.languages = const [],
     this.qualityUrls,
     this.tvgId,
     this.tvgName,
@@ -147,10 +154,10 @@ class IPTVChannel extends Equatable {
         json['category'] as String? ?? 'general',
       ),
       flavor: ChannelFlavor.fromString(json['flavor'] as String? ?? 'general'),
-      country: json['country'] as String? ?? 'IN',
+      country: json['country'] as String?,
       isAudioOnly: json['isAudioOnly'] as bool? ?? false,
       languages:
-          (json['languages'] as List<dynamic>?)?.cast<String>() ?? const ['en'],
+          (json['languages'] as List<dynamic>?)?.cast<String>() ?? const [],
       qualityUrls: (json['qualityUrls'] as Map<String, dynamic>?)
           ?.cast<String, String>(),
       tvgId: json['tvgId'] as int?,
@@ -174,7 +181,7 @@ class IPTVChannel extends Equatable {
     'group': group,
     'category': category.name,
     'flavor': flavor.name,
-    'country': country,
+    if (country != null) 'country': country,
     'isAudioOnly': isAudioOnly,
     'languages': languages,
     if (qualityUrls != null) 'qualityUrls': qualityUrls,
@@ -228,7 +235,7 @@ class IPTVChannel extends Equatable {
       group: normalizedGroup,
       category: _inferCategory(normalizedGroup, name),
       isAudioOnly: _isAudioStream(url, normalizedGroup, name),
-      languages: language != null ? [language] : const ['en'],
+      languages: language != null ? [language] : const [],
       tvgId: tvgId != null ? int.tryParse(tvgId) : null,
       tvgName: tvgName,
     );

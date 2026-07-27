@@ -20,6 +20,7 @@ class FakeMpvPlayerFacade implements MpvPlayerFacade {
 
   bool disposed = false;
   String? lastOpenedUrl;
+  Map<String, String>? lastOpenedHeaders;
   bool playing = false;
   Duration position = Duration.zero;
   double volume = 1;
@@ -28,13 +29,17 @@ class FakeMpvPlayerFacade implements MpvPlayerFacade {
   final List<String> calls = [];
 
   @override
-  Future<MpvOpenResult> open(String url) async {
+  Future<MpvOpenResult> open(
+    String url, {
+    Map<String, String> httpHeaders = const {},
+  }) async {
     calls.add('open($url)');
     final error = scriptedOpenError;
     if (error != null) {
       throw error;
     }
     lastOpenedUrl = url;
+    lastOpenedHeaders = httpHeaders;
     return MpvOpenResult(
       duration: fakeDuration,
       hardwareAccelerated: hardwareAccelerated,

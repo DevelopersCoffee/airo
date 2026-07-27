@@ -19,9 +19,7 @@ void main() {
 
   Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
 
-  testWidgets('renders nothing when the prompt is not visible', (
-    tester,
-  ) async {
+  testWidgets('renders nothing when the prompt is not visible', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -139,10 +137,7 @@ void main() {
         ],
         child: MaterialApp(
           home: Scaffold(
-            body: IptvCastPromptCard(
-              channel: uncastable,
-              onChooseTv: () {},
-            ),
+            body: IptvCastPromptCard(channel: uncastable, onChooseTv: () {}),
           ),
         ),
       ),

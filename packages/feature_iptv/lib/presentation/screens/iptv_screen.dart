@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
+import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
+import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
@@ -21,6 +23,8 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/sections/ways_to_watch_dialog.dart';
+import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -29,9 +33,19 @@ class IPTVScreen extends ConsumerStatefulWidget {
     this.onOpenVod,
     this.onSettings,
     this.onPickLocalMediaForTv,
+    this.deepLinkIntent,
     this.deepLinkChannelId,
+    this.onShareVideoFrame,
+    this.tenFootMode = false,
     super.key,
   });
+
+  /// When true (a detected TV behind the app's TvShell sidebar), the phone
+  /// chrome — app bar, drawer, cast entry — is suppressed: the sidebar
+  /// already owns navigation, TVs are receivers not cast senders, and
+  /// browse-level actions live in the 10-foot shell itself. Touch devices
+  /// keep the full phone chrome.
+  final bool tenFootMode;
 
   /// Invoked when the user taps the "Movies & Shows" action to navigate to
   /// the VOD screen. Left as an optional callback (rather than a direct
@@ -50,12 +64,22 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// depend on `file_picker`; the host app owns the native file-picker wiring.
   final Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv;
 
+  /// Parsed link intent supplied by the host router. Includes the channel and
+  /// optional Explorer filters without coupling this package to go_router.
+  final IptvDeepLinkIntent? deepLinkIntent;
+
+  /// Host-owned image delivery for frame-only screenshots.
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
+
   /// Channel id resolved from a deep link (universal link, home-screen
   /// widget, or "continue watching" notification tap) or the app's
   /// resume-last-channel affordance. When set, playback starts immediately
   /// in [initState] instead of waiting for a tap on the browse grid, and
   /// the browse grid is not the first frame rendered.
   final String? deepLinkChannelId;
+
+  String? get effectiveDeepLinkChannelId =>
+      deepLinkIntent?.channelId ?? deepLinkChannelId;
 
   @override
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
@@ -67,11 +91,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     debugLabel: 'IPTV fullscreen back handler',
   );
 
+  /// Guards the postFrameCallback below to fire once per fullscreen entry,
+  /// not on every rebuild. Live playback rebuilds constantly (buffering,
+  /// position, cast state); requesting focus on every one of those was
+  /// yanking focus back to this Back-only node from the player's own
+  /// TvInputHandler after it had already (correctly) taken over, leaving
+  /// every D-pad key except Back permanently dead in fullscreen.
+  bool _fullscreenFocusClaimed = false;
+
   /// True while a [IPTVScreen.deepLinkChannelId] is set and its resolution
   /// (in the post-frame callback below) hasn't yet either started playback
   /// or determined the channel doesn't exist. Gates the first frame so the
   /// browse grid never flashes before deep-linked playback begins.
-  late bool _deepLinkPending = widget.deepLinkChannelId != null;
+  late bool _deepLinkPending = widget.effectiveDeepLinkChannelId != null;
 
   /// True once the user has tapped Cancel on the deep-link loading screen.
   /// Sticky for the lifetime of this deep-link attempt: unlike
@@ -106,10 +138,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       if (mounted) setState(() => _isPictureInPicture = isActive);
     });
 
-    final deepLinkId = widget.deepLinkChannelId;
+    final deepLinkId = widget.effectiveDeepLinkChannelId;
     if (deepLinkId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
+        final deepLinkFilters = widget.deepLinkIntent?.filters;
+        if (deepLinkFilters != null) {
+          ref.read(channelFiltersProvider.notifier).restore(deepLinkFilters);
+        }
         // Await the channel list rather than reading its current `.value`:
         // the list is almost never loaded yet by the very next frame (it's
         // usually still an in-flight fetch), so a synchronous read would
@@ -147,11 +183,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           _playChannel(channel);
           setState(() => _deepLinkPending = false);
         } else {
-          // Missing (or unresolvable) channel: fall through to the normal
-          // browse-grid landing (spec Error Handling) — no snackbar wiring
-          // needed here since the grid is the existing default UI, not a
-          // special error state.
           setState(() => _deepLinkPending = false);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'That shared channel is no longer available. Browse to choose another.',
+                  ),
+                ),
+              );
+          });
         }
       });
     }
@@ -206,6 +250,16 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   void _toggleFullscreen() {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+    if (isFullscreen) {
+      // Leaving fullscreen -- let the next entry claim focus fresh.
+      _fullscreenFocusClaimed = false;
+    }
+
+    // TV chrome is fixed: always landscape, always immersive (set once at
+    // startup by the app's configureTvSystemChrome). The phone-style
+    // portrait restore below rotated the whole Fire TV display to
+    // 1080x1920 on fullscreen exit.
+    if (widget.tenFootMode) return;
 
     if (!isFullscreen) {
       // Entering fullscreen
@@ -224,6 +278,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
     _toggleFullscreen();
+  }
+
+  /// TV selection: open the full player directly. On a 10-foot UI the
+  /// browse shell's small preview stage is a poor first playback surface —
+  /// choosing a channel means "watch it now". Back returns to browse via
+  /// the existing fullscreen back handling.
+  void _playChannelFullscreen(IPTVChannel channel) {
+    ref.read(isFullscreenModeProvider.notifier).state = true;
+    _playChannel(channel);
   }
 
   void _playChannel(IPTVChannel channel) {
@@ -502,6 +565,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     );
   }
 
+  Future<void> _showWaysToWatch() async {
+    final pictureInPictureSupported =
+        !widget.tenFootMode && await AiroNativePictureInPicture.isSupported();
+    if (!mounted) return;
+
+    if (isGoogleCastSenderPlatform) {
+      unawaited(ref.read(iptvCastProvider.notifier).startDiscovery());
+    }
+
+    await _showWaysToWatchDialog(
+      context: context,
+      pictureInPictureSupported: pictureInPictureSupported,
+      onExitFullscreen: _exitFullscreen,
+      onEnterFullscreen: () {
+        if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
+      },
+      onShowCast: _showCastSheet,
+    );
+  }
+
   Future<void> _showPlaylistSheet() async {
     await showPlaylistSourceSheet(context, ref);
   }
@@ -582,20 +665,40 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     if (isWaitingForDeepLink) {
       return guardRouteBack(
         Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                // Escape hatch: the user must never be stuck here indefinitely
-                // even before the 10s timeout in initState fires.
-                TextButton.icon(
-                  onPressed: _cancelDeepLinkWait,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancel'),
-                ),
-              ],
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF05060F), Color(0xFF141B33)],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Starting channel...',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 32),
+                  // Escape hatch: the user must never be stuck here indefinitely
+                  // even before the 10s timeout in initState fires.
+                  TextButton.icon(
+                    onPressed: _cancelDeepLinkWait,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cancel'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -624,11 +727,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     if (showFullscreenPlayer) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && ref.read(isFullscreenModeProvider)) {
-          _fullscreenFocusNode.requestFocus();
-        }
-      });
+      if (!_fullscreenFocusClaimed) {
+        _fullscreenFocusClaimed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && ref.read(isFullscreenModeProvider)) {
+            _fullscreenFocusNode.requestFocus();
+          }
+        });
+      }
       return guardRouteBack(
         Focus(
           focusNode: _fullscreenFocusNode,
@@ -642,6 +748,28 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
+              showPictureInPicture: !widget.tenFootMode,
+              useTvTransportBar: widget.tenFootMode,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (widget.tenFootMode) {
+      return guardRouteBack(
+        AiroResponsiveScaffold(
+          padding: EdgeInsets.zero,
+          body: IptvResumeGate(
+            enabled: widget.effectiveDeepLinkChannelId == null,
+            child: _StreamTabContent(
+              key: const ValueKey('iptv-browse-grid'),
+              onChannelTap: _playChannelFullscreen,
+              onFullscreenToggle: _toggleFullscreen,
+              onPlaylistSourceTap: _showPlaylistSheet,
+              onWaysToWatchTap: _showWaysToWatch,
+              onShareVideoFrame: widget.onShareVideoFrame,
+              playlistSourceInInfoBar: true,
             ),
           ),
         ),
@@ -695,7 +823,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           ],
         ),
         body: IptvResumeGate(
-          enabled: widget.deepLinkChannelId == null,
+          enabled: widget.effectiveDeepLinkChannelId == null,
           child: Column(
             children: [
               Expanded(
@@ -704,6 +832,8 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onChannelTap: _playChannel,
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
+                  onWaysToWatchTap: _showWaysToWatch,
+                  onShareVideoFrame: widget.onShareVideoFrame,
                 ),
               ),
               const IptvCastMiniController(),
@@ -713,6 +843,52 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       ),
     );
   }
+}
+
+Future<void> _showWaysToWatchDialog({
+  required BuildContext context,
+  required bool pictureInPictureSupported,
+  required VoidCallback onExitFullscreen,
+  required VoidCallback onEnterFullscreen,
+  required VoidCallback onShowCast,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Consumer(
+      builder: (context, dialogRef, _) {
+        final castState = dialogRef.watch(iptvCastProvider);
+        final castAvailable =
+            isGoogleCastSenderPlatform &&
+            castState.discovery.devices.isNotEmpty;
+        return WaysToWatchDialog(
+          pictureInPictureSupported: pictureInPictureSupported,
+          castAvailable: castAvailable,
+          onFitScreen: () {
+            Navigator.of(dialogContext).pop();
+            onExitFullscreen();
+          },
+          onFullScreen: () {
+            Navigator.of(dialogContext).pop();
+            onEnterFullscreen();
+          },
+          onPictureInPicture: () async {
+            Navigator.of(dialogContext).pop();
+            final entered = await AiroNativePictureInPicture.requestEnter();
+            if (!context.mounted || entered) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Floating Window could not be started.'),
+              ),
+            );
+          },
+          onCast: () {
+            Navigator.of(dialogContext).pop();
+            onShowCast();
+          },
+        );
+      },
+    ),
+  );
 }
 
 /// IPTV Screen body content (without AppBar) for embedding in MediaHubScreen
@@ -728,6 +904,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   final FocusNode _fullscreenFocusNode = FocusNode(
     debugLabel: 'IPTV body fullscreen back handler',
   );
+
+  /// See _IPTVScreenState's identical field: guards the postFrameCallback
+  /// below to fire once per fullscreen entry, not on every rebuild.
+  bool _fullscreenFocusClaimed = false;
 
   @override
   void initState() {
@@ -775,6 +955,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   void _toggleFullscreen() {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+    if (isFullscreen) {
+      // Leaving fullscreen -- let the next entry claim focus fresh.
+      _fullscreenFocusClaimed = false;
+    }
 
     if (!isFullscreen) {
       // Entering fullscreen
@@ -817,6 +1001,45 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showCastSheet() async {
+    final channel = ref
+        .read(iptvStreamingServiceProvider)
+        .currentState
+        .currentChannel;
+    if (channel == null) return;
+    await showIptvCastDevicePicker(
+      context: context,
+      onDeviceSelected: (device) {
+        ref
+            .read(iptvCastProvider.notifier)
+            .castChannelToDevice(
+              channel: channel,
+              device: device,
+              selectedQuality: ref
+                  .read(iptvStreamingServiceProvider)
+                  .currentState
+                  .selectedQuality,
+            );
+      },
+    );
+  }
+
+  Future<void> _showWaysToWatch() async {
+    final pictureInPictureSupported =
+        await AiroNativePictureInPicture.isSupported();
+    if (!mounted) return;
+    unawaited(ref.read(iptvCastProvider.notifier).startDiscovery());
+    await _showWaysToWatchDialog(
+      context: context,
+      pictureInPictureSupported: pictureInPictureSupported,
+      onExitFullscreen: _exitFullscreen,
+      onEnterFullscreen: () {
+        if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
+      },
+      onShowCast: _showCastSheet,
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -833,7 +1056,8 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
-    if (isFullscreen) {
+    if (isFullscreen && !_fullscreenFocusClaimed) {
+      _fullscreenFocusClaimed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && ref.read(isFullscreenModeProvider)) {
           _fullscreenFocusNode.requestFocus();
@@ -880,6 +1104,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
+                      onWaysToWatchTap: _showWaysToWatch,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -896,11 +1121,20 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    required this.onWaysToWatchTap,
+    this.onShareVideoFrame,
+    this.playlistSourceInInfoBar = false,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback onWaysToWatchTap;
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
+
+  /// True on TV (no app bar): surfaces the playlist-source entry in the
+  /// shell's LIVE bar instead. Phones keep it in the app bar only.
+  final bool playlistSourceInInfoBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -910,7 +1144,7 @@ class _StreamTabContent extends ConsumerWidget {
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TvLoadingScreen(message: 'Loading channels...'),
       error: (error, stack) => _buildError(context, ref, error.toString()),
     );
   }
@@ -934,6 +1168,9 @@ class _StreamTabContent extends ConsumerWidget {
       enrichMetadata: true,
       currentChannel: activeChannel,
       onChannelSelected: onChannelTap,
+      onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
+      onWaysToWatchTap: onWaysToWatchTap,
+      onShareVideoFrame: onShareVideoFrame,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null
@@ -945,6 +1182,7 @@ class _StreamTabContent extends ConsumerWidget {
                     showControls: true,
                     enableSwipeChannelChange: true,
                     onFullscreenToggle: onFullscreenToggle,
+                    showPictureInPicture: !playlistSourceInInfoBar,
                   ),
                   Positioned(
                     top: 8,
@@ -989,17 +1227,24 @@ class _StreamTabContent extends ConsumerWidget {
 
 Future<void> showPlaylistSourceSheet(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  String? initialUrl,
+}) async {
   await showAdaptiveIptvSheet<void>(
     context: context,
     maxWidth: 640,
-    builder: (_) => const _PlaylistSourceSheet(),
+    builder: (_) => _PlaylistSourceSheet(initialUrl: initialUrl),
   );
 }
 
 class _PlaylistSourceSheet extends ConsumerStatefulWidget {
-  const _PlaylistSourceSheet();
+  const _PlaylistSourceSheet({this.initialUrl});
+
+  /// Pre-fills the URL field without auto-submitting -- the TV empty
+  /// state's QR handoff (issues/04-recovery-states.md) hands a phone-typed
+  /// URL in here, but the user still confirms/imports it themselves, same
+  /// as manual entry.
+  final String? initialUrl;
 
   @override
   ConsumerState<_PlaylistSourceSheet> createState() =>
@@ -1016,7 +1261,9 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   void initState() {
     super.initState();
     final parser = ref.read(m3uParserProvider);
-    _controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
+    _controller = TextEditingController(
+      text: widget.initialUrl ?? parser.getPlaylistUrl() ?? '',
+    );
   }
 
   @override

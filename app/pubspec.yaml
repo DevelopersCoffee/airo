@@ -46,7 +46,7 @@ dependencies:
   path_provider: ^2.1.6
 
   # Connectivity
-  connectivity_plus: ^7.2.0
+  connectivity_plus: ^7.3.1
 
   # Networking
   dio: ^5.10.0
@@ -76,6 +76,12 @@ dependencies:
     path: ../packages/core_ai
   core_auth:
     path: ../packages/core_auth
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
+  core_app_shell:
+    path: ../packages/core_app_shell
+  core_entitlements:
+    path: ../packages/core_entitlements
   core_product_shell:
     path: ../packages/core_product_shell
 
@@ -84,6 +90,10 @@ dependencies:
     path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
+  feature_billsplit_core:
+    path: ../packages/feature_billsplit_core
+  feature_coins_core:
+    path: ../packages/feature_coins_core
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -91,7 +101,7 @@ dependencies:
   equatable: ^2.1.0
   flame: ^1.37.0
   flame_audio: ^2.12.1
-  share_plus: ^13.2.0
+  share_plus: ^13.3.0
   url_launcher: 6.3.2
   file_picker: ^12.0.0-beta.7
   flutter_local_notifications: ^22.0.1

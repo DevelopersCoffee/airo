@@ -1,4 +1,4 @@
-import 'package:airo_app/features/coins/domain/services/quick_add_expense_parser.dart';
+import 'package:feature_coins_core/src/services/quick_add_expense_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

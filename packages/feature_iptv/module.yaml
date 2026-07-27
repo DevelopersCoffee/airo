@@ -8,6 +8,7 @@ allowed_dependencies:
   - core_data
   - core_product_shell
   - core_ui
+  - feature_iptv_core
   - platform_channels
   - platform_epg
   - platform_favorites

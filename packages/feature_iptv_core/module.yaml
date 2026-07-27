@@ -1,0 +1,16 @@
+name: feature_iptv_core
+owner: Media Intelligence Architect
+reviewers:
+  - Chief Architect
+  - Platform Architect
+  - Chief QA Officer
+allowed_dependencies:
+  - core_product_shell
+  - platform_channels
+  - platform_epg
+  - platform_history
+  - platform_playlist
+forbidden_dependencies:
+  - app
+  - feature_iptv
+quality_gates: {}

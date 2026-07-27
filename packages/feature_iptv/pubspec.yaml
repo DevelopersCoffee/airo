@@ -17,6 +17,8 @@ dependencies:
     path: ../core_product_shell
   core_ui:
     path: ../core_ui
+  feature_iptv_core:
+    path: ../feature_iptv_core
   dio: ^5.10.0
   equatable: ^2.0.8
   flutter:
@@ -45,6 +47,7 @@ dependencies:
   product_capabilities:
     path: ../product_capabilities
   path_provider: ^2.1.6
+  qr_flutter: ^4.1.0
   screen_brightness: ^2.1.11
   shared_preferences: ^2.5.5
   slm_edge_intelligence:
@@ -70,6 +73,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - CHANGELOG.md
 
   # To add assets to your package, add an assets section, like this:
   # assets:

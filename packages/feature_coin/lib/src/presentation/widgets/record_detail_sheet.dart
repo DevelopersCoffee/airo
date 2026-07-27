@@ -57,9 +57,16 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
 
   Future<bool> _ensureRecord() async {
     if (!_isVaultUnlocked) {
+      // The vault is browsable while locked, so reaching for a sensitive
+      // value is exactly the moment to ask for biometrics rather than
+      // dead-ending the user on "unlock it somewhere else and come back".
       _clearSensitiveCache();
-      _showSnack('Vault is locked - unlock and try again');
-      return false;
+      await ref.read(vaultSessionProvider.notifier).unlock();
+      if (!mounted) return false;
+      if (!_isVaultUnlocked) {
+        _showSnack('Vault is locked - unlock and try again');
+        return false;
+      }
     }
     if (_record != null) return true;
     if (_loadingRecord) return false;
@@ -253,7 +260,8 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
 
   void _edit() {
     final encodedKey = Uri.encodeComponent(widget.recordKey);
-    context.push('/money/vault/edit/${widget.recordType.name}/$encodedKey');
+    final prefix = ref.read(vaultRoutePrefixProvider);
+    context.push('$prefix/edit/${widget.recordType.name}/$encodedKey');
   }
 
   void _showSnack(String message) {
@@ -279,7 +287,7 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
   @override
   Widget build(BuildContext context) {
     ref.listen<VaultSessionState>(vaultSessionProvider, (_, next) {
-      if (next is! VaultUnlocked) {
+      if (next is! VaultUnlocked && next is! VaultUnlocking) {
         _clearSensitiveCache();
       }
     });

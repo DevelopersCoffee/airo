@@ -16,6 +16,7 @@ library;
 import 'dart:io';
 
 import 'package:core_data/core_data.dart';
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,9 +32,9 @@ import 'core/app/airo_tv_app.dart';
 import 'core/audio/tv_audio_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
-import 'core/features/feature_registry.dart';
 import 'core/platform/device_form_factor.dart';
 import 'core/providers/app_theme_provider.dart';
+import 'core/startup/app_startup_tasks.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
@@ -78,12 +79,10 @@ void main() async {
     fallback: mutableXmltvRepository,
   );
 
-  // Initialize feature registry with TV-specific features
-  FeatureRegistry.register(IptvFeatureModule());
+  // Compose the focused TV product through the shared shell contract.
+  final moduleRegistry = buildTvModuleRegistry();
 
-  debugPrint(
-    '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
-  );
+  debugPrint('📦 Registered features: ${moduleRegistry.moduleIds.join(', ')}');
 
   // Initialize the OS media session (media notification + lock-screen
   // controls) on Android, where audio_service's foreground service is what
@@ -112,13 +111,15 @@ void main() async {
         compactEpgRepository: compactEpgRepository,
         mutableXmltvRepository: mutableXmltvRepository,
         tvAudioHandler: tvAudioHandler,
+        moduleRegistry: moduleRegistry,
       ),
       child: const AiroTvApp(),
     ),
   );
 
   scheduleTvFirebaseInitialization();
-  scheduleTvFeatureInitialization();
+  scheduleTvFeatureInitialization(moduleRegistry: moduleRegistry);
+  scheduleDeferredProBootstrap();
   if (shouldWarmDebugPlaylist) {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }
@@ -130,13 +131,24 @@ void main() async {
   scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
 }
 
+/// Builds the exact module composition shipped by the focused TV entrypoint.
+///
+/// A fresh registry is returned for each bootstrap/test so product composition
+/// cannot leak through static state.
+@visibleForTesting
+ModuleRegistry buildTvModuleRegistry() {
+  return ModuleRegistry(shell: ShellId.tv)..register(IptvFeatureModule());
+}
+
 @visibleForTesting
 List<Override> buildTvProviderOverrides({
   required SharedPreferences prefs,
   required CompactEpgRepository compactEpgRepository,
   required MutableXmltvCompactEpgRepository mutableXmltvRepository,
   TvAudioHandler? tvAudioHandler,
+  ModuleRegistry? moduleRegistry,
 }) {
+  final registry = moduleRegistry ?? buildTvModuleRegistry();
   final handler = tvAudioHandler;
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
@@ -168,7 +180,7 @@ List<Override> buildTvProviderOverrides({
             ref.read(iptvStreamingServiceProvider).stop();
         return handler;
       }),
-    ...FeatureRegistry.allProviderOverrides,
+    ...registry.allProviderOverrides,
   ];
 }
 
@@ -261,6 +273,7 @@ Future<bool> initializeTvFirebase({
 
 @visibleForTesting
 void scheduleTvFeatureInitialization({
+  required ModuleRegistry moduleRegistry,
   void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
   void Function(String message)? log,
 }) {
@@ -269,9 +282,9 @@ void scheduleTvFeatureInitialization({
     addPostFrameCallback: addPostFrameCallback,
     log: log,
     task: () async {
-      await FeatureRegistry.initializeAll();
+      await moduleRegistry.initializeAll();
       (log ?? debugPrint)(
-        '📦 Initialized features: ${FeatureRegistry.featureNames.join(', ')}',
+        '📦 Initialized features: ${moduleRegistry.moduleIds.join(', ')}',
       );
     },
   );

@@ -106,7 +106,20 @@ class VaultSessionNotifier extends Notifier<VaultSessionState> {
         state = const VaultUnlocked();
         _resetIdleTimer();
       case Err<List<int>>():
-        state = VaultAuthError(result.failure);
+        // A failure with nothing enrolled is not a bad scan — there is no
+        // factor to scan against (Android needs a screen lock before a
+        // print can be enrolled at all). Route those users to the
+        // actionable "enrol something in system settings" screen instead
+        // of an unhelpful "authentication failed" they can only retry.
+        if (!await keyManager.hasEnrolledBiometrics()) {
+          if (_isCurrentUnlock(unlockGeneration)) {
+            state = const VaultUnavailable();
+          }
+          return;
+        }
+        if (_isCurrentUnlock(unlockGeneration)) {
+          state = VaultAuthError(result.failure);
+        }
     }
   }
 

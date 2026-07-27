@@ -12,6 +12,12 @@ const channelFilterCategoryStorageKey = 'iptv_filter_category';
 const channelFilterCountryStorageKey = 'iptv_filter_country';
 const channelFilterLanguageStorageKey = 'iptv_filter_language';
 const channelCountryPromptCompletedStorageKey = 'iptv_country_prompt_completed';
+const recentFilterCategoriesStorageKey = 'iptv_filter_recent_categories';
+const recentFilterCountriesStorageKey = 'iptv_filter_recent_countries';
+const recentFilterLanguagesStorageKey = 'iptv_filter_recent_languages';
+
+/// Which [TvLongListPicker] a recently-picked value belongs to.
+enum ChannelFilterDimension { category, country, language }
 
 /// Metadata eligible for display in the responsive channel browser.
 ///
@@ -171,6 +177,103 @@ class ChannelFiltersNotifier extends StateNotifier<ChannelFilters> {
 final channelFiltersProvider =
     StateNotifierProvider<ChannelFiltersNotifier, ChannelFilters>(
       (ref) => ChannelFiltersNotifier(ref),
+    );
+
+const _maxRecentFilterValues = 5;
+
+/// Most-recently-picked values per [TvLongListPicker] dimension, most recent
+/// first. Feeds the picker's "Recent" jump-rail group (issues/03).
+class RecentFilterValues extends Equatable {
+  const RecentFilterValues({
+    this.categories = const [],
+    this.countries = const [],
+    this.languages = const [],
+  });
+
+  final List<String> categories;
+  final List<String> countries;
+  final List<String> languages;
+
+  List<String> forDimension(ChannelFilterDimension dimension) =>
+      switch (dimension) {
+        ChannelFilterDimension.category => categories,
+        ChannelFilterDimension.country => countries,
+        ChannelFilterDimension.language => languages,
+      };
+
+  RecentFilterValues _withDimension(
+    ChannelFilterDimension dimension,
+    List<String> values,
+  ) {
+    return RecentFilterValues(
+      categories: dimension == ChannelFilterDimension.category
+          ? values
+          : categories,
+      countries: dimension == ChannelFilterDimension.country
+          ? values
+          : countries,
+      languages: dimension == ChannelFilterDimension.language
+          ? values
+          : languages,
+    );
+  }
+
+  @override
+  List<Object?> get props => [categories, countries, languages];
+}
+
+class RecentFilterValuesNotifier extends StateNotifier<RecentFilterValues> {
+  RecentFilterValuesNotifier(this._ref) : super(const RecentFilterValues()) {
+    unawaited(_load());
+  }
+
+  final Ref _ref;
+
+  /// Moves [value] to the front of [dimension]'s recent list, capped at
+  /// [_maxRecentFilterValues]. Called whenever a picker selection is applied.
+  void record(ChannelFilterDimension dimension, String value) {
+    final updated = [
+      value,
+      ...state.forDimension(dimension).where((existing) => existing != value),
+    ].take(_maxRecentFilterValues).toList(growable: false);
+    state = state._withDimension(dimension, updated);
+    unawaited(_save(dimension, updated));
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      state = RecentFilterValues(
+        categories:
+            prefs.getStringList(recentFilterCategoriesStorageKey) ?? const [],
+        countries:
+            prefs.getStringList(recentFilterCountriesStorageKey) ?? const [],
+        languages:
+            prefs.getStringList(recentFilterLanguagesStorageKey) ?? const [],
+      );
+    } catch (_) {
+      // Preference failures leave pickers usable without a Recent group.
+    }
+  }
+
+  Future<void> _save(ChannelFilterDimension dimension, List<String> values) {
+    final key = switch (dimension) {
+      ChannelFilterDimension.category => recentFilterCategoriesStorageKey,
+      ChannelFilterDimension.country => recentFilterCountriesStorageKey,
+      ChannelFilterDimension.language => recentFilterLanguagesStorageKey,
+    };
+    try {
+      return _ref.read(sharedPreferencesProvider).setStringList(key, values);
+    } catch (_) {
+      // Preference failures must not prevent local browsing.
+      return Future<void>.value();
+    }
+  }
+}
+
+final recentFilterValuesProvider =
+    StateNotifierProvider<RecentFilterValuesNotifier, RecentFilterValues>(
+      (ref) => RecentFilterValuesNotifier(ref),
     );
 
 class ChannelCountryPromptNotifier extends StateNotifier<AsyncValue<bool>> {

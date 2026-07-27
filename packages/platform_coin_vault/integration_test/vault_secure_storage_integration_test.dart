@@ -22,28 +22,29 @@ import 'package:platform_coin_vault/src/crypto/vault_secure_storage.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('write, read, and delete roundtrip against the real secure storage channel', (
-    tester,
-  ) async {
-    final storage = VaultSecureStorage();
-    const key = 'integration_test_key';
-    const value = 'integration_test_value';
+  testWidgets(
+    'write, read, and delete roundtrip against the real secure storage channel',
+    (tester) async {
+      final storage = VaultSecureStorage();
+      const key = 'integration_test_key';
+      const value = 'integration_test_value';
 
-    await storage.delete(key);
+      await storage.delete(key);
 
-    final writeResult = await storage.write(key, value);
-    expect(writeResult.isSuccess, isTrue);
+      final writeResult = await storage.write(key, value);
+      expect(writeResult.isSuccess, isTrue);
 
-    final readResult = await storage.read(key);
-    expect(readResult.value, value);
+      final readResult = await storage.read(key);
+      expect(readResult.value, value);
 
-    final containsResult = await storage.containsKey(key);
-    expect(containsResult.value, isTrue);
+      final containsResult = await storage.containsKey(key);
+      expect(containsResult.value, isTrue);
 
-    final deleteResult = await storage.delete(key);
-    expect(deleteResult.isSuccess, isTrue);
+      final deleteResult = await storage.delete(key);
+      expect(deleteResult.isSuccess, isTrue);
 
-    final afterDelete = await storage.read(key);
-    expect(afterDelete.value, isNull);
-  });
+      final afterDelete = await storage.read(key);
+      expect(afterDelete.value, isNull);
+    },
+  );
 }

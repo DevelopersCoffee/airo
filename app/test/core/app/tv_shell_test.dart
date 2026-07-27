@@ -1,4 +1,5 @@
 import 'package:airo_app/core/app/tv_router.dart';
+import 'package:airo_app/core/app/tv_shell.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,4 +59,30 @@ void main() {
       }
     },
   );
+
+  testWidgets('zen mode: sidebar is hidden while the player is fullscreen, and '
+      'returns when fullscreen exits', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: TvShell(child: SizedBox.expand())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
+
+    container.read(isFullscreenModeProvider.notifier).state = true;
+    await tester.pump();
+
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsNothing);
+
+    container.read(isFullscreenModeProvider.notifier).state = false;
+    await tester.pump();
+
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
+  });
 }
