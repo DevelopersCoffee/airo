@@ -11,6 +11,17 @@
 **Spec:** `docs/superpowers/specs/2026-07-27-airo-mind-runtime-design.md` §4, §6
 **Issues:** #1204 (scaffold), #1205 (governance), #1207–#1212 (Vault tasks), under epic #1193.
 
+> **Revision 6 (2026-07-28).** Applies the remaining rust-architect and
+> chief-performance-officer blockers. `RootPublicKey` newtype so
+> `Vault::new([7u8; 32])` stops compiling; export binds seed to vault so a
+> mismatched pair fails at export rather than at restore years later; a
+> `RevocationsApplied` witness so the restore typestate holds *inside* the
+> crate, not only at its boundary; key-minting and envelope primitives are
+> `pub(crate)` so content cannot be created around the Vault that owns the
+> revocation ledger; `mod.rs` loses its logic to `aggregate.rs`; `lib.rs`
+> becomes a curated façade rather than `pub mod`. Plus the measured release
+> profile, `precomputed-tables` restored, and benchmark budgets V1–V7.
+>
 > **Revision 5 (2026-07-28).** Rewritten against the **frozen** architecture
 > (`docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`). The structural change: the
 > Vault no longer holds content envelopes. Revisions 1–4 made it O(all user
@@ -68,9 +79,12 @@
 rust/airo_mind/
 ├── Cargo.toml
 └── src/
-    ├── lib.rs             — crate root, re-exports, module docs
+    ├── lib.rs             — `mod vault;` + a CURATED `pub use` list, not `pub mod`
     └── vault/
-        ├── mod.rs         — Vault aggregate + re-exports
+        ├── mod.rs         — declarations and re-exports ONLY, no logic
+        ├── aggregate.rs   — the Vault aggregate (not `vault.rs`: `clippy::module_inception`)
+        ├── encoding.rs    — length-prefixing, hex, fixed-array serde helpers
+        ├── random.rs      — `random_key`, `random_nonce` — the ONLY RNG call sites
         ├── error.rs       — VaultError
         ├── seed.rs        — Mnemonic ↔ Seed (Task 2)
         ├── identity.rs    — RootIdentity from Seed (Task 3)
@@ -116,7 +130,7 @@ Version choice was validated as correct: `sha2 0.10` + `hkdf 0.12` share the
 `digest 0.10` generation `flutter_rust_bridge` already pulls in. Moving to
 `sha2 0.11` / `hkdf 0.13` would fork `digest` across two majors workspace-wide.
 
-Measured binary impact: **+408 KB** stripped with `opt-level="z"` + fat LTO,
+Measured binary impact: **~458 KB** stripped (408 KB plus 49,952 B for `precomputed-tables`) with `opt-level="z"` + fat LTO,
 against a 4096 KB per-dependency budget. `serde` + `serde_json` are 16.4 KB of
 that — which is why the OSS officer explicitly **rejected** replacing them.
 
@@ -332,12 +346,14 @@ chacha20poly1305 = { version = "0.10", features = ["getrandom"] }
 # Explicit feature pinning, not defaults. `zeroize` is what keeps the root
 # private key out of freed memory; someone adding default-features = false for
 # binary size later would silently remove it.
+# `precomputed-tables` restored explicitly, NOT via `ed25519-dalek/fast`, so
+# the intent survives a feature rename. Measured cost of dropping it:
+# sign 14.2 us -> 37.6 us (2.65x) for 49,952 bytes saved. Design spec §3 makes
+# signing per-operation, so this is a Phase 2 hot path.
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "rand_core", "zeroize"] }
+curve25519-dalek = { version = "4.1.3", features = ["precomputed-tables"] }
 # RUSTSEC-2024-0344: timing variability in Scalar29/Scalar52 subtraction.
 # 4.1.3 is the patched release. Floored explicitly so a downgrade fails.
-# Caret, never an open floor: `>=4.1.3` lets a future 5.0 resolve beside
-# the `^4.1` ed25519-dalek needs, linking two copies of the curve.
-curve25519-dalek = "4.1.3"
 hkdf = "0.12"
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1", features = ["derive"] }
@@ -460,7 +476,35 @@ Modify `rust/Cargo.toml`:
 [workspace]
 members = ["airo_core", "airo_mind"]
 resolver = "2"
+
+# Measured by chief-performance-officer on Apple Silicon against the real
+# iptv-org fixture. Do not relitigate without new measurements.
+#
+#   lto="fat" + codegen-units=1 : airo_core 7-11% FASTER, dylib -474 KB (-32%)
+#   opt-level="z" on airo_core  : 45-58% SLOWER on the M3U parser. REJECTED.
+#   panic="abort"               : REJECTED. airo_core is a cdylib whose
+#                                 flutter_rust_bridge handler relies on
+#                                 catch_unwind to turn panics into Dart errors
+#                                 (handler.rs:95, executor.rs:69). Setting it
+#                                 aborts the whole app on any recoverable error.
+#
+# Costs +22% clean build across eight release jobs in rust-core.yml. If CI time
+# becomes the constraint, evaluate lto="thin" before reverting.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+# opt-level is scoped: airo_mind optimizes for size, airo_core for throughput.
+[profile.release.package.airo_mind]
+opt-level = "z"
 ```
+
+**Open obligation on this approval:** the `airo_core` half was measured on
+Apple Silicon. It must be re-measured on `aarch64-linux-android` and
+`armv7-linux-androideabi` — the Fire TV Stick path uses 32-bit curve25519 and
+ChaCha backends with different codegen — before it reaches a TV release build.
+Tracked as H5 on #1257.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1032,6 +1076,20 @@ use super::seed::Seed;
 /// versioned so a future scheme can coexist rather than replace.
 use super::domain;
 
+/// A root public key that provably came from a `RootIdentity`.
+///
+/// Domain type rather than `[u8; 32]`: the compiler becomes another reviewer,
+/// and unlike the human ones it reads every line every time (design spec
+/// §11a, "domain types over raw primitives").
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct RootPublicKey(pub(crate) [u8; 32]);
+
+impl RootPublicKey {
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
 /// The user's root cryptographic identity.
 #[derive(ZeroizeOnDrop)]
 pub struct RootIdentity {
@@ -1054,8 +1112,8 @@ impl RootIdentity {
         })
     }
 
-    pub fn public_key(&self) -> [u8; 32] {
-        self.signing_key.verifying_key().to_bytes()
+    pub fn public_key(&self) -> RootPublicKey {
+        RootPublicKey(self.signing_key.verifying_key().to_bytes())
     }
 
     /// Lowercase hex of the public key. Stable, human-comparable.
@@ -1072,8 +1130,8 @@ impl RootIdentity {
 ///
 /// Uses strict verification: rejects small-order and non-canonical keys that
 /// permit signature malleability.
-pub fn verify(public_key: &[u8; 32], msg: &[u8], signature: &[u8; 64]) -> bool {
-    let Ok(verifying_key) = VerifyingKey::from_bytes(public_key) else {
+pub(crate) fn verify(public_key: &RootPublicKey, msg: &[u8], signature: &[u8; 64]) -> bool {
+    let Ok(verifying_key) = VerifyingKey::from_bytes(public_key.as_bytes()) else {
         return false;
     };
     verifying_key
@@ -1291,7 +1349,7 @@ impl DeviceCertificate {
         payload
     }
 
-    pub fn verify_against(&self, root_public_key: &[u8; 32]) -> bool {
+    pub fn verify_against(&self, root_public_key: &RootPublicKey) -> bool {
         if self.device_id != hex_lower(&self.device_public_key) {
             return false;
         }
@@ -1523,11 +1581,11 @@ impl PartialEq for ContentKey {
 impl Eq for ContentKey {}
 
 impl ContentKey {
-    pub fn generate() -> Result<Self, VaultError> {
+    pub(crate) fn generate() -> Result<Self, VaultError> {
         Ok(Self(random_key()?))
     }
 
-    pub fn as_bytes(&self) -> &[u8; 32] {
+    pub(crate) fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 
@@ -1546,7 +1604,7 @@ impl ContentKey {
 pub struct ContextKey([u8; 32]);
 
 impl ContextKey {
-    pub fn generate() -> Result<Self, VaultError> {
+    pub(crate) fn generate() -> Result<Self, VaultError> {
         Ok(Self(random_key()?))
     }
 
@@ -1572,12 +1630,18 @@ struct Wrapping {
 /// All wrappings for one content object.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContentEnvelope {
-    pub content_id: String,
+    // Private: it is bound into the wrapping AAD. `envelope.content_id = ...`
+    // used to compile and silently rendered every wrapping undecryptable
+    // (rust-architect M5).
+    content_id: String,
     wrappings: Vec<Wrapping>,
 }
 
+// `pub(crate)` throughout. Minting keys or building envelopes outside the
+// Vault produces content the Vault has no revocation record for — content that
+// can never be shredded (rust-architect M3). The Vault is the only door.
 impl ContentEnvelope {
-    pub fn new(content_id: impl Into<String>) -> Self {
+    pub(crate) fn new(content_id: impl Into<String>) -> Self {
         Self {
             content_id: content_id.into(),
             wrappings: Vec::new(),
@@ -1588,7 +1652,7 @@ impl ContentEnvelope {
     ///
     /// Re-wrapping under a context that already has access replaces the
     /// existing wrapping rather than adding a duplicate.
-    pub fn add_wrapping(
+    pub(crate) fn add_wrapping(
         &mut self,
         content_key: &ContentKey,
         context_id: &str,
@@ -1620,13 +1684,13 @@ impl ContentEnvelope {
     ///
     /// This is `UnlinkContent`. It is not deletion — the content survives
     /// through every other wrapping.
-    pub fn remove_wrapping(&mut self, context_id: &str) -> bool {
+    pub(crate) fn remove_wrapping(&mut self, context_id: &str) -> bool {
         let before = self.wrappings.len();
         self.wrappings.retain(|w| w.context_id != context_id);
         self.wrappings.len() != before
     }
 
-    pub fn unwrap_with(
+    pub(crate) fn unwrap_with(
         &self,
         context_id: &str,
         context_key: &ContextKey,
@@ -1656,7 +1720,13 @@ impl ContentEnvelope {
         ContentKey::from_slice(&plaintext)
     }
 
-    pub fn context_ids(&self) -> Vec<&str> {
+    pub(crate) fn content_id(&self) -> &str {
+        &self.content_id
+    }
+
+    /// Returns an iterator, not a freshly allocated `Vec`. `link_content`
+    /// called this solely to take `.first()` (chief-performance-officer §9).
+    pub(crate) fn context_ids(&self) -> impl Iterator<Item = &str> {
         self.wrappings.iter().map(|w| w.context_id.as_str()).collect()
     }
 
@@ -1664,7 +1734,7 @@ impl ContentEnvelope {
     ///
     /// This is the signal the survival computation in #1229 uses to tell a
     /// user "5 items exist nowhere else".
-    pub fn is_orphaned(&self) -> bool {
+    pub(crate) fn is_orphaned(&self) -> bool {
         self.wrappings.is_empty()
     }
 }
@@ -2310,7 +2380,7 @@ pub struct PurgeDirective {
 ///
 /// The only mutable, non-append-only store in the system.
 pub struct Vault {
-    root_public_key: [u8; 32],
+    root_public_key: RootPublicKey,
     context_keys: BTreeMap<String, ContextKey>,
     device_certificates: Vec<DeviceCertificate>,
     revocations: RevocationLedger,
@@ -2333,7 +2403,14 @@ pub struct Vault {
 // #1214). The Vault owns only keys.
 
 impl Vault {
-    pub fn new(root_public_key: [u8; 32]) -> Self {
+    /// Takes a `RootPublicKey`, not raw bytes.
+    ///
+    /// `Vault::new(RootIdentity::from_seed(&test_seed()).unwrap().public_key())` used to compile — a vault whose root
+    /// corresponds to no seed in existence, which no one can ever export or
+    /// restore. The newtype is obtainable only from `RootIdentity`, so both
+    /// that and the mismatched export/restore pair (rust-architect M1/M2)
+    /// stop being representable.
+    pub fn new(root_public_key: RootPublicKey) -> Self {
         Self {
             root_public_key,
             context_keys: BTreeMap::new(),
@@ -2342,7 +2419,7 @@ impl Vault {
         }
     }
 
-    pub fn root_public_key(&self) -> &[u8; 32] {
+    pub fn root_public_key(&self) -> &RootPublicKey {
         &self.root_public_key
     }
 
@@ -2517,7 +2594,7 @@ mod tests {
     use super::*;
 
     fn vault() -> Vault {
-        Vault::new([7u8; 32])
+        Vault::new(RootIdentity::from_seed(&test_seed()).unwrap().public_key())
     }
 
     #[test]
@@ -2814,6 +2891,13 @@ impl RecoveryPackage {
     }
 
     pub fn export(vault: &Vault, seed: &Seed) -> Result<Self, VaultError> {
+        // Bind at export, not at restore. A mismatched (vault, seed) pair used
+        // to produce a perfectly valid package that `SealedRestore::load`
+        // rejected with `IdentityMismatch` — discovered years later, on the
+        // worst day the user will ever have (rust-architect M1).
+        if *vault.root_public_key() != RootIdentity::from_seed(seed)?.public_key() {
+            return Err(VaultError::IdentityMismatch);
+        }
         let payload = vault.to_payload();
         // `Zeroizing`: this buffer holds every context key in plaintext.
         let plaintext = Zeroizing::new(
@@ -3348,6 +3432,17 @@ impl SealedRestore {
     }
 }
 
+/// Proof that revocations were applied.
+///
+/// Private field, so only `AppliedRestore` can mint one. The typestate was
+/// previously enforced only at the **crate** boundary — any module inside
+/// `airo_mind` could call `Vault::from_payload(package.decrypt(&seed)?)` and
+/// skip `apply_revocations` entirely. That is fine while the crate is one
+/// subsystem and exactly wrong for a crate scheduled to gain the operation
+/// log, projections, merge, and sync **inside** that boundary, written by
+/// later implementers with less context (rust-architect H1).
+pub struct RevocationsApplied(());
+
 /// A restore with revocations applied. The only source of a usable `Vault`.
 pub struct AppliedRestore {
     payload: VaultPayload,
@@ -3389,7 +3484,7 @@ impl AppliedRestore {
     }
 
     pub fn into_vault(self) -> Vault {
-        Vault::from_payload(self.payload)
+        Vault::from_payload(self.payload, RevocationsApplied(()))
     }
 }
 
@@ -3594,7 +3689,13 @@ mod restore;
 pub use restore::{AppliedRestore, SealedRestore};
 
 impl Vault {
-    pub(crate) fn from_payload(payload: package::VaultPayload) -> Self {
+    /// Requires a `RevocationsApplied` witness that only `AppliedRestore` can
+    /// mint, so the ordering is unrepresentable **inside** the crate too —
+    /// which is where it will actually be attacked.
+    pub(crate) fn from_payload(
+        payload: package::VaultPayload,
+        _: restore::RevocationsApplied,
+    ) -> Self {
         Self {
             root_public_key: payload.root_public_key,
             context_keys: payload
@@ -3748,9 +3849,35 @@ established:
 - [ ] Rust Architect's accepted-transitive-`unsafe` note is recorded and names the crates actually in `cargo tree` — `curve25519-dalek` (35 sites) and `subtle` (2 sites, `black_box` shims that exist *to preserve* the constant-time property), plus the RustCrypto set. **`fiat-crypto` is NOT in the tree** and was struck: it resolves only under `--cfg curve25519_dalek_backend="fiat"`, which nothing sets. Setting that cfg requires a fresh note.
 - [ ] `[profile.release]` shaped per rust-architect — `lto`/`strip` workspace-wide, `opt-level`/`codegen-units` under `[profile.release.package.airo_mind]` only. **Never `panic = "abort"`**: `airo_core` is a `cdylib` whose FRB bridge relies on `catch_unwind` to turn panics into Dart errors. Chief Performance Officer signs the `airo_core` half.
 
-Deferred with reasons: `packages/benchmarks` entry (Constitution §4 attaches the
-benchmark requirement to merge and replay, which land in Phases 2–3); FFI
-surface (#1259).
+### Benchmark budgets — enforceable at Phase 1 merge
+
+Constitution §4 requires a `packages/benchmarks` entry for CPU-bound Rust.
+Deferring it to Phase 3 was **inverted reasoning**: Phase 1 freezes the two
+formats that determine replay cost forever, so the budgets are declared here
+even where they are enforced later (chief-performance-officer §12, invariant
+I8).
+
+| ID | Budget |
+|---|---|
+| **V1** | `seed_from_mnemonic` ≤ 10 ms host — measured 3.16 ms, passes |
+| **V2** | `RootIdentity::from_seed` ≤ 1 ms host |
+| **V3** | `Vault::add_content` with 3 contexts ≤ 50 µs host |
+| **V4** | `RecoveryPackage::export`, 10k-content vault ≤ 500 ms **and** file ≤ 3× compact-encoded size |
+| **V5** | Peak RSS during export ≤ 4× logical vault size |
+| **V6** | `SealedRestore::load` + `apply_revocations`, 10k contents / 1k revocations ≤ 1 s host |
+| **V7** | **Export peak RSS at 100k contents within 20% of RSS at 10k contents** — the I7 failing form |
+
+V4, V5, and V7 failed by construction before the Vault redesign. They are the
+gate that proves it held rather than asserting it.
+
+**NEEDS HARDWARE, cannot be fixed from a development host** — tracked on #1257:
+PBKDF2 on Pixel 9 and mid-range Android (H1) · ed25519 ops/s per device class
+(H2) · XChaCha20-Poly1305 MiB/s (H3) · **per-append fsync latency, which sets
+the group-commit window and ranges 0.5–50 ms across real devices** (H4) ·
+`airo_core` M3U throughput under the new profile on `aarch64-linux-android`
+and `armv7-linux-androideabi` (H5).
+
+Deferred with reasons: FFI surface (#1260).
 
 ## Applied review findings
 
