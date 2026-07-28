@@ -854,6 +854,9 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
+        # Private forks without GitHub Advanced Security reject SARIF uploads.
+        # Keep Trivy authoritative while treating publication as optional.
+        continue-on-error: true
 
   lint:
     runs-on: ubuntu-latest
