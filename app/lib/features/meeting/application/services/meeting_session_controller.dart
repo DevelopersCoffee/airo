@@ -1,22 +1,35 @@
+import 'package:feature_meeting_intelligence/feature_meeting_intelligence.dart';
+
 import '../../domain/entities/meeting_audio_metadata.dart';
 import '../../domain/entities/meeting_record.dart';
 import '../../domain/entities/transcript_chunk.dart';
 import '../../domain/repositories/meeting_repository.dart';
+import 'meeting_background_processor.dart';
 import 'meeting_intelligence_pipeline.dart';
 
 class MeetingSessionController {
   MeetingSessionController({
-    required this._repository,
-    required this._pipeline,
+    required MeetingRepository repository,
+    MeetingIntelligencePipeline? pipeline,
+    MeetingBackgroundProcessor? backgroundProcessor,
     DateTime Function()? now,
-  }) : _now = now ?? DateTime.now;
+  }) : _backgroundProcessor =
+           backgroundProcessor ??
+           MeetingBackgroundProcessor(
+             repository: repository,
+             pipeline: pipeline ?? MeetingIntelligencePipeline(),
+             coordinator: const MeetingIntelligenceCoordinator.deterministic(),
+           ),
+       _now = now ?? DateTime.now;
 
-  final MeetingRepository _repository;
-  final MeetingIntelligencePipeline _pipeline;
+  final MeetingBackgroundProcessor _backgroundProcessor;
   final DateTime Function() _now;
   final List<TranscriptChunk> _partialChunks = [];
   final List<TranscriptChunk> _finalChunks = [];
   MeetingRecord? _activeRecord;
+  MeetingBackgroundJobHandle? _lastBackgroundJob;
+
+  MeetingBackgroundJobHandle? get lastBackgroundJob => _lastBackgroundJob;
 
   String get partialTranscriptText {
     return _partialChunks.map((chunk) => chunk.text).join('\n');
@@ -67,12 +80,11 @@ class MeetingSessionController {
     }
 
     final completedRecord = activeRecord.complete(endedAt: _now());
-    final draft = _pipeline.process(
+    _lastBackgroundJob = _backgroundProcessor.accept(
       record: completedRecord,
       audioMetadata: audioMetadata,
       finalChunks: List.unmodifiable(_finalChunks),
     );
-    await _repository.saveIntelligence(draft);
     _partialChunks.clear();
     _finalChunks.clear();
     _activeRecord = null;

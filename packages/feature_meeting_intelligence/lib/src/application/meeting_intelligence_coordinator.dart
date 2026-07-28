@@ -35,6 +35,16 @@ class MeetingIntelligenceCoordinator {
     this.searchIndexProvider,
   });
 
+  const MeetingIntelligenceCoordinator.deterministic()
+    : executor = const AiroWorkerExecutor(),
+      summaryProvider = const DeterministicMeetingSummaryProvider(),
+      searchIndexProvider = const DeterministicMeetingSearchIndexProvider();
+
+  const MeetingIntelligenceCoordinator.inline({
+    this.summaryProvider,
+    this.searchIndexProvider,
+  }) : executor = const AiroWorkerExecutor(forceInline: true);
+
   final AiroWorkerExecutor executor;
   final MeetingSummaryStageProvider? summaryProvider;
   final MeetingSearchIndexStageProvider? searchIndexProvider;

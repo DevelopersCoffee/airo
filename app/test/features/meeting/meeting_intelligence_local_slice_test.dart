@@ -194,6 +194,7 @@ void main() {
             sha256: 'def456',
           ),
         );
+        await controller.lastBackgroundJob!.completion;
 
         expect(controller.partialTranscriptText, isEmpty);
         final persisted = await repository.transcriptChunksForMeeting(
