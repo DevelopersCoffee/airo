@@ -20,8 +20,8 @@
       "appPlatform": "mobileFull",
       "ciBuild": true,
       "edgeProfile": false,
-      "requiredPackages": ["airo"],
-      "featureModules": ["airo", "feature_coin"],
+      "requiredPackages": ["airo", "feature_meeting_intelligence"],
+      "featureModules": ["airo", "feature_coin", "feature_meeting_intelligence"],
       "allowedNativePlugins": ["*"],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
@@ -53,6 +53,7 @@
       "edgeProfile": true,
       "requiredPackages": ["airo", "audio_service"],
       "featureModules": ["feature_iptv"],
+      "excludedPackages": ["feature_meeting_intelligence"],
       "allowedNativePlugins": [
         "audio_service",
         "flutter_chrome_cast",
@@ -138,6 +139,7 @@
       "edgeProfile": true,
       "requiredPackages": ["feature_coin"],
       "featureModules": ["feature_coin"],
+      "excludedPackages": ["feature_meeting_intelligence"],
       "allowedNativePlugins": [
         "flutter_secure_storage",
         "local_auth",
@@ -169,8 +171,8 @@
       "appPlatform": "ios",
       "ciBuild": false,
       "edgeProfile": false,
-      "requiredPackages": ["airo"],
-      "featureModules": ["airo", "feature_coin"],
+      "requiredPackages": ["airo", "feature_meeting_intelligence"],
+      "featureModules": ["airo", "feature_coin", "feature_meeting_intelligence"],
       "allowedNativePlugins": ["*"],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
@@ -189,8 +191,8 @@
       "appPlatform": "webFull",
       "ciBuild": false,
       "edgeProfile": false,
-      "requiredPackages": ["feature_iptv"],
-      "featureModules": ["feature_iptv"],
+      "requiredPackages": ["feature_iptv", "feature_meeting_intelligence"],
+      "featureModules": ["feature_iptv", "feature_meeting_intelligence"],
       "allowedNativePlugins": [],
       "heavyPackages": [],
       "requiredDependencyOverrides": {

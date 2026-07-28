@@ -676,6 +676,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  feature_meeting_intelligence:
+    dependency: "direct main"
+    description:
+      path: "../packages/feature_meeting_intelligence"
+      relative: true
+    source: path
+    version: "0.0.1"
   ffi:
     dependency: transitive
     description:

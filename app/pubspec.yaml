@@ -92,6 +92,8 @@ dependencies:
     path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
+  feature_meeting_intelligence:
+    path: ../packages/feature_meeting_intelligence
   feature_billsplit_core:
     path: ../packages/feature_billsplit_core
   feature_coins_core:

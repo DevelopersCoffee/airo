@@ -210,6 +210,24 @@ def main():
                 failures += 1
                 status = "FAIL"
 
+        excluded_packages = set(profile.get("excludedPackages", []))
+        required_packages = set(profile.get("requiredPackages", []))
+        for package in sorted(excluded_packages & required_packages):
+            error(
+                f"{profile_id}: package {package} cannot be both required and excluded",
+                profile_file,
+            )
+            failures += 1
+            status = "FAIL"
+        for package in sorted(excluded_packages):
+            if package in deps:
+                error(
+                    f"{profile_id}: excluded package {package} is present in {pubspec}",
+                    pubspec,
+                )
+                failures += 1
+                status = "FAIL"
+
         device_class = profile_device_class(profile)
         if not device_class:
             error(

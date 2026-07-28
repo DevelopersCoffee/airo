@@ -65,6 +65,8 @@ dependencies:
     path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
+  feature_meeting_intelligence:
+    path: ../packages/feature_meeting_intelligence
 
   cupertino_icons: ^1.0.9
   equatable: ^2.1.0
