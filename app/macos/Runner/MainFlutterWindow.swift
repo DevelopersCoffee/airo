@@ -5,6 +5,7 @@ class MainFlutterWindow: NSWindow {
   private var fullscreenChannel: FlutterMethodChannel?
   private var fullscreenExitObserver: NSObjectProtocol?
   private var fullscreenEnterObserver: NSObjectProtocol?
+  private let pictureInPicturePlugin = AiroPictureInPicturePlugin()
 
   deinit {
     if let fullscreenExitObserver {
@@ -23,6 +24,8 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     configureFullscreenChannel(flutterViewController: flutterViewController)
+    pictureInPicturePlugin.register(
+      with: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }
