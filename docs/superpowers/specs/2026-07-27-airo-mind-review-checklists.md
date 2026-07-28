@@ -197,7 +197,8 @@ Applied by rust-architect to any change under `rust/`.
 - [ ] No public error variant is unconstructible in the phase that ships it
 
 ### Lints and manifest
-- [ ] `#![forbid(unsafe_code)]` (or `[lints.rust] unsafe_code = "forbid"`) on any new pure-Rust crate — "no unsafe" is otherwise a description, not a property
+- [ ] `unsafe` is prohibited unless **isolated, documented, benchmarked, fuzzed, audited, and justified** — all six, recorded per call site. Crates holding crypto, vault, merge, replay, or capability logic keep `forbid(unsafe_code)`; low-level primitives live in one small crate with an audited surface.
+- [ ] A blanket lint is checked against what the crate will own later — `forbid` on the crate that will hold the operation log permanently forecloses `mmap`, and `forbid` cannot be locally overridden
 - [ ] Large fixture arrays are `static`, not `const` — `clippy::large_const_arrays` fails `-D warnings` and a `const` array is materialised at every use site
 - [ ] `x % n == 0` is written `x.is_multiple_of(n)` — `clippy::manual_is_multiple_of` fails `-D warnings`
 - [ ] No blank line between a doc comment and its item — `clippy::empty_line_after_doc_comments` fails `-D warnings`; a doc comment orphaned by a deleted const silently attaches to the next item
@@ -292,6 +293,13 @@ before a format ships is a number nobody can change afterwards.
 - [ ] Every performance claim in a plan or design cites a measurement, its hardware, and its method
 - [ ] "Negligible", "fast enough", and "free" are rejected without a number — three review cycles found properties recorded as applied that were absent from the code, and the same failure mode applies to performance claims
 - [ ] A measured figure is re-measured when the configuration it was measured under changes
+
+### Cost is part of correctness (I8)
+- [ ] The feature declares its **asymptotic complexity** in the dimension that grows — operations, contexts, devices, content
+- [ ] The feature declares an **allocation budget**, and the budget is independent of collection size wherever I7 applies
+- [ ] A **benchmark** exists in `packages/benchmarks` before merge, not after
+- [ ] A **regression threshold** is enforced in CI, so the budget fails loudly rather than eroding
+- [ ] A structure's size class is stated and checked: the Vault is sized by contexts and devices, **never** by user content
 
 ---
 
