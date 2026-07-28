@@ -176,6 +176,57 @@ classification is the first question at triage, not the last.
 If an issue cannot be classified, it is a design issue that has not admitted it
 yet. Write the ADR.
 
+## Freeze decision matrix
+
+The first question on any contradiction is **"which frozen contract does this
+violate?"** If one already exists, the work is implementation — not
+architecture.
+
+| Situation | Action |
+|---|---|
+| Implementation contradicts frozen architecture | **Engineering fix** |
+| Specification contradicts frozen architecture | **Engineering fix** |
+| Documentation contradicts frozen architecture | **Documentation fix** |
+| Runtime contract is internally inconsistent | **ADR** |
+| Implementation proves a contract cannot be satisfied | **ADR with evidence** |
+| Better idea, no implementation evidence | **Reject** |
+
+Worked example, from the first case after the freeze activated: the Phase 1
+plan declared `envelopes: BTreeMap<String, ContentEnvelope>` inside the Vault
+while the frozen design said the Vault is sized by contexts and devices, never
+by user content. Row 2 — **engineering fix, no ADR.** The architecture had
+decided; the plan was behind.
+
+Before the freeze, that contradiction would have invited another design
+discussion. That is the change worth naming.
+
+## Architecture drift — categories
+
+Every violation is categorized, so the trend is visible rather than anecdotal.
+
+| | Meaning |
+|---|---|
+| **A1** | Implementation or specification behind the architecture |
+| **A2** | Documentation behind the architecture |
+| **A3** | Tests behind the architecture |
+| **A4** | Benchmarks behind the architecture |
+| **A5** | Contracts behind the architecture |
+
+**A1 occurrences should decrease over time.** If they do not, either the
+architecture is wrong or the freeze is not being read — and those need
+different responses, which is why the count matters.
+
+**A5 is the serious one.** A contract behind the architecture means the thing
+capabilities are written against is stale, and every capability built in the
+interim inherits the staleness.
+
+Recorded so far:
+
+| Date | Category | What |
+|---|---|---|
+| 2026-07-28 | **A1** | Phase 1 plan held content envelopes in the Vault after §4.1 forbade it — #1319 |
+| 2026-07-28 | **A2** | Review checklists quoted the pre-freeze runtime API and `I1–I6` — fixed before the freeze activated |
+
 ## Decision hierarchy
 
 When something looks wrong, work down this list. **Reaching step 5 requires
@@ -196,6 +247,24 @@ having done steps 1 through 4.**
 This is what allows the platform to evolve without churning. A contract that
 implementation proves wrong *should* change — that is what steps 2 through 4
 are for. A contract someone would prefer differently should not.
+
+## Runtime Validation — exit criteria
+
+The phase completes only when **every frozen contract** has all five. This is
+deliberately stronger than "tests exist".
+
+| Requirement | Why |
+|---|---|
+| **Conformance tests** | Proves the contract holds |
+| **Negative tests** | Proves it fails when violated — I5 |
+| **Benchmarks** | Proves the cost — I8 |
+| **Failure injection** | Proves behaviour under kill, corruption, and exhaustion, not only under success |
+| **Architectural ownership** | A named council role answers for it |
+
+Failure injection is the one usually skipped, and it is the one that matters on
+a mobile device: Android kills processes without warning, flash corrupts, and
+disks fill. A contract verified only on the happy path is verified for the
+conditions under which nobody needed it.
 
 ## Success metrics — Runtime Validation phase
 
