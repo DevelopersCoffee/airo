@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -283,7 +285,7 @@ class AssistantModelLibraryState {
     }
     final candidates = candidatesById.values.toList();
 
-    final recommended = _recommend(candidates, task, defaultPackages);
+    final recommended = recommend(candidates, task, defaultPackages);
     return AssistantModelLibraryState(
       task: task,
       deviceLabel: deviceLabel.isEmpty ? 'Unknown device' : deviceLabel,
@@ -294,7 +296,7 @@ class AssistantModelLibraryState {
     );
   }
 
-  static AssistantModelCandidate _recommend(
+  static AssistantModelCandidate recommend(
     List<AssistantModelCandidate> candidates,
     AssistantTask task,
     Map<AssistantTask, OfflineModelInfo> packages,
@@ -302,8 +304,8 @@ class AssistantModelLibraryState {
     final package = packages[task];
     final preferredIds = switch (task) {
       AssistantTask.chat => [
-        geminiNanoAssistantModelId,
         litertGemmaAssistantModelId,
+        geminiNanoAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.actions => [
@@ -361,7 +363,7 @@ class AssistantModelLibraryState {
   }
 
   AssistantModelCandidate recommendedFor(AssistantTask task) {
-    return _recommend(candidates, task, defaultPackages);
+    return recommend(candidates, task, defaultPackages);
   }
 
   OfflineModelInfo? packageFor(AssistantTask task) {
@@ -693,38 +695,40 @@ class _ModelLibraryContent extends ConsumerWidget {
     );
     var cancelRequested = false;
 
-    final dialogFuture = showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return ValueListenableBuilder<AssistantRuntimePreparationProgress>(
-          valueListenable: progress,
-          builder: (context, value, _) {
-            return AlertDialog(
-              title: Text('${template.title} setup'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value.label),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(value: value.progress),
-                  const SizedBox(height: 12),
-                  Text(value.detail),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    cancelRequested = true;
-                  },
-                  child: Text(cancelRequested ? 'Stopping…' : 'Cancel'),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return ValueListenableBuilder<AssistantRuntimePreparationProgress>(
+            valueListenable: progress,
+            builder: (context, value, _) {
+              return AlertDialog(
+                title: Text('${template.title} setup'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value.label),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(value: value.progress),
+                    const SizedBox(height: 12),
+                    Text(value.detail),
+                  ],
                 ),
-              ],
-            );
-          },
-        );
-      },
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      cancelRequested = true;
+                    },
+                    child: Text(cancelRequested ? 'Stopping…' : 'Cancel'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
     );
 
     final result = await runtimeService.prepareRuntime(
@@ -736,7 +740,6 @@ class _ModelLibraryContent extends ConsumerWidget {
     progress.dispose();
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop();
-      await dialogFuture;
     }
 
     if (!context.mounted) {
