@@ -59,8 +59,21 @@ contract version change is a runtime major version** and requires an ADR.
 ### 4. Package format — frozen
 
 Recovery Package `format_version: 1` — header fields, AAD binding, reserved
-`passphrase_used` / `kdf_params` / `kdf_salt` slots, revocation-epoch placement
-outside the ciphertext, and the framing decided in #1305.
+`passphrase_used` / `kdf_params` / `kdf_salt` slots, and revocation-epoch
+placement outside the ciphertext.
+
+**Framing, frozen as a property.** Peak memory during export and restore must be
+`O(1)` in revocation-ledger size, and truncation must be distinguishable from
+corruption. `[len:u32][AEAD frame] × N` plus a sealed trailer satisfies this and
+is the default shape, but the layout is not itself frozen — the property is.
+Decided in [ADR-0017](adr/0017-airo-mind-revocation-ledger-growth-and-package-framing.md)
+on measured evidence, superseding the justification in #1305.
+
+**A frozen surface may not cite an open issue as its authority.** This section
+previously read "the framing decided in #1305" while that issue was open and
+unbuilt, which made a decided-but-unimplemented requirement indistinguishable
+from a settled one. Seven plan revisions and three council reviews passed over
+it. Everything frozen must be readable in full from this document.
 
 **Encodings, frozen with the format.** These were decided in implementation and
 are recorded here because they are as unreversible as the field list — a device
@@ -70,6 +83,7 @@ that exported a package holds a copy we cannot reach.
 |---|---|
 | `RevocationSubject` map key | Canonical string `kind:id`, where `kind` ∈ {`content`, `context`, `device`} and contains no `:`. First-colon split, so ids may contain `:`. Unknown kinds fail closed. |
 | `[u8; 32]` and `[u8; 64]` fields | Lowercase hex string, never a JSON decimal array — the package stays inspectable in a text editor, which matters for a file users are told to store themselves |
+| Outer `ciphertext`, `nonce`, `kdf_salt` | Base64, not hex and never a JSON decimal array. The package double-encodes — a JSON payload, then that ciphertext text-encoded again in the envelope — so hex on the outer blob costs a hard 2.0× and puts V4's `≤ 3× compact` floor at 3.30×, unmeetable. Base64 costs 1.33× and clears every measured shape. Inner fields stay hex; the ciphertext blob is opaque under any encoding, so nothing inspectable is lost. Measured in ADR-0017. |
 | Subject ids | The design must state whether ids are NFC-normalized and control-character-free at the boundary (I6). Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices. |
 
 The on-disk format is the least reversible thing in the system. Every device
