@@ -6,11 +6,11 @@
 - [x] Clean worktree matches fetched `origin/main` at bootstrap.
 - [x] Current milestone and issue state is inventoried.
 - [x] Design spec and dependency-ordered plan exist.
-- [ ] #506 has the complete Feature Packet and explicit maintainer approval.
+- [x] #506 has the complete Feature Packet and explicit maintainer approval.
 
 **Verification:**
 - [x] `git rev-parse HEAD`, `origin/main`, and merge-base matched at bootstrap.
-- [ ] GitHub #506 comment contains owner, reviewers, contract, deterministic
+- [x] GitHub #506 comment contains owner, reviewers, contract, deterministic
       use cases, automation flows, privacy, rollback, and decision.
 
 **Dependencies:** None
@@ -20,14 +20,14 @@
 ## Task 2: Freeze framework worker kinds
 
 **Acceptance criteria:**
-- [ ] Stable kinds exist for meeting summary, search indexing, embeddings,
+- [x] Stable kinds exist for meeting summary, search indexing, embeddings,
       speaker clustering, and Memory update.
-- [ ] Stable IDs are frozen by tests.
-- [ ] Existing scheduler/executor behavior remains compatible.
+- [x] Stable IDs are frozen by tests.
+- [x] Existing scheduler/executor behavior remains compatible.
 
 **Verification:**
-- [ ] `(cd packages/platform_worker_jobs && flutter test)`
-- [ ] `(cd packages/platform_worker_jobs && flutter analyze)`
+- [x] `(cd packages/platform_worker_jobs && flutter test)`
+- [x] `(cd packages/platform_worker_jobs && flutter analyze)`
 
 **Dependencies:** Task 1
 
@@ -36,15 +36,15 @@
 ## Task 3: Add the release-selectable feature package
 
 **Acceptance criteria:**
-- [ ] `feature_meeting_intelligence` owns meeting job/stage/outcome contracts.
-- [ ] Its manifest forbids `app` and declares an explicit ship policy.
-- [ ] Full profile includes it; TV and Coins profiles exclude it.
+- [x] `feature_meeting_intelligence` owns meeting job/stage/outcome contracts.
+- [x] Its manifest forbids `app` and declares an explicit ship policy.
+- [x] Full profile includes it; TV and Coins profiles exclude it.
 
 **Verification:**
-- [ ] Feature package tests/analyze pass.
-- [ ] `python3 scripts/check-module-manifests.py`
-- [ ] `python3 scripts/check-build-profiles.py`
-- [ ] `./scripts/check-variant-pubspecs.sh`
+- [x] Feature package tests/analyze pass.
+- [x] `python3 scripts/check-module-manifests.py`
+- [x] `python3 scripts/check-build-profiles.py`
+- [x] `./scripts/check-variant-pubspecs.sh`
 
 **Dependencies:** Task 2
 
@@ -54,13 +54,13 @@ profile pubspec. Split if more than five files are required.
 ## Task 4: Offload summary generation
 
 **Acceptance criteria:**
-- [ ] Existing summary behavior is preserved behind a feature-stage provider.
-- [ ] Production execution uses `AiroWorkerExecutor`.
-- [ ] Success, failure, cancellation, and unavailable outcomes are tested.
+- [x] Existing summary behavior is preserved behind a feature-stage provider.
+- [x] Production execution uses `AiroWorkerExecutor`.
+- [x] Success, failure, cancellation, and unavailable outcomes are tested.
 
 **Verification:**
-- [ ] Focused feature package tests pass.
-- [ ] Existing meeting local-slice tests pass.
+- [x] Focused feature package tests pass.
+- [x] Existing meeting local-slice tests pass.
 
 **Dependencies:** Task 3
 
@@ -69,13 +69,13 @@ profile pubspec. Split if more than five files are required.
 ## Task 5: Offload search-index preparation
 
 **Acceptance criteria:**
-- [ ] Search-index preparation is a separate observable stage.
-- [ ] A summary failure does not erase a successful index outcome.
-- [ ] No raw sensitive values appear in diagnostics.
+- [x] Search-index preparation is a separate observable stage.
+- [x] A summary failure does not erase a successful index outcome.
+- [x] No raw sensitive values appear in diagnostics.
 
 **Verification:**
-- [ ] Focused feature package tests pass.
-- [ ] Existing meeting search tests pass.
+- [x] Focused feature package tests pass.
+- [x] Existing meeting search tests pass.
 
 **Dependencies:** Task 4
 
@@ -84,13 +84,13 @@ profile pubspec. Split if more than five files are required.
 ## Task 6: Make meeting completion non-blocking
 
 **Acceptance criteria:**
-- [ ] Completion returns after background work is accepted.
-- [ ] Final chunks are snapshotted before controller state is cleared.
-- [ ] Persistence failures are observable and do not masquerade as success.
+- [x] Completion returns after background work is accepted.
+- [x] Final chunks are snapshotted before controller state is cleared.
+- [x] Persistence failures are observable and do not masquerade as success.
 
 **Verification:**
-- [ ] App integration test fails on the old synchronous behavior, then passes.
-- [ ] Focused app analyze/test commands pass.
+- [x] App integration test fails on the old synchronous behavior, then passes.
+- [x] Focused app analyze/test commands pass.
 
 **Dependencies:** Tasks 4–5
 
@@ -98,10 +98,10 @@ profile pubspec. Split if more than five files are required.
 
 ## Checkpoint: First Vertical Slice
 
-- [ ] Summary and indexing run off the UI isolate.
-- [ ] Full/TV/Coins profile composition is deterministic.
-- [ ] Existing meeting behavior remains green.
-- [ ] Maintainer reviews the package/API boundary before missing providers.
+- [x] Summary and indexing run off the UI isolate.
+- [x] Full/TV/Coins profile composition is deterministic.
+- [x] Existing meeting behavior remains green.
+- [x] Maintainer reviews the package/API boundary before missing providers.
 
 ## Task 7: Implement real embedding provider
 

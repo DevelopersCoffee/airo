@@ -29,8 +29,9 @@ Officer.
 new `packages/feature_meeting_intelligence`, `app/lib/features/meeting`,
 profile pubspecs, and `.github/airo-build-profiles.json`.
 **Base branch/worktree:** Yes. Fetched `origin/main` and `origin/v1_bkp`; created
-`codex/milestone-2-reliability-20260728` at `origin/main`
-`c2768d01388f1110151cf89431343de08fd53620`; bootstrap merge-base matched.
+`codex/milestone-2-reliability-20260728` from `origin/main` and restacked it
+before implementation onto
+`8d58b3a97d35cfb23d63e6fd13d6b00c5112affe`; merge-base matched.
 **Data:** Reads final transcript chunks and meeting/audio metadata; creates
 redacted summaries, search-index inputs, embeddings, speaker-cluster outputs,
 and consent-eligible Memory updates. No raw content may enter diagnostics.
@@ -48,13 +49,13 @@ implementation belongs to #267/#504; #512 is validation.
 Meeting Memory behavior belongs to #268 and durable writes depend on the Airo
 Mind runtime chain #1193 -> #1194 -> #1195. #506 owns isolate-backed execution;
 #518 owns OS lifecycle validation.
-**Open decision:** Approve this dependency mapping and the boundary that #506
-orchestrates providers without absorbing their implementation issues.
+**Approved decision:** #506 orchestrates providers without absorbing their
+implementation issues. The user approved the package/dependency boundary by
+directing implementation to continue on 2026-07-28.
 
-**Decision:** Blocked pending maintainer review of the scope and dependency
-mapping.
-The additive package/contract slice is ready to begin once this gate is marked
-Ready. #506 cannot close until all five stages have verified real providers.
+**Decision:** Ready for the bounded orchestration slice. The parent issue
+remains blocked and cannot close until all five stages have verified real
+providers.
 
 ### Cross-Agent Contract
 

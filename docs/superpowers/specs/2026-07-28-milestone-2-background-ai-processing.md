@@ -224,10 +224,11 @@ Repository and GitHub evidence resolves the ownership map:
    reboot, battery-restriction, and rescheduling evidence remains under #518's
    background lifecycle validation contract.
 
-The maintainer still needs to approve this dependency mapping. #355, #267/#504,
+The package/dependency boundary was approved on 2026-07-28. #355, #267/#504,
 #268, and #1193/#1194/#1195 remain linked implementation dependencies; they are
 not folded into the #506 orchestration package.
 
-Implementation is blocked on human review of this scope and dependency
-mapping. The first additive package/contract slice can proceed once the scope
-is approved; #506 cannot close until all success criteria are proven.
+The bounded orchestration slice may proceed, but #506 cannot close until all
+success criteria are proven. The host implementation accepts an observable
+in-process job; process-death recovery and OS rescheduling remain explicitly
+owned by #518 and are not claimed by this slice.
