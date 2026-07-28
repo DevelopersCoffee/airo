@@ -28,6 +28,13 @@ playwright/.auth/
 build/
 *.g.dart
 *.freezed.dart
+# Exception: vendored third-party plugins ship their pigeon output upstream.
+# Ignoring it here left Android builds unable to compile from a clean checkout.
+# To regenerate, run `dart run pigeon --input pigeons/<file>.dart` inside the
+# package, then `git checkout -- darwin/`: the @ConfigurePigeon annotation also
+# rewrites the committed Swift/ObjC output, which was produced by a different
+# pigeon version plus native formatters.
+!packages/platform_player/third_party/**/lib/src/*.g.dart
 
 # IDE
 .idea/
