@@ -31,6 +31,8 @@ and both wasted reviewer time on states that did not exist.
 - [ ] Every property described as applied is **read back from the file**, not from the summary that says it was applied
 - [ ] A changelog entry asserting a fix is checked against the code it claims to have changed
 - [ ] **[CI]** Where the property is mechanical, a check enforces it rather than a sentence claiming it (I5)
+- [ ] A **comment asserting a control that is absent** is treated as more serious than an omission, not less — it retires the question, so nobody looks again
+- [ ] A finding marked applied is checked clause by clause; "propagate the newtype **and** apply the encoding" is two claims and the second is the one that gets dropped
 
 > Four times in Phase 1 a property was recorded as applied and was absent: the
 > header AAD, the revocation-subject rewrite, error variants declared and never
@@ -77,6 +79,9 @@ operations, or the trust boundary.
 - [ ] A revocation source carries provenance; an empty ledger cannot silently pass as a checked one
 - [ ] Revoking a subject the local aggregate does not currently hold still records the revocation — gating the durable fact on local presence makes eviction depend on how far behind this device is
 - [ ] "No path reaches key material" is checked against every in-crate route, not only the aggregate constructor — a `pub(crate)` decrypt returning a payload with `pub(crate)` key accessors is the same bypass one type earlier
+- [ ] The ledger has a **single positive gate** every mutator that mints or admits must pass — a guarantee written as an absence is only maintainable when one function enforces it, or the next mutator added simply will not ask
+- [ ] Revocation is enforced on the **live** path, not only on restore; restore runs once, rarely, possibly never, while the live vault runs constantly
+- [ ] Re-creating a revoked subject id is rejected — minting a fresh key for a revoked context makes restore silently destroy every object wrapped under it
 - [ ] A provenance witness has a genuinely **private** field, not `pub(crate)` — crate visibility is not provenance in a crate that will hold more than one subsystem
 - [ ] Epoch or counter values from two independently-maintained ledgers are never compared — per-device counters are not a clock; freshness is decided by subject-set containment
 - [ ] Every enum arm a security decision switches on is reachable from a public API in the same phase, or is documented as reserved and asserted unreachable
