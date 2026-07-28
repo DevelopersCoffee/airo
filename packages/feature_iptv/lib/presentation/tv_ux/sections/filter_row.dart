@@ -44,6 +44,7 @@ class FilterRow extends ConsumerWidget {
         icon: Icons.search,
         onSelected: () =>
             _showSearchOverlay(context, dimensions, notifier, filters.search),
+        onClear: filters.search.isEmpty ? null : () => notifier.setSearch(''),
       ),
       if (dimensions.categories.isNotEmpty)
         _FilterChip(
@@ -146,6 +147,7 @@ class FilterRow extends ConsumerWidget {
         active: chip.active,
         icon: chip.icon,
         onSelected: chip.onSelected,
+        onClear: chip.onClear,
         expanded: true,
       );
     }
@@ -177,6 +179,7 @@ class _FilterChip extends StatelessWidget {
     required this.active,
     required this.icon,
     required this.onSelected,
+    this.onClear,
     this.expanded = false,
   });
 
@@ -184,6 +187,7 @@ class _FilterChip extends StatelessWidget {
   final bool active;
   final IconData icon;
   final VoidCallback onSelected;
+  final VoidCallback? onClear;
   final bool expanded;
 
   @override
@@ -197,7 +201,7 @@ class _FilterChip extends StatelessWidget {
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;
 
-    return TvFocusable(
+    final filterButton = TvFocusable(
       semanticLabel: label,
       onSelect: onSelected,
       borderRadius: 12,
@@ -208,9 +212,12 @@ class _FilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onSelected,
           child: Container(
-            height: 36,
+            height: 48,
             width: expanded ? double.infinity : null,
-            constraints: const BoxConstraints(minWidth: 112),
+            constraints: BoxConstraints(
+              minWidth: 112,
+              maxWidth: expanded ? double.infinity : 220,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
@@ -222,12 +229,42 @@ class _FilterChip extends StatelessWidget {
                     child: _FilterChipLabel(label: label, active: active),
                   )
                 else
-                  _FilterChipLabel(label: label, active: active),
+                  Flexible(
+                    child: _FilterChipLabel(label: label, active: active),
+                  ),
               ],
             ),
           ),
         ),
       ),
+    );
+
+    final clear = onClear;
+    if (clear == null) return filterButton;
+
+    final clearButton = TvFocusable(
+      key: const ValueKey('filter-chip-search-clear'),
+      semanticLabel: 'Clear search',
+      onSelect: clear,
+      borderRadius: 12,
+      child: Material(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        child: IconButton(
+          tooltip: 'Clear search',
+          onPressed: clear,
+          icon: Icon(Icons.close, color: scheme.onPrimaryContainer),
+        ),
+      ),
+    );
+
+    return Row(
+      mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        if (expanded) Expanded(child: filterButton) else filterButton,
+        const SizedBox(width: 4),
+        clearButton,
+      ],
     );
   }
 }

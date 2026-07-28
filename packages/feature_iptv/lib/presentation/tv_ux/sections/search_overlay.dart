@@ -56,6 +56,12 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
     Navigator.of(context).pop();
   }
 
+  void _clearSearch() {
+    _controller.clear();
+    ref.read(localIptvSearchQueryProvider.notifier).state = '';
+    widget.notifier.setSearch('');
+  }
+
   Future<void> _browseBy({
     required String title,
     required ChannelFilterDimension dimension,
@@ -89,6 +95,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filters = ref.watch(channelFiltersProvider);
+    final localQuery = ref.watch(localIptvSearchQueryProvider);
     final dimensions = widget.dimensions;
     final countries = ref.watch(iptvOrgCountryByCodeProvider);
     final languages = ref.watch(iptvOrgLanguageByCodeProvider);
@@ -229,10 +236,23 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                       dimensions.categories.isEmpty &&
                       dimensions.countries.isEmpty &&
                       dimensions.languages.isEmpty,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
                     hintText: 'Type a channel name',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: localQuery.trim().isEmpty
+                        ? null
+                        : TvFocusable(
+                            semanticLabel: 'Clear search text',
+                            onSelect: _clearSearch,
+                            borderRadius: 20,
+                            child: IconButton(
+                              key: const ValueKey('search-overlay-clear'),
+                              tooltip: 'Clear search text',
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.close),
+                            ),
+                          ),
                   ),
                   textInputAction: TextInputAction.search,
                   onChanged: (value) =>

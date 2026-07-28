@@ -2,6 +2,7 @@ import 'package:feature_iptv/application/providers/channel_filters_provider.dart
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_org_api_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/filter_row.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/search_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -171,18 +172,144 @@ void main() {
 
     expect(container.read(channelFiltersProvider).search, 'news');
     expect(find.text('news'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('filter-chip-search-clear')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('filter-chip-search-clear')));
+    await tester.pumpAndSettle();
+
+    expect(container.read(channelFiltersProvider).search, '');
+    expect(find.text('Search'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('filter-chip-search-clear')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('clear search keeps the other active channel filters', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    container.read(channelFiltersProvider.notifier)
+      ..setCategory('News')
+      ..setSearch('local');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FilterRow(
+              dimensions: ChannelFilterDimensions(
+                categories: {'News', 'Sports'},
+                countries: {},
+                languages: {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Clear search'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pump();
+
+    expect(
+      container.read(channelFiltersProvider),
+      const ChannelFilters(category: 'News'),
+    );
+  });
+
+  testWidgets('clear search stays visible on a Pixel 9-width layout', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(393, 852);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(channelFiltersProvider.notifier)
+        .setSearch('a deliberately long channel search');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FilterRow(
+              dimensions: ChannelFilterDimensions(
+                categories: {'News'},
+                countries: {'IN'},
+                languages: {'hin'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final clearFinder = find.byKey(const ValueKey('filter-chip-search-clear'));
+    expect(clearFinder, findsOneWidget);
+    expect(tester.getSize(clearFinder).width, greaterThanOrEqualTo(48));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search overlay clears typed text without closing', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FilterRow(
+              dimensions: ChannelFilterDimensions(
+                categories: {},
+                countries: {},
+                languages: {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
 
     await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('search-overlay-field')),
-      '',
+      'news',
     );
-    await tester.tap(find.byIcon(Icons.close));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('search-overlay-clear')));
+    await tester.pump();
 
-    expect(container.read(channelFiltersProvider).search, '');
-    expect(find.text('Search'), findsOneWidget);
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('search-overlay-field')),
+    );
+    expect(field.controller?.text, isEmpty);
+    expect(find.byKey(const ValueKey('search-overlay-clear')), findsNothing);
+    expect(find.byType(SearchOverlay), findsOneWidget);
   });
 
   testWidgets('language choices use human-readable labels', (tester) async {
