@@ -37,7 +37,7 @@ The runtime understands exactly seven things. Everything else is derived.
 | **Context** | A user-data node that groups content — a hospitalization, a project, a year, a person, a topic. Contexts form a hypergraph; content links to many. |
 | **Capability** | Software shipped as data: schema, views, workflows, automations, queries, prompts, policies, migrations, assets, localization. Owns no user data. |
 | **Projection** | Anything derived by replaying the log: the knowledge graph, timeline, calendar, search index, embeddings, task lists, analytics. Always rebuildable, never authoritative. |
-| **Vault** | Identity, keys, revocations, trust, device certificates. The only mutable, non-append-only store in the system. |
+| **Vault** | Identity, key hierarchy, context keys, revocation ledger, device certificates, policies. The only mutable, non-append-only store in the system. **Sized by contexts and devices, never by content.** |
 
 Nothing else is first-class. "Graph", "database", "note", "hospital" do not
 appear in runtime contracts.
@@ -75,6 +75,14 @@ Operation
 │     signature
 └── ContentRef → ContentID
 ```
+
+**Header disclosure rule.** Headers may reveal the structural metadata replay
+requires — ordering, parentage, entity and context identity, schema. They must
+never reveal anything that lets an observer **distinguish identical user
+content after crypto-shredding**.
+
+`payloadHash` is the first application of that rule, not the whole of it. Any
+future header field is checked against it.
 
 `payloadHash` covers the **ciphertext**, or is a MAC keyed under the content
 key. Hashing the plaintext would make the header an **equality oracle** —
@@ -115,16 +123,35 @@ dialog must state which one is about to happen and what survives.
 Content does not belong to a hierarchy. It belongs to a **set of contexts**.
 
 ```
-Content Object
+Content Object                     ← lives in the CONTENT STORE
    ↓ encrypted under
 Content Key (random, per object)
    ↓ wrapped separately under each granting context
-wrap(CK, HospitalizationContextKey)
+wrap(CK, HospitalizationContextKey)   ← stored WITH the content object
 wrap(CK, FinanceContextKey)
 wrap(CK, TaxYear2026ContextKey)
 ```
 
 Content remains recoverable while **at least one valid wrapping exists**.
+
+**The wrapping set lives with the content object, not in the Vault.** This is
+load-bearing and was got wrong in the first draft.
+
+The Vault holds the **context keys** — O(contexts) — plus identity, device
+certificates, the revocation ledger, and policies. It never holds a per-content
+record. The content store already owns content; the Vault owns only keys.
+
+Stated as a rule, because two sentences in the first draft described different
+systems:
+
+> *"The Recovery Package grants access; carries no data"* cannot coexist with
+> *"one envelope per content object."* **The Vault is sized by contexts and
+> devices, never by user content.**
+
+Measured consequence of getting this wrong: a 100k-content vault serialized to
+a 225 MiB Recovery Package with a ~600 MiB export peak — an out-of-memory
+failure on mid-range Android, on the one artifact whose absence is
+unrecoverable. See #1305.
 
 This is the property that makes a shared graph possible: a hospital bill is one
 object, simultaneously a medical record, an expense, and a deduction. Closing
@@ -147,7 +174,7 @@ Every content object declares one.
 
 `DestroyContent` is not a flag. It is:
 
-1. Destroy the content key in the Vault.
+1. Destroy every wrapping of the content key, in the content store.
 2. Append `RevokeContentKey` to the revocation ledger.
 3. Delete the local encrypted blob.
 4. Delete derived projections referencing the object.
@@ -783,6 +810,57 @@ is within a constant of a 10k-content vault. It lands with the framed-package
 format (#1305) and the storage-layer split (#1307), in one change — never as
 prose against a format that cannot satisfy it.
 
+### I8 — Cost is part of correctness
+
+**A runtime feature is not complete until it has an asymptotic complexity, an
+allocation budget, a benchmark, and a regression test.**
+
+```
+Replay
+  O(n) in operations
+  peak RSS < X, independent of n
+  benchmark in packages/benchmarks
+  regression threshold enforced in CI
+```
+
+Performance becomes part of the API, not a follow-up. I5 says an invariant is
+not complete until it can fail; I8 says the same about a cost.
+
+The evidence this is not theoretical: three of the four council reviews
+returned REJECT on findings that were measurable and unmeasured — an 8.6×
+format expansion, a 33 s per million operations verification floor, and a 45–58%
+throughput loss from a compiler flag nobody had benchmarked. Each was cheap to
+measure and expensive to discover.
+
+A performance claim with no number is treated exactly as a security property
+recorded as applied and never written.
+
+### The `unsafe` policy
+
+A blanket `#![forbid(unsafe_code)]` on the runtime crate reads as prudence and
+is actually a foreclosure: `forbid` cannot be locally overridden, `memmap2`
+needs `unsafe` at the call site, and memory-mapped sealed log segments are the
+primary tool for replaying a million operations without unbounded memory
+growth. The rule would have permanently prevented the technique that makes the
+memory budget achievable.
+
+The policy that replaces it:
+
+> **`unsafe` is prohibited unless it is isolated, documented, benchmarked,
+> fuzzed, audited, and justified.** All six, recorded, per call site.
+
+Concretely: crypto, vault, merge, replay, and capability logic live in crates
+that keep `forbid(unsafe_code)`. Low-level primitives — memory mapping, segment
+I/O, group commit — live in one small crate with an audited `unsafe` surface of
+two or three call sites, each carrying its six justifications.
+
+`airo_core` already does exactly this, deliberately and reviewed, at
+`api/playlist_engine.rs:222` and `:924`.
+
+The general lesson, worth keeping: **a blanket rule adopted for a good reason
+ages badly when the reason is narrower than the rule.** The property wanted was
+auditability, not absence.
+
 ## 11b. Architecture compliance
 
 Invariants that only a reviewer can check are invariants that erode. Every
@@ -865,6 +943,69 @@ special". Meeting intelligence is the current test of this: it is a capability
 that captures audio, transcribes, extracts entities, emits operations, and
 builds notes, tasks, and calendar events. It is **not** a runtime feature, and
 it gets no privileged storage path.
+
+## 11c-2. The snapshot contract
+
+```
+Operation Log
+     │
+     ▼
+Verified Snapshot        ← carries the watermark it was built at
+     │
+     ▼
+Replay after watermark   ← below it, no re-verification
+```
+
+**Snapshots are cache-only.** They may be deleted at any time and rebuilt from
+the log, so I1 holds.
+
+**The verified-prefix watermark is part of the runtime contract.** An operation
+is verified exactly once, when it enters the log — locally or from sync. The
+log persists *"operations up to (device, seq) N have been verified by this
+device"*. Replay below the watermark skips verification; replay above it
+verifies. Snapshots carry the watermark they were built at.
+
+This is what makes cache-only affordable. Measured: ed25519 verification is
+32.9–36.3 µs per operation and 50–80× everything else in replay combined, so
+without the watermark, cold start costs 33 s per million operations **forever**
+— and the pressure to make snapshots authoritative, reintroducing a second
+source of truth and voiding I1, becomes irresistible.
+
+**The watermark is what protects the invariant.**
+
+## 11c-3. The Supervisor is a resource authority
+
+The Supervisor is **not** "the thing that starts engines". It is the component
+that owns **resources**, and lifecycle is one of them.
+
+```
+Supervisor
+├── Engine lifecycle
+├── Cancellation
+├── Scheduling
+├── Memory budget
+├── CPU budget
+├── IO budget
+├── Health
+├── Metrics
+└── Backpressure
+```
+
+**Every engine requests resources. The Supervisor grants them.**
+
+That framing is what makes future additions compose instead of compete. Speech
+recognition, OCR, LLM inference, and synchronization all want CPU and memory at
+the same moment on a 6–8 core phone. If each constructs its own runtime and
+takes what it needs, they contend; if each requests a budget, the Supervisor
+arbitrates and the UI does not stall behind a background rebuild.
+
+**Hard constraint: the Supervisor is a control plane, never a data plane.** It
+owns handles, budgets, and cancellation tokens. Subsystems own their own state.
+No operation payload, no projection data, and no key material passes through
+its lock — otherwise it becomes the single global contention point in the
+runtime and every benefit is paid for twice.
+
+Tracked on #1302.
 
 ## 11d. One sync model
 
