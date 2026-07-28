@@ -8,9 +8,11 @@ TARGET="${AIRO_JOURNEY_TARGET:-patrol_test/agent_skills_journey_test.dart}"
 PROMPT="${AIRO_AGENT_SKILLS_PROMPT:-}"
 ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools}}"
 ADB="${ADB:-$ANDROID_SDK/platform-tools/adb}"
-ANDROID_DEVICE="${AIRO_JOURNEY_ANDROID_DEVICE:-}"
+# Per-device overrides belong to the selector (AIRO_PHONE_DEVICE /
+# AIRO_TABLET_DEVICE), so this script does not carry a second set of names.
+ANDROID_DEVICE=""
 ALLOW_ANDROID_EMULATOR="${AIRO_ALLOW_ANDROID_EMULATOR:-false}"
-IOS_DEVICE="${AIRO_JOURNEY_IOS_DEVICE:-}"
+IOS_DEVICE=""
 IOS_SIMULATOR_DEVICE="${AIRO_JOURNEY_IOS_SIMULATOR:-iPhone 17 Pro Max iOS 26.5}"
 ALLOW_IOS_SIMULATOR="${AIRO_ALLOW_IOS_SIMULATOR:-false}"
 TIMEOUT_SECONDS="${AIRO_JOURNEY_TIMEOUT_SECONDS:-900}"

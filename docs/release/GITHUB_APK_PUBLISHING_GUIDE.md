@@ -208,7 +208,7 @@ Before creating a release, ensure:
 
 - [ ] All tests pass (`make test`)
 - [ ] Code is formatted (`make format`)
-- [ ] No linting errors (`make lint`)
+- [ ] No analyzer errors (`make analyze`)
 - [ ] Version updated in `app/pubspec.yaml`
 - [ ] CHANGELOG.md updated
 - [ ] RELEASE_NOTES.md created

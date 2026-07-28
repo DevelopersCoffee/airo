@@ -4,8 +4,11 @@ Local-first Flutter super app: AI chat, personal finance, TV/IPTV, music, games,
 and reading in one codebase. Melos workspace — `packages/` is framework, `app/`
 is product. 62 packages carry a `module.yaml` declaring their council owner.
 
-This file applies to every agent tool that reads it — Claude Code, Codex,
-Antigravity, or anything else.
+**This file is the single context source for every agent.** `CLAUDE.md`,
+`GEMINI.md`, and `.augment/rules.md` are symlinks to it, so Claude Code, Codex,
+Gemini, Antigravity, Augment, and anything else reading a conventions file all
+get the same text. Never add a second, tool-specific rules file — put the
+content here, or in a load-on-demand doc below.
 
 ## Gotchas
 
@@ -62,4 +65,5 @@ and sync commits `[skip ci]`. Full matrices and release workflows are opt-in.
 | Public site or release copy | `.agents/skills/airo-release-branding/SKILL.md` |
 | Running Airo TV locally | `.claude/skills/run-airo-tv/SKILL.md` |
 | TV / leanback UI | `.claude/skills/android-tv-design/SKILL.md` |
+| Any screen that spans phone, tablet, TV, or web | [docs/ui/RESPONSIVE_STANDARDS.md](docs/ui/RESPONSIVE_STANDARDS.md) |
 | Editing this file or the docs it points at | [docs/agents/CONTEXT_ENGINEERING.md](docs/agents/CONTEXT_ENGINEERING.md) |
