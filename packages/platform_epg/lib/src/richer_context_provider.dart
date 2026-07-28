@@ -71,12 +71,18 @@ final class ProgrammeEnrichment extends Equatable {
     required this.synopsis,
     required this.attribution,
     this.posterUrl,
+    this.year,
+    this.rating,
+    this.genres = const [],
   });
 
   final String providerItemId;
   final String title;
   final String synopsis;
   final Uri? posterUrl;
+  final int? year;
+  final double? rating;
+  final List<String> genres;
   final RicherContextAttribution attribution;
 
   @override
@@ -85,6 +91,9 @@ final class ProgrammeEnrichment extends Equatable {
     title,
     synopsis,
     posterUrl,
+    year,
+    rating,
+    genres,
     attribution,
   ];
 }

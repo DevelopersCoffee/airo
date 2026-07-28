@@ -82,19 +82,19 @@ help: ## Show this help message
 	@echo "$(BLUE)Airo Super App - Development Commands$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Setup Commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(setup|install|clean)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(setup|install|clean)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(YELLOW)Development Commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(run|build|test|analyze)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(run|build|test|analyze)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(YELLOW)Platform-Specific Commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(android|ios|web|chrome|pixel|iphone|simulator|local)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(android|ios|web|chrome|pixel|iphone|simulator|local)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(YELLOW)IPTV Data Commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^iptv-' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^iptv-' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(YELLOW)Model Tooling:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^quantize-model' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^quantize-model' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 
 .PHONY: quantize-model
 quantize-model: ## Run the model quantization helper; set QUANTIZE_ARGS="..."
@@ -303,15 +303,20 @@ boot-local-devices: boot-pixel9 boot-iphone17 ## Boot Android and iOS simulators
 deploy-local-binaries: deploy-pixel9-apk run-iphone17-local ## Build, install, and launch Android APK plus iOS simulator app
 
 .PHONY: local-test-plan
-local-test-plan: ## Show the local Android/iOS/web testing workflow
-	@echo "$(BLUE)Local testing workflow$(NC)"
-	@echo "1. make setup-local-devices"
-	@echo "2. Keep simulators open: make boot-local-devices"
-	@echo "3. Terminal A: make run-pixel9"
-	@echo "4. Terminal B: make run-iphone17-local"
-	@echo "5. Terminal C: make run-browser"
+local-test-plan: ## Show the local device testing workflow (physical rig)
+	@echo "$(BLUE)Local testing workflow — physical devices, no simulators$(NC)"
+	@echo "0. Connect the rig: Pixel 9 over USB, iPad over USB,"
+	@echo "   Fire TV Stick via adb connect <stick-ip>:5555"
+	@echo "1. make devices            # confirm all three are visible"
+	@echo "2. Terminal A: make run-android   # Pixel 9"
+	@echo "3. Terminal B: make run-ios       # iPad"
+	@echo "4. Terminal C: make run-firetv    # Fire TV Stick"
+	@echo "5. Terminal D: make run-browser"
 	@echo "6. Browser E2E: make test-browser"
 	@echo "7. Native E2E: make test-device-android and make test-device-ios"
+	@echo ""
+	@echo "$(YELLOW)Simulator/emulator targets (run-pixel9, run-iphone17,$(NC)"
+	@echo "$(YELLOW)run-firetv-emulator, boot-local-devices) are not the rig.$(NC)"
 
 .PHONY: run-android-auto
 run-android-auto: ## Run app on any connected Android device
@@ -352,10 +357,10 @@ test-notification-validation: ## Run deterministic notification validation suite
 	@echo "$(YELLOW)See docs/release/NOTIFICATION_VALIDATION.md for scope and follow-up.$(NC)"
 
 .PHONY: run-android
-run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
+run-android: run-android-auto ## Run app on the connected Android device (Pixel 9 rig)
 
 .PHONY: run-pixel9
-run-pixel9: boot-pixel9 ## Run app on local Pixel 9 emulator
+run-pixel9: boot-pixel9 ## Run app on the Pixel 9 EMULATOR (needs AIRO_ALLOW_ANDROID_EMULATOR=true; for the physical Pixel 9 use run-android)
 	@echo "$(BLUE)Running on Pixel 9 (Android)...$(NC)"
 	@cd $(APP_DIR) && flutter run -d "$(ANDROID_RUN_DEVICE)" $(DART_DEFINE_ARGS)
 
@@ -378,7 +383,7 @@ deploy-pixel9-apk: boot-pixel9 ## Build, install, and launch debug APK on local 
 	echo "$(GREEN)✓ APK installed and launched on Pixel 9. PID: $$PID$(NC)"
 
 .PHONY: run-ios
-run-ios: ## Run app on iOS device/simulator
+run-ios: ## Run app on the connected iOS device (iPad rig) or a simulator
 	@echo "$(BLUE)Running on iOS...$(NC)"
 	@if [ "$$(uname)" != "Darwin" ]; then \
 		echo "$(RED)iOS development is only available on macOS$(NC)"; \
@@ -460,7 +465,7 @@ run-browser: ## Run app on configured web browser for local testing
 
 # Fire TV Commands
 .PHONY: run-firetv
-run-firetv: ## Run app on Fire TV (auto-detect TV emulator/device)
+run-firetv: ## Run app on the connected Fire TV Stick (adb connect <ip>:5555 first)
 	@echo "$(BLUE)Running on Fire TV...$(NC)"
 	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
 

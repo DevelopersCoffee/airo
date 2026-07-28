@@ -31,25 +31,35 @@ the agent or package as scope:
 
 ## Validation and device choice
 
-Host-only checks are the default verification path — `flutter analyze`,
-`flutter test`, package tests, web/Playwright checks, APK build checks. Run the
-narrowest set that proves the touched contract.
+Host-only checks come first — `flutter analyze`, `flutter test`, package tests,
+web/Playwright checks, APK build checks. Run the narrowest set that proves the
+touched contract.
 
-The Android Emulator is **not** a default path. A
+**Device verification runs on real hardware. Simulators and emulators are not
+the rig.** The three devices under active test:
+
+| Surface | Device | Run it with |
+|---|---|---|
+| Phone / touch | Pixel 9 | `make run-android` (auto-detects the connected device) |
+| Tablet / iOS | iPad Air 4 | `make run-ios`, `scripts/run_visual_qualification.sh` |
+| Ten-foot / TV | Fire TV Stick 4K | `make run-firetv`, `make build-firetv` |
+
+Watch the target names: `make run-pixel9`, `run-iphone13`, `run-iphone17`,
+`run-firetv-emulator`, `run-androidtv`, `boot-local-devices`, and
+`deploy-local-binaries` all drive **emulators and simulators**, not the rig
+above. `make run-pixel9` boots a QEMU AVD, not the physical Pixel 9.
+
+The Android Emulator stays gated behind `AIRO_ALLOW_ANDROID_EMULATOR=true`. A
 `qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS` crash on macOS is an
-infrastructure failure, not an app regression: stop the emulator run, preserve
-the crash report, and continue on host checks or a physical device. Do not retry
-in a loop.
+infrastructure failure, not an app regression: stop the run, preserve the crash
+report, continue on host checks or the physical device, and do not retry in a
+loop.
 
-Preference order when device coverage is genuinely required:
+Android journeys take the device serial —
+`AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`. A Fire TV Stick joins over the
+network first: `adb connect <stick-ip>:5555`.
 
-1. Physical Android device — `AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`.
-2. iOS simulator, for iOS/macOS smoke coverage.
-3. Android Emulator, only with explicit risk acceptance:
-   `AIRO_ALLOW_ANDROID_EMULATOR=true`. `make boot-pixel9`, `make run-pixel9`, and
-   the Android Patrol emulator targets are gated behind it.
-
-Name the environment used — host-only, physical Android, iOS simulator, or
+Name the environment used — host-only, Pixel 9, iPad, Fire TV, or an explicit
 emulator opt-in — in the issue and the PR.
 
 ## CI spend

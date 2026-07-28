@@ -60,6 +60,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('A fixture synopsis.'), findsOne);
+    expect(find.textContaining('2026 · 8.4 · Drama, Mystery'), findsOne);
     expect(find.text('India vs Australia'), findsOne);
     expect(find.textContaining('Prototype attribution'), findsWidgets);
     expect(
@@ -119,6 +120,9 @@ final class _FixtureProvider implements RicherContextProvider {
       providerItemId: 'programme-1',
       title: request.title,
       synopsis: 'A fixture synopsis.',
+      year: 2026,
+      rating: 8.4,
+      genres: const ['Drama', 'Mystery'],
       posterUrl: Uri.https('example.invalid', '/poster.jpg'),
       attribution: descriptor.attribution,
     );

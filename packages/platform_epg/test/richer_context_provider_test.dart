@@ -19,6 +19,22 @@ void main() {
     attribution: attribution,
   );
 
+  test('programme enrichment carries optional display metadata', () {
+    final enrichment = ProgrammeEnrichment(
+      providerItemId: 'programme-1',
+      title: 'Example Programme',
+      synopsis: 'Synopsis',
+      year: 2026,
+      rating: 8.4,
+      genres: const ['Drama', 'Mystery'],
+      attribution: attribution,
+    );
+
+    expect(enrichment.year, 2026);
+    expect(enrichment.rating, 8.4);
+    expect(enrichment.genres, const ['Drama', 'Mystery']);
+  });
+
   test('denied entitlement prevents programme adapter invocation', () async {
     final provider = _RecordingProvider(descriptor, attribution);
     final coordinator = RicherContextCoordinator(

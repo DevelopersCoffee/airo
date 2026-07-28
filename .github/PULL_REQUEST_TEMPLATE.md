@@ -7,9 +7,9 @@
 - [ ] `flutter analyze` or relevant package analyzer passed
 - [ ] `flutter test` or relevant package tests passed
 - [ ] CI-only change validated with local script/YAML checks
-- [ ] Manual device/simulator verification documented, or not applicable
+- [ ] Manual device verification documented, or not applicable
 
-**Verification environment:** Host-only / Physical Android / iOS simulator / Android Emulator with explicit opt-in
+**Verification environment:** Host-only / Pixel 9 / iPad / Fire TV Stick / emulator or simulator with explicit opt-in
 
 ## Agent Policy
 
