@@ -92,7 +92,7 @@ feature_meeting_intelligence package contract
 
 ## Phase 4: Missing Real Providers
 
-10. Resolve or create the framework-owned local embedding provider issue and
+10. Complete or consume #355's framework-owned local embedding provider and
     implement its meeting adapter.
 11. Resolve or create the speaker-clustering implementation issue and implement
     its meeting adapter.
@@ -137,9 +137,8 @@ feature_meeting_intelligence package contract
 
 - The dependency mapping in the canonical spec requires maintainer review
   before feature implementation.
-- A reusable embedding provider has no clearly scoped implementation issue.
-  Search again before creating one, then decide whether it is a framework issue
-  linked to #506 or a #506 sub-issue.
+- #355 owns reusable local embeddings and exact vector retrieval. Do not create
+  a duplicate issue; consume its verified contract from the meeting adapter.
 - Speaker implementation is already owned by #267/#504.
 - Memory product behavior is owned by #268 and remains contractually dependent
   on the Airo Mind runtime chain #1193 -> #1194 -> #1195.

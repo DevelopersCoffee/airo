@@ -42,14 +42,14 @@ stage must not erase successful independent stages.
 accepted. Callers observe typed progress and may cancel eligible stages.
 Release profiles include/exclude the entire feature package without source
 edits.
-**Dependency findings:** A reusable embedding provider has no clearly scoped
-implementation issue (#277 owns runtime foundation and #288 owns RAG
-consumption). Speaker implementation belongs to #267/#504; #512 is validation.
+**Dependency findings:** #355 owns reusable local embeddings and exact vector
+retrieval; #277 owns runtime foundation and #288 owns RAG consumption. Speaker
+implementation belongs to #267/#504; #512 is validation.
 Meeting Memory behavior belongs to #268 and durable writes depend on the Airo
 Mind runtime chain #1193 -> #1194 -> #1195. #506 owns isolate-backed execution;
 #518 owns OS lifecycle validation.
-**Open decision:** Approve this mapping and decide whether the missing embedding
-provider is a framework issue linked to #506 or a #506 sub-issue.
+**Open decision:** Approve this dependency mapping and the boundary that #506
+orchestrates providers without absorbing their implementation issues.
 
 **Decision:** Blocked pending maintainer review of the scope and dependency
 mapping.

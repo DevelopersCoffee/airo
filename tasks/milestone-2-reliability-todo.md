@@ -106,8 +106,9 @@ profile pubspec. Split if more than five files are required.
 ## Task 7: Implement real embedding provider
 
 **Acceptance criteria:**
-- [ ] Existing provider ownership/issue is identified or a non-duplicate issue
-      is created.
+- [x] Existing provider ownership is identified as #355; no duplicate issue is
+      created.
+- [ ] #355 provides verified real 256/384-dimensional local embeddings.
 - [ ] Meeting embeddings use a real local provider with typed failure modes.
 - [ ] Vectors/content never appear in public diagnostics.
 

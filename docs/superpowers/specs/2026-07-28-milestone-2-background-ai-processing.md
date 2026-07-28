@@ -208,10 +208,11 @@ release validation runbook; host tests cannot prove OS lifecycle behavior.
 
 Repository and GitHub evidence resolves the ownership map:
 
-1. A reusable local embedding provider has no clearly scoped implementation
-   issue. #277 owns the model/runtime foundation and #288 consumes semantic
-   embeddings for RAG, but neither owns a product-neutral embedding service.
-   Search for duplicates again immediately before creating that framework issue.
+1. #355 owns the reusable local embedding and exact vector-search path. It
+   requires MediaPipe Text Embedder integration in `core_ai`, real 256/384
+   dimensional vectors, offline verification, and an off-main exact scan. #277
+   remains the broader model/runtime foundation and #288 remains a RAG
+   consumer. Do not create a duplicate embedding issue.
 2. Speaker clustering/identity implementation belongs under #267 and #504.
    #512 remains the validation issue and must not become the implementation
    owner.
@@ -223,9 +224,9 @@ Repository and GitHub evidence resolves the ownership map:
    reboot, battery-restriction, and rescheduling evidence remains under #518's
    background lifecycle validation contract.
 
-The maintainer still needs to approve this dependency mapping and decide
-whether the missing embedding provider should be a sub-issue of #506 or a
-framework issue linked as a blocker.
+The maintainer still needs to approve this dependency mapping. #355, #267/#504,
+#268, and #1193/#1194/#1195 remain linked implementation dependencies; they are
+not folded into the #506 orchestration package.
 
 Implementation is blocked on human review of this scope and dependency
 mapping. The first additive package/contract slice can proceed once the scope
