@@ -1,6 +1,6 @@
 # Airo Mind — Local-First Personal Intelligence Runtime
 
-Status: **FROZEN at v1** once PR #1312 merges — see `docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`.
+Status: **FROZEN at v1** — see `docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`.
 Changes to primitives, invariants, contracts, the package format, the public
 API, the sync model, or the security model require an ADR in `docs/adr/` with
 all seven required architecture sections.

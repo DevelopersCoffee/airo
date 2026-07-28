@@ -1,6 +1,6 @@
 # Airo Mind — Architecture Freeze v1
 
-Status: **BINDING once PR #1312 merges.** Until then, pending.
+Status: **BINDING once this document merges.** Until then, pending.
 Date: 2026-07-28
 Owner: Airo Engineering Council
 Scope: the Airo Mind runtime only. Does not amend `docs/PLATFORM_CONSTITUTION.md`.
@@ -9,7 +9,7 @@ Scope: the Airo Mind runtime only. Does not amend `docs/PLATFORM_CONSTITUTION.md
 
 ## What this declares
 
-The Airo Mind runtime architecture is **frozen**. From the moment #1312 merges:
+The Airo Mind runtime architecture is **frozen**. From the moment this document merges:
 
 - **No new primitives.**
 - **No new invariants.**
@@ -136,7 +136,7 @@ validated cannot be validated.
 ```
 Discovery                  ✓
 Requirements               ✓
-Architecture               ✓  ← frozen at #1312
+Architecture               ✓  ← frozen here
 Runtime Validation         ←  current
 Runtime Implementation
 Capability Implementation
@@ -248,7 +248,7 @@ capability that does not exist yet.
 - [x] Package format frozen — `format_version: 1`
 - [x] Public API frozen — six functions, design spec §11c
 
-**Complete on #1312 merge.**
+**Complete on merge of this document.**
 
 ---
 
