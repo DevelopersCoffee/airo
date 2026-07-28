@@ -63,4 +63,36 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('resolves the Sources pane through the composition provider', (
+    tester,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          tvSourceManagementSectionBuilderProvider.overrideWithValue(
+            ({key}) => SizedBox(
+              key: key,
+              child: const Text('Product source management'),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: TvSettingsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Sources'));
+    await tester.pump();
+
+    expect(find.text('Product source management'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tv_settings_section_sources')),
+      findsOneWidget,
+    );
+    expect(find.byType(TvSourceManagementSection), findsNothing);
+  });
 }
