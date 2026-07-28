@@ -12,6 +12,7 @@ import '../../application/providers/guide_providers.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../widgets/epg_touch_timeline_grid.dart';
 import '../widgets/epg_timeline_grid.dart';
+import '../widgets/richer_context_prototype.dart';
 
 /// TV Guide: a virtualized horizontal-timeline EPG grid (CV-015 slice 2),
 /// sourced from [guidePagedWindowProvider]. Selecting a channel plays it and
@@ -269,6 +270,12 @@ class ProgrammeDetailsDialog extends StatelessWidget {
               Text('Categories: ${program.categories.join(', ')}'),
             if (program.rating != null) Text('Rating: ${program.rating}'),
             if (badges.isNotEmpty) Text(badges.join(' · ')),
+            ProgrammeEnrichmentPrototypeCard(
+              request: ProgrammeMetadataRequest(
+                title: program.title,
+                startsAt: program.startsAt,
+              ),
+            ),
           ],
         ),
       ),
