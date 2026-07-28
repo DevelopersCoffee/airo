@@ -138,10 +138,30 @@ An ADR touching any frozen surface above must contain all seven:
    rejected
 4. **Compatibility analysis** — what breaks, on devices already in the field
 5. **Migration strategy** — for data already written under the current design
-6. **Runtime contract impact** — which of C1–C7 change version, and therefore
-   whether this is a runtime major
+6. **Contract Impact** — the table below, every row filled. "None" is an answer;
+   blank is not
 7. **Approval** — from every council role the Decision Matrix names for the
    surfaces touched
+
+### The Contract Impact table
+
+| Question | Required |
+|---|---|
+| Which runtime contracts change? | List — and whether the version changes, since that makes it a runtime major |
+| Which conformance tests become invalid? | List — **including tests that still pass.** That case is the reason this row exists |
+| Which benchmarks must be re-run? | List — a budget measured against the old shape is not evidence about the new one |
+| Which review roles must re-review? | List — a prior approval covers what was approved, not its replacement |
+| Is G0 required again? | Yes / No — yes for anything touching a plan's code blocks or a crate's public surface |
+
+This exists because the previous wording asked only which contracts change
+version, and an architecture change invalidates more than contracts. It leaves
+tests, budgets, and approvals standing against a shape that no longer exists —
+and unlike a broken test, a stale one is silent.
+
+ADR-0017 is the worked example: contracts C1 and C7, conformance tests on C1, C2
+and C3, benchmarks V4/V5/V7, re-review by Performance, Security, and Rust
+Architect, G0 yes. None of that was derivable from "which contracts change
+version" alone.
 
 > **"No better idea" is not sufficient justification.** Neither is elegance,
 > consistency, or that a newer approach exists. Evidence or nothing.
