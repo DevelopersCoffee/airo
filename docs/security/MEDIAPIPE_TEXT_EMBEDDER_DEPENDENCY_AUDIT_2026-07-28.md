@@ -7,8 +7,9 @@ Do not consume the published MediaPipe `tasks-core` AAR unchanged. Use
 `tasks-core:0.10.29` that restores the open-source no-op usage logger and
 removes Google DataTransport.
 
-The dependency stays full-profile-only and is blocked from release until APK
-dependency, symbol, network, size, and physical-device checks pass.
+The dependency stays full-profile-only. Static dependency, symbol, and size
+checks pass; release remains blocked on physical offline inference plus
+network/log inspection.
 
 ## Evidence
 
@@ -53,6 +54,30 @@ JDK 17 and Android API 36 produced the same AAR SHA-256. The fail-closed audit
 also proves the factory invokes `TasksStatsDummyLogger` and that the artifact
 contains no remote logger, dedicated usage-logging proto, DataTransport symbol,
 or `COREML_ON_DEVICE_SOLUTIONS` string.
+
+The replacement is consumed through the repository-local Maven coordinate
+`io.airo.thirdparty:mediapipe-tasks-core-no-telemetry:0.10.29-airo.1`.
+Its POM declares no transitive dependencies. The provider's resolved Android
+runtime graph contains that local module and `tasks-text:0.10.29`; it contains
+neither published `com.google.mediapipe:tasks-core` nor any
+`com.google.android.datatransport` module. Gradle also rejects either forbidden
+dependency if it enters the provider graph later.
+
+## APK Composition Evidence
+
+The full-profile arm64 debug APK includes only
+`lib/arm64-v8a/libmediapipe_tasks_text_jni.so` from the MediaPipe text runtime
+and includes no embedding model. Against a same-commit full-profile baseline,
+the final APK is 157,363,402 bytes with SHA-256
+`2b197a0220f84334f4ef62ad263acea426af532c0ad192f11582006e6a879719`.
+The baseline is 149,878,382 bytes, making the delta 7,485,020 bytes
+(7.138 MiB).
+
+The full APK scan contains no `COREML_ON_DEVICE_SOLUTIONS`,
+`RemoteLoggingClient`, or `TasksStatsProtoLogger` marker. The full application
+does contain DataTransport for unrelated Firebase dependencies, so
+DataTransport absence is asserted only for the isolated provider dependency
+graph, not for the whole application.
 
 ## Required Gates
 

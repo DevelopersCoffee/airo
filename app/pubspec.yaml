@@ -86,6 +86,8 @@ dependencies:
     path: ../packages/core_product_shell
   platform_downloads:
     path: ../packages/platform_downloads
+  platform_text_embeddings:
+    path: ../packages/platform_text_embeddings
 
   # Local packages - Features
   airo:

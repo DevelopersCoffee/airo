@@ -1,0 +1,94 @@
+group = "io.airo.platform_text_embeddings"
+version = "0.1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:9.2.1"
+    }
+}
+
+apply plugin: "com.android.library"
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+android {
+    namespace = "io.airo.platform_text_embeddings"
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+        test.java.srcDirs += "src/test/kotlin"
+    }
+
+    dependencies {
+        implementation(
+            "io.airo.thirdparty:mediapipe-tasks-core-no-telemetry:0.10.29-airo.1",
+        )
+        implementation("com.google.mediapipe:tasks-text:0.10.29") {
+            exclude group: "com.google.mediapipe", module: "tasks-core"
+        }
+        implementation "com.google.flogger:flogger:0.6"
+        implementation "com.google.flogger:flogger-system-backend:0.6"
+        implementation "com.google.protobuf:protobuf-javalite:4.26.1"
+        testImplementation "junit:junit:4.13.2"
+    }
+}
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "com.google.android.datatransport") {
+            throw new GradleException(
+                "DataTransport is forbidden in platform_text_embeddings",
+            )
+        }
+        if (
+            details.requested.group == "com.google.mediapipe" &&
+            details.requested.name == "tasks-core"
+        ) {
+            throw new GradleException(
+                "Published tasks-core is forbidden; use the audited local AAR",
+            )
+        }
+    }
+}
+
+def telemetryAudit = tasks.register("auditTelemetryFreeMediaPipe", Exec) {
+    def auditScript =
+        project.file(
+            "../../../tool/third_party/mediapipe_tasks_core_0_10_29/audit.sh",
+        )
+    def derivedAar =
+        project.file(
+            "repository/io/airo/thirdparty/" +
+            "mediapipe-tasks-core-no-telemetry/0.10.29-airo.1/" +
+            "mediapipe-tasks-core-no-telemetry-0.10.29-airo.1.aar",
+        )
+    inputs.file(auditScript)
+    inputs.file(derivedAar)
+    commandLine(
+        "bash",
+        auditScript,
+        derivedAar,
+    )
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(telemetryAudit)
+}

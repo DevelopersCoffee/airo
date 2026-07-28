@@ -72,6 +72,30 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   per open-source council review — a bump requires re-review of license,
   binary size, and per-arch native-lib impact.
 
+### MediaPipe Tasks Text (under qualification)
+
+- Package: `com.google.mediapipe:tasks-text:0.10.29`
+- Declared license: Apache-2.0
+- Repository: `https://github.com/google-ai-edge/mediapipe`
+- Upstream AAR SHA-256:
+  `50f466bdc034fd32213cccdbf229b9b106909d6c4d6c89210ba322bbbd0af727`
+- Used by: local Android text-embedding inference in the `full` profile only.
+  It is excluded from TV and Coins profiles.
+- Model status: no embedding model is bundled or distributed by this change.
+
+The published `tasks-core:0.10.29` dependency is not shipped. Airo
+reproducibly derives a local replacement that restores MediaPipe's
+public-source no-op usage logger and removes the remote logger, its dedicated
+usage-logging protos, and DataTransport dependencies. The derived AAR SHA-256
+is
+`36366b6b3ee7cb8279e3b3dd608774f4f30298296e56d6ff23f7f083d4bc0416`.
+It embeds the full upstream `LICENSE` and an Airo modification `NOTICE`.
+
+This runtime remains **Under qualification** until physical offline inference,
+network/log inspection, and model distribution approval are complete. The
+derivation and security gates are documented in
+`docs/security/MEDIAPIPE_TEXT_EMBEDDER_DEPENDENCY_AUDIT_2026-07-28.md`.
+
 ## Direct Release Dependency Surface
 
 The current v2 release-profile pubspecs include these direct dependency names.
@@ -117,6 +141,7 @@ path
 path_provider
 pdfx
 permission_handler
+platform_text_embeddings
 riverpod
 rxdart
 share_plus

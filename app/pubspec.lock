@@ -1888,6 +1888,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_text_embeddings:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_text_embeddings"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_worker_jobs:
     dependency: transitive
     description:

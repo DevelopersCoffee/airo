@@ -25,6 +25,12 @@ if (!liteRtLmAvailable) {
 
 allprojects {
     repositories {
+        maven {
+            url =
+                rootProject.uri(
+                    "../../packages/platform_text_embeddings/android/repository",
+                )
+        }
         google()
         mavenCentral()
         // Required for AI Edge SDK (Gemini Nano). Only register the

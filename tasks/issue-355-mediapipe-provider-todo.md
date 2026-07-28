@@ -35,18 +35,24 @@ the artifact audit passes.
 - [x] Create the owned package and manifest.
 - [x] Write failing channel/lifecycle/redaction tests.
 - [x] Implement Dart adapter and unsupported-platform behavior.
-- [ ] Implement Android background sessions.
-- [ ] Focused tests, analyzer, and Android compilation pass.
+- [x] Implement Android background sessions.
+- [x] Focused tests, analyzer, and Android compilation pass.
 
 Evidence: 7 focused Dart tests pass; focused `flutter analyze` reports no
-issues; all 64 package manifests pass.
+issues; 3 focused Kotlin contract tests pass; the integrated Android plugin
+compiles and bundles; all 64 package manifests pass.
 
 ## Task 5: Release composition
 
-- [ ] Full profile includes the provider.
-- [ ] TV and Coins exclude the provider and native runtime.
-- [ ] Build-profile, manifest, variant, worker, and diff gates pass.
-- [ ] Full APK delta is recorded.
+- [x] Full profile includes the provider.
+- [x] TV and Coins exclude the provider and native runtime.
+- [x] Build-profile, manifest, variant, worker, and diff gates pass.
+- [x] Full APK delta is recorded.
+
+Evidence: the full arm64 debug APK increases by 7,485,020 bytes (7.138 MiB)
+against the same-commit profile baseline. The provider runtime graph contains
+the audited local core and `tasks-text`, with no published `tasks-core` or
+DataTransport. No model is bundled.
 
 ## Task 6: Physical qualification
 
