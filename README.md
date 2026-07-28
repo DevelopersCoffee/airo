@@ -108,8 +108,9 @@ Verify changes:
 make format && make analyze && make test
 ```
 
-Run `make help` for the full command list, including device-targeted helpers
-(`run-pixel9`, `run-iphone13`). For the Airo TV Edge Intelligence runtime
+`run-android`, `run-ios`, and `run-firetv` target connected physical devices.
+Run `make local-test-plan` for the device workflow and `make help` for the full
+command list. For the Airo TV Edge Intelligence runtime
 (Rust FFI, media packs), see
 [docs/features](docs/features/README.md).
 

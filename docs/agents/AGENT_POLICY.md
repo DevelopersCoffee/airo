@@ -302,8 +302,9 @@ No cross-boundary code should be merged without this contract.
 Every implementation ticket must include deterministic use cases and automation
 flows. Use the tracker in issue `#323`.
 
-Automation flows must declare their execution environment: host-only, physical
-Android device, iOS simulator, or Android Emulator with explicit opt-in.
+Automation flows must declare their execution environment: host-only, or one of
+the physical rig devices (Pixel 9, iPad, Fire TV Stick). Emulators and
+simulators require explicit opt-in.
 Android Emulator/QEMU crashes are infrastructure failures. If a run reports
 `qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS`, agents must stop
 that path, preserve the report, and switch to host-only checks or a physical
@@ -364,7 +365,8 @@ Before completion:
 - persistence and cleanup are verified
 - tool traces and memory writes are asserted where relevant
 - accessibility and timeout expectations are covered for UI
-- device-only verification names the exact device/simulator/emulator used
+- device-only verification names the exact rig device used (Pixel 9, iPad, or
+  Fire TV Stick), or the emulator/simulator if one was opted into
 - Android Emulator was not used unless the issue explicitly accepted
   `AIRO_ALLOW_ANDROID_EMULATOR=true`
 

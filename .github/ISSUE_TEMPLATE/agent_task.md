@@ -55,7 +55,7 @@ assignees: ''
 
 **Rollback/migration plan:**
 
-**Verification environment:** Host-only / Physical Android / iOS simulator / Android Emulator with explicit opt-in
+**Verification environment:** Host-only / Pixel 9 / iPad / Fire TV Stick / emulator or simulator with explicit opt-in
 
 **Android Emulator risk accepted?** No / Yes (`AIRO_ALLOW_ANDROID_EMULATOR=true`)
 
