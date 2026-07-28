@@ -108,6 +108,18 @@ Application adapters own:
 No raw transcript, file path, prompt, credential, or embedding vector may be
 written to diagnostics.
 
+Embedding providers are asynchronous rather than executed through a spawned
+Dart isolate: Flutter method channels are unavailable there. The platform
+provider must perform hashing and inference on its native worker boundary.
+The app adapter passes only redacted transcript segments and maps provider
+failures to stable meeting outcomes. A missing or unopened approved model is
+`unavailable`.
+
+Successful meeting embeddings use the existing `meeting_embeddings` columns.
+The row identity includes the exact model artifact SHA-256, while dimensions
+and the JSON vector use the existing fields. This does not authorize a schema
+migration; model lifecycle and distribution remain owned by #355.
+
 ## Code Style
 
 Use immutable typed state and exhaustive switches. Keep stage logic explicit:

@@ -18,14 +18,23 @@ the capability without editing TV or Coins source.
 
 The coordinator exposes stable summary, search-index, embedding,
 speaker-clustering, and Memory-update stages. Summary and search indexing have
-deterministic providers and execute through `AiroWorkerExecutor`. Missing
-embedding, speaker-clustering, and Memory providers return `unavailable`;
-they are never reported as completed.
+deterministic providers and execute through `AiroWorkerExecutor`. Embeddings
+use an asynchronous provider contract because Flutter method channels cannot
+run in a spawned Dart isolate; the platform provider must own its native worker
+boundary. Missing embedding, speaker-clustering, and Memory providers return
+`unavailable`; they are never reported as completed.
 
 The app owns redaction, domain mapping, and repository persistence. Only
 redacted transcript segments cross into package stage providers. Public
 diagnostics contain stable stage, state, and code values—not transcript text,
 paths, prompts, vectors, credentials, or exception details.
+
+The full app can inject the `core_ai` local provider through
+`LocalMeetingEmbeddingProvider`. Until an approved model has been installed
+and the provider has opened successfully, production composition leaves the
+stage unavailable. Successful projections persist through the existing meeting
+embedding columns, with the model artifact SHA-256 in the row identity; this
+slice does not expand the database schema.
 
 ## Current lifecycle boundary
 

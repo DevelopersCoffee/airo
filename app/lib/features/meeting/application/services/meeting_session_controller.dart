@@ -12,13 +12,16 @@ class MeetingSessionController {
     required MeetingRepository repository,
     MeetingIntelligencePipeline? pipeline,
     MeetingBackgroundProcessor? backgroundProcessor,
+    MeetingEmbeddingStageProvider? embeddingProvider,
     DateTime Function()? now,
   }) : _backgroundProcessor =
            backgroundProcessor ??
            MeetingBackgroundProcessor(
              repository: repository,
              pipeline: pipeline ?? MeetingIntelligencePipeline(),
-             coordinator: const MeetingIntelligenceCoordinator.deterministic(),
+             coordinator: MeetingIntelligenceCoordinator.deterministic(
+               embeddingProvider: embeddingProvider,
+             ),
            ),
        _now = now ?? DateTime.now;
 

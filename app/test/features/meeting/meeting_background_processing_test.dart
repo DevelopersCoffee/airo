@@ -14,7 +14,7 @@ void main() {
     test(
       'completion returns after acceptance and later persists redacted data',
       () async {
-        final repository = InMemoryMeetingRepository();
+        final repository = _TrackingMeetingRepository();
         final summary = _TrackingSummaryProvider();
         final controller = MeetingSessionController(
           repository: repository,
@@ -25,6 +25,7 @@ void main() {
               summaryProvider: summary,
               searchIndexProvider:
                   const DeterministicMeetingSearchIndexProvider(),
+              embeddingProvider: const _SuccessfulEmbeddingProvider(),
             ),
           ),
           now: () => DateTime.utc(2026, 7, 28, 12),
@@ -64,8 +65,10 @@ void main() {
           result.intelligence
               .outcomeFor(MeetingIntelligenceStage.embedding)
               .state,
-          MeetingIntelligenceStageState.unavailable,
+          MeetingIntelligenceStageState.completed,
         );
+        expect(repository.lastSaved?.embedding?.modelSha256, 'c' * 64);
+        expect(repository.lastSaved?.embedding?.values, hasLength(256));
         final chunks = await repository.transcriptChunksForMeeting('meeting-1');
         expect(chunks.single.text, contains('[REDACTED_PHONE]'));
         expect(chunks.single.text, isNot(contains('98765')));
@@ -124,6 +127,39 @@ void main() {
           result.toDiagnosticMap().toString(),
           isNot(contains('synthetic')),
         );
+      },
+    );
+
+    test(
+      'default session composition accepts an installed embedding provider',
+      () async {
+        final repository = _TrackingMeetingRepository();
+        final controller = MeetingSessionController(
+          repository: repository,
+          embeddingProvider: const _SuccessfulEmbeddingProvider(),
+          now: () => DateTime.utc(2026, 7, 28, 12),
+        );
+        await controller.startMeeting(id: 'meeting-1', title: 'Local model');
+        controller.receiveTranscriptChunk(
+          const TranscriptChunk.finalChunk(
+            id: 'chunk-1',
+            meetingId: 'meeting-1',
+            text: 'Use the approved local model.',
+            startMs: 0,
+            endMs: 1000,
+          ),
+        );
+
+        await controller.completeMeeting(audioMetadata: _audio);
+        final result = await controller.lastBackgroundJob!.completion;
+
+        expect(
+          result.intelligence
+              .outcomeFor(MeetingIntelligenceStage.embedding)
+              .state,
+          MeetingIntelligenceStageState.completed,
+        );
+        expect(repository.lastSaved?.embedding, isNotNull);
       },
     );
 
@@ -199,5 +235,37 @@ class _FailingMeetingRepository extends InMemoryMeetingRepository {
   @override
   Future<void> saveIntelligence(MeetingIntelligenceDraft draft) {
     throw StateError('synthetic repository details');
+  }
+}
+
+class _TrackingMeetingRepository extends InMemoryMeetingRepository {
+  MeetingIntelligenceDraft? lastSaved;
+
+  @override
+  Future<void> saveIntelligence(MeetingIntelligenceDraft draft) async {
+    lastSaved = draft;
+    await super.saveIntelligence(draft);
+  }
+}
+
+class _SuccessfulEmbeddingProvider implements MeetingEmbeddingStageProvider {
+  const _SuccessfulEmbeddingProvider();
+
+  @override
+  MeetingIntelligenceStage get stage => MeetingIntelligenceStage.embedding;
+
+  @override
+  Future<MeetingEmbeddingProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    return MeetingEmbeddingProviderSuccess(
+      projection: MeetingEmbeddingProjection(
+        modelId: 'test/minilm',
+        revision: 'r1',
+        modelSha256: 'c' * 64,
+        dimensions: 256,
+        values: List.filled(256, 0.5),
+      ),
+    );
   }
 }

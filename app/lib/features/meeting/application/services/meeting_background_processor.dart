@@ -124,6 +124,7 @@ class MeetingBackgroundProcessor {
         redactedChunks: redactedChunks,
         summary: summary,
         searchIndex: searchIndex,
+        embedding: intelligence.embedding,
       );
       try {
         await _repository.saveIntelligence(draft);

@@ -63,6 +63,7 @@ class MeetingIntelligencePipeline {
     required List<TranscriptChunk> redactedChunks,
     required MeetingSummaryProjection summary,
     required MeetingSearchIndexProjection searchIndex,
+    MeetingEmbeddingProjection? embedding,
   }) {
     return MeetingIntelligenceDraft(
       record: record,
@@ -90,6 +91,7 @@ class MeetingIntelligencePipeline {
         isCloudSyncEligible: false,
       ),
       searchableText: searchIndex.searchableText,
+      embedding: embedding,
     );
   }
 }

@@ -43,6 +43,7 @@ class DriftMeetingRepository implements MeetingRepository {
         for (final chunk in redactedChunks) chunk.text,
       ].where((text) => text.trim().isNotEmpty).join('\n'),
     );
+    final embedding = draft.embedding;
 
     await _db.transaction(() async {
       await _db
@@ -160,11 +161,15 @@ class DriftMeetingRepository implements MeetingRepository {
           .into(_db.meetingEmbeddings)
           .insert(
             db.MeetingEmbeddingsCompanion.insert(
-              id: '$meetingId-search',
+              id: embedding == null
+                  ? '$meetingId-search'
+                  : '$meetingId-search-${embedding.modelSha256}',
               meetingId: meetingId,
               chunkId: const Value.absent(),
-              dimensions: 0,
-              vectorJson: '[]',
+              dimensions: embedding?.dimensions ?? 0,
+              vectorJson: embedding == null
+                  ? '[]'
+                  : jsonEncode(embedding.values),
               searchableText: redactedSearchableText,
             ),
           );

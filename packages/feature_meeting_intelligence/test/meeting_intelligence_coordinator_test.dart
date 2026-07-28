@@ -86,6 +86,51 @@ void main() {
       }
     });
 
+    test('completes an asynchronous local embedding stage', () async {
+      const coordinator = MeetingIntelligenceCoordinator.inline(
+        embeddingProvider: _SuccessfulEmbeddingProvider(),
+      );
+
+      final result = await coordinator.run(
+        _request(stages: const {MeetingIntelligenceStage.embedding}),
+      );
+
+      expect(
+        result.outcomeFor(MeetingIntelligenceStage.embedding).state,
+        MeetingIntelligenceStageState.completed,
+      );
+      expect(result.embedding?.modelId, 'test/minilm');
+      expect(result.embedding?.revision, 'r1');
+      expect(result.embedding?.dimensions, 256);
+      expect(result.embedding?.values, hasLength(256));
+      expect(result.toString(), isNot(contains('0.25')));
+    });
+
+    test('preserves typed embedding provider failures', () async {
+      for (final entry in const {
+        MeetingIntelligenceOutcomeCode.providerUnavailable:
+            MeetingIntelligenceStageState.unavailable,
+        MeetingIntelligenceOutcomeCode.cancelled:
+            MeetingIntelligenceStageState.cancelled,
+        MeetingIntelligenceOutcomeCode.invalidInput:
+            MeetingIntelligenceStageState.failed,
+        MeetingIntelligenceOutcomeCode.workerFailure:
+            MeetingIntelligenceStageState.failed,
+      }.entries) {
+        final coordinator = MeetingIntelligenceCoordinator.inline(
+          embeddingProvider: _FailingEmbeddingProvider(entry.key),
+        );
+
+        final result = await coordinator.run(
+          _request(stages: const {MeetingIntelligenceStage.embedding}),
+        );
+        final outcome = result.outcomeFor(MeetingIntelligenceStage.embedding);
+
+        expect(outcome.state, entry.value, reason: entry.key.stableId);
+        expect(outcome.code, entry.key, reason: entry.key.stableId);
+      }
+    });
+
     test('cancels later work at the next deterministic checkpoint', () async {
       final cancellation = MeetingIntelligenceCancellationToken();
       final search = _TrackingSearchIndexProvider();
@@ -167,5 +212,43 @@ class _TrackingSearchIndexProvider implements MeetingSearchIndexStageProvider {
   MeetingSearchIndexProjection process(MeetingIntelligenceJobRequest request) {
     invocationCount += 1;
     return const DeterministicMeetingSearchIndexProvider().process(request);
+  }
+}
+
+class _SuccessfulEmbeddingProvider implements MeetingEmbeddingStageProvider {
+  const _SuccessfulEmbeddingProvider();
+
+  @override
+  MeetingIntelligenceStage get stage => MeetingIntelligenceStage.embedding;
+
+  @override
+  Future<MeetingEmbeddingProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    return MeetingEmbeddingProviderSuccess(
+      projection: MeetingEmbeddingProjection(
+        modelId: 'test/minilm',
+        revision: 'r1',
+        modelSha256: 'a' * 64,
+        dimensions: 256,
+        values: List.filled(256, 0.25),
+      ),
+    );
+  }
+}
+
+class _FailingEmbeddingProvider implements MeetingEmbeddingStageProvider {
+  const _FailingEmbeddingProvider(this.code);
+
+  final MeetingIntelligenceOutcomeCode code;
+
+  @override
+  MeetingIntelligenceStage get stage => MeetingIntelligenceStage.embedding;
+
+  @override
+  Future<MeetingEmbeddingProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    return MeetingEmbeddingProviderFailure(code: code);
   }
 }

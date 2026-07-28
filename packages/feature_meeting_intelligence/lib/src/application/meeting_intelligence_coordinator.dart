@@ -13,11 +13,13 @@ class MeetingIntelligenceJobResult {
     outcomes,
     this.summary,
     this.searchIndex,
+    this.embedding,
   }) : outcomes = Map.unmodifiable(outcomes);
 
   final Map<MeetingIntelligenceStage, MeetingIntelligenceStageOutcome> outcomes;
   final MeetingSummaryProjection? summary;
   final MeetingSearchIndexProjection? searchIndex;
+  final MeetingEmbeddingProjection? embedding;
 
   MeetingIntelligenceStageOutcome outcomeFor(MeetingIntelligenceStage stage) {
     final outcome = outcomes[stage];
@@ -33,9 +35,10 @@ class MeetingIntelligenceCoordinator {
     required this.executor,
     this.summaryProvider,
     this.searchIndexProvider,
+    this.embeddingProvider,
   });
 
-  const MeetingIntelligenceCoordinator.deterministic()
+  const MeetingIntelligenceCoordinator.deterministic({this.embeddingProvider})
     : executor = const AiroWorkerExecutor(),
       summaryProvider = const DeterministicMeetingSummaryProvider(),
       searchIndexProvider = const DeterministicMeetingSearchIndexProvider();
@@ -43,11 +46,13 @@ class MeetingIntelligenceCoordinator {
   const MeetingIntelligenceCoordinator.inline({
     this.summaryProvider,
     this.searchIndexProvider,
+    this.embeddingProvider,
   }) : executor = const AiroWorkerExecutor(forceInline: true);
 
   final AiroWorkerExecutor executor;
   final MeetingSummaryStageProvider? summaryProvider;
   final MeetingSearchIndexStageProvider? searchIndexProvider;
+  final MeetingEmbeddingStageProvider? embeddingProvider;
 
   Future<MeetingIntelligenceJobResult> run(
     MeetingIntelligenceJobRequest request, {
@@ -62,6 +67,7 @@ class MeetingIntelligenceCoordinator {
         <MeetingIntelligenceStage, MeetingIntelligenceStageOutcome>{};
     MeetingSummaryProjection? summary;
     MeetingSearchIndexProjection? searchIndex;
+    MeetingEmbeddingProjection? embedding;
 
     for (final stage in stages) {
       onProgress?.call(
@@ -119,6 +125,25 @@ class MeetingIntelligenceCoordinator {
               outcome = MeetingIntelligenceStageOutcome.completed(stage: stage);
             }
           case MeetingIntelligenceStage.embedding:
+            final provider = embeddingProvider;
+            if (provider == null) {
+              outcome = MeetingIntelligenceStageOutcome.unavailable(
+                stage: stage,
+              );
+            } else {
+              // Method channels cannot be invoked from a spawned Dart isolate.
+              // The platform provider owns the native worker boundary.
+              final providerResult = await provider.process(request);
+              switch (providerResult) {
+                case MeetingEmbeddingProviderSuccess(:final projection):
+                  embedding = projection;
+                  outcome = MeetingIntelligenceStageOutcome.completed(
+                    stage: stage,
+                  );
+                case MeetingEmbeddingProviderFailure(:final code):
+                  outcome = _embeddingOutcome(stage, code);
+              }
+            }
           case MeetingIntelligenceStage.speakerClustering:
           case MeetingIntelligenceStage.memoryUpdate:
             outcome = MeetingIntelligenceStageOutcome.unavailable(stage: stage);
@@ -138,6 +163,28 @@ class MeetingIntelligenceCoordinator {
       outcomes: outcomes,
       summary: summary,
       searchIndex: searchIndex,
+      embedding: embedding,
     );
+  }
+
+  static MeetingIntelligenceStageOutcome _embeddingOutcome(
+    MeetingIntelligenceStage stage,
+    MeetingIntelligenceOutcomeCode code,
+  ) {
+    return switch (code) {
+      MeetingIntelligenceOutcomeCode.providerUnavailable =>
+        MeetingIntelligenceStageOutcome.unavailable(stage: stage),
+      MeetingIntelligenceOutcomeCode.cancelled =>
+        MeetingIntelligenceStageOutcome.cancelled(stage: stage),
+      MeetingIntelligenceOutcomeCode.invalidInput ||
+      MeetingIntelligenceOutcomeCode.workerFailure =>
+        MeetingIntelligenceStageOutcome.failed(stage: stage, code: code),
+      MeetingIntelligenceOutcomeCode.completed ||
+      MeetingIntelligenceOutcomeCode.persistenceFailure =>
+        MeetingIntelligenceStageOutcome.failed(
+          stage: stage,
+          code: MeetingIntelligenceOutcomeCode.workerFailure,
+        ),
+    };
   }
 }

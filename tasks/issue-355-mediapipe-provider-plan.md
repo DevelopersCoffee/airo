@@ -42,6 +42,16 @@
 20. Record evidence on #355 and keep it open until model distribution and
     consumer integration are complete.
 
+## Phase 6: Meeting Consumer
+
+21. Add a typed asynchronous embedding stage to #506.
+22. Map `LocalTextEmbeddingProvider` outcomes without exposing transcript or
+    vector data in diagnostics.
+23. Persist successful vectors in the existing meeting embedding columns,
+    pinning the row identity to the model artifact SHA-256.
+24. Leave default composition unavailable until an approved installed model is
+    opened and injected.
+
 ## Checkpoints
 
 - Contract checkpoint: no native or dependency changes.

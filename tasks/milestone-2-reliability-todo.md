@@ -113,9 +113,16 @@ profile pubspec. Split if more than five files are required.
       benchmark evidence.
 - [ ] #355 provides verified real 256/384-dimensional local embeddings.
 - [ ] Meeting embeddings use a real local provider with typed failure modes.
-- [ ] Vectors/content never appear in public diagnostics.
+- [x] Vectors/content never appear in public diagnostics.
+- [x] #506 consumes #355 through a typed app adapter, maps every provider
+      failure, and persists successful vectors through the existing schema.
+- [x] Missing/unopened models remain honestly `unavailable`; model artifacts
+      are not bundled or silently selected.
+- [x] Embedding projection and provider diagnostics omit vector/content data.
 
-**Verification:** provider and meeting adapter tests plus memory-budget checks.
+**Verification:** feature coordinator tests, app adapter/background/repository
+tests, focused analysis, and memory-budget checks. Physical offline inference
+still belongs to #355 Task 6.
 
 **Dependencies:** Checkpoint
 

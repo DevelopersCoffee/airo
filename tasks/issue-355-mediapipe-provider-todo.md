@@ -63,6 +63,17 @@ DataTransport. No model is bundled.
 - [ ] Network/log evidence contains no telemetry or private payload.
 - [ ] Test model/session cleanup is recorded.
 
+## Task 6a: Meeting consumer integration
+
+- [x] #506 exposes an asynchronous embedding-stage provider contract.
+- [x] The app adapter consumes `LocalTextEmbeddingProvider` without duplicating
+      platform inference.
+- [x] Redacted transcript input, exact model identity, typed failures, and
+      vector-free diagnostics are covered by host tests.
+- [x] Successful vectors persist through existing meeting embedding columns;
+      no schema migration or model bundle was added.
+- [ ] The approved model lifecycle opens and injects the production provider.
+
 ## Task 7: Close-out
 
 - [ ] #355 records exact implementation and physical evidence.

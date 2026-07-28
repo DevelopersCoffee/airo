@@ -1,3 +1,5 @@
+import 'package:feature_meeting_intelligence/feature_meeting_intelligence.dart';
+
 import 'meeting_audio_metadata.dart';
 import 'meeting_record.dart';
 import 'meeting_summary.dart';
@@ -10,6 +12,7 @@ class MeetingIntelligenceDraft {
     required this.redactedChunks,
     required this.summary,
     required this.searchableText,
+    this.embedding,
   });
 
   final MeetingRecord record;
@@ -17,6 +20,7 @@ class MeetingIntelligenceDraft {
   final List<TranscriptChunk> redactedChunks;
   final MeetingSummary summary;
   final String searchableText;
+  final MeetingEmbeddingProjection? embedding;
 }
 
 class MeetingSearchResult {

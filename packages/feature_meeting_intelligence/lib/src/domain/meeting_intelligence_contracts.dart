@@ -76,6 +76,13 @@ const _failureOutcomeCodes = {
   MeetingIntelligenceOutcomeCode.persistenceFailure,
 };
 
+const _embeddingProviderOutcomeCodes = {
+  MeetingIntelligenceOutcomeCode.providerUnavailable,
+  MeetingIntelligenceOutcomeCode.cancelled,
+  MeetingIntelligenceOutcomeCode.invalidInput,
+  MeetingIntelligenceOutcomeCode.workerFailure,
+};
+
 class MeetingIntelligenceJobRequest {
   MeetingIntelligenceJobRequest({
     required String jobId,
@@ -163,6 +170,125 @@ class MeetingIntelligenceStageOutcome {
     'state': state.stableId,
     'code': code.stableId,
   };
+}
+
+/// A validated embedding projection without transcript or vector diagnostics.
+final class MeetingEmbeddingProjection {
+  factory MeetingEmbeddingProjection({
+    required String modelId,
+    required String revision,
+    required String modelSha256,
+    required int dimensions,
+    required List<double> values,
+  }) {
+    final normalizedModelId = modelId.trim();
+    final normalizedRevision = revision.trim();
+    final normalizedSha256 = modelSha256.trim().toLowerCase();
+    if (normalizedModelId.isEmpty) {
+      throw ArgumentError.value(modelId, 'modelId', 'must not be blank');
+    }
+    if (normalizedRevision.isEmpty) {
+      throw ArgumentError.value(revision, 'revision', 'must not be blank');
+    }
+    if (!_sha256Pattern.hasMatch(normalizedSha256)) {
+      throw ArgumentError.value(
+        modelSha256,
+        'modelSha256',
+        'must be a 64-character hexadecimal digest',
+      );
+    }
+    if (!supportedDimensions.contains(dimensions)) {
+      throw ArgumentError.value(
+        dimensions,
+        'dimensions',
+        'must be one of $supportedDimensions',
+      );
+    }
+    if (values.length != dimensions) {
+      throw ArgumentError.value(
+        values.length,
+        'values.length',
+        'must equal dimensions',
+      );
+    }
+    if (values.any((value) => !value.isFinite)) {
+      throw ArgumentError.value(values, 'values', 'must be finite');
+    }
+
+    return MeetingEmbeddingProjection._(
+      modelId: normalizedModelId,
+      revision: normalizedRevision,
+      modelSha256: normalizedSha256,
+      dimensions: dimensions,
+      values: List.unmodifiable(values),
+    );
+  }
+
+  const MeetingEmbeddingProjection._({
+    required this.modelId,
+    required this.revision,
+    required this.modelSha256,
+    required this.dimensions,
+    required this.values,
+  });
+
+  static const supportedDimensions = {256, 384};
+  static final _sha256Pattern = RegExp(r'^[0-9a-f]{64}$');
+
+  final String modelId;
+  final String revision;
+  final String modelSha256;
+  final int dimensions;
+  final List<double> values;
+
+  @override
+  String toString() {
+    return 'MeetingEmbeddingProjection('
+        'modelId: $modelId, revision: $revision, dimensions: $dimensions)';
+  }
+}
+
+sealed class MeetingEmbeddingProviderResult {
+  const MeetingEmbeddingProviderResult();
+}
+
+final class MeetingEmbeddingProviderSuccess
+    extends MeetingEmbeddingProviderResult {
+  const MeetingEmbeddingProviderSuccess({required this.projection});
+
+  final MeetingEmbeddingProjection projection;
+
+  @override
+  String toString() => 'MeetingEmbeddingProviderSuccess($projection)';
+}
+
+final class MeetingEmbeddingProviderFailure
+    extends MeetingEmbeddingProviderResult {
+  factory MeetingEmbeddingProviderFailure({
+    required MeetingIntelligenceOutcomeCode code,
+  }) {
+    if (!_embeddingProviderOutcomeCodes.contains(code)) {
+      throw ArgumentError.value(code, 'code', 'unsupported provider outcome');
+    }
+    return MeetingEmbeddingProviderFailure._(code);
+  }
+
+  const MeetingEmbeddingProviderFailure._(this.code);
+
+  final MeetingIntelligenceOutcomeCode code;
+
+  @override
+  String toString() => 'MeetingEmbeddingProviderFailure(${code.stableId})';
+}
+
+/// Application adapter for a local provider whose implementation owns its
+/// native/off-main worker boundary.
+abstract interface class MeetingEmbeddingStageProvider {
+  MeetingIntelligenceStage get stage;
+
+  Future<MeetingEmbeddingProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  );
 }
 
 abstract interface class MeetingIntelligenceCancellationSignal {

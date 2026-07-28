@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:airo_app/core/database/app_database.dart' show AppDatabase;
 import 'package:airo_app/features/meeting/application/services/meeting_intelligence_pipeline.dart';
 import 'package:airo_app/features/meeting/domain/entities/meeting_audio_metadata.dart';
@@ -7,6 +9,7 @@ import 'package:airo_app/features/meeting/domain/entities/meeting_summary.dart';
 import 'package:airo_app/features/meeting/domain/entities/transcript_chunk.dart';
 import 'package:airo_app/features/meeting/infrastructure/storage/drift_meeting_repository.dart';
 import 'package:drift/native.dart';
+import 'package:feature_meeting_intelligence/feature_meeting_intelligence.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -119,6 +122,61 @@ void main() {
       expect(await repository.transcriptChunksForMeeting('missing'), isEmpty);
       expect(await repository.searchMeetings('missing'), isEmpty);
     });
+
+    test(
+      'persists a real embedding with its model artifact identity',
+      () async {
+        final baseDraft = MeetingIntelligencePipeline().process(
+          record: MeetingRecord.started(
+            id: 'meeting-embedded',
+            title: 'Embedding review',
+            startedAt: DateTime.utc(2026, 7, 28),
+          ).complete(endedAt: DateTime.utc(2026, 7, 28, 0, 30)),
+          audioMetadata: const MeetingAudioMetadata(
+            meetingId: 'meeting-embedded',
+            filePath: '/private/local/meeting-embedded.m4a',
+            codec: 'm4a',
+            sampleRateHz: 16000,
+            channelCount: 1,
+            sizeBytes: 4096,
+            sha256: 'audio-sha',
+          ),
+          finalChunks: const [
+            TranscriptChunk.finalChunk(
+              id: 'chunk-embedded',
+              meetingId: 'meeting-embedded',
+              text: 'The local embedding remains private.',
+              startMs: 0,
+              endMs: 1000,
+            ),
+          ],
+        );
+        final embedding = MeetingEmbeddingProjection(
+          modelId: 'test/minilm',
+          revision: 'r1',
+          modelSha256: 'd' * 64,
+          dimensions: 256,
+          values: List.generate(256, (index) => (index + 1) / 256),
+        );
+
+        await repository.saveIntelligence(
+          MeetingIntelligenceDraft(
+            record: baseDraft.record,
+            audioMetadata: baseDraft.audioMetadata,
+            redactedChunks: baseDraft.redactedChunks,
+            summary: baseDraft.summary,
+            searchableText: baseDraft.searchableText,
+            embedding: embedding,
+          ),
+        );
+
+        final row = await db.select(db.meetingEmbeddings).getSingle();
+        expect(row.id, 'meeting-embedded-search-${'d' * 64}');
+        expect(row.dimensions, 256);
+        expect(jsonDecode(row.vectorJson), hasLength(256));
+        expect(row.vectorJson, isNot(contains('test/minilm')));
+      },
+    );
 
     test('preserves empty strings and edge timestamps', () async {
       final earliest = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
