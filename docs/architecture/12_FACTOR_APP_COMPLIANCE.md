@@ -343,7 +343,7 @@ make clean          # Clean build artifacts
 make test           # Run tests
 make analyze        # Code analysis
 make format         # Format code
-make build-runner   # Code generation
+melos run generate  # Code generation
 ```
 
 ### ✅ Recommendations

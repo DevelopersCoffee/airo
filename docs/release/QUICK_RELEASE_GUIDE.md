@@ -47,9 +47,8 @@ git push origin v1.0.0
 ```bash
 # Run all checks
 make test          # Run tests
-make lint          # Check code quality
+make analyze       # Analyze code (this is the lint)
 make format        # Format code
-make analyze       # Analyze code
 
 # Build locally to verify
 cd app

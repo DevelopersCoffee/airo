@@ -23,8 +23,12 @@ Read this before editing any of those files.
 ## Rules for this repo
 
 1. **`AGENTS.md` is the only always-loaded file, and stays under ~70 lines.**
-   `CLAUDE.md` is a symlink to it — one source, every tool. If a change makes it
-   longer, something belongs in `docs/agents/` or a skill instead.
+   `CLAUDE.md`, `GEMINI.md`, and `.augment/rules.md` are symlinks to it, so
+   Claude Code, Codex, Gemini, Antigravity, and Augment all read one text. A new
+   agent tool gets a new symlink, never a new file — a per-tool rules file
+   drifts, and then each agent is working from different instructions. If a
+   change pushes `AGENTS.md` past the cap, something belongs in `docs/` or a
+   skill instead.
 2. **Spend the budget on gotchas.** Non-obvious constraints that cost an agent a
    wasted cycle — the isolate boundary, per-flavor pubspecs, the pro bootstrap
    no-op. Anything discoverable by listing the repo or reading a pubspec does not

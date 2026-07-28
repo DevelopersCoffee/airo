@@ -123,7 +123,7 @@ airo/
 ```bash
 # Build
 make build-release-all     # Build all platforms
-make build-apk             # Build Android APK
+make build-android         # Build Android APK
 make build-ios             # Build iOS IPA
 make build-web             # Build Web
 
@@ -132,8 +132,7 @@ make test                  # Run tests
 make test-coverage         # Run with coverage
 
 # Quality
-make analyze               # Analyze code
-make lint                  # Lint code
+make analyze               # Analyze code (this is the lint)
 make format                # Format code
 
 # Release
