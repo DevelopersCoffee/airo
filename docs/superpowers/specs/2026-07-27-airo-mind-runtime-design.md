@@ -152,6 +152,27 @@ systems:
 > *"one envelope per content object."* **The Vault is sized by contexts and
 > devices, never by user content.**
 
+Put positively: **the Vault is responsible for authority, not inventory.**
+
+```
+Vault
+ ├── Identity
+ ├── Trust
+ ├── Keys
+ ├── Revocations
+ └── Policies
+```
+
+It must never be able to answer:
+
+- How many documents exist?
+- Which content exists?
+- What contexts contain this object?
+
+Those are content-store and projection questions. A Vault that can answer them
+is a Vault that has to be backed up, synced, and shredded like content — which
+is how it became O(all user content) in the first place.
+
 Measured consequence of getting this wrong: a 100k-content vault serialized to
 a 225 MiB Recovery Package with a ~600 MiB export peak — an out-of-memory
 failure on mid-range Android, on the one artifact whose absence is
@@ -838,6 +859,28 @@ measure and expensive to discover.
 
 A performance claim with no number is treated exactly as a security property
 recorded as applied and never written.
+
+### Domain types over raw primitives
+
+`KeyBytes` is the pattern, not the exception: an invariant held by a type is an
+invariant the compiler enforces on every future call site, including the ones
+nobody has written yet.
+
+Prefer domain types over `String`, `Vec<u8>`, `bool`, and `u64`:
+
+`CanonicalMnemonic` · `ContentId` · `ContextId` · `CapabilityId` ·
+`OperationId` · `WrappedKey` · `ContentHash` · `RootPublicKey` ·
+`RevocationEpoch`
+
+Two defects already found by review would have been impossible with these:
+`RevocationSubject` existed while the API still took `&str`, so the tag never
+became enforceable; and `Vault::new` accepted any 32 bytes, so a vault could be
+built against a root corresponding to no seed in existence.
+
+**The compiler becomes another reviewer** — and unlike the human ones, it reads
+every line every time.
+
+This is not a new invariant. It is how I5 is satisfied in Rust.
 
 ### The `unsafe` policy
 

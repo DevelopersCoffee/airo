@@ -189,6 +189,8 @@ Applied by rust-architect to any change under `rust/`.
 - [ ] Signing and derivation entry points take a domain-tagged payload type, never `&[u8]` — a raw signing oracle over the root key cannot be domain-separated by its callers' good intentions
 - [ ] A struct whose fields are covered by a signature or an AAD does not expose those fields as `pub` mutable
 - [ ] A helper written to hold an invariant (checked length prefixes, canonicalization) is used at **every** site that invariant applies to — one built and unused is worse than none, because it reads as done
+- [ ] Identifiers and secrets are domain types, not `String` / `Vec<u8>` / `u64` — `ContentId`, `ContextId`, `OperationId`, `RootPublicKey`, `RevocationEpoch`, `WrappedKey`, `ContentHash`
+- [ ] A constructor accepting a raw primitive where a domain type exists is flagged — `Vault::new([7u8; 32])` builds a vault against a root that corresponds to no seed in existence
 
 ### Public surface
 - [ ] `pub` vs `pub(crate)` is decided per item, not per module; `pub mod` on a module holding key material exports every future item added to it
