@@ -1,17 +1,17 @@
 import AVKit
-import Flutter
+import FlutterMacOS
 
-/// Wraps AVPictureInPictureController for the com.airo.player/picture_in_picture
-/// channel. The pinned video_player_avfoundation fork publishes the exact
-/// AVPlayerLayer it already owns. PiP reuses that layer and never constructs a
-/// second player or duplicates the stream.
+/// macOS host for the shared Flutter Picture-in-Picture channel.
+///
+/// The pinned video_player_avfoundation fork publishes the exact AVPlayerLayer
+/// it already owns. PiP reuses that layer and never constructs a second player
+/// or duplicates the stream.
 final class AiroPictureInPicturePlugin: NSObject, AVPictureInPictureControllerDelegate {
   static let channelName = "com.airo.player/picture_in_picture"
 
   private var channel: FlutterMethodChannel?
   private weak var playerLayer: AVPlayerLayer?
   private var pipController: AVPictureInPictureController?
-  private var autoEnterEnabled = false
 
   deinit {
     NotificationCenter.default.removeObserver(self)
@@ -62,9 +62,6 @@ final class AiroPictureInPicturePlugin: NSObject, AVPictureInPictureControllerDe
       return
     }
     controller.delegate = self
-    if #available(iOS 14.2, *) {
-      controller.canStartPictureInPictureAutomaticallyFromInline = autoEnterEnabled
-    }
     playerLayer = layer
     pipController = controller
   }
@@ -91,11 +88,7 @@ final class AiroPictureInPicturePlugin: NSObject, AVPictureInPictureControllerDe
       controller.startPictureInPicture()
       result(true)
     case "setAutoEnterEnabled":
-      let arguments = call.arguments as? [String: Any]
-      autoEnterEnabled = arguments?["enabled"] as? Bool ?? false
-      if #available(iOS 14.2, *) {
-        pipController?.canStartPictureInPictureAutomaticallyFromInline = autoEnterEnabled
-      }
+      // AVKit exposes automatic inline entry on iOS, not macOS.
       result(nil)
     case "isActive":
       result(pipController?.isPictureInPictureActive ?? false)
@@ -104,12 +97,16 @@ final class AiroPictureInPicturePlugin: NSObject, AVPictureInPictureControllerDe
     }
   }
 
-  func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
+  func pictureInPictureControllerDidStartPictureInPicture(
+    _ controller: AVPictureInPictureController
+  ) {
     guard pipController === controller else { return }
     channel?.invokeMethod("pictureInPictureStateChanged", arguments: true)
   }
 
-  func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
+  func pictureInPictureControllerDidStopPictureInPicture(
+    _ controller: AVPictureInPictureController
+  ) {
     guard pipController === controller else { return }
     channel?.invokeMethod("pictureInPictureStateChanged", arguments: false)
   }
