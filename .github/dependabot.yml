@@ -114,5 +114,6 @@ updates:
       # Reverted twice already: 9.3.0 in 249ad2eb (#1011), 9.3.1 from #1336.
       # The rule above names a different coordinate than the plugin id
       # Dependabot actually bumps, which is why both landed.
+      # Remove only after a stable AGP release passes Fire TV locally and main CI.
       - dependency-name: "com.android.application"
         versions: ["9.3.x"]
