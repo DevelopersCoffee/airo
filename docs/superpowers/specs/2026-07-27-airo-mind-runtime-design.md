@@ -2,8 +2,8 @@
 
 Status: **FROZEN at v1** once PR #1312 merges — see `docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`.
 Changes to primitives, invariants, contracts, the package format, the public
-API, the sync model, or the security model require an Architecture Change
-Proposal (an ADR in `docs/adr/`) with all seven required sections.
+API, the sync model, or the security model require an ADR in `docs/adr/` with
+all seven required architecture sections.
 Date: 2026-07-27
 Owner: Chief Architect (Airo Engineering Council)
 Supersedes: nothing. Constrained by `docs/PLATFORM_CONSTITUTION.md` (binding).
