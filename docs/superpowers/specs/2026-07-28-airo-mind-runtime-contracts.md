@@ -1,6 +1,8 @@
 # Airo Mind — Runtime Contracts
 
-Status: **Binding. Versioned as part of the runtime ABI.**
+Status: **Binding. Versioned as part of the runtime ABI. FROZEN at v1** —
+see `docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`. A contract version change is a
+runtime major version and requires an ADR in `docs/adr/`.
 Date: 2026-07-28
 Owner: Airo Engineering Council
 Companion to `2026-07-27-airo-mind-runtime-design.md` (invariants I1–I8).
