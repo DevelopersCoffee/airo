@@ -154,6 +154,7 @@ void main() {
       ]).single;
 
       expect(first.id, reordered.id);
+      expect(first.id, 'byoc-7605ee7b9a5d5ff8');
       expect(first.group, 'Odd Group');
       expect(first.provenance, ChannelImportProvenance.unmatched);
       expect(first.streamUrl, 'https://fast.example/live');

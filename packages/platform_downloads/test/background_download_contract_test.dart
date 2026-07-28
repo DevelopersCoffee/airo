@@ -214,4 +214,18 @@ void main() {
     expect(progress.failure?.code, DownloadFailureCode.platformUnavailable);
     expect(progress.canRetry, isTrue);
   });
+
+  test('wire integers stay non-negative and exactly representable on web', () {
+    final progress = DownloadProgress.fromMap(<Object?, Object?>{
+      'artifactId': 'model-a',
+      'status': 'downloading',
+      'downloadedBytes': -1,
+      'totalBytes': double.maxFinite,
+      'retryCount': double.infinity,
+    });
+
+    expect(progress.downloadedBytes, 0);
+    expect(progress.totalBytes, 9007199254740991);
+    expect(progress.retryCount, 0);
+  });
 }
