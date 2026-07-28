@@ -1,7 +1,9 @@
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/application/providers/richer_context_providers.dart';
 import 'package:feature_iptv/presentation/tv/iptv_guide_screen.dart';
 import 'package:feature_iptv/presentation/widgets/epg_timeline_grid.dart';
 import 'package:feature_iptv/presentation/widgets/epg_touch_timeline_grid.dart';
@@ -40,7 +42,13 @@ void main() {
     AiroFormFactor? overrideFormFactor,
     TextScaler textScaler = TextScaler.noScaling,
     CompactEpgProgram? guideProgram,
+    RicherContextProvider? richerContextProvider,
   }) async {
+    if (richerContextProvider != null) {
+      SharedPreferences.setMockInitialValues({
+        'richer_context.${richerContextProvider.descriptor.id}.metadata': true,
+      });
+    }
     final prefs = await SharedPreferences.getInstance();
     final channels = visibleChannels ?? [newsChannel, sportsChannel];
     final now = guideProgram == null
@@ -51,6 +59,14 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          if (richerContextProvider != null) ...[
+            richerContextEntitlementsProvider.overrideWithValue(
+              const LaunchPromoEntitlements(),
+            ),
+            richerContextAdapterProvider.overrideWithValue(
+              richerContextProvider,
+            ),
+          ],
           iptvChannelsProvider.overrideWith((ref) async => channels),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
@@ -171,6 +187,41 @@ void main() {
     expect(find.text('City News Live'), findsOneWidget);
   });
 
+  testWidgets('programme enrichment is lazy and appears in details', (
+    tester,
+  ) async {
+    final provider = _RecordingRicherContextProvider();
+    final start = DateTime.now().toUtc().add(const Duration(hours: 1));
+    final program = CompactEpgProgram(
+      programId: 'enriched-program',
+      title: 'The Big Match',
+      startsAt: start,
+      endsAt: start.add(const Duration(hours: 1)),
+    );
+    await pumpScreen(
+      tester,
+      overrideFormFactor: AiroFormFactor.tv,
+      guideProgram: program,
+      richerContextProvider: provider,
+    );
+
+    expect(provider.programmeCalls, 0);
+
+    await tester.tap(find.text('The Big Match'));
+    await tester.pumpAndSettle();
+
+    expect(provider.programmeCalls, 1);
+    expect(
+      find.textContaining('An approved fixture synopsis.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Fixture attribution'), findsOneWidget);
+    expect(find.text('Watch now'), findsOneWidget);
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets(
     'shows empty state when there are no channels',
     (tester) async {
@@ -250,4 +301,43 @@ class _FakePagedNotifier extends GuidePagedWindowNotifier {
 
   @override
   GuidePagedWindowState build() => _state;
+}
+
+final class _RecordingRicherContextProvider implements RicherContextProvider {
+  _RecordingRicherContextProvider()
+    : descriptor = RicherContextProviderDescriptor(
+        id: 'fixture',
+        name: 'Fixture Provider',
+        licenseDecision: ProviderLicenseDecision.approved,
+        licenseReviewedAt: DateTime.utc(2026, 7, 28),
+        attribution: RicherContextAttribution(
+          providerId: 'fixture',
+          providerName: 'Fixture Provider',
+          notice: 'Fixture attribution',
+          url: Uri.https('example.invalid', '/attribution'),
+        ),
+      );
+
+  @override
+  final RicherContextProviderDescriptor descriptor;
+
+  int programmeCalls = 0;
+
+  @override
+  Future<ProgrammeEnrichment?> enrichProgramme(
+    ProgrammeMetadataRequest request,
+  ) async {
+    programmeCalls++;
+    return ProgrammeEnrichment(
+      providerItemId: 'programme-1',
+      title: request.title,
+      synopsis: 'An approved fixture synopsis.',
+      attribution: descriptor.attribution,
+    );
+  }
+
+  @override
+  Future<AttributedSportsDeskRow?> fetchSportsFixtures(
+    SportsFixturesRequest request,
+  ) async => null;
 }
