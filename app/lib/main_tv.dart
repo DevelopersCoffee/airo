@@ -15,6 +15,7 @@ library;
 
 import 'dart:io';
 
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
@@ -161,6 +162,7 @@ List<Override> buildTvProviderOverrides({
   required MutableXmltvCompactEpgRepository mutableXmltvRepository,
   TvAudioHandler? tvAudioHandler,
   ModuleRegistry? moduleRegistry,
+  List<Override>? proProviderOverrides,
 }) {
   final registry = moduleRegistry ?? buildTvModuleRegistry();
   final handler = tvAudioHandler;
@@ -195,6 +197,7 @@ List<Override> buildTvProviderOverrides({
         return handler;
       }),
     ...registry.allProviderOverrides,
+    ...(proProviderOverrides ?? pro_bootstrap.createProviderOverrides()),
   ];
 }
 

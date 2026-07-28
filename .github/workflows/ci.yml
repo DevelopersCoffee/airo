@@ -721,19 +721,11 @@ jobs:
 
       - name: Commit updated APK size baselines
         run: |
-          {
-            echo "# APK size guardrail baselines."
-            echo "#"
-            echo "# Columns:"
-            echo "# component: CI build component that produced the APK."
-            echo "# artifact: APK file name produced by Flutter."
-            echo "# baseline_bytes: approved baseline size in bytes."
-            echo "# budget_mb: absolute artifact budget in MiB."
-            echo "#"
-            echo "# This file is updated automatically after successful main builds."
-            echo -e "component\tartifact\tbaseline_bytes\tbudget_mb"
-            sort apk-size-baseline-updates/*.tsv
-          } > .github/apk-size-baselines.tsv
+          chmod +x scripts/merge-apk-size-baselines.py
+          scripts/merge-apk-size-baselines.py \
+            --baseline .github/apk-size-baselines.tsv \
+            --updates-dir apk-size-baseline-updates \
+            --output .github/apk-size-baselines.tsv
 
           if git diff --quiet -- .github/apk-size-baselines.tsv; then
             echo "APK size baselines are unchanged."

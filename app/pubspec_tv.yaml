@@ -140,6 +140,8 @@ dev_dependencies:
 # This allows code that imports these packages to compile while
 # avoiding the heavy native libraries
 dependency_overrides:
+  video_player_avfoundation:
+    path: ../packages/platform_player/third_party/video_player_avfoundation
   rxdart: ^0.28.0
   flutter_chrome_cast:
     path: ../packages/platform_player/third_party/flutter_chrome_cast
