@@ -1,0 +1,21 @@
+name: feature_meeting_intelligence
+description: Background meeting intelligence orchestration contracts for Airo.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  platform_worker_jobs:
+    path: ../platform_worker_jobs
+
+dev_dependencies:
+  flutter_lints: 6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:

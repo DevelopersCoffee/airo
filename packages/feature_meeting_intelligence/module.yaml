@@ -1,0 +1,24 @@
+name: feature_meeting_intelligence
+owner: Meeting Intelligence Agent
+capabilities:
+  - capability.meeting.background_intelligence
+supported_devices:
+  - phone
+  - tablet
+  - desktop
+ship_policy:
+  tv: Never Ship
+  phone: Always Ship
+  tablet: Always Ship
+  desktop: Optional
+native_dependencies: []
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief Security Officer
+  - Chief QA Officer
+allowed_dependencies:
+  - platform_worker_jobs
+forbidden_dependencies:
+  - app
+quality_gates: {}
