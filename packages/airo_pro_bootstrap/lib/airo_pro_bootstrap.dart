@@ -8,6 +8,7 @@
 library;
 
 import 'package:core_entitlements/core_entitlements.dart';
+import 'package:flutter_riverpod/misc.dart';
 
 /// The entitlement policy for this build flavor.
 ///
@@ -15,6 +16,13 @@ import 'package:core_entitlements/core_entitlements.dart';
 /// The pro overlay may replace this with a billing-backed implementation
 /// when charging begins; call sites are unaffected.
 Entitlements createEntitlements() => const LaunchPromoEntitlements();
+
+/// Contributes product-specific Riverpod overrides to application entrypoints.
+///
+/// The open-source build has no product overrides. A same-named overlay
+/// package may return overrides for public extension providers without making
+/// the application import private implementation code.
+List<Override> createProviderOverrides() => const [];
 
 /// Contributes pro modules to [registry]. No-op in the open-source build.
 void registerProModules(ProModuleRegistry registry) {
