@@ -14,7 +14,7 @@ flutter_rust_bridge = "=2.11.1"
 memchr = "2"
 memmap2 = "0.9"
 quick-xml = "0.38"
-rusqlite = "0.32"
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
 criterion = "0.5"
