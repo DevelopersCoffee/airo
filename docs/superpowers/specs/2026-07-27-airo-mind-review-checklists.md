@@ -33,6 +33,7 @@ operations, or the trust boundary.
 - [ ] Signing payloads are hand-built, never a serializer's output
 - [ ] Length prefixes use checked conversions — an `as u32` truncation breaks injectivity on a long field
 - [ ] Every domain-separation constant in use is read from the registry, not re-declared as a literal at the use site — a registry the code does not read guards nothing
+- [ ] A tamper test that trips a validity check before the AEAD proves nothing about the AAD — for every field a `check_supported`-style guard short-circuits, assert the AAD bytes themselves differ
 
 ### Replay protection
 - [ ] Replaying the same log produces byte-identical state on every platform
@@ -45,6 +46,9 @@ operations, or the trust boundary.
 - [ ] Revocation merge is fail-**closed**: when two ledgers disagree, the outcome revokes more, never less
 - [ ] No path reaches usable key material without applying revocations
 - [ ] A revocation source carries provenance; an empty ledger cannot silently pass as a checked one
+- [ ] Revoking a subject the local aggregate does not currently hold still records the revocation — gating the durable fact on local presence makes eviction depend on how far behind this device is
+- [ ] "No path reaches key material" is checked against every in-crate route, not only the aggregate constructor — a `pub(crate)` decrypt returning a payload with `pub(crate)` key accessors is the same bypass one type earlier
+- [ ] A provenance witness has a genuinely **private** field, not `pub(crate)` — crate visibility is not provenance in a crate that will hold more than one subsystem
 - [ ] Epoch or counter values from two independently-maintained ledgers are never compared — per-device counters are not a clock; freshness is decided by subject-set containment
 - [ ] Every enum arm a security decision switches on is reachable from a public API in the same phase, or is documented as reserved and asserted unreachable
 
@@ -55,11 +59,15 @@ operations, or the trust boundary.
 - [ ] Restore fails closed on an unsupported format or an unknown protected mode
 - [ ] A warning returned to the caller is `#[must_use]` — otherwise it is advice, not a control
 - [ ] Any value used as a KDF password or a signed message is canonicalized first; user whitespace, case, and Unicode form never reach a derivation input verbatim
+- [ ] Destroying a container key is checked against what still *reports* as alive — content whose only wrapping is under a destroyed context is unrecoverable and must never be reported as surviving
+- [ ] A purge obligation the artifact cannot discharge itself names an owning issue; a directive with no named consumer is a gap that has been relocated, not closed
 
 ### Tamper detection
 - [ ] Ciphertext modification is detected, not silently mis-decrypted
 - [ ] Identity binding is verified before any decrypted state is trusted
 - [ ] Format version is checked at parse time, not only at use time
+- [ ] A guarded constructor is checked against `Deserialize` — a `pub` type with a derived `Deserialize` has a public constructor regardless of its `pub(crate)` `new`
+- [ ] An identity argument that duplicates a field already bound into the AAD is removed, not validated — two sources of truth for one identity in a signature is how a destroyed object gets re-linked
 
 ### Vendored cryptographic fixtures
 - [ ] Wordlists, test vectors, and constants are fetched from a **pinned commit**, never a branch
@@ -72,11 +80,16 @@ operations, or the trust boundary.
 - [ ] **[CI]** No `derive(Debug)`, `derive(Clone)`, or `derive(PartialEq)` on a secret; equality is constant-time
 - [ ] Intermediate plaintext buffers are `Zeroizing`
 - [ ] Feature flags that provide zeroization are pinned explicitly, with a compile-time guard
+- [ ] A function returning a bare `[u8; N]` derived key is flagged — the return value is a secret with no drop behaviour
+- [ ] `as_bytes()` on the secret whose compromise is total is `pub(crate)`, for the same reason every lesser key's accessor is
 - [ ] Key material does not cross an FFI boundary; documented exceptions are enumerated and prohibited from logging
 - [ ] The **deserialized** structure holding key material is itself `ZeroizeOnDrop` — wrapping only the serialized byte buffer leaves the parsed copy in the clear
 - [ ] Serialization writes into a pre-sized `Zeroizing` buffer; wrapping the returned `Vec` does not cover the reallocations it outgrew
 - [ ] Bit- or byte-expanded intermediates of a secret (bit vectors, HMAC round outputs, hex strings) are zeroized — they are the same secret in a more scannable form
 - [ ] A constant-time claim is checked against the whole path: a constant-time comparison preceded by a data-dependent table scan or an early return is not constant time, and the comment saying so is worse than no comment
+- [ ] A `ZeroizeOnDrop` derive is checked against the fields' actual impls — `zeroize` has no `Zeroize` impl for `BTreeMap`/`HashMap`, so the derive either fails to build or is skipped into a no-op
+- [ ] Key material serialized through `serde_json` is encoded as bytes, never a decimal array — the encoding, the reallocation trail, and the parser scratch are three separate copies and a redacting `Debug` covers none of them
+- [ ] **[CI]** Every domain-separation constant declared in the registry module appears in its `ALL` list — a hand-maintained registry is a registry the next constant escapes
 
 ---
 
