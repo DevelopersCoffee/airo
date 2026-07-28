@@ -10,6 +10,8 @@
 | [📜 Rules](./RULES.md) | Agent operating rules |
 | [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
 | [🏛️ Engineering Council](./COUNCIL.md) | Domain roster, decision matrix, `module.yaml` schema — tool-agnostic |
+| [🌿 Workflow](./WORKFLOW.md) | Branch/worktree bases, CI spend, issue close-out |
+| [🧠 Context Engineering](./CONTEXT_ENGINEERING.md) | How to write `AGENTS.md`, agent defs, and skills — read before editing them |
 | [🧪 Kaggle Adoption](./KAGGLE_VIBE_CODING_ADOPTION.md) | Spec-driven, skills, tools, security, and evaluation adoption plan |
 | [📱 Mobile UI Agent](./mobile-ui-agent/README.md) | Canonical UI/UX owner for shell ownership, header governance, standards, and execution tasks |
 | [🔄 SDLC](./SDLC.md) | Development workflow |

@@ -379,33 +379,16 @@ Release Agent confirms:
   release/signing, artifact validation, or the issue risk profile
 - rollback or disable path exists for risky features
 
-### 10. GitHub Actions Cost Control
+### 10. CI Spend and Close-Out
 
-GitHub Actions minutes are shared project cost. Agents must avoid unnecessary
-remote builds and must not wait on expensive artifact jobs when they are not
-required to prove the slice.
+Owned by [WORKFLOW.md](./WORKFLOW.md): local-first validation, `[skip ci]` on
+iterative commits, opt-in release/matrix workflows, cancelling accidental runs,
+and when a bounded slice may close. Two extra hooks specific to this gate:
 
-Default validation order:
-- Run the narrowest local checks that cover the touched contract: package
-  tests, focused `flutter analyze`, formatting, docs completeness, scripts, or
-  host-only smoke checks.
-- Open PRs after local evidence is recorded. Do not trigger extra workflow
-  re-runs unless a failed required check is relevant to the change.
-- Use `[skip ci]` for local-only commits and direct release-line sync pushes
-  when remote CI is not required and repository/branch policy permits it.
-- Treat release, signing, Play upload, APK/AAB artifact, full Android matrix,
-  emulator, and broad integration workflows as opt-in. Use them only when the
-  issue, branch protection, or release owner requires them.
-- If an expensive workflow starts accidentally, becomes redundant, or is only
-  producing non-required artifacts, cancel it with `gh run cancel <run-id>`
-  instead of waiting.
-- If a bounded slice is complete but the parent issue has broader benchmark,
-  physical-device, or release evidence remaining, merge the slice and record
-  the remaining evidence as follow-up. Do not hold unrelated code open solely
-  for non-required CI artifact builds.
-- Close issues as soon as their bounded acceptance criteria are met. Do not
-  keep completed issue slices open for optional CI, broad matrix runs, release
-  artifacts, or physical-device evidence that can be tracked separately.
+- Open PRs after local evidence is recorded, and do not re-run workflows unless
+  a failed *required* check is relevant to the change.
+- Cancel a redundant run with `gh run cancel <run-id>` rather than waiting it
+  out.
 
 ## Feature Packet Template
 
