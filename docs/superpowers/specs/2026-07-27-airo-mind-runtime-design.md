@@ -4,6 +4,7 @@ Status: **Design approved, pre-implementation.**
 Date: 2026-07-27
 Owner: Chief Architect (Airo Engineering Council)
 Supersedes: nothing. Constrained by `docs/PLATFORM_CONSTITUTION.md` (binding).
+Contracts: `2026-07-28-airo-mind-runtime-contracts.md` (C1–C7, versioned ABI).
 
 ---
 
@@ -972,6 +973,43 @@ without the watermark, cold start costs 33 s per million operations **forever**
 source of truth and voiding I1, becomes irresistible.
 
 **The watermark is what protects the invariant.**
+
+## 11c-2b. Control plane / data plane
+
+The runtime carries two responsibilities that must not be entangled.
+
+```
+Runtime
+│
+├── Control Plane          — manages EXECUTION
+│     Supervisor · Scheduler · Resource Manager · Lifecycle
+│
+└── Data Plane             — manages DATA
+      Operation Log · Content Store · Vault · Replay · Sync · Projections
+```
+
+This matters most when the AI engines arrive. Speech recognition, OCR,
+embeddings, and local LLM inference are long-running workloads that request
+CPU, memory, and I/O budgets from the control plane rather than reaching into
+storage directly.
+
+**No user data crosses into the control plane.** That constraint is what keeps
+the split honest — see §11c-3.
+
+### Capabilities are passive
+
+```
+        ✗  Capability → runs itself
+
+        ✓  Supervisor → loads Capability
+                      → Capability emits Operations
+                      → Runtime updates Projections
+```
+
+A capability never drives its own execution. Scheduling, cancellation, retries,
+and resource accounting stay centralized, which is the only place they can be
+enforced. A capability that runs itself is one whose CPU nobody can cap and
+whose work nobody can cancel when the user navigates away.
 
 ## 11c-3. The Supervisor is a resource authority
 
