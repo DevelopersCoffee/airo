@@ -23,71 +23,15 @@ TIMEOUT_MARKER="$OUTPUT_DIR/.timed_out"
 mkdir -p "$OUTPUT_DIR"
 export PATH="$HOME/.pub-cache/bin:$ANDROID_SDK/platform-tools:$PATH"
 
-find_physical_android_device() {
-  if [ ! -x "$ADB" ]; then
-    return 1
-  fi
+RIG_SELECT="$ROOT_DIR/scripts/select_rig_device.sh"
 
-  "$ADB" devices -l | awk '
-    NR > 1 && $2 == "device" && $1 !~ /^emulator-/ && $0 !~ /model:AFT/ {
-      print $1
-      exit
-    }
-  '
+# One selector owns rig device resolution; see scripts/select_rig_device.sh.
+select_rig_device() {
+  "$RIG_SELECT" "$1" 2>/dev/null
 }
 
 android_device_is_emulator() {
   [ "$1" = "android" ] || [[ "$1" == emulator-* ]]
-}
-
-# The rig iPad is one of several paired iOS devices, so pick it by name rather
-# than taking whatever Flutter lists first. Ambiguity is an error, not a guess.
-find_physical_ios_device() {
-  flutter devices --machine 2>/dev/null | python3 -c '
-import json, sys
-try:
-    devices = json.load(sys.stdin)
-except ValueError:
-    sys.exit(1)
-
-physical = [
-    d for d in devices
-    if str(d.get("targetPlatform", "")).startswith("ios")
-    and not d.get("emulator", True)
-]
-ipads = [d for d in physical if "ipad" in str(d.get("name", "")).lower()]
-
-if len(ipads) == 1:
-    print(ipads[0].get("id", ""))
-elif physical:
-    # An iPhone is also paired on this host. Never silently substitute it for
-    # the rig iPad -- make the operator name the device.
-    sys.stderr.write(
-        "No unambiguous iPad among the connected iOS devices.\n"
-        "Set AIRO_JOURNEY_IOS_DEVICE=<device-id> to choose one of:\n"
-        + "".join(
-            "  {}  {}\n".format(d.get("id", ""), d.get("name", ""))
-            for d in physical
-        )
-    )
-    sys.exit(1)
-'
-}
-
-require_ios_simulator_opt_in() {
-  if [ "$ALLOW_IOS_SIMULATOR" != "true" ]; then
-    cat >&2 <<'EOF'
-No physical iOS device connected, and the iOS Simulator is disabled by default.
-
-Active testing runs on the physical rig: Pixel 9, iPad Air 4, Fire TV Stick 4K.
-
-Allowed paths:
-- Physical iPad: connect it, or set AIRO_JOURNEY_IOS_DEVICE=<device-id>
-- Physical Android: set AIRO_JOURNEY_PLATFORM=android
-- Explicit simulator opt-in: set AIRO_ALLOW_IOS_SIMULATOR=true
-EOF
-    exit 78
-  fi
 }
 
 require_android_emulator_opt_in() {
@@ -100,7 +44,7 @@ state. Use host checks or a connected physical Android device for routine agent
 verification.
 
 Allowed paths:
-- Physical Android: set AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>
+- Physical Pixel 9: connect it, or set AIRO_PHONE_DEVICE=<adb-serial>
 - Physical iPad: set AIRO_JOURNEY_PLATFORM=ios
 - Explicit emulator opt-in: set AIRO_ALLOW_ANDROID_EMULATOR=true
 EOF
@@ -111,7 +55,7 @@ EOF
 case "$PLATFORM" in
   android)
     if [ -z "$ANDROID_DEVICE" ]; then
-      ANDROID_DEVICE="$(find_physical_android_device || true)"
+      ANDROID_DEVICE="$(select_rig_device phone || true)"
     fi
 
     if [ -z "$ANDROID_DEVICE" ]; then
@@ -128,7 +72,7 @@ case "$PLATFORM" in
     ;;
   ios)
     if [ -z "$IOS_DEVICE" ]; then
-      IOS_DEVICE="$(find_physical_ios_device || true)"
+      IOS_DEVICE="$(select_rig_device tablet || true)"
     fi
 
     if [ -z "$IOS_DEVICE" ]; then

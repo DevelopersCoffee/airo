@@ -38,6 +38,7 @@ ANDROID_AVD ?= Pixel_9_API_$(ANDROID_API)
 ANDROID_RUN_DEVICE ?= android
 ANDROID_PACKAGE ?= io.airo.app
 ANDROID_EMULATOR_FLAGS ?= -no-boot-anim -no-snapshot-save -gpu host -memory 2048 -cores 2
+RIG_SELECT := ./scripts/select_rig_device.sh
 AIRO_ALLOW_ANDROID_EMULATOR ?= false
 ADB ?= $(shell command -v adb 2>/dev/null || printf '%s' "$(ANDROID_SDK)/platform-tools/adb")
 AVDMANAGER ?= $(shell command -v avdmanager 2>/dev/null || printf '%s' "$(ANDROID_SDK)/cmdline-tools/latest/bin/avdmanager")
@@ -310,7 +311,7 @@ local-test-plan: ## Show the local device testing workflow (physical rig)
 	@echo "$(YELLOW)not the rig. Both need an explicit opt-in.$(NC)"
 
 .PHONY: run-android-auto
-run-android-auto: ## Run app on any connected Android device
+run-android-auto: ## Run app on ANY connected Android device (no rig separation; may pick the Fire TV)
 	@echo "$(BLUE)Running on Android (auto-detect)...$(NC)"
 	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
 
@@ -348,7 +349,10 @@ test-notification-validation: ## Run deterministic notification validation suite
 	@echo "$(YELLOW)See docs/release/NOTIFICATION_VALIDATION.md for scope and follow-up.$(NC)"
 
 .PHONY: run-android
-run-android: run-android-auto ## Run app on the connected Android device (Pixel 9 rig)
+run-android: ## Run app on the rig phone (Pixel 9); Fire TV is excluded
+	@DEVICE="$$($(RIG_SELECT) phone)" && \
+		echo "$(BLUE)Running on rig phone $$DEVICE...$(NC)" && \
+		cd $(APP_DIR) && flutter run -d "$$DEVICE" $(DART_DEFINE_ARGS)
 
 .PHONY: run-pixel9
 run-pixel9: boot-pixel9 ## Run app on the Pixel 9 EMULATOR (needs AIRO_ALLOW_ANDROID_EMULATOR=true; for the physical Pixel 9 use run-android)
@@ -379,8 +383,7 @@ qualify-ipad: ## Run the visual qualification pass on the connected iPad (overri
 	@./scripts/run_visual_qualification.sh
 
 .PHONY: run-ios
-run-ios: ## Run app on the connected iOS device (iPad rig) or a simulator
-	@echo "$(BLUE)Running on iOS...$(NC)"
+run-ios: ## Run app on the rig tablet (iPad); a paired iPhone is not a substitute
 	@if [ "$$(uname)" != "Darwin" ]; then \
 		echo "$(RED)iOS development is only available on macOS$(NC)"; \
 		exit 1; \
@@ -388,7 +391,9 @@ run-ios: ## Run app on the connected iOS device (iPad rig) or a simulator
 		echo "$(RED)CocoaPods is required for iOS builds in this project.$(NC)"; \
 		exit 1; \
 	fi
-	@cd $(APP_DIR) && flutter run -d ios $(DART_DEFINE_ARGS)
+	@DEVICE="$$($(RIG_SELECT) tablet)" && \
+		echo "$(BLUE)Running on rig tablet $$DEVICE...$(NC)" && \
+		cd $(APP_DIR) && flutter run -d "$$DEVICE" $(DART_DEFINE_ARGS)
 
 .PHONY: run-iphone17
 run-iphone17: run-iphone17-local ## Build, install, and launch local iPhone 17 Pro Max simulator profile
@@ -449,9 +454,10 @@ run-browser: ## Run app on configured web browser for local testing
 
 # Fire TV Commands
 .PHONY: run-firetv
-run-firetv: ## Run app on the connected Fire TV Stick (adb connect <ip>:5555 first)
-	@echo "$(BLUE)Running on Fire TV...$(NC)"
-	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
+run-firetv: ## Run app on the rig TV (Fire TV Stick); adb connect <ip>:5555 first
+	@DEVICE="$$($(RIG_SELECT) tv)" && \
+		echo "$(BLUE)Running on rig TV $$DEVICE...$(NC)" && \
+		cd $(APP_DIR) && flutter run -d "$$DEVICE" $(DART_DEFINE_ARGS)
 
 # Build Commands
 .PHONY: build-android

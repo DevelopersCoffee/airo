@@ -38,11 +38,24 @@ touched contract.
 **Device verification runs on real hardware. Simulators and emulators are not
 the rig.** The three devices under active test:
 
-| Surface | Device | Run it with |
-|---|---|---|
-| Phone / touch | Pixel 9 | `make run-android` (auto-detects the connected device) |
-| Tablet / iOS | iPad Air 4 | `make run-ios`, `scripts/run_visual_qualification.sh` |
-| Ten-foot / TV | Fire TV Stick 4K | `make run-firetv`, `make build-firetv` |
+Each surface resolves to its own device — no shared auto-detect, so a connected
+Fire TV Stick can never stand in for the phone and a paired iPhone can never
+stand in for the iPad.
+
+| Surface | Device | Run it with | Override |
+|---|---|---|---|
+| Phone / touch | Pixel 9 | `make run-android` | `AIRO_PHONE_DEVICE` |
+| Tablet / iOS | iPad Air 4 | `make run-ios`, `make qualify-ipad` | `AIRO_TABLET_DEVICE` |
+| Ten-foot / TV | Fire TV Stick 4K | `make run-firetv`, `make build-firetv` | `AIRO_TV_DEVICE` |
+
+`scripts/select_rig_device.sh phone|tablet|tv` owns that resolution and every
+entry point calls it — the Makefile targets, the agent-skills journey, and the
+visual qualification pass. It never falls back to a simulator, and it refuses to
+guess: zero matches or more than one is an error naming what it found. Fire TV
+hardware is identified by `model:AFT*`, the iPad by name.
+
+`make run-android-auto` is the deliberate escape hatch that skips this
+separation and takes any Android device, Fire TV Stick included.
 
 Watch the target names: `make run-pixel9` and `make run-iphone17` drive an
 **emulator and a simulator**, not the rig above — `run-pixel9` boots a QEMU AVD,
@@ -55,9 +68,8 @@ infrastructure failure, not an app regression: stop the run, preserve the crash
 report, continue on host checks or the physical device, and do not retry in a
 loop.
 
-Android journeys take the device serial —
-`AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`. A Fire TV Stick joins over the
-network first: `adb connect <stick-ip>:5555`.
+The Fire TV Stick joins over the network before anything can see it:
+`adb connect <stick-ip>:5555`.
 
 Name the environment used — host-only, Pixel 9, iPad, Fire TV, or an explicit
 emulator opt-in — in the issue and the PR.

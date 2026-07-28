@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Visual Device Qualification Script for the connected iPad Air 4.
-# Override AIRO_QUALIFY_IOS_DEVICE when the rig iPad is re-paired or replaced;
-# `flutter devices` prints current ids.
-DEVICE_ID="${AIRO_QUALIFY_IOS_DEVICE:-00008101-000940CC2690001E}"
+# Visual Device Qualification Script for the rig iPad.
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Device resolution is owned by one selector, so this never drifts from the
+# other rig entry points. Override with AIRO_TABLET_DEVICE.
+DEVICE_ID="$("$CWD/scripts/select_rig_device.sh" tablet)"
 OUTPUT_DIR="$CWD/artifacts/visual_qualification"
 LOG_FILE="$OUTPUT_DIR/run_logs.txt"
 
