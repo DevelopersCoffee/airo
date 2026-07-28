@@ -6,4 +6,5 @@ const expectedProFeatureStableIds = [
   'sports_desk',
   'multi_source_failover',
   'coin_encrypted_backup_restore',
+  'source_connection_diagnostics',
 ];

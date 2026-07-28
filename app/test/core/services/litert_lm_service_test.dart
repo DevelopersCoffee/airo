@@ -218,7 +218,7 @@ class _NoopMediaPipeWebClient implements MediaPipeWebClient {
   Future<void> dispose() async {}
 }
 
-class _FakeModelDownloadService extends ModelDownloadService {
+class _FakeModelDownloadService implements ModelDownloadService {
   _FakeModelDownloadService({required this.downloadedPaths});
 
   final Map<String, String> downloadedPaths;
@@ -243,4 +243,7 @@ class _FakeModelDownloadService extends ModelDownloadService {
   }) async {
     return downloadedPaths[modelId];
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

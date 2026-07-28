@@ -24,7 +24,11 @@ enum ProFeature {
   multiSourceFailover('multi_source_failover'),
 
   /// Airo Coin encrypted backup and restore supplied by the pro overlay.
-  coinEncryptedBackupRestore('coin_encrypted_backup_restore');
+  coinEncryptedBackupRestore('coin_encrypted_backup_restore'),
+
+  /// Pre-save credential verification for Xtream, Stalker, and Jellyfin
+  /// content sources.
+  sourceConnectionDiagnostics('source_connection_diagnostics');
 
   const ProFeature(this.stableId);
 
