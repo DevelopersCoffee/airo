@@ -101,9 +101,22 @@ metadata.
 - Small writes are group-committed with a bounded window; per-operation `fsync`
   is reserved for explicit durability points
 
+**Vault size class:** `O(contexts + devices + revocations)`. Amended by
+[ADR-0017](../../adr/0017-airo-mind-revocation-ledger-growth-and-package-framing.md);
+this contract previously read "sized by contexts and devices, never by user
+content" three lines after listing the revocation ledger among the Vault's
+contents. "Authority, not inventory" holds for *live* content — confirmed by
+measurement — and never applied to tombstones, which are retained permanently by
+design. Revocations are user-initiated destructions only; retention-class expiry
+is derived, not recorded.
+
 **Conformance tests:** a module declaring `persistence: runtime` opens no
-database · every durable object is reachable from a log replay · a synthetic
-100k-content vault serializes within a constant factor of a 10k-content vault.
+database · every durable object is reachable from a log replay · **the Vault
+holds authority, never inventory** — measured as a 100k-content vault
+serializing within a constant factor of a 10k-content vault, retained as a
+regression guard on the §4.1 redesign and *not* as a growth test · **peak memory
+during export and restore is O(1) in contexts + devices + revocations** —
+measured at 100k entries against 10k, in each dimension separately.
 
 ## C2 — Replay Contract `v1`
 
@@ -142,9 +155,16 @@ produces identical state.
 - Transport is interchangeable; the engine does not know what carried the bytes
 
 **Conformance tests:** property tests for merge commutativity, associativity,
-idempotence · two devices converge from any operation permutation · a no-op
-sync between two 1M-operation replicas exchanges a bounded constant · an
-unauthenticated peer exchanges nothing.
+idempotence · two devices converge from any operation permutation · **a
+converged sync costs nothing** — measured as both bytes exchanged *and CPU spent*
+between two 1M-operation replicas that already agree · an unauthenticated peer
+exchanges nothing.
+
+The CPU half was added after measurement: `RevocationLedger::merge` walks every
+entry of the peer's ledger unconditionally, so two replicas that already agree
+each pay **11.52 ms at 100k entries** and allocate a `String` per already-present
+subject. The bytes-exchanged test passed throughout. It measured the artifact —
+wire traffic — while the property it protects is that a converged sync is free.
 
 ## C4 — Projection Contract `v1`
 

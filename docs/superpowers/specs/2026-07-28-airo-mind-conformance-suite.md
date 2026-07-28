@@ -42,9 +42,24 @@ written against the implementation and is a unit test wearing the wrong label.
       including embeddings, search snippets, and caches
 - [ ] Recovery reproduces **identical** runtime state: same package + same seed
       + same ledger ⇒ byte-identical vault
-- [ ] The Vault is sized by contexts and devices, never by content — a
-      100k-content vault serializes within a constant factor of a 10k-content
-      vault
+- [ ] **The Vault holds authority, never inventory** — live content never enters
+      it. Measured: a 100k-content vault serializes within a constant factor of a
+      10k-content vault. *Retained as a regression guard on the §4.1 redesign,
+      which measurement confirms holds at −0.8%. It is no longer a growth test —
+      the Vault has no content dimension to grow in.*
+- [ ] **Peak memory during export and restore is O(1) in the Vault's actual
+      growth dimension**, which per ADR-0017 is contexts + devices + revocations.
+      Measured: export peak RSS at 100k revocation entries within 20% of peak RSS
+      at 10k, and the same for contexts. *This is the test the previous one
+      stopped being. It currently fails at +849%, which is why ADR-0017 requires
+      framing.*
+- [ ] **Retention-class expiry adds no ledger entry** — running a `recoverable`
+      object past its 30-day window, or an `ephemeral` object past its derived
+      artifact, destroys the content and leaves `head_epoch` unchanged (ADR-0017)
+- [ ] **Expiry is derived from logged time, never local wall clock** — two
+      devices with clocks skewed by a week reach byte-identical state from the
+      same log. *Without this, expiry is device-dependent, which makes it a
+      decision, which puts it back in the ledger and undoes ADR-0017 silently.*
 
 ## S2 — Replay conformance (contract C2)
 
@@ -56,8 +71,11 @@ written against the implementation and is a unit test wearing the wrong label.
 - [ ] Replay order invariants hold: any permutation of concurrent operations
       converges
 - [ ] `replay_passes == 1` — asserted, not documented
-- [ ] Peak RSS is O(1) in operation count — RSS at 1M operations within 10% of
-      RSS at 100k (I7)
+- [ ] **Peak RSS during replay is O(1) in replayed state size** (I7) — measured
+      as RSS at 1M operations within 10% of RSS at 100k, where the operations
+      *build state* rather than being no-ops. A log of 1M operations that creates
+      1M contexts is the case this protects; a log of 1M no-ops passes while
+      testing nothing
 - [ ] Signature verification does not repeat below the verified-prefix
       watermark
 
