@@ -71,10 +71,16 @@ Operation
 │     deviceId
 │     timestamp
 │     versionVector
-│     payloadHash
+│     payloadHash      (over CIPHERTEXT, never plaintext — see below)
 │     signature
 └── ContentRef → ContentID
 ```
+
+`payloadHash` covers the **ciphertext**, or is a MAC keyed under the content
+key. Hashing the plaintext would make the header an **equality oracle** —
+confirmation-of-file against a crypto-shredded device, using exactly the
+headers this section admits survive shredding. Free to fix here, expensive
+once the format is frozen.
 
 The header stays plaintext so merge, ordering, and DAG traversal work without
 decrypting anything. **Known consequence:** a device that has been
@@ -743,6 +749,40 @@ A function that accepts a raw value **and** a canonical one at the same type is
 a defect: the type must distinguish them, or the raw form must be unreachable
 past the boundary.
 
+### I7 — Streaming first
+
+**The runtime processes operations as streams wherever possible.** Never
+"load everything, then process".
+
+```
+Load everything → Process          ✗
+Read → Validate → Replay → Discard  ✓
+```
+
+Applies to replay, sync, export, restore, migration, projections, and search
+indexing.
+
+**Status: adopted as an invariant, NOT yet satisfiable.** Per I5 this
+distinction is recorded rather than glossed — the Phase 1 Recovery Package
+format violates I7 by construction, and recording I7 as applied against it
+would be the fourth consecutive instance of the failure I5 exists to prevent.
+
+Measured violations, chief-performance-officer:
+
+| Site | Why |
+|---|---|
+| `RecoveryPackage::export` | Whole-vault materialization; **8.6× blow-up, ~450–600 MiB peak at 100k contents** |
+| `RecoveryPackage::to_bytes` | `serde_json::to_vec` over full ciphertext; 3.57× expansion, 444 ms/64 MiB |
+| `RecoveryPackage::from_bytes` | Whole file plus parsed copy resident before one byte is verified |
+| Single-blob AEAD | One tag over the whole payload — **this is why the three above cannot be fixed without a format change** |
+| `Vault` | Entire content-envelope index resident, no paging |
+| `#![forbid(unsafe_code)]` | Forecloses `mmap`, the primary zero-copy streaming mechanism |
+
+I7's **failing form**: export a synthetic 100k-content vault, assert peak RSS
+is within a constant of a 10k-content vault. It lands with the framed-package
+format (#1305) and the storage-layer split (#1307), in one change — never as
+prose against a format that cannot satisfy it.
+
 ## 11b. Architecture compliance
 
 Invariants that only a reviewer can check are invariants that erode. Every
@@ -867,7 +907,7 @@ evidence would be guessing.
 
 | Question | Decided in |
 |---|---|
-| Are snapshots authoritative or cache-only? Cache-only preserves the "log is truth" guarantee but makes cold start slow; authoritative reintroduces a second source of truth. Replay cost grows as `log_length × migration_chain_depth`. | Phase 3 |
+| ~~Are snapshots authoritative or cache-only?~~ **DECIDED: cache-only, with a persisted verified-prefix watermark.** Settled on measured grounds, not philosophical ones — ed25519 verification is 32.9–36.3 µs/op and 50–80× everything else combined, so cache-only cold start is 33 s per million operations *unless* verification is an ingest-time obligation. Without the watermark the pressure to make snapshots authoritative — voiding I1 — becomes irresistible. **The watermark is what protects the invariant.** | Resolved |
 | Header metadata leak. `entityId` / `schemaId` / `capabilityId` survive crypto-shredding in plaintext and may be observable on the wire. Existing redaction precedent: `platform_network_discovery` (`prohibitedFieldName`, `credentialLikeValue`). | Phases 2 and 7 |
 | Automation idempotency. Two devices replaying the same trigger must not produce two reminders. Single-executor election, or deterministic operation IDs derived from trigger state? | Phase 8 |
 | Conflict review UX. How a `manual`-merge conflict on a medical field is surfaced without training users to tap Accept. | Phase 7 |

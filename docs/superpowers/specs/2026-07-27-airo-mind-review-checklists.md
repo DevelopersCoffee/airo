@@ -106,12 +106,17 @@ Its six questions, in order:
 - [ ] State is derived from the log, never accumulated in place
 - [ ] Concurrent operations have a defined total order
 - [ ] **[CI]** Serialized structures use `BTreeMap`, never `HashMap`
+- [ ] Replay is a single pass over the log driving all projection sinks; the pass count is asserted, not documented
+- [ ] Signature verification does not repeat on every cold start — a persisted verified-prefix watermark bounds it
 
 ### Projection rebuilds
 - [ ] **[CI]** Every `projection` module has a rebuild-from-scratch test
 - [ ] Dropping the projection loses no data (invariant I1)
 - [ ] `DestroyContent` invalidates every projection derived from that content — including embeddings, search snippets, and caches
 - [ ] No value exists only in a projection
+- [ ] **[CI]** The module declares `rebuild: incremental | full_replay` and `invalidation: targeted | full`, and the declaration is tested
+- [ ] A projection that cannot be expressed as an `apply(&mut self, &Operation)` sink declares `full_replay` and carries its measured cost
+- [ ] `DestroyContent` against a `full`-invalidation projection has a bounded, deferred rebuild path — the purge is never skipped because it is expensive
 
 ### Migration determinism
 - [ ] Migrations transform interpretation at replay; the log is never rewritten
@@ -201,10 +206,92 @@ Applied by rust-architect to any change under `rust/`.
 - [ ] `default-features = false` on a crypto crate is diffed against that crate's default list and the loss recorded — dropping `ed25519-dalek`'s `fast` removes `curve25519-dalek/precomputed-tables`
 - [ ] A workspace `[profile.release]` is measured on **every** member, not only the new one; `opt-level`/`codegen-units` belong in `[profile.release.package.<name>]`, and `panic = "abort"` is never set where `catch_unwind` carries FFI errors
 - [ ] The accepted-transitive-`unsafe` note names the crates actually in `cargo tree`, verified, not the ones assumed to be there
+- [ ] A returned `Vec` that the caller only iterates is an iterator; a returned `Vec` built solely to call `.first()` is a defect
+- [ ] `entry(k.clone())` on a map is flagged — it allocates on the hit path; use `get_mut` then `insert` on miss
+- [ ] A `&str` convenience wrapper that constructs an owned key to perform a lookup allocates on every call and belongs on the hot-path review list
 
 ### `unsafe`
 - [ ] The crate itself contains no `unsafe`
 - [ ] Transitive `unsafe` in audited third-party crypto crates is explicitly accepted and named, not passed over in silence
+
+---
+
+## Performance checklist
+
+Applied by chief-performance-officer to every Rust change, every new
+dependency, and every format decision. Performance decisions at the runtime
+layer become ABI decisions — they freeze into the on-disk format and the
+operation log, which are explicitly unretrofittable. A number not measured
+before a format ships is a number nobody can change afterwards.
+
+### Budgets exist before the code does
+- [ ] Every new runtime path has a declared budget in `packages/benchmarks` before it merges, not after
+- [ ] The budget names its device class — host, Apple Silicon, Pixel 9, mid-range Android, armv7 TV — and says which are estimated and which are measured
+- [ ] A budget that cannot be met on the slowest supported device is a design finding, not a tuning task
+- [ ] Constitution §4's `packages/benchmarks` requirement is satisfied in the phase that **freezes the format**, not the phase that first exercises it
+
+### Streaming first (I7)
+- [ ] **[CI]** Peak RSS is O(1) in collection size: the same operation over a 10x larger input allocates within a constant factor
+- [ ] No path loads a whole log, vault, package, index, or content store into memory before processing it
+- [ ] Export, restore, sync, migration, and index rebuild are resumable — a process kill mid-operation does not restart from zero
+- [ ] A single-AEAD-blob format is flagged: one tag over the whole payload makes streaming decryption impossible for the life of the format
+- [ ] Bulk formats are framed — length-prefixed records with per-frame nonces derived from a frame index, plus a sealed trailer so truncation is detected
+
+### Serialization cost is format cost
+- [ ] **[CI]** Byte arrays and ciphertext never serialize as JSON decimal arrays — measured 2.5x for structured payloads and 3.57x for high-entropy bytes
+- [ ] The serialized size of any durable format is measured against a compact binary encoding and the ratio recorded in the design
+- [ ] Serialize/deserialize wall time is measured at the largest realistic input, not a unit-test-sized one
+- [ ] `to_vec` / `from_slice` over a large buffer is flagged — it doubles peak memory through reallocation and forecloses streaming
+
+### Allocation discipline
+- [ ] No per-call allocation to perform a lookup — building an owned key to query a map is a hot-path defect
+- [ ] No deep clone of an aggregate purely to serialize it; use a borrowing serializer type
+- [ ] Accessors return iterators or borrowed slices, not freshly allocated `Vec`s
+- [ ] Merge and union operations allocate only on the miss path
+- [ ] A collection materialized twice in one function is materialized once
+
+### Replay and projections
+- [ ] Signature verification is an ingest-time obligation with a persisted verified-prefix watermark; replay below the watermark does not re-verify
+- [ ] Replay is a **single pass** fanning out to N projection sinks — assert the pass count, do not document it
+- [ ] Every projection declares `rebuild: incremental | full_replay`, incremental by default
+- [ ] Every projection declares `invalidation: targeted | full` — the cost `DestroyContent` imposes on it
+- [ ] A `full` invalidation projection has its rebuild deferred to an idle window with a bounded budget; a destroy never blocks the UI on it
+- [ ] Snapshot restore time and projection rebuild time are budgeted separately from replay throughput
+
+### Storage and mobile flash
+- [ ] Writes are sequential and append-only; no in-place rewrite of durable state
+- [ ] Small writes are group-committed with a bounded latency window; per-operation `fsync` is reserved for explicit durability points
+- [ ] The group-commit window is tuned against **measured** device fsync latency, never an estimate — it ranges 0.5 ms to 50 ms across real devices
+- [ ] Write amplification is estimated for the smallest realistic record against a 4 KB page
+- [ ] Where compaction is architecturally forbidden, a signed-checkpoint format slot is reserved before the format freezes
+- [ ] Content deduplication is either supported or explicitly ruled out in the design, with the reason, so a later optimization pass cannot reintroduce convergent encryption
+
+### Sync cost
+- [ ] Reconciliation is O(device count), not O(operation count) — per-device monotonic sequence numbers, not set reconciliation over operation IDs
+- [ ] Content is chunked so transfer is resumable and decryption is streaming; chunk size is recorded in the design
+- [ ] Backpressure has a named owner; an unbounded producer cannot outrun the local apply path
+- [ ] A no-op sync between two large, converged replicas exchanges a bounded constant, not a function of history
+
+### Ownership and contention
+- [ ] The concurrency model is decided before the first concurrent caller, not after
+- [ ] No global `Mutex` sits on both the write path and the read path of the same aggregate
+- [ ] A lifecycle owner exists for cancellation — long-running work started from the UI can be cancelled when the user navigates away or the app backgrounds
+- [ ] One thread pool per process, owned centrally; subsystems do not each construct a runtime
+- [ ] A supervisor or coordinator is a **control plane only** — no payload, projection data, or key material passes through its lock
+
+### Compiler profile and dependency features
+- [ ] **[CI]** A workspace `[profile.release]` is benchmarked on **every** member before it merges; `opt-level` and `codegen-units` belong in `[profile.release.package.<name>]`
+- [ ] `opt-level = "z"` is never applied to a throughput crate — measured at 45–58% throughput loss on `airo_core`'s M3U parser
+- [ ] `panic = "abort"` is never set where a `cdylib` FFI bridge relies on `catch_unwind` — verified in the bridge source, not assumed
+- [ ] `lto` and `strip` changes record both the size win and the CI build-time cost across the full cross-compile matrix
+- [ ] `default-features = false` on a crypto crate has the throughput cost of each dropped feature **measured** and recorded in the manifest comment — dropping `ed25519-dalek`'s `fast` costs 2.65x on signing for 49,952 bytes
+- [ ] A profile or feature change affecting a crate on a shipping path is re-measured on that path's real target — `aarch64-linux-android` and `armv7-linux-androideabi`, not only the developer's host
+- [ ] `#![forbid(unsafe_code)]` on a crate that will own storage I/O is flagged — it permanently forecloses `mmap`, and the layering must be decided before the log format freezes
+
+### Numbers, not adjectives
+- [ ] Every performance claim in a plan or design cites a measurement, its hardware, and its method
+- [ ] "Negligible", "fast enough", and "free" are rejected without a number — three review cycles found properties recorded as applied that were absent from the code, and the same failure mode applies to performance claims
+- [ ] A measured figure is re-measured when the configuration it was measured under changes
 
 ---
 
