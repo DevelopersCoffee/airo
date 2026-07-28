@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_history/platform_history.dart';
+import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,6 +132,36 @@ void main() {
     },
   );
 
+  test(
+    'initial playing VOD is recorded without modifying state during build',
+    () async {
+      final initialContainer = ProviderContainer(
+        overrides: [
+          recentlyWatchedStorageProvider.overrideWithValue(liveStorage),
+          vodWatchHistoryStorageProvider.overrideWithValue(vodStorage),
+          streamingStateStreamProvider.overrideWithValue(states.stream),
+          iptvStreamingServiceProvider.overrideWithValue(
+            _InitiallyPlayingStreamingService(
+              stateFor(vodSyntheticChannel, PlaybackState.playing),
+            ),
+          ),
+        ],
+      );
+      addTearDown(initialContainer.dispose);
+      initialContainer.read(pendingVodHistoryItemProvider.notifier).state =
+          vodItem;
+
+      expect(
+        () => initialContainer.read(recentlyWatchedRecorderProvider),
+        returnsNormally,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(initialContainer.read(pendingVodHistoryItemProvider), isNull);
+      expect((await vodStorage.getRecentlyWatched()).single.id, 'vod-1');
+    },
+  );
+
   test('a failed VOD play leaves the pending item unrecorded', () async {
     container.read(pendingVodHistoryItemProvider.notifier).state = vodItem;
 
@@ -141,4 +172,13 @@ void main() {
     expect(await vodStorage.getRecentlyWatched(), isEmpty);
     expect(await liveStorage.getRecentlyWatched(), isEmpty);
   });
+}
+
+class _InitiallyPlayingStreamingService extends VideoPlayerStreamingService {
+  _InitiallyPlayingStreamingService(this._initialState);
+
+  final StreamingState _initialState;
+
+  @override
+  StreamingState get currentState => _initialState;
 }

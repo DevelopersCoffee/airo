@@ -45,7 +45,11 @@ final recentlyWatchedRecorderProvider = Provider<void>((ref) {
 
     final pendingVod = ref.read(pendingVodHistoryItemProvider);
     if (pendingVod != null && pendingVod.id == channel.id) {
-      ref.read(pendingVodHistoryItemProvider.notifier).state = null;
+      scheduleMicrotask(() {
+        if (ref.read(pendingVodHistoryItemProvider) == pendingVod) {
+          ref.read(pendingVodHistoryItemProvider.notifier).state = null;
+        }
+      });
       enqueueWrite(() async {
         await ref.read(vodWatchHistoryStorageProvider).addToRecent(pendingVod);
         ref.invalidate(vodContinueWatchingProvider);
