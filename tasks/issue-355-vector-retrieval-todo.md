@@ -45,7 +45,21 @@
 
 - [x] `git diff --check`
 - [x] GitHub issue re-fetch remains open and blocked.
+- [x] Opt-in 1,200-row host benchmark records exact median and p95 evidence.
 
 **Dependencies:** Task 2
 
 **Files:** task/spec evidence only.
+
+## Qualification Evidence
+
+- 2026-07-28 focused suite: 11 tests passed.
+- 2026-07-28 focused analyzer: no issues.
+- 2026-07-28 deterministic 1,200-row host benchmark:
+  - 256 dimensions: median 527 µs, p95 604 µs, max 2,482 µs.
+  - 384 dimensions: median 668 µs, p95 713 µs, max 816 µs.
+- 2026-07-28 repository gates: 63 manifests valid; worker-policy tests and
+  worker-offload policy passed; `git diff --check` passed.
+- Package-wide `flutter analyze` and `flutter test` remain blocked by the
+  pre-existing `litert_lm_runtime_adapter_test.dart` fake service compile
+  failure on the current `origin/main`; the focused retrieval slice is clean.

@@ -44,6 +44,7 @@ cd packages/core_ai
 dart format lib/src/embeddings test/embeddings
 flutter test test/embeddings/exact_vector_index_test.dart
 flutter analyze
+dart run tool/benchmark_exact_vector_index.dart
 ```
 
 Repository checks:
@@ -62,6 +63,8 @@ packages/core_ai/lib/src/embeddings/
   exact_vector_index.dart          exact cosine index and immutable results
 packages/core_ai/test/embeddings/
   exact_vector_index_test.dart     reference, mutation, and invalid-input tests
+packages/core_ai/tool/
+  benchmark_exact_vector_index.dart deterministic 1,200-row host measurement
 packages/core_ai/lib/core_ai.dart  public export
 ```
 
@@ -107,6 +110,7 @@ Follow red-green-refactor:
    overflow, float32 underflow to zero, zero norms, and invalid `topK`.
 4. Run the focused suite, package analyzer, worker-policy checks, and manifest
    validation.
+5. Run the opt-in host benchmark for 1,200 rows at both supported dimensions.
 
 No test will claim MediaPipe inference, SQLite persistence, airplane mode, or
 physical-device latency.
