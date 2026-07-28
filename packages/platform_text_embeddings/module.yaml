@@ -1,0 +1,29 @@
+name: platform_text_embeddings
+owner: Platform Architect
+capabilities:
+  - capability.ai.local_text_embeddings
+supported_devices:
+  - phone
+  - tablet
+ship_policy:
+  tv: Never Ship
+  phone: Optional
+  tablet: Optional
+  desktop: Never Ship
+native_dependencies:
+  - mediapipe_tasks_text
+  - mediapipe_tasks_core_airo_no_telemetry
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief Performance Officer
+  - Chief QA Officer
+  - Chief Documentation Officer
+  - Chief Open Source Officer
+allowed_dependencies:
+  - core_ai
+forbidden_dependencies:
+  - app
+  - feature_coin
+  - feature_iptv
+quality_gates: {}

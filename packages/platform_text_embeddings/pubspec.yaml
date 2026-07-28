@@ -1,0 +1,26 @@
+name: platform_text_embeddings
+description: Telemetry-free local text-embedding provider for Airo Android apps.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.44.4"
+
+dependencies:
+  core_ai:
+    path: ../core_ai
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.airo.platform_text_embeddings
+        pluginClass: PlatformTextEmbeddingsPlugin

@@ -32,11 +32,14 @@ the artifact audit passes.
 
 ## Task 4: Platform adapter
 
-- [ ] Create the owned package and manifest.
-- [ ] Write failing channel/lifecycle/redaction tests.
-- [ ] Implement Dart adapter and unsupported-platform behavior.
+- [x] Create the owned package and manifest.
+- [x] Write failing channel/lifecycle/redaction tests.
+- [x] Implement Dart adapter and unsupported-platform behavior.
 - [ ] Implement Android background sessions.
 - [ ] Focused tests, analyzer, and Android compilation pass.
+
+Evidence: 7 focused Dart tests pass; focused `flutter analyze` reports no
+issues; all 64 package manifests pass.
 
 ## Task 5: Release composition
 
