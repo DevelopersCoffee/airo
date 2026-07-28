@@ -4,13 +4,13 @@
 
 **Acceptance criteria:**
 
-- [ ] 256- and 384-dimensional results match a scalar reference.
-- [ ] Equal scores have stable ID ordering.
-- [ ] Results and caller-provided inputs cannot mutate the index.
+- [x] 256- and 384-dimensional results match a scalar reference.
+- [x] Equal scores have stable ID ordering.
+- [x] Results and caller-provided inputs cannot mutate the index.
 
 **Verification:**
 
-- [ ] Focused test fails before production implementation exists.
+- [x] Focused test fails before production implementation exists.
 
 **Dependencies:** None
 
@@ -20,14 +20,14 @@
 
 **Acceptance criteria:**
 
-- [ ] Valid records can be searched and appended.
-- [ ] Atomic rebuild supports update/deletion snapshots.
-- [ ] Failed append/rebuild leaves the previous snapshot intact.
+- [x] Valid records can be searched and appended.
+- [x] Atomic rebuild supports update/deletion snapshots.
+- [x] Failed append/rebuild leaves the previous snapshot intact.
 
 **Verification:**
 
-- [ ] Focused tests pass.
-- [ ] `flutter analyze` passes.
+- [x] Focused tests pass.
+- [x] Focused implementation/test analysis passes.
 
 **Dependencies:** Task 1
 
@@ -37,14 +37,14 @@
 
 **Acceptance criteria:**
 
-- [ ] Module and worker-policy checks pass.
-- [ ] No new dependency or private diagnostic surface exists.
+- [x] Module and worker-policy checks pass.
+- [x] No new dependency or private diagnostic surface exists.
 - [ ] #355 records exact evidence and remaining blockers.
 
 **Verification:**
 
-- [ ] `git diff --check`
-- [ ] GitHub issue re-fetch remains open and blocked.
+- [x] `git diff --check`
+- [x] GitHub issue re-fetch remains open and blocked.
 
 **Dependencies:** Task 2
 
