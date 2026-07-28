@@ -44,14 +44,11 @@ unzip fire-tv-emulator.zip
 ### Using Make Commands
 
 ```bash
-# List available emulators
-make emulators
+# Attach the Fire TV Stick over the network
+adb connect <stick-ip>:5555
 
-# Run on Fire TV emulator (auto-detect)
+# Run on the connected Fire TV Stick
 make run-firetv
-
-# Run on specific Fire TV emulator by name
-make run-firetv-emulator
 
 # Build Fire TV optimized APK
 make build-firetv

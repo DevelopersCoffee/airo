@@ -44,10 +44,10 @@ the rig.** The three devices under active test:
 | Tablet / iOS | iPad Air 4 | `make run-ios`, `scripts/run_visual_qualification.sh` |
 | Ten-foot / TV | Fire TV Stick 4K | `make run-firetv`, `make build-firetv` |
 
-Watch the target names: `make run-pixel9`, `run-iphone13`, `run-iphone17`,
-`run-firetv-emulator`, `run-androidtv`, `boot-local-devices`, and
-`deploy-local-binaries` all drive **emulators and simulators**, not the rig
-above. `make run-pixel9` boots a QEMU AVD, not the physical Pixel 9.
+Watch the target names: `make run-pixel9` and `make run-iphone17` drive an
+**emulator and a simulator**, not the rig above — `run-pixel9` boots a QEMU AVD,
+not the physical Pixel 9. They survive only as the explicit opt-in path; the
+other simulator-only targets were removed on 2026-07-28.
 
 The Android Emulator stays gated behind `AIRO_ALLOW_ANDROID_EMULATOR=true`. A
 `qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS` crash on macOS is an

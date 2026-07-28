@@ -10,7 +10,9 @@ ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-com
 ADB="${ADB:-$ANDROID_SDK/platform-tools/adb}"
 ANDROID_DEVICE="${AIRO_JOURNEY_ANDROID_DEVICE:-}"
 ALLOW_ANDROID_EMULATOR="${AIRO_ALLOW_ANDROID_EMULATOR:-false}"
-IOS_DEVICE="${AIRO_JOURNEY_IOS_DEVICE:-iPhone 17 Pro Max iOS 26.5}"
+IOS_DEVICE="${AIRO_JOURNEY_IOS_DEVICE:-}"
+IOS_SIMULATOR_DEVICE="${AIRO_JOURNEY_IOS_SIMULATOR:-iPhone 17 Pro Max iOS 26.5}"
+ALLOW_IOS_SIMULATOR="${AIRO_ALLOW_IOS_SIMULATOR:-false}"
 TIMEOUT_SECONDS="${AIRO_JOURNEY_TIMEOUT_SECONDS:-900}"
 STAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
 OUTPUT_DIR="${AIRO_JOURNEY_OUTPUT_DIR:-$ROOT_DIR/artifacts/agent-skills-journey/$STAMP}"
@@ -26,8 +28,8 @@ find_physical_android_device() {
     return 1
   fi
 
-  "$ADB" devices | awk '
-    NR > 1 && $2 == "device" && $1 !~ /^emulator-/ {
+  "$ADB" devices -l | awk '
+    NR > 1 && $2 == "device" && $1 !~ /^emulator-/ && $0 !~ /model:AFT/ {
       print $1
       exit
     }
@@ -36,6 +38,56 @@ find_physical_android_device() {
 
 android_device_is_emulator() {
   [ "$1" = "android" ] || [[ "$1" == emulator-* ]]
+}
+
+# The rig iPad is one of several paired iOS devices, so pick it by name rather
+# than taking whatever Flutter lists first. Ambiguity is an error, not a guess.
+find_physical_ios_device() {
+  flutter devices --machine 2>/dev/null | python3 -c '
+import json, sys
+try:
+    devices = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+
+physical = [
+    d for d in devices
+    if str(d.get("targetPlatform", "")).startswith("ios")
+    and not d.get("emulator", True)
+]
+ipads = [d for d in physical if "ipad" in str(d.get("name", "")).lower()]
+
+if len(ipads) == 1:
+    print(ipads[0].get("id", ""))
+elif physical:
+    # An iPhone is also paired on this host. Never silently substitute it for
+    # the rig iPad -- make the operator name the device.
+    sys.stderr.write(
+        "No unambiguous iPad among the connected iOS devices.\n"
+        "Set AIRO_JOURNEY_IOS_DEVICE=<device-id> to choose one of:\n"
+        + "".join(
+            "  {}  {}\n".format(d.get("id", ""), d.get("name", ""))
+            for d in physical
+        )
+    )
+    sys.exit(1)
+'
+}
+
+require_ios_simulator_opt_in() {
+  if [ "$ALLOW_IOS_SIMULATOR" != "true" ]; then
+    cat >&2 <<'EOF'
+No physical iOS device connected, and the iOS Simulator is disabled by default.
+
+Active testing runs on the physical rig: Pixel 9, iPad Air 4, Fire TV Stick 4K.
+
+Allowed paths:
+- Physical iPad: connect it, or set AIRO_JOURNEY_IOS_DEVICE=<device-id>
+- Physical Android: set AIRO_JOURNEY_PLATFORM=android
+- Explicit simulator opt-in: set AIRO_ALLOW_IOS_SIMULATOR=true
+EOF
+    exit 78
+  fi
 }
 
 require_android_emulator_opt_in() {
@@ -49,7 +101,7 @@ verification.
 
 Allowed paths:
 - Physical Android: set AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>
-- iOS simulator: set AIRO_JOURNEY_PLATFORM=ios
+- Physical iPad: set AIRO_JOURNEY_PLATFORM=ios
 - Explicit emulator opt-in: set AIRO_ALLOW_ANDROID_EMULATOR=true
 EOF
     exit 78
@@ -75,7 +127,16 @@ case "$PLATFORM" in
     DEVICE="$ANDROID_DEVICE"
     ;;
   ios)
-    (cd "$ROOT_DIR" && make boot-iphone17)
+    if [ -z "$IOS_DEVICE" ]; then
+      IOS_DEVICE="$(find_physical_ios_device || true)"
+    fi
+
+    if [ -z "$IOS_DEVICE" ]; then
+      require_ios_simulator_opt_in
+      (cd "$ROOT_DIR" && make boot-iphone17)
+      IOS_DEVICE="$IOS_SIMULATOR_DEVICE"
+    fi
+
     DEVICE="$IOS_DEVICE"
     ;;
   *)

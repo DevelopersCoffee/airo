@@ -293,15 +293,6 @@ boot-iphone17: setup-iphone17-simulator ## Boot/reuse the local iPhone 17 Pro Ma
 	xcrun simctl bootstatus "$$UDID" -b; \
 	echo "$(GREEN)✓ iPhone simulator is booted: $$UDID$(NC)"
 
-.PHONY: setup-local-devices
-setup-local-devices: setup-pixel9-avd setup-iphone17-simulator setup-e2e ## Prepare Pixel 9, iPhone 17 Pro Max, and browser test tooling
-
-.PHONY: boot-local-devices
-boot-local-devices: boot-pixel9 boot-iphone17 ## Boot Android and iOS simulators for local testing
-
-.PHONY: deploy-local-binaries
-deploy-local-binaries: deploy-pixel9-apk run-iphone17-local ## Build, install, and launch Android APK plus iOS simulator app
-
 .PHONY: local-test-plan
 local-test-plan: ## Show the local device testing workflow (physical rig)
 	@echo "$(BLUE)Local testing workflow — physical devices, no simulators$(NC)"
@@ -315,8 +306,8 @@ local-test-plan: ## Show the local device testing workflow (physical rig)
 	@echo "6. Browser E2E: make test-browser"
 	@echo "7. Native E2E: make test-device-android and make test-device-ios"
 	@echo ""
-	@echo "$(YELLOW)Simulator/emulator targets (run-pixel9, run-iphone17,$(NC)"
-	@echo "$(YELLOW)run-firetv-emulator, boot-local-devices) are not the rig.$(NC)"
+	@echo "$(YELLOW)run-pixel9 and run-iphone17 drive an emulator/simulator,$(NC)"
+	@echo "$(YELLOW)not the rig. Both need an explicit opt-in.$(NC)"
 
 .PHONY: run-android-auto
 run-android-auto: ## Run app on any connected Android device
@@ -382,6 +373,11 @@ deploy-pixel9-apk: boot-pixel9 ## Build, install, and launch debug APK on local 
 	fi; \
 	echo "$(GREEN)✓ APK installed and launched on Pixel 9. PID: $$PID$(NC)"
 
+.PHONY: qualify-ipad
+qualify-ipad: ## Run the visual qualification pass on the connected iPad (override AIRO_QUALIFY_IOS_DEVICE)
+	@echo "$(BLUE)Running visual qualification on iPad...$(NC)"
+	@./scripts/run_visual_qualification.sh
+
 .PHONY: run-ios
 run-ios: ## Run app on the connected iOS device (iPad rig) or a simulator
 	@echo "$(BLUE)Running on iOS...$(NC)"
@@ -393,18 +389,6 @@ run-ios: ## Run app on the connected iOS device (iPad rig) or a simulator
 		exit 1; \
 	fi
 	@cd $(APP_DIR) && flutter run -d ios $(DART_DEFINE_ARGS)
-
-.PHONY: run-iphone13
-run-iphone13: ## Run app on iPhone 13 Pro Max simulator
-	@echo "$(BLUE)Running on iPhone 13 Pro Max...$(NC)"
-	@if [ "$$(uname)" != "Darwin" ]; then \
-		echo "$(RED)iOS development is only available on macOS$(NC)"; \
-		exit 1; \
-	elif ! command -v pod &> /dev/null; then \
-		echo "$(RED)CocoaPods is required for iOS builds in this project.$(NC)"; \
-		exit 1; \
-	fi
-	@cd $(APP_DIR) && flutter run -d "iPhone 13 Pro Max" $(DART_DEFINE_ARGS)
 
 .PHONY: run-iphone17
 run-iphone17: run-iphone17-local ## Build, install, and launch local iPhone 17 Pro Max simulator profile
@@ -468,16 +452,6 @@ run-browser: ## Run app on configured web browser for local testing
 run-firetv: ## Run app on the connected Fire TV Stick (adb connect <ip>:5555 first)
 	@echo "$(BLUE)Running on Fire TV...$(NC)"
 	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
-
-.PHONY: run-firetv-emulator
-run-firetv-emulator: ## Run app on Fire TV emulator by name
-	@echo "$(BLUE)Running on Fire TV emulator...$(NC)"
-	@cd $(APP_DIR) && flutter run -d "Fire_TV_Stick_4K" $(DART_DEFINE_ARGS)
-
-.PHONY: run-androidtv
-run-androidtv: ## Run app on Android TV emulator
-	@echo "$(BLUE)Running on Android TV...$(NC)"
-	@cd $(APP_DIR) && flutter run -d "Android_TV" $(DART_DEFINE_ARGS)
 
 # Build Commands
 .PHONY: build-android
