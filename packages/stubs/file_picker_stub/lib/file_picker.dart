@@ -1,6 +1,8 @@
 /// Stub implementation of file_picker for TV builds
 library;
 
+import 'dart:typed_data';
+
 /// File type
 enum FileType { any, media, image, video, audio, custom }
 
@@ -17,9 +19,16 @@ class PlatformFile {
   final String? path;
   final String name;
   final int size;
-  final List<int>? bytes;
+  final Uint8List? bytes;
   final String? extension;
   final String? identifier;
+
+  /// Read in-memory bytes; TV never opens an interactive picker.
+  Future<Uint8List> readAsBytes() async {
+    final data = bytes;
+    if (data != null) return data;
+    throw StateError('PlatformFile.readAsBytes(): file data is not available.');
+  }
 }
 
 /// File picker result
@@ -65,8 +74,9 @@ abstract final class FilePicker {
 
   /// Save file - returns null on TV
   static Future<String?> saveFile({
+    required String fileName,
+    required Uint8List bytes,
     String? dialogTitle,
-    String? fileName,
     String? initialDirectory,
     FileType type = FileType.any,
     List<String>? allowedExtensions,

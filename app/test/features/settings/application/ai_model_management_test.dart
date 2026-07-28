@@ -83,7 +83,7 @@ void main() {
   });
 }
 
-class _FakeModelDownloadService extends ModelDownloadService {
+class _FakeModelDownloadService implements ModelDownloadService {
   _FakeModelDownloadService(this.paths);
 
   final Map<String, String> paths;
@@ -95,4 +95,7 @@ class _FakeModelDownloadService extends ModelDownloadService {
   }) async {
     return paths[modelId];
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
