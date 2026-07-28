@@ -134,6 +134,20 @@ the one artifact whose absence is unrecoverable.
   the same output written into one pre-sized `String` measures **16.55 ms**, 5.2× faster and 2.8×
   smaller than what it replaces. The fix must land in the same commit as the rollout.
 
+## Contract Impact
+
+Retrofitted after this ADR was accepted. It is the worked example that motivated
+the section — every row below was true when this ADR merged, and none of it was
+written down, which is exactly the gap the table closes.
+
+| Question | Answer |
+|---|---|
+| **Which runtime contracts change?** | **C1 Storage** — size class amended to `O(contexts + devices + revocations)`; the "sized by contexts and devices, never by user content" clause is corrected. **C7 Security** — framing changes the on-disk format, so AAD binding, identity binding, and the tamper tests move with it. Neither is a version change: C1's guarantee is unaltered and was misstated, and C7's properties are preserved across the reframing. **Not a runtime major.** |
+| **Which conformance tests become invalid?** | **C1 / S1 vault sizing** — measured content count, a dimension the Vault no longer has; *passes at −0.8% while the real dimension goes untested at +849%*. **C2 / S2 replay RSS** — measures operation count rather than replayed state size; a log of 1M no-ops passes while unbounded state growth is untested. **C3 no-op sync** — measures bytes exchanged rather than work; passes while `merge` costs both replicas 11.52 ms at 100k entries. Two of the three still pass. |
+| **Which benchmarks must be re-run?** | **V4** (export time and `≤ 3× compact` ratio — 9.89× today, 3.30× floor on hex alone, needs base64 on the outer blob), **V5** (peak RSS, 10.7×–21.6× against a 4× budget), **V7** (peak RSS growth, +849% against +20% in the ledger dimension). V4 and V7 additionally need restating, since both are phrased in "contents". V1/V2/V3/V6 are unaffected and were re-measured passing. |
+| **Which review roles must re-review?** | **chief-performance-officer** (owns the framing measurement and the re-stated budgets), **chief-security-officer** (framing changes the format they signed off on; tamper and AAD tests move), **rust-architect** (same — they approved the current single-blob format, and the serde changes touch the crypto path). **edge-architect** and **chief-cloud-officer** are required for the O(N) converged merge, held until the ledger format settles. |
+| **Is G0 required again?** | **Yes.** The plan's code blocks change — serde, framing, and the ledger's serialized shape. |
+
 ## Consequences
 
 ### Positive
