@@ -9,6 +9,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('chat prefers an installed Gemma package over Gemini Nano', () {
+    const nano = AssistantModelCandidate(
+      id: geminiNanoAssistantModelId,
+      name: 'Gemini Nano',
+      runtime: 'AICore on-device',
+      description: 'System runtime',
+      bestFor: [AssistantTask.chat],
+      tags: ['Local'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: 'System managed',
+      available: true,
+      actionLabel: 'Start chat',
+      local: true,
+    );
+    const gemma = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Downloaded package',
+      bestFor: [AssistantTask.chat],
+      tags: ['Local', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: '2.4 GB',
+      available: true,
+      actionLabel: 'Start chat',
+      local: true,
+    );
+
+    expect(
+      AssistantModelLibraryState.recommend(
+        [nano, gemma],
+        AssistantTask.chat,
+        const {},
+      ).id,
+      litertGemmaAssistantModelId,
+    );
+  });
+
   testWidgets(
     'shows diagnostics instead of launching unsupported local runtime',
     (tester) async {
@@ -289,6 +327,79 @@ void main() {
     expect(find.text('Device fit: Cannot load'), findsWidgets);
     expect(find.text('Insufficient memory.'), findsWidgets);
     expect(find.text('Needs 4096 MB, device has 1024 MB free.'), findsWidgets);
+  });
+  testWidgets('selects Gemma and closes setup after a successful warmup', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final package = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.gpu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+    );
+    final candidate = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Local package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: package.fileSizeDisplay,
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: package,
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Pixel 9',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+    AssistantModelCandidate? selected;
+    final runtimeService = AssistantRuntimeService(
+      loadDeviceInfo: () async => {
+        'manufacturer': 'Google',
+        'model': 'Pixel 9',
+        'platform': 'android',
+      },
+      isLiteRtAvailable: () async => true,
+      checkModelCompatibility: (_) async => const ModelCompatibilityResult(
+        isCompatible: true,
+        memorySeverity: MemorySeverity.safe,
+      ),
+      warmupLiteRtModel: (_) async => true,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            runtimeService: runtimeService,
+            onModelSelected: (value) => selected = value,
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start chat'));
+    await tester.pumpAndSettle();
+    expect(selected?.id, litertGemmaAssistantModelId);
+    expect(find.text('General Chat setup'), findsNothing);
   });
 }
 
