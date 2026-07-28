@@ -42,6 +42,7 @@ export 'src/registry/model_catalog.dart';
 export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';
 export 'src/embeddings/exact_vector_index.dart';
+export 'src/embeddings/text_embedding_provider.dart';
 export 'src/storage/model_storage_manager.dart';
 
 // Agent Skill Schemas

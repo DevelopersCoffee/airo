@@ -13,9 +13,11 @@ Evidence:
 
 ## Task 2: Core contract
 
-- [ ] Write failing provider/model/failure contract tests.
-- [ ] Implement immutable typed contracts.
-- [ ] Focused tests and analyzer pass.
+- [x] Write failing provider/model/failure contract tests.
+- [x] Implement immutable typed contracts.
+- [x] Focused tests and analyzer pass.
+
+Evidence: 6 focused tests pass; focused `flutter analyze` reports no issues.
 
 ## Task 3: Dependency remediation
 
