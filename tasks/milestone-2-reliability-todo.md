@@ -153,8 +153,8 @@ profile pubspec. Split if more than five files are required.
 ## Task 11: Audit and close remaining milestone validation issues
 
 **Acceptance criteria:**
-- [ ] Every named checklist item in #510–#516, #519, and #520 has authoritative
-      current evidence.
+- [ ] Every named checklist item in #510–#520 has authoritative current
+      evidence.
 - [ ] Device-only requirements name the exact device/build/artifact.
 - [ ] Each completed issue is closed with `state_reason=completed`.
 - [ ] Milestone 2 has zero open issues and is closed.
@@ -163,3 +163,53 @@ profile pubspec. Split if more than five files are required.
 evidence referenced by each issue.
 
 **Dependencies:** Task 10 and required physical-device availability.
+
+## Qualification audit — 2026-07-28
+
+- [x] Re-fetched milestone state: #517 is the only completed issue; #506,
+      #510–#516, and #518–#520 are open and blocked.
+- [x] Reopened #518 because its prior closure comment explicitly left the
+      Android lifecycle matrix incomplete.
+- [x] Attached current focused host evidence to every open validation issue.
+- [x] Confirmed no Android target was initially available to Flutter, then
+      provisioned the already-installed API 36 ARM64 image as `airo_api36`.
+      #519/#520 do not explicitly accept `AIRO_ALLOW_ANDROID_EMULATOR=true`,
+      so its results remain exploratory rather than closure evidence.
+- [x] Detected a wireless physical Pixel 9 later in the pass but did not
+      install, clear, reboot, or otherwise modify that personal device without
+      explicit authorization.
+- [ ] Run the Android device matrix and attach the exact device, build, and
+      artifact evidence required by #510, #514–#516, and #518–#520.
+- [ ] Complete the real provider/runtime dependencies required by #506 and
+      #511–#513.
+
+Evidence:
+
+- #510 downloads:
+  <https://github.com/DevelopersCoffee/airo/issues/510#issuecomment-5100279001>
+- #511 Whisper:
+  <https://github.com/DevelopersCoffee/airo/issues/511#issuecomment-5100279789>
+- #512 diarization:
+  <https://github.com/DevelopersCoffee/airo/issues/512#issuecomment-5100280451>
+- #513 LLM:
+  <https://github.com/DevelopersCoffee/airo/issues/513#issuecomment-5100281267>
+- #514 audio:
+  <https://github.com/DevelopersCoffee/airo/issues/514#issuecomment-5100282072>
+- #515 notifications:
+  <https://github.com/DevelopersCoffee/airo/issues/515#issuecomment-5100282790>
+- #516 database:
+  <https://github.com/DevelopersCoffee/airo/issues/516#issuecomment-5100283586>
+- #518 background processing and corrected state:
+  <https://github.com/DevelopersCoffee/airo/issues/518#issuecomment-5100304152>
+- #519 UI:
+  <https://github.com/DevelopersCoffee/airo/issues/519#issuecomment-5100284951>
+  and exploratory Android observation:
+  <https://github.com/DevelopersCoffee/airo/issues/519#issuecomment-5100395466>
+- #520 performance:
+  <https://github.com/DevelopersCoffee/airo/issues/520#issuecomment-5100285792>
+  and exploratory Android measurements:
+  <https://github.com/DevelopersCoffee/airo/issues/520#issuecomment-5100395459>
+
+Exploratory Android evidence is recorded in
+`artifacts/performance/2026-07-28-milestone-2-emulator.md`. It does not replace
+the physical-device matrix or an explicit emulator waiver.

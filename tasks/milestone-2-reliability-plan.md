@@ -2,8 +2,10 @@
 
 ## Overview
 
-Milestone 2 currently has 12 issues: #517 and #518 are closed; #506 and nine
-validation issues remain open. Start with #506 because it is the only open
+Milestone 2 currently has 12 issues. The 2026-07-28 qualification audit
+confirmed #517 as the only completed issue and reopened #518 because its
+Android lifecycle matrix remains incomplete. #506, #510–#516, and #518–#520
+remain open and blocked. Start with #506 because it is the milestone's open
 implementation issue and its background execution contract is required by the
 LLM, meeting, database, and performance validation work.
 
