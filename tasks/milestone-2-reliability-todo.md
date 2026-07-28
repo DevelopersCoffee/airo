@@ -203,6 +203,10 @@ evidence referenced by each issue.
       artifact evidence required by #510, #514–#516, and #518–#520.
 - [ ] Complete the real provider/runtime dependencies required by #506 and
       #511–#513.
+- [x] Real MediaPipe text embedding completed offline on the API 36 ARM64
+      emulator with 384 unit-normalized values, 42–47 ms fixture latency,
+      repeat cosine 1.0, typed close, no telemetry markers, and model cleanup.
+      This is exploratory and does not replace #355 Pixel 9 qualification.
 
 Evidence:
 
@@ -236,3 +240,6 @@ Evidence:
 Exploratory Android evidence is recorded in
 `artifacts/performance/2026-07-28-milestone-2-emulator.md`. It does not replace
 the physical-device matrix or an explicit emulator waiver.
+
+Embedding runtime evidence is recorded separately in
+`artifacts/performance/2026-07-28-mediapipe-embedding-emulator.md`.

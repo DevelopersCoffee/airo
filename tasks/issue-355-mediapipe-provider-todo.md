@@ -56,12 +56,18 @@ DataTransport. No model is bundled.
 
 ## Task 6: Physical qualification
 
+- [x] API 36 ARM64 emulator proves real offline 384-dimensional inference,
+      unit norm, repeat determinism, typed close, and test-model cleanup.
 - [ ] Pixel 9 reconnects and pending reboot evidence is completed.
 - [ ] Current full APK installs without clearing unrelated data.
 - [ ] Airplane-mode embedding returns 384 unit-normalized values.
 - [ ] Physical inference stays below 150 ms.
 - [ ] Network/log evidence contains no telemetry or private payload.
 - [ ] Test model/session cleanup is recorded.
+
+Exploratory evidence:
+`artifacts/performance/2026-07-28-mediapipe-embedding-emulator.md`. This does not
+replace any physical-device checkbox above.
 
 ## Task 6a: Meeting consumer integration
 
