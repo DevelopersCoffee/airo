@@ -16,8 +16,8 @@ The Airo Mind runtime architecture is **frozen**. From the moment #1312 merges:
 - **No new contracts.**
 - **No new architectural concepts.**
 
-Everything else is implementation, validation, or an **Architecture Change
-Proposal**. There is no fourth category.
+Everything else is implementation, validation, or an **ADR**. There is no
+fourth category.
 
 The remaining work is not requirements. It is **proving these decisions with
 implementation, benchmarks, and tests — not redesigning them.**
@@ -31,7 +31,7 @@ implementation, benchmarks, and tests — not redesigning them.**
 `Identity` · `Operation` · `Content` · `Context` · `Capability` · `Projection` ·
 `Vault`
 
-Seven. Design spec §2. Adding an eighth is an ACP.
+Seven. Design spec §2. Adding an eighth requires an ADR.
 
 ### 2. Runtime invariants — frozen
 
@@ -46,7 +46,7 @@ Seven. Design spec §2. Adding an eighth is an ACP.
 | **I7** | Streaming first — never "load everything, then process" |
 | **I8** | Cost is part of correctness: complexity, allocation budget, benchmark, regression test |
 
-Design spec §11a. Eight. Adding a ninth is an ACP.
+Design spec §11a. Eight. Adding a ninth requires an ADR.
 
 ### 3. Runtime contracts — frozen at `v1`
 
@@ -54,7 +54,7 @@ Design spec §11a. Eight. Adding a ninth is an ACP.
 `C6` Supervisor · `C7` Security
 
 `2026-07-28-airo-mind-runtime-contracts.md`. Versioned as runtime ABI. **A
-contract version change is a runtime major version** and requires an ACP.
+contract version change is a runtime major version** and requires an ADR.
 
 ### 4. Package format — frozen
 
@@ -77,7 +77,7 @@ sync()
 ```
 
 Design spec §11c. Six functions. A capability needing anything else means the
-runtime is missing a generic primitive — which is an ACP, not a local
+runtime is missing a generic primitive — which is an ADR, not a local
 workaround.
 
 ### 6. Sync model — frozen
@@ -96,13 +96,15 @@ justified.
 
 ---
 
-## Architecture Change Proposals
+## Architecture changes are ADRs
 
-An ACP is an **ADR in `docs/adr/`**, following the mechanism
-`PLATFORM_CONSTITUTION.md` already establishes for amendments. We are not
-inventing a second process.
+There is **no separate ACP process.** An Airo Mind architecture change is an
+ADR in `docs/adr/` carrying the required architecture sections below.
 
-An ACP touching any frozen surface above must contain all seven:
+`PLATFORM_CONSTITUTION.md` already establishes ADRs as the amendment mechanism.
+A second process that overlaps it is a second process someone forgets.
+
+An ADR touching any frozen surface above must contain all seven:
 
 1. **Problem statement** — what is actually broken, in behaviour a user or an
    implementer can observe
@@ -132,14 +134,20 @@ validated cannot be validated.
 ## Phase transition
 
 ```
-Requirements Phase              ← COMPLETE at #1312
-        ↓
-Runtime Validation Phase        ← current
-        ↓
-Runtime Implementation Phase
-        ↓
-Capability Implementation Phase
+Discovery                  ✓
+Requirements               ✓
+Architecture               ✓  ← frozen at #1312
+Runtime Validation         ←  current
+Runtime Implementation
+Capability Implementation
+Product Development
 ```
+
+> **The architecture is no longer the bottleneck. Evidence is.**
+
+Every remaining P0 asks for a benchmark, a test, or an implementation. **None
+ask for a new abstraction.** That is the signal the phase actually changed —
+not that ideas stopped, but that the backlog stopped containing them.
 
 Every open issue in milestone 19 now belongs to exactly one phase. **None of
 them redefine the architecture. They either prove it or implement it.**
@@ -154,6 +162,81 @@ them redefine the architecture. They either prove it or implement it.**
 | #1311 | Milestone completion | The ten conditions |
 
 ---
+
+## Triage rule — design debt vs engineering debt
+
+**Every issue is exactly one of these.** No third category, and the
+classification is the first question at triage, not the last.
+
+| Type | Meaning | Label |
+|---|---|---|
+| **Design** | Changes runtime contracts, primitives, invariants, or any frozen surface | `type/design` — **requires an ADR** |
+| **Engineering** | Implements or validates an existing contract | `type/engineering` — no ADR |
+
+If an issue cannot be classified, it is a design issue that has not admitted it
+yet. Write the ADR.
+
+## Decision hierarchy
+
+When something looks wrong, work down this list. **Reaching step 5 requires
+having done steps 1 through 4.**
+
+1. **Runtime contract** — read it. Most apparent problems are a contract that
+   was not read.
+2. **Implementation** — build it against the contract as written.
+3. **Benchmark** — measure it. Three of four council reviews rejected on
+   findings that were measurable and unmeasured.
+4. **Conformance test** — prove the contract holds, or prove it does not.
+5. **ADR** — **only if the evidence from 2–4 shows the contract is
+   inadequate.**
+
+> Do not reopen an architecture discussion unless an implementation produces
+> evidence that a frozen contract is incorrect.
+
+This is what allows the platform to evolve without churning. A contract that
+implementation proves wrong *should* change — that is what steps 2 through 4
+are for. A contract someone would prefer differently should not.
+
+## Success metrics — Runtime Validation phase
+
+Success was measured by **better architecture** during Requirements. It is
+measured differently now, and the difference is that these are objective.
+
+| Metric | Why it matters |
+|---|---|
+| Benchmark gates passing | I8 — cost is part of correctness |
+| Invariants enforced by CI | I5 — an invariant that cannot fail is a description |
+| Contracts with conformance tests | C1–C7 are otherwise prose |
+| Startup latency | The watermark's whole justification |
+| Replay throughput | Dominates runtime cost |
+| Peak memory | I7 — streaming first |
+| Sync convergence correctness | C3 |
+| Recovery determinism | The product's second claim |
+
+None of these is "the architecture got better". That question is closed.
+
+## Repository layers
+
+```
+Governance            slow-moving
+├── Constitution
+├── ADRs
+└── Architecture Freeze
+        ↓
+Runtime               slow-moving
+├── Contracts
+├── Invariants
+├── APIs
+└── Validation
+        ↓
+Capabilities          fast-moving
+├── Notes · Brain · Meeting · TV · Health · ...
+```
+
+**Everything above Runtime changes slowly. Everything below evolves quickly.**
+A change that makes a capability faster to build by making the runtime less
+stable is a bad trade, every time, because the runtime underpins every
+capability that does not exist yet.
 
 ## Definition of done — requirements phase
 
@@ -176,9 +259,9 @@ Airo Mind moves from **system design** to **platform engineering**.
 Every future capability — Notes, Brain, Meetings, Health, Finance, TV, or
 something nobody has proposed yet — is built against a **stable runtime rather
 than a moving architectural target.** That is the whole value of freezing, and
-it is worth more than any individual improvement that gets deferred to an ACP.
+it is worth more than any individual improvement that gets deferred to an ADR.
 
 The corollary, stated plainly because it will be tested: **an exception granted
 after the freeze is a permanent maintenance cost**, and it becomes the precedent
-the next request cites. The answer to "can we just, for this one case" is an ACP
+the next request cites. The answer to "can we just, for this one case" is an ADR
 or no.
