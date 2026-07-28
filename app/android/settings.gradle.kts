@@ -19,7 +19,12 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.3.1" apply false
+    // Pinned to 9.2.1: AGP 9.3.x crashes lint's CommentDetector with
+    // NoSuchMethodError: JavaDocParser.parseDataItem during
+    // lintVitalAnalyzeRelease, which fails every release assembly.
+    // 9.3.0 was reverted for the same reason in 249ad2eb (#1011); 9.3.1
+    // reintroduced it via #1336. See #1348.
+    id("com.android.application") version "9.2.1" apply false
     id("org.jetbrains.kotlin.android") version "2.4.10" apply false
 }
 
