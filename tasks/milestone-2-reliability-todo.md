@@ -108,6 +108,9 @@ profile pubspec. Split if more than five files are required.
 **Acceptance criteria:**
 - [x] Existing provider ownership is identified as #355; no duplicate issue is
       created.
+- [x] #355 has a dependency-free exact 256/384-dimensional retrieval
+      foundation with deterministic rebuild semantics and 1,200-row host
+      benchmark evidence.
 - [ ] #355 provides verified real 256/384-dimensional local embeddings.
 - [ ] Meeting embeddings use a real local provider with typed failure modes.
 - [ ] Vectors/content never appear in public diagnostics.
@@ -175,9 +178,14 @@ evidence referenced by each issue.
       provisioned the already-installed API 36 ARM64 image as `airo_api36`.
       #519/#520 do not explicitly accept `AIRO_ALLOW_ANDROID_EMULATOR=true`,
       so its results remain exploratory rather than closure evidence.
-- [x] Detected a wireless physical Pixel 9 later in the pass but did not
-      install, clear, reboot, or otherwise modify that personal device without
-      explicit authorization.
+- [x] Received explicit authorization, installed the full-profile debug APK
+      replace-in-place on the physical Pixel 9 without clearing app data, and
+      recorded startup, memory, storage, and 200% text/dark-mode observations.
+- [x] Restored the Pixel 9 font, rotation, and night-mode settings exactly
+      after the reversible UI run and rebooted it for lifecycle evidence.
+- [ ] Complete the post-reboot job audit after the Pixel 9 re-advertises over
+      wireless ADB; only the Fire TV target is currently visible and remains
+      untouched.
 - [ ] Run the Android device matrix and attach the exact device, build, and
       artifact evidence required by #510, #514–#516, and #518–#520.
 - [ ] Complete the real provider/runtime dependencies required by #506 and
@@ -185,6 +193,8 @@ evidence referenced by each issue.
 
 Evidence:
 
+- #355 exact vector retrieval:
+  <https://github.com/DevelopersCoffee/airo/issues/355#issuecomment-5101246505>
 - #510 downloads:
   <https://github.com/DevelopersCoffee/airo/issues/510#issuecomment-5100279001>
 - #511 Whisper:

@@ -39,7 +39,7 @@
 
 - [x] Module and worker-policy checks pass.
 - [x] No new dependency or private diagnostic surface exists.
-- [ ] #355 records exact evidence and remaining blockers.
+- [x] #355 records exact evidence and remaining blockers.
 
 **Verification:**
 
@@ -63,3 +63,5 @@
 - Package-wide `flutter analyze` and `flutter test` remain blocked by the
   pre-existing `litert_lm_runtime_adapter_test.dart` fake service compile
   failure on the current `origin/main`; the focused retrieval slice is clean.
+- GitHub evidence:
+  <https://github.com/DevelopersCoffee/airo/issues/355#issuecomment-5101246505>
