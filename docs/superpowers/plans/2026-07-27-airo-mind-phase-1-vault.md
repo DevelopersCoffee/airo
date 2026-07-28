@@ -11,6 +11,16 @@
 **Spec:** `docs/superpowers/specs/2026-07-27-airo-mind-runtime-design.md` §4, §6
 **Issues:** #1204 (scaffold), #1205 (governance), #1207–#1212 (Vault tasks), under epic #1193.
 
+> **Revision 5 (2026-07-28).** Rewritten against the **frozen** architecture
+> (`docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`). The structural change: the
+> Vault no longer holds content envelopes. Revisions 1–4 made it O(all user
+> content), which the frozen design forbids — *"sized by contexts and devices,
+> never by user content"* (§4.1). `add_content` now returns the envelope for
+> the content store to hold; `link_content` and `unlink_content` take it as a
+> parameter; `destroy_context` is O(1) instead of scanning every envelope.
+> `VaultPayload` loses `envelopes`, gains `ZeroizeOnDrop`, and stores keys as
+> `KeyBytes`. Do not implement from revisions 1–4.
+>
 > **Revision 2 (2026-07-27).** Rewritten after the chief-security-officer and
 > chief-open-source-officer reviews on PR #1239. Fifteen security findings
 > (R1–R15) and the OSS caveats are applied throughout. Two structural changes:
@@ -2248,8 +2258,21 @@ Completes the Vault side of #1209/#1210 and produces the type Tasks 8 and 9 expo
 **Interfaces:**
 - Consumes: `ContentEnvelope`, `ContentKey`, `ContextKey` (Task 5), `RevocationLedger` (Task 6), `DeviceCertificate` (Task 4)
 - Produces:
-  - `Vault` with `fn new(root_public_key: [u8; 32]) -> Self`, `fn add_context(&mut self, &str) -> Result<&ContextKey, VaultError>`, `fn context_key(&self, &str) -> Option<&ContextKey>`, `fn add_content(&mut self, &str, &[&str]) -> Result<ContentKey, VaultError>`, `fn link_content(&mut self, &str, &str) -> Result<(), VaultError>`, `fn unlink_content(&mut self, &str, &str) -> Result<UnlinkOutcome, VaultError>`, `fn destroy_content(&mut self, &str) -> Result<PurgeDirective, VaultError>`, `fn revocations(&self) -> &RevocationLedger`, `fn trust_device(&mut self, DeviceCertificate) -> bool`, `fn revoke_device(&mut self, &str) -> Result<PurgeDirective, VaultError>`
+  - `Vault` with:
+    - `fn new(root_public_key: [u8; 32]) -> Self`
+    - `fn add_context(&mut self, &str) -> Result<&ContextKey, VaultError>`
+    - `fn context_key(&self, &str) -> Option<&ContextKey>` — `pub(crate)`
+    - `fn add_content(&mut self, &str, &[&str]) -> Result<(ContentKey, ContentEnvelope), VaultError>` — **returns the envelope; the Vault stores no per-content record**
+    - `fn link_content(&mut self, &str, &str, &mut ContentEnvelope) -> Result<(), VaultError>`
+    - `fn unlink_content(&self, &str, &mut ContentEnvelope) -> Result<UnlinkOutcome, VaultError>`
+    - `fn destroy_content(&mut self, &str) -> Result<PurgeDirective, VaultError>`
+    - `fn destroy_context(&mut self, &str) -> Result<PurgeDirective, VaultError>` — **O(1)**
+    - `fn revoke_device(&mut self, &str) -> Result<PurgeDirective, VaultError>`
+    - `fn trust_device(&mut self, DeviceCertificate) -> Result<(), VaultError>`
+    - `fn is_content_destroyed(&self, &str) -> bool`
+    - `fn revocations(&self) -> &RevocationLedger`
   - `UnlinkOutcome { pub remaining_contexts: Vec<String>, pub now_orphaned: bool }`
+  - `KeyBytes` — `pub(crate)` 32-byte secret; no `Debug`, no `Clone`, no `PartialEq`
   - `PurgeDirective { pub content_id: String, pub epoch: u64 }`
 
 **Design note for the implementer.** `destroy_content` performs only steps 1–3 of crypto-shredding: destroy the key, append the revocation, drop the envelope. Steps 4–8 — projections, embeddings, search index, AI caches, snapshots — live outside this crate and outside Rust. `PurgeDirective` is the instruction the caller must act on. Returning it rather than silently completing is deliberate: #1217 tracks the steps that get skipped, and a directive the caller has to consume is harder to skip than a comment.
@@ -2289,17 +2312,31 @@ pub struct PurgeDirective {
 pub struct Vault {
     root_public_key: [u8; 32],
     context_keys: BTreeMap<String, ContextKey>,
-    envelopes: BTreeMap<String, ContentEnvelope>,
     device_certificates: Vec<DeviceCertificate>,
     revocations: RevocationLedger,
 }
+
+// NOTE — `envelopes` is deliberately absent.
+//
+// Revisions 1-4 held `envelopes: BTreeMap<String, ContentEnvelope>` here,
+// making the Vault O(all user content). Measured consequence: a 100k-content
+// vault produced a 225 MiB Recovery Package with a ~600 MiB export peak — an
+// OOM on mid-range Android, on the one artifact whose absence is
+// unrecoverable.
+//
+// The frozen design (spec §2, §4.1) states it plainly: the Vault is **sized by
+// contexts and devices, never by user content**. Two sentences in the original
+// draft described different systems — "the Recovery Package grants access,
+// carries no data" cannot coexist with "one envelope per content object".
+//
+// Wrapping sets live with their content object in the content store (Phase 2,
+// #1214). The Vault owns only keys.
 
 impl Vault {
     pub fn new(root_public_key: [u8; 32]) -> Self {
         Self {
             root_public_key,
             context_keys: BTreeMap::new(),
-            envelopes: BTreeMap::new(),
             device_certificates: Vec::new(),
             revocations: RevocationLedger::new(),
         }
@@ -2332,11 +2369,15 @@ impl Vault {
     }
 
     /// Creates content wrapped under every listed context.
+    /// Mints a content key and wraps it under every listed context.
+    ///
+    /// Returns both halves. The caller stores the envelope with the content
+    /// object; the Vault keeps nothing per-content.
     pub fn add_content(
         &mut self,
         content_id: &str,
         context_ids: &[&str],
-    ) -> Result<ContentKey, VaultError> {
+    ) -> Result<(ContentKey, ContentEnvelope), VaultError> {
         if self.revocations.is_content_revoked(content_id) {
             return Err(VaultError::ContentRevoked(content_id.to_string()));
         }
@@ -2350,71 +2391,70 @@ impl Vault {
                 .ok_or_else(|| VaultError::NoWrappingForContext((*context_id).to_string()))?;
             envelope.add_wrapping(&content_key, context_id, context_key)?;
         }
-        self.envelopes.insert(content_id.to_string(), envelope);
-        Ok(content_key)
+        // The envelope is RETURNED, not stored. It belongs beside the content
+        // object in the content store — the Vault holds no per-content record
+        // (frozen design §4.1).
+        Ok((content_key, envelope))
     }
 
     /// Grants an additional context access to existing content.
-    pub fn link_content(&mut self, content_id: &str, context_id: &str) -> Result<(), VaultError> {
+    ///
+    /// The caller supplies the envelope — the Vault holds no per-content
+    /// record — and receives it back mutated. Storing it again is the
+    /// caller's obligation.
+    pub fn link_content(
+        &mut self,
+        content_id: &str,
+        context_id: &str,
+        envelope: &mut ContentEnvelope,
+    ) -> Result<(), VaultError> {
         if self.revocations.is_content_revoked(content_id) {
             return Err(VaultError::ContentRevoked(content_id.to_string()));
         }
-        let existing_context = self
-            .envelopes
-            .get(content_id)
-            .and_then(|e| e.context_ids().first().map(|s| s.to_string()))
-            .ok_or_else(|| VaultError::NoWrappingForContext(content_id.to_string()))?;
-
+        let existing = envelope
+            .first_context()
+            .ok_or_else(|| VaultError::ContentNotFound(content_id.to_string()))?
+            .to_string();
         let source_key = self
             .context_keys
-            .get(&existing_context)
-            .ok_or_else(|| VaultError::NoWrappingForContext(existing_context.clone()))?;
-        let content_key = self
-            .envelopes
-            .get(content_id)
-            .ok_or_else(|| VaultError::NoWrappingForContext(content_id.to_string()))?
-            .unwrap_with(&existing_context, source_key)?;
+            .get(&existing)
+            .ok_or_else(|| VaultError::NoWrappingForContext(existing.clone()))?;
+        let content_key = envelope.unwrap_with(&existing, source_key)?;
 
         self.add_context(context_id)?;
+        // Disjoint field borrows: `context_keys` is ours, `envelope` is the
+        // caller's. No clone of a secret is needed here (rust-architect O2).
         let target_key = self
             .context_keys
             .get(context_id)
-            .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?
-            .clone();
-        let envelope = self
-            .envelopes
-            .get_mut(content_id)
-            .ok_or_else(|| VaultError::NoWrappingForContext(content_id.to_string()))?;
-        envelope.add_wrapping(&content_key, context_id, &target_key)
+            .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?;
+        envelope.add_wrapping(&content_key, context_id, target_key)
     }
 
     /// Removes one context link. Does not destroy anything.
     pub fn unlink_content(
-        &mut self,
-        content_id: &str,
+        &self,
         context_id: &str,
+        envelope: &mut ContentEnvelope,
     ) -> Result<UnlinkOutcome, VaultError> {
-        let envelope = self
-            .envelopes
-            .get_mut(content_id)
-            .ok_or_else(|| VaultError::NoWrappingForContext(content_id.to_string()))?;
         if !envelope.remove_wrapping(context_id) {
             return Err(VaultError::NoWrappingForContext(context_id.to_string()));
         }
         Ok(UnlinkOutcome {
-            remaining_contexts: envelope.context_ids().iter().map(|s| s.to_string()).collect(),
+            remaining_contexts: envelope.context_ids().map(|s| s.to_string()).collect(),
             now_orphaned: envelope.is_orphaned(),
         })
     }
 
     /// Destroys content permanently. Steps 1–3 of crypto-shredding.
+    ///
+    /// The Vault records the revocation. Dropping the envelope and the blob is
+    /// the content store's obligation, named in the returned directive.
     pub fn destroy_content(&mut self, content_id: &str) -> Result<PurgeDirective, VaultError> {
-        // R14: destroying a non-existent id must not silently succeed and
-        // must not poison that id in the ledger forever.
-        if self.envelopes.remove(content_id).is_none() {
-            return Err(VaultError::ContentNotFound(content_id.to_string()));
-        }
         let subject = RevocationSubject::Content(content_id.to_string());
+        if self.revocations.is_revoked(&subject) {
+            return Err(VaultError::ContentRevoked(content_id.to_string()));
+        }
         let epoch = self.revocations.revoke(subject.clone());
         Ok(PurgeDirective { subject, epoch })
     }
@@ -2434,14 +2474,20 @@ impl Vault {
         Ok(PurgeDirective { subject, epoch })
     }
 
-    /// Destroys a context and its key. Every item wrapped only under it
-    /// becomes unrecoverable.
+    /// Destroys a context and its key.
+    ///
+    /// **O(1).** Revisions 3–4 scanned every envelope in the vault to strip
+    /// wrappings — O(all content) per context destroy — and returned a
+    /// directive naming only the context, so content orphaned by the destroy
+    /// was never reported and crypto-shredding steps 4–8 could not run for it
+    /// (chief-performance-officer §8).
+    ///
+    /// Destroying the context key is sufficient: every wrapping under it
+    /// becomes undecryptable wherever it is stored. Identifying which content
+    /// is now orphaned is a content-store query, driven by the directive.
     pub fn destroy_context(&mut self, context_id: &str) -> Result<PurgeDirective, VaultError> {
         if self.context_keys.remove(context_id).is_none() {
             return Err(VaultError::NoWrappingForContext(context_id.to_string()));
-        }
-        for envelope in self.envelopes.values_mut() {
-            envelope.remove_wrapping(context_id);
         }
         let subject = RevocationSubject::Context(context_id.to_string());
         let epoch = self.revocations.revoke(subject.clone());
@@ -2477,21 +2523,27 @@ mod tests {
     #[test]
     fn content_is_readable_through_every_context_it_was_created_in() {
         let mut vault = vault();
-        let key = vault.add_content("bill-001", &["hospitalization", "finance", "tax-2026"]).unwrap();
+        let (key, envelope) = vault
+            .add_content("bill-001", &["hospitalization", "finance", "tax-2026"])
+            .unwrap();
 
         for context in ["hospitalization", "finance", "tax-2026"] {
             let context_key = vault.context_key(context).unwrap();
-            let envelope = &vault.envelopes["bill-001"];
-            assert_eq!(envelope.unwrap_with(context, context_key).unwrap().as_bytes(), key.as_bytes());
+            assert_eq!(
+                envelope.unwrap_with(context, context_key).unwrap().as_bytes(),
+                key.as_bytes()
+            );
         }
     }
 
     #[test]
     fn unlinking_reports_what_survives() {
         let mut vault = vault();
-        vault.add_content("bill-001", &["hospitalization", "finance", "tax-2026"]).unwrap();
+        let (_key, mut envelope) = vault
+            .add_content("bill-001", &["hospitalization", "finance", "tax-2026"])
+            .unwrap();
 
-        let outcome = vault.unlink_content("bill-001", "hospitalization").unwrap();
+        let outcome = vault.unlink_content("hospitalization", &mut envelope).unwrap();
 
         assert!(!outcome.now_orphaned);
         assert_eq!(outcome.remaining_contexts, vec!["finance".to_string(), "tax-2026".to_string()]);
@@ -2500,9 +2552,9 @@ mod tests {
     #[test]
     fn unlinking_the_last_context_reports_orphaned() {
         let mut vault = vault();
-        vault.add_content("note-1", &["inbox"]).unwrap();
+        let (_key, mut envelope) = vault.add_content("note-1", &["inbox"]).unwrap();
 
-        let outcome = vault.unlink_content("note-1", "inbox").unwrap();
+        let outcome = vault.unlink_content("inbox", &mut envelope).unwrap();
 
         assert!(outcome.now_orphaned);
         assert!(outcome.remaining_contexts.is_empty());
@@ -2511,12 +2563,12 @@ mod tests {
     #[test]
     fn linking_adds_a_context_without_re_encrypting_content() {
         let mut vault = vault();
-        let key = vault.add_content("bill-001", &["hospitalization"]).unwrap();
+        let (key, mut envelope) = vault.add_content("bill-001", &["hospitalization"]).unwrap();
 
-        vault.link_content("bill-001", "tax-2026").unwrap();
+        vault.link_content("bill-001", "tax-2026", &mut envelope).unwrap();
 
         let tax_key = vault.context_key("tax-2026").unwrap();
-        let recovered = vault.envelopes["bill-001"].unwrap_with("tax-2026", tax_key).unwrap();
+        let recovered = envelope.unwrap_with("tax-2026", tax_key).unwrap();
         assert_eq!(recovered.as_bytes(), key.as_bytes());
     }
 
@@ -2533,7 +2585,7 @@ mod tests {
         );
         assert_eq!(directive.epoch, 1);
         assert!(vault.revocations().is_content_revoked("note-1"));
-        assert!(!vault.envelopes.contains_key("note-1"));
+        assert!(vault.is_content_destroyed("note-1"));
     }
 
     #[test]
@@ -2655,13 +2707,46 @@ use super::{DeviceCertificate, Vault};
 pub const RECOVERY_PACKAGE_FORMAT_VERSION: u32 = 1;
 
 /// The serializable interior of a Vault.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// No `Debug` — it would print every context key. No `Clone` — it would
+/// duplicate them. No `PartialEq` — it would compare them in variable time.
+/// `ZeroizeOnDrop` because this is the decrypted key set, resident for the
+/// whole of a restore (chief-security-officer R7).
+///
+/// No `envelopes` field: the Vault is sized by contexts and devices, never by
+/// user content (frozen design §4.1).
+#[derive(Serialize, Deserialize, ZeroizeOnDrop)]
 pub(crate) struct VaultPayload {
+    #[zeroize(skip)]
     pub(crate) root_public_key: [u8; 32],
-    pub(crate) context_keys: BTreeMap<String, [u8; 32]>,
-    pub(crate) envelopes: BTreeMap<String, ContentEnvelope>,
+    pub(crate) context_keys: BTreeMap<String, KeyBytes>,
+    #[zeroize(skip)]
     pub(crate) device_certificates: Vec<DeviceCertificate>,
+    #[zeroize(skip)]
     pub(crate) revocations: RevocationLedger,
+}
+
+/// A 32-byte secret that cannot be printed, cloned, or compared in variable
+/// time.
+///
+/// Introduced because the security and open-source reviews reached opposite
+/// conclusions on `serde_json` and both were right about their own question.
+/// The size argument stands: `serde_json` stays. The hygiene finding is closed
+/// here instead — by making the *type* refuse to leak — rather than by
+/// swapping the serializer, which would not have fixed it.
+#[derive(Zeroize, ZeroizeOnDrop, Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct KeyBytes([u8; 32]);
+
+impl std::fmt::Debug for KeyBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("KeyBytes(<redacted>)")
+    }
+}
+
+impl KeyBytes {
+    pub(crate) fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
 }
 
 /// An encrypted, portable grant of access to a Vault.
@@ -2849,6 +2934,8 @@ mod tests {
         .unwrap();
         let identity = RootIdentity::from_seed(&seed).unwrap();
         let mut vault = Vault::new(identity.public_key());
+        // Envelopes are returned and belong to the content store; the vault
+        // keeps only the context keys these calls create.
         vault.add_content("note-1", &["inbox"]).unwrap();
         vault.add_content("bill-001", &["hospitalization", "tax-2026"]).unwrap();
         (vault, seed)
@@ -2861,7 +2948,7 @@ mod tests {
         let payload = package.decrypt(&seed).unwrap();
 
         assert_eq!(payload.root_public_key, *vault.root_public_key());
-        assert_eq!(payload.envelopes.len(), 2);
+        assert_eq!(payload.context_keys.len(), 3);
         assert!(payload.context_keys.contains_key("hospitalization"));
     }
 
@@ -2986,10 +3073,14 @@ mod tests {
         let package = RecoveryPackage::export(&vault, &seed).unwrap();
         let payload = package.decrypt(&seed).unwrap();
 
-        // Envelopes hold wrapped keys and ids, never plaintext payloads.
-        let json = serde_json::to_string(&payload.envelopes).unwrap();
-        assert!(json.contains("bill-001"));
-        assert!(!json.contains("plaintext"));
+        // The payload holds context keys and certificates. It holds no
+        // per-content record at all — that is the point of the redesign.
+        assert!(payload.context_keys.contains_key("hospitalization"));
+        // KeyBytes refuses to print its contents.
+        assert_eq!(
+            format!("{:?}", payload.context_keys["hospitalization"]),
+            "KeyBytes(<redacted>)"
+        );
     }
 }
 ```
@@ -3009,9 +3100,8 @@ impl Vault {
             context_keys: self
                 .context_keys
                 .iter()
-                .map(|(id, key)| (id.clone(), *key.as_bytes()))
+                .map(|(id, key)| (id.clone(), KeyBytes(*key.as_bytes())))
                 .collect(),
-            envelopes: self.envelopes.clone(),
             device_certificates: self.device_certificates.clone(),
             revocations: self.revocations.clone(),
         }
@@ -3207,7 +3297,8 @@ impl SealedRestore {
     /// Consuming `self` is what makes the unsafe path unrepresentable: there
     /// is no way to reach a `Vault` without passing through here.
     ///
-    /// Purges content envelopes, context keys, **and device certificates** —
+    /// Purges context keys and device certificates, and records content
+    /// revocations —
     /// all three are revocable subjects, and omitting devices means a stale
     /// backup readmits a revoked device.
     pub fn apply_revocations(mut self, source: &RevocationSource) -> AppliedRestore {
@@ -3217,10 +3308,11 @@ impl SealedRestore {
         let mut purged = Vec::new();
         for subject in self.payload.revocations.all_revoked() {
             match &subject {
-                RevocationSubject::Content(id) => {
-                    if self.payload.envelopes.remove(id).is_some() {
-                        purged.push(subject.clone());
-                    }
+                RevocationSubject::Content(_) => {
+                    // The Vault holds no per-content record, so there is
+                    // nothing here to purge. The revocation is what makes the
+                    // content undecryptable, and the content store acts on it.
+                    purged.push(subject.clone());
                 }
                 RevocationSubject::Context(id) => {
                     if self.payload.context_keys.remove(id).is_some() {
@@ -3360,9 +3452,8 @@ mod tests {
         );
 
         let vault = restored.into_vault();
-        assert!(vault.revocations().is_content_revoked("hiv-test-result"));
-        assert!(!vault.has_content("hiv-test-result"));
-        assert!(vault.has_content("grocery-list"));
+        assert!(vault.is_content_destroyed("hiv-test-result"));
+        assert!(!vault.is_content_destroyed("grocery-list"));
     }
 
     #[test]
@@ -3386,8 +3477,7 @@ mod tests {
             .apply_revocations(&RevocationSource::package_only());
 
         let vault = restored.into_vault();
-        assert!(vault.revocations().is_content_revoked("hiv-test-result"));
-        assert!(!vault.has_content("hiv-test-result"));
+        assert!(vault.is_content_destroyed("hiv-test-result"));
     }
 
     #[test]
@@ -3438,7 +3528,7 @@ mod tests {
             .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42")));
 
         assert!(twice.purged().is_empty());
-        assert!(!twice.into_vault().has_content("hiv-test-result"));
+        assert!(twice.into_vault().is_content_destroyed("hiv-test-result"));
     }
 
     #[test]
@@ -3510,9 +3600,8 @@ impl Vault {
             context_keys: payload
                 .context_keys
                 .into_iter()
-                .map(|(id, bytes)| (id, ContextKey::from_bytes(bytes)))
+                .map(|(id, bytes)| (id, ContextKey::from_bytes(*bytes.as_bytes())))
                 .collect(),
-            envelopes: payload.envelopes,
             // Verify rather than admit verbatim. The payload is AEAD-
             // authenticated so this is not exploitable without the seed, but
             // admitting unverified certificates is the wrong default and
@@ -3526,9 +3615,12 @@ impl Vault {
         }
     }
 
-    /// Whether content is still reachable in this Vault.
-    pub fn has_content(&self, content_id: &str) -> bool {
-        self.envelopes.contains_key(content_id)
+    /// Whether this content has been revoked.
+    ///
+    /// The Vault cannot say whether content *exists* — it holds no per-content
+    /// record. It can say whether the content was destroyed.
+    pub fn is_content_destroyed(&self, content_id: &str) -> bool {
+        self.revocations.is_content_revoked(content_id)
     }
 }
 ```
@@ -3544,7 +3636,7 @@ Add to `rust/airo_mind/src/vault/envelope.rs`, inside `impl ContextKey`:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind restore`
-Expected: FAIL to compile — module not declared, `from_payload` and `has_content` missing.
+Expected: FAIL to compile — module not declared, `from_payload` and `is_content_destroyed` missing.
 
 - [ ] **Step 3: Verify the unsafe path is unrepresentable**
 
