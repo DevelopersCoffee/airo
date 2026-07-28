@@ -20,12 +20,25 @@ enum AiroWorkerJobKind {
   cacheCleanup('cache_cleanup'),
   deviceSync('device_sync'),
   modelDownload('model_download'),
-  recordingPrep('recording_prep');
+  recordingPrep('recording_prep'),
+  meetingSummary('meeting_summary'),
+  meetingSearchIndexing('meeting_search_indexing'),
+  meetingEmbedding('meeting_embedding'),
+  meetingSpeakerClustering('meeting_speaker_clustering'),
+  meetingMemoryUpdate('meeting_memory_update');
 
   const AiroWorkerJobKind(this.stableId);
 
   final String stableId;
 }
+
+const _meetingIntelligenceJobKinds = {
+  AiroWorkerJobKind.meetingSummary,
+  AiroWorkerJobKind.meetingSearchIndexing,
+  AiroWorkerJobKind.meetingEmbedding,
+  AiroWorkerJobKind.meetingSpeakerClustering,
+  AiroWorkerJobKind.meetingMemoryUpdate,
+};
 
 enum AiroWorkerJobPriority {
   critical('critical'),
@@ -747,6 +760,7 @@ class AiroConstrainedResourcePolicy extends Equatable {
         AiroWorkerJobKind.searchIndexing,
         AiroWorkerJobKind.databaseCompaction,
         AiroWorkerJobKind.artworkCacheWarmup,
+        ..._meetingIntelligenceJobKinds,
       };
     }
     if (mode == AiroConstrainedResourceMode.lowStorage) {
@@ -776,6 +790,7 @@ class AiroConstrainedResourcePolicy extends Equatable {
       AiroWorkerJobKind.databaseCompaction,
       AiroWorkerJobKind.artworkCacheWarmup,
       AiroWorkerJobKind.deviceSync,
+      ..._meetingIntelligenceJobKinds,
     };
   }
 
@@ -795,6 +810,7 @@ class AiroConstrainedResourcePolicy extends Equatable {
         AiroWorkerJobKind.modelDownload,
         AiroWorkerJobKind.recordingPrep,
         AiroWorkerJobKind.searchIndexing,
+        ..._meetingIntelligenceJobKinds,
       });
     }
     return Set.unmodifiable(blocked);
@@ -826,6 +842,7 @@ class AiroWorkerSchedulerPolicy extends Equatable {
       AiroWorkerJobKind.deviceSync,
       AiroWorkerJobKind.modelDownload,
       AiroWorkerJobKind.recordingPrep,
+      ..._meetingIntelligenceJobKinds,
     },
     this.acceptedSchemaVersion = kAiroWorkerSchedulerSchemaVersion,
     this.minProtocolVersion = kAiroWorkerSchedulerProtocolVersion,

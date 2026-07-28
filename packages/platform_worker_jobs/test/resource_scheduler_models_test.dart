@@ -6,6 +6,50 @@ void main() {
     final now = DateTime.utc(2026, 7, 14, 12);
     final policy = AiroWorkerSchedulerPolicy();
 
+    test('keeps meeting intelligence job identifiers stable', () {
+      expect(
+        {for (final kind in _meetingJobKinds) kind.stableId},
+        {
+          'meeting_summary',
+          'meeting_search_indexing',
+          'meeting_embedding',
+          'meeting_speaker_clustering',
+          'meeting_memory_update',
+        },
+      );
+    });
+
+    test('recognizes meeting intelligence as constrained background work', () {
+      for (final kind in _meetingJobKinds) {
+        final decision = policy.evaluate(
+          job: _job(now: now, kind: kind),
+          snapshot: _snapshot(now: now),
+          now: now,
+        );
+
+        expect(
+          decision.codes,
+          isNot(contains(AiroWorkerSchedulerCode.unsupportedJobKind)),
+          reason: kind.stableId,
+        );
+      }
+
+      final normalPlan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(now: now),
+        now: now,
+      );
+      final constrainedPlan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          memoryPressure: AiroWorkerPressureLevel.high,
+        ),
+        now: now,
+      );
+
+      expect(normalPlan.allowedJobKinds, containsAll(_meetingJobKinds));
+      expect(constrainedPlan.blockedJobKinds, containsAll(_meetingJobKinds));
+    });
+
     test('schedules lightweight protocol job during active playback', () {
       final decision = policy.evaluate(
         job: _job(
@@ -441,6 +485,14 @@ void main() {
     });
   });
 }
+
+const _meetingJobKinds = {
+  AiroWorkerJobKind.meetingSummary,
+  AiroWorkerJobKind.meetingSearchIndexing,
+  AiroWorkerJobKind.meetingEmbedding,
+  AiroWorkerJobKind.meetingSpeakerClustering,
+  AiroWorkerJobKind.meetingMemoryUpdate,
+};
 
 AiroWorkerJobDescriptor _job({
   required DateTime now,
