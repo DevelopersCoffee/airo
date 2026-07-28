@@ -75,6 +75,7 @@ release-artifacts/
 *.apk
 *.aab
 *.ipa
+**/.gradle/
 
 # Patrol generated test bundles
 app/patrol_test/test_bundle.dart
