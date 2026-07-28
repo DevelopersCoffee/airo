@@ -1,0 +1,18 @@
+MediaPipe Tasks Core 0.10.29
+Copyright 2022 The MediaPipe Authors
+
+Source artifact:
+  com.google.mediapipe:tasks-core:0.10.29
+
+Source-code reference:
+  MediaPipe commit 8317ba78778738ba90a521e7e4580a2ba0129c81
+
+Airo modification:
+  The TasksStatsLoggerFactory implementation is replaced with MediaPipe's
+  public-source default no-op logger. RemoteLoggingClient,
+  TasksStatsProtoLogger, their private logging interface, and their dedicated
+  usage-logging proto classes are removed. Inference and native code are not
+  modified.
+
+Licensed under the Apache License, Version 2.0. The full upstream license is
+included as META-INF/LICENSE in the derived AAR.

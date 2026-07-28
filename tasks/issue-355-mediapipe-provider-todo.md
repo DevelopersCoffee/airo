@@ -21,10 +21,14 @@ Evidence: 6 focused tests pass; focused `flutter analyze` reports no issues.
 
 ## Task 3: Dependency remediation
 
-- [ ] Add pinned input hash and deterministic patch script.
-- [ ] Derive the no-telemetry core AAR.
-- [ ] Preserve license/NOTICE and record modification.
-- [ ] Prove remote logger, proto, and DataTransport are absent.
+- [x] Add pinned input hash and deterministic patch script.
+- [x] Derive the no-telemetry core AAR.
+- [x] Preserve license/NOTICE and record modification.
+- [x] Prove remote logger, proto, and DataTransport are absent.
+
+Evidence: two derivations were byte-identical at
+`36366b6b3ee7cb8279e3b3dd608774f4f30298296e56d6ff23f7f083d4bc0416`;
+the artifact audit passes.
 
 ## Task 4: Platform adapter
 

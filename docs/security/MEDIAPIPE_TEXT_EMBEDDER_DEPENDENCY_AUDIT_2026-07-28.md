@@ -16,6 +16,7 @@ dependency, symbol, network, size, and physical-device checks pass.
 | --- | ---: | --- | --- |
 | `tasks-text:0.10.29` AAR | about 11 MB | `50f466bdc034fd32213cccdbf229b9b106909d6c4d6c89210ba322bbbd0af727` | Official sample version; arm64 JNI is 6,592,712 bytes. |
 | `tasks-core:0.10.29` AAR | about 1.2 MB | `7c9f935c6e60f2d612ba3240991863fc12a48a25d67dc4373a52ce8c3b0c2232` | Contains forced remote stats logger and DataTransport dependencies. |
+| Airo telemetry-free `tasks-core:0.10.29` derivation | 1,305,866 bytes uncompressed AAR entries | `36366b6b3ee7cb8279e3b3dd608774f4f30298296e56d6ff23f7f083d4bc0416` | Byte-identical across two derivations; dummy logger only, dedicated usage-logging classes/protos removed, license and modification notice embedded. |
 | `tasks-text:1.0.0` AAR | about 27 MB | `300c3ed4669ef76d48633b8a5f236b71f26c94a4f5717b79d3f999af95f0b3a6` | Larger combined text/gen-AI native surface; arm64 JNI is 14,444,480 bytes. |
 | `tasks-core:1.0.0` AAR | about 21 MB | `609c6fcfe59f58c9739194f65ae5882281c327710e1a616aa7f533a4d9238ca3` | Adds 11,015,096-byte arm64 core JNI and the same remote logger path. |
 
@@ -45,6 +46,13 @@ factory returns `TasksStatsDummyLogger`, whose methods are no-ops.
 
 The planned patch restores that public-source default. It must not change
 inference code or native libraries.
+
+The replacement factory is pinned to the public BUILD contract at MediaPipe
+commit `8317ba78778738ba90a521e7e4580a2ba0129c81`. Two clean derivations using
+JDK 17 and Android API 36 produced the same AAR SHA-256. The fail-closed audit
+also proves the factory invokes `TasksStatsDummyLogger` and that the artifact
+contains no remote logger, dedicated usage-logging proto, DataTransport symbol,
+or `COREML_ON_DEVICE_SOLUTIONS` string.
 
 ## Required Gates
 
