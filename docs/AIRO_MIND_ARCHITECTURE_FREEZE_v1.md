@@ -62,6 +62,16 @@ Recovery Package `format_version: 1` — header fields, AAD binding, reserved
 `passphrase_used` / `kdf_params` / `kdf_salt` slots, revocation-epoch placement
 outside the ciphertext, and the framing decided in #1305.
 
+**Encodings, frozen with the format.** These were decided in implementation and
+are recorded here because they are as unreversible as the field list — a device
+that exported a package holds a copy we cannot reach.
+
+| Value | Encoding |
+|---|---|
+| `RevocationSubject` map key | Canonical string `kind:id`, where `kind` ∈ {`content`, `context`, `device`} and contains no `:`. First-colon split, so ids may contain `:`. Unknown kinds fail closed. |
+| `[u8; 32]` and `[u8; 64]` fields | Lowercase hex string, never a JSON decimal array — the package stays inspectable in a text editor, which matters for a file users are told to store themselves |
+| Subject ids | The design must state whether ids are NFC-normalized and control-character-free at the boundary (I6). Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices. |
+
 The on-disk format is the least reversible thing in the system. Every device
 that has ever exported one holds a copy we cannot reach.
 
