@@ -266,6 +266,68 @@ a mobile device: Android kills processes without warning, flash corrupts, and
 disks fill. A contract verified only on the happy path is verified for the
 conditions under which nobody needed it.
 
+## The review pipeline is mandatory, and ordered by cost
+
+Cheapest check first. A defect caught by `clippy` costs minutes; the same
+defect caught by a council review costs a review cycle, and four consecutive
+reviews were spent partly on findings a compiler would have surfaced.
+
+```
+Developer
+   ↓
+cargo fmt
+   ↓
+cargo clippy -D warnings
+   ↓
+Unit tests
+   ↓
+Property tests
+   ↓
+Benchmark gates
+   ↓
+Architecture compliance
+   ↓
+Security review
+   ↓
+Rust review
+   ↓
+Performance review
+   ↓
+Merge
+```
+
+The three human reviews sit **last** deliberately. Reviewer attention is the
+scarcest resource in this process and must be spent on what machines cannot
+check — cryptographic soundness, ownership models, asymptotic behaviour — not
+on missing imports.
+
+Gates 1–6 are automated by #1287 (crypto-path hygiene) and #1294 (architecture
+compliance).
+
+## Review convergence — the maturity metric
+
+Track the shape of findings over time, not just their count.
+
+| Direction | Signal |
+|---|---|
+| Fewer **blocking** findings | The architecture is settling |
+| More **localized** findings | Defects are contained rather than structural |
+| More **CI** failures than human findings | Tooling is catching what reviewers used to |
+| Reviews **confirming** invariants rather than discovering missing ones | The invariant set is complete |
+
+Where the Phase 1 plan stands today, honestly:
+
+| Revision | Outcome |
+|---|---|
+| 1 → 2 | Many findings, all blocking |
+| 3, 4 | REJECT, structural — the plan did not compile |
+| 5, 6 | Still meaningful findings, but increasingly localized |
+
+**Revision 6 has not converged.** The remaining risk is no longer conceptual —
+it is whether the implementation faithfully realizes the frozen contracts, and
+that is what compilation, conformance tests, benchmarks, and targeted reviews
+exist to reduce.
+
 ## Success metrics — Runtime Validation phase
 
 Success was measured by **better architecture** during Requirements. It is
