@@ -132,6 +132,12 @@ still belongs to #355 Task 6.
 - [ ] Clustering is distinct from merely carrying native speaker labels.
 - [ ] Similar/unknown/overlapping speaker fixtures are deterministic.
 - [ ] Cancellation and unsupported-device outcomes are explicit.
+- [x] #506 has an anonymous, overlap-safe speaker-clustering provider contract
+      distinct from transcript labels and confirmed identity.
+- [x] Local audio metadata crosses the stage boundary without entering public
+      diagnostics, and all provider failure modes map to stable outcomes.
+- [ ] A real local diarization/audio-feature provider exists and passes the
+      #512 physical fixture matrix; #267/#504 remain blocked until then.
 
 **Verification:** focused provider fixtures and meeting adapter tests.
 

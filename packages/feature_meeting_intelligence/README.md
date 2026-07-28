@@ -36,6 +36,13 @@ stage unavailable. Successful projections persist through the existing meeting
 embedding columns, with the model artifact SHA-256 in the row identity; this
 slice does not expand the database schema.
 
+Speaker clustering has a separate asynchronous provider seam. Its input carries
+redacted transcript text plus local audio metadata whose string representation
+redacts the path. Results contain anonymous cluster IDs, time ranges, and
+confidence only; overlapping ranges are valid. This is not speaker identity or
+biometric enrollment, and the default remains unavailable until a real local
+diarization provider is qualified.
+
 ## Current lifecycle boundary
 
 `MeetingBackgroundJobHandle` represents an accepted in-process job with

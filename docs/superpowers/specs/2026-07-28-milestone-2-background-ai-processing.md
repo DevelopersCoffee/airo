@@ -115,6 +115,14 @@ The app adapter passes only redacted transcript segments and maps provider
 failures to stable meeting outcomes. A missing or unopened approved model is
 `unavailable`.
 
+Speaker clustering uses the same asynchronous platform-owned worker pattern.
+The job may carry local audio path/codec/rate/channel/size/hash metadata, but
+that object has a redacted string representation and is never diagnostic
+payload. Clustering results are anonymous provider/revision plus time ranges,
+cluster IDs, and confidence. Overlap is represented by multiple cluster ranges
+covering the same time interval. Confirmed identity, voiceprints, enrollment,
+and biometric persistence remain outside #506 under #267/#504.
+
 Successful meeting embeddings use the existing `meeting_embeddings` columns.
 The row identity includes the exact model artifact SHA-256, while dimensions
 and the JSON vector use the existing fields. This does not authorize a schema

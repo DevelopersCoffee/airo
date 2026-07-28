@@ -13,6 +13,7 @@ class MeetingSessionController {
     MeetingIntelligencePipeline? pipeline,
     MeetingBackgroundProcessor? backgroundProcessor,
     MeetingEmbeddingStageProvider? embeddingProvider,
+    MeetingSpeakerClusteringStageProvider? speakerClusteringProvider,
     DateTime Function()? now,
   }) : _backgroundProcessor =
            backgroundProcessor ??
@@ -21,6 +22,7 @@ class MeetingSessionController {
              pipeline: pipeline ?? MeetingIntelligencePipeline(),
              coordinator: MeetingIntelligenceCoordinator.deterministic(
                embeddingProvider: embeddingProvider,
+               speakerClusteringProvider: speakerClusteringProvider,
              ),
            ),
        _now = now ?? DateTime.now;

@@ -131,6 +131,65 @@ void main() {
       }
     });
 
+    test('represents anonymous and overlapping speaker clusters', () async {
+      const coordinator = MeetingIntelligenceCoordinator.inline(
+        speakerClusteringProvider: _SuccessfulSpeakerClusteringProvider(),
+      );
+
+      final result = await coordinator.run(
+        _request(
+          stages: const {MeetingIntelligenceStage.speakerClustering},
+          audio: _audio,
+        ),
+      );
+
+      expect(
+        result.outcomeFor(MeetingIntelligenceStage.speakerClustering).state,
+        MeetingIntelligenceStageState.completed,
+      );
+      expect(result.speakerClusters?.providerId, 'test/diarizer');
+      expect(result.speakerClusters?.ranges, hasLength(3));
+      expect(
+        result.speakerClusters!.ranges
+            .where((range) => range.startMs == 900)
+            .map((range) => range.clusterId),
+        {'cluster-1', 'cluster-2'},
+      );
+      expect(result.toString(), isNot(contains('/private/local')));
+    });
+
+    test('preserves typed speaker provider failures', () async {
+      for (final entry in const {
+        MeetingIntelligenceOutcomeCode.providerUnavailable:
+            MeetingIntelligenceStageState.unavailable,
+        MeetingIntelligenceOutcomeCode.cancelled:
+            MeetingIntelligenceStageState.cancelled,
+        MeetingIntelligenceOutcomeCode.invalidInput:
+            MeetingIntelligenceStageState.failed,
+        MeetingIntelligenceOutcomeCode.workerFailure:
+            MeetingIntelligenceStageState.failed,
+      }.entries) {
+        final coordinator = MeetingIntelligenceCoordinator.inline(
+          speakerClusteringProvider: _FailingSpeakerClusteringProvider(
+            entry.key,
+          ),
+        );
+
+        final result = await coordinator.run(
+          _request(
+            stages: const {MeetingIntelligenceStage.speakerClustering},
+            audio: _audio,
+          ),
+        );
+        final outcome = result.outcomeFor(
+          MeetingIntelligenceStage.speakerClustering,
+        );
+
+        expect(outcome.state, entry.value, reason: entry.key.stableId);
+        expect(outcome.code, entry.key, reason: entry.key.stableId);
+      }
+    });
+
     test('cancels later work at the next deterministic checkpoint', () async {
       final cancellation = MeetingIntelligenceCancellationToken();
       final search = _TrackingSearchIndexProvider();
@@ -163,6 +222,7 @@ MeetingIntelligenceJobRequest _request({
     MeetingIntelligenceStage.summary,
     MeetingIntelligenceStage.searchIndexing,
   },
+  MeetingLocalAudioInput? audio,
 }) {
   return MeetingIntelligenceJobRequest(
     jobId: 'job-1',
@@ -172,8 +232,18 @@ MeetingIntelligenceJobRequest _request({
       'Call [REDACTED_PHONE] about the budget risk.',
       'Action: Priya to share launch notes.',
     ],
+    localAudio: audio,
   );
 }
+
+final _audio = MeetingLocalAudioInput(
+  localPath: '/private/local/meeting-1.m4a',
+  codec: 'm4a',
+  sampleRateHz: 16000,
+  channelCount: 1,
+  sizeBytes: 2048,
+  sha256: 'audio-sha',
+);
 
 class _ThrowingSummaryProvider implements MeetingSummaryStageProvider {
   const _ThrowingSummaryProvider();
@@ -250,5 +320,65 @@ class _FailingEmbeddingProvider implements MeetingEmbeddingStageProvider {
     MeetingIntelligenceJobRequest request,
   ) async {
     return MeetingEmbeddingProviderFailure(code: code);
+  }
+}
+
+class _SuccessfulSpeakerClusteringProvider
+    implements MeetingSpeakerClusteringStageProvider {
+  const _SuccessfulSpeakerClusteringProvider();
+
+  @override
+  MeetingIntelligenceStage get stage =>
+      MeetingIntelligenceStage.speakerClustering;
+
+  @override
+  Future<MeetingSpeakerClusteringProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    expect(request.localAudio?.localPath, '/private/local/meeting-1.m4a');
+    return MeetingSpeakerClusteringProviderSuccess(
+      projection: MeetingSpeakerClusteringProjection(
+        providerId: 'test/diarizer',
+        revision: 'r1',
+        ranges: [
+          MeetingSpeakerClusterRange(
+            clusterId: 'cluster-1',
+            startMs: 0,
+            endMs: 1000,
+            confidence: 0.9,
+          ),
+          MeetingSpeakerClusterRange(
+            clusterId: 'cluster-1',
+            startMs: 900,
+            endMs: 1200,
+            confidence: 0.8,
+          ),
+          MeetingSpeakerClusterRange(
+            clusterId: 'cluster-2',
+            startMs: 900,
+            endMs: 1200,
+            confidence: 0.7,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FailingSpeakerClusteringProvider
+    implements MeetingSpeakerClusteringStageProvider {
+  const _FailingSpeakerClusteringProvider(this.code);
+
+  final MeetingIntelligenceOutcomeCode code;
+
+  @override
+  MeetingIntelligenceStage get stage =>
+      MeetingIntelligenceStage.speakerClustering;
+
+  @override
+  Future<MeetingSpeakerClusteringProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    return MeetingSpeakerClusteringProviderFailure(code: code);
   }
 }

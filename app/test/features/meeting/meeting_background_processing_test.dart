@@ -16,6 +16,7 @@ void main() {
       () async {
         final repository = _TrackingMeetingRepository();
         final summary = _TrackingSummaryProvider();
+        final speakers = _TrackingSpeakerClusteringProvider();
         final controller = MeetingSessionController(
           repository: repository,
           backgroundProcessor: MeetingBackgroundProcessor(
@@ -26,6 +27,7 @@ void main() {
               searchIndexProvider:
                   const DeterministicMeetingSearchIndexProvider(),
               embeddingProvider: const _SuccessfulEmbeddingProvider(),
+              speakerClusteringProvider: speakers,
             ),
           ),
           now: () => DateTime.utc(2026, 7, 28, 12),
@@ -47,6 +49,7 @@ void main() {
 
         expect(completed.state, MeetingState.completed);
         expect(summary.invocationCount, 0);
+        expect(speakers.invocationCount, 0);
         expect(
           await repository.transcriptChunksForMeeting('meeting-1'),
           isEmpty,
@@ -57,6 +60,8 @@ void main() {
         final result = await handle!.completion;
 
         expect(summary.invocationCount, 1);
+        expect(speakers.invocationCount, 1);
+        expect(speakers.lastAudioPath, _audio.filePath);
         expect(
           result.persistenceState,
           MeetingBackgroundPersistenceState.completed,
@@ -69,6 +74,12 @@ void main() {
         );
         expect(repository.lastSaved?.embedding?.modelSha256, 'c' * 64);
         expect(repository.lastSaved?.embedding?.values, hasLength(256));
+        expect(
+          result.intelligence
+              .outcomeFor(MeetingIntelligenceStage.speakerClustering)
+              .state,
+          MeetingIntelligenceStageState.completed,
+        );
         final chunks = await repository.transcriptChunksForMeeting('meeting-1');
         expect(chunks.single.text, contains('[REDACTED_PHONE]'));
         expect(chunks.single.text, isNot(contains('98765')));
@@ -134,9 +145,11 @@ void main() {
       'default session composition accepts an installed embedding provider',
       () async {
         final repository = _TrackingMeetingRepository();
+        final speakers = _TrackingSpeakerClusteringProvider();
         final controller = MeetingSessionController(
           repository: repository,
           embeddingProvider: const _SuccessfulEmbeddingProvider(),
+          speakerClusteringProvider: speakers,
           now: () => DateTime.utc(2026, 7, 28, 12),
         );
         await controller.startMeeting(id: 'meeting-1', title: 'Local model');
@@ -160,6 +173,13 @@ void main() {
           MeetingIntelligenceStageState.completed,
         );
         expect(repository.lastSaved?.embedding, isNotNull);
+        expect(
+          result.intelligence
+              .outcomeFor(MeetingIntelligenceStage.speakerClustering)
+              .state,
+          MeetingIntelligenceStageState.completed,
+        );
+        expect(speakers.lastAudioPath, _audio.filePath);
       },
     );
 
@@ -265,6 +285,38 @@ class _SuccessfulEmbeddingProvider implements MeetingEmbeddingStageProvider {
         modelSha256: 'c' * 64,
         dimensions: 256,
         values: List.filled(256, 0.5),
+      ),
+    );
+  }
+}
+
+class _TrackingSpeakerClusteringProvider
+    implements MeetingSpeakerClusteringStageProvider {
+  int invocationCount = 0;
+  String? lastAudioPath;
+
+  @override
+  MeetingIntelligenceStage get stage =>
+      MeetingIntelligenceStage.speakerClustering;
+
+  @override
+  Future<MeetingSpeakerClusteringProviderResult> process(
+    MeetingIntelligenceJobRequest request,
+  ) async {
+    invocationCount += 1;
+    lastAudioPath = request.localAudio?.localPath;
+    return MeetingSpeakerClusteringProviderSuccess(
+      projection: MeetingSpeakerClusteringProjection(
+        providerId: 'test/diarizer',
+        revision: 'r1',
+        ranges: [
+          MeetingSpeakerClusterRange(
+            clusterId: 'cluster-1',
+            startMs: 0,
+            endMs: 1000,
+            confidence: 0.9,
+          ),
+        ],
       ),
     );
   }

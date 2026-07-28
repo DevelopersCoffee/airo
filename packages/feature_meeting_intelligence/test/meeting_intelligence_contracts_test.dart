@@ -47,6 +47,58 @@ void main() {
       );
     });
 
+    test('keeps local audio paths out of string diagnostics', () {
+      final audio = MeetingLocalAudioInput(
+        localPath: '/private/local/meeting-1.m4a',
+        codec: 'm4a',
+        sampleRateHz: 16000,
+        channelCount: 1,
+        sizeBytes: 2048,
+        sha256: 'audio-sha',
+      );
+
+      expect(audio.toString(), 'MeetingLocalAudioInput(redacted)');
+      expect(audio.toString(), isNot(contains('/private/local')));
+    });
+
+    test('speaker projections are anonymous, immutable, and overlap-safe', () {
+      final ranges = [
+        MeetingSpeakerClusterRange(
+          clusterId: 'cluster-1',
+          startMs: 0,
+          endMs: 1000,
+          confidence: 0.9,
+        ),
+        MeetingSpeakerClusterRange(
+          clusterId: 'cluster-2',
+          startMs: 500,
+          endMs: 1200,
+          confidence: 0.8,
+        ),
+      ];
+      final projection = MeetingSpeakerClusteringProjection(
+        providerId: 'test/diarizer',
+        revision: 'r1',
+        ranges: ranges,
+      );
+
+      ranges.clear();
+      expect(projection.ranges, hasLength(2));
+      expect(
+        () => projection.ranges.add(
+          MeetingSpeakerClusterRange(
+            clusterId: 'cluster-3',
+            startMs: 1200,
+            endMs: 1400,
+            confidence: 0.7,
+          ),
+        ),
+        throwsUnsupportedError,
+      );
+      expect(projection.toString(), isNot(contains('cluster-1')));
+      expect(projection.toString(), isNot(contains('cluster-2')));
+    });
+
     test('reports an unavailable provider without private payloads', () {
       const outcome = MeetingIntelligenceStageOutcome.unavailable(
         stage: MeetingIntelligenceStage.embedding,

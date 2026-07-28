@@ -100,6 +100,14 @@ class MeetingBackgroundProcessor {
       redactedTranscriptSegments: [
         for (final chunk in redactedChunks) chunk.text,
       ],
+      localAudio: MeetingLocalAudioInput(
+        localPath: audioMetadata.filePath,
+        codec: audioMetadata.codec,
+        sampleRateHz: audioMetadata.sampleRateHz,
+        channelCount: audioMetadata.channelCount,
+        sizeBytes: audioMetadata.sizeBytes,
+        sha256: audioMetadata.sha256,
+      ),
     );
     final cancellation = MeetingIntelligenceCancellationToken();
     final completion = Future<MeetingBackgroundProcessingResult>(() async {

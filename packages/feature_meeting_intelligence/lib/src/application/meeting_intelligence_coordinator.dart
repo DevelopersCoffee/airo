@@ -14,12 +14,14 @@ class MeetingIntelligenceJobResult {
     this.summary,
     this.searchIndex,
     this.embedding,
+    this.speakerClusters,
   }) : outcomes = Map.unmodifiable(outcomes);
 
   final Map<MeetingIntelligenceStage, MeetingIntelligenceStageOutcome> outcomes;
   final MeetingSummaryProjection? summary;
   final MeetingSearchIndexProjection? searchIndex;
   final MeetingEmbeddingProjection? embedding;
+  final MeetingSpeakerClusteringProjection? speakerClusters;
 
   MeetingIntelligenceStageOutcome outcomeFor(MeetingIntelligenceStage stage) {
     final outcome = outcomes[stage];
@@ -36,23 +38,28 @@ class MeetingIntelligenceCoordinator {
     this.summaryProvider,
     this.searchIndexProvider,
     this.embeddingProvider,
+    this.speakerClusteringProvider,
   });
 
-  const MeetingIntelligenceCoordinator.deterministic({this.embeddingProvider})
-    : executor = const AiroWorkerExecutor(),
-      summaryProvider = const DeterministicMeetingSummaryProvider(),
-      searchIndexProvider = const DeterministicMeetingSearchIndexProvider();
+  const MeetingIntelligenceCoordinator.deterministic({
+    this.embeddingProvider,
+    this.speakerClusteringProvider,
+  }) : executor = const AiroWorkerExecutor(),
+       summaryProvider = const DeterministicMeetingSummaryProvider(),
+       searchIndexProvider = const DeterministicMeetingSearchIndexProvider();
 
   const MeetingIntelligenceCoordinator.inline({
     this.summaryProvider,
     this.searchIndexProvider,
     this.embeddingProvider,
+    this.speakerClusteringProvider,
   }) : executor = const AiroWorkerExecutor(forceInline: true);
 
   final AiroWorkerExecutor executor;
   final MeetingSummaryStageProvider? summaryProvider;
   final MeetingSearchIndexStageProvider? searchIndexProvider;
   final MeetingEmbeddingStageProvider? embeddingProvider;
+  final MeetingSpeakerClusteringStageProvider? speakerClusteringProvider;
 
   Future<MeetingIntelligenceJobResult> run(
     MeetingIntelligenceJobRequest request, {
@@ -68,6 +75,7 @@ class MeetingIntelligenceCoordinator {
     MeetingSummaryProjection? summary;
     MeetingSearchIndexProjection? searchIndex;
     MeetingEmbeddingProjection? embedding;
+    MeetingSpeakerClusteringProjection? speakerClusters;
 
     for (final stage in stages) {
       onProgress?.call(
@@ -141,10 +149,27 @@ class MeetingIntelligenceCoordinator {
                     stage: stage,
                   );
                 case MeetingEmbeddingProviderFailure(:final code):
-                  outcome = _embeddingOutcome(stage, code);
+                  outcome = _providerOutcome(stage, code);
               }
             }
           case MeetingIntelligenceStage.speakerClustering:
+            final provider = speakerClusteringProvider;
+            if (provider == null) {
+              outcome = MeetingIntelligenceStageOutcome.unavailable(
+                stage: stage,
+              );
+            } else {
+              final providerResult = await provider.process(request);
+              switch (providerResult) {
+                case MeetingSpeakerClusteringProviderSuccess(:final projection):
+                  speakerClusters = projection;
+                  outcome = MeetingIntelligenceStageOutcome.completed(
+                    stage: stage,
+                  );
+                case MeetingSpeakerClusteringProviderFailure(:final code):
+                  outcome = _providerOutcome(stage, code);
+              }
+            }
           case MeetingIntelligenceStage.memoryUpdate:
             outcome = MeetingIntelligenceStageOutcome.unavailable(stage: stage);
         }
@@ -164,10 +189,11 @@ class MeetingIntelligenceCoordinator {
       summary: summary,
       searchIndex: searchIndex,
       embedding: embedding,
+      speakerClusters: speakerClusters,
     );
   }
 
-  static MeetingIntelligenceStageOutcome _embeddingOutcome(
+  static MeetingIntelligenceStageOutcome _providerOutcome(
     MeetingIntelligenceStage stage,
     MeetingIntelligenceOutcomeCode code,
   ) {
