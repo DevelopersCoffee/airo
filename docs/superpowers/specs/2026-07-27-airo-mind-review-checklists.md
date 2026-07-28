@@ -21,6 +21,35 @@ Where a line can be a CI check it is marked **[CI]** and belongs in #1287 or
 
 ---
 
+## Reporting checklist
+
+Applied by **whoever reports work as done** — human or agent — before saying so.
+These are not hypothetical. Both occurred repeatedly during Phase 1 planning,
+and both wasted reviewer time on states that did not exist.
+
+### Claim drift — reported as implemented, absent from the code
+- [ ] Every property described as applied is **read back from the file**, not from the summary that says it was applied
+- [ ] A changelog entry asserting a fix is checked against the code it claims to have changed
+- [ ] **[CI]** Where the property is mechanical, a check enforces it rather than a sentence claiming it (I5)
+
+> Four times in Phase 1 a property was recorded as applied and was absent: the
+> header AAD, the revocation-subject rewrite, error variants declared and never
+> constructed, and the checklist's runtime API. Each was found by a later
+> reviewer, at review cost, having already been marked done.
+
+### State drift — reported complete after a push, not after a merge
+- [ ] Completion is reported after **verifying the merge landed**, never after a successful push
+- [ ] The verification reads the target branch, not the local branch or the PR page
+- [ ] A PR that merges while commits are still being pushed leaves them orphaned — check for commits ahead of the base after any merge you did not perform
+
+> Three times in Phase 1 a PR merged while work was still being pushed, taking
+> the branch's earlier commits and closing. A successful `git push` says
+> nothing about what landed. Once, this left the architecture freeze document
+> unmerged while its contracts went in — the exact window the freeze existed to
+> close.
+
+---
+
 ## Security checklist
 
 Applied by chief-security-officer to any change touching keys, content,
