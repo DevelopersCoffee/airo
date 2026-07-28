@@ -364,4 +364,45 @@ void main() {
       expect(sources, isEmpty);
     },
   );
+
+  testWidgets('renders injected actions beside each configured source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'Inspectable Playlist',
+        url: 'https://example.com/playlist.m3u',
+      )).future,
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    final source = (await container.read(
+      configuredContentSourcesProvider.future,
+    )).single;
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: TvSourceManagementSection(
+              sourceActionsBuilder: (context, ref, source) => [
+                IconButton(
+                  key: ValueKey('inspect-${source.id}'),
+                  onPressed: () {},
+                  icon: const Icon(Icons.search),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(ValueKey('inspect-${source.id}')), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+  });
 }

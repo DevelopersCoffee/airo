@@ -4,6 +4,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
+/// Adds product-owned actions to a configured source row.
+///
+/// [ContentSourceConfig] never contains raw Xtream/Jellyfin credentials.
+/// Consumers that need credentials must resolve them independently through
+/// [contentSourceCredentialStoreProvider] rather than widening this UI
+/// contract.
+typedef TvSourceActionsBuilder =
+    List<Widget> Function(
+      BuildContext context,
+      WidgetRef ref,
+      ContentSourceConfig source,
+    );
+
+/// Builds the Sources detail pane for the TV settings shell.
+typedef TvSourceManagementSectionBuilder = Widget Function({Key? key});
+
+/// Product-composition seam for the TV Sources detail pane.
+///
+/// The public product always resolves to [TvSourceManagementSection].
+/// Overlays may replace the pane while continuing to compose that baseline
+/// widget and its source-management behavior.
+final tvSourceManagementSectionBuilderProvider =
+    Provider<TvSourceManagementSectionBuilder>(
+      (ref) =>
+          ({Key? key}) => TvSourceManagementSection(key: key),
+    );
+
 /// Content-source management section (CV-022 + CV-032): list configured
 /// sources with their capability flags, add a source of any kind
 /// (M3U / Xtream / Stalker / Jellyfin), remove any source with
@@ -11,7 +38,12 @@ import 'package:platform_playlist/platform_playlist.dart';
 /// [XmltvSourceSheet] (a separate concept — EPG data, not a channel/VOD
 /// source).
 class TvSourceManagementSection extends ConsumerStatefulWidget {
-  const TvSourceManagementSection({super.key});
+  const TvSourceManagementSection({super.key, this.sourceActionsBuilder});
+
+  /// Optional product actions rendered before Remove on every source row.
+  ///
+  /// Returning an empty list preserves the baseline row exactly.
+  final TvSourceActionsBuilder? sourceActionsBuilder;
 
   @override
   ConsumerState<TvSourceManagementSection> createState() =>
@@ -345,17 +377,27 @@ class _TvSourceManagementSectionState
                           ),
                         ],
                       ),
-                      trailing: TvFocusable(
-                        onSelect: () => _confirmRemove(config),
-                        semanticLabel: 'Remove ${config.label}',
-                        semanticButton: true,
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.delete_outline,
-                            color: colorScheme.onSurface,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...?widget.sourceActionsBuilder?.call(
+                            context,
+                            ref,
+                            config,
                           ),
-                          onPressed: () => _confirmRemove(config),
-                        ),
+                          TvFocusable(
+                            onSelect: () => _confirmRemove(config),
+                            semanticLabel: 'Remove ${config.label}',
+                            semanticButton: true,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: colorScheme.onSurface,
+                              ),
+                              onPressed: () => _confirmRemove(config),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],

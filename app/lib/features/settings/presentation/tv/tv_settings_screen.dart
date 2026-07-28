@@ -108,7 +108,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
           key: ValueKey('tv_settings_section_playback'),
         );
       case IptvSettingsSectionId.sources:
-        return const TvSourceManagementSection(
+        return ref.watch(tvSourceManagementSectionBuilderProvider)(
           key: ValueKey('tv_settings_section_sources'),
         );
       case IptvSettingsSectionId.accessibility:
