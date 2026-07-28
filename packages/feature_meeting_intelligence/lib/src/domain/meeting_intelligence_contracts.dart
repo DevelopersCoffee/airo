@@ -17,6 +17,8 @@ enum MeetingIntelligenceStage {
 }
 
 enum MeetingIntelligenceStageState {
+  queued('queued'),
+  running('running'),
   completed('completed'),
   failed('failed'),
   cancelled('cancelled'),
@@ -25,6 +27,34 @@ enum MeetingIntelligenceStageState {
   const MeetingIntelligenceStageState(this.stableId);
 
   final String stableId;
+}
+
+class MeetingIntelligenceStageProgress {
+  const MeetingIntelligenceStageProgress({
+    required this.stage,
+    required this.state,
+    this.code,
+  });
+
+  factory MeetingIntelligenceStageProgress.fromOutcome(
+    MeetingIntelligenceStageOutcome outcome,
+  ) {
+    return MeetingIntelligenceStageProgress(
+      stage: outcome.stage,
+      state: outcome.state,
+      code: outcome.code,
+    );
+  }
+
+  final MeetingIntelligenceStage stage;
+  final MeetingIntelligenceStageState state;
+  final MeetingIntelligenceOutcomeCode? code;
+
+  Map<String, String> toDiagnosticMap() => {
+    'stage': stage.stableId,
+    'state': state.stableId,
+    if (code case final code?) 'code': code.stableId,
+  };
 }
 
 enum MeetingIntelligenceOutcomeCode {
