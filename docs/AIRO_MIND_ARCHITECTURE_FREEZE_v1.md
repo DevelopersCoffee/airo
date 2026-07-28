@@ -225,7 +225,7 @@ Recorded so far:
 | Date | Category | What |
 |---|---|---|
 | 2026-07-28 | **A1** | Phase 1 plan held content envelopes in the Vault after §4.1 forbade it — #1319 |
-| 2026-07-28 | **A2** | Review checklists quoted the pre-freeze runtime API and `I1–I6` — fixed before the freeze activated |
+| 2026-07-28 | **A2** | Review checklists quoted the pre-freeze runtime API and `I1–I6`. The fix was written before the freeze activated but **was not merged** — #1314 took the branch's earlier commits and closed while the reconciliation was still being pushed. It survived the freeze undetected and was found by an audit two days later. Fixed in #1322. |
 
 ## Decision hierarchy
 

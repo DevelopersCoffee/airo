@@ -227,7 +227,7 @@ dependencies {
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     if (!isCoinsVariant) {
-        implementation("com.google.mlkit:genai-prompt:1.0.0-beta3")
+        implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     }
 
     // LiteRT-LM for local on-device LLM inference. Only wired when the
@@ -253,7 +253,7 @@ dependencies {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
-        implementation("androidx.profileinstaller:profileinstaller:1.4.0")
+        implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     }
 
 }
