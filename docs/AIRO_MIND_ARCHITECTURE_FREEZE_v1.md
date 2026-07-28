@@ -266,6 +266,52 @@ a mobile device: Android kills processes without warning, flash corrupts, and
 disks fill. A contract verified only on the happy path is verified for the
 conditions under which nobody needed it.
 
+## G0 — Buildability. A revision does not exist until it builds.
+
+**Gate zero, ahead of everything else.**
+
+| Required evidence | |
+|---|---|
+| `cargo check` | green |
+| `cargo test` | green |
+| `cargo clippy --all-targets -- -D warnings` | green |
+
+Only then does an artifact become **Revision N**. Anything before that is a
+**working draft** and is not circulated for review.
+
+### "Revision" redefined
+
+A revision is **not** "the next document". A revision is:
+
+> A buildable, lint-clean, test-passing artifact ready for architectural
+> review.
+
+Which makes four classes of defect **impossible to circulate**: missing
+imports, non-compiling code, dead API references, and signature drift between
+tasks.
+
+### The sequence this replaces
+
+```
+   ✗  Revision N  →  Review  →  Compile  →  Reject
+   ✓  Working draft  →  Compile  →  Revision N  →  Review
+```
+
+That one reordering removes an entire class of review waste. It is not a
+theory: revisions 3, 4, and 6 of the Phase 1 Vault plan were circulated
+without compiling, and each consumed a full council review producing findings
+a compiler surfaces in under ten minutes. The security officer's fourth-round
+verdict named five findings — S3, S5, S6, S8, S12 — that were **controls
+written down and never executed**.
+
+### Why the compiler goes first
+
+It is the highest-ROI reviewer available. It reads every line every time, it
+never tires, and its findings are unarguable. Human reviewers are the scarcest
+resource and the only ones who can judge cryptographic soundness, ownership
+models, and asymptotic behaviour — spending them on `E0433` is the most
+expensive way to find a missing import.
+
 ## The review pipeline is mandatory, and ordered by cost
 
 Cheapest check first. A defect caught by `clippy` costs minutes; the same
@@ -273,7 +319,9 @@ defect caught by a council review costs a review cycle, and four consecutive
 reviews were spent partly on findings a compiler would have surfaced.
 
 ```
-Developer
+Working draft
+   ↓
+G0: cargo check · cargo test · cargo clippy -D warnings   ← becomes Revision N here
    ↓
 cargo fmt
    ↓
