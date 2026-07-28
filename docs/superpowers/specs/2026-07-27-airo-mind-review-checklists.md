@@ -1,6 +1,9 @@
 # Airo Mind — Reusable Review Checklists
 
-Status: **Binding for every Airo Mind change.**
+Status: **Binding for every Airo Mind change.** The runtime API and invariant
+list quoted here are **frozen surfaces** — see
+`docs/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md`. If they drift from the design spec,
+this file is wrong, not the spec.
 Date: 2026-07-27
 Owner: Airo Engineering Council
 
@@ -92,7 +95,7 @@ Its six questions, in order:
 3. Does this bypass the Vault?
 4. Does this bypass projections?
 5. Does this create feature-owned state?
-6. Does this violate I1–I6?
+6. Does this violate I1–I8?
 
 ### The question that governs everything
 - [ ] **Can this be implemented entirely by emitting operations and consuming projections?** If no: either the runtime is missing something generic that should be added once for everyone, or the feature is bypassing the runtime. There is no third branch and no "this feature is special".
@@ -100,7 +103,7 @@ Its six questions, in order:
 ### No direct persistence
 - [ ] **[CI]** The module declares `persistence: runtime | projection | ephemeral` and the declaration matches reality (§11b)
 - [ ] **[CI]** No SQLite, Drift, JSON file, preferences entry, or object store owned by a capability (invariants I2, I4)
-- [ ] The capability uses only the runtime API — `create_operation`, `attach_content`, `query_projection`, `instantiate_context`, `emit_event` — and names no storage engine
+- [ ] The capability uses only the runtime API — `emit_operation`, `attach_content`, `query_projection`, `instantiate_context`, `replay`, `sync` — and names no storage engine
 
 ### Replay determinism
 - [ ] State is derived from the log, never accumulated in place
