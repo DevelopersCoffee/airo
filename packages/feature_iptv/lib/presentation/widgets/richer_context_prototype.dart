@@ -90,6 +90,7 @@ class ProgrammeEnrichmentPrototypeCard extends ConsumerWidget {
                 title: Text(value.title),
                 subtitle: Text(
                   '${value.synopsis}\n'
+                  '${_programmeMetadataLine(value)}'
                   '${value.attribution.notice} · '
                   '${value.attribution.providerName}',
                 ),
@@ -99,6 +100,15 @@ class ProgrammeEnrichmentPrototypeCard extends ConsumerWidget {
       orElse: () => const SizedBox.shrink(),
     );
   }
+}
+
+String _programmeMetadataLine(ProgrammeEnrichment value) {
+  final metadata = [
+    if (value.year != null) value.year.toString(),
+    if (value.rating != null) value.rating.toString(),
+    if (value.genres.isNotEmpty) value.genres.join(', '),
+  ];
+  return metadata.isEmpty ? '' : '${metadata.join(' · ')}\n';
 }
 
 class SportsFixturesPrototypeShelf extends ConsumerWidget {
