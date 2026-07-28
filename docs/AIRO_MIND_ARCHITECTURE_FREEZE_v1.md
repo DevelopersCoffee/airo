@@ -272,6 +272,40 @@ This is what allows the platform to evolve without churning. A contract that
 implementation proves wrong *should* change — that is what steps 2 through 4
 are for. A contract someone would prefer differently should not.
 
+## Conformance tests name properties, not artifacts
+
+**A conformance test must state the architectural property it protects, not the
+implementation artifact that once measured it.** Otherwise the architecture
+evolves, the artifact stops correlating with the property, and the test keeps
+passing while testing nothing. Nothing fails, so nothing draws attention — this
+is the only defect class in this document that gets *quieter* as it gets worse.
+
+Found the hard way. C1 carried *"a synthetic 100k-content vault serializes
+within a constant factor of a 10k-content vault."* That was a faithful proxy
+when the Vault held one envelope per content object. The §4.1 redesign removed
+content from the Vault, and the test began passing at a −0.8% delta — measuring
+a dimension the Vault no longer has, while the dimension that had replaced it
+(the revocation ledger) went unmeasured at +849%. The test did not break. It
+went hollow, and stayed green for three council reviews.
+
+Applying the rule as an audit immediately found two more:
+
+| Test | Artifact it measures | Property it should protect |
+|---|---|---|
+| C1 / S1 vault sizing | content count | **the growth dimension the Vault actually has** — now contexts, devices, and revocations |
+| C2 / S2 replay RSS | operation count | **peak RSS is O(1) in replayed state size** — a log of 1M no-op operations passes while unbounded state growth goes untested |
+| C3 no-op sync | bytes exchanged | **a converged sync costs nothing** — the exchange is bounded while `merge` is O(N), measured at 11.52 ms per replica at 100k entries |
+
+Two rules follow:
+
+1. **Write the property first and the measurement second**, so a reader can see
+   when the second stops serving the first. Every conformance test in this
+   system is stated in that order.
+2. **An ADR that changes a growth dimension, a storage class, or a data model
+   must re-audit the conformance tests that measured the old one.** Changing the
+   architecture without changing its tests is how a suite becomes decorative.
+   ADR-0017 is the first to carry this obligation.
+
 ## Runtime Validation — exit criteria
 
 The phase completes only when **every frozen contract** has all five. This is

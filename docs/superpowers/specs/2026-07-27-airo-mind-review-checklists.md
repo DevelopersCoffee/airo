@@ -178,6 +178,13 @@ Its six questions, in order:
 - [ ] Every invariant this change claims has a **failing form**: a compile error or a test that fails when it is violated. Documentation alone is not evidence.
 - [ ] The test was written before the claim was recorded as applied — three review cycles found properties marked done that were absent from the code
 
+### Conformance tests name properties, not artifacts
+- [ ] Every conformance test states the **architectural property** it protects, then the measurement — in that order, so a reader can see when the second stops serving the first
+- [ ] No test asserts only over an implementation artifact (a count, a field, a wire size) that merely *correlated* with the property when it was written
+- [ ] A change to a growth dimension, storage class, or data model **re-audits the conformance tests that measured the old one** — C1's vault test kept passing at −0.8% for three council reviews after §4.1 removed the dimension it measured
+- [ ] Ask of each green test: *what would have to break for this to fail?* If the answer no longer describes the contract, the test is decorative
+- [ ] A test that goes hollow raises no alarm — this is the only defect class here that gets quieter as it gets worse, so it is checked deliberately or not at all
+
 ### Canonicalization (I6)
 - [ ] Externally-supplied values pass through a canonicalizer before anything else sees them; nothing below that layer receives raw input
 - [ ] Canonicalization happens **exactly once**, not defensively re-applied at each layer — re-canonicalizing hides the layer that forgot
