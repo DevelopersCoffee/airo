@@ -1,3 +1,8 @@
+---
+layout: null
+title: Technical Documentation
+permalink: /technical-docs/
+---
 # 🚀 Airo Super App
 
 **On-device AI platform for PDF/image/audio processing**
