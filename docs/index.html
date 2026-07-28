@@ -25,14 +25,14 @@ layout: null
   <meta property="og:url" content="https://developerscoffee.github.io/airo/">
   <meta property="og:title" content="Airo TV | Smart IPTV & Media Player">
   <meta property="og:description" content="Airo TV is a fast, TV-first media player optimized for M3U playlists and live streaming. Access your custom channel grid effortlessly.">
-  <link rel="icon" type="image/svg+xml" href="./assets/airo-tv/airo-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="./assets/airo-tv/site.css">
   <noscript><style>@media (max-width:780px){.menu-button{display:none}.site-nav{position:static;display:flex;max-height:none;padding:8px 0;border:0;background:transparent;box-shadow:none}.site-nav>a:not(.button){display:none}.site-nav .button{display:inline-flex;width:auto}.nav-shell{height:auto;min-height:68px;flex-wrap:wrap}.site-header{height:auto;position:absolute}}</style></noscript>
   <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-  <script defer src="./assets/airo-tv/third-party/hls.js-1.6.16/hls.min.js"></script>
   <script defer src="./assets/airo-tv/site.js"></script>
 </head>
 <body>
@@ -41,7 +41,7 @@ layout: null
   <header class="site-header">
     <div class="container nav-shell">
       <a class="brand" href="#top" aria-label="Airo home">
-        <img src="./assets/airo-tv/airo-icon.svg" alt="">
+        <img src="./assets/airo-tv/airo-icon.svg" alt="" width="32" height="32" decoding="async">
         <span>Airo <small>Modular platform</small></span>
       </a>
       <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false" data-menu-button>

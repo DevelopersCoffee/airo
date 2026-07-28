@@ -83,6 +83,17 @@ body.menu-open {
 img {
   display: block;
   max-width: 100%;
+  height: auto;
+}
+
+.band,
+.proof-strip,
+.screen-story,
+.guide-list,
+.trust-grid,
+.site-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 400px;
 }
 
 a {

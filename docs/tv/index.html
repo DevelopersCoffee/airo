@@ -43,10 +43,19 @@ layout: null
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <link rel="stylesheet" href="../assets/airo-tv/site.css" />
     <script
       defer
@@ -141,6 +150,8 @@ layout: null
                   class="hero-media"
                   src="../store-assets/airo-tv/01-tv-home-channel-grid.png"
                   alt="Airo TV browse screen using authorized demo data"
+                  fetchpriority="high"
+                  decoding="async"
                 /><video
                   class="hero-preview-video"
                   controls
@@ -413,6 +424,8 @@ layout: null
                 <img
                   src="../store-assets/airo-tv/04-tv-playlist-source.png"
                   alt="Airo TV playlist source setup using a neutral authorized demo URL"
+                  loading="lazy"
+                  decoding="async"
                 />
               </figure>
               <div class="screen-copy">
@@ -429,6 +442,8 @@ layout: null
                 <img
                   src="../store-assets/airo-tv/01-tv-home-channel-grid.png"
                   alt="Airo TV browse screen with channel categories and visible remote focus"
+                  loading="lazy"
+                  decoding="async"
                 />
               </figure>
               <div class="screen-copy">
@@ -445,6 +460,8 @@ layout: null
                 <img
                   src="../store-assets/airo-tv/03-tv-search-dialog.png"
                   alt="Airo TV channel search using neutral demo data"
+                  loading="lazy"
+                  decoding="async"
                 />
               </figure>
               <div class="screen-copy">
@@ -461,6 +478,8 @@ layout: null
                 <img
                   src="../store-assets/airo-tv/02-tv-now-playing.png"
                   alt="Airo TV now-playing screen using authorized demo content"
+                  loading="lazy"
+                  decoding="async"
                 />
               </figure>
               <div class="screen-copy">
