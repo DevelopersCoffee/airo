@@ -181,5 +181,5 @@ Ready" gate — this council supplies the specific named reviewers for it.
 ## Related Documents
 
 - [Agent Policy](./AGENT_POLICY.md) — lifecycle, gates, contracts
-- [Agent Operating Rules](./RULES.md)
+- [Workflow](./WORKFLOW.md) — branches, validation, device choice, CI spend, PRs
 - [Design spec](../superpowers/specs/2026-07-16-engineering-council-design.md)

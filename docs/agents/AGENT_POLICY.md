@@ -449,8 +449,6 @@ the feature packet is complete and reviewed.
 
 ## Related Documents
 
-- [Agent Operating Rules](./RULES.md)
-- [Agent Activation Sequence](./SEQUENCE.md)
-- [Agent SDLC](./SDLC.md)
+- [Workflow](./WORKFLOW.md) — branches, validation, device choice, CI spend, PRs
 - [Sprint sequencing issue](https://github.com/DevelopersCoffee/airo/issues/322)
 - [Automation-flow requirement](https://github.com/DevelopersCoffee/airo/issues/323)

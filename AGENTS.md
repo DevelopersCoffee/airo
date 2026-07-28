@@ -31,6 +31,13 @@ mechanism as `packages/stubs`. Never put pro logic in the public copy — only
 widen the seam (`createEntitlements`, `registerProModules`) when the overlay
 needs it.
 
+**Web has no `dart:ffi`.** Drift/SQLite and other native paths need a
+`*_stub.dart` no-op picked by conditional import —
+`import 'x_stub.dart' if (dart.library.io) 'x_native.dart';`. Plugin-level gaps
+use the swap packages under `packages/stubs/`. Run
+`cd app && flutter build web --release` before landing anything that touches a
+native path.
+
 **Framework and application layers do not cross unilaterally.** Framework owns
 contracts, runtime boundaries, storage schemas, security rules, and platform
 abstractions. Application owns journeys, screens, copy, routine packs, and
