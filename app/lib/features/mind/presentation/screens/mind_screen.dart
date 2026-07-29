@@ -119,7 +119,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Describe images and solve visual questions on device.',
             icon: Icons.image_outlined,
             color: Colors.red.shade700,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/quest/new'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
@@ -127,7 +127,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Transcribe and translate recordings privately.',
             icon: Icons.mic_none,
             color: Colors.green.shade700,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/quest/new'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
@@ -135,7 +135,9 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Compare prompts with temperature and top-k controls.',
             icon: Icons.tune,
             color: Colors.indigo,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push(
+              '/mind/chat?prefill=Open%20Prompt%20Lab%20and%20compare%20two%20prompts%20with%20temperature%20and%20top-k.',
+            ),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
@@ -143,7 +145,9 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Try offline FunctionGemma actions and a playful garden.',
             icon: Icons.local_florist_outlined,
             color: Colors.teal.shade700,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push(
+              '/mind/chat?prefill=Use%20the%20offline%20Mobile%20Actions%20model%20for%20this%20approved%20device%20task.',
+            ),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
