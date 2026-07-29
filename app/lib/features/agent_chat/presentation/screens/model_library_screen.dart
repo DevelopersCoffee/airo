@@ -671,7 +671,13 @@ class _ModelLibraryContent extends ConsumerWidget {
             child: _ProjectTemplateCard(
               template: template,
               candidate: state.recommendedFor(template.task),
-              package: state.packageFor(template.task),
+              // Keep the catalog package available to setup callbacks, but do
+              // not render an uninstalled LiteRT artifact as if it were part
+              // of the active project. The card should describe executable
+              // state, not a download recommendation.
+              package: state.packageFor(template.task)?.isDownloaded == true
+                  ? state.packageFor(template.task)
+                  : null,
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
