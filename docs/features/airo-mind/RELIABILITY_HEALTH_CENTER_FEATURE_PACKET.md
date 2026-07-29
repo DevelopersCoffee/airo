@@ -91,3 +91,14 @@ This slice implements the typed health/diagnostic contract, deterministic
 composition, and presentation seam. Download transport hardening, model
 advisor ranking, backup/sync, accessibility remediation, and additional
 backends remain follow-up slices using this contract.
+
+## Airo Mind use-case catalog
+
+The Airo Mind shell now exposes the product use cases represented by the
+approved reference designs: AI Chat (including a supported-model thinking
+toggle), Agent Skills, Ask Image, Audio Scribe, Prompt Lab, Mobile Actions,
+Tiny Garden, and Model Management/Benchmark. These tiles are intentionally
+thin entry points into the model library and runtime health surface; they do
+not duplicate runtime policy in the application layer. Local-model copy makes
+the privacy boundary explicit: prompts and inference stay on-device when a
+local runtime is selected, while cloud models remain clearly labeled.

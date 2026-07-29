@@ -15,6 +15,7 @@ import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
+import 'model_health_center_screen.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -33,7 +34,9 @@ enum AssistantTask {
   image('Image Project', Icons.image_outlined),
   audio('Audio Project', Icons.mic_none),
   skills('Agent Skills Project', Icons.extension_outlined),
-  actions('Action Project', Icons.touch_app_outlined);
+  actions('Action Project', Icons.touch_app_outlined),
+  promptLab('Prompt Lab Project', Icons.tune),
+  tinyGarden('Tiny Garden Project', Icons.local_florist_outlined);
 
   const AssistantTask(this.label, this.icon);
 
@@ -48,6 +51,8 @@ enum AssistantTask {
     AssistantTask.audio => ModelCapability.audioUnderstanding,
     AssistantTask.skills => ModelCapability.agentSkills,
     AssistantTask.actions => ModelCapability.mobileActions,
+    AssistantTask.promptLab => ModelCapability.promptLab,
+    AssistantTask.tinyGarden => ModelCapability.mobileActions,
   };
 }
 
@@ -125,6 +130,23 @@ class AssistantProjectTemplate {
       primaryAction: 'Prepare audio project',
       defaultPackage: 'Gemma 3n E2B Multimodal',
       artifactLabel: 'Transcript draft',
+    ),
+    AssistantProjectTemplate(
+      task: AssistantTask.promptLab,
+      title: 'Prompt Lab',
+      description: 'Compare prompts with controlled generation settings.',
+      primaryAction: 'Open prompt lab',
+      defaultPackage: 'Gemma 4 E2B Instruct',
+      artifactLabel: 'Prompt experiment',
+    ),
+    AssistantProjectTemplate(
+      task: AssistantTask.tinyGarden,
+      title: 'Tiny Garden',
+      description:
+          'Try a playful offline world controlled with natural language.',
+      primaryAction: 'Open Tiny Garden',
+      defaultPackage: 'FunctionGemma 270M',
+      artifactLabel: 'Garden state',
     ),
   ];
 
@@ -272,6 +294,8 @@ class AssistantModelLibraryState {
       AssistantTask.image,
       AssistantTask.audio,
       AssistantTask.actions,
+      AssistantTask.promptLab,
+      AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
       if (model != null) {
@@ -323,6 +347,14 @@ class AssistantModelLibraryState {
       AssistantTask.image || AssistantTask.audio => [
         if (package != null) assistantModelIdForOfflineModel(package.id),
         geminiCloudAssistantModelId,
+      ],
+      AssistantTask.promptLab => [
+        litertGemmaAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
+      ],
+      AssistantTask.tinyGarden => [
+        geminiNanoAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
     };
 
@@ -395,6 +427,8 @@ class AssistantModelLibraryState {
       AssistantTask.audio: gemma3n,
       AssistantTask.skills: gemma4E2b,
       AssistantTask.actions: functionGemma,
+      AssistantTask.promptLab: gemma4E2b,
+      AssistantTask.tinyGarden: functionGemma,
     };
   }
 
@@ -602,6 +636,11 @@ class _ModelLibraryContent extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _ProjectHierarchyBanner(state: state),
+        const SizedBox(height: 16),
+        _RuntimeHealthButton(
+          candidate: state.recommended,
+          onOpenModelManager: onOpenModelManager,
+        ),
         const SizedBox(height: 16),
         Text('Choose category', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
@@ -930,6 +969,61 @@ class _ModelLibraryContent extends ConsumerWidget {
               child: const Text('Close'),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _RuntimeHealthButton extends StatelessWidget {
+  const _RuntimeHealthButton({
+    required this.candidate,
+    required this.onOpenModelManager,
+  });
+
+  final AssistantModelCandidate candidate;
+  final VoidCallback onOpenModelManager;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.health_and_safety_outlined),
+        title: const Text('Runtime Health Center'),
+        subtitle: const Text(
+          'See why this model is ready, blocked, or still preparing.',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final model = candidate.package;
+          if (model == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Health details will appear after a local model is selected.',
+                ),
+              ),
+            );
+            return;
+          }
+          final report = ModelHealthReport.fromFacts(
+            model: model,
+            compatibility: candidate.compatibility,
+          );
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ModelHealthCenterScreen(
+                report: report,
+                onAction: (action) {
+                  if (action == ModelHealthAction.resumeDownload ||
+                      action == ModelHealthAction.chooseAlternative ||
+                      action == ModelHealthAction.repair) {
+                    onOpenModelManager();
+                  }
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
