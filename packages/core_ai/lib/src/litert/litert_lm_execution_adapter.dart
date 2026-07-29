@@ -7,7 +7,7 @@ import 'litert_lm_runtime_adapter.dart';
 /// Policy, model selection, and resource decisions remain in Rust. This class
 /// only translates the immutable plan into the existing LiteRT client surface.
 class LiteRtLmExecutionAdapter {
-  LiteRtLmExecutionAdapter({required LiteRtLmClient client}) : _client = client;
+  LiteRtLmExecutionAdapter({required this._client});
 
   final LiteRtLmClient _client;
 
