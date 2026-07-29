@@ -630,6 +630,38 @@ the wrong invariant.
 So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
 architecture** — implementations, which deserve the same review as any other.
 
+### Executed and reviewed are separate statuses
+
+An assertion that has run is not an assertion that is right. Track both, because
+"the gate ran" otherwise becomes shorthand for "the assertion is architecturally
+correct":
+
+| | Means | Established by |
+|---|---|---|
+| **Executed** | its behaviour has been observed | a capture in the evidence directory |
+| **Invariant reviewed** | it enforces the invariant, not merely the finding | the assertion-vs-invariant review |
+
+`A04` is the worked example: executed, failing correctly, and **not** invariant
+reviewed — it greps a method body where `I6` demands a type boundary. Green on
+`A04` would be wrong evidence, and only the second column can say so.
+
+### A mutant must be a plausible defective implementation
+
+Not an arbitrarily broken program. Otherwise a mutation suite rewards itself for
+detecting states that could never exist.
+
+> **An asymmetric mutant tests nothing.**
+
+Demonstrated: removing the header AAD from `decrypt` only failed 14 tests —
+trivially caught, and an implementation nobody would write, since the crate
+would fail its own round trip immediately. Removing it from **both** sides stays
+self-consistent, fails exactly one test, and is the state Revision 8 actually
+shipped.
+
+The rule: a mutant must be something a competent implementer could plausibly
+have written, or shipped, or introduced by refactoring. The mutation suite is
+exercising the threat model, not the code.
+
 ### Provenance and correctness are independent
 
 An executable check has two qualities, and neither implies the other:
