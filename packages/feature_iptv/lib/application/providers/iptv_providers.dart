@@ -340,6 +340,17 @@ class PlaylistSourcesUnavailableException implements Exception {
             'your connection and retry.';
 }
 
+/// Re-runs the channel libraries after a load failure.
+///
+/// Invalidating only [iptvChannelsProvider] replays its dependency's cached
+/// error, so a retry that touches just the merged provider looks like it did
+/// nothing. The source loaders have to be invalidated with it.
+void invalidateChannelLibraries(WidgetRef ref) {
+  ref.invalidate(configuredM3uChannelsProvider);
+  ref.invalidate(configuredXtreamChannelsProvider);
+  ref.invalidate(iptvChannelsProvider);
+}
+
 final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   ref,
 ) async {

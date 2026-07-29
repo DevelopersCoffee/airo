@@ -1274,7 +1274,7 @@ class _StreamTabContent extends ConsumerWidget {
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => ref.refresh(iptvChannelsProvider),
+            onPressed: () => invalidateChannelLibraries(ref),
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
           ),

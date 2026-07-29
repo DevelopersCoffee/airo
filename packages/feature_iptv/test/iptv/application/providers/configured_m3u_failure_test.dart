@@ -1,6 +1,7 @@
 import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_playlist/platform_playlist.dart';
@@ -177,6 +178,74 @@ void main() {
     },
   );
 
+  testWidgets(
+    'retrying after a failure re-runs the source loaders instead of '
+    'replaying the cached error',
+    (tester) async {
+      var fetchAttempts = 0;
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          m3uSourceParserFactoryProvider.overrideWithValue(
+            (sourceId) => _CountingSourceParser(
+              prefs: prefs,
+              sourceId: sourceId,
+              onFetch: () => fetchAttempts++,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container
+          .read(contentSourceStoreProvider)
+          .replaceAll([source('m3u-dead')]);
+      container.invalidate(configuredContentSourcesProvider);
+
+      late WidgetRef widgetRef;
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Consumer(
+              builder: (context, ref, _) {
+                widgetRef = ref;
+                final channels = ref.watch(iptvChannelsProvider);
+                return Text(
+                  channels.hasError ? 'error' : 'pending',
+                  textDirection: TextDirection.ltr,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(fetchAttempts, 1);
+      expect(find.text('error'), findsOneWidget);
+
+      // The naive retry: invalidating only the merged provider replays the
+      // dependency's cached error without touching the source.
+      widgetRef.invalidate(iptvChannelsProvider);
+      await tester.pumpAndSettle();
+      expect(
+        fetchAttempts,
+        1,
+        reason:
+            'documents why Retry cannot just refresh iptvChannelsProvider',
+      );
+
+      invalidateChannelLibraries(widgetRef);
+      await tester.pumpAndSettle();
+
+      expect(
+        fetchAttempts,
+        2,
+        reason: 'Retry must actually hit the source again',
+      );
+    },
+  );
+
   test('the failure message names no source URL', () {
     expect(
       const PlaylistSourcesUnavailableException(3).toString(),
@@ -234,4 +303,32 @@ class _UnavailableSourceParser extends M3UParserService {
   Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
     bool forceRefresh = false,
   }) async => const PlaylistFetchOutcome.unavailable();
+}
+
+/// Counts fetch attempts so a retry can be told apart from a replayed error.
+class _CountingSourceParser extends M3UParserService {
+  _CountingSourceParser({
+    required super.prefs,
+    required String sourceId,
+    required this.onFetch,
+  }) : super(dio: Dio(), sourceId: sourceId);
+
+  final void Function() onFetch;
+  String? _url;
+
+  @override
+  String? getPlaylistUrl() => _url;
+
+  @override
+  Future<void> setPlaylistUrl(String url) async {
+    _url = url;
+  }
+
+  @override
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async {
+    onFetch();
+    return const PlaylistFetchOutcome.unavailable();
+  }
 }
