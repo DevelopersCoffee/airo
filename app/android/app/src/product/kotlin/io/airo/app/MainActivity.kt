@@ -9,8 +9,12 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.Settings
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.telephony.TelephonyManager
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -35,12 +39,15 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
+    private val VOICE_PERMISSION_REQUEST = 9003
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
     private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var pendingVoiceResult: MethodChannel.Result? = null
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
@@ -77,6 +84,18 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
                     }
                     "openWifiSettings" -> openWifiSettings(result)
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.airo.voice_search")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isAvailable" -> result.success(
+                        SpeechRecognizer.isRecognitionAvailable(this)
+                    )
+                    "startListening" -> startVoiceListening(result)
+                    "stopListening" -> stopVoiceListening(result)
                     else -> result.notImplemented()
                 }
             }
@@ -203,6 +222,150 @@ class MainActivity : AudioServiceFragmentActivity() {
                     ))
                 }
             }
+            VOICE_PERMISSION_REQUEST -> {
+                val result = pendingVoiceResult
+                pendingVoiceResult = null
+                if (result == null) return
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    beginVoiceListening(result)
+                } else {
+                    result.success(
+                        mapOf(
+                            "error" to "microphone_permission_denied",
+                            "message" to "Microphone permission is required for voice input."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun startVoiceListening(result: MethodChannel.Result) {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            result.success(
+                mapOf(
+                    "error" to "speech_unavailable",
+                    "message" to "Speech recognition is unavailable on this device."
+                )
+            )
+            return
+        }
+        if (pendingVoiceResult != null) {
+            result.success(
+                mapOf(
+                    "error" to "speech_busy",
+                    "message" to "A voice capture is already in progress."
+                )
+            )
+            return
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            pendingVoiceResult = result
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), VOICE_PERMISSION_REQUEST)
+            return
+        }
+        beginVoiceListening(result)
+    }
+
+    private fun beginVoiceListening(result: MethodChannel.Result) {
+        val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer?.destroy()
+        speechRecognizer = recognizer
+        pendingVoiceResult = result
+        recognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) = Unit
+            override fun onBeginningOfSpeech() = Unit
+            override fun onRmsChanged(rmsdB: Float) = Unit
+            override fun onBufferReceived(buffer: ByteArray?) = Unit
+            override fun onEndOfSpeech() = Unit
+            override fun onPartialResults(partialResults: Bundle?) = Unit
+            override fun onEvent(eventType: Int, params: Bundle?) = Unit
+
+            override fun onResults(results: Bundle?) {
+                val text = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                val confidence = results
+                    ?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+                    ?.firstOrNull()
+                completeVoice(
+                    if (text.isNullOrBlank()) {
+                        mapOf(
+                            "error" to "no_speech",
+                            "message" to "No speech was recognized."
+                        )
+                    } else {
+                        mapOf(
+                            "text" to text,
+                            "confidence" to (confidence ?: 1.0f)
+                        )
+                    }
+                )
+            }
+
+            override fun onError(error: Int) {
+                completeVoice(
+                    mapOf(
+                        "error" to "speech_error_$error",
+                        "message" to speechErrorMessage(error)
+                    )
+                )
+            }
+        })
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+        try {
+            recognizer.startListening(intent)
+        } catch (error: Exception) {
+            completeVoice(
+                mapOf(
+                    "error" to "speech_start_failed",
+                    "message" to (error.message ?: "Speech recognition could not start.")
+                )
+            )
+        }
+    }
+
+    private fun completeVoice(payload: Map<String, Any?>) {
+        val result = pendingVoiceResult
+        pendingVoiceResult = null
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        result?.success(payload)
+    }
+
+    private fun stopVoiceListening(result: MethodChannel.Result) {
+        pendingVoiceResult?.success(
+            mapOf(
+                "error" to "speech_cancelled",
+                "message" to "Voice capture was cancelled."
+            )
+        )
+        pendingVoiceResult = null
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        result.success(null)
+    }
+
+    private fun speechErrorMessage(error: Int): String {
+        return when (error) {
+            SpeechRecognizer.ERROR_AUDIO -> "Microphone audio could not be captured."
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required for voice input."
+            SpeechRecognizer.ERROR_NETWORK,
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Speech recognition network request timed out."
+            SpeechRecognizer.ERROR_NO_MATCH -> "No speech was recognized."
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Speech recognition is busy."
+            SpeechRecognizer.ERROR_SERVER -> "The speech recognition service failed."
+            else -> "Speech recognition failed."
         }
     }
 
@@ -214,6 +377,14 @@ class MainActivity : AudioServiceFragmentActivity() {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onDestroy() {
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        pendingVoiceResult = null
+        super.onDestroy()
     }
 
     private fun readCalendarEvents(date: String, endDate: String?, result: MethodChannel.Result) {
