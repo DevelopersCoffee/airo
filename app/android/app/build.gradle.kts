@@ -230,12 +230,9 @@ dependencies {
         implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     }
 
-    // LiteRT-LM for local on-device LLM inference. Only wired when the
-    // root `build.gradle.kts` was able to authenticate against the
-    // private google/generative-ai-android package registry (i.e.
-    // GITHUB_TOKEN is set with `read:packages`). CI validation builds
-    // and unauthenticated clones fall back to the stub loader in
-    // `app/lib/core/services/litert_lm_service.dart`.
+    // LiteRT-LM for local on-device LLM inference. The artifact is published
+    // on Google's public Maven repository and is enabled by default; set
+    // AIRO_USE_LITERT_STUB=true for a dependency-free validation build.
     //
     // Pinned explicitly — do NOT use `latest.release`. Floating versions
     // caused issue #860 (silent CI break for ~10 days on a Backend/close API
