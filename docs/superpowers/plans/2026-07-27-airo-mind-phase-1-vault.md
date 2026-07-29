@@ -382,6 +382,19 @@ pub enum VaultError {
 
     #[error("device certificate is not signed by this identity")]
     UntrustedCertificate,
+
+    /// `SEC-15`. Distinct from `UntrustedCertificate` on purpose: a revoked
+    /// device's certificate *is* validly signed, and collapsing the two would
+    /// tell an operator the signature failed when the truth is that a genuine
+    /// credential is no longer honoured.
+    #[error("device `{0}` has been revoked")]
+    DeviceRevoked(String),
+
+    /// `SEC-14`. Identity retirement is irreversible — a destroyed context id
+    /// can never be re-created. The user-visible name may be reused under a
+    /// new id; the identity may not.
+    #[error("context `{0}` was destroyed and its identity cannot be reused")]
+    ContextRetired(String),
 }
 
 #[cfg(test)]
@@ -424,7 +437,9 @@ mod tests {
             ("SerializationFailed", "package.rs"),
             ("RngUnavailable", "random.rs"),
             ("ValueTooLong", "encoding.rs"),
-            ("UntrustedCertificate", "device.rs"),
+            ("UntrustedCertificate", "aggregate.rs"),
+            ("DeviceRevoked", "aggregate.rs"),
+            ("ContextRetired", "aggregate.rs"),
         ];
         assert!(CONSTRUCTED_IN.iter().all(|(_, site)| !site.is_empty()));
     }
@@ -2918,11 +2933,34 @@ impl Vault {
         &self.revocations
     }
 
-    /// Creates a context key if absent. Idempotent.
+    /// Creates a context key if absent. Idempotent for live contexts,
+    /// **fail-closed for retired ones**.
+    ///
+    /// `SEC-14` — **identity retirement is irreversible.** A destroyed context
+    /// id can never be re-created. A user-visible name may be reused; the
+    /// identity behind it may not, because revocation history belongs to
+    /// identities and not to names.
+    ///
+    /// The attack this closes, reproduced by probe against revision 7:
+    /// `destroy_context("c")` revokes the id and drops the key, then
+    /// `add_context("c")` silently mints a *new* key under the *revoked* id.
+    /// Content wrapped under the new key looks live. Then restore applies the
+    /// ledger, sees `c` revoked, and destroys every wrapping under it —
+    /// including everything created after the resurrection. The user loses
+    /// content they created after the deletion, and nothing reports it.
+    ///
+    /// Fail-closed rather than silently re-issuing: an id in the ledger is
+    /// retired, and a caller that wants the same *name* mints a new id. Phase 1
+    /// takes ids from its caller, so id minting is the runtime's job; the Vault
+    /// only refuses to resurrect. Naming lands with the ontology layer in
+    /// Phase 2, where a context gains a label separate from its identity.
     ///
     /// Fallible because key generation is fallible — `or_insert_with` cannot
     /// carry a `Result`, so this is written long-hand.
     pub fn add_context(&mut self, context_id: &str) -> Result<&ContextKey, VaultError> {
+        if self.revocations.is_revoked(&RevocationSubject::Context(context_id.to_string())) {
+            return Err(VaultError::ContextRetired(context_id.to_string()));
+        }
         if !self.context_keys.contains_key(context_id) {
             let key = ContextKey::generate()?;
             self.context_keys.insert(context_id.to_string(), key);
@@ -2971,18 +3009,33 @@ impl Vault {
     /// The caller supplies the envelope — the Vault holds no per-content
     /// record — and receives it back mutated. Storing it again is the
     /// caller's obligation.
+    /// `SEC-2` — the `content_id` parameter is **deleted**, not checked.
+    ///
+    /// Revision 7 gated on the `content_id` *argument* while the AAD bound the
+    /// *envelope's own* `content_id`. Two sources of truth for one identity
+    /// inside a signature, and any disagreement between them is a bypass.
+    /// Reproduced from an external consumer: destroy content A, then
+    /// `link_content("B", ctx, &mut envelope_of_A)` returns `Ok(())` and A
+    /// gains a live wrapping under a live context key.
+    ///
+    /// Adding an equality check between the two would be the wrong fix — it
+    /// keeps the second source of truth and guards it at runtime. The envelope
+    /// already carries its identity, so the parameter goes. `unlink_content`
+    /// below already has exactly this shape; after the change the two are
+    /// symmetric, `ContentEnvelope::content_id()` gains its non-test caller,
+    /// and its `#[allow(dead_code)]` disappears.
     pub fn link_content(
         &mut self,
-        content_id: &str,
         context_id: &str,
         envelope: &mut ContentEnvelope,
     ) -> Result<(), VaultError> {
-        if self.revocations.is_content_revoked(content_id) {
-            return Err(VaultError::ContentRevoked(content_id.to_string()));
+        let content_id = envelope.content_id().to_string();
+        if self.revocations.is_content_revoked(&content_id) {
+            return Err(VaultError::ContentRevoked(content_id));
         }
         let existing = envelope
             .first_context()
-            .ok_or_else(|| VaultError::ContentNotFound(content_id.to_string()))?
+            .ok_or_else(|| VaultError::ContentNotFound(content_id.clone()))?
             .to_string();
         let source_key = self
             .context_keys
@@ -3063,17 +3116,50 @@ impl Vault {
         Ok(PurgeDirective { subject, epoch })
     }
 
-    /// Records a device certificate after verifying it against the root.
-    /// Returns whether the certificate was accepted.
-    /// Returns `Result`, not `bool`. `vault.trust_device(cert);` discarding a
-    /// security decision must not compile silently.
-    pub fn trust_device(&mut self, certificate: DeviceCertificate) -> Result<(), VaultError> {
+    /// **The one trust admission function. `SEC-15`.**
+    ///
+    /// Every path that admits a device delegates here: `trust_device`,
+    /// restore, pairing (#1257), import, and `C3` sync. None of them
+    /// implements a trust check of its own.
+    ///
+    /// Revision 7 had two trust entry points that disagreed. Restore enforced
+    /// the revocation ledger; the live path did not — `trust_device` verified
+    /// the signature and never consulted the ledger, so a revoked device
+    /// presenting its still-valid certificate was re-admitted. The signature
+    /// is genuine; that is exactly why the signature alone is not the answer.
+    /// Revocation is the statement that a genuine credential is no longer
+    /// honoured.
+    ///
+    /// Written as one function rather than as a second check inside
+    /// `trust_device` because the finding is structural: the defect was not a
+    /// missing line, it was that admission logic lived in two places and
+    /// nothing forced them to agree. A single choke point means the next entry
+    /// point cannot quietly become a third — the compiler routes it here or it
+    /// does not compile.
+    ///
+    /// Order matters: **revocation is checked before signature.** A revoked
+    /// device's certificate verifies fine, so checking the signature first and
+    /// the ledger second would still be correct, but it does cryptographic
+    /// work on behalf of an identity already refused.
+    fn admit_device(&mut self, certificate: DeviceCertificate) -> Result<(), VaultError> {
+        let subject = RevocationSubject::Device(certificate.device_id.clone());
+        if self.revocations.is_revoked(&subject) {
+            return Err(VaultError::DeviceRevoked(certificate.device_id.clone()));
+        }
         if !certificate.verify_against(&self.root_public_key) {
             return Err(VaultError::UntrustedCertificate);
         }
         self.device_certificates.retain(|c| c.device_id != certificate.device_id);
         self.device_certificates.push(certificate);
         Ok(())
+    }
+
+    /// Records a device certificate after verifying it against the root.
+    ///
+    /// Returns `Result`, not `bool`. `vault.trust_device(cert);` discarding a
+    /// security decision must not compile silently.
+    pub fn trust_device(&mut self, certificate: DeviceCertificate) -> Result<(), VaultError> {
+        self.admit_device(certificate)
     }
 
     pub fn trusted_devices(&self) -> &[DeviceCertificate] {
@@ -3297,12 +3383,55 @@ pub const RECOVERY_PACKAGE_FORMAT_VERSION: u32 = 1;
 // so the derive does not build — and "fixing" it with `#[zeroize(skip)]` on
 // `context_keys` would skip every field and zeroize nothing. The guarantee
 // comes from `KeyBytes`' own drop glue running per element, asserted below.
+/// `SEC-1` — fields are `pub(super)`, not `pub(crate)`, and mutation is by
+/// method.
+///
+/// Revision 7 exposed `context_keys` and `KeyBytes::as_bytes` at `pub(crate)`,
+/// so any module in the crate could read every context key by calling
+/// `RecoveryPackage::decrypt` — no revocations applied. The `RevocationsApplied`
+/// witness guarded `Vault::from_payload` and not the door that hands out keys.
+/// Reproduced by an in-crate probe.
+///
+/// **The fix is visibility, not a witness parameter.** Threading
+/// `RevocationsApplied` into the key accessors was considered and rejected by
+/// `RA-1`: a witness is only as strong as the set of modules that can mint one,
+/// and that set grows every phase — the identical failure mode as `LogHead`'s
+/// `pub(crate)` field, in a crate that has already had to fix it once. Narrow
+/// visibility is checked by the compiler on every item on every build.
+///
+/// `restore.rs` needs exactly four things from the payload — the root key for
+/// the identity check, the ledger for validate/merge/head_epoch, and the two
+/// purges — and **none of them is key material.** With the purges as methods
+/// below, `context_keys` and `KeyBytes::as_bytes` are reachable only from
+/// `package.rs`, and `as_bytes` is left with a single caller:
+/// `Vault::from_payload`.
 #[derive(Serialize, Deserialize)]
 pub(crate) struct VaultPayload {
-    pub(crate) root_public_key: RootPublicKey,
-    pub(crate) context_keys: BTreeMap<String, KeyBytes>,
-    pub(crate) device_certificates: Vec<DeviceCertificate>,
-    pub(crate) revocations: RevocationLedger,
+    pub(super) root_public_key: RootPublicKey,
+    pub(super) context_keys: BTreeMap<String, KeyBytes>,
+    pub(super) device_certificates: Vec<DeviceCertificate>,
+    pub(super) revocations: RevocationLedger,
+}
+
+impl VaultPayload {
+    /// The four things `restore.rs` legitimately needs. None is key material.
+    pub(super) fn purge_context(&mut self, id: &str) -> bool {
+        self.context_keys.remove(id).is_some()
+    }
+
+    pub(super) fn purge_device(&mut self, id: &str) -> bool {
+        let before = self.device_certificates.len();
+        self.device_certificates.retain(|c| c.device_id != id);
+        self.device_certificates.len() != before
+    }
+
+    pub(super) fn root_public_key(&self) -> &RootPublicKey {
+        &self.root_public_key
+    }
+
+    pub(super) fn revocations_mut(&mut self) -> &mut RevocationLedger {
+        &mut self.revocations
+    }
 }
 
 /// The failing form for the zeroization claim above (I5). If `KeyBytes` ever
@@ -3331,11 +3460,13 @@ impl std::fmt::Debug for KeyBytes {
 }
 
 impl KeyBytes {
-    pub(crate) fn new(bytes: [u8; 32]) -> Self {
+    pub(super) fn new(bytes: [u8; 32]) -> Self {
         Self(bytes)
     }
 
-    pub(crate) fn as_bytes(&self) -> &[u8; 32] {
+    /// `SEC-1`. `pub(super)`, so only `package.rs` can name a key byte. Its
+    /// one remaining caller is `Vault::from_payload`.
+    pub(super) fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 }
@@ -3454,7 +3585,16 @@ impl RecoveryPackage {
         Ok(package)
     }
 
-    pub(crate) fn decrypt(&self, seed: &Seed) -> Result<VaultPayload, VaultError> {
+    /// `SEC-1` — **private.** The payload never leaves this module.
+    ///
+    /// Revision 7 had this `pub(crate)` returning a `pub(crate)` payload whose
+    /// key accessors were also `pub(crate)`, which is the route an in-crate
+    /// probe used to read every context key without applying revocations. The
+    /// only way from a package to a `Vault` is now
+    /// `open` → `SealedRestore` → `apply_revocations` → `AppliedRestore` →
+    /// `into_vault`, and `RevocationsApplied` stays as belt-and-braces on
+    /// `from_payload` rather than becoming the primary control.
+    fn decrypt(&self, seed: &Seed) -> Result<VaultPayload, VaultError> {
         self.check_supported()?;
         let nonce_bytes: [u8; 24] = self
             .nonce
