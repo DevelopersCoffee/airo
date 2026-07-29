@@ -43,6 +43,51 @@ A gate discovered to be *wrong* during the first run is a finding, recorded as
 such, not silently corrected. The distinction: a script that cannot run is
 broken; a script that runs and reports something I dislike is working.
 
+## Ruling on `A04` / `SEC-32`, recorded before first execution
+
+Three facts could not all stay true: the implementation does not normalize,
+design `§I6` and `Freeze §4` record it as resolved, and `A04` asserts it exists.
+Decided now so that Revision 9B does not drift into implementing it merely
+because an assertion expects it.
+
+**NFC normalization is part of the architecture.** Not because `A04` asserts it —
+because `I6` (frozen at v1, predating this revision) already required boundary
+canonicalization and left only the Unicode *form* unstated, and because
+`SEC-32`'s probe demonstrates a crypto-shredding bypass: destroy a context, re-add
+the same name in NFD, and the retired identity is resurrected while
+`is_content_destroyed` reports it live. `Freeze §4` and `§I6` stand; the code is
+behind them.
+
+**`A04` is nonetheless asserting the wrong thing, and this is a finding against
+my own gate.** It greps `aggregate.rs` for `is_control`. Satisfying that would
+*violate* `I6`:
+
+> A function that accepts a raw value **and** a canonical one at the same type is
+> a defect: the type must distinguish them, or the raw form must be unreachable
+> past the boundary.
+
+Phase 1's Vault takes ids as `&str` from its caller. If the Vault normalizes and
+Phase 2's runtime also normalizes, that is canonicalization twice — which `I6`
+forbids in the same breath: *"re-canonicalizing hides the layer that forgot."*
+
+What `I6` actually demands is a **`ContextId` newtype constructible only by
+canonicalizing**, with the Vault's public API taking `ContextId` rather than
+`&str`. Then the defect `I6` names is unrepresentable, and the property holds
+wherever the boundary currently sits, because a `ContextId` cannot be
+re-canonicalized — only constructed from a raw `&str`, exactly once.
+
+**`A04` is left unchanged for the first execution.** The scope freeze permits
+only changes that make a gate *execute*, and `A04` will fail correctly: nothing
+normalizes anywhere in the crate. Its pattern is repointed in 9B, alongside the
+implementation, as `A04` (newtype exists) plus a new assertion that the public
+API does not accept `&str` for identifiers.
+
+The generalization, which is why this is recorded rather than quietly fixed:
+**an assertion can encode the wrong architectural decision as easily as a doc
+comment can.** `G0.7` makes claims checkable; it does not make them correct.
+Every assertion still needs the same review as the claim it guards, and this one
+would have passed review by being green.
+
 ## Completion criterion
 
 Revision 9A is design work until the right-hand column is filled from observed
