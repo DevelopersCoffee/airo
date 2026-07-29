@@ -100,7 +100,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           const SizedBox(height: 12),
           _MindActionCard(
             title: 'AI Chat',
-            subtitle: 'Multi-turn chat with optional thinking mode.',
+            subtitle: 'Multi-turn chat with runtime and action traces.',
             icon: Icons.chat_bubble_outline,
             color: Colors.blue,
             onTap: () => context.push('/mind/chat'),
@@ -141,7 +141,8 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Mobile Actions & Tiny Garden',
-            subtitle: 'Try offline FunctionGemma actions and a playful garden.',
+            subtitle:
+                'Prepare offline FunctionGemma actions and a playful garden.',
             icon: Icons.local_florist_outlined,
             color: Colors.teal.shade700,
             onTap: () => context.push(
