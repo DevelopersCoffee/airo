@@ -6,15 +6,18 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 cat > "$tmp_dir/known.log" <<'EOF'
+--------- beginning of main
 E/libc: Access denied finding property "vendor.dpframework.log.enable"
 E/libc: Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
 E/libc: Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+--------- switch to system
 EOF
 
 "$ROOT_DIR/scripts/check-fire-tv-playback-logs.sh" \
   --input "$tmp_dir/known.log" \
   --output "$tmp_dir/known-report.md"
 grep -q 'PASS_WITH_KNOWN_PLATFORM_NOISE' "$tmp_dir/known-report.md"
+grep -q 'Total app-scoped error lines: 3' "$tmp_dir/known-report.md"
 grep -q 'Known Fire OS/MediaTek property denials: 3' "$tmp_dir/known-report.md"
 grep -q 'Other actionable error lines: 0' "$tmp_dir/known-report.md"
 

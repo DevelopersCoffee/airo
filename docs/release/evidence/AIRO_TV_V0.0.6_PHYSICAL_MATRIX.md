@@ -32,7 +32,7 @@ and a redacted evidence path. A failure requires a bounded follow-up defect.
 |---|---|---|
 | Pixel 9 / Android 17 | Coins cold launch renders content within 10 s; tab navigation; background/resume; PiP/media session | Partial — unlocked `0.0.6` code 8 focused `CoinsActivity` within 1 s, rendered vault semantics under secure-window screenshot redaction, and retained PID across background/resume; physical tabs and PiP remain |
 | iPad Air 4 | Launch, adaptive layout, playback, rotation, background/resume | Pending — device is offline |
-| Fire TV Stick AFTSSS | Fresh-install render; physical-remote rail/player/modal/recovery/BACK matrix; bounded log-rate sample | Partial — v7a release payload renders at 1080p; physical wake and Select opened Playlist sources; fresh install, rail traversal, Back, player/recovery, and playback logs remain |
+| Fire TV Stick AFTSSS | Fresh-install render; physical-remote rail/player/modal/recovery/BACK matrix; bounded log-rate sample | Partial — v7a renders at 1080p; physical Select/modal, recovery focus, live playback, Back-to-Home, and bounded logs pass; fresh install and rail traversal remain |
 | Android TV + USB | SAF permission denial/grant, folder traversal, direct content-URI playback, sidecar subtitle, resume | Pending — no connected TV/removable media |
 | Android TV + DLNA/UPnP | SSDP discovery, ContentDirectory traversal, direct playback, server-loss retry, identifier redaction | Pending — no connected TV and controlled DLNA server |
 
@@ -53,8 +53,16 @@ and a redacted evidence path. A failure requires a bounded follow-up defect.
   distribution signature.
 - Physical Fire TV captures:
   [home render](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home.png)
+  [Playlist sources modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png),
+  [retry focus](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-recovery.png),
+  [live playback](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-live-playback.png),
   and
-  [Playlist sources modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png).
+  [Home after Back](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home-after-back.png).
+- The
+  [bounded active-playback report](assets/airo-tv-v006-physical-2026-07-29/fire-tv-playback-log-report.md)
+  records 489 known platform property denials in 5 seconds, zero other
+  actionable errors, and zero fatal signatures. Logcat buffer headers are
+  normalized out before totals and classification.
 - Historical v0.0.5 Fire TV and Pixel evidence remains useful for regression
   context, but it is not evidence for this candidate.
 

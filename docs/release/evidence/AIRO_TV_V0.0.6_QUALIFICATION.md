@@ -33,7 +33,7 @@ recorded in
 | Device | Required checks | Result | Evidence |
 |---|---|---|---|
 | Pixel 9 | cold launch, Coins launcher, tab navigation, background/resume | Partial — unlocked candidate cold-started and resumed without process loss; physical tab/PiP checks remain | `0.0.6` / code 8; `CoinsActivity` focused within 1 s; secure-window accessibility tree rendered vault content; PID `32600` survived background/resume |
-| Fire TV Stick | D-pad rail/player, Back, buffering/error recovery, bounded log report | Partial — v7a release payload renders and a physical Select opens the playlist modal; remaining remote/player checks pending | AFTSSS/API 28; rig APK SHA-256 `6593f02c5982e90fff507d7c610215a468b60e6b471c8d3fdc0ca9ef92bbf6a6`; [home](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home.png), [modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png) |
+| Fire TV Stick | D-pad rail/player, Back, buffering/error recovery, bounded log report | Partial — physical Select, modal dismissal, recovery focus, live playback, Back-to-Home, and bounded logs pass; rail traversal remains | AFTSSS/API 28; rig APK SHA-256 `6593f02c5982e90fff507d7c610215a468b60e6b471c8d3fdc0ca9ef92bbf6a6`; [home](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home.png), [modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png), [recovery](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-recovery.png), [playback](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-live-playback.png), [log report](assets/airo-tv-v006-physical-2026-07-29/fire-tv-playback-log-report.md) |
 | iPad | launch, adaptive layout, playback, rotation/background/resume | Pending — no connected device | Attach video/sysdiagnose excerpt |
 | Android TV + USB | permission prompt, folder browse, direct playback, sidecar subtitle | Pending — no connected device/media | Attach video and redacted result |
 | Android TV + DLNA/UPnP | discovery, folder browse, direct playback, server-loss retry | Pending — no connected device/server | Attach video and redacted result |
@@ -63,5 +63,10 @@ explicit, documented release waiver from the owning council.
   This proves the release-mode v7a payload on hardware but is not
   distribution-signature evidence.
 - A physical remote wake exposed the rendered home screen, and a physical
-  Select opened the Playlist sources modal. Rail traversal, Back dismissal,
-  player/recovery behavior, and playback-scoped bounded logs remain pending.
+  Select opened the Playlist sources modal. Physical Back dismissed the modal
+  into the active retry state, where `Skip channel` had a distinct focus ring.
+  A second Back returned to visible live playback, and a third returned to the
+  Home channel grid. The 5-second active-playback PID sample classified
+  `PASS_WITH_KNOWN_PLATFORM_NOISE`: 489 known Fire OS/MediaTek property denials,
+  zero other actionable errors, and zero fatal signatures. Permanent-rail
+  traversal remains pending because a distinct rail focus was not observed.

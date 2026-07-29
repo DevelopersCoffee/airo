@@ -72,17 +72,21 @@ else
   adb -s "$device" logcat -d --pid="$pid" '*:E' > "$sample"
 fi
 
-log_enable_count="$(grep -cF 'vendor.dpframework.log.enable' "$sample" || true)"
-checksum_count="$(grep -cF 'vendor.dpframework.dumpbuffer.checksum' "$sample" || true)"
-dumpbuffer_count="$(grep -cF 'vendor.dpframework.dumpbuffer.enable' "$sample" || true)"
+normalized_sample="$tmp_dir/fire-tv-errors-normalized.log"
+grep -vE '^--------- (beginning of|switch to) ' \
+  "$sample" > "$normalized_sample" || true
+
+log_enable_count="$(grep -cF 'vendor.dpframework.log.enable' "$normalized_sample" || true)"
+checksum_count="$(grep -cF 'vendor.dpframework.dumpbuffer.checksum' "$normalized_sample" || true)"
+dumpbuffer_count="$(grep -cF 'vendor.dpframework.dumpbuffer.enable' "$normalized_sample" || true)"
 known_count=$((log_enable_count + checksum_count + dumpbuffer_count))
-total_count="$(grep -c . "$sample" || true)"
+total_count="$(grep -c . "$normalized_sample" || true)"
 
 grep -vF \
   -e 'vendor.dpframework.log.enable' \
   -e 'vendor.dpframework.dumpbuffer.checksum' \
   -e 'vendor.dpframework.dumpbuffer.enable' \
-  "$sample" > "$tmp_dir/actionable.log" || true
+  "$normalized_sample" > "$tmp_dir/actionable.log" || true
 actionable_count="$(grep -c . "$tmp_dir/actionable.log" || true)"
 fatal_count="$(grep -Ec 'FATAL EXCEPTION|AndroidRuntime|Process: io\.airo\.app\.tv' "$tmp_dir/actionable.log" || true)"
 
