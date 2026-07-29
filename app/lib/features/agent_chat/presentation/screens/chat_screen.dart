@@ -422,13 +422,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     label: const Text('Skills'),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    key: const Key('agent_chat_voice_button'),
-                    tooltip: _isCapturingVoice
+                  Semantics(
+                    button: true,
+                    label: _isCapturingVoice
                         ? 'Stop voice input'
                         : 'Speak message',
-                    onPressed: _captureVoice,
-                    icon: Icon(_isCapturingVoice ? Icons.stop : Icons.mic_none),
+                    child: IconButton(
+                      key: const Key('agent_chat_voice_button'),
+                      tooltip: _isCapturingVoice
+                          ? 'Stop voice input'
+                          : 'Speak message',
+                      onPressed: _captureVoice,
+                      icon: Icon(
+                        _isCapturingVoice ? Icons.stop : Icons.mic_none,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
