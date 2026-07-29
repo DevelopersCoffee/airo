@@ -11,7 +11,105 @@
 **Spec:** `docs/superpowers/specs/2026-07-27-airo-mind-runtime-design.md` §4, §6
 **Issues:** #1204 (scaffold), #1205 (governance), #1207–#1212 (Vault tasks), under epic #1193.
 
-> **Revision 8 (2026-07-29). CONSOLIDATION. No new design.**
+> **Revision 9A (2026-07-30). VALIDATION INFRASTRUCTURE. No implementation
+> changes.**
+>
+> Revision 8 was **rejected** by Rust Architecture and Chief Security Officer,
+> and approved-with-required-changes by Chief Performance Officer. The three
+> reviews converged, without coordinating, on one diagnosis:
+>
+> > The mechanical gates validate implementation. They do not validate
+> > **negative architectural claims**.
+>
+> Seven claims in Revision 8 were false, five findable by `grep` in under a
+> minute: `Seed::as_bytes` "deleted" (present, `pub` — the 64-byte master seed),
+> `RootIdentity::sign` "`pub(crate)`" (`pub` — a root signing oracle),
+> `DeviceKey::sign` "deleted" (present), `with_*_tampered` accessors (absent, six
+> fields still `pub`), NFC normalization (absent from the crate **and** from this
+> plan, while recorded as resolved in `Freeze §4` and design `§I6`), and SEC-1's
+> "reachable only from `package.rs`" (`pub(super)` inside `vault::package`
+> resolves to `pub(in crate::vault)` — every module in the crate).
+>
+> **This revision changes no implementation.** It adds the four layers that
+> would have caught those failures, so that every later change is judged by a
+> stronger gate than Revision 8 had. It is a deliverable, not preparation.
+>
+> | Layer | What it can prove that `G0.3`–`G0.5` cannot |
+> |---|---|
+> | **`G0.7` claim assertions** | A documented deletion or visibility reduction actually happened. Code that never had a feature compiles fine |
+> | **External-consumer probe** | The façade is real *from outside*. Nothing in-tree looks from outside, and three findings were only reachable that way |
+> | **Path-correct property tests** | The property holds on the path a user or attacker takes. `PackageTruncated` was reachable only from a hand-built `Vec<Frame>`, never from a file |
+> | **Mutation regressions** | Each control *matters*. Removing frame AAD, trailer AAD, nonce pinning, or position equality left all 85 tests green |
+>
+> **The mutation result is the most important addition.** A passing suite is not
+> evidence that each control matters. The property required is narrower:
+>
+> > **Every security control has at least one test whose only failing cause is
+> > the removal of that control.**
+>
+> Stronger than coverage, because it stops one mechanism silently masking
+> another — which is exactly what happened: `reordered_frames_are_rejected`
+> passed via the position check and
+> `a_frame_does_not_transplant_between_packages` passed via the package nonce,
+> so neither isolated the control it names.
+>
+> **No governance rule is added.** The observed failure was not a missing rule;
+> it was one existing rule lacking mechanical enforcement. Both reviewers
+> proposed the same mechanism and neither proposed an architectural change,
+> which is the evidence that the architecture is stable and the validation
+> system was one executable layer short. `Freeze §` already marked the Evidence
+> Rule "human discipline — no mechanical backstop"; this is the backstop.
+>
+> **Traceability is bidirectional.** Every assertion carries a stable id and
+> names the finding it guards; every finding cites the assertion that fails if
+> it regresses. Neither direction may be blank — an assertion with no finding is
+> a check nobody asked for, and a finding with no assertion is a claim nothing
+> enforces. This exists so a future finding cannot silently become "checked by
+> something" without anyone knowing which check enforces it. Ids are stable and
+> never reused; retiring an assertion leaves a gap.
+> `g0-claim-assertions.sh --list` prints the registry.
+>
+> | Finding | Guarded by | Claim |
+> |---|---|---|
+> | `SEC-33` / `RA-16` | `A01`, `A22` | `Seed::as_bytes` deleted |
+> | `RA-17` | `A02` | `RootIdentity::sign` not `pub` |
+> | `RA-17b` | `A03` | `DeviceKey::sign` deleted |
+> | `SEC-32` | `A04` | ids NFC-normalized, control chars rejected |
+> | `RA-23a` | `A05`–`A09` | AAD-covered fields private, tamper ctors exist |
+> | `RA-24` | `A10` | no per-byte `format!` |
+> | `RA-19` | `A11` | no unchecked length cast on a signing payload |
+> | `SEC-46` | `A12` | no unchecked increment on the nonce path |
+> | `RA-3` | `A13`–`A15` | `random.rs` is the only `OsRng` site |
+> | `SEC-38` | `A16` | restore does not re-implement admission |
+> | `SEC-35` | `A17` | the package nonce is authenticated |
+> | `SEC-36` | `A18` | `head_epoch` is carried, not re-derived |
+> | `RA-25` | `A19` | no stale `allow(dead_code)` |
+> | `SEC-37` | `A20` | `KeyBytes::as_bytes` is package-scoped |
+> | `SEC-40` | `A21` | a caller-supplied ledger is validated |
+> | `RA-18`, `SEC-39`, `SEC-43`, `RA-Q4` | `G0.8` probes | façade reachable both directions |
+> | `PERF-2` | path-correct test | truncation diagnosable **on bytes** |
+> | frame AAD, trailer AAD, nonce pinning, position | `mut_*` ×4 | each control has a test only it fails |
+>
+> `G0.7` and `G0.8` are **expected to fail on this revision** — that is the
+> deliverable. A gate that passed the day it was written, against code three
+> independent reviewers have already rejected, would shift the burden of proof
+> onto the gate itself.
+>
+> **First execution is part of the artifact.** The scripts are specifications
+> until they are run, so 9A is not complete until each has demonstrated its own
+> behaviour:
+>
+> | Gate | Expected | Actual | Evidence |
+> |---|---|---|---|
+> | `G0.7` claim assertions | FAIL (≈8 of 22) | *not yet run* | first execution |
+> | `G0.8` consumer probe | FAIL (`DENY` breaches + `ALLOW` gaps) | *not yet run* | first execution |
+> | `mut_*` ×4 | pass on real crate, fail per mutant | *not yet run* | first execution |
+> | path-correct truncation | `#[ignore]`, fails when run | *not yet run* | first execution |
+>
+> Predicting a gate's output is the class of claim this revision exists to
+> eliminate, so the middle column stays empty until it is measured.
+>
+> **Revision 8 (2026-07-29). CONSOLIDATION. No new design. REJECTED.**
 >
 > The first revision written under the Evidence Rule (`Freeze §`): every
 > substantive change below cites the compiler diagnostic, benchmark number, or
@@ -4624,9 +4722,166 @@ mod tests {
         assert_eq!(vault.revocations().head_epoch(), before + 1);
     }
 
+    // ── Mutation regressions (Revision 9A) ───────────────────────────────
+    //
+    // Each of the four below fails when exactly one control is removed, and
+    // nothing else in this module does. Written by chief-security-officer,
+    // verified 89/89 on Revision 8 and failing on the corresponding mutant.
+    //
+    // Why they are here: with all 85 Revision 8 tests, removing frame AAD,
+    // trailer AAD, nonce index pinning, or `frame.index == position` each left
+    // the suite **entirely green**. Collapsing `frame_nonce` to a constant —
+    // one (key, nonce) pair for every frame, i.e. ChaCha20 keystream reuse and
+    // Poly1305 key recovery — was unobserved. `reordered_frames_are_rejected`
+    // passed via the position check and
+    // `a_frame_does_not_transplant_between_packages` passed via the package
+    // nonce, so the two claimed defences masked each other and neither
+    // isolated the control it names.
+    //
+    // **Do not "simplify" these by removing the re-sealed trailer.** That step
+    // is what leaves the frame layer as the only remaining objector; without
+    // it the test passes through the trailer and measures nothing.
+
+    /// Every **frame** is bound to the header AAD, not merely the trailer.
+    #[test]
+    fn mut_each_frame_is_bound_to_the_header_aad() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.decrypt(&seed).is_ok(), "control: untampered opens");
+
+        package.kdf_salt[0] ^= 0xff; // AAD-covered, ciphertext-external
+        let aad = package.header_aad().unwrap();
+        let cipher = XChaCha20Poly1305::new(&package_key(&seed).unwrap().into());
+        let package_nonce: [u8; 24] = package.nonce.as_slice().try_into().unwrap();
+        let mut digest = Sha256::new();
+        for frame in &package.frames {
+            digest.update(&frame.ciphertext);
+        }
+        let mut trailer_plain = Vec::with_capacity(36);
+        trailer_plain
+            .extend_from_slice(&u32::try_from(package.frames.len()).unwrap().to_be_bytes());
+        trailer_plain.extend_from_slice(&digest.finalize());
+        package.trailer = cipher
+            .encrypt(
+                XNonce::from_slice(&frame_nonce(&package_nonce, u32::MAX)),
+                Payload {
+                    msg: &trailer_plain,
+                    aad: &aad,
+                },
+            )
+            .unwrap();
+
+        assert!(
+            matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)),
+            "a frame must not open under a header it was not sealed under"
+        );
+    }
+
+    /// Each frame carries a **distinct** nonce, the trailer's included.
+    #[test]
+    fn mut_every_frame_uses_a_distinct_nonce() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.frames.len() > 2);
+        let base: [u8; 24] = package.nonce.as_slice().try_into().unwrap();
+        let nonces: std::collections::BTreeSet<_> = (0..package.frames.len())
+            .map(|i| frame_nonce(&base, u32::try_from(i).unwrap()))
+            .chain(std::iter::once(frame_nonce(&base, u32::MAX)))
+            .collect();
+        assert_eq!(
+            nonces.len(),
+            package.frames.len() + 1,
+            "frame nonces (including the trailer's) must all differ"
+        );
+    }
+
+    /// A frame's declared index equals its position — independently of the
+    /// nonce and of the frame count.
+    #[test]
+    fn mut_frame_index_must_equal_its_position() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.frames.len() >= 3);
+        // Renumber only — order, count and ciphertexts untouched.
+        package.frames[1].index = 2;
+        package.frames[2].index = 1;
+        assert!(
+            matches!(package.decrypt(&seed), Err(VaultError::SerializationFailed)),
+            "a renumbered frame must be rejected by the position check"
+        );
+    }
+
+    /// Frames swapped **with** their indices swapped to match: the nonce pins
+    /// them, and this is the only test that isolates that.
+    #[test]
+    fn mut_swapping_frames_and_their_indices_still_fails() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.frames.swap(1, 2);
+        package.frames[1].index = 1;
+        package.frames[2].index = 2;
+        assert!(
+            matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)),
+            "nonce pinning must reject a transposed pair"
+        );
+    }
+
+    /// **Path-correct** truncation test. `PERF-2`.
+    ///
+    /// The test below it (`truncation_is_distinguishable_from_corruption`)
+    /// removes `Frame` structs from an already-parsed `RecoveryPackage` — a
+    /// state reachable only in memory. A user's package arrives as **bytes off
+    /// a NAS, a USB stick, or their own cloud**, and every physical truncation
+    /// destroys JSON syntax and loses the `"trailer"` key, so `from_bytes`
+    /// returns `SerializationFailed` and the count check is never reached.
+    /// Measured on a 324,703-byte package, cuts of 1 B / 64 B / 10% / 50%:
+    /// `SerializationFailed` in all four, identical to structural corruption.
+    ///
+    /// So `PackageTruncated` is **unreachable from any file**, and
+    /// `ADR-0017`'s second named property is not delivered. This test asserts
+    /// the property on the real path and **is expected to fail until the
+    /// authenticated frame count moves into the header** (`PERF-2`, `SEC-41`).
+    ///
+    /// The lesson, recorded because it generalizes past this test: a test must
+    /// enter through the same door the user does. Mine entered at
+    /// `Vec<Frame>`; everything between a byte stream and that value went
+    /// untested, which is also why `from_bytes` materializing unauthenticated
+    /// ciphertext went unnoticed.
+    #[test]
+    #[ignore = "PERF-2: fails until the frame count is authenticated in the header"]
+    fn truncation_on_disk_is_distinguishable_from_corruption() {
+        let (mut vault, seed) = seeded_vault();
+        for i in 0..3000 {
+            vault.add_context(&format!("c{i:08}")).unwrap();
+        }
+        let mut bytes = Vec::new();
+        RecoveryPackage::export_to(&vault, &seed, &mut bytes).unwrap();
+
+        for cut in [1usize, 64, bytes.len() / 10, bytes.len() / 2] {
+            let truncated = &bytes[..bytes.len() - cut];
+            let err = RecoveryPackage::from_bytes(truncated)
+                .and_then(|p| p.decrypt(&seed))
+                .expect_err("a truncated package must not open");
+            assert!(
+                matches!(err, VaultError::PackageTruncated { .. }),
+                "cut {cut}: expected PackageTruncated, got {err:?} — \
+                 indistinguishable from corruption"
+            );
+        }
+    }
+
     /// `ADR-0017`'s headline property in its failing form: a truncated package
     /// reports truncation, where before it failed AEAD identically to a
     /// corrupt one and the user was told their backup was corrupt.
+    ///
+    /// **Retained, but it is not the property test.** It operates on a parsed
+    /// package, which is a state no file produces — see the path-correct
+    /// version above. Keep it as an in-memory regression on the count check;
+    /// do not read it as evidence that truncation is diagnosable on disk.
     #[test]
     fn truncation_is_distinguishable_from_corruption() {
         let (vault, seed) = seeded_vault();
@@ -5438,7 +5693,11 @@ established:
 - [ ] Third-party notices updated for BSD-3-Clause, and for CC0 if Path A was chosen
 - [ ] `[profile.release]` added to `rust/Cargo.toml` — measured at 650 KB → 424 KB, and free
 - [x] **`G0` passes.** `docs/superpowers/plans/extract-phase-1-vault.sh` extracts every Rust block into a scratch crate; it compensates exactly three documented artifacts, so anything failing is a specification defect. **Revision 8, rustc 1.96.1: check 0 errors · 85 tests pass, 0 fail, 1 ignored · clippy `-D warnings` 0 errors.** Run after *each* phase, not once at the end — Phase A's run caught two claims recorded as applied and absent from the code.
-- [ ] **Every public item names an external consumer.** `G0` proves the crate builds; it cannot prove the surface is minimal. `RA-18`: revision 7 compiled cleanly while shipping no reachable restore path, and the DoD check below passed for the wrong reason. Anything answering "none" or "a future phase" is `pub(crate)` until that phase exists.
+- [ ] **`G0.7` claim assertions green** — `docs/superpowers/plans/g0-claim-assertions.sh`. Every documented deletion, visibility reduction, or opacity claim is a mechanical query. **Revision 9A adds this gate expecting it to fail**, because Revision 8 shipped seven false claims with `G0.3`–`G0.5` green. A claim with no assertion in that script is a claim nothing checks.
+- [ ] **`G0.8` external-consumer probe green** — `docs/superpowers/plans/g0-consumer-probe.sh`. `DENY` probes must fail to compile, `ALLOW` probes must compile. Nothing in-tree can verify a façade: `#[cfg(test)] mod tests` is *inside* the crate, where `pub` and `pub(crate)` are indistinguishable.
+- [ ] **Every public item names an external consumer.** `G0` proves the crate builds; it cannot prove the surface is minimal. `RA-18`: revision 7 compiled cleanly while shipping no reachable restore path, and the DoD check below passed for the wrong reason. Anything answering "none" or "a future phase" is `pub(crate)` until that phase exists. **Mechanized by `G0.8`** — this row is what that gate automates.
+- [ ] **Every security control has a test only it can fail.** Not "the suite passes". Verified by removing each control and confirming at least one test fails. Revision 8's 85 tests stayed green when frame AAD, trailer AAD, nonce pinning, or position equality were each deleted — two tests named those controls and each passed via the other one. The four `mut_*` regressions in `package.rs` are permanent; do not simplify away their re-sealed trailer, which is what isolates the frame layer.
+- [ ] **Property tests enter through the user's door.** For a format, that is **bytes**. Revision 8 asserted truncation detection against a hand-built `Vec<Frame>`, a state no file produces, so `PackageTruncated` was unreachable from any real package while its test passed.
 - [x] **`ADR-0017` implemented.** Framed format, streaming `export_to`, derived expiry, base64 outer blobs, `hex_array_32` on every `[u8; 32]` field including `KeyBytes` and `RootPublicKey`. Contract Impact table discharged: `C1` and `C7` amended, `C1`/`C2`/`C3` conformance tests restated, `V4`/`V5`/`V7` re-measured, `G0` re-run.
 - [ ] **Streaming is the default export path.** `export_to` for anything user-sized; `export` is retained for tests and small vaults and is documented as materializing. Peak overhead measured flat at 0.56–0.69 MB across a 50× range in ledger size, against 1.0 → 32.6 MB linear before.
 - [ ] `#![forbid(unsafe_code)]` present in `lib.rs`

@@ -566,14 +566,76 @@ were applied at some of the sites their invariant covered.
 
 **Gate zero, ahead of everything else.**
 
-| Required evidence | |
-|---|---|
-| `cargo check` | green |
-| `cargo test` | green |
-| `cargo clippy --all-targets -- -D warnings` | green |
+| Step | Required evidence | Proves |
+|---|---|---|
+| `G0.1` | extraction fidelity | the compiler is judging the specification, not the extractor |
+| `G0.3` | `cargo check --all-targets` green | it builds |
+| `G0.4` | `cargo test` green | it behaves |
+| `G0.5` | `cargo clippy --all-targets -- -D warnings` green | it is idiomatic |
+| **`G0.7`** | **claim assertions green** | **a documented deletion or visibility reduction actually happened** |
+| **`G0.8`** | **external-consumer probe green** | **the façade is real from outside the crate** |
 
 Only then does an artifact become **Revision N**. Anything before that is a
 **working draft** and is not circulated for review.
+
+### `G0.7` and `G0.8` — why compilation is not enough
+
+`G0.3`–`G0.5` prove the code compiles, behaves, and lints. **They cannot prove
+a negative claim.** Code that never had a feature compiles perfectly, so
+"deleted", "narrowed to `pub(crate)`", "made private", and "unreachable from
+outside" are all unfalsifiable by a build.
+
+Revision 8 of the Phase 1 Vault plan shipped **seven** such claims false with
+`G0.3`–`G0.5` fully green — including `Seed::as_bytes` recorded as deleted while
+remaining `pub`, which publishes the 64-byte master seed from which every other
+key in the system derives. Five of the seven were findable by `grep` in under a
+minute. Two council reviewers proposed this gate independently in the same round
+and **neither proposed an architectural change**, which is the evidence that the
+architecture was stable and the validation system was one executable layer
+short.
+
+- `docs/superpowers/plans/g0-claim-assertions.sh` — each assertion names the
+  finding that motivated it. **A claim with no assertion here is a claim nothing
+  checks.**
+- `docs/superpowers/plans/g0-consumer-probe.sh` — `DENY` probes must fail to
+  compile; `ALLOW` probes must compile. Revision 8 failed both directions at
+  once: the master seed was reachable, and the device-trust journey was not,
+  because `trust_device` is `pub` and takes a type `lib.rs` does not export.
+
+This is the mechanical backstop for the Evidence Rule, which this document
+already marks *"human discipline — no mechanical backstop."* That row has failed
+in every revision it has been tested against.
+
+### Property tests enter through the user's door
+
+A test must reach the code the way a user or an attacker does. Revision 8's
+truncation test removed `Frame` structs from an already-parsed package — a state
+**no file can produce** — so `PackageTruncated` was asserted while being
+unreachable from any real package. Measured on disk, every truncation returns
+`SerializationFailed`, identical to corruption, which is the precise property
+`ADR-0017` exists to remove.
+
+Distinct from claim drift and needing a different remedy: nothing was
+mis-stated, and no assertion or probe would have caught it. **For a format, the
+door is bytes.**
+
+### Each control has a test that only it can fail
+
+A passing suite is not evidence that each control matters. The required property
+is narrower:
+
+> **Every security control has at least one test whose only failing cause is the
+> removal of that control.**
+
+Established by mutation: with all 85 Revision 8 tests, removing frame AAD,
+trailer AAD, frame-nonce index pinning, or `frame.index == position` each left
+the suite **entirely green**. Collapsing the frame nonce to a constant — one
+`(key, nonce)` pair for every frame, so ChaCha20 keystream reuse and Poly1305
+key recovery — was unobserved. Two tests existed for those controls and each
+passed via the *other* control, so one mechanism silently masked another.
+
+Stronger than coverage, and it is why mutation regressions are kept permanently
+rather than run once.
 
 ### "Revision" redefined
 
