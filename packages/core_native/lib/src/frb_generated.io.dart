@@ -6,6 +6,7 @@
 import 'api/m3u.dart';
 import 'api/mock_runtime.dart';
 import 'api/native_engine.dart';
+import 'api/planner.dart';
 import 'api/playlist_engine.dart';
 import 'api/relational_store.dart';
 import 'api/runtime_contracts.dart';
@@ -29,19 +30,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   get rust_arc_decrement_strong_count_MockRuntimePtr => wire
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntimePtr;
 
-  CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_RuntimeRegistryPtr => wire
-      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistryPtr;
-
   @protected
   MockRuntime
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
-    dynamic raw,
-  );
-
-  @protected
-  RuntimeRegistry
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
     dynamic raw,
   );
 
@@ -52,20 +43,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RuntimeRegistry
-  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    dynamic raw,
-  );
-
-  @protected
   MockRuntime
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
-    dynamic raw,
-  );
-
-  @protected
-  RuntimeRegistry
-  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
     dynamic raw,
   );
 
@@ -79,12 +58,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RuntimeRegistry
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    dynamic raw,
-  );
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -92,6 +65,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  ComputeAccelerator dco_decode_box_autoadd_compute_accelerator(dynamic raw);
+
+  @protected
+  DeviceProfile dco_decode_box_autoadd_device_profile(dynamic raw);
+
+  @protected
+  ExecutionPlan dco_decode_box_autoadd_execution_plan(dynamic raw);
 
   @protected
   double dco_decode_box_autoadd_f_64(dynamic raw);
@@ -107,6 +89,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MockConfig dco_decode_box_autoadd_mock_config(dynamic raw);
+
+  @protected
+  PlannerConfig dco_decode_box_autoadd_planner_config(dynamic raw);
+
+  @protected
+  PlannerErrorCode dco_decode_box_autoadd_planner_error_code(dynamic raw);
 
   @protected
   RelationalMediaGraphQuery dco_decode_box_autoadd_relational_media_graph_query(
@@ -132,6 +120,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RuntimeHealth dco_decode_box_autoadd_runtime_health(dynamic raw);
 
   @protected
+  RuntimeId dco_decode_box_autoadd_runtime_id(dynamic raw);
+
+  @protected
+  RuntimeRegistry dco_decode_box_autoadd_runtime_registry(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_16(dynamic raw);
 
   @protected
@@ -148,6 +142,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ComputeAccelerator dco_decode_compute_accelerator(dynamic raw);
+
+  @protected
+  DeviceProfile dco_decode_device_profile(dynamic raw);
+
+  @protected
+  ExecutionPlan dco_decode_execution_plan(dynamic raw);
 
   @protected
   ExecutionPriority dco_decode_execution_priority(dynamic raw);
@@ -190,6 +190,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<M3uEntry> dco_decode_list_m_3_u_entry(dynamic raw);
+
+  @protected
+  List<ModelManifest> dco_decode_list_model_manifest(dynamic raw);
 
   @protected
   List<PlaylistSearchFilter> dco_decode_list_playlist_search_filter(
@@ -276,16 +279,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MockConfig dco_decode_mock_config(dynamic raw);
 
   @protected
+  ModelManifest dco_decode_model_manifest(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
   bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
 
   @protected
+  ComputeAccelerator? dco_decode_opt_box_autoadd_compute_accelerator(
+    dynamic raw,
+  );
+
+  @protected
+  ExecutionPlan? dco_decode_opt_box_autoadd_execution_plan(dynamic raw);
+
+  @protected
   double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
+
+  @protected
+  PlannerErrorCode? dco_decode_opt_box_autoadd_planner_error_code(dynamic raw);
 
   @protected
   RelationalSyncEntity? dco_decode_opt_box_autoadd_relational_sync_entity(
@@ -296,6 +313,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RuntimeErrorCode? dco_decode_opt_box_autoadd_runtime_error_code(dynamic raw);
 
   @protected
+  RuntimeId? dco_decode_opt_box_autoadd_runtime_id(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
 
   @protected
@@ -303,6 +323,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw);
+
+  @protected
+  PlannerConfig dco_decode_planner_config(dynamic raw);
+
+  @protected
+  PlannerErrorCode dco_decode_planner_error_code(dynamic raw);
+
+  @protected
+  PlannerResult dco_decode_planner_result(dynamic raw);
 
   @protected
   PlaylistCacheStatus dco_decode_playlist_cache_status(dynamic raw);
@@ -390,6 +419,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RuntimeId dco_decode_runtime_id(dynamic raw);
 
   @protected
+  RuntimeRegistry dco_decode_runtime_registry(dynamic raw);
+
+  @protected
   RuntimeSession dco_decode_runtime_session(dynamic raw);
 
   @protected
@@ -459,32 +491,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RuntimeRegistry
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   MockRuntime
   sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
     SseDeserializer deserializer,
   );
 
   @protected
-  RuntimeRegistry
-  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   MockRuntime
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  RuntimeRegistry
-  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
     SseDeserializer deserializer,
   );
 
@@ -500,12 +514,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RuntimeRegistry
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -513,6 +521,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  ComputeAccelerator sse_decode_box_autoadd_compute_accelerator(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  DeviceProfile sse_decode_box_autoadd_device_profile(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExecutionPlan sse_decode_box_autoadd_execution_plan(
+    SseDeserializer deserializer,
+  );
 
   @protected
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
@@ -530,6 +553,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MockConfig sse_decode_box_autoadd_mock_config(SseDeserializer deserializer);
+
+  @protected
+  PlannerConfig sse_decode_box_autoadd_planner_config(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlannerErrorCode sse_decode_box_autoadd_planner_error_code(
+    SseDeserializer deserializer,
+  );
 
   @protected
   RelationalMediaGraphQuery sse_decode_box_autoadd_relational_media_graph_query(
@@ -563,6 +596,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RuntimeId sse_decode_box_autoadd_runtime_id(SseDeserializer deserializer);
+
+  @protected
+  RuntimeRegistry sse_decode_box_autoadd_runtime_registry(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
 
   @protected
@@ -583,6 +624,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ComputeAccelerator sse_decode_compute_accelerator(
     SseDeserializer deserializer,
   );
+
+  @protected
+  DeviceProfile sse_decode_device_profile(SseDeserializer deserializer);
+
+  @protected
+  ExecutionPlan sse_decode_execution_plan(SseDeserializer deserializer);
 
   @protected
   ExecutionPriority sse_decode_execution_priority(SseDeserializer deserializer);
@@ -631,6 +678,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer);
+
+  @protected
+  List<ModelManifest> sse_decode_list_model_manifest(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<PlaylistSearchFilter> sse_decode_list_playlist_search_filter(
@@ -733,10 +785,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MockConfig sse_decode_mock_config(SseDeserializer deserializer);
 
   @protected
+  ModelManifest sse_decode_model_manifest(SseDeserializer deserializer);
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
   bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  ComputeAccelerator? sse_decode_opt_box_autoadd_compute_accelerator(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExecutionPlan? sse_decode_opt_box_autoadd_execution_plan(
+    SseDeserializer deserializer,
+  );
 
   @protected
   double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
@@ -745,12 +810,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
+  PlannerErrorCode? sse_decode_opt_box_autoadd_planner_error_code(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RelationalSyncEntity? sse_decode_opt_box_autoadd_relational_sync_entity(
     SseDeserializer deserializer,
   );
 
   @protected
   RuntimeErrorCode? sse_decode_opt_box_autoadd_runtime_error_code(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeId? sse_decode_opt_box_autoadd_runtime_id(
     SseDeserializer deserializer,
   );
 
@@ -764,6 +839,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme? sse_decode_opt_box_autoadd_xmltv_programme(
     SseDeserializer deserializer,
   );
+
+  @protected
+  PlannerConfig sse_decode_planner_config(SseDeserializer deserializer);
+
+  @protected
+  PlannerErrorCode sse_decode_planner_error_code(SseDeserializer deserializer);
+
+  @protected
+  PlannerResult sse_decode_planner_result(SseDeserializer deserializer);
 
   @protected
   PlaylistCacheStatus sse_decode_playlist_cache_status(
@@ -895,6 +979,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RuntimeId sse_decode_runtime_id(SseDeserializer deserializer);
 
   @protected
+  RuntimeRegistry sse_decode_runtime_registry(SseDeserializer deserializer);
+
+  @protected
   RuntimeSession sse_decode_runtime_session(SseDeserializer deserializer);
 
   @protected
@@ -980,13 +1067,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    RuntimeRegistry self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void
   sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
     MockRuntime self,
     SseSerializer serializer,
@@ -994,22 +1074,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    RuntimeRegistry self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
     MockRuntime self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void
-  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    RuntimeRegistry self,
     SseSerializer serializer,
   );
 
@@ -1027,13 +1093,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    RuntimeRegistry self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -1041,6 +1100,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_compute_accelerator(
+    ComputeAccelerator self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_device_profile(
+    DeviceProfile self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_execution_plan(
+    ExecutionPlan self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
@@ -1066,6 +1143,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_mock_config(
     MockConfig self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_planner_config(
+    PlannerConfig self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_planner_error_code(
+    PlannerErrorCode self,
     SseSerializer serializer,
   );
 
@@ -1106,6 +1195,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_runtime_id(
+    RuntimeId self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_runtime_registry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
 
   @protected
@@ -1131,6 +1232,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ComputeAccelerator self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_device_profile(DeviceProfile self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_execution_plan(ExecutionPlan self, SseSerializer serializer);
 
   @protected
   void sse_encode_execution_priority(
@@ -1198,6 +1305,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_m_3_u_entry(
     List<M3uEntry> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_model_manifest(
+    List<ModelManifest> self,
     SseSerializer serializer,
   );
 
@@ -1334,10 +1447,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_mock_config(MockConfig self, SseSerializer serializer);
 
   @protected
+  void sse_encode_model_manifest(ModelManifest self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_compute_accelerator(
+    ComputeAccelerator? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_execution_plan(
+    ExecutionPlan? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
@@ -1345,6 +1473,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_i_64(
     PlatformInt64? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_planner_error_code(
+    PlannerErrorCode? self,
     SseSerializer serializer,
   );
 
@@ -1361,6 +1495,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_runtime_id(
+    RuntimeId? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
 
   @protected
@@ -1371,6 +1511,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     XmltvProgramme? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_planner_config(PlannerConfig self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_planner_error_code(
+    PlannerErrorCode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_planner_result(PlannerResult self, SseSerializer serializer);
 
   @protected
   void sse_encode_playlist_cache_status(
@@ -1529,6 +1681,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_runtime_id(RuntimeId self, SseSerializer serializer);
 
   @protected
+  void sse_encode_runtime_registry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_runtime_session(
     RuntimeSession self,
     SseSerializer serializer,
@@ -1677,39 +1835,5 @@ class RustLibWire implements BaseWire {
       );
   late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime =
       _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntimePtr
-          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-
-  void
-  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    ffi.Pointer<ffi.Void> ptr,
-  ) {
-    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-      ptr,
-    );
-  }
-
-  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistryPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
-        'frbgen_core_native_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry',
-      );
-  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry =
-      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistryPtr
-          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-
-  void
-  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-    ffi.Pointer<ffi.Void> ptr,
-  ) {
-    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
-      ptr,
-    );
-  }
-
-  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistryPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
-        'frbgen_core_native_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry',
-      );
-  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry =
-      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistryPtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }

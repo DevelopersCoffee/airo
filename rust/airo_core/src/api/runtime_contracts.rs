@@ -189,6 +189,13 @@ pub struct RuntimeCapabilities {
     pub json_mode: CapabilityState,
 }
 
+/// Data-driven registry input consumed by the pure planner.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeRegistry {
+    pub contract_version: RuntimeApiVersion,
+    pub runtimes: Vec<RuntimeId>,
+}
+
 /// Backend health snapshot.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeHealth {

@@ -2,6 +2,7 @@
 // Feature packages use this package's public API; never import frb types directly.
 export 'src/m3u.dart';
 export 'src/api/mock_runtime.dart';
+export 'src/api/planner.dart';
 export 'src/native_bridge.dart';
 export 'src/native_engine.dart';
 export 'src/playlist_index.dart';

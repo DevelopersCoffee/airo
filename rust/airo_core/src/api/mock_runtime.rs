@@ -7,7 +7,7 @@
 use super::runtime_contracts::{
     CapabilityState, ExecutionTrace, ExecutionTraceEntry, ExecutionTraceEvent, InferenceIr,
     RuntimeApiVersion, RuntimeCapabilities, RuntimeErrorCode, RuntimeHealth, RuntimeHealthState,
-    RuntimeId, TelemetryEvent, TelemetryEventKind,
+    RuntimeId, RuntimeRegistry, TelemetryEvent, TelemetryEventKind,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -54,13 +54,6 @@ pub struct RuntimeSession {
     pub session_id: String,
     pub state: RuntimeHealthState,
     pub generated_tokens: u32,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[flutter_rust_bridge::frb(opaque)]
-pub struct RuntimeRegistry {
-    pub contract_version: RuntimeApiVersion,
-    pub runtimes: Vec<RuntimeId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -116,6 +109,7 @@ pub fn mock_runtime_capabilities() -> RuntimeCapabilities {
     }
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn runtime_registry_new() -> RuntimeRegistry {
     RuntimeRegistry {
         contract_version: RuntimeApiVersion::V1,
@@ -123,16 +117,19 @@ pub fn runtime_registry_new() -> RuntimeRegistry {
     }
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn runtime_registry_register_mock(registry: &mut RuntimeRegistry) {
     runtime_registry_register(registry, RuntimeId::Mock);
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn runtime_registry_register(registry: &mut RuntimeRegistry, runtime: RuntimeId) {
     if !registry.runtimes.contains(&runtime) {
         registry.runtimes.push(runtime);
     }
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn runtime_registry_contains_mock(registry: &RuntimeRegistry) -> bool {
     registry.runtimes.contains(&RuntimeId::Mock)
 }

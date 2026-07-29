@@ -9,7 +9,8 @@ import '../frb_generated.dart';
 import 'runtime_contracts.dart';
 
 // These functions are ignored because they are not marked as `pub`: `fail`, `health`, `next_jitter`, `record`, `telemetry`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `runtime_registry_contains_mock`, `runtime_registry_new`, `runtime_registry_register_mock`, `runtime_registry_register`
 
 Future<MockRuntime> mockRuntimeNew({required MockConfig config}) =>
     RustLib.instance.api.crateApiMockRuntimeMockRuntimeNew(config: config);
@@ -19,27 +20,6 @@ Future<FailureInjection> mockFailureInjectionDefault() =>
 
 Future<RuntimeCapabilities> mockRuntimeCapabilities() =>
     RustLib.instance.api.crateApiMockRuntimeMockRuntimeCapabilities();
-
-Future<RuntimeRegistry> runtimeRegistryNew() =>
-    RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryNew();
-
-Future<void> runtimeRegistryRegisterMock({required RuntimeRegistry registry}) =>
-    RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryRegisterMock(
-      registry: registry,
-    );
-
-Future<void> runtimeRegistryRegister({
-  required RuntimeRegistry registry,
-  required RuntimeId runtime,
-}) => RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryRegister(
-  registry: registry,
-  runtime: runtime,
-);
-
-Future<bool> runtimeRegistryContainsMock({required RuntimeRegistry registry}) =>
-    RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryContainsMock(
-      registry: registry,
-    );
 
 Future<RuntimeHealth> mockRuntimeInitialize({required MockRuntime runtime}) =>
     RustLib.instance.api.crateApiMockRuntimeMockRuntimeInitialize(
@@ -95,17 +75,6 @@ abstract class MockRuntime implements RustOpaqueInterface {
   set telemetry(TelemetryStub telemetry);
 
   set trace(ExecutionTrace trace);
-}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeRegistry>>
-abstract class RuntimeRegistry implements RustOpaqueInterface {
-  RuntimeApiVersion get contractVersion;
-
-  List<RuntimeId> get runtimes;
-
-  set contractVersion(RuntimeApiVersion contractVersion);
-
-  set runtimes(List<RuntimeId> runtimes);
 }
 
 class FailureInjection {
