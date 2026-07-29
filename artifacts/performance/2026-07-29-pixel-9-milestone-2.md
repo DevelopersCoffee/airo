@@ -139,4 +139,3 @@ failure.
   foldable/tablet targets remain.
 - #520: physical startup, memory, storage, and embedding metrics are captured;
   latency failed and battery/GPU/NPU/long-run profiling remains.
-
