@@ -133,6 +133,114 @@ void main() {
     expect(find.text('Recording reminder'), findsOneWidget);
     expect(find.text('Download reminder'), findsNothing);
   });
+
+  testWidgets('friendly permission card requests access and hides on grant', (
+    tester,
+  ) async {
+    final permissionService = _FakeNotificationPermissionService(
+      status: AgentNotificationPermissionStatus.disabled,
+      grantOnRequest: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          scheduler: _FakeNotificationScheduler([]),
+          permissionService: permissionService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Let Airo ring the tiny bell?'), findsOneWidget);
+    expect(find.text('Yes, keep me posted'), findsOneWidget);
+
+    await tester.tap(find.text('Yes, keep me posted'));
+    await tester.pumpAndSettle();
+
+    expect(permissionService.requestCount, 1);
+    expect(find.text('Let Airo ring the tiny bell?'), findsNothing);
+    expect(
+      find.text('Bell acquired. Airo can now keep you posted.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('denial keeps in-app updates and the retry path available', (
+    tester,
+  ) async {
+    final permissionService = _FakeNotificationPermissionService(
+      status: AgentNotificationPermissionStatus.disabled,
+      grantOnRequest: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          scheduler: _FakeNotificationScheduler([]),
+          permissionService: permissionService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Yes, keep me posted'));
+    await tester.pumpAndSettle();
+
+    expect(permissionService.requestCount, 1);
+    expect(find.text('Let Airo ring the tiny bell?'), findsOneWidget);
+    expect(
+      find.text('No worries — Airo will keep updates inside the app.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('enabled and unavailable states do not show a permission card', (
+    tester,
+  ) async {
+    for (final status in [
+      AgentNotificationPermissionStatus.enabled,
+      AgentNotificationPermissionStatus.unavailable,
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NotificationsScreen(
+            scheduler: _FakeNotificationScheduler([]),
+            permissionService: _FakeNotificationPermissionService(
+              status: status,
+              grantOnRequest: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Let Airo ring the tiny bell?'), findsNothing);
+    }
+  });
+
+  testWidgets('permission card remains usable at 200 percent text scale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: NotificationsScreen(
+            scheduler: _FakeNotificationScheduler([]),
+            permissionService: _FakeNotificationPermissionService(
+              status: AgentNotificationPermissionStatus.disabled,
+              grantOnRequest: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Yes, keep me posted'), findsOneWidget);
+  });
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
@@ -172,5 +280,30 @@ final class _FakeNotificationScheduler
     ScheduleAgentNotificationRequest request,
   ) {
     throw UnimplementedError();
+  }
+}
+
+final class _FakeNotificationPermissionService
+    implements AgentNotificationPermissionService {
+  _FakeNotificationPermissionService({
+    required this.status,
+    required this.grantOnRequest,
+  });
+
+  AgentNotificationPermissionStatus status;
+  final bool grantOnRequest;
+  int requestCount = 0;
+
+  @override
+  Future<AgentNotificationPermissionStatus>
+  notificationPermissionStatus() async => status;
+
+  @override
+  Future<bool> requestNotificationPermission() async {
+    requestCount += 1;
+    if (grantOnRequest) {
+      status = AgentNotificationPermissionStatus.enabled;
+    }
+    return grantOnRequest;
   }
 }

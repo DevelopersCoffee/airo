@@ -4,9 +4,15 @@ import 'package:go_router/go_router.dart';
 import '../../data/services/agent_notification_scheduler.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, this.scheduler, this.initialCategory});
+  const NotificationsScreen({
+    super.key,
+    this.scheduler,
+    this.permissionService,
+    this.initialCategory,
+  });
 
   final AgentNotificationSchedulingService? scheduler;
+  final AgentNotificationPermissionService? permissionService;
   final String? initialCategory;
 
   @override
@@ -15,13 +21,19 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late final AgentNotificationSchedulingService _scheduler;
+  late final AgentNotificationPermissionService _permissionService;
   late Future<List<ScheduledAgentNotification>> _notificationsFuture;
+  late Future<AgentNotificationPermissionStatus> _permissionStatusFuture;
+  bool _requestingPermission = false;
 
   @override
   void initState() {
     super.initState();
     _scheduler = widget.scheduler ?? LocalAgentNotificationScheduler.instance;
+    _permissionService =
+        widget.permissionService ?? LocalAgentNotificationScheduler.instance;
     _notificationsFuture = _scheduler.getScheduledNotifications();
+    _permissionStatusFuture = _permissionService.notificationPermissionStatus();
   }
 
   @override
@@ -49,10 +61,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           body: ColoredBox(
             color: Theme.of(context).colorScheme.surfaceContainerLowest,
-            child: _buildBody(context, snapshot, notifications),
+            child: Column(
+              children: [
+                FutureBuilder<AgentNotificationPermissionStatus>(
+                  future: _permissionStatusFuture,
+                  builder: (context, permissionSnapshot) {
+                    if (permissionSnapshot.data !=
+                        AgentNotificationPermissionStatus.disabled) {
+                      return const SizedBox.shrink();
+                    }
+                    return _NotificationPermissionCard(
+                      requesting: _requestingPermission,
+                      onRequest: _requestNotificationPermission,
+                    );
+                  },
+                ),
+                Expanded(child: _buildBody(context, snapshot, notifications)),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (_requestingPermission) return;
+    setState(() => _requestingPermission = true);
+    final granted = await _permissionService.requestNotificationPermission();
+    if (!mounted) return;
+
+    setState(() {
+      _requestingPermission = false;
+      _permissionStatusFuture = _permissionService
+          .notificationPermissionStatus();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? 'Bell acquired. Airo can now keep you posted.'
+              : 'No worries — Airo will keep updates inside the app.',
+        ),
+      ),
     );
   }
 
@@ -131,6 +182,70 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return 'Notifications ($count)';
     }
     return '${_categoryLabel(category)} Notifications ($count)';
+  }
+}
+
+class _NotificationPermissionCard extends StatelessWidget {
+  const _NotificationPermissionCard({
+    required this.requesting,
+    required this.onRequest,
+  });
+
+  final bool requesting;
+  final VoidCallback onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      label: 'Notification permission',
+      child: Card(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        color: colors.secondaryContainer,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.notifications_active_outlined, color: colors.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Let Airo ring the tiny bell?',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Turn on notifications so downloads, reminders, and '
+                      'recordings don’t finish in mysterious silence.',
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: requesting ? null : onRequest,
+                      icon: requesting
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.notifications_active_outlined),
+                      label: Text(
+                        requesting ? 'Asking nicely…' : 'Yes, keep me posted',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

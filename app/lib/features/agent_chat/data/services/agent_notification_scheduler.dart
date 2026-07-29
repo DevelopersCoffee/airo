@@ -177,6 +177,14 @@ abstract interface class AgentNotificationRuntimeService {
   Future<String?> getLaunchPayload();
 }
 
+enum AgentNotificationPermissionStatus { enabled, disabled, unavailable }
+
+abstract interface class AgentNotificationPermissionService {
+  Future<AgentNotificationPermissionStatus> notificationPermissionStatus();
+
+  Future<bool> requestNotificationPermission();
+}
+
 class NotificationPermissionDeniedException implements Exception {
   const NotificationPermissionDeniedException();
 }
@@ -184,7 +192,8 @@ class NotificationPermissionDeniedException implements Exception {
 class LocalAgentNotificationScheduler
     implements
         AgentNotificationSchedulingService,
-        AgentNotificationRuntimeService {
+        AgentNotificationRuntimeService,
+        AgentNotificationPermissionService {
   LocalAgentNotificationScheduler({
     FlutterLocalNotificationsPlugin? notificationsPlugin,
     SharedPreferencesAsync? preferences,
@@ -257,7 +266,7 @@ class LocalAgentNotificationScheduler
     }
 
     await _ensureInitialized();
-    final hasPermission = await _requestNotificationPermission();
+    final hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
       throw const NotificationPermissionDeniedException();
     }
@@ -412,41 +421,100 @@ class LocalAgentNotificationScheduler
     _initialized = true;
   }
 
-  Future<bool> _requestNotificationPermission() async {
+  @override
+  Future<AgentNotificationPermissionStatus>
+  notificationPermissionStatus() async {
+    if (kIsWeb) return AgentNotificationPermissionStatus.unavailable;
+    try {
+      await _ensureInitialized();
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.android:
+          final android = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
+          final enabled = await android?.areNotificationsEnabled();
+          if (enabled == null) {
+            return AgentNotificationPermissionStatus.unavailable;
+          }
+          return enabled
+              ? AgentNotificationPermissionStatus.enabled
+              : AgentNotificationPermissionStatus.disabled;
+        case TargetPlatform.iOS:
+          final ios = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin
+              >();
+          final permissions = await ios?.checkPermissions();
+          if (permissions == null) {
+            return AgentNotificationPermissionStatus.unavailable;
+          }
+          return permissions.isEnabled
+              ? AgentNotificationPermissionStatus.enabled
+              : AgentNotificationPermissionStatus.disabled;
+        case TargetPlatform.macOS:
+          final macos = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                MacOSFlutterLocalNotificationsPlugin
+              >();
+          final permissions = await macos?.checkPermissions();
+          if (permissions == null) {
+            return AgentNotificationPermissionStatus.unavailable;
+          }
+          return permissions.isEnabled
+              ? AgentNotificationPermissionStatus.enabled
+              : AgentNotificationPermissionStatus.disabled;
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          return AgentNotificationPermissionStatus.unavailable;
+      }
+    } catch (_) {
+      return AgentNotificationPermissionStatus.unavailable;
+    }
+  }
+
+  @override
+  Future<bool> requestNotificationPermission() async {
     if (kIsWeb) return false;
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        final android = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
-        return await android?.requestNotificationsPermission() ?? true;
-      case TargetPlatform.iOS:
-        final ios = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin
-            >();
-        return await ios?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            ) ??
-            false;
-      case TargetPlatform.macOS:
-        final macos = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin
-            >();
-        return await macos?.requestPermissions(
-              alert: true,
-              badge: true,
-              sound: true,
-            ) ??
-            false;
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        return false;
+    try {
+      await _ensureInitialized();
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.android:
+          final android = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
+          return await android?.requestNotificationsPermission() ?? false;
+        case TargetPlatform.iOS:
+          final ios = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin
+              >();
+          return await ios?.requestPermissions(
+                alert: true,
+                badge: true,
+                sound: true,
+              ) ??
+              false;
+        case TargetPlatform.macOS:
+          final macos = _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                MacOSFlutterLocalNotificationsPlugin
+              >();
+          return await macos?.requestPermissions(
+                alert: true,
+                badge: true,
+                sound: true,
+              ) ??
+              false;
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          return false;
+      }
+    } catch (_) {
+      return false;
     }
   }
 
