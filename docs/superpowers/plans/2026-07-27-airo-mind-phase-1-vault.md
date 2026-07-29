@@ -3472,6 +3472,11 @@ impl KeyBytes {
 }
 
 /// An encrypted, portable grant of access to a Vault.
+/// `RA-23a` — every signature- or AAD-covered field is private with a read
+/// accessor. Revision 7 left all six `pub` and mutable, on a type whose header
+/// is AAD-bound; the tamper tests that mutate them move to
+/// `#[cfg(test)] pub(crate) fn with_*_tampered`, the same pattern
+/// `RootPublicKey::from_bytes` already uses.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecoveryPackage {
     pub format_version: u32,
@@ -3499,11 +3504,87 @@ pub struct RecoveryPackage {
     // derive the wrong key.
     pub passphrase_used: bool,
     pub kdf_params: BTreeMap<String, u64>,
+    #[serde(with = "super::encoding::base64_bytes")]
     pub kdf_salt: Vec<u8>,
 
+    // `ADR-0017`. Base64, not hex and never decimal arrays. The package
+    // double-encodes — a JSON payload, then that ciphertext text-encoded again
+    // here — so hex on these three costs a hard 2.0× and puts `V4`'s
+    // `≤ 3× compact` floor at 3.30×, unmeetable at any inner encoding. Base64
+    // costs 1.33× and clears every measured shape. Measured on the revision 7
+    // output: `identity_public_key` shipped as `[134,206,47,15,...]`.
+    #[serde(with = "super::encoding::base64_bytes")]
     nonce: Vec<u8>,
+    #[serde(with = "super::encoding::base64_bytes")]
     ciphertext: Vec<u8>,
 }
+
+/// # Framing — `ADR-0017`, `Freeze §4`
+///
+/// **The binding requirement is a property, not a layout:**
+///
+/// > Peak memory during export and restore is `O(1)` in revocation-ledger
+/// > size, and truncation is distinguishable from corruption.
+///
+/// `[len:u32][AEAD frame] × N` plus a sealed trailer satisfies it and is the
+/// default shape; the layout is not itself frozen.
+///
+/// ## Why this is required, and why the original reason is retired
+///
+/// #1305 required framing against a Vault holding one `ContentEnvelope` per
+/// content object. The §4.1 redesign deleted that driver, and measurement
+/// confirms it: a Vault is byte-identical at 10k and 100k contents (compact
+/// 2,540 B both, export 0.07 ms both, peak RSS delta −0.8%).
+///
+/// The Vault kept a second unbounded collection. The revocation ledger retains
+/// every destroyed subject permanently — deliberately, since `R4`'s
+/// blind-restore protection depends on it being complete. Measured:
+///
+/// ```text
+/// ledger exceeds contexts + devices at        224 destroyed subjects
+/// V5 peak RSS during export, budget 4×        10.7×–21.6×, flat across sizes
+/// V7 peak RSS, 10k → 100k revocations, +20%   +849%
+/// ```
+///
+/// Flat ratios mean structural, not a scale effect a larger budget absorbs.
+/// Byte-oriented serde does not fix it — 11.2× after, marginally worse,
+/// because that win is on disk and not in the live set.
+///
+/// ## What has to change
+///
+/// The 11× decomposes into six simultaneously-live copies. Four are the
+/// single-blob format itself and are what framing removes:
+///
+/// 1. The `BTreeMap` — 137.6 B resident per 49 B logical entry, **2.8× before
+///    export begins.** Framing does not remove this, and it is inside the 4×
+///    budget.
+/// 2. `Vault::to_payload` deep-cloning the ledger and certificates purely to
+///    serialize them — **26% of export peak, measured.** Fixed by a borrowing
+///    serializer type, independently of framing.
+/// 3. `serde_json::to_vec` over the whole payload.
+/// 4. `encrypt` returning a fresh whole-ciphertext `Vec`.
+/// 5. `to_bytes` serializing the 3.9× on-disk form in memory.
+/// 6. Reallocation headroom on each.
+///
+/// Export streams contexts, then certificates, then the ledger in fixed-size
+/// batches. `from_bytes` stops materializing the whole file before verifying a
+/// single byte. `encrypt_in_place_detached` removes one full-payload
+/// allocation and copy.
+///
+/// ## The trailer is not optional
+///
+/// Today a truncated Recovery Package fails AEAD **identically to a corrupt
+/// one**, and yields nothing. A sealed trailer distinguishes them and lets a
+/// partial restore recover every complete frame — on the one artifact whose
+/// absence is unrecoverable.
+///
+/// ## Re-review this invalidates
+///
+/// Framing changes the on-disk format, so every AAD binding, identity binding,
+/// and tamper test must be re-verified against the new shape.
+/// chief-security-officer and rust-architect both signed off on the current
+/// single-blob format; per `ADR-0017`'s Contract Impact table, both re-review,
+/// and `G0` is required again.
 
 impl RecoveryPackage {
     /// The plaintext header, canonically encoded, bound as AAD.
