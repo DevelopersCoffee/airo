@@ -9,6 +9,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('LiteRT is not ready from native availability alone', () {
+    expect(
+      AssistantModelLibraryState.isLiteRtReady(
+        runtimeAvailable: true,
+        hasDownloadedPackage: false,
+        hasConfiguredModel: false,
+      ),
+      isFalse,
+    );
+    expect(
+      AssistantModelLibraryState.isLiteRtReady(
+        runtimeAvailable: true,
+        hasDownloadedPackage: false,
+        hasConfiguredModel: true,
+      ),
+      isTrue,
+    );
+    expect(
+      AssistantModelLibraryState.isLiteRtReady(
+        runtimeAvailable: false,
+        hasDownloadedPackage: true,
+        hasConfiguredModel: false,
+      ),
+      isTrue,
+    );
+  });
+
   test('chat prefers an installed Gemma package over Gemini Nano', () {
     const nano = AssistantModelCandidate(
       id: geminiNanoAssistantModelId,

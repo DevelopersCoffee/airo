@@ -9,12 +9,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../application/assistant_model_preferences.dart';
+import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
+import 'model_health_center_screen.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -33,7 +35,9 @@ enum AssistantTask {
   image('Image Project', Icons.image_outlined),
   audio('Audio Project', Icons.mic_none),
   skills('Agent Skills Project', Icons.extension_outlined),
-  actions('Action Project', Icons.touch_app_outlined);
+  actions('Action Project', Icons.touch_app_outlined),
+  promptLab('Prompt Lab Project', Icons.tune),
+  tinyGarden('Tiny Garden Project', Icons.local_florist_outlined);
 
   const AssistantTask(this.label, this.icon);
 
@@ -48,6 +52,8 @@ enum AssistantTask {
     AssistantTask.audio => ModelCapability.audioUnderstanding,
     AssistantTask.skills => ModelCapability.agentSkills,
     AssistantTask.actions => ModelCapability.mobileActions,
+    AssistantTask.promptLab => ModelCapability.promptLab,
+    AssistantTask.tinyGarden => ModelCapability.mobileActions,
   };
 }
 
@@ -126,6 +132,23 @@ class AssistantProjectTemplate {
       defaultPackage: 'Gemma 3n E2B Multimodal',
       artifactLabel: 'Transcript draft',
     ),
+    AssistantProjectTemplate(
+      task: AssistantTask.promptLab,
+      title: 'Prompt Lab',
+      description: 'Compare prompts with controlled generation settings.',
+      primaryAction: 'Open prompt lab',
+      defaultPackage: 'Gemma 4 E2B Instruct',
+      artifactLabel: 'Prompt experiment',
+    ),
+    AssistantProjectTemplate(
+      task: AssistantTask.tinyGarden,
+      title: 'Tiny Garden',
+      description:
+          'Try a playful offline world controlled with natural language.',
+      primaryAction: 'Open Tiny Garden',
+      defaultPackage: 'FunctionGemma 270M',
+      artifactLabel: 'Garden state',
+    ),
   ];
 
   static AssistantProjectTemplate forTask(AssistantTask task) {
@@ -150,6 +173,17 @@ class AssistantModelLibraryState {
   final AssistantModelCandidate recommended;
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
+  /// A native LiteRT channel is not proof that a model can be loaded. The
+  /// runtime must either have an installed package or an explicit model
+  /// source configured (path/URL).
+  static bool isLiteRtReady({
+    required bool runtimeAvailable,
+    required bool hasDownloadedPackage,
+    required bool hasConfiguredModel,
+  }) {
+    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModel);
+  }
+
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
   }) async {
@@ -164,7 +198,11 @@ class AssistantModelLibraryState {
     final defaultPackages = await _defaultPackages(liteRtService);
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
-    final liteRtReady = liteRtAvailable || hasDownloadedBalancedPackage;
+    final liteRtReady = isLiteRtReady(
+      runtimeAvailable: liteRtAvailable,
+      hasDownloadedPackage: hasDownloadedBalancedPackage,
+      hasConfiguredModel: liteRtService.hasConfiguredModel,
+    );
     final compatibilityByModelId = await _loadCompatibilityByModelId(
       liteRtService,
       defaultPackages,
@@ -272,6 +310,8 @@ class AssistantModelLibraryState {
       AssistantTask.image,
       AssistantTask.audio,
       AssistantTask.actions,
+      AssistantTask.promptLab,
+      AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
       if (model != null) {
@@ -323,6 +363,14 @@ class AssistantModelLibraryState {
       AssistantTask.image || AssistantTask.audio => [
         if (package != null) assistantModelIdForOfflineModel(package.id),
         geminiCloudAssistantModelId,
+      ],
+      AssistantTask.promptLab => [
+        litertGemmaAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
+      ],
+      AssistantTask.tinyGarden => [
+        geminiNanoAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
     };
 
@@ -395,6 +443,8 @@ class AssistantModelLibraryState {
       AssistantTask.audio: gemma3n,
       AssistantTask.skills: gemma4E2b,
       AssistantTask.actions: functionGemma,
+      AssistantTask.promptLab: gemma4E2b,
+      AssistantTask.tinyGarden: functionGemma,
     };
   }
 
@@ -602,6 +652,11 @@ class _ModelLibraryContent extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _ProjectHierarchyBanner(state: state),
+        const SizedBox(height: 16),
+        _RuntimeHealthButton(
+          candidate: state.recommended,
+          onOpenModelManager: onOpenModelManager,
+        ),
         const SizedBox(height: 16),
         Text('Choose category', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
@@ -949,6 +1004,86 @@ class _ModelLibraryContent extends ConsumerWidget {
               child: const Text('Close'),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _RuntimeHealthButton extends ConsumerWidget {
+  const _RuntimeHealthButton({
+    required this.candidate,
+    required this.onOpenModelManager,
+  });
+
+  final AssistantModelCandidate candidate;
+  final VoidCallback onOpenModelManager;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.health_and_safety_outlined),
+        title: const Text('Runtime Health Center'),
+        subtitle: const Text(
+          'See why this model is ready, blocked, or still preparing.',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final model = candidate.package;
+          if (model == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Health details will appear after a local model is selected.',
+                ),
+              ),
+            );
+            return;
+          }
+          final report = ModelHealthReport.fromFacts(
+            model: model,
+            compatibility: candidate.compatibility,
+          );
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ModelHealthCenterScreen(
+                report: report,
+                onAction: (action) {
+                  var reducedContext = 1024;
+                  if (action == ModelHealthAction.reduceContext) {
+                    final settings = ref.read(aiPreferencesSettingsProvider);
+                    reducedContext = settings.contextLength <= 1024
+                        ? 512
+                        : 1024;
+                    unawaited(
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(
+                            settings.copyWith(contextLength: reducedContext),
+                          ),
+                    );
+                  }
+                  final message = switch (action) {
+                    ModelHealthAction.retry =>
+                      'Retrying is available from Model Management after checking the runtime status.',
+                    ModelHealthAction.reduceContext =>
+                      'Context profile reduced to $reducedContext tokens. Retry the model now.',
+                    ModelHealthAction.resumeDownload =>
+                      'Resume the model download from Model Management.',
+                    ModelHealthAction.repair =>
+                      'Repair or re-download the model from Model Management.',
+                    ModelHealthAction.chooseAlternative =>
+                      'Choose another installed model from Model Management.',
+                  };
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                  onOpenModelManager();
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -27,6 +27,7 @@ void main() {
         memoryBudgetPercent: 70,
         debugLogging: true,
         downloadLocation: AIDownloadLocationPreference.appManaged,
+        safetyProfile: SafetyProfile.balanced,
       ),
     );
 
@@ -62,6 +63,10 @@ void main() {
     expect(
       prefs.getString(AIPreferencesSettingsNotifier.downloadLocationKey),
       AIDownloadLocationPreference.appManaged.name,
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.safetyProfileKey),
+      SafetyProfile.balanced.name,
     );
   });
 }

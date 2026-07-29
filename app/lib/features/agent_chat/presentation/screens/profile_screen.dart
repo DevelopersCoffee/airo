@@ -466,6 +466,16 @@ class _AIPreferencesSection extends ConsumerWidget {
                           .update(settings.copyWith(downloadLocation: value));
                     },
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      settings.downloadLocation ==
+                              AIDownloadLocationPreference.appManaged
+                          ? 'Uses app-scoped external storage when available; existing internal models remain discoverable.'
+                          : 'Uses the app documents directory for private model storage.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
                   ListTile(
                     title: const Text('Clear Model Cache'),
                     subtitle: const Text(
@@ -525,6 +535,35 @@ class _AIPreferencesSection extends ConsumerWidget {
                       ref
                           .read(aiPreferencesSettingsProvider.notifier)
                           .update(settings.copyWith(debugLogging: value));
+                    },
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                key: const Key('ai-safety-profile-section'),
+                leading: const Icon(Icons.health_and_safety_outlined),
+                title: const Text('Safety Profile'),
+                subtitle: Text(
+                  settings.safetyProfile.label,
+                  key: const Key('ai-safety-profile-subtitle'),
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Harmful-content protection always stays enabled. This setting controls additional advisory filters.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  _SettingDropdownRow<SafetyProfile>(
+                    label: 'Safety posture',
+                    value: settings.safetyProfile,
+                    items: SafetyProfile.values,
+                    itemLabel: (value) => value.label,
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(safetyProfile: value));
                     },
                   ),
                 ],

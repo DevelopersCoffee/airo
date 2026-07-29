@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Voice search state
@@ -85,8 +84,9 @@ abstract class VoiceSearchService {
   void dispose();
 }
 
-/// Mock implementation of VoiceSearchService for testing and fallback
-/// On real Fire TV devices, this would be replaced with speech_to_text integration
+/// Honest unavailable implementation used until a platform speech adapter is
+/// registered. It deliberately does not pretend to listen or return an empty
+/// result after an artificial delay.
 class MockVoiceSearchService implements VoiceSearchService {
   VoiceSearchState _state = VoiceSearchState.idle;
   final _stateController = StreamController<VoiceSearchState>.broadcast();
@@ -104,27 +104,14 @@ class MockVoiceSearchService implements VoiceSearchService {
 
   @override
   Future<bool> isAvailable() async {
-    // Mock: always return false in debug, would check speech recognition
-    return !kDebugMode;
+    return false;
   }
 
   @override
   Future<VoiceSearchResult> startListening() async {
-    _setState(VoiceSearchState.listening);
-
-    // Simulate listening for 3 seconds
-    await Future<void>.delayed(const Duration(seconds: 3));
-
-    _setState(VoiceSearchState.processing);
-
-    // Simulate processing
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-
-    _setState(VoiceSearchState.completed);
-
-    // In mock mode, return empty result
-    // Real implementation would return recognized text
-    return VoiceSearchResult.empty();
+    const message = 'Voice search is unavailable on this device.';
+    _setState(VoiceSearchState.error);
+    return VoiceSearchResult.error(message);
   }
 
   @override

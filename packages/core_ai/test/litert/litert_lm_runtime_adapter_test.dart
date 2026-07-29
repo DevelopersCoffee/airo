@@ -1,4 +1,5 @@
 import 'package:core_ai/core_ai.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -34,6 +35,43 @@ void main() {
       );
 
       expect(supported, isTrue);
+    });
+
+    test(
+      'does not report ready when only an install URL is configured',
+      () async {
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: _FakeLiteRtLmClient(hasActiveModel: false),
+          activeModelService: activeModelService,
+          runtimeConfig: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
+
+        expect(await adapter.isAvailable(), isFalse);
+      },
+    );
+
+    test('bounds a wedged native availability operation', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('test.litert_lm.timeout');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return false;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final client = MethodChannelLiteRtLmClient(
+        config: const LiteRtLmConfig(
+          modelPath: '/models/gemma.task',
+          operationTimeout: Duration(milliseconds: 10),
+        ),
+        channel: channel,
+      );
+
+      expect(await client.activeModelExists(), isFalse);
     });
 
     test('surfaces unsupported tool-calling requests explicitly', () async {

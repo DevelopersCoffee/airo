@@ -39,7 +39,19 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
         // ignore: deprecated_member_use
         allowMultiple: true,
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'txt', 'doc', 'docx'],
+        allowedExtensions: [
+          'pdf',
+          'jpg',
+          'jpeg',
+          'png',
+          'txt',
+          'doc',
+          'docx',
+          'mp3',
+          'wav',
+          'm4a',
+          'aac',
+        ],
       );
 
       if (result != null) {

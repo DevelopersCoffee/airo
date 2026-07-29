@@ -9,22 +9,39 @@ import 'model_download_progress.dart';
 
 /// AI-model adapter over the product-neutral progressive download platform.
 class ModelDownloadService {
-  factory ModelDownloadService({
+  ModelDownloadService({
     BackgroundDownloads? downloads,
     ModelStorageManager? storageManager,
+    ModelStorageLocation storageLocation =
+        ModelStorageLocation.applicationDocuments,
+  }) : this._from(
+         _resolveDependencies(
+           downloads: downloads,
+           storageManager: storageManager,
+           storageLocation: storageLocation,
+         ),
+       );
+
+  ModelDownloadService._from(_ResolvedDependencies dependencies)
+    : _downloads = dependencies.downloads,
+      _storageManager = dependencies.storageManager;
+
+  static _ResolvedDependencies _resolveDependencies({
+    BackgroundDownloads? downloads,
+    ModelStorageManager? storageManager,
+    required ModelStorageLocation storageLocation,
   }) {
     final resolvedDownloads = downloads ?? MethodChannelBackgroundDownloads();
-    return ModelDownloadService._(
+    return _ResolvedDependencies(
       downloads: resolvedDownloads,
       storageManager:
-          storageManager ?? ModelStorageManager(downloads: resolvedDownloads),
+          storageManager ??
+          ModelStorageManager(
+            downloads: resolvedDownloads,
+            location: storageLocation,
+          ),
     );
   }
-
-  ModelDownloadService._({
-    required this._downloads,
-    required this._storageManager,
-  });
 
   final BackgroundDownloads _downloads;
   final ModelStorageManager _storageManager;
@@ -286,4 +303,14 @@ class ModelDownloadService {
     _scheduledIds.clear();
     _scheduledModels.clear();
   }
+}
+
+class _ResolvedDependencies {
+  const _ResolvedDependencies({
+    required this.downloads,
+    required this.storageManager,
+  });
+
+  final BackgroundDownloads downloads;
+  final ModelStorageManager storageManager;
 }
