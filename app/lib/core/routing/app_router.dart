@@ -9,9 +9,11 @@ import '../../features/airo_explore/presentation/screens/airo_explore_screen.dar
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
+import '../../features/agent_chat/presentation/screens/model_advisor_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
+import '../../features/settings/presentation/screens/airo_portability_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
@@ -249,6 +251,11 @@ class AppRouter {
                             models: ModelCatalog.bundledModels,
                           ),
                     ),
+                    GoRoute(
+                      path: 'model-advisor',
+                      name: 'mind_model_advisor',
+                      builder: (context, state) => const ModelAdvisorScreen(),
+                    ),
                   ],
                 ),
               ],
@@ -358,6 +365,14 @@ class AppRouter {
                   path: RouteNames.settings,
                   name: RouteNames.settings,
                   builder: (context, state) => const SettingsHubScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'airo-portability',
+                      name: 'airo_portability',
+                      builder: (context, state) =>
+                          const AiroPortabilityScreen(),
+                    ),
+                  ],
                 ),
               ],
             ),

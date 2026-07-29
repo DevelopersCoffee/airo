@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/accessibility/airo_speech_service.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
@@ -568,6 +569,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         height: 32,
                       ),
                     ),
+                    if (!message.isUser)
+                      IconButton(
+                        tooltip: 'Read message aloud',
+                        onPressed: () =>
+                            AiroSpeechService.instance.speak(message.text),
+                        icon: const Icon(Icons.volume_up_outlined, size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                      ),
                   ],
                 ],
               ),

@@ -32,6 +32,7 @@ export 'src/router/model_health_checker.dart';
 // GGUF Model Support
 export 'src/llm/gguf_model_config.dart';
 export 'src/llm/gguf_model_client.dart';
+export 'src/llm/openai_compatible_client.dart';
 export 'src/llm/active_model_service.dart';
 
 // Model Registry

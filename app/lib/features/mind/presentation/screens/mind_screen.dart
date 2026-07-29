@@ -162,6 +162,15 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             color: Colors.blueGrey,
             onTap: () => context.push('/mind/device-capabilities'),
           ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Model Advisor',
+            subtitle:
+                'Choose a capability and get a device-fit recommendation.',
+            icon: Icons.auto_awesome_outlined,
+            color: Colors.orange.shade800,
+            onTap: () => context.push('/mind/model-advisor'),
+          ),
         ],
       ),
     );

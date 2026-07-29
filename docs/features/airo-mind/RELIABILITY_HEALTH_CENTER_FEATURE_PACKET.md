@@ -88,9 +88,12 @@ model-management feature gate without changing model files.
 ## Phase boundary
 
 This slice implements the typed health/diagnostic contract, deterministic
-composition, and presentation seam. Download transport hardening, model
-advisor ranking, backup/sync, accessibility remediation, and additional
-backends remain follow-up slices using this contract.
+composition, and presentation seam. The application now also exposes a
+capability-driven Model Advisor, encrypted Airo Mind backup verification,
+read-aloud actions for assistant responses, resilient download controls, and
+an OpenAI-compatible client seam for LM Studio, Ollama, and llama.cpp servers.
+LAN/cloud sync, full chat-history persistence, and additional native backends
+remain follow-up slices using these contracts.
 
 ## Airo Mind use-case catalog
 
