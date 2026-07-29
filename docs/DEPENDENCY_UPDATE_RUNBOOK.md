@@ -290,17 +290,17 @@ npm update
 
 **Option B: Update specific package**
 ```bash
-npm install @playwright/test@1.50.0 --save-dev
+npm install @playwright/test@1.62.0 --save-dev
 ```
 
 **Option C: Update package.json manually (recommended)**
 ```json
 {
   "devDependencies": {
-    "@playwright/test": "1.50.0",
-    "@types/node": "20.17.0",
+    "@playwright/test": "1.62.0",
+    "@types/node": "20.19.43",
     "ts-node": "10.9.2",
-    "typescript": "5.7.3"
+    "typescript": "5.9.3"
   }
 }
 ```
