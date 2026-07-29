@@ -347,6 +347,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
 
+    // A persisted selection must not make an unavailable local runtime look
+    // active. This can happen after an app update, model removal, or when a
+    // device exposes the LiteRT channel without a configured model path. Let
+    // the model picker explain the required setup instead of showing a stale
+    // "model on device" chat surface.
+    final library = ref.watch(assistantModelLibraryProvider);
+    final selectedCandidate = library.maybeWhen(
+      data: (state) => state.candidateById(selectedAssistantModelId),
+      orElse: () => null,
+    );
+    if (library.hasValue &&
+        (selectedCandidate == null ||
+            (selectedCandidate.local && !selectedCandidate.available))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final current = ref.read(selectedAssistantModelIdProvider);
+        if (current == selectedAssistantModelId) {
+          unawaited(
+            ref.read(selectedAssistantModelIdProvider.notifier).select(null),
+          );
+        }
+      });
+      return ModelLibraryScreen(
+        onModelSelected: _selectAssistantModel,
+        onOpenModelManager: _openModelManager,
+      );
+    }
+
     // No AppBar here - global AppBar is in AppShell
     final colorScheme = Theme.of(context).colorScheme;
     return AiroResponsiveScaffold(
