@@ -39,6 +39,7 @@ import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../../../core/services/local_runtime_preloader_service.dart';
 import '../../../../core/services/model_preload_preferences.dart';
+import '../../../../core/services/voice_search_service.dart';
 import 'model_library_screen.dart';
 
 /// Chat message model
@@ -109,6 +110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
+  bool _isCapturingVoice = false;
 
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
@@ -420,6 +422,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     label: const Text('Skills'),
                   ),
                   const SizedBox(width: 8),
+                  IconButton(
+                    key: const Key('agent_chat_voice_button'),
+                    tooltip: _isCapturingVoice
+                        ? 'Stop voice input'
+                        : 'Speak message',
+                    onPressed: _captureVoice,
+                    icon: Icon(_isCapturingVoice ? Icons.stop : Icons.mic_none),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       key: const Key('agent_chat_input'),
@@ -458,6 +469,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   bool get _shouldShowPromptSuggestions {
     return !_messages.any((message) => message.isUser);
+  }
+
+  Future<void> _captureVoice() async {
+    final service = ref.read(voiceSearchServiceProvider);
+    if (_isCapturingVoice) {
+      await service.stopListening();
+      if (mounted) setState(() => _isCapturingVoice = false);
+      return;
+    }
+
+    setState(() => _isCapturingVoice = true);
+    final result = await service.startListening();
+    if (!mounted) return;
+    setState(() => _isCapturingVoice = false);
+    if (result.isSuccess && result.text != null) {
+      _messageController
+        ..text = result.text!
+        ..selection = TextSelection.collapsed(offset: result.text!.length);
+      _messageInputFocusNode.requestFocus();
+      return;
+    }
+    if (result.errorMessage != null && result.errorMessage!.isNotEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
+    }
   }
 
   Widget _buildSelectedModelBar(String selectedModelId) {
