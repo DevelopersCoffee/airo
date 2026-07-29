@@ -17,6 +17,7 @@ import '../../features/settings/presentation/screens/airo_portability_screen.dar
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
+import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -264,6 +265,11 @@ class AppRouter {
                         initialImageMode:
                             state.uri.queryParameters['mode'] == 'image',
                       ),
+                    ),
+                    GoRoute(
+                      path: 'audio-scribe',
+                      name: 'mind_audio_scribe',
+                      builder: (context, state) => const AudioScribeScreen(),
                     ),
                   ],
                 ),

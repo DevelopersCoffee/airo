@@ -125,10 +125,10 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           _MindActionCard(
             title: 'Audio Scribe',
             subtitle:
-                'Prepare a private transcription workflow when an audio model is installed.',
+                'Capture speech, review the transcript, and translate with Airo.',
             icon: Icons.mic_none,
             color: Colors.green.shade700,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/mind/audio-scribe'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
