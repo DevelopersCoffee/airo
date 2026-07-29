@@ -270,8 +270,14 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   @override
   Future<bool> isAvailable() async {
     if (kIsWeb) return false;
-    if (await _client.activeModelExists()) return true;
-    return runtimeConfig.hasModelUrl;
+    // A download URL describes a possible install source, not a ready
+    // runtime. Provider discovery must not advertise LiteRT as usable until
+    // the native client confirms that an executable model is present.
+    return _client.activeModelExists(
+      modelPath: runtimeConfig.hasModelPath
+          ? runtimeConfig.modelPath.trim()
+          : null,
+    );
   }
 
   @override

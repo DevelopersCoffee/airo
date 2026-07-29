@@ -36,6 +36,21 @@ void main() {
       expect(supported, isTrue);
     });
 
+    test(
+      'does not report ready when only an install URL is configured',
+      () async {
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: _FakeLiteRtLmClient(hasActiveModel: false),
+          activeModelService: activeModelService,
+          runtimeConfig: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
+
+        expect(await adapter.isAvailable(), isFalse);
+      },
+    );
+
     test('surfaces unsupported tool-calling requests explicitly', () async {
       final adapter = LiteRtLmRuntimeAdapter(
         client: _FakeLiteRtLmClient(hasActiveModel: true),
