@@ -7,7 +7,7 @@ void main() {
   testWidgets('shows Why panel, timeline, and accessible recovery action', (
     tester,
   ) async {
-    const report = ModelHealthReport(
+    final report = ModelHealthReport(
       modelId: 'gemma-4b',
       modelName: 'Gemma 4B',
       status: ModelHealthReportStatus.recoverable,
@@ -28,24 +28,46 @@ void main() {
       actions: [ModelHealthAction.reduceContext],
       availableMemoryMb: 2100,
       requiredMemoryMb: 3338,
+      trace: ExecutionTrace(
+        entries: [
+          ExecutionTraceEntry(
+            sequence: 1,
+            event: ExecutionTraceEvent.initializing,
+            elapsedMs: BigInt.zero,
+          ),
+          ExecutionTraceEntry(
+            sequence: 2,
+            event: ExecutionTraceEvent.ready,
+            elapsedMs: BigInt.from(120),
+          ),
+        ],
+      ),
     );
 
     await tester.pumpWidget(
-      const MaterialApp(home: ModelHealthCenterScreen(report: report)),
+      MaterialApp(home: ModelHealthCenterScreen(report: report)),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Runtime Health Center'), findsOneWidget);
     expect(find.text('Why?'), findsOneWidget);
     expect(
-      find.text('Retry with a smaller context to free memory.'),
-      findsOneWidget,
-    );
-    expect(find.text('Recommended next steps'), findsOneWidget);
-    expect(find.text('Retry with reduced context'), findsOneWidget);
-    expect(
       find.bySemanticsLabel(RegExp('Gemma 4B runtime status')),
       findsOneWidget,
     );
+    expect(
+      find.text('Retry with a smaller context to free memory.'),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Recommended next steps'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Recommended next steps'), findsOneWidget);
+    expect(find.text('Retry with reduced context'), findsOneWidget);
+    expect(find.text('Runtime trace'), findsOneWidget);
+    expect(find.text('Initializing runtime'), findsOneWidget);
+    expect(find.text('Runtime ready'), findsOneWidget);
   });
 }

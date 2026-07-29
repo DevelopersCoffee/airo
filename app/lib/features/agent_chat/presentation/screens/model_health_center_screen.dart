@@ -105,6 +105,27 @@ class ModelHealthCenterScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (report.trace != null && report.trace!.entries.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Text('Runtime trace', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(
+                children: [
+                  for (final entry in report.trace!.entries)
+                    ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        radius: 12,
+                        child: Text('${entry.sequence}'),
+                      ),
+                      title: Text(_traceLabel(entry.event)),
+                      trailing: Text('${entry.elapsedMs} ms'),
+                    ),
+                ],
+              ),
+            ),
+          ],
           if (report.actions.isNotEmpty) ...[
             const SizedBox(height: 18),
             Text('Recommended next steps', style: theme.textTheme.titleMedium),
@@ -170,6 +191,18 @@ class ModelHealthCenterScreen extends StatelessWidget {
     ModelHealthAction.repair => 'Repair model',
     ModelHealthAction.reduceContext => 'Retry with reduced context',
     ModelHealthAction.chooseAlternative => 'Choose another installed model',
+  };
+
+  static String _traceLabel(ExecutionTraceEvent event) => switch (event) {
+    ExecutionTraceEvent.initializing => 'Initializing runtime',
+    ExecutionTraceEvent.ready => 'Runtime ready',
+    ExecutionTraceEvent.generationStarted => 'Generation started',
+    ExecutionTraceEvent.firstToken => 'First token received',
+    ExecutionTraceEvent.streaming => 'Streaming tokens',
+    ExecutionTraceEvent.generationFinished => 'Generation finished',
+    ExecutionTraceEvent.generationFailed => 'Generation failed',
+    ExecutionTraceEvent.shuttingDown => 'Shutting down',
+    ExecutionTraceEvent.stopped => 'Runtime stopped',
   };
 }
 

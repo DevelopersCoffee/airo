@@ -3,6 +3,12 @@
 /// Contains LLM client abstractions, prompt management, and AI utilities.
 library;
 
+// Runtime diagnostics are part of the framework API consumed by app-facing
+// health and explainability surfaces. Re-export the backend-neutral trace
+// contracts so feature packages do not depend on the native bridge directly.
+export 'package:core_native/core_native.dart'
+    show ExecutionTrace, ExecutionTraceEntry, ExecutionTraceEvent;
+
 // AI Provider
 export 'src/provider/ai_provider.dart';
 
