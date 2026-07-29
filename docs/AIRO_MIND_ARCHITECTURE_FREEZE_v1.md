@@ -399,6 +399,28 @@ changelog entry that must cite the probe, the benchmark, or the compiler error
 that demanded it cannot describe work that was never performed — the citation
 either resolves or it does not.
 
+### Where enforcement is mechanical, and where it is not
+
+Worth stating plainly, because the weak row is the one that will fail quietly:
+
+| Mechanism | Enforcement |
+|---|---|
+| G0 | **Mechanical** — compiler and tests |
+| Contract Impact | **Mechanical** — the ADR template cannot omit it and a blank row is visible |
+| Conformance audit | **Mechanical** — review checklist |
+| Citation namespace | **Mechanical** — a fixed prefix set is greppable against real artifacts |
+| Evidence Rule | **Human discipline** |
+
+The Evidence Rule is the only one with no mechanical backstop: nothing stops a
+plausible citation attached to work that was not done. The citation namespace
+narrows it — an invented artifact id fails to resolve — but a *real* id cited
+for the wrong change still passes. That residual gap is where tooling would help
+and is not worth automating yet.
+
+Recording it here rather than treating the stack as complete. A governance
+mechanism whose weakness is known is a different thing from one whose weakness
+is assumed absent.
+
 ### The changelog is a proof ledger, not a release note
 
 A revision's changelog exists to answer one question per entry:
@@ -432,6 +454,54 @@ Worked example, Revision 8:
 | Pre-sized `String` hex helper | Benchmark | `to_bytes()` on a 100k-context vault: 350.82 ms → 16.55 ms | **I8**, budget V4 — no contract governs it |
 | Base64 on the outer ciphertext | Benchmark | Hex leaves a hard 3.30× floor against V4's ≤ 3× | **§4** |
 | Re-export `RevocationSource` | Compiler | `error[E0433]` from an external probe; restore unreachable | `none — plan-local` |
+
+### Citations resolve to real identifiers
+
+**Every evidence citation names an artifact that exists independently of the
+changelog**, drawn from this namespace and no other:
+
+| Prefix | Artifact | Example |
+|---|---|---|
+| `rustc E####` | A compiler diagnostic | `rustc E0433` |
+| `G0.#` | A buildability gate step | `G0.5` |
+| `V#` / `H#` | A benchmark budget or host datapoint | `V4` |
+| `SEC-#` | A Chief Security Officer finding | `SEC-15` |
+| `RA-#` | A Rust Architect finding | `RA-1` |
+| `PERF-#` | A Chief Performance Officer finding | `PERF-3` |
+| `ADR-####` | An accepted ADR | `ADR-0017` |
+| `Freeze §#` | A numbered section of this document | `Freeze §4` |
+| `C#` | A runtime contract | `C7` |
+| `I#` | A runtime invariant | `I6` |
+| `S#` | **A conformance suite, and nothing else** | `S1` |
+
+A reviewer can check that a cited artifact is real without judging whether the
+change is correct. That is a weaker guarantee than proving the change justified,
+and it is the guarantee actually worth having: it prevents invented citations the
+same way `none — plan-local` prevents invented contracts.
+
+**`S#` is reserved for conformance suites.** Review findings were numbered `S1`,
+`S2`, `S5` … while the conformance suites are also `S1`–`S5`, so a bare `S2`
+meant either "Replay conformance" or "`link_content` re-links destroyed
+content". Role prefixes remove it. The Rust Architect already numbered findings
+`RA*` *"to avoid colliding with the security officer's S*"* — that instinct was
+right and did not go far enough, because neither numbering avoided the suites.
+
+Renumbering applies going forward and to the Revision 8 ledger. Findings already
+posted to issues keep their original numbers in those comments; the ledger cites
+the prefixed form.
+
+### Editorial change requires a demonstrated defect
+
+**"The previous text was ambiguous" is not evidence.** It becomes evidence when
+the ambiguity is demonstrated by a review finding or an implementation failure —
+someone read it the wrong way, or built the wrong thing from it.
+
+Without this, a document meant to become a stable engineering reference
+accumulates rewording indefinitely, each edit locally defensible and none
+demanded by anything. The clarifications that matter have a witness: I6's
+canonicalization text exists because a mnemonic with a trailing newline derived
+a different seed, and freeze §4's encoding table exists because three helpers
+were applied at some of the sites their invariant covered.
 
 ## G0 — Buildability. A revision does not exist until it builds.
 
