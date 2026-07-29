@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1824425509;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 540631332;
 
 // Section: executor
 
@@ -410,7 +410,7 @@ fn wire__crate__api__mock_runtime__MockRuntime_auto_accessor_set_trace_impl(
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<MockRuntime>,
             >>::sse_decode(&mut deserializer);
             let api_trace =
-                <crate::api::mock_runtime::ExecutionTrace>::sse_decode(&mut deserializer);
+                <crate::api::runtime_contracts::ExecutionTrace>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let mut api_that_guard = None;
@@ -2241,6 +2241,67 @@ fn wire__crate__api__mock_runtime__runtime_registry_new_impl(
         },
     )
 }
+fn wire__crate__api__mock_runtime__runtime_registry_register_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "runtime_registry_register",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_registry = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<RuntimeRegistry>,
+            >>::sse_decode(&mut deserializer);
+            let api_runtime =
+                <crate::api::runtime_contracts::RuntimeId>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let mut api_registry_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_registry,
+                                0,
+                                true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => {
+                                api_registry_guard =
+                                    Some(api_registry.lockable_decode_sync_ref_mut())
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_registry_guard = api_registry_guard.unwrap();
+                    let output_ok = Result::<_, ()>::Ok({
+                        crate::api::mock_runtime::runtime_registry_register(
+                            &mut *api_registry_guard,
+                            api_runtime,
+                        );
+                    })?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__mock_runtime__runtime_registry_register_mock_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -2731,27 +2792,47 @@ impl SseDecode for crate::api::runtime_contracts::ExecutionPriority {
     }
 }
 
-impl SseDecode for crate::api::mock_runtime::ExecutionTrace {
+impl SseDecode for crate::api::runtime_contracts::ExecutionTrace {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_entries =
-            <Vec<crate::api::mock_runtime::ExecutionTraceEntry>>::sse_decode(deserializer);
-        return crate::api::mock_runtime::ExecutionTrace {
+            <Vec<crate::api::runtime_contracts::ExecutionTraceEntry>>::sse_decode(deserializer);
+        return crate::api::runtime_contracts::ExecutionTrace {
             entries: var_entries,
         };
     }
 }
 
-impl SseDecode for crate::api::mock_runtime::ExecutionTraceEntry {
+impl SseDecode for crate::api::runtime_contracts::ExecutionTraceEntry {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_sequence = <u32>::sse_decode(deserializer);
-        let mut var_event = <String>::sse_decode(deserializer);
+        let mut var_event =
+            <crate::api::runtime_contracts::ExecutionTraceEvent>::sse_decode(deserializer);
         let mut var_elapsedMs = <u64>::sse_decode(deserializer);
-        return crate::api::mock_runtime::ExecutionTraceEntry {
+        return crate::api::runtime_contracts::ExecutionTraceEntry {
             sequence: var_sequence,
             event: var_event,
             elapsed_ms: var_elapsedMs,
+        };
+    }
+}
+
+impl SseDecode for crate::api::runtime_contracts::ExecutionTraceEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::runtime_contracts::ExecutionTraceEvent::Initializing,
+            1 => crate::api::runtime_contracts::ExecutionTraceEvent::Ready,
+            2 => crate::api::runtime_contracts::ExecutionTraceEvent::GenerationStarted,
+            3 => crate::api::runtime_contracts::ExecutionTraceEvent::FirstToken,
+            4 => crate::api::runtime_contracts::ExecutionTraceEvent::Streaming,
+            5 => crate::api::runtime_contracts::ExecutionTraceEvent::GenerationFinished,
+            6 => crate::api::runtime_contracts::ExecutionTraceEvent::GenerationFailed,
+            7 => crate::api::runtime_contracts::ExecutionTraceEvent::ShuttingDown,
+            8 => crate::api::runtime_contracts::ExecutionTraceEvent::Stopped,
+            _ => unreachable!("Invalid variant for ExecutionTraceEvent: {}", inner),
         };
     }
 }
@@ -2850,15 +2931,15 @@ impl SseDecode for Vec<String> {
     }
 }
 
-impl SseDecode for Vec<crate::api::mock_runtime::ExecutionTraceEntry> {
+impl SseDecode for Vec<crate::api::runtime_contracts::ExecutionTraceEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::mock_runtime::ExecutionTraceEntry>::sse_decode(
-                deserializer,
-            ));
+            ans_.push(
+                <crate::api::runtime_contracts::ExecutionTraceEntry>::sse_decode(deserializer),
+            );
         }
         return ans_;
     }
@@ -3050,13 +3131,13 @@ impl SseDecode for Vec<crate::api::native_engine::SubtitleCue> {
     }
 }
 
-impl SseDecode for Vec<crate::api::mock_runtime::TelemetryEvent> {
+impl SseDecode for Vec<crate::api::runtime_contracts::TelemetryEvent> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::mock_runtime::TelemetryEvent>::sse_decode(
+            ans_.push(<crate::api::runtime_contracts::TelemetryEvent>::sse_decode(
                 deserializer,
             ));
         }
@@ -3897,15 +3978,16 @@ impl SseDecode for crate::api::native_engine::SubtitleParseResult {
     }
 }
 
-impl SseDecode for crate::api::mock_runtime::TelemetryEvent {
+impl SseDecode for crate::api::runtime_contracts::TelemetryEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_sequence = <u32>::sse_decode(deserializer);
-        let mut var_event = <String>::sse_decode(deserializer);
+        let mut var_event =
+            <crate::api::runtime_contracts::TelemetryEventKind>::sse_decode(deserializer);
         let mut var_elapsedMs = <u64>::sse_decode(deserializer);
         let mut var_error =
             <Option<crate::api::runtime_contracts::RuntimeErrorCode>>::sse_decode(deserializer);
-        return crate::api::mock_runtime::TelemetryEvent {
+        return crate::api::runtime_contracts::TelemetryEvent {
             sequence: var_sequence,
             event: var_event,
             elapsed_ms: var_elapsedMs,
@@ -3914,11 +3996,28 @@ impl SseDecode for crate::api::mock_runtime::TelemetryEvent {
     }
 }
 
+impl SseDecode for crate::api::runtime_contracts::TelemetryEventKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::runtime_contracts::TelemetryEventKind::RuntimeStarted,
+            1 => crate::api::runtime_contracts::TelemetryEventKind::RuntimeReady,
+            2 => crate::api::runtime_contracts::TelemetryEventKind::GenerationStarted,
+            3 => crate::api::runtime_contracts::TelemetryEventKind::FirstToken,
+            4 => crate::api::runtime_contracts::TelemetryEventKind::GenerationFinished,
+            5 => crate::api::runtime_contracts::TelemetryEventKind::GenerationFailed,
+            6 => crate::api::runtime_contracts::TelemetryEventKind::RuntimeStopped,
+            _ => unreachable!("Invalid variant for TelemetryEventKind: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for crate::api::mock_runtime::TelemetryStub {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_events =
-            <Vec<crate::api::mock_runtime::TelemetryEvent>>::sse_decode(deserializer);
+            <Vec<crate::api::runtime_contracts::TelemetryEvent>>::sse_decode(deserializer);
         return crate::api::mock_runtime::TelemetryStub { events: var_events };
     }
 }
@@ -4311,55 +4410,61 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        54 => wire__crate__api__mock_runtime__runtime_registry_register_mock_impl(
+        54 => wire__crate__api__mock_runtime__runtime_registry_register_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        55 => wire__crate__api__playlist_engine__search_playlist_index_impl(
+        55 => wire__crate__api__mock_runtime__runtime_registry_register_mock_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        56 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
+        56 => wire__crate__api__playlist_engine__search_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        57 => wire__crate__api__relational_store__unload_relational_media_pack_impl(
+        57 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        58 => wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
+        58 => wire__crate__api__relational_store__unload_relational_media_pack_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        59 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        59 => wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        60 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        60 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        61 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        61 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        62 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        62 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        63 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -4575,24 +4680,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::ExecutionP
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mock_runtime::ExecutionTrace {
+impl flutter_rust_bridge::IntoDart for crate::api::runtime_contracts::ExecutionTrace {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [self.entries.into_into_dart().into_dart()].into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::mock_runtime::ExecutionTrace
+    for crate::api::runtime_contracts::ExecutionTrace
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mock_runtime::ExecutionTrace>
-    for crate::api::mock_runtime::ExecutionTrace
+impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::ExecutionTrace>
+    for crate::api::runtime_contracts::ExecutionTrace
 {
-    fn into_into_dart(self) -> crate::api::mock_runtime::ExecutionTrace {
+    fn into_into_dart(self) -> crate::api::runtime_contracts::ExecutionTrace {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mock_runtime::ExecutionTraceEntry {
+impl flutter_rust_bridge::IntoDart for crate::api::runtime_contracts::ExecutionTraceEntry {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.sequence.into_into_dart().into_dart(),
@@ -4603,13 +4708,41 @@ impl flutter_rust_bridge::IntoDart for crate::api::mock_runtime::ExecutionTraceE
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::mock_runtime::ExecutionTraceEntry
+    for crate::api::runtime_contracts::ExecutionTraceEntry
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mock_runtime::ExecutionTraceEntry>
-    for crate::api::mock_runtime::ExecutionTraceEntry
+impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::ExecutionTraceEntry>
+    for crate::api::runtime_contracts::ExecutionTraceEntry
 {
-    fn into_into_dart(self) -> crate::api::mock_runtime::ExecutionTraceEntry {
+    fn into_into_dart(self) -> crate::api::runtime_contracts::ExecutionTraceEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::runtime_contracts::ExecutionTraceEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Initializing => 0.into_dart(),
+            Self::Ready => 1.into_dart(),
+            Self::GenerationStarted => 2.into_dart(),
+            Self::FirstToken => 3.into_dart(),
+            Self::Streaming => 4.into_dart(),
+            Self::GenerationFinished => 5.into_dart(),
+            Self::GenerationFailed => 6.into_dart(),
+            Self::ShuttingDown => 7.into_dart(),
+            Self::Stopped => 8.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::runtime_contracts::ExecutionTraceEvent
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::ExecutionTraceEvent>
+    for crate::api::runtime_contracts::ExecutionTraceEvent
+{
+    fn into_into_dart(self) -> crate::api::runtime_contracts::ExecutionTraceEvent {
         self
     }
 }
@@ -5588,7 +5721,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::SubtitleParseR
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mock_runtime::TelemetryEvent {
+impl flutter_rust_bridge::IntoDart for crate::api::runtime_contracts::TelemetryEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.sequence.into_into_dart().into_dart(),
@@ -5600,13 +5733,39 @@ impl flutter_rust_bridge::IntoDart for crate::api::mock_runtime::TelemetryEvent 
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::mock_runtime::TelemetryEvent
+    for crate::api::runtime_contracts::TelemetryEvent
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mock_runtime::TelemetryEvent>
-    for crate::api::mock_runtime::TelemetryEvent
+impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::TelemetryEvent>
+    for crate::api::runtime_contracts::TelemetryEvent
 {
-    fn into_into_dart(self) -> crate::api::mock_runtime::TelemetryEvent {
+    fn into_into_dart(self) -> crate::api::runtime_contracts::TelemetryEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::runtime_contracts::TelemetryEventKind {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::RuntimeStarted => 0.into_dart(),
+            Self::RuntimeReady => 1.into_dart(),
+            Self::GenerationStarted => 2.into_dart(),
+            Self::FirstToken => 3.into_dart(),
+            Self::GenerationFinished => 4.into_dart(),
+            Self::GenerationFailed => 5.into_dart(),
+            Self::RuntimeStopped => 6.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::runtime_contracts::TelemetryEventKind
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::runtime_contracts::TelemetryEventKind>
+    for crate::api::runtime_contracts::TelemetryEventKind
+{
+    fn into_into_dart(self) -> crate::api::runtime_contracts::TelemetryEventKind {
         self
     }
 }
@@ -5948,19 +6107,45 @@ impl SseEncode for crate::api::runtime_contracts::ExecutionPriority {
     }
 }
 
-impl SseEncode for crate::api::mock_runtime::ExecutionTrace {
+impl SseEncode for crate::api::runtime_contracts::ExecutionTrace {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<crate::api::mock_runtime::ExecutionTraceEntry>>::sse_encode(self.entries, serializer);
+        <Vec<crate::api::runtime_contracts::ExecutionTraceEntry>>::sse_encode(
+            self.entries,
+            serializer,
+        );
     }
 }
 
-impl SseEncode for crate::api::mock_runtime::ExecutionTraceEntry {
+impl SseEncode for crate::api::runtime_contracts::ExecutionTraceEntry {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.sequence, serializer);
-        <String>::sse_encode(self.event, serializer);
+        <crate::api::runtime_contracts::ExecutionTraceEvent>::sse_encode(self.event, serializer);
         <u64>::sse_encode(self.elapsed_ms, serializer);
+    }
+}
+
+impl SseEncode for crate::api::runtime_contracts::ExecutionTraceEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::runtime_contracts::ExecutionTraceEvent::Initializing => 0,
+                crate::api::runtime_contracts::ExecutionTraceEvent::Ready => 1,
+                crate::api::runtime_contracts::ExecutionTraceEvent::GenerationStarted => 2,
+                crate::api::runtime_contracts::ExecutionTraceEvent::FirstToken => 3,
+                crate::api::runtime_contracts::ExecutionTraceEvent::Streaming => 4,
+                crate::api::runtime_contracts::ExecutionTraceEvent::GenerationFinished => 5,
+                crate::api::runtime_contracts::ExecutionTraceEvent::GenerationFailed => 6,
+                crate::api::runtime_contracts::ExecutionTraceEvent::ShuttingDown => 7,
+                crate::api::runtime_contracts::ExecutionTraceEvent::Stopped => 8,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -6034,12 +6219,12 @@ impl SseEncode for Vec<String> {
     }
 }
 
-impl SseEncode for Vec<crate::api::mock_runtime::ExecutionTraceEntry> {
+impl SseEncode for Vec<crate::api::runtime_contracts::ExecutionTraceEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::mock_runtime::ExecutionTraceEntry>::sse_encode(item, serializer);
+            <crate::api::runtime_contracts::ExecutionTraceEntry>::sse_encode(item, serializer);
         }
     }
 }
@@ -6184,12 +6369,12 @@ impl SseEncode for Vec<crate::api::native_engine::SubtitleCue> {
     }
 }
 
-impl SseEncode for Vec<crate::api::mock_runtime::TelemetryEvent> {
+impl SseEncode for Vec<crate::api::runtime_contracts::TelemetryEvent> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::mock_runtime::TelemetryEvent>::sse_encode(item, serializer);
+            <crate::api::runtime_contracts::TelemetryEvent>::sse_encode(item, serializer);
         }
     }
 }
@@ -6847,11 +7032,11 @@ impl SseEncode for crate::api::native_engine::SubtitleParseResult {
     }
 }
 
-impl SseEncode for crate::api::mock_runtime::TelemetryEvent {
+impl SseEncode for crate::api::runtime_contracts::TelemetryEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.sequence, serializer);
-        <String>::sse_encode(self.event, serializer);
+        <crate::api::runtime_contracts::TelemetryEventKind>::sse_encode(self.event, serializer);
         <u64>::sse_encode(self.elapsed_ms, serializer);
         <Option<crate::api::runtime_contracts::RuntimeErrorCode>>::sse_encode(
             self.error, serializer,
@@ -6859,10 +7044,31 @@ impl SseEncode for crate::api::mock_runtime::TelemetryEvent {
     }
 }
 
+impl SseEncode for crate::api::runtime_contracts::TelemetryEventKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::runtime_contracts::TelemetryEventKind::RuntimeStarted => 0,
+                crate::api::runtime_contracts::TelemetryEventKind::RuntimeReady => 1,
+                crate::api::runtime_contracts::TelemetryEventKind::GenerationStarted => 2,
+                crate::api::runtime_contracts::TelemetryEventKind::FirstToken => 3,
+                crate::api::runtime_contracts::TelemetryEventKind::GenerationFinished => 4,
+                crate::api::runtime_contracts::TelemetryEventKind::GenerationFailed => 5,
+                crate::api::runtime_contracts::TelemetryEventKind::RuntimeStopped => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for crate::api::mock_runtime::TelemetryStub {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<crate::api::mock_runtime::TelemetryEvent>>::sse_encode(self.events, serializer);
+        <Vec<crate::api::runtime_contracts::TelemetryEvent>>::sse_encode(self.events, serializer);
     }
 }
 

@@ -5,8 +5,9 @@
 //! identical traces and telemetry.
 
 use super::runtime_contracts::{
-    CapabilityState, InferenceIr, RuntimeApiVersion, RuntimeCapabilities, RuntimeErrorCode,
-    RuntimeHealth, RuntimeHealthState, RuntimeId,
+    CapabilityState, ExecutionTrace, ExecutionTraceEntry, ExecutionTraceEvent, InferenceIr,
+    RuntimeApiVersion, RuntimeCapabilities, RuntimeErrorCode, RuntimeHealth, RuntimeHealthState,
+    RuntimeId, TelemetryEvent, TelemetryEventKind,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -41,26 +42,6 @@ pub struct FailureInjection {
     pub error: Option<RuntimeErrorCode>,
     pub after_tokens: Option<u32>,
     pub cancel_after_tokens: Option<u32>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExecutionTraceEntry {
-    pub sequence: u32,
-    pub event: String,
-    pub elapsed_ms: u64,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExecutionTrace {
-    pub entries: Vec<ExecutionTraceEntry>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TelemetryEvent {
-    pub sequence: u32,
-    pub event: String,
-    pub elapsed_ms: u64,
-    pub error: Option<RuntimeErrorCode>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -143,8 +124,12 @@ pub fn runtime_registry_new() -> RuntimeRegistry {
 }
 
 pub fn runtime_registry_register_mock(registry: &mut RuntimeRegistry) {
-    if !registry.runtimes.contains(&RuntimeId::Mock) {
-        registry.runtimes.push(RuntimeId::Mock);
+    runtime_registry_register(registry, RuntimeId::Mock);
+}
+
+pub fn runtime_registry_register(registry: &mut RuntimeRegistry, runtime: RuntimeId) {
+    if !registry.runtimes.contains(&runtime) {
+        registry.runtimes.push(runtime);
     }
 }
 
@@ -222,6 +207,7 @@ pub fn mock_runtime_generate(
             runtime.record("FirstToken", None);
             runtime.telemetry("FirstToken", None);
         }
+        runtime.record("Streaming", None);
     }
 
     if runtime.session.state == RuntimeHealthState::Busy {
@@ -284,18 +270,39 @@ impl MockRuntime {
     }
 
     fn record(&mut self, event: &str, _error: Option<RuntimeErrorCode>) {
+        let event = match event {
+            "Initializing" => ExecutionTraceEvent::Initializing,
+            "Ready" => ExecutionTraceEvent::Ready,
+            "GenerationStarted" => ExecutionTraceEvent::GenerationStarted,
+            "FirstToken" => ExecutionTraceEvent::FirstToken,
+            "Streaming" => ExecutionTraceEvent::Streaming,
+            "GenerationFinished" => ExecutionTraceEvent::GenerationFinished,
+            "GenerationFailed" => ExecutionTraceEvent::GenerationFailed,
+            "ShuttingDown" => ExecutionTraceEvent::ShuttingDown,
+            "Stopped" => ExecutionTraceEvent::Stopped,
+            _ => return,
+        };
         self.sequence += 1;
         self.trace.entries.push(ExecutionTraceEntry {
             sequence: self.sequence,
-            event: event.into(),
+            event,
             elapsed_ms: self.elapsed_ms,
         });
     }
 
     fn telemetry(&mut self, event: &str, error: Option<RuntimeErrorCode>) {
+        let event = match event {
+            "RuntimeReady" => TelemetryEventKind::RuntimeReady,
+            "GenerationStarted" => TelemetryEventKind::GenerationStarted,
+            "FirstToken" => TelemetryEventKind::FirstToken,
+            "GenerationFinished" => TelemetryEventKind::GenerationFinished,
+            "GenerationFailed" => TelemetryEventKind::GenerationFailed,
+            "RuntimeStopped" => TelemetryEventKind::RuntimeStopped,
+            _ => TelemetryEventKind::RuntimeStarted,
+        };
         self.telemetry.events.push(TelemetryEvent {
             sequence: self.sequence,
-            event: event.into(),
+            event,
             elapsed_ms: self.elapsed_ms,
             error,
         });
@@ -389,8 +396,65 @@ mod tests {
     #[test]
     fn registry_deduplicates_mock_registration() {
         let mut registry = runtime_registry_new();
-        runtime_registry_register_mock(&mut registry);
-        runtime_registry_register_mock(&mut registry);
-        assert_eq!(registry.runtimes, vec![RuntimeId::Mock]);
+        runtime_registry_register(&mut registry, RuntimeId::Mock);
+        runtime_registry_register(&mut registry, RuntimeId::LiteRt);
+        runtime_registry_register(&mut registry, RuntimeId::Mock);
+        assert_eq!(registry.runtimes, vec![RuntimeId::Mock, RuntimeId::LiteRt]);
+    }
+
+    #[test]
+    fn sessions_are_isolated_and_trace_order_is_stable() {
+        let mut first = mock_runtime_new(MockConfig::default());
+        let mut second = mock_runtime_new(MockConfig::default());
+        mock_runtime_initialize(&mut first);
+        mock_runtime_initialize(&mut second);
+        mock_runtime_generate(&mut first, ir(), 2);
+
+        assert_eq!(first.session.generated_tokens, 2);
+        assert_eq!(second.session.generated_tokens, 0);
+        assert_eq!(
+            first
+                .trace
+                .entries
+                .iter()
+                .map(|entry| entry.event)
+                .collect::<Vec<_>>(),
+            vec![
+                ExecutionTraceEvent::Initializing,
+                ExecutionTraceEvent::Ready,
+                ExecutionTraceEvent::GenerationStarted,
+                ExecutionTraceEvent::FirstToken,
+                ExecutionTraceEvent::Streaming,
+                ExecutionTraceEvent::Streaming,
+                ExecutionTraceEvent::GenerationFinished,
+            ]
+        );
+    }
+
+    #[test]
+    fn every_error_code_can_be_injected() {
+        let errors = [
+            RuntimeErrorCode::OutOfMemory,
+            RuntimeErrorCode::ModelMissing,
+            RuntimeErrorCode::RuntimeUnavailable,
+            RuntimeErrorCode::BackendUnavailable,
+            RuntimeErrorCode::InitializationFailed,
+            RuntimeErrorCode::ThermalLimit,
+            RuntimeErrorCode::StorageFailure,
+            RuntimeErrorCode::PermissionDenied,
+            RuntimeErrorCode::ContextTooLarge,
+            RuntimeErrorCode::UnsupportedModel,
+            RuntimeErrorCode::PlannerFailure,
+            RuntimeErrorCode::Timeout,
+            RuntimeErrorCode::Cancelled,
+            RuntimeErrorCode::Unknown,
+        ];
+        for error in errors {
+            let mut runtime = mock_runtime_new(MockConfig {
+                failure: Some(error),
+                ..MockConfig::default()
+            });
+            assert_eq!(mock_runtime_initialize(&mut runtime).error, Some(error));
+        }
     }
 }

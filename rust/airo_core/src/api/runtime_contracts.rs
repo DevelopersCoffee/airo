@@ -105,6 +105,54 @@ pub enum ExecutionPriority {
     Maintenance = 3,
 }
 
+/// Stable lifecycle and execution trace events shared by every backend.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ExecutionTraceEvent {
+    Initializing = 0,
+    Ready = 1,
+    GenerationStarted = 2,
+    FirstToken = 3,
+    Streaming = 4,
+    GenerationFinished = 5,
+    GenerationFailed = 6,
+    ShuttingDown = 7,
+    Stopped = 8,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ExecutionTraceEntry {
+    pub sequence: u32,
+    pub event: ExecutionTraceEvent,
+    pub elapsed_ms: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ExecutionTrace {
+    pub entries: Vec<ExecutionTraceEntry>,
+}
+
+/// Typed telemetry event kinds. Emission is intentionally non-blocking.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TelemetryEventKind {
+    RuntimeStarted = 0,
+    RuntimeReady = 1,
+    GenerationStarted = 2,
+    FirstToken = 3,
+    GenerationFinished = 4,
+    GenerationFailed = 5,
+    RuntimeStopped = 6,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TelemetryEvent {
+    pub sequence: u32,
+    pub event: TelemetryEventKind,
+    pub elapsed_ms: u64,
+    pub error: Option<RuntimeErrorCode>,
+}
+
 /// Immutable request entering the planner.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct InferenceRequest {

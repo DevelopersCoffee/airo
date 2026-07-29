@@ -71,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1824425509;
+  int get rustContentHash => 540631332;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -294,6 +294,11 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<RuntimeRegistry> crateApiMockRuntimeRuntimeRegistryNew();
+
+  Future<void> crateApiMockRuntimeRuntimeRegistryRegister({
+    required RuntimeRegistry registry,
+    required RuntimeId runtime,
+  });
 
   Future<void> crateApiMockRuntimeRuntimeRegistryRegisterMock({
     required RuntimeRegistry registry,
@@ -2137,6 +2142,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "runtime_registry_new", argNames: []);
 
   @override
+  Future<void> crateApiMockRuntimeRuntimeRegistryRegister({
+    required RuntimeRegistry registry,
+    required RuntimeId runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            registry,
+            serializer,
+          );
+          sse_encode_runtime_id(runtime, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 54,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeRuntimeRegistryRegisterConstMeta,
+        argValues: [registry, runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeRuntimeRegistryRegisterConstMeta =>
+      const TaskConstMeta(
+        debugName: "runtime_registry_register",
+        argNames: ["registry", "runtime"],
+      );
+
+  @override
   Future<void> crateApiMockRuntimeRuntimeRegistryRegisterMock({
     required RuntimeRegistry registry,
   }) {
@@ -2151,7 +2194,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 54,
+            funcId: 55,
             port: port_,
           );
         },
@@ -2190,7 +2233,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 55,
+            funcId: 56,
             port: port_,
           );
         },
@@ -2231,7 +2274,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 56,
+            funcId: 57,
             port: port_,
           );
         },
@@ -2266,7 +2309,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 57,
+            funcId: 58,
             port: port_,
           );
         },
@@ -2302,7 +2345,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 58,
+            funcId: 59,
             port: port_,
           );
         },
@@ -2333,7 +2376,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 59,
+            funcId: 60,
             port: port_,
           );
         },
@@ -2363,7 +2406,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 60,
+            funcId: 61,
             port: port_,
           );
         },
@@ -2393,7 +2436,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 61,
+            funcId: 62,
             port: port_,
           );
         },
@@ -2423,7 +2466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 62,
+            funcId: 63,
             port: port_,
           );
         },
@@ -2689,9 +2732,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return ExecutionTraceEntry(
       sequence: dco_decode_u_32(arr[0]),
-      event: dco_decode_String(arr[1]),
+      event: dco_decode_execution_trace_event(arr[1]),
       elapsedMs: dco_decode_u_64(arr[2]),
     );
+  }
+
+  @protected
+  ExecutionTraceEvent dco_decode_execution_trace_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ExecutionTraceEvent.values[raw as int];
   }
 
   @protected
@@ -3472,10 +3521,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return TelemetryEvent(
       sequence: dco_decode_u_32(arr[0]),
-      event: dco_decode_String(arr[1]),
+      event: dco_decode_telemetry_event_kind(arr[1]),
       elapsedMs: dco_decode_u_64(arr[2]),
       error: dco_decode_opt_box_autoadd_runtime_error_code(arr[3]),
     );
+  }
+
+  @protected
+  TelemetryEventKind dco_decode_telemetry_event_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return TelemetryEventKind.values[raw as int];
   }
 
   @protected
@@ -3901,13 +3956,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_sequence = sse_decode_u_32(deserializer);
-    var var_event = sse_decode_String(deserializer);
+    var var_event = sse_decode_execution_trace_event(deserializer);
     var var_elapsedMs = sse_decode_u_64(deserializer);
     return ExecutionTraceEntry(
       sequence: var_sequence,
       event: var_event,
       elapsedMs: var_elapsedMs,
     );
+  }
+
+  @protected
+  ExecutionTraceEvent sse_decode_execution_trace_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ExecutionTraceEvent.values[inner];
   }
 
   @protected
@@ -4948,7 +5012,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TelemetryEvent sse_decode_telemetry_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_sequence = sse_decode_u_32(deserializer);
-    var var_event = sse_decode_String(deserializer);
+    var var_event = sse_decode_telemetry_event_kind(deserializer);
     var var_elapsedMs = sse_decode_u_64(deserializer);
     var var_error = sse_decode_opt_box_autoadd_runtime_error_code(deserializer);
     return TelemetryEvent(
@@ -4957,6 +5021,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       elapsedMs: var_elapsedMs,
       error: var_error,
     );
+  }
+
+  @protected
+  TelemetryEventKind sse_decode_telemetry_event_kind(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return TelemetryEventKind.values[inner];
   }
 
   @protected
@@ -5418,8 +5491,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.sequence, serializer);
-    sse_encode_String(self.event, serializer);
+    sse_encode_execution_trace_event(self.event, serializer);
     sse_encode_u_64(self.elapsedMs, serializer);
+  }
+
+  @protected
+  void sse_encode_execution_trace_event(
+    ExecutionTraceEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -6263,9 +6345,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.sequence, serializer);
-    sse_encode_String(self.event, serializer);
+    sse_encode_telemetry_event_kind(self.event, serializer);
     sse_encode_u_64(self.elapsedMs, serializer);
     sse_encode_opt_box_autoadd_runtime_error_code(self.error, serializer);
+  }
+
+  @protected
+  void sse_encode_telemetry_event_kind(
+    TelemetryEventKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected

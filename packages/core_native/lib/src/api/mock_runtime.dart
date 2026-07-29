@@ -9,7 +9,7 @@ import '../frb_generated.dart';
 import 'runtime_contracts.dart';
 
 // These functions are ignored because they are not marked as `pub`: `fail`, `health`, `next_jitter`, `record`, `telemetry`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<MockRuntime> mockRuntimeNew({required MockConfig config}) =>
     RustLib.instance.api.crateApiMockRuntimeMockRuntimeNew(config: config);
@@ -27,6 +27,14 @@ Future<void> runtimeRegistryRegisterMock({required RuntimeRegistry registry}) =>
     RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryRegisterMock(
       registry: registry,
     );
+
+Future<void> runtimeRegistryRegister({
+  required RuntimeRegistry registry,
+  required RuntimeId runtime,
+}) => RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryRegister(
+  registry: registry,
+  runtime: runtime,
+);
 
 Future<bool> runtimeRegistryContainsMock({required RuntimeRegistry registry}) =>
     RustLib.instance.api.crateApiMockRuntimeRuntimeRegistryContainsMock(
@@ -98,44 +106,6 @@ abstract class RuntimeRegistry implements RustOpaqueInterface {
   set contractVersion(RuntimeApiVersion contractVersion);
 
   set runtimes(List<RuntimeId> runtimes);
-}
-
-class ExecutionTrace {
-  const ExecutionTrace({required this.entries});
-  final List<ExecutionTraceEntry> entries;
-
-  @override
-  int get hashCode => entries.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ExecutionTrace &&
-          runtimeType == other.runtimeType &&
-          entries == other.entries;
-}
-
-class ExecutionTraceEntry {
-  const ExecutionTraceEntry({
-    required this.sequence,
-    required this.event,
-    required this.elapsedMs,
-  });
-  final int sequence;
-  final String event;
-  final BigInt elapsedMs;
-
-  @override
-  int get hashCode => sequence.hashCode ^ event.hashCode ^ elapsedMs.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ExecutionTraceEntry &&
-          runtimeType == other.runtimeType &&
-          sequence == other.sequence &&
-          event == other.event &&
-          elapsedMs == other.elapsedMs;
 }
 
 class FailureInjection {
@@ -233,33 +203,6 @@ class RuntimeSession {
           sessionId == other.sessionId &&
           state == other.state &&
           generatedTokens == other.generatedTokens;
-}
-
-class TelemetryEvent {
-  const TelemetryEvent({
-    required this.sequence,
-    required this.event,
-    required this.elapsedMs,
-    this.error,
-  });
-  final int sequence;
-  final String event;
-  final BigInt elapsedMs;
-  final RuntimeErrorCode? error;
-
-  @override
-  int get hashCode =>
-      sequence.hashCode ^ event.hashCode ^ elapsedMs.hashCode ^ error.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TelemetryEvent &&
-          runtimeType == other.runtimeType &&
-          sequence == other.sequence &&
-          event == other.event &&
-          elapsedMs == other.elapsedMs &&
-          error == other.error;
 }
 
 class TelemetryStub {

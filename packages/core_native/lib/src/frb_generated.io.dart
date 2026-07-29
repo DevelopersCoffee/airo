@@ -159,6 +159,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExecutionTraceEntry dco_decode_execution_trace_entry(dynamic raw);
 
   @protected
+  ExecutionTraceEvent dco_decode_execution_trace_event(dynamic raw);
+
+  @protected
   double dco_decode_f_64(dynamic raw);
 
   @protected
@@ -402,6 +405,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TelemetryEvent dco_decode_telemetry_event(dynamic raw);
 
   @protected
+  TelemetryEventKind dco_decode_telemetry_event_kind(dynamic raw);
+
+  @protected
   TelemetryStub dco_decode_telemetry_stub(dynamic raw);
 
   @protected
@@ -586,6 +592,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ExecutionTraceEntry sse_decode_execution_trace_entry(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExecutionTraceEvent sse_decode_execution_trace_event(
     SseDeserializer deserializer,
   );
 
@@ -901,6 +912,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   TelemetryEvent sse_decode_telemetry_event(SseDeserializer deserializer);
 
   @protected
+  TelemetryEventKind sse_decode_telemetry_event_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TelemetryStub sse_decode_telemetry_stub(SseDeserializer deserializer);
 
   @protected
@@ -1131,6 +1147,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_execution_trace_entry(
     ExecutionTraceEntry self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_execution_trace_event(
+    ExecutionTraceEvent self,
     SseSerializer serializer,
   );
 
@@ -1530,6 +1552,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_telemetry_event(
     TelemetryEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_telemetry_event_kind(
+    TelemetryEventKind self,
     SseSerializer serializer,
   );
 
