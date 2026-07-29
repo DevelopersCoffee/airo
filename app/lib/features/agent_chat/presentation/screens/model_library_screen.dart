@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../application/assistant_model_preferences.dart';
+import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
@@ -989,7 +990,7 @@ class _ModelLibraryContent extends ConsumerWidget {
   }
 }
 
-class _RuntimeHealthButton extends StatelessWidget {
+class _RuntimeHealthButton extends ConsumerWidget {
   const _RuntimeHealthButton({
     required this.candidate,
     required this.onOpenModelManager,
@@ -999,7 +1000,7 @@ class _RuntimeHealthButton extends StatelessWidget {
   final VoidCallback onOpenModelManager;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.health_and_safety_outlined),
@@ -1029,11 +1030,25 @@ class _RuntimeHealthButton extends StatelessWidget {
               builder: (_) => ModelHealthCenterScreen(
                 report: report,
                 onAction: (action) {
+                  var reducedContext = 1024;
+                  if (action == ModelHealthAction.reduceContext) {
+                    final settings = ref.read(aiPreferencesSettingsProvider);
+                    reducedContext = settings.contextLength <= 1024
+                        ? 512
+                        : 1024;
+                    unawaited(
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(
+                            settings.copyWith(contextLength: reducedContext),
+                          ),
+                    );
+                  }
                   final message = switch (action) {
                     ModelHealthAction.retry =>
                       'Retrying is available from Model Management after checking the runtime status.',
                     ModelHealthAction.reduceContext =>
-                      'Open Model Management to retry with a smaller context profile.',
+                      'Context profile reduced to $reducedContext tokens. Retry the model now.',
                     ModelHealthAction.resumeDownload =>
                       'Resume the model download from Model Management.',
                     ModelHealthAction.repair =>
