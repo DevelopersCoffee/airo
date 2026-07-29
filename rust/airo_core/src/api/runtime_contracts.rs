@@ -3,100 +3,110 @@
 //! This module intentionally contains no planner policy or runtime
 //! implementation. It is the Rust source of truth for the v1 Flutter bridge.
 
+use serde::{Deserialize, Serialize};
+
 /// Stable public contract version.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeApiVersion {
-    V1,
+    V1 = 1,
 }
 
 /// Stable runtime identifiers.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeId {
-    Mock,
-    LiteRt,
-    LlamaCpp,
-    Mlx,
-    Onnx,
+    Mock = 0,
+    LiteRt = 1,
+    LlamaCpp = 2,
+    Mlx = 3,
+    Onnx = 4,
 }
 
 /// Stable capability identifiers used by model selection.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CapabilityId {
-    Chat,
-    Vision,
-    Embedding,
-    Speech,
-    Reasoning,
-    ToolCalling,
+    Chat = 0,
+    Vision = 1,
+    Embedding = 2,
+    Speech = 3,
+    Reasoning = 4,
+    ToolCalling = 5,
 }
 
 /// Capability negotiation state.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CapabilityState {
-    Supported,
-    Unsupported,
-    Unknown,
+    Supported = 0,
+    Unsupported = 1,
+    Unknown = 2,
 }
 
 /// Platform-neutral compute accelerator identifiers.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ComputeAccelerator {
-    Cpu,
-    Vulkan,
-    Metal,
-    CoreMl,
-    AppleNeuralEngine,
-    Nnapi,
-    OpenCl,
-    Cuda,
+    Cpu = 0,
+    Vulkan = 1,
+    Metal = 2,
+    CoreMl = 3,
+    AppleNeuralEngine = 4,
+    Nnapi = 5,
+    OpenCl = 6,
+    Cuda = 7,
 }
 
 /// Runtime lifecycle state shared by every backend.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeHealthState {
-    Created,
-    Initializing,
-    Ready,
-    Busy,
-    Recovering,
-    LowMemory,
-    ThermallyLimited,
-    Unavailable,
-    ShuttingDown,
-    Stopped,
-    Failed,
+    Created = 0,
+    Initializing = 1,
+    Ready = 2,
+    Busy = 3,
+    Recovering = 4,
+    LowMemory = 5,
+    ThermallyLimited = 6,
+    Unavailable = 7,
+    ShuttingDown = 8,
+    Stopped = 9,
+    Failed = 10,
 }
 
 /// Stable runtime failure identifiers.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeErrorCode {
-    OutOfMemory,
-    ModelMissing,
-    RuntimeUnavailable,
-    BackendUnavailable,
-    InitializationFailed,
-    ThermalLimit,
-    StorageFailure,
-    PermissionDenied,
-    ContextTooLarge,
-    UnsupportedModel,
-    PlannerFailure,
-    Timeout,
-    Cancelled,
-    Unknown,
+    OutOfMemory = 0,
+    ModelMissing = 1,
+    RuntimeUnavailable = 2,
+    BackendUnavailable = 3,
+    InitializationFailed = 4,
+    ThermalLimit = 5,
+    StorageFailure = 6,
+    PermissionDenied = 7,
+    ContextTooLarge = 8,
+    UnsupportedModel = 9,
+    PlannerFailure = 10,
+    Timeout = 11,
+    Cancelled = 12,
+    Unknown = 13,
 }
 
 /// Priority used by the inference scheduler.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ExecutionPriority {
-    Interactive,
-    Foreground,
-    Background,
-    Maintenance,
+    Interactive = 0,
+    Foreground = 1,
+    Background = 2,
+    Maintenance = 3,
 }
 
 /// Immutable request entering the planner.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct InferenceRequest {
     pub capability: CapabilityId,
     pub prompt: String,
@@ -105,7 +115,7 @@ pub struct InferenceRequest {
 }
 
 /// Immutable backend-neutral intermediate representation.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct InferenceIr {
     pub runtime: RuntimeId,
     pub accelerator: ComputeAccelerator,
@@ -119,7 +129,7 @@ pub struct InferenceIr {
 }
 
 /// Runtime capability declaration and negotiated feature states.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeCapabilities {
     pub contract_version: RuntimeApiVersion,
     pub runtime: RuntimeId,
@@ -132,7 +142,7 @@ pub struct RuntimeCapabilities {
 }
 
 /// Backend health snapshot.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeHealth {
     pub state: RuntimeHealthState,
     pub error: Option<RuntimeErrorCode>,
@@ -195,5 +205,27 @@ mod tests {
             priority: ExecutionPriority::Interactive,
         };
         assert_eq!(runtime_ir_round_trip(ir.clone()), ir);
+    }
+
+    #[test]
+    fn stable_ids_are_append_only() {
+        assert_eq!(RuntimeId::Mock as u8, 0);
+        assert_eq!(RuntimeId::LiteRt as u8, 1);
+        assert_eq!(RuntimeId::LlamaCpp as u8, 2);
+        assert_eq!(RuntimeId::Mlx as u8, 3);
+        assert_eq!(RuntimeId::Onnx as u8, 4);
+    }
+
+    #[test]
+    fn v1_request_matches_golden_serialization() {
+        let request = InferenceRequest {
+            capability: CapabilityId::Chat,
+            prompt: "hello".into(),
+            model_id: Some("model-v1".into()),
+            priority: ExecutionPriority::Interactive,
+        };
+        let actual = serde_json::to_string(&request).expect("serialize v1 request");
+        let expected = include_str!("../../tests/fixtures/runtime_api_v1_request.json").trim();
+        assert_eq!(actual, expected);
     }
 }
