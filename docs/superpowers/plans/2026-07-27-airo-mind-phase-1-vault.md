@@ -25,6 +25,27 @@
 > serialization changes, conformance updates, `G0`. Nothing else. No new
 > primitives, invariants, or contracts.
 >
+> **Phase status.** Attribution before detail — `ADR-0017` is isolated so that
+> any regression after it is attributable to it and not to a lingering
+> propagation error.
+>
+> | Phase | Status |
+> |---|---|
+> | A — mechanical propagation | ✅ `G0` verified |
+> | B — `ADR-0017` implementation | ⏳ |
+> | Security re-review | ⏳ |
+> | Rust Architecture re-review | ⏳ |
+>
+> **Phase A, `G0` verified** — rustc 1.96.1 (31fca3adb 2026-06-26):
+>
+> ```
+> G0.1  extraction fidelity                        PASS
+> G0.3  cargo check --all-targets                  0 errors
+> G0.4  cargo test --lib      77 passed, 0 failed, 1 ignored
+> G0.5  cargo clippy --all-targets -- -D warnings  0 errors
+> RA-3  OsRng outside random.rs                    0   (was 3)
+> ```
+>
 > **Proof ledger.** If a line below disappeared six months from now, the
 > evidence that proves it belonged:
 >
@@ -34,8 +55,24 @@
 > | `random.rs` created; `seed.rs`, `device.rs`, `package.rs` stop calling `OsRng` | Review | `RA-3`: file promised as "the ONLY RNG call sites", never existed; 3 of 5 sites bypassed it while the DoD claimed CI enforcement | `none — plan-local` |
 > | `push_len_prefixed` moves `envelope.rs` → `encoding.rs` | Review | `RA-4`: `package.rs` imported its length-prefix helper from the content-wrapping module | `none — plan-local` |
 >
-> Remaining rows are added as each change lands. **`G0` has not been re-run
-> against this revision; it is not yet a revision by `Freeze §`'s definition.**
+> | `lib.rs` curated `pub use`; `RevocationSource` + `RevocationProvenance` exported | Compiler | `error[E0432]: no RevocationSource in vault` — restore was unreachable from any consumer | `none — plan-local` |
+> | `Seed::as_bytes`, `RootIdentity::sign`, `DeviceKey::sign` removed or narrowed | Review | `RA-16`, `RA-17`: root seed and a raw signing oracle reachable externally; `DeviceKey::sign` had zero callers including tests | `none — plan-local` |
+> | `VaultError` gains `#[non_exhaustive]`; `RevocationsNotApplied` deleted | Review | `RA-23c`: public and unconstructible, reserving space for a phase the same plan defers | `none — plan-local` |
+> | `link_content` loses its `content_id` parameter | Review | `SEC-2` probe: `link_content("B", ctx, &mut envelope_of_A)` returned `Ok(())` after A was destroyed | **C7** — revocation gate and AAD disagreed on one identity |
+> | `admit_device` as the one trust admission function | Review | `SEC-15` probe: revoked device re-admitted by `trust_device`, which never consulted the ledger | **C7** |
+> | `add_context` fails closed on a revoked id | Review | `SEC-14` probe: destroy then re-create minted a live key under a revoked id; restore later destroyed everything under it silently | **C7** |
+> | `VaultPayload` fields → `pub(super)`, purges as methods, `decrypt` private | Review + Compiler | `SEC-1` probe read every context key without applying revocations; then `error[E0624]: method 'decrypt' is private` proved the boundary holds | **C7** |
+> | `hex_into` single pre-sized `String` | Benchmark | `to_bytes()` on a 100k-context vault: 350.82 ms → 16.55 ms | **I8**, budget `V4` |
+> | `hex_from` decodes over `as_bytes()` | Review | `RA-20`: `end byte index 62 is not a char boundary; it is inside 'é'`, pre-auth | **C7** |
+> | `hex_array_32` on `RootPublicKey` and `KeyBytes` | Review | `RA-1`: `identity_public_key` shipped as a JSON decimal array in a frozen format | **Freeze §4** |
+> | `base64_bytes` on outer `ciphertext`/`nonce`/`kdf_salt` | Benchmark | Hex leaves a hard 3.30× floor against `V4`'s ≤ 3× | **Freeze §4**, `ADR-0017` |
+>
+> Every row above removes a degree of freedom: one fewer public seam, one
+> fewer representation of an identity, one fewer admission path, one fewer
+> encoding, one fewer unnamed obligation. None of them adds a capability.
+>
+> **Phase B rows are added when `ADR-0017` lands.** Until then this is a
+> checkpoint, not a revision.
 >
 > **Revision 7 (2026-07-28). THE FIRST REVISION TO PASS G0.**
 >
@@ -142,7 +179,7 @@ rust/airo_mind/
         ├── mod.rs         — `mod` declarations and `pub(crate) use` re-exports ONLY. No types, no impls, no tests.
         ├── aggregate.rs   — the `Vault` aggregate (not `vault.rs`: `clippy::module_inception`)
         ├── encoding.rs    — length-prefixing, hex, fixed-array and base64 serde helpers
-        ├── random.rs      — `random_key`, `random_nonce`, `random_seed_bytes` — the ONLY `OsRng` call sites in the crate
+        ├── random.rs      — `random_key`, `random_nonce` — the ONLY `OsRng` call sites in the crate
         ├── error.rs       — VaultError
         ├── seed.rs        — Mnemonic ↔ Seed (Task 2)
         ├── identity.rs    — RootIdentity from Seed (Task 3)
@@ -554,6 +591,8 @@ Phase 1 — FFI is deferred to #1259 and the crate ships `rlib` only — so `pub
 is the exception, and "a future phase will want it" is a reason to keep it
 `pub(crate)` until that phase exists and can validate the shape.
 
+Add to `rust/airo_mind/src/lib.rs`:
+
 ```rust
 pub use vault::{
     // Onboarding and recovery journey — #1234 / #1235
@@ -564,8 +603,8 @@ pub use vault::{
     // Restore path — unreachable in revision 7 without the next two
     SealedRestore, AppliedRestore, RevocationSource, RevocationProvenance,
     PurgeDirective, UnlinkOutcome, RevocationSubject,
-    // Content path — opaque handles, see Task 5
-    ContentEnvelope, ContentKey, SealedEnvelope,
+    // Content path
+    ContentEnvelope, ContentKey,
     VaultError,
 };
 ```
@@ -580,7 +619,7 @@ pub use vault::{
 | `SealedRestore`, `AppliedRestore` | The restore typestate chain |
 | `RevocationSource`, `RevocationProvenance` | **The `RA-18` fix.** Required to call `apply_revocations` and to render the restore warning copy |
 | `PurgeDirective`, `UnlinkOutcome`, `RevocationSubject` | Returned from public methods; a public return type must be nameable |
-| `ContentEnvelope`, `ContentKey`, `SealedEnvelope` | Content store. Opaque handles with `seal`/`open`, not byte accessors |
+| `ContentEnvelope`, `ContentKey` | Content store. **Opaque handles with `seal`/`open` rather than byte accessors is specified and NOT yet implemented** — `ContentKey::as_bytes` is `pub(crate)` with no `seal`, so the returned key is inert outside the crate, and `#[derive(Deserialize)]` on `ContentEnvelope` is a second door past "the Vault is the only door". Tracked with the `ADR-0017` framing work, since both change the envelope wire shape and it freezes when #1214 writes the first one |
 | `VaultError` | Every fallible path. **`#[non_exhaustive]`** |
 
 **`pub(crate)`, because no external consumer exists yet:**
@@ -675,12 +714,29 @@ Create `rust/airo_mind/src/vault/mod.rs`:
 //! The only mutable, non-append-only store in the system. Everything else is
 //! an append-only log or a projection derived from one.
 
+mod aggregate;
+mod device;
 mod domain;
 mod encoding;
+mod envelope;
 mod error;
+mod identity;
+mod package;
+mod random;
+mod restore;
+mod revocation;
+mod seed;
+mod wordlist;
 
+pub use aggregate::{PurgeDirective, UnlinkOutcome, Vault};
 pub use error::VaultError;
+pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
+pub use restore::{AppliedRestore, RevocationProvenance, RevocationSource, SealedRestore};
 ```
+
+`mod.rs` carries declarations and re-exports and **nothing else** — no types,
+no impls, no tests (`RA-4`). Each task below adds its `mod` line and its
+`pub use` line here, and its code to its own file.
 
 Add a compile-time guard to `rust/airo_mind/src/lib.rs` (security R8). The
 manifest pins `ed25519-dalek`'s `zeroize` feature explicitly; this makes a
@@ -815,7 +871,6 @@ Create `rust/airo_mind/src/vault/seed.rs`:
 //! medical and financial records.
 
 use hmac::Hmac;
-use rand_core::RngCore;
 use sha2::{Digest, Sha256, Sha512};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
@@ -848,9 +903,7 @@ impl Seed {
 /// onboarding flow (#1234) must confirm the user recorded it.
 pub fn generate_mnemonic() -> Result<Zeroizing<String>, VaultError> {
     let mut entropy = Zeroizing::new([0u8; ENTROPY_BYTES]);
-    rand_core::OsRng
-        .try_fill_bytes(entropy.as_mut())
-        .map_err(|_| VaultError::RngUnavailable)?;
+    super::random::fill_random(entropy.as_mut())?;
     Ok(mnemonic_from_entropy(&entropy))
 }
 
@@ -1513,7 +1566,6 @@ Create `rust/airo_mind/src/vault/device.rs`:
 //! cannot present a certificate signed by the root identity cannot write.
 
 use ed25519_dalek::{Signer, SigningKey};
-use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::ZeroizeOnDrop;
 
@@ -1538,10 +1590,7 @@ pub struct DeviceKey {
 // material.
 impl DeviceKey {
     pub fn generate() -> Result<Self, VaultError> {
-        let mut bytes = [0u8; 32];
-        rand_core::OsRng
-            .try_fill_bytes(&mut bytes)
-            .map_err(|_| VaultError::RngUnavailable)?;
+        let bytes = super::random::random_bytes_32()?;
         Ok(Self {
             signing_key: SigningKey::from_bytes(&bytes),
         })
@@ -1679,7 +1728,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod device;
 
-pub use device::{DeviceCertificate, DeviceKey};
+pub use device::DeviceCertificate;
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1724,6 +1773,21 @@ fixed-size array is serialized (Tasks 4, 8, 9):
 //! against the JSON decimal arrays it replaces. `PERF` found this on the
 //! Revision 8 rollout, and Revision 7 already shipped the slow pattern on the
 //! `DeviceCertificate` path.
+
+use super::error::VaultError;
+
+/// Length-prefixes with a **checked** cast.
+///
+/// `as u32` truncates silently above `u32::MAX`, and a truncated length breaks
+/// injectivity — two different inputs producing identical AAD bytes. Lives
+/// here, not in `envelope.rs`, so `package.rs` stops importing its wire-format
+/// helper from the content-wrapping module (`RA-4`).
+pub(crate) fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), VaultError> {
+    let len = u32::try_from(bytes.len()).map_err(|_| VaultError::ValueTooLong)?;
+    out.extend_from_slice(&len.to_be_bytes());
+    out.extend_from_slice(bytes);
+    Ok(())
+}
 
 /// Lowercase hex into a single pre-sized allocation.
 ///
@@ -1845,7 +1909,7 @@ pub(crate) mod base64_bytes {
 
     pub(crate) fn decode(text: &str) -> Result<Vec<u8>, &'static str> {
         let b = text.as_bytes();
-        if b.len() % 4 != 0 {
+        if !b.len().is_multiple_of(4) {
             return Err("base64 length not a multiple of 4");
         }
         fn val(c: u8) -> Result<u32, &'static str> {
@@ -1879,7 +1943,7 @@ pub(crate) mod base64_bytes {
         Ok(out)
     }
 
-    pub fn serialize<S: Serializer>(bytes: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(&encode(bytes))
     }
 
@@ -1889,6 +1953,62 @@ pub(crate) mod base64_bytes {
         decode(&text).map_err(D::Error::custom)
     }
 }
+```
+
+Create `rust/airo_mind/src/vault/random.rs` — **the only module in the crate
+that names `OsRng`** (`RA-3`). Revision 7 promised this file and never created
+it: `random_key`/`random_nonce` lived in `envelope.rs`, and `seed.rs`,
+`device.rs`, and `package.rs` each called `OsRng` directly — three violations
+of a rule the Definition of Done claimed CI enforced.
+
+```rust
+//! Every RNG call site in the crate. There are no others.
+//!
+//! `try_fill_bytes`, never `fill_bytes` — the latter aborts the process when
+//! the OS RNG fails, and `AeadCore::generate_nonce` panics for the same
+//! reason. Early-boot entropy failure on Android is rare but real, and a panic
+//! in the key-generation path of a medical-records vault is the wrong failure
+//! mode.
+//!
+//! One module so the guarantee is greppable: `rg 'OsRng' src/ | grep -v
+//! random.rs` must return nothing, which is the CI check the Definition of
+//! Done promises.
+
+use rand_core::RngCore;
+
+use super::error::VaultError;
+
+fn fill(out: &mut [u8]) -> Result<(), VaultError> {
+    rand_core::OsRng
+        .try_fill_bytes(out)
+        .map_err(|_| VaultError::RngUnavailable)
+}
+
+pub(crate) fn random_key() -> Result<[u8; 32], VaultError> {
+    let mut bytes = [0u8; 32];
+    fill(&mut bytes)?;
+    Ok(bytes)
+}
+
+pub(crate) fn random_nonce() -> Result<[u8; 24], VaultError> {
+    let mut bytes = [0u8; 24];
+    fill(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Device signing-key seed and BIP-39 entropy are both 32 bytes, but they are
+/// not keys and not nonces — a distinct name so the call sites read honestly.
+pub(crate) fn random_bytes_32() -> Result<[u8; 32], VaultError> {
+    let mut bytes = [0u8; 32];
+    fill(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Salt is variable-length by format, so this fills in place.
+pub(crate) fn fill_random(out: &mut [u8]) -> Result<(), VaultError> {
+    fill(out)
+}
+
 ```
 
 Apply them in the struct definitions, not in prose — a helper applied at some
@@ -2011,7 +2131,9 @@ use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::domain;
+use super::encoding::push_len_prefixed;
 use super::error::VaultError;
+use super::random::{random_key, random_nonce};
 
 /// A random symmetric key protecting exactly one content object.
 ///
@@ -2230,13 +2352,10 @@ fn wrapping_aad(content_id: &str, context_id: &str) -> Result<Vec<u8>, VaultErro
     Ok(aad)
 }
 
-// `push_len_prefixed` lives in `encoding.rs` and `random_key` / `random_nonce`
-// live in `random.rs`. Revision 7 defined all three here, so `package.rs`
-// imported its length-prefix helper and its RNG from the content-wrapping
-// module (`RA-4`). Import them:
-//
-//     use super::encoding::push_len_prefixed;
-//     use super::random::{random_key, random_nonce};
+// `push_len_prefixed` moved to `encoding.rs` and `random_key`/`random_nonce`
+// to `random.rs` (`RA-3`, `RA-4`). Revision 7 defined all three here, so
+// `package.rs` imported its length-prefix helper and its RNG from the
+// content-wrapping module.
 
 #[cfg(test)]
 mod tests {
@@ -2408,7 +2527,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod envelope;
 
-pub use envelope::{ContentEnvelope, ContentKey, ContextKey};
+pub use envelope::{ContentEnvelope, ContentKey};
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2790,7 +2909,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod revocation;
 
-pub use revocation::{RevocationLedger, RevocationSubject};
+pub use revocation::RevocationSubject;
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2853,12 +2972,18 @@ Completes the Vault side of #1209/#1210 and produces the type Tasks 8 and 9 expo
 
 - [ ] **Step 1: Write the failing test**
 
-Replace the body of `rust/airo_mind/src/vault/mod.rs` with the module declarations already present plus:
+Create `rust/airo_mind/src/vault/aggregate.rs` (`RA-4` — revision 7 wrote all
+of this into `mod.rs`, which the File Structure block forbids):
 
 ```rust
 use std::collections::BTreeMap;
 
-use package::KeyBytes;
+use super::device::DeviceCertificate;
+use super::envelope::{ContentEnvelope, ContentKey, ContextKey};
+use super::error::VaultError;
+use super::identity::RootPublicKey;
+use super::package::KeyBytes;
+use super::revocation::{RevocationLedger, RevocationSubject};
 
 /// What survived an unlink. Feeds the destructive-confirmation copy in #1235.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -3170,6 +3295,8 @@ impl Vault {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vault::identity::RootIdentity;
+    use crate::vault::seed::{seed_from_mnemonic, Seed};
 
     fn test_seed() -> Seed {
         seed_from_mnemonic(
@@ -3229,7 +3356,7 @@ mod tests {
         let mut vault = vault();
         let (key, mut envelope) = vault.add_content("bill-001", &["hospitalization"]).unwrap();
 
-        vault.link_content("bill-001", "tax-2026", &mut envelope).unwrap();
+        vault.link_content("tax-2026", &mut envelope).unwrap();
 
         let tax_key = vault.context_key("tax-2026").unwrap();
         let recovered = envelope.unwrap_with("tax-2026", tax_key).unwrap();
@@ -3274,7 +3401,7 @@ mod tests {
 
     #[test]
     fn an_unsigned_device_certificate_is_rejected() {
-        use crate::vault::{DeviceCertificate, DeviceKey};
+        use crate::vault::device::{DeviceCertificate, DeviceKey};
         let device = DeviceKey::generate().unwrap();
         let forged = DeviceCertificate {
             device_id: device.device_id(),
@@ -3356,15 +3483,16 @@ use std::collections::BTreeMap;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use hkdf::Hkdf;
-use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::domain;
-use super::envelope::{push_len_prefixed, random_nonce};
+use super::encoding::push_len_prefixed;
+use super::random::random_nonce;
 use super::identity::{RootIdentity, RootPublicKey};
 use super::error::VaultError;
+use super::restore::SealedRestore;
 use super::revocation::RevocationLedger;
 use super::seed::Seed;
 use super::{DeviceCertificate, Vault};
@@ -3585,7 +3713,6 @@ pub struct RecoveryPackage {
 /// chief-security-officer and rust-architect both signed off on the current
 /// single-blob format; per `ADR-0017`'s Contract Impact table, both re-review,
 /// and `G0` is required again.
-
 impl RecoveryPackage {
     /// The plaintext header, canonically encoded, bound as AAD.
     ///
@@ -3631,9 +3758,7 @@ impl RecoveryPackage {
         );
 
         let mut salt = vec![0u8; 16];
-        rand_core::OsRng
-            .try_fill_bytes(&mut salt)
-            .map_err(|_| VaultError::RngUnavailable)?;
+        super::random::fill_random(&mut salt)?;
 
         // Header is built first, because it is the AAD the ciphertext commits to.
         let mut package = Self {
@@ -3664,6 +3789,26 @@ impl RecoveryPackage {
             .map_err(|_| VaultError::SerializationFailed)?;
 
         Ok(package)
+    }
+
+    /// The only route from a package to a `SealedRestore`. `SEC-1`.
+    ///
+    /// The identity check is not decoration: without it, a mismatched or
+    /// crafted package yields a vault that accepts device certificates signed
+    /// by a root the user does not control.
+    pub(crate) fn open(&self, seed: &Seed) -> Result<SealedRestore, VaultError> {
+        let payload = self.decrypt(seed)?;
+        let expected = RootIdentity::from_seed(seed)?.public_key();
+        if *payload.root_public_key() != expected || self.identity_public_key != expected {
+            return Err(VaultError::IdentityMismatch);
+        }
+        payload.revocations.validate()?;
+        // AAD stops an attacker editing the header; it does not stop a buggy
+        // or hostile *writer* inflating it. Fail closed.
+        if self.revocation_epoch != payload.revocations.head_epoch() {
+            return Err(VaultError::SerializationFailed);
+        }
+        Ok(SealedRestore::from_parts(payload, self.revocation_epoch))
     }
 
     /// `SEC-1` — **private.** The payload never leaves this module.
@@ -3904,17 +4049,13 @@ mod tests {
 }
 ```
 
-Add to `rust/airo_mind/src/vault/mod.rs`:
+Add to `rust/airo_mind/src/vault/aggregate.rs`:
 
 ```rust
-mod package;
-
-pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
-
 impl Vault {
     /// Serializable interior. Crate-visible: only export and restore use it.
-    pub(crate) fn to_payload(&self) -> package::VaultPayload {
-        package::VaultPayload {
+    pub(crate) fn to_payload(&self) -> super::package::VaultPayload {
+        super::package::VaultPayload {
             root_public_key: self.root_public_key,
             context_keys: self
                 .context_keys
@@ -3998,7 +4139,6 @@ Create `rust/airo_mind/src/vault/restore.rs`:
 //! `SealedRestore` exposes no key material and has no path to a `Vault`.
 
 use super::error::VaultError;
-use super::identity::RootIdentity;
 use super::package::{RecoveryPackage, VaultPayload};
 use super::revocation::{RevocationLedger, RevocationSubject};
 use super::seed::Seed;
@@ -4096,22 +4236,21 @@ impl SealedRestore {
     /// The identity check is not decoration: without it, a mismatched or
     /// crafted package yields a vault that accepts device certificates signed
     /// by a root the user does not control.
+    /// `SEC-1` — delegates to `RecoveryPackage::open`, which owns `decrypt`.
+    ///
+    /// The payload never leaves `package.rs`, so no module outside it can name
+    /// a key byte. `restore.rs` needs four things from the payload — the root
+    /// key, the ledger, and the two purges — and none of them is key material.
     pub fn load(package: &RecoveryPackage, seed: &Seed) -> Result<Self, VaultError> {
-        let payload = package.decrypt(seed)?;
-        let expected = RootIdentity::from_seed(seed)?.public_key();
-        if payload.root_public_key != expected || package.identity_public_key != expected {
-            return Err(VaultError::IdentityMismatch);
-        }
-        payload.revocations.validate()?;
-        // AAD stops an attacker editing the header; it does not stop a buggy
-        // or hostile *writer* inflating it. Fail closed.
-        if package.revocation_epoch != payload.revocations.head_epoch() {
-            return Err(VaultError::SerializationFailed);
-        }
-        Ok(Self {
+        package.open(seed)
+    }
+
+    /// Constructed only by `RecoveryPackage::open`.
+    pub(super) fn from_parts(payload: VaultPayload, backup_epoch: u64) -> Self {
+        Self {
             payload,
-            backup_epoch: package.revocation_epoch,
-        })
+            backup_epoch,
+        }
     }
 
     pub fn backup_epoch(&self) -> u64 {
@@ -4128,11 +4267,11 @@ impl SealedRestore {
     /// all three are revocable subjects, and omitting devices means a stale
     /// backup readmits a revoked device.
     pub fn apply_revocations(mut self, source: &RevocationSource) -> AppliedRestore {
-        let package_revocations = self.payload.revocations.all_revoked();
-        self.payload.revocations.merge(&source.ledger);
+        let package_revocations = self.payload.revocations_mut().all_revoked();
+        self.payload.revocations_mut().merge(&source.ledger);
 
         let mut purged = Vec::new();
-        for subject in self.payload.revocations.all_revoked() {
+        for subject in self.payload.revocations_mut().all_revoked() {
             match &subject {
                 RevocationSubject::Content(_) => {
                     // Pushes NOTHING. The Vault holds no per-content record,
@@ -4145,14 +4284,12 @@ impl SealedRestore {
                     // `applying_revocations_twice_is_stable` could not pass.
                 }
                 RevocationSubject::Context(id) => {
-                    if self.payload.context_keys.remove(id).is_some() {
+                    if self.payload.purge_context(id) {
                         purged.push(subject.clone());
                     }
                 }
                 RevocationSubject::Device(id) => {
-                    let before = self.payload.device_certificates.len();
-                    self.payload.device_certificates.retain(|c| &c.device_id != id);
-                    if self.payload.device_certificates.len() != before {
+                    if self.payload.purge_device(id) {
                         purged.push(subject.clone());
                     }
                 }
@@ -4326,7 +4463,7 @@ mod tests {
         // The device equivalent of the content regression test. Without
         // RevocationSubject::Device this could not be written at all, and a
         // stolen laptop walked back into the mesh on every restore.
-        use crate::vault::{DeviceCertificate, DeviceKey};
+        use crate::vault::device::{DeviceCertificate, DeviceKey};
         let identity = RootIdentity::from_seed(&seed()).unwrap();
         let device = DeviceKey::generate().unwrap();
         let device_id = device.device_id();
@@ -4427,20 +4564,16 @@ mod tests {
 }
 ```
 
-Add to `rust/airo_mind/src/vault/mod.rs`:
+Add to `rust/airo_mind/src/vault/aggregate.rs`:
 
 ```rust
-mod restore;
-
-pub use restore::{AppliedRestore, SealedRestore};
-
 impl Vault {
     /// Requires a `RevocationsApplied` witness that only `AppliedRestore` can
     /// mint, so the ordering is unrepresentable **inside** the crate too —
     /// which is where it will actually be attacked.
     pub(crate) fn from_payload(
-        payload: package::VaultPayload,
-        _: restore::RevocationsApplied,
+        payload: super::package::VaultPayload,
+        _: super::restore::RevocationsApplied,
     ) -> Self {
         Self {
             root_public_key: payload.root_public_key,
