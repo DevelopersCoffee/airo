@@ -174,21 +174,34 @@ class ProviderHealthSnapshot extends Equatable {
 
 /// In-memory ring-buffered health tracker.
 ///
-/// One instance per app; caller records samples via [record] and reads
-/// [snapshotFor] to derive a UI health class. Persistence and
-/// cross-restart continuity are deliberately deferred — this slice-1
-/// keeps the tracker pure and testable.
+/// One instance per app; callers record samples via [record] and read
+/// [snapshotFor] to derive a UI health class. [initialSamples], [samples], and
+/// [onChanged] let the application layer add bounded persistence without
+/// coupling this platform contract to a storage implementation.
 class ProviderHealthTracker {
-  ProviderHealthTracker({int maxSamplesPerSource = 100})
-    : assert(maxSamplesPerSource > 0),
-      _maxSamplesPerSource = maxSamplesPerSource;
+  ProviderHealthTracker({
+    int maxSamplesPerSource = 100,
+    Iterable<ProviderHealthSample> initialSamples = const [],
+    this.onChanged,
+  }) : assert(maxSamplesPerSource > 0),
+       _maxSamplesPerSource = maxSamplesPerSource {
+    for (final sample in initialSamples) {
+      _record(sample);
+    }
+  }
 
   final int _maxSamplesPerSource;
+  final void Function()? onChanged;
   final Map<String, Queue<ProviderHealthSample>> _samples = {};
 
   /// Adds [sample] to its source's ring buffer, evicting the oldest
   /// sample when the buffer is full.
   void record(ProviderHealthSample sample) {
+    _record(sample);
+    onChanged?.call();
+  }
+
+  void _record(ProviderHealthSample sample) {
     final buffer = _samples.putIfAbsent(sample.sourceId, Queue.new);
     buffer.addLast(sample);
     while (buffer.length > _maxSamplesPerSource) {
@@ -263,16 +276,27 @@ class ProviderHealthTracker {
   /// Drops all samples for [sourceId]. Used when a source is removed
   /// or the user asks to reset its diagnostics.
   void clearFor(String sourceId) {
-    _samples.remove(sourceId);
+    if (_samples.remove(sourceId) != null) {
+      onChanged?.call();
+    }
   }
 
   /// Drops every sample. Used by "Reset diagnostics" affordances.
   void clearAll() {
+    if (_samples.isEmpty) return;
     _samples.clear();
+    onChanged?.call();
   }
 
   /// Diagnostic-only view of the recorded sample count per source.
   int sampleCountFor(String sourceId) => _samples[sourceId]?.length ?? 0;
+
+  /// Redacted samples suitable for bounded local persistence.
+  ///
+  /// Samples never contain URLs, credentials, response bodies, or raw error
+  /// text. The returned list is detached from the tracker's ring buffers.
+  List<ProviderHealthSample> get samples =>
+      List.unmodifiable(_samples.values.expand((buffer) => buffer));
 }
 
 ProviderHealthClass _classify({

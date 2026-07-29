@@ -80,8 +80,8 @@ GitHub Actions minutes are shared cost. Prove correctness locally first and keep
 remote CI for the cases that need it.
 
 1. Mark iterative issue commits and integration-branch merge commits `[skip ci]`
-   unless the change is a release verification step or a maintainer asked for a
-   run.
+   when the commit does not change executable behaviour — see "Skipping CI"
+   below for the line.
 2. Treat release, signing, Play upload, APK/AAB artifact, full Android matrix,
    emulator, and broad integration workflows as opt-in — required by branch
    protection, the release owner, or the issue.
@@ -93,6 +93,53 @@ remote CI for the cases that need it.
    churn: they burn minutes without changing reviewable behavior.
 6. When remote CI genuinely is required, say why in the issue or PR before
    pushing without `[skip ci]`.
+
+## Skipping CI
+
+`[skip ci]` saves minutes on commits that cannot break anything. It is not a way
+to land code faster.
+
+**Allowed** — documentation, comments, markdown, release notes, issue and PR
+templates, other non-executable metadata.
+
+**Not allowed** — anything under `app/`, `packages/`, `packages_pro/`, `rust/`,
+`e2e/`, `scripts/`, `tool/`; `Makefile`, `melos.yaml`, Gradle, Cargo, or
+`pubspec` files; `.github/workflows/`. A change to any of these must be proven
+by a CI run.
+
+`scripts/check_skip_ci.sh` enforces this from the `commit-msg` hook. Install it
+once per clone with `make install-hooks`; it lives in git rather than any one
+tool's config, so it applies to every committer, human or agent. Split the
+executable part into its own commit rather than working around it.
+
+*Why:* on 2026-07-29, `c2ada89f` renamed a UI string to sentence case, updated
+the `feature_iptv` tests it owned but not the one in `app/test`, and shipped
+`[skip ci]`. Nothing ran. `main` went red on the next unrelated push, and the
+cost of finding it landed on someone who had not touched that code.
+
+## Dependency pins
+
+When a dependency is pinned back because a version is broken, the pin and the
+guard are two separate jobs, and the guard is the one that gets forgotten:
+
+1. Pin the version, with a comment naming the symptom and the prior reverts.
+2. Add the Dependabot `ignore` entry — on the coordinate Dependabot actually
+   bumps, which for Gradle plugins is the plugin id (`com.android.application`),
+   not the artifact (`com.android.tools.build:gradle`).
+3. **Search for already-open PRs matching the new ignore and close them.** An
+   `ignore` rule only stops Dependabot opening *future* PRs; it does not
+   withdraw one already in flight.
+   ```bash
+   gh pr list --repo DevelopersCoffee/airo --author app/dependabot \
+     --search "<dependency>" --state open
+   ```
+4. Confirm the pin survives on `main` after the next merge.
+
+*Why:* AGP 9.3.x has been reverted three times. `9.3.0` in `249ad2eb` (#1011),
+`9.3.1` via #1336, and `9.3.1` again when #1349 — already open before the ignore
+rule existed — was merged and silently undid the pin, leaving a comment reading
+"Pinned to 9.2.1" directly above `version "9.3.1"`. Step 3 is the step that was
+missing.
 
 ## Pull requests
 

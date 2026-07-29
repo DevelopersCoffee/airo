@@ -792,7 +792,7 @@ Applies to every identifier and every derivation input, not just mnemonics:
 | Value | Canonical form |
 |---|---|
 | Recovery mnemonic | NFKD, single-space-joined, trimmed |
-| Entity / context IDs | Slug-validated, case-fixed, no traversal sequences |
+| Entity / context IDs | **NFC-normalized and rejected if they contain control characters**, then slug-validated, case-fixed, no traversal sequences |
 | Capability / package IDs | Same, plus filesystem-safe on every OS |
 | Paths | Resolved, symlinks followed, confined to a granted root |
 | URLs | Scheme and host lowercased, normalized, percent-encoding settled |
@@ -800,6 +800,25 @@ Applies to every identifier and every derivation input, not just mnemonics:
 A function that accepts a raw value **and** a canonical one at the same type is
 a defect: the type must distinguish them, or the raw form must be unreachable
 past the boundary.
+
+**The boundary rule, stated once.** Every identifier entering the runtime has
+exactly one canonical representation before it is hashed, signed, indexed, or
+compared. NFC for identifiers, NFKD for the mnemonic — different because the
+mnemonic is a derivation input where compatibility folding is wanted, while an
+identifier must round-trip as the user wrote it.
+
+This discharges the open question freeze §4 raised against the
+`RevocationSubject` encoding, and it is not a new invariant: I6 already required
+canonicalization at the boundary and left the Unicode form unstated.
+
+Why it has to be decided rather than deferred: two ids differing only by Unicode
+form are different subjects, so destroying one does not revoke the other. On a
+single device that is self-consistent and invisible. The moment C3 sync carries
+ids between devices — or a macOS filesystem hands back NFD where the log
+recorded NFC — it is a divergence source, and the failure surfaces as content
+the user destroyed reappearing on another device. Rejecting control characters
+belongs with it: an id carrying `\r` or a bidi override renders as one thing and
+compares as another.
 
 ### I7 — Streaming first
 

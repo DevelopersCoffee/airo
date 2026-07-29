@@ -84,7 +84,7 @@ that exported a package holds a copy we cannot reach.
 | `RevocationSubject` map key | Canonical string `kind:id`, where `kind` ∈ {`content`, `context`, `device`} and contains no `:`. First-colon split, so ids may contain `:`. Unknown kinds fail closed. |
 | `[u8; 32]` and `[u8; 64]` fields | Lowercase hex string, never a JSON decimal array — the package stays inspectable in a text editor, which matters for a file users are told to store themselves |
 | Outer `ciphertext`, `nonce`, `kdf_salt` | Base64, not hex and never a JSON decimal array. The package double-encodes — a JSON payload, then that ciphertext text-encoded again in the envelope — so hex on the outer blob costs a hard 2.0× and puts V4's `≤ 3× compact` floor at 3.30×, unmeetable. Base64 costs 1.33× and clears every measured shape. Inner fields stay hex; the ciphertext blob is opaque under any encoding, so nothing inspectable is lost. Measured in ADR-0017. |
-| Subject ids | The design must state whether ids are NFC-normalized and control-character-free at the boundary (I6). Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices. |
+| Subject ids | **NFC-normalized and rejected if they contain control characters**, at the boundary, exactly once (I6). Answered in design §11a/I6; this row previously said only that the design must state it. Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices, surfacing as destroyed content reappearing elsewhere. |
 
 The on-disk format is the least reversible thing in the system. Every device
 that has ever exported one holds a copy we cannot reach.
@@ -343,6 +343,224 @@ Failure injection is the one usually skipped, and it is the one that matters on
 a mobile device: Android kills processes without warning, flash corrupts, and
 disks fill. A contract verified only on the happy path is verified for the
 conditions under which nobody needed it.
+
+### Phase exit gate
+
+Runtime Validation is complete when all ten hold:
+
+| Criterion | Status |
+|---|---|
+| G0 passes | Required |
+| Security approves | Required |
+| Rust Architecture approves | Required |
+| Performance approves | Required |
+| ADR-0017 implemented | Required |
+| Conformance suites updated | Required |
+| Runtime contracts unchanged | Required unless superseded by an approved ADR |
+| No new primitives | Required |
+| No new invariants | Required |
+| **No implementation evidence requiring an ADR** | Required |
+
+The last row is phrased deliberately. **"No ADRs opened" would have been the
+wrong rule** — it rewards suppressing an architectural problem to keep a
+checklist clean, which is the opposite of what the freeze is for. The decision
+hierarchy explicitly ends at "ADR, if the evidence from steps 2–4 shows the
+contract is inadequate", and an ADR arriving through that path is the process
+working.
+
+What the row actually asks: *did implementation surface evidence that a frozen
+contract is wrong, and is it still unaddressed?* An ADR opened, reviewed, and
+approved satisfies this row. An ADR that should exist and does not, fails it.
+
+## Every change cites its evidence
+
+**From Revision 8 onward, every substantive change carries one of three
+justifications:**
+
+| Evidence class | Means |
+|---|---|
+| **Compiler** | G0 — it did not build, or it built and should not have |
+| **Benchmark** | A measured number against a declared budget |
+| **Review** | A council finding, with the probe or reasoning that produced it |
+
+Anything with none of the three is deferred. Not rejected — deferred, because a
+change worth making will acquire evidence, and a change that never does was
+preference.
+
+This exists because of a specific recurring failure: **five times a property was
+recorded as applied and was absent from the code.** Header AAD, the
+revocation-subject rewrite, error variants declared and never constructed, the
+checklist's runtime API, and `hex_array` never applied to `RootPublicKey`. I5
+was written for this and did not stop it, because I5 governs invariants and this
+was drift in the record of what had been done.
+
+Requiring each change to name its evidence attacks it from the other side. A
+changelog entry that must cite the probe, the benchmark, or the compiler error
+that demanded it cannot describe work that was never performed — the citation
+either resolves or it does not.
+
+### Where enforcement is mechanical, and where it is not
+
+Worth stating plainly, because the weak row is the one that will fail quietly:
+
+| Mechanism | Enforcement |
+|---|---|
+| G0 | **Mechanical** — compiler and tests |
+| Contract Impact | **Mechanical** — the ADR template cannot omit it and a blank row is visible |
+| Conformance audit | **Mechanical** — review checklist |
+| Citation namespace | **Mechanical** — a fixed prefix set is greppable against real artifacts |
+| Evidence Rule | **Human discipline** |
+
+The Evidence Rule is the only one with no mechanical backstop: nothing stops a
+plausible citation attached to work that was not done. The citation namespace
+narrows it — an invented artifact id fails to resolve — but a *real* id cited
+for the wrong change still passes. That residual gap is where tooling would help
+and is not worth automating yet.
+
+Recording it here rather than treating the stack as complete. A governance
+mechanism whose weakness is known is a different thing from one whose weakness
+is assumed absent.
+
+**Three levels of assurance, and only the first two are process:**
+
+| | Level | How |
+|---|---|---|
+| 1 | The identifier exists | Partially mechanical — the namespace is greppable |
+| 2 | The identifier is relevant to this change | Review judgment |
+| 3 | The change is correct | Compiler, benchmark, or reviewer |
+
+Automating level 2 before implementation evidence exists would add complexity
+without earning it. This is the stopping point.
+
+### Governance rules are held to the Evidence Rule
+
+**A new governance mechanism requires the same justification as a specification
+change: an observed failure that demanded it.** Not that it seems generally
+useful.
+
+Every rule in this document has one. G0 exists because three revisions shipped
+non-compiling code. The Evidence Rule exists because five properties were
+recorded as applied and were absent. Contract Impact exists because a
+conformance test stayed green for three reviews after the dimension it measured
+was deleted. The namespace reservation above exists because `S2` meant two
+things.
+
+Governance that grows on plausibility rather than evidence has the same failure
+mode as a specification that does: it accumulates, each addition locally
+defensible, until the process costs more than the defects it prevents. From here
+the bar is a concrete weakness exposed by Runtime Skeleton implementation.
+
+### The changelog is a proof ledger, not a release note
+
+A revision's changelog exists to answer one question per entry:
+
+> **If this line disappeared six months from now, what evidence would prove it
+> belonged?**
+
+Four columns, all required:
+
+| Change | Evidence class | Specific evidence | Frozen surface |
+|---|---|---|---|
+
+Column 4 traces the change to the architectural authority that demanded it, so
+the ledger is checkable against the contracts and not only against the review
+that happened to raise it.
+
+**Column 4 must name a real frozen surface — C1–C7, or a numbered section of
+this document — or say `none — plan-local`.** Both are valid. Inventing a
+plausible-sounding contract name to fill the cell produces false traceability,
+which is worse than an empty one, and is the same defect class as a conformance
+test that measures an artifact instead of a property. Not every legitimate
+change traces to a frozen surface: a fix to a promise the plan made about its
+own file layout is real, evidenced, and governed by nothing frozen.
+
+Worked example, Revision 8:
+
+| Change | Evidence | Specific evidence | Frozen surface |
+|---|---|---|---|
+| Remove `link_content`'s `content_id` parameter | Review | Rust probe: `link_content("B", ctx, &mut envelope_of_A)` returned `Ok(())` after A was destroyed | **C7** — the revocation gate and the AAD disagreed on one identity |
+| Apply `hex_array_32` to `RootPublicKey` | Review | `to_bytes()` emitted `identity_public_key` as a JSON decimal array | **§4** encoding table |
+| Pre-sized `String` hex helper | Benchmark | `to_bytes()` on a 100k-context vault: 350.82 ms → 16.55 ms | **I8**, budget V4 — no contract governs it |
+| Base64 on the outer ciphertext | Benchmark | Hex leaves a hard 3.30× floor against V4's ≤ 3× | **§4** |
+| Re-export `RevocationSource` | Compiler | `error[E0433]` from an external probe; restore unreachable | `none — plan-local` |
+
+### Evidence Identifier Namespace — prefixes are reserved
+
+**Each prefix below means one thing across the whole project.** Reserved, not
+merely conventional: a prefix may not be reused for a different artifact kind,
+in this document, in the specs, in review reports, or in issue comments.
+
+| Prefix | Reserved for |
+|---|---|
+| `C#` | Frozen runtime contracts |
+| `I#` | Frozen invariants |
+| `S#` | Conformance suites |
+| `V#` / `H#` | Benchmark budgets and host datapoints |
+| `G0.#` | Buildability gate steps |
+| `SEC-#` | Chief Security Officer findings |
+| `RA-#` | Rust Architect findings |
+| `PERF-#` | Chief Performance Officer findings |
+| `ADR-####` | Architecture Decision Records |
+| `Freeze §#` | Numbered sections of this document |
+
+A new council role takes a new prefix. A new artifact kind takes a new prefix.
+Neither borrows an existing one.
+
+This is the forward-looking half of the rule below, and it is the half that
+matters in six months: the table below says what a citation may *name*, and this
+one stops someone introducing `SEC` conformance tests or `RA` benchmarks and
+recreating the collision that motivated both. The collision was not theoretical
+— review findings were numbered `S1`, `S2`, `S5` while the conformance suites
+were also `S1`–`S5`, and it survived four council reviews unnoticed because
+nobody had to cite one from the other until the proof ledger required it.
+
+### Citations resolve to real identifiers
+
+**Every evidence citation names an artifact that exists independently of the
+changelog**, drawn from this namespace and no other:
+
+| Prefix | Artifact | Example |
+|---|---|---|
+| `rustc E####` | A compiler diagnostic | `rustc E0433` |
+| `G0.#` | A buildability gate step | `G0.5` |
+| `V#` / `H#` | A benchmark budget or host datapoint | `V4` |
+| `SEC-#` | A Chief Security Officer finding | `SEC-15` |
+| `RA-#` | A Rust Architect finding | `RA-1` |
+| `PERF-#` | A Chief Performance Officer finding | `PERF-3` |
+| `ADR-####` | An accepted ADR | `ADR-0017` |
+| `Freeze §#` | A numbered section of this document | `Freeze §4` |
+| `C#` | A runtime contract | `C7` |
+| `I#` | A runtime invariant | `I6` |
+| `S#` | **A conformance suite, and nothing else** | `S1` |
+
+A reviewer can check that a cited artifact is real without judging whether the
+change is correct. That is a weaker guarantee than proving the change justified,
+and it is the guarantee actually worth having: it prevents invented citations the
+same way `none — plan-local` prevents invented contracts.
+
+**`S#` is reserved for conformance suites.** Review findings were numbered `S1`,
+`S2`, `S5` … while the conformance suites are also `S1`–`S5`, so a bare `S2`
+meant either "Replay conformance" or "`link_content` re-links destroyed
+content". Role prefixes remove it. The Rust Architect already numbered findings
+`RA*` *"to avoid colliding with the security officer's S*"* — that instinct was
+right and did not go far enough, because neither numbering avoided the suites.
+
+Renumbering applies going forward and to the Revision 8 ledger. Findings already
+posted to issues keep their original numbers in those comments; the ledger cites
+the prefixed form.
+
+### Editorial change requires a demonstrated defect
+
+**"The previous text was ambiguous" is not evidence.** It becomes evidence when
+the ambiguity is demonstrated by a review finding or an implementation failure —
+someone read it the wrong way, or built the wrong thing from it.
+
+Without this, a document meant to become a stable engineering reference
+accumulates rewording indefinitely, each edit locally defensible and none
+demanded by anything. The clarifications that matter have a witness: I6's
+canonicalization text exists because a mnemonic with a trailing newline derived
+a different seed, and freeze §4's encoding table exists because three helpers
+were applied at some of the sites their invariant covered.
 
 ## G0 — Buildability. A revision does not exist until it builds.
 

@@ -20,6 +20,29 @@ void main() {
     });
   });
 
+  test('initial samples hydrate without firing change callback', () {
+    var changes = 0;
+    final sample = ProviderHealthSample.fetchSuccess(
+      sourceId: sourceId,
+      timestampUtc: t0,
+      latency: const Duration(milliseconds: 90),
+    );
+    final tracker = ProviderHealthTracker(
+      initialSamples: [sample],
+      onChanged: () => changes++,
+    );
+
+    expect(tracker.samples, [sample]);
+    expect(
+      tracker.snapshotFor(sourceId).healthClass,
+      ProviderHealthClass.green,
+    );
+    expect(changes, 0);
+
+    tracker.clearFor(sourceId);
+    expect(changes, 1);
+  });
+
   group('single sample paths', () {
     test('single fetchSuccess → green + lastSuccess set', () {
       final tracker = ProviderHealthTracker();

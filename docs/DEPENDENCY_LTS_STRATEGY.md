@@ -247,10 +247,10 @@
 
 | Package | Current | Latest Stable | Recommendation |
 |---------|---------|---------------|----------------|
-| @playwright/test | ^1.40.0 | 1.62.0 | 🔄 Update to 1.62.0 |
-| @types/node | ^20.10.0 | 20.17.0 | 🔄 Update to 20.17.0 |
-| ts-node | ^10.9.2 | 10.9.2 | ✅ Pin to 10.9.2 |
-| typescript | ^5.3.0 | 5.7.3 | 🔄 Update to 5.7.3 |
+| @playwright/test | 1.62.0 | 1.62.0 | ✅ Pin to 1.62.0 |
+| @types/node | 20.19.43 | 26.1.2 | ✅ Keep the Node 20 line until the runtime baseline changes |
+| ts-node | 10.9.2 | 10.9.2 | ✅ Pin to 10.9.2 |
+| typescript | 5.9.3 | 7.0.2 | ✅ Pin to the validated 5.9.3 toolchain |
 
 ### 1.8 Python Dependencies (iptv-data)
 
@@ -398,22 +398,20 @@ Standardize all package versions across all modules
 **Resolution:**
 Replace caret constraints with exact versions or explicit ranges
 
-#### Issue #6: Outdated E2E Testing Dependencies
+#### Issue #6: E2E Testing Dependencies (Resolved 2026-07-29)
 **Severity:** 🟡 MEDIUM
-**Impact:** Missing features, security vulnerabilities
+**Status:** Resolved by GitHub issue #1353
 
 **Details:**
-- Playwright: 1.40.0 → 1.62.0 (22 minor versions behind)
-- TypeScript: 5.3.0 → 5.7.3
-- @types/node: 20.10.0 → 20.17.0
+- Playwright: updated from 1.40.0 to 1.62.0
+- TypeScript: updated from 5.3.0 to 5.9.3
+- @types/node: updated from 20.10.0 to 20.19.43
 
-**Risk:**
-- Missing bug fixes
-- Missing features
-- Potential security vulnerabilities
-
-**Resolution:**
-Update to latest stable versions
+**Ongoing policy:**
+- Pin exact E2E tool versions and commit the matching lockfile
+- Keep Node typings on the Node 20 line until the runtime baseline changes
+- Require TypeScript compilation, Playwright test discovery, and `npm audit`
+  before accepting another toolchain update
 
 ### 2.3 Medium Priority Issues (P2)
 

@@ -377,6 +377,12 @@ deploy-pixel9-apk: boot-pixel9 ## Build, install, and launch debug APK on local 
 	fi; \
 	echo "$(GREEN)✓ APK installed and launched on Pixel 9. PID: $$PID$(NC)"
 
+.PHONY: install-hooks
+install-hooks: ## Install the repo git hooks (rejects [skip ci] on executable changes)
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/* scripts/check_skip_ci.sh 2>/dev/null || true
+	@echo "$(GREEN)✓ Hooks installed. Applies to every committer, human or agent.$(NC)"
+
 .PHONY: qualify-ipad
 qualify-ipad: ## Run the visual qualification pass on the connected iPad (override AIRO_QUALIFY_IOS_DEVICE)
 	@echo "$(BLUE)Running visual qualification on iPad...$(NC)"
