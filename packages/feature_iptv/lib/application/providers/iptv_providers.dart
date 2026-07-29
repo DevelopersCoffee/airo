@@ -294,7 +294,18 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
       if (parser.getPlaylistUrl() != config.url) {
         await parser.setPlaylistUrl(config.url);
       }
-      channels.addAll(await parser.fetchPlaylist(forceRefresh: forceRefresh));
+      final outcome = await parser.fetchPlaylistOutcome(
+        forceRefresh: forceRefresh,
+      );
+      channels.addAll(outcome.channels);
+      if (outcome.sourceUnavailable) {
+        // The parser reports an unreachable source rather than throwing, so
+        // count it here or a dead source reads as an empty one.
+        failedSources++;
+        debugPrint(
+          '[Provider] M3U source ${config.id} could not be refreshed.',
+        );
+      }
     } catch (_) {
       // Source URLs may contain private tokens. Keep diagnostics coarse and
       // continue loading the remaining configured sources.

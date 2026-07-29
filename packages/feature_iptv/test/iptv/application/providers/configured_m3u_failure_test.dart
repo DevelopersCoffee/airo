@@ -152,6 +152,31 @@ void main() {
     },
   );
 
+  test(
+    'a source that reports itself unavailable without throwing still counts '
+    'as a failure',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          m3uSourceParserFactoryProvider.overrideWithValue(
+            (sourceId) => _UnavailableSourceParser(prefs: prefs, sourceId: sourceId),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container
+          .read(contentSourceStoreProvider)
+          .replaceAll([source('m3u-unreachable')]);
+      container.invalidate(configuredContentSourcesProvider);
+
+      await expectLater(
+        container.read(configuredM3uChannelsProvider.future),
+        throwsA(isA<PlaylistSourcesUnavailableException>()),
+      );
+    },
+  );
+
   test('the failure message names no source URL', () {
     expect(
       const PlaylistSourcesUnavailableException(3).toString(),
@@ -181,8 +206,32 @@ class _FakeSourceParser extends M3UParserService {
   }
 
   @override
-  Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async {
     if (error case final error?) throw error;
-    return channels;
+    return PlaylistFetchOutcome.loaded(channels);
   }
+}
+
+/// Mirrors the real parser, which reports an unreachable source through the
+/// outcome instead of throwing.
+class _UnavailableSourceParser extends M3UParserService {
+  _UnavailableSourceParser({required super.prefs, required String sourceId})
+    : super(dio: Dio(), sourceId: sourceId);
+
+  String? _url;
+
+  @override
+  String? getPlaylistUrl() => _url;
+
+  @override
+  Future<void> setPlaylistUrl(String url) async {
+    _url = url;
+  }
+
+  @override
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async => const PlaylistFetchOutcome.unavailable();
 }
