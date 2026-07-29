@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Airo commit-msg hook. Install with `make install-hooks`.
+#
+# Applies to every committer, human or agent, because it runs in git itself
+# rather than in one tool's config.
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+CHECK="$ROOT_DIR/scripts/check_skip_ci.sh"
+
+[ -x "$CHECK" ] || exit 0
+
+exec "$CHECK" "$1"
