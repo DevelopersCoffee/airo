@@ -11,6 +11,32 @@
 **Spec:** `docs/superpowers/specs/2026-07-27-airo-mind-runtime-design.md` §4, §6
 **Issues:** #1204 (scaffold), #1205 (governance), #1207–#1212 (Vault tasks), under epic #1193.
 
+> **Revision 8 (2026-07-29). CONSOLIDATION. No new design.**
+>
+> The first revision written under the Evidence Rule (`Freeze §`): every
+> substantive change below cites the compiler diagnostic, benchmark number, or
+> council finding that demanded it. A change with none of the three was
+> deferred, including clarifications that only read better. Citations use the
+> reserved namespace — review findings are `SEC-#` / `RA-#` / `PERF-#`, since
+> bare `S#` now means a conformance suite and `S2` previously meant both
+> "Replay conformance" and "`link_content` re-links destroyed content".
+>
+> Scope is fixed: security findings, the Rust façade, `ADR-0017`, the
+> serialization changes, conformance updates, `G0`. Nothing else. No new
+> primitives, invariants, or contracts.
+>
+> **Proof ledger.** If a line below disappeared six months from now, the
+> evidence that proves it belonged:
+>
+> | Change | Evidence | Specific evidence | Frozen surface |
+> |---|---|---|---|
+> | `mod.rs` loses the aggregate to `aggregate.rs` | Review | `RA-4`: the File Structure block said both "no logic" and "holds only the Vault aggregate" — the implementation obeyed the second | `none — plan-local` |
+> | `random.rs` created; `seed.rs`, `device.rs`, `package.rs` stop calling `OsRng` | Review | `RA-3`: file promised as "the ONLY RNG call sites", never existed; 3 of 5 sites bypassed it while the DoD claimed CI enforcement | `none — plan-local` |
+> | `push_len_prefixed` moves `envelope.rs` → `encoding.rs` | Review | `RA-4`: `package.rs` imported its length-prefix helper from the content-wrapping module | `none — plan-local` |
+>
+> Remaining rows are added as each change lands. **`G0` has not been re-run
+> against this revision; it is not yet a revision by `Freeze §`'s definition.**
+>
 > **Revision 7 (2026-07-28). THE FIRST REVISION TO PASS G0.**
 >
 > ```
@@ -113,10 +139,10 @@ rust/airo_mind/
 └── src/
     ├── lib.rs             — `mod vault;` + a CURATED `pub use` list, not `pub mod`
     └── vault/
-        ├── mod.rs         — declarations and re-exports ONLY, no logic
-        ├── aggregate.rs   — the Vault aggregate (not `vault.rs`: `clippy::module_inception`)
-        ├── encoding.rs    — length-prefixing, hex, fixed-array serde helpers
-        ├── random.rs      — `random_key`, `random_nonce` — the ONLY RNG call sites
+        ├── mod.rs         — `mod` declarations and `pub(crate) use` re-exports ONLY. No types, no impls, no tests.
+        ├── aggregate.rs   — the `Vault` aggregate (not `vault.rs`: `clippy::module_inception`)
+        ├── encoding.rs    — length-prefixing, hex, fixed-array and base64 serde helpers
+        ├── random.rs      — `random_key`, `random_nonce`, `random_seed_bytes` — the ONLY `OsRng` call sites in the crate
         ├── error.rs       — VaultError
         ├── seed.rs        — Mnemonic ↔ Seed (Task 2)
         ├── identity.rs    — RootIdentity from Seed (Task 3)
@@ -127,7 +153,28 @@ rust/airo_mind/
         └── restore.rs     — type-state restore (Task 8)
 ```
 
-One responsibility per file. `mod.rs` holds only the `Vault` aggregate and re-exports; it must not grow logic.
+One responsibility per file.
+
+**`mod.rs` contains no logic.** Revision 7 wrote the entire 250-line `Vault`
+aggregate into it, because this block previously said both *"declarations and
+re-exports ONLY, no logic"* and, four lines later, *"`mod.rs` holds only the
+`Vault` aggregate and re-exports"*. Those contradict, and the implementation
+obeyed the second (`RA-4`). A file structure that disagrees with itself is
+followed in exactly one place, and it is not the one you remember writing. The
+aggregate lives in `aggregate.rs`.
+
+**Two placement rules that Revision 7 violated in ways the compiler cannot
+see**, both `RA-3` / `RA-4`:
+
+- `random.rs` is the only module naming `OsRng`. Revision 7 promised this and
+  never created the file: `random_key` and `random_nonce` lived in
+  `envelope.rs`, and `seed.rs`, `device.rs`, and `package.rs` each called
+  `OsRng` directly — three violations of a rule the Definition of Done claimed
+  CI enforced.
+- `encoding.rs` owns every wire-format helper, including `push_len_prefixed`.
+  Revision 7 left it in `envelope.rs`, so `package.rs` imported its
+  length-prefix helper *and* its RNG from the content-wrapping module — a
+  layering inversion the promised structure would have prevented.
 
 ---
 
@@ -1515,70 +1562,251 @@ fixed-size array is serialized (Tasks 4, 8, 9):
 //! crate on the crypto path needs a governance scorecard (Constitution §6),
 //! and this is twenty lines.
 //!
-//! Encoding: lowercase hex string. Chosen over a byte array so the package
-//! stays inspectable in a text editor, which matters for a file users are
-//! told to store themselves.
+//! Encoding, by field class. Two encodings, and the split is measured, not
+//! aesthetic (`ADR-0017`):
+//!
+//! - **Fixed-size key and signature fields** — lowercase hex, so the package
+//!   stays inspectable in a text editor, which matters for a file users are
+//!   told to store themselves.
+//! - **The outer `ciphertext` / `nonce` / `kdf_salt`** — base64. The package
+//!   double-encodes: a JSON payload, then that ciphertext text-encoded again
+//!   in the envelope. Hex on the outer blob costs a hard 2.0×, putting `V4`'s
+//!   `≤ 3× compact` floor at 3.30× — unmeetable at any inner encoding. Base64
+//!   costs 1.33× and clears every measured shape. The blob is opaque either
+//!   way, so nothing inspectable is lost.
+//!
+//! **Never `format!("{b:02x}")` per byte.** That allocates one `String` per
+//! byte; on a 100k-context vault it measures 350.82 ms against 16.55 ms for
+//! the pre-sized form below — a 21× difference, and a **4.0× regression**
+//! against the JSON decimal arrays it replaces. `PERF` found this on the
+//! Revision 8 rollout, and Revision 7 already shipped the slow pattern on the
+//! `DeviceCertificate` path.
 
-pub mod hex_array_32 {
+/// Lowercase hex into a single pre-sized allocation.
+///
+/// One `String` for the whole field, not one per byte.
+fn hex_into(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        out.push(DIGITS[(b >> 4) as usize] as char);
+        out.push(DIGITS[(b & 0x0f) as usize] as char);
+    }
+    out
+}
+
+/// Decodes hex over **bytes**, never over `&str`.
+///
+/// `RA-20`: the previous form checked `text.len() != 64` — a *byte* count —
+/// and then sliced `&text[i * 2..i * 2 + 2]`. A multi-byte character that
+/// straddles an even offset lands off a char boundary and `&str` slicing
+/// panics:
+///
+/// ```text
+/// input:  "a" * 61 + "é" + "a"      // 64 bytes, 63 chars
+/// panic:  end byte index 62 is not a char boundary; it is inside 'é'
+/// ```
+///
+/// Reachable pre-auth once `C3` sync parses device certificates, in a crate
+/// carrying `#![forbid(unsafe_code)]`. Operating on `as_bytes()` makes the
+/// panic structurally impossible rather than length-checked. Note the bug
+/// needs the character to straddle an *even* offset, which is why a
+/// hand-written negative test plausibly misses it and the fuzz target below
+/// does not.
+fn hex_from(text: &str, out: &mut [u8]) -> Result<(), &'static str> {
+    let b = text.as_bytes();
+    if b.len() != out.len() * 2 {
+        return Err("wrong hex length");
+    }
+    fn nibble(c: u8) -> Result<u8, &'static str> {
+        match c {
+            b'0'..=b'9' => Ok(c - b'0'),
+            b'a'..=b'f' => Ok(c - b'a' + 10),
+            _ => Err("invalid hex"),
+        }
+    }
+    for (i, slot) in out.iter_mut().enumerate() {
+        *slot = (nibble(b[i * 2])? << 4) | nibble(b[i * 2 + 1])?;
+    }
+    Ok(())
+}
+
+pub(crate) mod hex_array_32 {
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S: Serializer>(bytes: &[u8; 32], s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&bytes.iter().map(|b| format!("{b:02x}")).collect::<String>())
+        s.serialize_str(&super::hex_into(bytes))
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 32], D::Error> {
         use serde::de::Error;
         let text = String::deserialize(d)?;
-        if text.len() != 64 {
-            return Err(D::Error::custom("expected 64 hex chars"));
-        }
         let mut out = [0u8; 32];
-        for (i, slot) in out.iter_mut().enumerate() {
-            *slot = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16)
-                .map_err(|_| D::Error::custom("invalid hex"))?;
-        }
+        super::hex_from(&text, &mut out).map_err(D::Error::custom)?;
         Ok(out)
     }
 }
 
-pub mod hex_array_64 {
+pub(crate) mod hex_array_64 {
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S: Serializer>(bytes: &[u8; 64], s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&bytes.iter().map(|b| format!("{b:02x}")).collect::<String>())
+        s.serialize_str(&super::hex_into(bytes))
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<[u8; 64], D::Error> {
         use serde::de::Error;
         let text = String::deserialize(d)?;
-        if text.len() != 128 {
-            return Err(D::Error::custom("expected 128 hex chars"));
-        }
         let mut out = [0u8; 64];
-        for (i, slot) in out.iter_mut().enumerate() {
-            *slot = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16)
-                .map_err(|_| D::Error::custom("invalid hex"))?;
+        super::hex_from(&text, &mut out).map_err(D::Error::custom)?;
+        Ok(out)
+    }
+}
+
+/// Base64 for the outer opaque blobs. `ADR-0017`, budget `V4`.
+///
+/// Hand-written for the same reason as the hex helpers: a new crate on the
+/// crypto path needs a governance scorecard (Constitution §6), and this is
+/// standard alphabet, padded, ~30 lines. It must round-trip exactly; the
+/// property test below is not optional.
+pub(crate) mod base64_bytes {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    pub(crate) fn encode(bytes: &[u8]) -> String {
+        let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+        for chunk in bytes.chunks(3) {
+            let b = [
+                chunk[0],
+                *chunk.get(1).unwrap_or(&0),
+                *chunk.get(2).unwrap_or(&0),
+            ];
+            let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+            out.push(ALPHABET[(n >> 18) as usize & 63] as char);
+            out.push(ALPHABET[(n >> 12) as usize & 63] as char);
+            out.push(if chunk.len() > 1 {
+                ALPHABET[(n >> 6) as usize & 63] as char
+            } else {
+                '='
+            });
+            out.push(if chunk.len() > 2 {
+                ALPHABET[n as usize & 63] as char
+            } else {
+                '='
+            });
+        }
+        out
+    }
+
+    pub(crate) fn decode(text: &str) -> Result<Vec<u8>, &'static str> {
+        let b = text.as_bytes();
+        if b.len() % 4 != 0 {
+            return Err("base64 length not a multiple of 4");
+        }
+        fn val(c: u8) -> Result<u32, &'static str> {
+            match c {
+                b'A'..=b'Z' => Ok(u32::from(c - b'A')),
+                b'a'..=b'z' => Ok(u32::from(c - b'a') + 26),
+                b'0'..=b'9' => Ok(u32::from(c - b'0') + 52),
+                b'+' => Ok(62),
+                b'/' => Ok(63),
+                _ => Err("invalid base64"),
+            }
+        }
+        let mut out = Vec::with_capacity(b.len() / 4 * 3);
+        for chunk in b.chunks(4) {
+            let pad = chunk.iter().filter(|c| **c == b'=').count();
+            if pad > 2 || (pad > 0 && !std::ptr::eq(chunk, &b[b.len() - 4..])) {
+                return Err("misplaced base64 padding");
+            }
+            let n = (val(chunk[0])? << 18)
+                | (val(chunk[1])? << 12)
+                | (if pad < 2 { val(chunk[2])? } else { 0 } << 6)
+                | (if pad < 1 { val(chunk[3])? } else { 0 });
+            out.push((n >> 16) as u8);
+            if pad < 2 {
+                out.push((n >> 8) as u8);
+            }
+            if pad < 1 {
+                out.push(n as u8);
+            }
         }
         Ok(out)
+    }
+
+    pub fn serialize<S: Serializer>(bytes: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&encode(bytes))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        use serde::de::Error;
+        let text = String::deserialize(d)?;
+        decode(&text).map_err(D::Error::custom)
     }
 }
 ```
 
-The `[u8; 32]` twin, `hex_array_32`, is identical with `64` for the hex length
-and `[0u8; 32]` for the buffer. **Write both** — naming one and leaving the
-other in prose is how `[u8; 32]` silently keeps serializing as a JSON decimal
-array while `[u8; 64]` fails loudly.
-
-Apply them in the struct definitions, not in prose:
+Apply them in the struct definitions, not in prose — a helper applied at some
+of the sites its invariant covers is worse than none, because it reads as done.
+Revision 7 had three of these (`RA-1`): `hex_array_32` skipped on
+`RootPublicKey`, `push_len_prefixed` skipped in `signing_payload`, `random_key`
+skipped at three `OsRng` sites.
 
 ```rust
 #[serde(with = "super::encoding::hex_array_64")]
 pub signature: [u8; 64],
 #[serde(with = "super::encoding::hex_array_32")]
 pub device_public_key: [u8; 32],
+#[serde(with = "super::encoding::hex_array_32")]
+pub identity_public_key: [u8; 32],   // RootPublicKey's inner — RA-1
+#[serde(with = "super::encoding::base64_bytes")]
+pub ciphertext: Vec<u8>,             // ADR-0017
 ```
 
-**Do not add `serde_bytes`, `serde-big-array`, or `serde_arrays`.**
+`KeyBytes([u8; 32])` carries `#[serde(transparent)]` and so inherits whatever
+its inner encoding is — it must carry `hex_array_32` explicitly, or the context
+keys inside `VaultPayload` keep serializing as decimal arrays.
+
+**Do not add `serde_bytes`, `serde-big-array`, `serde_arrays`, or a base64
+crate.**
+
+Three tests, all required (`I5` — a property with no failing form is a
+description):
+
+```rust
+#[test]
+fn hex_rejects_multibyte_at_an_even_offset_instead_of_panicking() {
+    // RA-20: 64 bytes, 63 chars, 'é' straddling offset 61..63.
+    let hostile = "a".repeat(61) + "é" + "a";
+    assert_eq!(hostile.len(), 64);
+    let mut out = [0u8; 32];
+    assert!(hex_from(&hostile, &mut out).is_err());
+}
+
+#[test]
+fn base64_round_trips_every_length_class() {
+    for n in 0..=64 {
+        let bytes: Vec<u8> = (0..n).map(|i| (i * 7 + 3) as u8).collect();
+        let text = base64_bytes::encode(&bytes);
+        assert_eq!(base64_bytes::decode(&text).unwrap(), bytes, "n = {n}");
+    }
+}
+
+#[test]
+fn base64_rejects_misplaced_padding() {
+    assert!(base64_bytes::decode("A=BC").is_err());
+    assert!(base64_bytes::decode("AB=C").is_err());
+    assert!(base64_bytes::decode("ABC").is_err());
+}
+```
+
+`C7` requires a fuzz target on every parser reachable from untrusted input.
+`hex_from` and `base64_bytes::decode` both qualify once `C3` sync parses device
+certificates. **Both targets land in this task, not as follow-up** — the
+Definition of Done already promises them, and `RA-20` is precisely the bug class
+a hand-written negative test misses and a fuzzer does not.
 
 - [ ] **Step 3b: (removed — the encoding is decided above)**
 
@@ -1859,36 +2087,13 @@ fn wrapping_aad(content_id: &str, context_id: &str) -> Result<Vec<u8>, VaultErro
     Ok(aad)
 }
 
-/// Length-prefixes with a **checked** cast.
-///
-/// `as u32` truncates silently above `u32::MAX`, and a truncated length breaks
-/// injectivity — two different inputs producing identical AAD bytes.
-pub(crate) fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), VaultError> {
-    let len = u32::try_from(bytes.len()).map_err(|_| VaultError::ValueTooLong)?;
-    out.extend_from_slice(&len.to_be_bytes());
-    out.extend_from_slice(bytes);
-    Ok(())
-}
-
-/// `try_fill_bytes`, never `fill_bytes` — the latter panics when the OS RNG
-/// fails, in a crate that promises no panics.
-fn random_key() -> Result<[u8; 32], VaultError> {
-    use rand_core::RngCore;
-    let mut bytes = [0u8; 32];
-    rand_core::OsRng
-        .try_fill_bytes(&mut bytes)
-        .map_err(|_| VaultError::RngUnavailable)?;
-    Ok(bytes)
-}
-
-pub(crate) fn random_nonce() -> Result<[u8; 24], VaultError> {
-    use rand_core::RngCore;
-    let mut bytes = [0u8; 24];
-    rand_core::OsRng
-        .try_fill_bytes(&mut bytes)
-        .map_err(|_| VaultError::RngUnavailable)?;
-    Ok(bytes)
-}
+// `push_len_prefixed` lives in `encoding.rs` and `random_key` / `random_nonce`
+// live in `random.rs`. Revision 7 defined all three here, so `package.rs`
+// imported its length-prefix helper and its RNG from the content-wrapping
+// module (`RA-4`). Import them:
+//
+//     use super::encoding::push_len_prefixed;
+//     use super::random::{random_key, random_nonce};
 
 #[cfg(test)]
 mod tests {
