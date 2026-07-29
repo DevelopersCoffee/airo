@@ -146,7 +146,9 @@ void main() {
     await tester.tap(find.text('Playlist Source'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add Playlist Source'), findsOneWidget);
+    // Sentence case since c2ada89f replaced the sheet with
+    // PlaylistSourceManagerSheet; the button label is the sheet's marker.
+    expect(find.text('Add playlist source'), findsOneWidget);
   });
 
   testWidgets('tapping EPG Guide Source opens the XMLTV source sheet', (
