@@ -196,9 +196,12 @@ evidence referenced by each issue.
       recorded startup, memory, storage, and 200% text/dark-mode observations.
 - [x] Restored the Pixel 9 font, rotation, and night-mode settings exactly
       after the reversible UI run and rebooted it for lifecycle evidence.
-- [ ] Complete the post-reboot job audit after the Pixel 9 re-advertises over
-      wireless ADB. The Pixel did not re-advertise after the 2026-07-29 reboot;
-      the Fire TV target remains untouched.
+- [x] Completed the post-reboot job audit after the Pixel 9 re-advertised over
+      wireless ADB. At 20 minutes uptime, the main app was stopped with no
+      process and no exact `io.airo.app` JobScheduler entry or alarm. Its boot
+      receivers are registered, but no durable work was restored; the separate
+      `io.airo.app.coins` WorkManager state was excluded. The Fire TV target
+      remained untouched.
 - [ ] Run the Android device matrix and attach the exact device, build, and
       artifact evidence required by #510, #514–#516, and #518–#520.
 - [ ] Complete the real provider/runtime dependencies required by #506 and

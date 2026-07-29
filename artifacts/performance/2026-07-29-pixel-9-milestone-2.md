@@ -28,11 +28,26 @@ files remained present.
 | Idle CPU point sample | 0.0% app CPU | Captured; not an active-workload benchmark |
 | App sandbox before replace-in-place | 2,669,293 KB | Baseline |
 | App sandbox after normal APK restoration and model cleanup | 2,628,931 KB | No test-model residue |
-| Reboot | Device reboot command accepted | Post-boot audit blocked when wireless ADB did not re-advertise |
+| Reboot | Reconnected after unlock; 20 minutes uptime at audit | Completed; no durable main-app work recovered |
+| Post-reboot cold launch | `TotalTime=2500 ms`, `WaitTime=2502 ms` | Passed |
 
 The installed app exposed no durable `io.airo.app` JobScheduler evidence before
-the reboot. A post-reboot audit is still required after wireless debugging is
-available again; this run does not prove kill/reboot recovery for #518.
+the reboot. After reconnecting at 20 minutes uptime, the main app was stopped,
+had no running process, and had no exact `io.airo.app` JobScheduler entry or
+alarm. The similarly named `io.airo.app.coins` package had independent
+WorkManager state and was excluded from the result.
+
+The main package declares and is granted `RECEIVE_BOOT_COMPLETED`, with
+Flutter local-notification and WorkManager reschedule receivers registered.
+Those receivers did not restore any main-app job or alarm in this scenario.
+Launching the normal app cold succeeded in 2,500 ms, and still created no
+JobScheduler entry or alarm. Existing databases remained present and sandbox
+usage returned to 2,669,117 KB after launch.
+
+The `POST_NOTIFICATIONS` runtime permission was denied
+(`POST_NOTIFICATION: ignore`). The app's download notification channel exists,
+but real notification delivery cannot pass until the user grants permission.
+No permission was changed during qualification.
 
 ## UI and accessibility
 
@@ -128,13 +143,14 @@ failure.
   long-meeting, memory-pressure, and battery tests remain.
 - #514: real playback seek/speed/background/headphone/Bluetooth/call tests
   require a media fixture and peripherals.
-- #515: scheduling/deep-link contracts pass; real progress/completion/failure
-  notifications remain.
+- #515: scheduling/deep-link contracts pass, but notification permission is
+  denied; real progress/completion/failure notifications remain.
 - #516: temporary-database recovery, corruption, backup/restore, and large
   history tests pass; destructive testing of the user's database was not
   performed.
-- #518: the current meeting background handle is in-process; durable
-  kill/reboot recovery remains unproven.
+- #518: post-reboot inspection confirmed no main-app job or alarm was
+  recovered; the current in-process meeting handle fails durable reboot
+  recovery.
 - #519: 200% text is a confirmed failure; split-screen and separate
   foldable/tablet targets remain.
 - #520: physical startup, memory, storage, and embedding metrics are captured;
