@@ -1,4 +1,6 @@
 import 'package:core_domain/core_domain.dart';
+import 'package:core_native/core_native.dart'
+    show ExecutionPlan, InferenceRequest;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +11,7 @@ import '../llm/llm_response.dart';
 import '../models/offline_model_info.dart';
 import '../runtime/local_inference_runtime_adapter.dart';
 import '../utils/token_counter.dart';
+import 'litert_lm_execution_adapter.dart';
 
 enum LiteRtLmModelKind {
   gemmaIt,
@@ -242,6 +245,25 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       systemPrompt: request.systemPrompt,
       backend: runtimeConfig.backend,
       maxTokens: runtimeConfig.maxTokens,
+    );
+  }
+
+  /// Executes an already-planned v1 request through LiteRT.
+  ///
+  /// Callers obtain [plan] from the Rust planner. This method deliberately
+  /// performs no model or resource selection; it only delegates the immutable
+  /// plan to the thin backend adapter.
+  Future<String> generatePlanned({
+    required ExecutionPlan plan,
+    required InferenceRequest request,
+    required String modelPath,
+    String? systemPrompt,
+  }) {
+    return LiteRtLmExecutionAdapter(client: _client).generate(
+      plan: plan,
+      request: request,
+      modelPath: modelPath,
+      systemPrompt: systemPrompt,
     );
   }
 
