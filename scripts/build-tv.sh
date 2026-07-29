@@ -12,6 +12,7 @@ FULL_BUILD=false
 SKIP_RESTORE=false
 BUILD_AAB=true
 BUILD_APK=true
+SPLIT_PER_ABI=false
 SIGNING_CREATED=false
 
 resolve_keytool() {
@@ -50,9 +51,15 @@ while [[ $# -gt 0 ]]; do
         --skip-restore) SKIP_RESTORE=true; shift ;;
         --apk-only) BUILD_AAB=false; shift ;;
         --aab-only) BUILD_APK=false; shift ;;
+        --split-per-abi) SPLIT_PER_ABI=true; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
+
+APK_PLATFORM_ARGS=(--target-platform=android-arm64)
+if [[ "$SPLIT_PER_ABI" == true ]]; then
+    APK_PLATFORM_ARGS=(--split-per-abi)
+fi
 
 echo -e "\033[0;34mBuilding Android TV APK...\033[0m"
 
@@ -108,7 +115,7 @@ if [[ "$FULL_BUILD" == true ]]; then
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
-            --target-platform=android-arm64 \
+            "${APK_PLATFORM_ARGS[@]}" \
             --tree-shake-icons
     fi
     if [[ "$BUILD_AAB" == true ]]; then
@@ -156,7 +163,7 @@ if [[ "$BUILD_APK" == true ]]; then
         --target=lib/main_tv.dart \
         --dart-define=APP_VARIANT=tv \
         --dart-define=APP_PLATFORM=androidTv \
-        --target-platform=android-arm64 \
+        "${APK_PLATFORM_ARGS[@]}" \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
         --obfuscate
@@ -179,7 +186,11 @@ echo -e "\033[0;32m✓ TV artifacts created successfully!\033[0m"
 release_apk=""
 release_aab=""
 if [[ "$BUILD_APK" == true ]]; then
-    release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
+    if [[ "$SPLIT_PER_ABI" == true ]]; then
+        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+    else
+        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
+    fi
 fi
 if [[ "$BUILD_AAB" == true ]]; then
     release_aab="$APP_DIR/build/app/outputs/bundle/release/app-release.aab"

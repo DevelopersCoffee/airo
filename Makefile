@@ -457,7 +457,10 @@ run-browser: ## Run app on configured web browser for local testing
 run-firetv: ## Run app on the rig TV (Fire TV Stick); adb connect <ip>:5555 first
 	@DEVICE="$$($(RIG_SELECT) tv)" && \
 		echo "$(BLUE)Running on rig TV $$DEVICE...$(NC)" && \
-		cd $(APP_DIR) && flutter run -d "$$DEVICE" $(DART_DEFINE_ARGS)
+		cd $(APP_DIR) && flutter run -d "$$DEVICE" \
+			--target=lib/main_tv.dart \
+			--dart-define=APP_VARIANT=tv \
+			--dart-define=APP_PLATFORM=androidTv $(DART_DEFINE_ARGS)
 
 # Build Commands
 .PHONY: build-android
@@ -516,14 +519,9 @@ build-full: ## Build Mobile Full APK (all features)
 	@echo "$(GREEN)✓ Full APK created$(NC)"
 
 .PHONY: build-firetv
-build-firetv: ## Build Fire TV optimized APK (arm64 only)
+build-firetv: ## Build Fire TV optimized APKs for 32-bit and 64-bit ARM devices
 	@echo "$(BLUE)Building Fire TV APK...$(NC)"
-	@cd $(APP_DIR) && flutter build apk --release \
-		--target=lib/main_tv.dart \
-		--dart-define=APP_VARIANT=tv \
-		--dart-define=APP_PLATFORM=androidTv \
-		--target-platform android-arm64 \
-		--tree-shake-icons
+	@bash scripts/build-tv.sh --apk-only --split-per-abi
 
 .PHONY: build-androidtv
 build-androidtv: build-tv ## Alias for build-tv

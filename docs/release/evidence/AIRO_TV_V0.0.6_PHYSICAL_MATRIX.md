@@ -23,16 +23,16 @@ and a redacted evidence path. A failure requires a bounded follow-up defect.
 | #903 | Four live streams, focus-follows-audio, independent tracks, dropped frames and RSS | Fire TV-class hardware; four authorized streams; track/bitrate fixtures | Pending — device and authorized fixture unavailable |
 | #904 | Fifty-query on-device SLM eval at ≥90% exact intent and an airplane-mode demo below 1.5 s | Supported on-device model target; barista-tuning artifact; canonical eval set | Pending — required model artifact/device unavailable |
 | #967 | Killed/background reminder delivery, reboot persistence, deep link, and 24 h guide interaction performance | Physical TV; multi-day XMLTV fixture; future reminder window; reboot authorization | Pending — device run not performed |
-| #978 | Home enters pinned PiP, audio-only lockscreen controls stay PLAYING, and rapid transitions leave no stuck state | Unlocked Pixel 9; authorized stream; `dumpsys` evidence | Pending — connected Pixel 9 is locked/dozing |
+| #978 | Home enters pinned PiP, audio-only lockscreen controls stay PLAYING, and rapid transitions leave no stuck state | Unlocked Pixel 9; authorized stream; `dumpsys` evidence | Pending — Pixel 9 is unlocked, but no authorized stream/PiP run was performed |
 | #979 | TalkBack end-to-end add/search/play/favorite journey and 1.3×/2× text-scale audit | Unlocked phone with TalkBack operator; authorized playlist | Pending — operator/device session unavailable |
 
 ## Release-profile device rows
 
 | Device | Required checks | Current result |
 |---|---|---|
-| Pixel 9 / Android 17 | Coins cold launch renders content within 10 s; tab navigation; background/resume; PiP/media session | Partial — `0.0.6` code 8 installs and resolves exclusively to `CoinsActivity`; secure keyguard remains locked/dozing, so pixels and interaction are unverified |
+| Pixel 9 / Android 17 | Coins cold launch renders content within 10 s; tab navigation; background/resume; PiP/media session | Partial — unlocked `0.0.6` code 8 focused `CoinsActivity` within 1 s, rendered vault semantics under secure-window screenshot redaction, and retained PID across background/resume; physical tabs and PiP remain |
 | iPad Air 4 | Launch, adaptive layout, playback, rotation, background/resume | Pending — device is offline |
-| Fire TV Stick AFTSSS | Fresh-install render; physical-remote rail/player/modal/recovery/BACK matrix; bounded log-rate sample | Pending — no connected Fire TV |
+| Fire TV Stick AFTSSS | Fresh-install render; physical-remote rail/player/modal/recovery/BACK matrix; bounded log-rate sample | Partial — v7a release payload renders at 1080p; physical wake and Select opened Playlist sources; fresh install, rail traversal, Back, player/recovery, and playback logs remain |
 | Android TV + USB | SAF permission denial/grant, folder traversal, direct content-URI playback, sidecar subtitle, resume | Pending — no connected TV/removable media |
 | Android TV + DLNA/UPnP | SSDP discovery, ContentDirectory traversal, direct playback, server-loss retry, identifier redaction | Pending — no connected TV and controlled DLNA server |
 
@@ -44,6 +44,17 @@ and a redacted evidence path. A failure requires a bounded follow-up defect.
 - The locally validation-signed TV APK is `io.airo.app.tv` version `0.0.6`
   code `8`, SHA-256
   `6410e30e684b4629b26b8f8a4b9dbbf95d37e4c26650a9618b4cb2e28508fbde`.
+- The AFTSSS hardware run used the release-mode `armeabi-v7a` payload,
+  version `0.0.6` split code `1008`. Its validation-signed source SHA-256 is
+  `d1b7b18674385b89326fd0313121b8ec160f31681e7358ed5bb7f464670801db`;
+  the installed rig re-sign SHA-256 is
+  `6593f02c5982e90fff507d7c610215a468b60e6b471c8d3fdc0ca9ef92bbf6a6`.
+  Re-signing preserved the existing dogfood app data and does not prove the
+  distribution signature.
+- Physical Fire TV captures:
+  [home render](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home.png)
+  and
+  [Playlist sources modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png).
 - Historical v0.0.5 Fire TV and Pixel evidence remains useful for regression
   context, but it is not evidence for this candidate.
 

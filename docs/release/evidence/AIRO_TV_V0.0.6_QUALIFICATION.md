@@ -32,11 +32,36 @@ recorded in
 
 | Device | Required checks | Result | Evidence |
 |---|---|---|---|
-| Pixel 9 | cold launch, Coins launcher, tab navigation, background/resume | Partial — candidate installed; secure keyguard is locked/dozing, so visual checks remain pending | `0.0.6` / code 8, launcher resolves to `CoinsActivity`, process and focused app record present |
-| Fire TV Stick | D-pad rail/player, Back, buffering/error recovery, bounded log report | Pending — no connected device | Attach video/report/device build |
+| Pixel 9 | cold launch, Coins launcher, tab navigation, background/resume | Partial — unlocked candidate cold-started and resumed without process loss; physical tab/PiP checks remain | `0.0.6` / code 8; `CoinsActivity` focused within 1 s; secure-window accessibility tree rendered vault content; PID `32600` survived background/resume |
+| Fire TV Stick | D-pad rail/player, Back, buffering/error recovery, bounded log report | Partial — v7a release payload renders and a physical Select opens the playlist modal; remaining remote/player checks pending | AFTSSS/API 28; rig APK SHA-256 `6593f02c5982e90fff507d7c610215a468b60e6b471c8d3fdc0ca9ef92bbf6a6`; [home](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-home.png), [modal](assets/airo-tv-v006-physical-2026-07-29/fire-tv-aftsss-playlist-modal.png) |
 | iPad | launch, adaptive layout, playback, rotation/background/resume | Pending — no connected device | Attach video/sysdiagnose excerpt |
 | Android TV + USB | permission prompt, folder browse, direct playback, sidecar subtitle | Pending — no connected device/media | Attach video and redacted result |
 | Android TV + DLNA/UPnP | discovery, folder browse, direct playback, server-loss retry | Pending — no connected device/server | Attach video and redacted result |
 
 Publication is blocked until every mandatory physical row passes or receives an
 explicit, documented release waiver from the owning council.
+
+## Physical execution — 2026-07-29
+
+- Pixel 9 (`tokay`), Android 17/API 37, was awake and unlocked over wireless
+  ADB. Coins version `0.0.6` code `8` resolved only to `CoinsActivity`, acquired
+  focus within one second, and exposed the expected vault semantics. Android's
+  secure-window policy redacts screenshots, so the accessibility tree—not a
+  black capture—was used for render diagnostics. The same PID survived a
+  launcher background/resume cycle. Human tab navigation and PiP/media-session
+  checks are still unverified.
+- Fire TV Stick 3rd Gen (`AFTSSS`), Android 9/API 28, is a 32-bit
+  `armeabi-v7a` target at 1920×1080. Installing the canonical arm64 candidate
+  reproduced the expected ABI rejection at runtime (`libflutter.so` available
+  only for `arm64-v8a`). The corrected split build produced a v7a release APK,
+  version `0.0.6` split code `1008`, source SHA-256
+  `d1b7b18674385b89326fd0313121b8ec160f31681e7358ed5bb7f464670801db`.
+- The v7a payload was re-signed with the same local Android debug certificate
+  as the installed v0.0.5 dogfood build so playlists would not be erased. The
+  exact installed rig APK SHA-256 is
+  `6593f02c5982e90fff507d7c610215a468b60e6b471c8d3fdc0ca9ef92bbf6a6`.
+  This proves the release-mode v7a payload on hardware but is not
+  distribution-signature evidence.
+- A physical remote wake exposed the rendered home screen, and a physical
+  Select opened the Playlist sources modal. Rail traversal, Back dismissal,
+  player/recovery behavior, and playback-scoped bounded logs remain pending.
