@@ -316,9 +316,65 @@ class _TvSourceManagementSectionState
     );
   }
 
+  Widget _healthSummary(BuildContext context, ProviderHealthSnapshot snapshot) {
+    final (label, icon, color) = switch (snapshot.healthClass) {
+      ProviderHealthClass.unknown => (
+        'Health not measured',
+        Icons.help_outline,
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      ProviderHealthClass.green => (
+        'Healthy',
+        Icons.check_circle_outline,
+        Colors.green,
+      ),
+      ProviderHealthClass.amber => (
+        'Intermittent issues',
+        Icons.warning_amber_outlined,
+        Colors.amber,
+      ),
+      ProviderHealthClass.red => (
+        'Frequent recent issues',
+        Icons.error_outline,
+        Theme.of(context).colorScheme.error,
+      ),
+    };
+    final hint = switch (snapshot.recentFailureCategory) {
+      ProviderHealthFailureCategory.auth =>
+        'Credentials rejected — reconnect the source.',
+      ProviderHealthFailureCategory.network => 'Cannot reach the server.',
+      ProviderHealthFailureCategory.server =>
+        'The source server is having issues.',
+      ProviderHealthFailureCategory.client => 'The request was rejected.',
+      ProviderHealthFailureCategory.malformed =>
+        'The source returned unreadable data.',
+      _ => null,
+    };
+    return Semantics(
+      label: hint == null ? label : '$label. $hint',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              hint == null ? label : '$label • $hint',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
+    ref.watch(providerHealthRevisionProvider);
+    final healthTracker = ref.watch(providerHealthTrackerProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
@@ -374,6 +430,11 @@ class _TvSourceManagementSectionState
                           _capabilityBadges(
                             context,
                             config.toContentSource().capabilities,
+                          ),
+                          const SizedBox(height: 4),
+                          _healthSummary(
+                            context,
+                            healthTracker.snapshotFor(config.id),
                           ),
                         ],
                       ),

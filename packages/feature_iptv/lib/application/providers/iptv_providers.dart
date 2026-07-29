@@ -22,6 +22,7 @@ import '../../domain/favorite_reimport_coordinator.dart';
 import '../../domain/channel_region_availability.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'content_source_providers.dart';
+import 'provider_health_providers.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
@@ -289,6 +290,7 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   if (xtreamConfigs.isEmpty) return const [];
   final credentials = ref.read(contentSourceCredentialStoreProvider);
   final dio = ref.read(dioProvider);
+  final healthTracker = ref.read(providerHealthTrackerProvider);
   final channels = <IPTVChannel>[];
   for (final config in xtreamConfigs) {
     final secret = await credentials.read(
@@ -301,6 +303,7 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
         serverUrl: config.url,
         username: secret.username,
         password: secret.password,
+        healthTracker: healthTracker,
         sourceId: config.id,
       );
       channels.addAll(
