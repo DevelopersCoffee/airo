@@ -14,7 +14,7 @@ void main() {
       AssistantModelLibraryState.isLiteRtReady(
         runtimeAvailable: true,
         hasDownloadedPackage: false,
-        hasConfiguredModel: false,
+        hasConfiguredModelPath: false,
       ),
       isFalse,
     );
@@ -22,7 +22,7 @@ void main() {
       AssistantModelLibraryState.isLiteRtReady(
         runtimeAvailable: true,
         hasDownloadedPackage: false,
-        hasConfiguredModel: true,
+        hasConfiguredModelPath: true,
       ),
       isTrue,
     );
@@ -30,9 +30,17 @@ void main() {
       AssistantModelLibraryState.isLiteRtReady(
         runtimeAvailable: false,
         hasDownloadedPackage: true,
-        hasConfiguredModel: false,
+        hasConfiguredModelPath: false,
       ),
       isTrue,
+    );
+    expect(
+      AssistantModelLibraryState.isLiteRtReady(
+        runtimeAvailable: true,
+        hasDownloadedPackage: false,
+        hasConfiguredModelPath: false,
+      ),
+      isFalse,
     );
   });
 
