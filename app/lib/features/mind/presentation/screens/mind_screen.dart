@@ -116,10 +116,10 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Ask Image',
-            subtitle: 'Describe images and solve visual questions on device.',
+            subtitle: 'Upload an image and ask Airo questions about it.',
             icon: Icons.image_outlined,
             color: Colors.red.shade700,
-            onTap: () => context.push('/mind/prompt-lab?mode=image'),
+            onTap: () => context.push('/quest/new'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
