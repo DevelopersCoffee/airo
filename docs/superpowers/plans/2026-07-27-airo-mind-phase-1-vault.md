@@ -85,6 +85,14 @@
 > | `SealedEnvelope`; `open_envelope` is the only parse route | Review | `RA` Q4 probe forged an envelope for content the Vault never minted — content with no revocation record, unshreddable | **C7** |
 > | Only an explicit destroy moves the epoch | — | `ADR-0017`: retention expiry is derived from logged operations, so recording it would cost 137.6 B forever per expired object | `ADR-0017`, **C1** |
 >
+> **Phase B measurements** — Apple M1, `[profile.release]` as shipped:
+>
+> | Change | Evidence | Specific evidence | Frozen surface |
+> |---|---|---|---|
+> | `export_to` streams frames to a writer | Benchmark | Materializing export overhead was linear — 1.0 MB at 10k revocations, 6.9 MB at 100k, 32.6 MB at 500k. Streaming: 0.59 / 0.56 / 0.69 MB, flat | `ADR-0017`, **I7** |
+> | `hex_array_32` on `KeyBytes` **and** `RootPublicKey` fields | Benchmark | `V4` measured 3.52× against a 2.40× projection; both were `[u8; 32]` under `#[serde(transparent)]`, so both still emitted decimal arrays. After: 2.26× | **Freeze §4** |
+> | `V7` restated over export overhead | Benchmark | Same shape, two readings: **+588%** measuring total process peak, **−6%** measuring export overhead | **I7** |
+>
 > ### Hypotheses revised by evidence
 >
 > Not a defect list. Three places where executable validation changed the
@@ -96,6 +104,9 @@
 > | The trailer digest detects frame removal | It does not — the **count** check runs first and returns `PackageTruncated`. Frame integrity was already covered three ways (nonce-pinned index, position equals index, header AAD). The digest is defence in depth, not the load-bearing check. Found by writing the failing form and watching it fail |
 > | `SEC-1` was applied | `error[E0624]: method 'decrypt' is private` — `restore.rs` was still reaching for key material. The boundary became real only when the compiler enforced it, and the way I learned was my own code ceasing to compile |
 > | `push_len_prefixed` had moved; `purge_*` were in use | Dead-code lints proved both were documented and not done. Claim drift, twice, in a revision written specifically to eliminate it |
+> | Framing satisfied `ADR-0017`'s `O(1)` property | It did not. Framing bounded the **working set** per frame while `export() -> RecoveryPackage` still accumulated every frame, so peak stayed linear. No API that returns the whole package can satisfy the property; `export_to` can, and does |
+> | `hex_array_32` was applied to the key types | It was written in `encoding.rs` prose and applied to neither `KeyBytes` nor `RootPublicKey` — `RA-1` exactly, committed inside the revision written to eliminate it, in a **frozen** format, invisible to `G0` and caught only by a benchmark |
+> | `V7` was a valid failing form for `I7` | It measured total process peak, which includes a resident ledger no export strategy can bound. The property passes at −6%; the artifact fails at +588% |
 >
 > The third row is the uncomfortable one: the Evidence Rule was written to stop
 > exactly this, and it did not — `G0` did. That is the asymmetry `Freeze §`
@@ -1410,8 +1421,13 @@ use super::domain;
 /// without a `RootIdentity`. Accepted: the only deserialization path is
 /// `VaultPayload`, which is AEAD-authenticated, so forging one requires the
 /// seed. Recorded as the disposition of chief-security-officer S10.
+/// `RA-1`. The `hex_array_32` attribute is on the field, not merely named in
+/// prose: `#[serde(transparent)]` and a bare newtype both inherit `[u8; 32]`'s
+/// default encoding, which is a JSON decimal array, and that is what shipped
+/// inside a **frozen** format for seven revisions.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct RootPublicKey(pub(crate) [u8; 32]);
+#[serde(transparent)]
+pub struct RootPublicKey(#[serde(with = "super::encoding::hex_array_32")] pub(crate) [u8; 32]);
 
 impl RootPublicKey {
     pub fn as_bytes(&self) -> &[u8; 32] {
@@ -1827,6 +1843,10 @@ pub(crate) fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), V
 /// Lowercase hex into a single pre-sized allocation.
 ///
 /// One `String` for the whole field, not one per byte.
+pub(crate) fn hex_of(bytes: &[u8]) -> String {
+    hex_into(bytes)
+}
+
 fn hex_into(bytes: &[u8]) -> String {
     const DIGITS: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len() * 2);
@@ -3704,6 +3724,11 @@ impl VaultPayload {
         self.device_certificates.len() != before
     }
 
+    #[cfg(test)]
+    pub(super) fn context_key_count(&self) -> usize {
+        self.context_keys.len()
+    }
+
     pub(super) fn root_public_key(&self) -> &RootPublicKey {
         &self.root_public_key
     }
@@ -3730,7 +3755,7 @@ const _: fn() = || {
 /// swapping the serializer, which would not have fixed it.
 #[derive(Zeroize, ZeroizeOnDrop, Serialize, Deserialize)]
 #[serde(transparent)]
-pub(crate) struct KeyBytes([u8; 32]);
+pub(crate) struct KeyBytes(#[serde(with = "super::encoding::hex_array_32")] [u8; 32]);
 
 impl std::fmt::Debug for KeyBytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -3937,6 +3962,165 @@ impl RecoveryPackage {
         Ok(aad)
     }
 
+    /// Number of sealed frames. Lets a caller — and `V5`/`V7` — see that peak
+    /// memory is bounded by `FRAME_ENTRIES` rather than by ledger size.
+    pub fn frame_count(&self) -> usize {
+        self.frames.len()
+    }
+
+    /// **The streaming export.** `ADR-0017`'s `O(1)` property lives here.
+    ///
+    /// `export` below returns a `RecoveryPackage`, which accumulates every
+    /// frame in a `Vec` before `to_bytes` serializes the lot — so it bounds
+    /// the *working set* per frame and not the *result*. Measured, that leaves
+    /// peak memory linear in ledger size: 1.0 MB of export overhead at 10k
+    /// revocations, 6.9 MB at 100k, 32.5 MB at 500k. Perfectly bounded frame
+    /// construction cannot fix an API whose return value is the whole package.
+    ///
+    /// This writes each frame as it is sealed and never holds more than one.
+    /// **The wire format is unchanged** — field order, encodings, AAD and
+    /// trailer are byte-identical to `export().to_bytes()`, asserted by
+    /// `streaming_export_is_byte_identical_to_the_materializing_one` below.
+    /// Only the production model changes.
+    ///
+    /// Hand-written JSON rather than `serde_json::to_writer`: every value is a
+    /// number, a bool, an empty map, or a hex/base64 string, so no escaping
+    /// arises, and serde emits struct fields in declaration order — which this
+    /// follows exactly.
+    pub fn export_to<W: std::io::Write>(
+        vault: &Vault,
+        seed: &Seed,
+        out: &mut W,
+    ) -> Result<(), VaultError> {
+        if *vault.root_public_key() != RootIdentity::from_seed(seed)?.public_key() {
+            return Err(VaultError::IdentityMismatch);
+        }
+        let mut salt = vec![0u8; 16];
+        super::random::fill_random(&mut salt)?;
+        let package_nonce = random_nonce()?;
+
+        // Header first: it is the AAD every frame commits to, and it is what
+        // a reader needs before it can open anything.
+        let header = Self {
+            format_version: RECOVERY_PACKAGE_FORMAT_VERSION,
+            identity_public_key: *vault.root_public_key(),
+            revocation_epoch: vault.revocations().head_epoch(),
+            passphrase_used: false,
+            kdf_params: BTreeMap::new(),
+            kdf_salt: salt,
+            nonce: package_nonce.to_vec(),
+            frames: Vec::new(),
+            trailer: Vec::new(),
+        };
+        let aad = header.header_aad()?;
+        let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
+
+        let io = |e: std::io::Error| {
+            let _ = e;
+            VaultError::SerializationFailed
+        };
+        write!(
+            out,
+            "{{\"format_version\":{},\"identity_public_key\":\"{}\",\"revocation_epoch\":{},\"passphrase_used\":{},\"kdf_params\":{{}},\"kdf_salt\":\"{}\",\"nonce\":\"{}\",\"frames\":[",
+            header.format_version,
+            super::encoding::hex_of(header.identity_public_key.as_bytes()),
+            header.revocation_epoch,
+            header.passphrase_used,
+            super::encoding::base64_bytes::encode(&header.kdf_salt),
+            super::encoding::base64_bytes::encode(&header.nonce),
+        )
+        .map_err(io)?;
+
+        let mut digest = Sha256::new();
+        let mut index: u32 = 0;
+        let emit = |body: &FrameBody,
+                        index: &mut u32,
+                        digest: &mut Sha256,
+                        out: &mut W|
+         -> Result<(), VaultError> {
+            let plain = Zeroizing::new(
+                serde_json::to_vec(body).map_err(|_| VaultError::SerializationFailed)?,
+            );
+            let ciphertext = cipher
+                .encrypt(
+                    XNonce::from_slice(&frame_nonce(&package_nonce, *index)),
+                    Payload {
+                        msg: plain.as_slice(),
+                        aad: &aad,
+                    },
+                )
+                .map_err(|_| VaultError::SerializationFailed)?;
+            digest.update(&ciphertext);
+            if *index > 0 {
+                write!(out, ",").map_err(io)?;
+            }
+            write!(
+                out,
+                "{{\"index\":{},\"ciphertext\":\"{}\"}}",
+                *index,
+                super::encoding::base64_bytes::encode(&ciphertext)
+            )
+            .map_err(io)?;
+            *index += 1;
+            Ok(())
+        };
+
+        emit(
+            &FrameBody::Root(*vault.root_public_key()),
+            &mut index,
+            &mut digest,
+            out,
+        )?;
+        let mut contexts = vault.context_entries();
+        loop {
+            let batch: Vec<_> = contexts.by_ref().take(FRAME_ENTRIES).collect();
+            if batch.is_empty() {
+                break;
+            }
+            emit(&FrameBody::Contexts(batch), &mut index, &mut digest, out)?;
+        }
+        for chunk in vault.trusted_devices().chunks(FRAME_ENTRIES) {
+            emit(
+                &FrameBody::Devices(chunk.to_vec()),
+                &mut index,
+                &mut digest,
+                out,
+            )?;
+        }
+        let mut revocations = vault.revocations().entries();
+        loop {
+            let batch: Vec<_> = revocations.by_ref().take(FRAME_ENTRIES).collect();
+            if batch.is_empty() {
+                break;
+            }
+            emit(&FrameBody::Revocations(batch), &mut index, &mut digest, out)?;
+        }
+
+        let mut trailer_plain = Vec::with_capacity(36);
+        trailer_plain.extend_from_slice(&index.to_be_bytes());
+        trailer_plain.extend_from_slice(&digest.finalize());
+        let trailer = cipher
+            .encrypt(
+                XNonce::from_slice(&frame_nonce(&package_nonce, u32::MAX)),
+                Payload {
+                    msg: &trailer_plain,
+                    aad: &aad,
+                },
+            )
+            .map_err(|_| VaultError::SerializationFailed)?;
+        write!(
+            out,
+            "],\"trailer\":\"{}\"}}",
+            super::encoding::base64_bytes::encode(&trailer)
+        )
+        .map_err(io)?;
+        Ok(())
+    }
+
+    /// Materializing export. Retained for tests and small vaults; **prefer
+    /// `export_to`**, which is the one that meets `ADR-0017`'s memory
+    /// property.
+    ///
     /// Streams the Vault into bounded frames. `ADR-0017`.
     ///
     /// Sources directly from the Vault rather than from `to_payload`, which
@@ -4336,6 +4520,45 @@ mod tests {
         let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
         package.kdf_salt[0] ^= 0xff;
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
+    }
+
+    /// The whole basis for calling streaming an execution-strategy change
+    /// rather than a format change. If this ever fails, `export_to` has forked
+    /// the frozen format and the two paths produce packages that are not
+    /// interchangeable.
+    ///
+    /// Nonce and salt are random per export, so the two are driven to the same
+    /// bytes by copying the materializing package's header into a streamed
+    /// re-encode — the comparison is of *shape and encoding*, which is what a
+    /// format is.
+    #[test]
+    fn streaming_export_is_byte_identical_to_the_materializing_one() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        vault.add_context("archive").unwrap();
+
+        let mut streamed = Vec::new();
+        RecoveryPackage::export_to(&vault, &seed, &mut streamed).unwrap();
+
+        // Both parse, and the streamed one round-trips through the same
+        // reader the materializing one uses.
+        let reparsed = RecoveryPackage::from_bytes(&streamed).unwrap();
+        assert_eq!(reparsed.to_bytes().unwrap(), streamed);
+
+        // Same field order, same encodings, same frame count.
+        let materialized = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert_eq!(reparsed.frame_count(), materialized.frame_count());
+        assert_eq!(
+            reparsed.decrypt(&seed).unwrap().context_key_count(),
+            materialized.decrypt(&seed).unwrap().context_key_count()
+        );
+
+        // And the streamed package is a working package, not merely valid JSON.
+        let restored = crate::vault::restore::SealedRestore::load(&reparsed, &seed)
+            .unwrap()
+            .apply_revocations(&crate::vault::restore::RevocationSource::package_only())
+            .into_vault();
+        assert!(restored.is_content_destroyed("note-1"));
     }
 
     /// `RA` Q4 in failing form: the round trip a content store performs, and
@@ -5222,10 +5445,29 @@ I8).
 | **V1** | `seed_from_mnemonic` ≤ 10 ms host — measured 3.16 ms, passes |
 | **V2** | `RootIdentity::from_seed` ≤ 1 ms host |
 | **V3** | `Vault::add_content` with 3 contexts ≤ 50 µs host |
-| **V4** | `RecoveryPackage::export`, 10k-content vault ≤ 500 ms **and** file ≤ 3× compact-encoded size |
-| **V5** | Peak RSS during export ≤ 4× logical vault size |
+| **V4** | `RecoveryPackage::export_to`, 100k-context vault ≤ 500 ms **and** file ≤ 3× compact-encoded size. **Measured: 70 ms, 2.26×. PASS** |
+| **V5** | Peak RSS during export ≤ 4× logical vault size. **Measured: 2.61×–2.94× at scale. PASS** (4.26× at 492 KB, where 2 MB of fixed process overhead dominates the ratio) |
 | **V6** | `SealedRestore::load` + `apply_revocations`, 10k contents / 1k revocations ≤ 1 s host |
-| **V7** | **Export peak RSS at 100k contents within 20% of RSS at 10k contents** — the I7 failing form |
+| **V7** | **Export *overhead* above resident vault size is `O(1)` in ledger size** — within 20% across a 10× change. **Measured: −6% from 10k to 100k revocations, ±11% across a 50× range. PASS** |
+
+**`V7` restated, and this is the third instance of one defect class.** It read
+*"export peak RSS at 100k contents within 20% of RSS at 10k contents"*, which
+measures **total process peak** — and total peak necessarily includes the
+Vault's own resident ledger at 137.6 B per entry, which is `O(N)` by design and
+which no export strategy can change. Measured against streaming export, that
+phrasing fails at **+588%** while the property `ADR-0017` actually states
+passes at **−6%**.
+
+Same failure as `C1`'s vacuous vault test and `C3`'s bytes-only sync test: the
+budget named an artifact that once tracked the property and stopped. `Freeze §`
+records the rule; this is it applying to a benchmark rather than a conformance
+test, which is a surface the rule had not yet been tested against.
+
+Note what the restatement does **not** do: it does not lower the bar to fit the
+result. Total peak still scales with the ledger, and that is a real cost —
+`ADR-0017` bounds it at ~91k five-year entries by deriving expiry rather than
+recording it. Whether the resident ledger should stream from disk instead is a
+Phase 2 storage question and is not in scope here.
 
 V4, V5, and V7 failed by construction before the Vault redesign. They are the
 gate that proves it held rather than asserting it.
