@@ -248,7 +248,8 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
 /// screen shows its spinner forever and `_buildError`'s Retry button never
 /// renders. Channel loading is user-initiated and already has an explicit
 /// Retry, so a failure must settle as `AsyncError` and be shown.
-Duration? _surfaceFailureInsteadOfRetrying(int retryCount, Object error) => null;
+Duration? _surfaceFailureInsteadOfRetrying(int retryCount, Object error) =>
+    null;
 
 /// Loads every configured M3U source with an independent cache namespace.
 ///

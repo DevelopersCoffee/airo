@@ -32,8 +32,7 @@ String? _validatedSourceId(String? sourceId) {
 /// Channel lists alone cannot carry that difference, and collapsing the two
 /// makes a failed source render as an unconfigured one.
 class PlaylistFetchOutcome {
-  const PlaylistFetchOutcome.loaded(this.channels)
-    : sourceUnavailable = false;
+  const PlaylistFetchOutcome.loaded(this.channels) : sourceUnavailable = false;
 
   /// The source responded but carried no channels.
   const PlaylistFetchOutcome.empty()

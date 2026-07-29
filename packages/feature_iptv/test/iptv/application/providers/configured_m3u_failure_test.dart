@@ -30,98 +30,98 @@ void main() {
     url: 'https://example.com/$id.m3u',
   );
 
-  test(
-    'every configured M3U source failing surfaces an error instead of an '
-    'empty channel list',
-    () async {
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          m3uSourceParserFactoryProvider.overrideWithValue(
-            (sourceId) => _FakeSourceParser(
-              prefs: prefs,
-              sourceId: sourceId,
-              error: StateError('connection refused'),
-            ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container
-          .read(contentSourceStoreProvider)
-          .replaceAll([source('m3u-dead-one'), source('m3u-dead-two')]);
-      container.invalidate(configuredContentSourcesProvider);
-
-      await expectLater(
-        container.read(configuredM3uChannelsProvider.future),
-        throwsA(isA<PlaylistSourcesUnavailableException>()),
-      );
-    },
-  );
-
-  test('a source that still loads keeps the failing sibling non-fatal', () async {
+  test('every configured M3U source failing surfaces an error instead of an '
+      'empty channel list', () async {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         m3uSourceParserFactoryProvider.overrideWithValue(
-          (sourceId) => sourceId == 'm3u-live'
-              ? _FakeSourceParser(
-                  prefs: prefs,
-                  sourceId: sourceId,
-                  channels: const [
-                    IPTVChannel(
-                      id: 'live-1',
-                      name: 'Live One',
-                      streamUrl: 'https://cdn.example.com/live-1.m3u8',
-                    ),
-                  ],
-                )
-              : _FakeSourceParser(
-                  prefs: prefs,
-                  sourceId: sourceId,
-                  error: StateError('connection refused'),
-                ),
+          (sourceId) => _FakeSourceParser(
+            prefs: prefs,
+            sourceId: sourceId,
+            error: StateError('connection refused'),
+          ),
         ),
       ],
     );
     addTearDown(container.dispose);
     await container.read(contentSourceStoreProvider).replaceAll([
-      source('m3u-live'),
-      source('m3u-dead'),
+      source('m3u-dead-one'),
+      source('m3u-dead-two'),
     ]);
     container.invalidate(configuredContentSourcesProvider);
 
-    final channels = await container.read(configuredM3uChannelsProvider.future);
-
-    expect(channels.map((channel) => channel.id), ['live-1']);
+    await expectLater(
+      container.read(configuredM3uChannelsProvider.future),
+      throwsA(isA<PlaylistSourcesUnavailableException>()),
+    );
   });
 
   test(
-    'iptvChannelsProvider reports the failure when no other library has '
-    'channels',
+    'a source that still loads keeps the failing sibling non-fatal',
     () async {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          configuredM3uChannelsProvider.overrideWith(
-            (ref) async => throw const PlaylistSourcesUnavailableException(2),
-          ),
-          configuredXtreamChannelsProvider.overrideWith(
-            (ref) async => const <IPTVChannel>[],
-          ),
-          m3uParserProvider.overrideWithValue(
-            _FakeSourceParser(prefs: prefs, sourceId: 'legacy'),
+          m3uSourceParserFactoryProvider.overrideWithValue(
+            (sourceId) => sourceId == 'm3u-live'
+                ? _FakeSourceParser(
+                    prefs: prefs,
+                    sourceId: sourceId,
+                    channels: const [
+                      IPTVChannel(
+                        id: 'live-1',
+                        name: 'Live One',
+                        streamUrl: 'https://cdn.example.com/live-1.m3u8',
+                      ),
+                    ],
+                  )
+                : _FakeSourceParser(
+                    prefs: prefs,
+                    sourceId: sourceId,
+                    error: StateError('connection refused'),
+                  ),
           ),
         ],
       );
       addTearDown(container.dispose);
+      await container.read(contentSourceStoreProvider).replaceAll([
+        source('m3u-live'),
+        source('m3u-dead'),
+      ]);
+      container.invalidate(configuredContentSourcesProvider);
 
-      await expectLater(
-        container.read(iptvChannelsProvider.future),
-        throwsA(isA<PlaylistSourcesUnavailableException>()),
+      final channels = await container.read(
+        configuredM3uChannelsProvider.future,
       );
+
+      expect(channels.map((channel) => channel.id), ['live-1']);
     },
   );
+
+  test('iptvChannelsProvider reports the failure when no other library has '
+      'channels', () async {
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        configuredM3uChannelsProvider.overrideWith(
+          (ref) async => throw const PlaylistSourcesUnavailableException(2),
+        ),
+        configuredXtreamChannelsProvider.overrideWith(
+          (ref) async => const <IPTVChannel>[],
+        ),
+        m3uParserProvider.overrideWithValue(
+          _FakeSourceParser(prefs: prefs, sourceId: 'legacy'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(iptvChannelsProvider.future),
+      throwsA(isA<PlaylistSourcesUnavailableException>()),
+    );
+  });
 
   test(
     'iptvChannelsProvider keeps serving channels from a surviving library',
@@ -153,98 +153,92 @@ void main() {
     },
   );
 
-  test(
-    'a source that reports itself unavailable without throwing still counts '
-    'as a failure',
-    () async {
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          m3uSourceParserFactoryProvider.overrideWithValue(
-            (sourceId) => _UnavailableSourceParser(prefs: prefs, sourceId: sourceId),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container
-          .read(contentSourceStoreProvider)
-          .replaceAll([source('m3u-unreachable')]);
-      container.invalidate(configuredContentSourcesProvider);
+  test('a source that reports itself unavailable without throwing still counts '
+      'as a failure', () async {
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        m3uSourceParserFactoryProvider.overrideWithValue(
+          (sourceId) =>
+              _UnavailableSourceParser(prefs: prefs, sourceId: sourceId),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(contentSourceStoreProvider).replaceAll([
+      source('m3u-unreachable'),
+    ]);
+    container.invalidate(configuredContentSourcesProvider);
 
-      await expectLater(
-        container.read(configuredM3uChannelsProvider.future),
-        throwsA(isA<PlaylistSourcesUnavailableException>()),
-      );
-    },
-  );
+    await expectLater(
+      container.read(configuredM3uChannelsProvider.future),
+      throwsA(isA<PlaylistSourcesUnavailableException>()),
+    );
+  });
 
-  testWidgets(
-    'retrying after a failure re-runs the source loaders instead of '
-    'replaying the cached error',
-    (tester) async {
-      var fetchAttempts = 0;
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          m3uSourceParserFactoryProvider.overrideWithValue(
-            (sourceId) => _CountingSourceParser(
-              prefs: prefs,
-              sourceId: sourceId,
-              onFetch: () => fetchAttempts++,
-            ),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container
-          .read(contentSourceStoreProvider)
-          .replaceAll([source('m3u-dead')]);
-      container.invalidate(configuredContentSourcesProvider);
-
-      late WidgetRef widgetRef;
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: Consumer(
-              builder: (context, ref, _) {
-                widgetRef = ref;
-                final channels = ref.watch(iptvChannelsProvider);
-                return Text(
-                  channels.hasError ? 'error' : 'pending',
-                  textDirection: TextDirection.ltr,
-                );
-              },
-            ),
+  testWidgets('retrying after a failure re-runs the source loaders instead of '
+      'replaying the cached error', (tester) async {
+    var fetchAttempts = 0;
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        m3uSourceParserFactoryProvider.overrideWithValue(
+          (sourceId) => _CountingSourceParser(
+            prefs: prefs,
+            sourceId: sourceId,
+            onFetch: () => fetchAttempts++,
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(contentSourceStoreProvider).replaceAll([
+      source('m3u-dead'),
+    ]);
+    container.invalidate(configuredContentSourcesProvider);
 
-      expect(fetchAttempts, 1);
-      expect(find.text('error'), findsOneWidget);
+    late WidgetRef widgetRef;
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Consumer(
+            builder: (context, ref, _) {
+              widgetRef = ref;
+              final channels = ref.watch(iptvChannelsProvider);
+              return Text(
+                channels.hasError ? 'error' : 'pending',
+                textDirection: TextDirection.ltr,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // The naive retry: invalidating only the merged provider replays the
-      // dependency's cached error without touching the source.
-      widgetRef.invalidate(iptvChannelsProvider);
-      await tester.pumpAndSettle();
-      expect(
-        fetchAttempts,
-        1,
-        reason:
-            'documents why Retry cannot just refresh iptvChannelsProvider',
-      );
+    expect(fetchAttempts, 1);
+    expect(find.text('error'), findsOneWidget);
 
-      invalidateChannelLibraries(widgetRef);
-      await tester.pumpAndSettle();
+    // The naive retry: invalidating only the merged provider replays the
+    // dependency's cached error without touching the source.
+    widgetRef.invalidate(iptvChannelsProvider);
+    await tester.pumpAndSettle();
+    expect(
+      fetchAttempts,
+      1,
+      reason: 'documents why Retry cannot just refresh iptvChannelsProvider',
+    );
 
-      expect(
-        fetchAttempts,
-        2,
-        reason: 'Retry must actually hit the source again',
-      );
-    },
-  );
+    invalidateChannelLibraries(widgetRef);
+    await tester.pumpAndSettle();
+
+    expect(
+      fetchAttempts,
+      2,
+      reason: 'Retry must actually hit the source again',
+    );
+  });
 
   test('the failure message names no source URL', () {
     expect(
