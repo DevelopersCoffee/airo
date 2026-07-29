@@ -35,6 +35,8 @@ void main() {
           switch (call.method) {
             case 'initialize':
               return true;
+            case 'areNotificationsEnabled':
+              return false;
             case 'requestNotificationsPermission':
               return true;
             case 'zonedSchedule':
@@ -47,6 +49,23 @@ void main() {
     scheduler = LocalAgentNotificationScheduler(
       notificationsPlugin: FlutterLocalNotificationsPlugin(),
       preferences: preferences,
+    );
+  });
+
+  test('reports and requests Android notification permission', () async {
+    expect(
+      await scheduler.notificationPermissionStatus(),
+      AgentNotificationPermissionStatus.disabled,
+    );
+    expect(await scheduler.requestNotificationPermission(), isTrue);
+
+    expect(
+      methodCalls.map((call) => call.method),
+      containsAllInOrder([
+        'initialize',
+        'areNotificationsEnabled',
+        'requestNotificationsPermission',
+      ]),
     );
   });
 
