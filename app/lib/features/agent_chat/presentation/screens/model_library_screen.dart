@@ -1029,11 +1029,22 @@ class _RuntimeHealthButton extends StatelessWidget {
               builder: (_) => ModelHealthCenterScreen(
                 report: report,
                 onAction: (action) {
-                  if (action == ModelHealthAction.resumeDownload ||
-                      action == ModelHealthAction.chooseAlternative ||
-                      action == ModelHealthAction.repair) {
-                    onOpenModelManager();
-                  }
+                  final message = switch (action) {
+                    ModelHealthAction.retry =>
+                      'Retrying is available from Model Management after checking the runtime status.',
+                    ModelHealthAction.reduceContext =>
+                      'Open Model Management to retry with a smaller context profile.',
+                    ModelHealthAction.resumeDownload =>
+                      'Resume the model download from Model Management.',
+                    ModelHealthAction.repair =>
+                      'Repair or re-download the model from Model Management.',
+                    ModelHealthAction.chooseAlternative =>
+                      'Choose another installed model from Model Management.',
+                  };
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                  onOpenModelManager();
                 },
               ),
             ),
