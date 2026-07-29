@@ -1,9 +1,11 @@
 import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/feature_iptv.dart";
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -87,7 +89,10 @@ void main() {
     );
   }
 
-  Widget createEmptyWidget() {
+  Widget createEmptyWidget({
+    bool tenFootMode = false,
+    List<Override> extraOverrides = const [],
+  }) {
     SharedPreferences.setMockInitialValues({});
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
@@ -117,8 +122,9 @@ void main() {
                 ),
               ),
             ),
+            ...extraOverrides,
           ],
-          child: const MaterialApp(home: IPTVScreen()),
+          child: MaterialApp(home: IPTVScreen(tenFootMode: tenFootMode)),
         );
       },
     );
@@ -526,7 +532,172 @@ void main() {
     expect(find.bySemanticsLabel('Add a playlist URL'), findsOneWidget);
     expect(find.text('Add a playlist to start watching'), findsNothing);
     expect(find.text('Live Channels'), findsNothing);
+    expect(find.byKey(const ValueKey('iptv-empty-browse-usb')), findsNothing);
     semantics.dispose();
+  });
+
+  testWidgets('TV onboarding shows QR and USB only when capability is real', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createEmptyWidget(
+        tenFootMode: true,
+        extraOverrides: [
+          localMediaLibraryCapabilitiesProvider.overrideWith(
+            (ref) async => const LocalMediaLibraryCapabilities(
+              removableStorage: true,
+              dlnaUpnp: false,
+            ),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('iptv-empty-scan-phone')), findsOneWidget);
+    expect(find.byKey(const ValueKey('iptv-empty-browse-usb')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-empty-browse-network')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+    'TV network browse owns focus and launches discovered DLNA media',
+    (tester) async {
+      final playedChannels = <IPTVChannel>[];
+      final fakeService = _RecordingStreamingService(played: playedChannels);
+      final fakeDlna = _FakeDlnaLibraryAdapter();
+      await tester.pumpWidget(
+        createEmptyWidget(
+          tenFootMode: true,
+          extraOverrides: [
+            localMediaLibraryCapabilitiesProvider.overrideWith(
+              (ref) async => const LocalMediaLibraryCapabilities(
+                removableStorage: false,
+                dlnaUpnp: true,
+              ),
+            ),
+            dlnaUpnpLibraryAdapterProvider.overrideWithValue(fakeDlna),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(() => fakeService.dispose());
+              return fakeService;
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('iptv-empty-browse-network')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('iptv-empty-browse-usb')), findsNothing);
+
+      _focusTvFocusable(
+        tester,
+        find.byKey(const ValueKey('iptv-empty-browse-network')),
+      );
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Living room server'), findsOneWidget);
+      final serverFocus = _focusTvFocusable(
+        tester,
+        find.byKey(const ValueKey('local-media-entry-opaque-server')),
+      );
+      expect(serverFocus.hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remote movie'), findsOneWidget);
+      final movieFocus = _focusTvFocusable(
+        tester,
+        find.byKey(const ValueKey('local-media-entry-opaque-movie')),
+      );
+      expect(movieFocus.hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(fakeDlna.discoverCalls, 1);
+      expect(fakeDlna.browseCalls, ['dlna://server/opaque/root']);
+      expect(playedChannels, hasLength(1));
+      expect(playedChannels.single.name, 'Remote movie');
+      expect(playedChannels.single.streamUrl, 'http://192.168.1.2/movie.mp4');
+      expect(
+        playedChannels.single.id,
+        stableLocalMediaChannelId('opaque-movie'),
+      );
+    },
+  );
+
+  testWidgets(
+    'TV network browse offers a focused retry after discovery fails',
+    (tester) async {
+      final adapter = _RecoveringDlnaLibraryAdapter();
+      await tester.pumpWidget(
+        createEmptyWidget(
+          tenFootMode: true,
+          extraOverrides: [
+            localMediaLibraryCapabilitiesProvider.overrideWith(
+              (ref) async => const LocalMediaLibraryCapabilities(
+                removableStorage: false,
+                dlnaUpnp: true,
+              ),
+            ),
+            dlnaUpnpLibraryAdapterProvider.overrideWithValue(adapter),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Browse network'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('could not be reached'), findsOneWidget);
+      final retryFocus = _focusTvFocusable(
+        tester,
+        find.ancestor(
+          of: find.text('Try again'),
+          matching: find.byType(TvFocusable),
+        ),
+      );
+      expect(retryFocus.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(adapter.discoverCalls, 2);
+      expect(find.text('Recovered server'), findsOneWidget);
+    },
+  );
+
+  testWidgets('TV USB permission denial shows a bounded recovery message', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createEmptyWidget(
+        tenFootMode: true,
+        extraOverrides: [
+          localMediaLibraryCapabilitiesProvider.overrideWith(
+            (ref) async => const LocalMediaLibraryCapabilities(
+              removableStorage: true,
+              dlnaUpnp: false,
+            ),
+          ),
+          localMediaLibraryAdapterProvider.overrideWithValue(
+            const _DeniedLocalMediaLibraryAdapter(),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Browse USB'));
+    await tester.pump();
+
+    expect(find.textContaining('allow read access'), findsOneWidget);
   });
 
   testWidgets('keeps selected TV channel row metadata readable', (
@@ -724,6 +895,20 @@ void main() {
   });
 }
 
+FocusNode _focusTvFocusable(WidgetTester tester, Finder root) {
+  final focusWidgets = tester.widgetList<Focus>(
+    find.descendant(of: root.first, matching: find.byType(Focus)),
+  );
+  for (final focus in focusWidgets) {
+    final node = focus.focusNode;
+    if (node != null && node.canRequestFocus) {
+      node.requestFocus();
+      return node;
+    }
+  }
+  throw StateError('No requestable Focus node under the TV control.');
+}
+
 /// Streaming service double that records [playChannel] calls without touching
 /// the real playback engine.
 class _RecordingStreamingService extends VideoPlayerStreamingService {
@@ -735,5 +920,80 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
   @override
   Future<void> playChannel(IPTVChannel channel) async {
     played.add(channel);
+  }
+}
+
+class _FakeDlnaLibraryAdapter implements DlnaUpnpLibraryAdapter {
+  int discoverCalls = 0;
+  final List<String> browseCalls = [];
+
+  @override
+  Future<List<LocalMediaEntry>> discover() async {
+    discoverCalls++;
+    return const [
+      LocalMediaEntry(
+        id: 'opaque-server',
+        name: 'Living room server',
+        kind: LocalMediaEntryKind.folder,
+        accessUri: 'dlna://server/opaque/root',
+        childrenUri: 'dlna://server/opaque/root',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<LocalMediaEntry>> browse(String containerUri) async {
+    browseCalls.add(containerUri);
+    return const [
+      LocalMediaEntry(
+        id: 'opaque-movie',
+        name: 'Remote movie',
+        kind: LocalMediaEntryKind.video,
+        accessUri: 'http://192.168.1.2/movie.mp4',
+      ),
+    ];
+  }
+}
+
+class _RecoveringDlnaLibraryAdapter implements DlnaUpnpLibraryAdapter {
+  int discoverCalls = 0;
+
+  @override
+  Future<List<LocalMediaEntry>> discover() async {
+    discoverCalls++;
+    if (discoverCalls == 1) {
+      throw const LocalMediaAccessException('discovery_failed');
+    }
+    return const [
+      LocalMediaEntry(
+        id: 'recovered-server',
+        name: 'Recovered server',
+        kind: LocalMediaEntryKind.folder,
+        accessUri: 'dlna://server/recovered/root',
+        childrenUri: 'dlna://server/recovered/root',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<LocalMediaEntry>> browse(String containerUri) async => const [];
+}
+
+class _DeniedLocalMediaLibraryAdapter implements LocalMediaLibraryAdapter {
+  const _DeniedLocalMediaLibraryAdapter();
+
+  @override
+  Future<List<LocalMediaEntry>> browse(String rootUri) async => const [];
+
+  @override
+  Future<LocalMediaLibraryCapabilities> capabilities() async =>
+      const LocalMediaLibraryCapabilities(
+        removableStorage: true,
+        dlnaUpnp: false,
+      );
+
+  @override
+  Future<String?> requestRemovableStorageRoot() {
+    throw const LocalMediaAccessException('permission_denied');
   }
 }

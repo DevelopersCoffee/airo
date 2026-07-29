@@ -9,16 +9,17 @@ import 'xtream_client.dart';
 /// heuristic `feature_iptv` applies to M3U (see CV-019's series/episode
 /// grouping step), not a second Xtream-specific code path.
 class XtreamVodAdapter {
-  XtreamVodAdapter(this._client);
+  XtreamVodAdapter(this._client, {this.sourceId = 'xtream'});
 
   final XtreamClient _client;
+  final String sourceId;
 
   Future<List<VodItem>> loadVodItems() async {
     final streams = await _client.getVodStreams();
     return [
       for (final stream in streams)
         VodItem(
-          id: 'xtream-vod-${stream.streamId}',
+          id: '$sourceId-vod-${stream.streamId}',
           title: stream.name,
           streamUrl: _client.vodStreamUrl(
             stream.streamId,

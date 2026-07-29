@@ -132,6 +132,28 @@ void main() {
     expect(find.text('Actions for'), findsOneWidget);
   });
 
+  testWidgets(
+    'transport stays visible beyond auto-hide while a D-pad control is focused',
+    (tester) async {
+      await pumpTransportBar(tester, width: 960);
+
+      final more = find.byKey(const ValueKey('iptv-player-more-button'));
+      final moreFocus = tester.widget<Focus>(
+        find.descendant(of: more, matching: find.byType(Focus)).first,
+      );
+      moreFocus.focusNode!.requestFocus();
+      await tester.pump();
+
+      await tester.pump(const Duration(seconds: 5));
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      );
+      expect(opacity.opacity, 1);
+      expect(moreFocus.focusNode!.hasPrimaryFocus, isTrue);
+    },
+  );
+
   testWidgets('MENU opens player actions and visibly focuses Listen only', (
     tester,
   ) async {

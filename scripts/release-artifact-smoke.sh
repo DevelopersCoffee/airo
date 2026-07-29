@@ -140,7 +140,13 @@ smoke_android_apk() {
 
   adb logcat -c || true
   adb shell am force-stop "$package_name" >/dev/null 2>&1 || true
-  adb shell am start -W "$package_name/.MainActivity" > "$OUTPUT_DIR/${base}-launch.log" 2>&1 ||
+  # Resolve the artifact's declared launcher instead of assuming
+  # MainActivity. Standalone profiles such as Airo Coins intentionally use
+  # their own host and Dart entrypoint.
+  adb shell monkey \
+    -p "$package_name" \
+    -c android.intent.category.LAUNCHER \
+    1 > "$OUTPUT_DIR/${base}-launch.log" 2>&1 ||
     { adb logcat -d > "$OUTPUT_DIR/${base}-logcat.txt" || true; mark_fail "$label" "$apk" "adb launch failed for $package_name" "$(sha256 "$apk")"; return; }
 
   sleep 5

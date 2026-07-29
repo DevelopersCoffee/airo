@@ -19,9 +19,16 @@ import 'channel_initials.dart';
 /// NavigationBar occupies the separate `bottomNavigationBar` slot (see
 /// `app/lib/core/app/app_shell.dart`) — the two never overlap.
 class IPTVMiniPlayer extends ConsumerWidget {
-  const IPTVMiniPlayer({super.key, this.forceVisible = false});
+  const IPTVMiniPlayer({super.key, this.forceVisible = false, this.onWatch});
 
   final bool forceVisible;
+
+  /// Optional host-owned fullscreen transition.
+  ///
+  /// Phone shells omit this and keep the existing tab-navigation behavior.
+  /// The TV/macOS shell supplies its root-navigator transition so the Watch
+  /// action covers the navigation rail and the complete desktop window.
+  final VoidCallback? onWatch;
 
   /// Bar height per spec §5.5.
   static const double barHeight = 58;
@@ -54,6 +61,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
         void goToPlayer() {
           ref.read(iptvNavigationTabProvider.notifier).state =
               IptvNavigationTab.stream.index;
+          onWatch?.call();
         }
 
         return GestureDetector(

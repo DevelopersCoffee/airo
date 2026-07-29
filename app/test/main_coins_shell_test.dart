@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:airo_app/core/coins/coin_vault_module.dart';
 import 'package:airo_app/main_coins.dart';
 import 'package:core_product_shell/core_product_shell.dart';
@@ -18,6 +20,21 @@ class _FakeScreenSecurity extends VaultScreenSecurity {
 }
 
 void main() {
+  test('Coins Android manifest removes the base MainActivity launcher', () {
+    final manifest = File(
+      'android/app/src/coins/AndroidManifest.xml',
+    ).readAsStringSync();
+
+    expect(manifest, contains('xmlns:tools='));
+    expect(
+      manifest,
+      contains(
+        RegExp(r'android:name="\.MainActivity"[\s\S]*?tools:node="remove"'),
+      ),
+    );
+    expect(manifest, contains('android:name=".CoinsActivity"'));
+  });
+
   test('coins registry registers the vault module for ShellId.coins', () {
     final registry = buildCoinsModuleRegistry();
 

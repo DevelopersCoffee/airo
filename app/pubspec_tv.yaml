@@ -11,11 +11,19 @@
 name: airo_app
 description: "Airo TV - IPTV streaming for Android TV"
 publish_to: 'none'
-version: 0.0.5+5
+version: 0.0.6+8
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
+
+# Keep TV release builds offline-safe by loading the native library already
+# supplied by sqlite3_flutter_libs.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlite3
 
 dependencies:
   flutter:

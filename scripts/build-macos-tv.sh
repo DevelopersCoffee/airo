@@ -7,6 +7,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/app"
 BUILD_NAME="${BUILD_NAME:-2.0.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-200}"
+MACOS_PODFILE_LOCK="$APP_DIR/macos/Podfile.lock"
+MACOS_PODFILE_LOCK_BACKUP="$APP_DIR/macos/Podfile.lock.airo-tv-backup"
+HAD_MACOS_PODFILE_LOCK=false
 GENERATED_FILES=(
   "$APP_DIR/macos/Flutter/GeneratedPluginRegistrant.swift"
   "$APP_DIR/linux/flutter/generated_plugin_registrant.cc"
@@ -26,6 +29,12 @@ cleanup() {
     cp "$APP_DIR/pubspec.lock.backup" "$APP_DIR/pubspec.lock"
     rm "$APP_DIR/pubspec.lock.backup"
   fi
+  if [[ "$HAD_MACOS_PODFILE_LOCK" == true ]]; then
+    cp "$MACOS_PODFILE_LOCK_BACKUP" "$MACOS_PODFILE_LOCK"
+    rm "$MACOS_PODFILE_LOCK_BACKUP"
+  else
+    rm -f "$MACOS_PODFILE_LOCK"
+  fi
   for generated_file in "${GENERATED_FILES[@]}"; do
     if [[ -f "$generated_file.backup" ]]; then
       cp "$generated_file.backup" "$generated_file"
@@ -42,6 +51,11 @@ fi
 
 cp "$APP_DIR/pubspec.yaml" "$APP_DIR/pubspec.yaml.backup"
 cp "$APP_DIR/pubspec.lock" "$APP_DIR/pubspec.lock.backup"
+if [[ -f "$MACOS_PODFILE_LOCK" ]]; then
+  cp "$MACOS_PODFILE_LOCK" "$MACOS_PODFILE_LOCK_BACKUP"
+  HAD_MACOS_PODFILE_LOCK=true
+fi
+rm -f "$MACOS_PODFILE_LOCK"
 for generated_file in "${GENERATED_FILES[@]}"; do
   if [[ -f "$generated_file" ]]; then
     cp "$generated_file" "$generated_file.backup"

@@ -26,6 +26,18 @@ import '../widgets/video_player_widget.dart';
 
 enum _TvChannelViewMode { grid, list }
 
+void _openTvFullscreenPlayer(BuildContext context) {
+  // The TV screen sits inside TvShell's nested navigator. The root navigator
+  // is the only route that covers the permanent rail and the whole macOS
+  // window.
+  Navigator.of(context, rootNavigator: true).push<void>(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => const _TvFullscreenPlayerPage(),
+    ),
+  );
+}
+
 /// A 10-foot IPTV experience for Android TV and Fire TV.
 class IptvTvScreen extends ConsumerStatefulWidget {
   const IptvTvScreen({super.key});
@@ -537,7 +549,10 @@ class _TvBrowseLayout extends ConsumerWidget {
             ),
           ),
           SizedBox(height: compactTv ? 8 : 12),
-          const IPTVMiniPlayer(forceVisible: true),
+          IPTVMiniPlayer(
+            forceVisible: true,
+            onWatch: () => _openTvFullscreenPlayer(context),
+          ),
         ],
       ),
     );
@@ -1202,19 +1217,6 @@ class _TvPlayerPanel extends StatelessWidget {
   final IPTVChannel? currentChannel;
   final bool compact;
 
-  void _openFullscreenPlayer(BuildContext context) {
-    // Must use the root navigator: this screen sits inside TvShell's
-    // ShellRoute, whose nested navigator only covers the content area next
-    // to the sidebar. Pushing there leaves the sidebar visible; pushing on
-    // root escapes the shell entirely and covers the whole window.
-    Navigator.of(context, rootNavigator: true).push<void>(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const _TvFullscreenPlayerPage(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1241,7 +1243,7 @@ class _TvPlayerPanel extends StatelessWidget {
                           showControls: true,
                           enableTouchGestures: false,
                           onFullscreenToggle: () =>
-                              _openFullscreenPlayer(context),
+                              _openTvFullscreenPlayer(context),
                         ),
                   loading: () => const _TvPlayerPlaceholder(),
                   error: (_, _) => const _TvPlayerPlaceholder(),
@@ -1556,29 +1558,32 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: GridView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: widget.compact ? 180 : 220,
-          childAspectRatio: widget.compact ? 1.2 : 1.03,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: GridView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: widget.compact ? 180 : 220,
+            childAspectRatio: widget.compact ? 1.2 : 1.03,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+          ),
+          itemCount: widget.channels.length,
+          itemBuilder: (context, index) {
+            final channel = widget.channels[index];
+            return _TvChannelCard(
+              channel: channel,
+              isPlaying: widget.currentChannel?.id == channel.id,
+              isFavorite: widget.favoriteChannelIds.contains(channel.id),
+              epgEntry: widget.compactEpgEntries[channel.id],
+              availability: widget.availabilityByChannelId[channel.id],
+              autofocus: index == 0,
+              onSelect: () => widget.onChannelSelect(channel),
+              onToggleFavorite: () => widget.onToggleFavorite(channel),
+            );
+          },
         ),
-        itemCount: widget.channels.length,
-        itemBuilder: (context, index) {
-          final channel = widget.channels[index];
-          return _TvChannelCard(
-            channel: channel,
-            isPlaying: widget.currentChannel?.id == channel.id,
-            isFavorite: widget.favoriteChannelIds.contains(channel.id),
-            epgEntry: widget.compactEpgEntries[channel.id],
-            availability: widget.availabilityByChannelId[channel.id],
-            autofocus: index == 0,
-            onSelect: () => widget.onChannelSelect(channel),
-            onToggleFavorite: () => widget.onToggleFavorite(channel),
-          );
-        },
       ),
     );
   }
@@ -1627,24 +1632,27 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: ListView.separated(
-        controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-        itemCount: widget.channels.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final channel = widget.channels[index];
-          return _TvChannelRow(
-            channel: channel,
-            isPlaying: widget.currentChannel?.id == channel.id,
-            isFavorite: widget.favoriteChannelIds.contains(channel.id),
-            epgEntry: widget.compactEpgEntries[channel.id],
-            availability: widget.availabilityByChannelId[channel.id],
-            autofocus: index == 0,
-            onSelect: () => widget.onChannelSelect(channel),
-            onToggleFavorite: () => widget.onToggleFavorite(channel),
-          );
-        },
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: ListView.separated(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
+          itemCount: widget.channels.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final channel = widget.channels[index];
+            return _TvChannelRow(
+              channel: channel,
+              isPlaying: widget.currentChannel?.id == channel.id,
+              isFavorite: widget.favoriteChannelIds.contains(channel.id),
+              epgEntry: widget.compactEpgEntries[channel.id],
+              availability: widget.availabilityByChannelId[channel.id],
+              autofocus: index == 0,
+              onSelect: () => widget.onChannelSelect(channel),
+              onToggleFavorite: () => widget.onToggleFavorite(channel),
+            );
+          },
+        ),
       ),
     );
   }

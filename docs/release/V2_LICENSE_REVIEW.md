@@ -13,7 +13,8 @@ Implementation work for this release line must start from latest `origin/main`.
 | README license badge | Ready | README links to the root MIT license. |
 | Internal package license files | Ready | Airo-owned package `LICENSE` files use the root MIT license text. |
 | Vendored Cast library | Documented | `packages/platform_player/third_party/flutter_chrome_cast` declares BSD-3-Clause. Its notice is recorded in `docs/release/V2_THIRD_PARTY_NOTICES.md`. |
-| Private/commercial dependencies | Unknown | Maintainers must confirm whether any private or commercial dependency is bundled in release builds. |
+| Private/commercial dependencies | Confirmed absent | The release pubspecs contain no private hosted source or active private overlay. The only Git dependency, pinned `DevelopersCoffee/barista-tuning`, is a public MIT repository. |
+| Artifact provenance | Signed/SLSA required | Android release workflows generate Sigstore-signed SLSA build provenance for the staged APK, AAB, manifest, checksums, and release documents. |
 
 ## V2 Release Profiles Reviewed
 
@@ -101,6 +102,8 @@ distribution:
   local stub.
 - Vendored `flutter_chrome_cast` BSD-3-Clause source under
   `packages/platform_player/third_party/flutter_chrome_cast`.
+- Public Git dependency `DevelopersCoffee/barista-tuning` at the lockfile
+  commit, licensed MIT and consumed through `slm_edge_intelligence`.
 - Playlist Engine v2 Rust dependencies: `memmap2` 0.9.11
   (MIT OR Apache-2.0), `rusqlite` 0.32.1 (MIT), and `libsqlite3-sys` 0.30.1
   (MIT). `rusqlite` is intentionally used without its `bundled` feature so
@@ -123,9 +126,12 @@ distribution:
   dependency is bundled in each release artifact.
 - Confirm that Play Store, direct APK, and any other listing text matches the
   selected project license and third-party notice obligations.
+- Verify a downloaded public artifact with `gh attestation verify <artifact>
+  --repo DevelopersCoffee/airo`.
 
-## Human Decisions Still Needed
+## Recorded Decisions
 
-- Whether SHA256-only release provenance is sufficient for the first v2 wave or
-  whether signed/SLSA provenance is required.
-- Whether any private/commercial dependency is present in v2 release artifacts.
+- No private, commercial, gated, or restricted-license dependency is active in
+  the checked release profiles.
+- SHA256-only provenance is not sufficient for the public wave. Release
+  workflows must publish GitHub/Sigstore SLSA build attestations.

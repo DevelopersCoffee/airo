@@ -4,6 +4,7 @@ import 'package:platform_history/platform_history.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
 import '../../domain/vod_series_grouping.dart';
+import 'content_source_providers.dart';
 import 'iptv_providers.dart';
 
 final vodWatchHistoryStorageProvider = Provider<VodWatchHistoryStorage>((ref) {
@@ -14,11 +15,34 @@ final _m3uVodAdapterProvider = Provider<M3uVodAdapter>(
   (ref) => M3uVodAdapter(),
 );
 
-/// VOD entries extracted from the M3U channel list `iptvChannelsProvider`
-/// has already fetched — no separate network call. A live Xtream source's
-/// `XtreamVodAdapter` output can be appended here once CV-022 lets a user
-/// configure one; until then this is M3U-only.
+/// VOD entries for the exclusive active source. Xtream uses its provider VOD
+/// endpoint; M3U/Stalker keep the existing channel-list extraction behavior.
 final rawVodItemsProvider = FutureProvider<List<VodItem>>((ref) async {
+  final active = await ref.watch(activeContentSourceProvider.future);
+  if (active?.kind == ContentSourceKind.xtream) {
+    final credential = await ref
+        .read(contentSourceCredentialStoreProvider)
+        .read(ContentSourceCredentialRef(active!.id));
+    if (credential == null) {
+      throw const ContentSourceRuntimeException(
+        'Xtream credentials are unavailable. Reconnect the source.',
+      );
+    }
+    try {
+      final client = XtreamClient(
+        dio: ref.read(dioProvider),
+        serverUrl: active.url,
+        username: credential.username,
+        password: credential.password,
+        sourceId: active.id,
+      );
+      return XtreamVodAdapter(client, sourceId: active.id).loadVodItems();
+    } catch (_) {
+      throw const ContentSourceRuntimeException(
+        'Could not load Xtream VOD. Check the source and retry.',
+      );
+    }
+  }
   final channels = await ref.watch(iptvChannelsProvider.future);
   final adapter = ref.watch(_m3uVodAdapterProvider);
   return adapter.extractVodItems(channels);

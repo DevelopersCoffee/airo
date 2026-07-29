@@ -53,6 +53,30 @@ void main() {
       await engine.dispose();
     });
 
+    test('content URI uses the Android direct-local source type', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+
+      await engine.open(
+        AiroMediaOpenRequest(
+          requestId: 'local-open',
+          sourceHandle: AiroPlaybackSourceHandle.direct(
+            'content://media/external/video/42',
+          ),
+          mediaKind: AiroPlaybackMediaKind.file,
+        ),
+      );
+
+      expect(
+        fakePlatform.lastDataSource?.sourceType,
+        DataSourceType.contentUri,
+      );
+      expect(
+        fakePlatform.lastDataSource?.uri,
+        'content://media/external/video/42',
+      );
+      await engine.dispose();
+    });
+
     test(
       'platform decoder failure surfaces as a typed decoderFailed error',
       () async {

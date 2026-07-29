@@ -30,10 +30,9 @@ build/
 *.freezed.dart
 # Exception: vendored third-party plugins ship their pigeon output upstream.
 # Ignoring it here left Android builds unable to compile from a clean checkout.
-# To regenerate, run `dart run pigeon --input pigeons/<file>.dart` inside the
-# package, then `git checkout -- darwin/`: the @ConfigurePigeon annotation also
-# rewrites the committed Swift/ObjC output, which was produced by a different
-# pigeon version plus native formatters.
+# Regenerate from the vendored package with its pinned Pigeon version. Ensure
+# Xcode's `swift-format` and `clang-format` are available on PATH so Dart and
+# native host outputs are produced as one reviewed change.
 !packages/platform_player/third_party/**/lib/src/*.g.dart
 
 # IDE
@@ -62,6 +61,7 @@ vendor/
 logs/
 artifacts/agent-skills-journey/
 artifacts/airo-tv-browser-viewports/
+artifacts/store-listing/
 .gstack/
 $CODEX_HOME/
 app/pubspec.yaml.backup
