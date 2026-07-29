@@ -9,6 +9,7 @@ import 'llm_client.dart';
 import 'llm_config.dart';
 import 'llm_response.dart';
 import '../utils/token_counter.dart';
+import 'openai_compatible_client.dart';
 
 /// LLM client implementation for GGUF models (llama.cpp compatible).
 ///
@@ -19,13 +20,24 @@ class GGUFModelClient implements LLMClient {
     required GGUFModelConfig modelConfig,
     LLMConfig? llmConfig,
     ActiveModelService? activeModelService,
+    OpenAICompatibleClient? remoteClient,
   }) : _modelConfig = modelConfig,
        _llmConfig = llmConfig ?? _defaultConfig(modelConfig),
-       _activeModelService = activeModelService ?? ActiveModelService.instance;
+       _activeModelService = activeModelService ?? ActiveModelService.instance,
+       _remoteClient =
+           remoteClient ??
+           (modelConfig.hasRemoteServer
+               ? OpenAICompatibleClient(
+                   baseUrl: modelConfig.serverUrl!,
+                   model: modelConfig.modelName,
+                   apiKey: modelConfig.serverApiKey,
+                 )
+               : null);
 
   final GGUFModelConfig _modelConfig;
   final LLMConfig _llmConfig;
   final ActiveModelService _activeModelService;
+  final OpenAICompatibleClient? _remoteClient;
 
   /// Creates a default LLMConfig from GGUFModelConfig.
   static LLMConfig _defaultConfig(GGUFModelConfig config) {
@@ -53,6 +65,13 @@ class GGUFModelClient implements LLMClient {
     ModelLoadProgressCallback? onProgress,
     ModelMemoryWarningCallback? onMemoryWarning,
   }) async {
+    if (_remoteClient != null) {
+      return Failure(
+        ValidationFailure(
+          message: 'Remote GGUF server models do not load into local memory.',
+        ),
+      );
+    }
     // Check if our model is already loaded
     final active = _activeModelService.activeModel;
     if (active != null &&
@@ -71,6 +90,7 @@ class GGUFModelClient implements LLMClient {
 
   @override
   Future<bool> isAvailable() async {
+    if (_remoteClient != null) return _remoteClient.isAvailable();
     // Check if model file exists and service can load it
     final active = _activeModelService.activeModel;
     if (active != null &&
@@ -85,6 +105,7 @@ class GGUFModelClient implements LLMClient {
 
   @override
   Future<Result<LLMResponse>> generate(String prompt) async {
+    if (_remoteClient != null) return _remoteClient.generate(prompt);
     // Ensure model is loaded
     final loadResult = await ensureLoaded();
     if (loadResult is Err<ActiveModelInfo>) {
@@ -146,6 +167,10 @@ class GGUFModelClient implements LLMClient {
 
   @override
   Stream<String> generateStream(String prompt) async* {
+    if (_remoteClient != null) {
+      yield* _remoteClient.generateStream(prompt);
+      return;
+    }
     // Ensure model is loaded
     final loadResult = await ensureLoaded();
     if (loadResult is Err<ActiveModelInfo>) {
@@ -186,6 +211,7 @@ class GGUFModelClient implements LLMClient {
 
   @override
   Future<void> dispose() async {
+    await _remoteClient?.dispose();
     // Don't automatically unload the model on dispose
     // The ActiveModelService manages the model lifecycle
     developer.log(

@@ -45,6 +45,8 @@ class GGUFModelConfig {
     this.useMmap = true,
     this.useMlock = false,
     this.vocabOnly = false,
+    this.serverUrl,
+    this.serverApiKey,
   });
 
   /// Path to the GGUF model file on device storage.
@@ -103,6 +105,15 @@ class GGUFModelConfig {
   /// Load vocabulary only (for tokenization without inference).
   final bool vocabOnly;
 
+  /// Optional OpenAI-compatible llama.cpp, Ollama, or LM Studio endpoint.
+  /// When set, this model uses the remote server instead of local FFI.
+  final String? serverUrl;
+
+  /// Optional bearer token for [serverUrl].
+  final String? serverApiKey;
+
+  bool get hasRemoteServer => serverUrl?.trim().isNotEmpty == true;
+
   /// Whether this is a vision-capable model.
   bool get isVisionModel => mmprojPath != null;
 
@@ -136,6 +147,8 @@ class GGUFModelConfig {
     bool? useMmap,
     bool? useMlock,
     bool? vocabOnly,
+    String? serverUrl,
+    String? serverApiKey,
   }) => GGUFModelConfig(
     modelPath: modelPath ?? this.modelPath,
     modelName: modelName ?? this.modelName,
@@ -155,5 +168,7 @@ class GGUFModelConfig {
     useMmap: useMmap ?? this.useMmap,
     useMlock: useMlock ?? this.useMlock,
     vocabOnly: vocabOnly ?? this.vocabOnly,
+    serverUrl: serverUrl ?? this.serverUrl,
+    serverApiKey: serverApiKey ?? this.serverApiKey,
   );
 }

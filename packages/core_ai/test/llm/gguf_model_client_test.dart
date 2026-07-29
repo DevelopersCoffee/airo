@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -152,4 +155,60 @@ void main() {
       expect(customClient.config.temperature, 0.5);
     });
   });
+
+  test(
+    'routes configured GGUF server models through OpenAI compatibility',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      server.listen((request) async {
+        request.response.headers.contentType = ContentType.json;
+        if (request.uri.path.endsWith('/models')) {
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..write(
+              jsonEncode({
+                'data': [
+                  {'id': 'remote-qwen'},
+                ],
+              }),
+            );
+        } else if (request.uri.path.endsWith('/chat/completions')) {
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..write(
+              jsonEncode({
+                'choices': [
+                  {
+                    'message': {'content': 'remote response'},
+                    'finish_reason': 'stop',
+                  },
+                ],
+              }),
+            );
+        } else {
+          request.response.statusCode = HttpStatus.notFound;
+        }
+        await request.response.close();
+      });
+
+      final remote = GGUFModelClient(
+        modelConfig: GGUFModelConfig(
+          modelPath: '',
+          modelName: 'remote-qwen',
+          serverUrl: Uri(
+            scheme: 'http',
+            host: '127.0.0.1',
+            port: server.port,
+          ).toString(),
+        ),
+        activeModelService: activeModelService,
+      );
+
+      expect(await remote.isAvailable(), isTrue);
+      final result = await remote.generate('hello');
+      expect(result, isA<Ok<LLMResponse>>());
+      expect((result as Ok<LLMResponse>).value.text, 'remote response');
+    },
+  );
 }
