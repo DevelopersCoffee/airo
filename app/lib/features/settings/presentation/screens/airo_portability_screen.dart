@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/portability/airo_backup_service.dart';
 
@@ -16,6 +19,7 @@ class AiroPortabilityScreen extends StatefulWidget {
 }
 
 class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
+  static const _restoredPayloadKey = 'airo_mind.backup_payload.v1';
   final _passphraseController = TextEditingController();
   final _service = AiroBackupService();
   bool _busy = false;
@@ -39,7 +43,12 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
         passphrase: _passphraseController.text,
         payload: {
           'scope': 'airo-mind',
+          'schemaVersion': 1,
           'exportedAt': DateTime.now().toUtc().toIso8601String(),
+          'modelCatalogIds': ModelCatalog.bundledModels
+              .map((model) => model.id)
+              .toList(),
+          'privacy': 'local-first',
           'note':
               'Model metadata and local preferences only; model weights are not copied.',
         },
@@ -73,10 +82,12 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
         await File(path).readAsString(),
         _passphraseController.text,
       );
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_restoredPayloadKey, jsonEncode(payload));
       if (mounted) {
         setState(
           () => _status =
-              'Backup verified (${payload['scope'] ?? 'Airo'}). Import is ready for review.',
+              'Backup verified and restored (${payload['scope'] ?? 'Airo'}). Restart Airo Mind to apply model preferences.',
         );
       }
     } catch (error) {

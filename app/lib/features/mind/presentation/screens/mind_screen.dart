@@ -135,9 +135,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Compare prompts with temperature and top-k controls.',
             icon: Icons.tune,
             color: Colors.indigo,
-            onTap: () => context.push(
-              '/mind/chat?prefill=Open%20Prompt%20Lab%20and%20compare%20two%20prompts%20with%20temperature%20and%20top-k.',
-            ),
+            onTap: () => context.push('/mind/prompt-lab'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
