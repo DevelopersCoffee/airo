@@ -84,7 +84,7 @@ that exported a package holds a copy we cannot reach.
 | `RevocationSubject` map key | Canonical string `kind:id`, where `kind` ∈ {`content`, `context`, `device`} and contains no `:`. First-colon split, so ids may contain `:`. Unknown kinds fail closed. |
 | `[u8; 32]` and `[u8; 64]` fields | Lowercase hex string, never a JSON decimal array — the package stays inspectable in a text editor, which matters for a file users are told to store themselves |
 | Outer `ciphertext`, `nonce`, `kdf_salt` | Base64, not hex and never a JSON decimal array. The package double-encodes — a JSON payload, then that ciphertext text-encoded again in the envelope — so hex on the outer blob costs a hard 2.0× and puts V4's `≤ 3× compact` floor at 3.30×, unmeetable. Base64 costs 1.33× and clears every measured shape. Inner fields stay hex; the ciphertext blob is opaque under any encoding, so nothing inspectable is lost. Measured in ADR-0017. |
-| Subject ids | The design must state whether ids are NFC-normalized and control-character-free at the boundary (I6). Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices. |
+| Subject ids | **NFC-normalized and rejected if they contain control characters**, at the boundary, exactly once (I6). Answered in design §11a/I6; this row previously said only that the design must state it. Two ids differing by Unicode form are different subjects, so a destroy on one does not revoke the other — self-consistent on one device, a divergence source the moment C3 sync carries ids between devices, surfacing as destroyed content reappearing elsewhere. |
 
 The on-disk format is the least reversible thing in the system. Every device
 that has ever exported one holds a copy we cannot reach.
@@ -398,6 +398,40 @@ Requiring each change to name its evidence attacks it from the other side. A
 changelog entry that must cite the probe, the benchmark, or the compiler error
 that demanded it cannot describe work that was never performed — the citation
 either resolves or it does not.
+
+### The changelog is a proof ledger, not a release note
+
+A revision's changelog exists to answer one question per entry:
+
+> **If this line disappeared six months from now, what evidence would prove it
+> belonged?**
+
+Four columns, all required:
+
+| Change | Evidence class | Specific evidence | Frozen surface |
+|---|---|---|---|
+
+Column 4 traces the change to the architectural authority that demanded it, so
+the ledger is checkable against the contracts and not only against the review
+that happened to raise it.
+
+**Column 4 must name a real frozen surface — C1–C7, or a numbered section of
+this document — or say `none — plan-local`.** Both are valid. Inventing a
+plausible-sounding contract name to fill the cell produces false traceability,
+which is worse than an empty one, and is the same defect class as a conformance
+test that measures an artifact instead of a property. Not every legitimate
+change traces to a frozen surface: a fix to a promise the plan made about its
+own file layout is real, evidenced, and governed by nothing frozen.
+
+Worked example, Revision 8:
+
+| Change | Evidence | Specific evidence | Frozen surface |
+|---|---|---|---|
+| Remove `link_content`'s `content_id` parameter | Review | Rust probe: `link_content("B", ctx, &mut envelope_of_A)` returned `Ok(())` after A was destroyed | **C7** — the revocation gate and the AAD disagreed on one identity |
+| Apply `hex_array_32` to `RootPublicKey` | Review | `to_bytes()` emitted `identity_public_key` as a JSON decimal array | **§4** encoding table |
+| Pre-sized `String` hex helper | Benchmark | `to_bytes()` on a 100k-context vault: 350.82 ms → 16.55 ms | **I8**, budget V4 — no contract governs it |
+| Base64 on the outer ciphertext | Benchmark | Hex leaves a hard 3.30× floor against V4's ≤ 3× | **§4** |
+| Re-export `RevocationSource` | Compiler | `error[E0433]` from an external probe; restore unreachable | `none — plan-local` |
 
 ## G0 — Buildability. A revision does not exist until it builds.
 
