@@ -386,10 +386,17 @@ class AssistantRuntimeService {
           preferredPackage: candidate.package,
         );
         final package = downloadedPackage ?? candidate.package;
-        final available =
-            downloadedPackage != null ||
+        final runtimeReportedAvailable =
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
+        // A native channel may be present on the device even when no model
+        // source was configured. Treat that as unavailable in production;
+        // test overrides remain explicit and can model a ready backend.
+        final available =
+            downloadedPackage != null ||
+            (runtimeReportedAvailable &&
+                (_isLiteRtAvailableOverride != null ||
+                    _liteRtLm.hasConfiguredModel));
         if (!available) {
           return AssistantRuntimePreparationResult.blocked(
             AssistantRuntimeDiagnosticEnvelope(

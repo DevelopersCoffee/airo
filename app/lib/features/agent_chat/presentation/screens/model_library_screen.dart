@@ -172,6 +172,17 @@ class AssistantModelLibraryState {
   final AssistantModelCandidate recommended;
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
+  /// A native LiteRT channel is not proof that a model can be loaded. The
+  /// runtime must either have an installed package or an explicit model
+  /// source configured (path/URL).
+  static bool isLiteRtReady({
+    required bool runtimeAvailable,
+    required bool hasDownloadedPackage,
+    required bool hasConfiguredModel,
+  }) {
+    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModel);
+  }
+
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
   }) async {
@@ -186,7 +197,11 @@ class AssistantModelLibraryState {
     final defaultPackages = await _defaultPackages(liteRtService);
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
-    final liteRtReady = liteRtAvailable || hasDownloadedBalancedPackage;
+    final liteRtReady = isLiteRtReady(
+      runtimeAvailable: liteRtAvailable,
+      hasDownloadedPackage: hasDownloadedBalancedPackage,
+      hasConfiguredModel: liteRtService.hasConfiguredModel,
+    );
     final compatibilityByModelId = await _loadCompatibilityByModelId(
       liteRtService,
       defaultPackages,

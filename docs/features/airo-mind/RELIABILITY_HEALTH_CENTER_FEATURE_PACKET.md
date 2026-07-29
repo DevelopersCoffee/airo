@@ -1,9 +1,9 @@
 # Airo / Airo Mind Reliability Health Center — Feature Packet
 
-Status: Proposed implementation slice  
-Base: `origin/main` (2026-07-30)  
-Owner: Framework Agent (runtime, model routing, download contracts)  
-Application reviewers: Brain / AI Agent, Flutter Architect, Product Manager  
+Status: Proposed implementation slice
+Base: `origin/main` (2026-07-30)
+Owner: Framework Agent (runtime, model routing, download contracts)
+Application reviewers: Brain / AI Agent, Flutter Architect, Product Manager
 Required reviewers: Chief Architect, Chief Performance Officer, Chief QA Officer,
 Chief Security Officer, Chief Documentation Officer
 
