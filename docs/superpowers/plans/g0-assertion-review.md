@@ -52,10 +52,35 @@ as a separate pass rather than a step inside the first run.
 **Half the assertions are weaker than the invariant they guard, and two do not
 guard an invariant at all.** All 22 executed; 11 are architecturally sound.
 
-## The pattern
+## The pattern, stated precisely
 
-Every `WEAK` verdict has the same cause: **a grep can express a forbidden
-spelling, and most of these invariants are about a forbidden *shape*.**
+The first cut was "a grep expresses a spelling, most invariants are about a
+shape". More precisely, and this is what explains the *recurrence* rather than
+merely describing it:
+
+> **A grep proves a local syntactic fact.**
+
+Architectural invariants are rarely local syntactic facts. They fall into
+distinct proof-obligation classes, and each needs a mechanism whose proof
+strength matches:
+
+| Obligation class | Form | Grep can prove it? |
+|---|---|---|
+| **Syntactic** | this spelling appears nowhere | yes — this is its niche |
+| **Existential** | some construct exists (`A09`, `A17`, `A18`, `A21`) | only that a *token* exists, never that the construct is correct |
+| **Universal** | at **every** site the invariant covers (`A11`, `A17`) | no — it enumerates the sites already known |
+| **Reachability** | unreachable from outside (`A01`, `A02`) | no — needs a compiler and an external crate |
+| **Observational** | holds over inputs, on the real path | no — needs execution |
+| **Representational** | the invalid state cannot be written (`A04`, `A20`) | no — needs the type system |
+
+Every `WEAK` verdict is a mechanism applied to the wrong class. `A09` is
+existential and passed by finding a token while `A05`–`A08` failed. `A11` is
+universal and enumerates. `A01` is reachability and greps a signature. `A04` is
+representational and greps a method body.
+
+That is why the same pattern appeared eight times: not eight mistakes, one
+mistake made eight times — reaching for the cheapest mechanism regardless of the
+obligation's class.
 
 - `A01`/`A02` want "no route to key material" — a reachability property, which
   `G0.8` expresses and `grep` cannot

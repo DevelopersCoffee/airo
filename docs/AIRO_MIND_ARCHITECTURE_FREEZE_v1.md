@@ -630,6 +630,40 @@ the wrong invariant.
 So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
 architecture** — implementations, which deserve the same review as any other.
 
+### Match the mechanism to the proof obligation
+
+Not a list of tools — a mapping from what must be proved to what can prove it.
+Reaching for the cheapest mechanism regardless of the obligation's class is a
+single mistake that reproduces once per assertion; the `G0.7` review found it
+eight times.
+
+| Obligation class | Form | Strongest enforcement |
+|---|---|---|
+| **Syntactic** | this spelling appears nowhere | `G0.7` grep |
+| **Reachability** | unreachable from outside the crate | `G0.8` `DENY` probe |
+| **Required journey** | reachable from outside the crate | `G0.8` `ALLOW` probe |
+| **Observational** | holds over inputs, on the real path | test entering the user's door |
+| **Necessity** | this control matters | mutation regression |
+| **Representational** | the invalid state cannot be written | **the type system** |
+
+**A grep proves a local syntactic fact.** Most architectural invariants are not
+local syntactic facts — they are existential, universal, reachability,
+observational, or representational. Pushing grep at any of those exceeds its
+proof strength while looking green.
+
+Two rules follow:
+
+1. **No weaker mechanism may be the sole enforcement of an invariant whose class
+   it cannot prove.** The composition is a cheap syntactic precondition *plus* a
+   stronger semantic enforcement — not one replacing the other, and not the grep
+   strengthened until it pretends to be the other.
+2. **Prefer the last row.** It differs in kind from the rest: every other row
+   *validates* a property, while the type system *removes the invalid state*.
+   That eliminates a defect class before any test or runtime exists. `I6` already
+   demands it — *"the type must distinguish them, or the raw form must be
+   unreachable past the boundary"* — and `ContextId` and `SigningPayload` are
+   what it looks like in practice.
+
 ### Executed and reviewed are separate statuses
 
 An assertion that has run is not an assertion that is right. Track both, because
