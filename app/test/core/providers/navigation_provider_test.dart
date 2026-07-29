@@ -203,7 +203,7 @@ void main() {
       );
       expect(
         appShellHeaderModeForLocation('/money/dashboard'),
-        AppShellHeaderMode.route,
+        AppShellHeaderMode.shell,
       );
       expect(
         appShellHeaderModeForLocation('/money/groups/alpha'),

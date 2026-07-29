@@ -234,6 +234,10 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
 
   const shellOwnedExactLocations = {
     '/money',
+    // The legacy dashboard alias renders the same Coins root content. Keep
+    // both entry points under the super-app header so Coins gets the single
+    // global notification action instead of owning duplicate local chrome.
+    '/money/dashboard',
     '/mind',
     '/mind/chat',
     '/mind/models',
