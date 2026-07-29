@@ -197,8 +197,8 @@ evidence referenced by each issue.
 - [x] Restored the Pixel 9 font, rotation, and night-mode settings exactly
       after the reversible UI run and rebooted it for lifecycle evidence.
 - [ ] Complete the post-reboot job audit after the Pixel 9 re-advertises over
-      wireless ADB; only the Fire TV target is currently visible and remains
-      untouched.
+      wireless ADB. The Pixel did not re-advertise after the 2026-07-29 reboot;
+      the Fire TV target remains untouched.
 - [ ] Run the Android device matrix and attach the exact device, build, and
       artifact evidence required by #510, #514–#516, and #518–#520.
 - [ ] Complete the real provider/runtime dependencies required by #506 and
@@ -207,6 +207,16 @@ evidence referenced by each issue.
       emulator with 384 unit-normalized values, 42–47 ms fixture latency,
       repeat cosine 1.0, typed close, no telemetry markers, and model cleanup.
       This is exploratory and does not replace #355 Pixel 9 qualification.
+- [x] Real MediaPipe text embedding completed on the physical Pixel 9 with the
+      exact test-only model: 384 unit-normalized values, repeat cosine 1.0,
+      typed close, and verified model cleanup. Cold open was 5,883 ms and
+      inference was 522–576 ms, failing the 150 ms target. Airplane mode
+      retained the Wi-Fi transport required by wireless ADB, so a fully
+      disconnected offline run remains open.
+- [x] Pixel 9 portrait, landscape, system dark mode, and 200% text were
+      inspected. The 200% text run confirmed clipped/truncated labels and
+      floating-action overlap; keyboard activation, split-screen, and separate
+      foldable/tablet targets remain open.
 
 Evidence:
 
@@ -243,3 +253,6 @@ the physical-device matrix or an explicit emulator waiver.
 
 Embedding runtime evidence is recorded separately in
 `artifacts/performance/2026-07-28-mediapipe-embedding-emulator.md`.
+
+Physical Pixel 9 evidence is recorded in
+`artifacts/performance/2026-07-29-pixel-9-milestone-2.md`.
