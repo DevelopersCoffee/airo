@@ -6,6 +6,7 @@ import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
 import '../intelligent_model_manager_provider.dart';
+import '../../../agent_chat/presentation/screens/model_health_center_screen.dart';
 
 /// Screen for displaying and managing AI models using glassmorphic UI elements,
 /// gradient backgrounds, and animations.
@@ -609,6 +610,11 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 icon: const Icon(Icons.speed_outlined),
                 label: const Text('Benchmark'),
               ),
+              OutlinedButton.icon(
+                onPressed: () => _openHealthCenter(context, modelInfo),
+                icon: const Icon(Icons.help_outline),
+                label: const Text('Why?'),
+              ),
               if (model.hasUpdate)
                 OutlinedButton.icon(
                   onPressed: () => ref
@@ -699,6 +705,35 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openHealthCenter(BuildContext context, OfflineModelInfo model) {
+    final report = ModelHealthReport.fromFacts(model: model);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ModelHealthCenterScreen(
+          report: report,
+          onAction: (action) {
+            Navigator.of(context).pop();
+            final message = switch (action) {
+              ModelHealthAction.retry =>
+                'Retry the model warm-up from Model Management.',
+              ModelHealthAction.resumeDownload =>
+                'Resume the download from Model Management.',
+              ModelHealthAction.repair =>
+                'Repair or re-download this model from Model Management.',
+              ModelHealthAction.reduceContext =>
+                'Reduce context in AI preferences, then warm the model again.',
+              ModelHealthAction.chooseAlternative =>
+                'Choose another installed model from Model Management.',
+            };
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          },
+        ),
+      ),
+    );
   }
 
   void _showDeleteConfirmation(

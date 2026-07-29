@@ -142,6 +142,12 @@ void main() {
     await tester.ensureVisible(find.text('Warm now'));
     await tester.tap(find.text('Warm now'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Runtime Health Center'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Preload when frequently used'));
     await tester.tap(find.text('Preload when frequently used'));
     await tester.pump();
