@@ -119,15 +119,16 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Describe images and solve visual questions on device.',
             icon: Icons.image_outlined,
             color: Colors.red.shade700,
-            onTap: () => context.push('/quest/new'),
+            onTap: () => context.push('/mind/prompt-lab?mode=image'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Audio Scribe',
-            subtitle: 'Transcribe and translate recordings privately.',
+            subtitle:
+                'Prepare a private transcription workflow when an audio model is installed.',
             icon: Icons.mic_none,
             color: Colors.green.shade700,
-            onTap: () => context.push('/quest/new'),
+            onTap: () => context.push('/mind/models'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(

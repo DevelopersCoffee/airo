@@ -260,7 +260,10 @@ class AppRouter {
                     GoRoute(
                       path: 'prompt-lab',
                       name: 'mind_prompt_lab',
-                      builder: (context, state) => const PromptLabScreen(),
+                      builder: (context, state) => PromptLabScreen(
+                        initialImageMode:
+                            state.uri.queryParameters['mode'] == 'image',
+                      ),
                     ),
                   ],
                 ),

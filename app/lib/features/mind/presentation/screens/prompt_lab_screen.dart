@@ -8,7 +8,9 @@ import 'package:image_picker/image_picker.dart';
 /// Controlled prompt workspace for text runtimes and OpenAI-compatible image
 /// servers (including local/private endpoints such as a LAN ComfyUI bridge).
 class PromptLabScreen extends StatefulWidget {
-  const PromptLabScreen({super.key});
+  const PromptLabScreen({super.key, this.initialImageMode = false});
+
+  final bool initialImageMode;
 
   @override
   State<PromptLabScreen> createState() => _PromptLabScreenState();
@@ -23,11 +25,17 @@ class _PromptLabScreenState extends State<PromptLabScreen> {
   double _topK = 40;
   int _maxTokens = 512;
   int _imageSteps = 20;
-  bool _imageMode = false;
+  late bool _imageMode;
   XFile? _sourceImage;
   GeneratedImage? _generatedImage;
   String? _imageError;
   bool _isGeneratingImage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageMode = widget.initialImageMode;
+  }
 
   @override
   void dispose() {
