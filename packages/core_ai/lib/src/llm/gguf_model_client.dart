@@ -16,6 +16,10 @@ import 'openai_compatible_client.dart';
 /// Uses the [ActiveModelService] to manage model lifecycle and
 /// provides inference capabilities through llama.cpp FFI.
 class GGUFModelClient implements LLMClient {
+  static const localBackendUnavailableMessage =
+      'Local GGUF inference is unavailable because the llama.cpp native backend is not installed. '
+      'Configure an OpenAI-compatible llama.cpp, Ollama, or LM Studio server instead.';
+
   GGUFModelClient({
     required GGUFModelConfig modelConfig,
     LLMConfig? llmConfig,
@@ -72,97 +76,21 @@ class GGUFModelClient implements LLMClient {
         ),
       );
     }
-    // Check if our model is already loaded
-    final active = _activeModelService.activeModel;
-    if (active != null &&
-        active.isReady &&
-        active.config.modelPath == _modelConfig.modelPath) {
-      return Ok(active);
-    }
-
-    // Load our model (will unload any existing model)
-    return _activeModelService.loadModel(
-      _modelConfig,
-      onProgress: onProgress,
-      onMemoryWarning: onMemoryWarning,
-    );
+    return Failure(ValidationFailure(message: localBackendUnavailableMessage));
   }
 
   @override
   Future<bool> isAvailable() async {
     if (_remoteClient != null) return _remoteClient.isAvailable();
-    // Check if model file exists and service can load it
-    final active = _activeModelService.activeModel;
-    if (active != null &&
-        active.isReady &&
-        active.config.modelPath == _modelConfig.modelPath) {
-      return true;
-    }
-    // For now, assume model is available if path is set
-    // TODO: Add actual file existence check
-    return _modelConfig.modelPath.isNotEmpty;
+    // A path is only an artifact; do not claim readiness without a native
+    // llama.cpp execution backend.
+    return false;
   }
 
   @override
   Future<Result<LLMResponse>> generate(String prompt) async {
     if (_remoteClient != null) return _remoteClient.generate(prompt);
-    // Ensure model is loaded
-    final loadResult = await ensureLoaded();
-    if (loadResult is Err<ActiveModelInfo>) {
-      return Failure(
-        ServerFailure(
-          message: 'Failed to load model: ${loadResult.error}',
-          cause: loadResult.error as Object?,
-        ),
-      );
-    }
-
-    try {
-      final stopwatch = Stopwatch()..start();
-
-      // TODO: Replace with actual llama.cpp FFI inference
-      // Stub implementation for now
-      developer.log(
-        'Generating response for prompt (${prompt.length} chars)',
-        name: 'GGUFModelClient',
-      );
-
-      // Simulate inference time
-      await Future.delayed(const Duration(milliseconds: 200));
-      final result =
-          '[GGUF Model Response - ${_modelConfig.modelName}] '
-          'Inference not yet implemented. Prompt received: ${prompt.substring(0, prompt.length.clamp(0, 50))}...';
-
-      stopwatch.stop();
-
-      // Update performance metrics
-      final tokensGenerated = estimateTokens(result);
-      final tokensPerSecond =
-          tokensGenerated / (stopwatch.elapsedMilliseconds / 1000);
-      _activeModelService.updateMetrics(tokensPerSecond: tokensPerSecond);
-
-      return Success(
-        LLMResponse(
-          text: result,
-          provider: 'gguf-${_modelConfig.provider.name}',
-          promptTokens: estimateTokens(prompt),
-          completionTokens: tokensGenerated,
-          latencyMs: stopwatch.elapsedMilliseconds,
-          finishReason: 'stop',
-        ),
-      );
-    } catch (e, stack) {
-      developer.log(
-        'GGUF inference failed: $e',
-        name: 'GGUFModelClient',
-        level: 1000,
-        error: e,
-        stackTrace: stack,
-      );
-      return Failure(
-        ServerFailure(message: 'GGUF inference error: $e', cause: e),
-      );
-    }
+    return Failure(ValidationFailure(message: localBackendUnavailableMessage));
   }
 
   @override
@@ -171,39 +99,7 @@ class GGUFModelClient implements LLMClient {
       yield* _remoteClient.generateStream(prompt);
       return;
     }
-    // Ensure model is loaded
-    final loadResult = await ensureLoaded();
-    if (loadResult is Err<ActiveModelInfo>) {
-      yield '[Error: Failed to load model: ${loadResult.error}]';
-      return;
-    }
-
-    try {
-      developer.log(
-        'Streaming response for prompt (${prompt.length} chars)',
-        name: 'GGUFModelClient',
-      );
-
-      // TODO: Replace with actual llama.cpp FFI streaming inference
-      // Stub implementation that simulates streaming
-      final words =
-          '[GGUF Streaming - ${_modelConfig.modelName}] '
-                  'Streaming inference not yet implemented.'
-              .split(' ');
-
-      for (final word in words) {
-        await Future.delayed(const Duration(milliseconds: 50));
-        yield '$word ';
-      }
-    } catch (e) {
-      developer.log(
-        'GGUF streaming failed: $e',
-        name: 'GGUFModelClient',
-        level: 1000,
-        error: e,
-      );
-      yield '[Error: $e]';
-    }
+    yield '[Error: $localBackendUnavailableMessage]';
   }
 
   @override
