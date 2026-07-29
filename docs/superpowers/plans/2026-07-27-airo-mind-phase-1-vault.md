@@ -308,7 +308,15 @@ Create `rust/airo_mind/src/vault/error.rs`:
 use thiserror::Error;
 
 /// Every fallible Vault operation returns this. No Vault code panics.
+///
+/// `#[non_exhaustive]` because this is a runtime-ABI error type and later
+/// phases will add variants — the FFI boundary in #1259 needs at least one.
+/// Without it, every addition is a breaking change, which is why revision 7
+/// shipped a public unconstructible variant to reserve space for a phase that
+/// had not arrived (`RA-23c`). The attribute costs consumers one `_ =>` arm
+/// and removes that pressure permanently.
 #[derive(Debug, Error, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum VaultError {
     #[error("invalid recovery mnemonic")]
     InvalidMnemonic,
@@ -328,9 +336,11 @@ pub enum VaultError {
     #[error("recovery package format version {0} is not supported")]
     UnsupportedPackageVersion(u32),
 
-    #[error("cannot use a restored vault before applying revocations")]
-    RevocationsNotApplied,
-
+    // `RevocationsNotApplied` was here and is deleted (`RA-23c`). It was
+    // public and unconstructible — reserved for the Task 10 FFI boundary that
+    // Task 10 itself defers to Phase 2. `#[non_exhaustive]` above makes adding
+    // it then a non-breaking change, so reserving it now buys nothing and
+    // ships a variant no caller can ever match against.
     #[error("serialization failed")]
     SerializationFailed,
 
@@ -385,9 +395,38 @@ mod tests {
             "no wrapping found for context `hospitalization`"
         );
         assert_eq!(
-            VaultError::RevocationsNotApplied.to_string(),
-            "cannot use a restored vault before applying revocations"
+            VaultError::UntrustedCertificate.to_string(),
+            "device certificate is not signed by this identity"
         );
+    }
+
+    /// `RA-23c` in its failing form (`I5`): every variant is constructible
+    /// from somewhere that is not a test. Revision 7 shipped
+    /// `RevocationsNotApplied` with zero construction sites, and nothing
+    /// caught it because an unused *variant* is not dead code to the compiler
+    /// the way an unused function is.
+    ///
+    /// This test cannot be written as a compile-time check, so it is written
+    /// as a review obligation with a home: adding a variant means adding its
+    /// constructor in the same change, or the variant does not land.
+    #[test]
+    fn every_variant_has_a_non_test_construction_site() {
+        // Enumerated by hand because `strum` is a dependency this crate will
+        // not take on for one test. The list is the failing form: a variant
+        // added without a construction site has no line to add here.
+        const CONSTRUCTED_IN: &[(&str, &str)] = &[
+            ("InvalidMnemonic", "seed.rs"),
+            ("DerivationFailed", "identity.rs"),
+            ("DecryptionFailed", "envelope.rs, package.rs"),
+            ("NoWrappingForContext", "envelope.rs"),
+            ("ContentRevoked", "aggregate.rs"),
+            ("UnsupportedPackageVersion", "package.rs"),
+            ("SerializationFailed", "package.rs"),
+            ("RngUnavailable", "random.rs"),
+            ("ValueTooLong", "encoding.rs"),
+            ("UntrustedCertificate", "device.rs"),
+        ];
+        assert!(CONSTRUCTED_IN.iter().all(|(_, site)| !site.is_empty()));
     }
 }
 ```
@@ -460,9 +499,98 @@ Create `rust/airo_mind/src/lib.rs`:
 //!   - Every secret type is `Zeroize` + `ZeroizeOnDrop`.
 //!   - Anything serialized uses `BTreeMap`, never `HashMap` — replay must be
 //!     byte-identical across devices and platforms.
+//!   - `serde_json` output never becomes signed or hashed bytes. Signing
+//!     payloads are hand-built, length-prefixed, and domain-separated.
+//!
+//! # Visibility tiers
+//!
+//! Three, and there is deliberately no capability tier. `Freeze §5`'s
+//! six-function API governs what a **capability** may call; capabilities never
+//! link this crate. `airo_mind` is a data-plane subsystem the runtime
+//! composes, so its public surface does not contradict `Freeze §5` — and the
+//! reason that question kept arising is that nothing said so anywhere.
+//!
+//!   - **Tier 1, `pub`** — what the runtime host needs. Never names key
+//!     material.
+//!   - **Tier 2, `pub(crate)`** — what the runtime's own subsystems need.
+//!     **Growing this tier is a review decision.** The operation log, sync,
+//!     merge, and projections all land inside this boundary in later phases,
+//!     written by implementers with less context; `pub(crate)` means every one
+//!     of them can reach whatever is in it. This is the tier `LogHead`'s
+//!     private field and the restore witness both escaped through.
+//!   - **Tier 3, private** — key material, envelope internals, payload
+//!     internals.
 
-pub mod vault;
+mod vault;
 ```
+
+**The curated list, item by item.** Revision 7 shipped `pub mod vault;` while
+this block and revision 6's changelog both recorded a curated `pub use` list
+(`RA-18`). The consequence was not cosmetic: `RevocationSource` was never
+re-exported, so `apply_revocations` could not be called, so `AppliedRestore`
+could not be obtained, so **Phase 1 shipped no reachable restore path at all**.
+Three reviewers hit it independently — Rust Architecture and Performance both
+had to add the re-export to compile a probe.
+
+The question that decides every row: **for every remaining public item, what
+external consumer requires it?** `G0` proves the crate builds; it cannot prove
+the surface is intentionally minimal. Note `airo_mind` has *no* consumer in
+Phase 1 — FFI is deferred to #1259 and the crate ships `rlib` only — so `pub`
+is the exception, and "a future phase will want it" is a reason to keep it
+`pub(crate)` until that phase exists and can validate the shape.
+
+```rust
+pub use vault::{
+    // Onboarding and recovery journey — #1234 / #1235
+    generate_mnemonic, seed_from_mnemonic, Seed,     // Seed is opaque: no as_bytes
+    RootIdentity, RootPublicKey,
+    Vault,
+    RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION,
+    // Restore path — unreachable in revision 7 without the next two
+    SealedRestore, AppliedRestore, RevocationSource, RevocationProvenance,
+    PurgeDirective, UnlinkOutcome, RevocationSubject,
+    // Content path — opaque handles, see Task 5
+    ContentEnvelope, ContentKey, SealedEnvelope,
+    VaultError,
+};
+```
+
+| Item | External consumer |
+|---|---|
+| `generate_mnemonic`, `seed_from_mnemonic`, `Seed` | Onboarding UI. `Seed` opaque — `as_bytes` deleted, `RA-16` |
+| `RootIdentity` | `from_seed`, `public_key`, `identity_id` only. `sign` → `pub(crate)`, `RA-17` |
+| `RootPublicKey` | It is a *public* key. `as_bytes` stays `pub` |
+| `Vault` | The aggregate; method list in Task 7 |
+| `RecoveryPackage`, `RECOVERY_PACKAGE_FORMAT_VERSION` | Export/import UI. **All six fields → private with read accessors** — `revocation_epoch` and `identity_public_key` are AAD-bound, so `RA-23a` applies here exactly as to `DeviceCertificate` |
+| `SealedRestore`, `AppliedRestore` | The restore typestate chain |
+| `RevocationSource`, `RevocationProvenance` | **The `RA-18` fix.** Required to call `apply_revocations` and to render the restore warning copy |
+| `PurgeDirective`, `UnlinkOutcome`, `RevocationSubject` | Returned from public methods; a public return type must be nameable |
+| `ContentEnvelope`, `ContentKey`, `SealedEnvelope` | Content store. Opaque handles with `seal`/`open`, not byte accessors |
+| `VaultError` | Every fallible path. **`#[non_exhaustive]`** |
+
+**`pub(crate)`, because no external consumer exists yet:**
+`RevocationLedger` entirely — today it is fully public with a `pub fn revoke`,
+so any consumer can mint a ledger and revoke arbitrary subjects; the public
+question "was this destroyed?" is already answered by
+`Vault::is_content_destroyed` · `DeviceKey`, `DeviceCertificate` and their
+methods — device enrolment is a pairing flow that does not exist in Phase 1,
+and the *enrolment API*, not the certificate struct, is what should eventually
+be public; exporting the struct now freezes the wrong seam · `ContextKey` ·
+`RootIdentity::sign` · `Vault::to_payload`, `from_payload`, `context_key`,
+`revocations` · `RecoveryPackage::decrypt` · `VaultPayload`, `KeyBytes` ·
+`LogHead`, `RevocationsApplied` · `encoding::*`, `domain::*`, `random::*`.
+
+**Deleted:** `DeviceKey::sign` — zero callers anywhere, including tests
+(`RA-17`) · `Seed::as_bytes` (`RA-16`) · `VaultError::RevocationsNotApplied`
+(`RA-23c`).
+
+`RevocationsNotApplied` deserves its reasoning recorded, because the variant
+*looked* necessary. Revision 7 shipped it public and unconstructible, reserved
+for the Task 10 FFI boundary that Task 10 itself defers to Phase 2. It only
+looked necessary because `VaultError` lacked `#[non_exhaustive]`; with the
+attribute, adding the variant in Phase 2 stops being a breaking change. The
+attribute is correct for a runtime-ABI error type regardless, so the variant
+goes now.
 
 Create `rust/airo_mind/src/vault/domain.rs` — the domain-separation registry
 (security R11):
