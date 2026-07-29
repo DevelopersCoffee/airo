@@ -249,6 +249,27 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('renders fenced code with language label and copy action', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(
+          text: 'Use this:\n```dart\nfinal answer = true;\n```',
+          isUser: false,
+        ),
+      ],
+    );
+
+    expect(find.text('dart'), findsOneWidget);
+    final code = tester.widget<SelectableText>(
+      find.byKey(const Key('agent_chat_code_block')),
+    );
+    expect(code.textSpan?.toPlainText(), contains('final answer = true;'));
+    expect(find.byTooltip('Copy code'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpChatScreen(

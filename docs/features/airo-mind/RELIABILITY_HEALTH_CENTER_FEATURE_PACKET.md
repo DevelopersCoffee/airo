@@ -95,7 +95,8 @@ responses, resilient download controls, and an OpenAI-compatible client seam
 for LM Studio, Ollama, and llama.cpp servers. Cloud sync and additional native
 backends remain follow-up slices using these contracts; local chat history is
 now versioned, bounded, restored on-device, and included in encrypted backup
-exports.
+exports. Chat responses also render fenced code with language labels and
+one-tap code copying.
 
 ## Airo Mind use-case catalog
 

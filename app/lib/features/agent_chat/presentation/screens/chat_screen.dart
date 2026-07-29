@@ -604,11 +604,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      message.text,
-                      style: TextStyle(
-                        color: colorScheme.primary.withValues(alpha: 0.9),
-                      ),
+                    child: _ChatMessageBody(
+                      text: message.text,
+                      color: colorScheme.primary.withValues(alpha: 0.9),
+                      onCopyCode: _copyMessageText,
                     ),
                   ),
                   if (canCopy) ...[
@@ -1372,6 +1371,153 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
     );
+  }
+}
+
+class _ChatMessageBody extends StatelessWidget {
+  const _ChatMessageBody({
+    required this.text,
+    required this.color,
+    required this.onCopyCode,
+  });
+
+  final String text;
+  final Color color;
+  final ValueChanged<String> onCopyCode;
+
+  static final _codePattern = RegExp(r'```([^\n]*)\n([\s\S]*?)```');
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = _codePattern.allMatches(text).toList(growable: false);
+    if (matches.isEmpty) {
+      return SelectableText(text, style: TextStyle(color: color));
+    }
+
+    final children = <Widget>[];
+    var cursor = 0;
+    for (final match in matches) {
+      if (match.start > cursor) {
+        children.add(
+          SelectableText(
+            text.substring(cursor, match.start),
+            style: TextStyle(color: color),
+          ),
+        );
+      }
+      final language = match.group(1)?.trim() ?? '';
+      final code = match.group(2) ?? '';
+      children.add(
+        _CodeBlock(
+          language: language,
+          code: code,
+          onCopy: () => onCopyCode(code),
+        ),
+      );
+      cursor = match.end;
+    }
+    if (cursor < text.length) {
+      children.add(
+        SelectableText(text.substring(cursor), style: TextStyle(color: color)),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+  }
+}
+
+class _CodeBlock extends StatelessWidget {
+  const _CodeBlock({
+    required this.language,
+    required this.code,
+    required this.onCopy,
+  });
+
+  final String language;
+  final String code;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Text(
+                    language.isEmpty ? 'Code' : language,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Copy code',
+                onPressed: onCopy,
+                icon: const Icon(Icons.content_copy, size: 16),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: SelectableText.rich(
+              key: const Key('agent_chat_code_block'),
+              TextSpan(children: _highlight(code, theme.colorScheme.onSurface)),
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<TextSpan> _highlight(String source, Color foreground) {
+    final keyword = RegExp(
+      r'\b(?:class|const|final|function|fun|if|else|for|while|return|import|from|async|await|var|let|def|true|false|null)\b',
+    );
+    final spans = <TextSpan>[];
+    var cursor = 0;
+    for (final match in keyword.allMatches(source)) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: source.substring(cursor, match.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: TextStyle(color: Colors.lightBlue.shade300),
+        ),
+      );
+      cursor = match.end;
+    }
+    if (cursor < source.length) {
+      spans.add(TextSpan(text: source.substring(cursor)));
+    }
+    if (spans.isEmpty) {
+      spans.add(
+        TextSpan(
+          text: source,
+          style: TextStyle(color: foreground),
+        ),
+      );
+    }
+    return spans;
   }
 }
 
