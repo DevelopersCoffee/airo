@@ -4861,16 +4861,21 @@ mod tests {
         let mut bytes = Vec::new();
         RecoveryPackage::export_to(&vault, &seed, &mut bytes).unwrap();
 
+        // `expect_err` would require `Debug` on the Ok type, and `VaultPayload`
+        // deliberately has none — Global Constraints forbid `Debug` on any
+        // secret-bearing type, because it prints key bytes into panic messages
+        // and logs. Matched rather than unwrapped so the test cannot drag a
+        // `Debug` derive onto the payload to make itself compile.
         for cut in [1usize, 64, bytes.len() / 10, bytes.len() / 2] {
             let truncated = &bytes[..bytes.len() - cut];
-            let err = RecoveryPackage::from_bytes(truncated)
-                .and_then(|p| p.decrypt(&seed))
-                .expect_err("a truncated package must not open");
-            assert!(
-                matches!(err, VaultError::PackageTruncated { .. }),
-                "cut {cut}: expected PackageTruncated, got {err:?} — \
-                 indistinguishable from corruption"
-            );
+            match RecoveryPackage::from_bytes(truncated).and_then(|p| p.decrypt(&seed)) {
+                Err(VaultError::PackageTruncated { .. }) => {}
+                Err(other) => panic!(
+                    "cut {cut}: expected PackageTruncated, got {other:?} — \
+                     indistinguishable from corruption"
+                ),
+                Ok(_) => panic!("cut {cut}: a truncated package must not open"),
+            }
         }
     }
 

@@ -57,6 +57,10 @@ revision being visible.
 
 ## Status
 
-**Empty.** No gate has been executed. `Bash` is unavailable, so no evidence
-exists yet; the directory and its contract were created first so that the
+**Populated 2026-07-30.** Nine captures from the first execution, immutable from
+here. The directory and its contract were created *before* any gate ran, so the
 structure could not be shaped by the outcome it records.
+
+Headline: `G0.7` 5 passed / 17 FAILED · `G0.8` 3 passed / 6 FAILED · mutation
+regressions detect 3 of 4 controls, with trailer AAD still undetected · the
+path-correct truncation test fails on the byte path exactly as predicted.

@@ -1,8 +1,64 @@
 # G0.7 / G0.8 — first-execution record
 
-Status: **NOT YET EXECUTED.** No gate in this document has been run. Every
-"Actual" below is deliberately empty; nothing here is a prediction rendered as
-an observation.
+Status: **EXECUTED 2026-07-30.** rustc 1.96.1 (31fca3adb 2026-06-26), Apple M1.
+Raw captures in `evidence/9A/`, append-only. Every figure below is read from
+those files.
+
+## Result
+
+| Gate | Expected | Actual | Capture |
+|---|---|---|---|
+| `G0.7` claim assertions | FAIL | **5 passed, 17 FAILED** of 22 | `g0.7-first.txt` |
+| `G0.8` consumer probe | FAIL both directions | **3 passed, 6 FAILED** — 4 `DENY` breaches, 2 `ALLOW` gaps | `g0.8-first.txt` |
+| `mut_*` on real crate | 4 pass | **89 passed, 0 failed, 2 ignored** | `mut-real.txt` |
+| mutant: frame AAD (symmetric) | ≥1 fail | **exactly 1** — `mut_each_frame_is_bound_to_the_header_aad` | `mut-frame-aad.txt` |
+| mutant: nonce pinning | ≥1 fail | **2** — both nonce tests | `mut-nonce-pinning.txt` |
+| mutant: position equality | ≥1 fail | **exactly 1** — `mut_frame_index_must_equal_its_position` | `mut-position.txt` |
+| mutant: trailer AAD (symmetric) | ≥1 fail | **0 — STILL UNDETECTED** | `mut-trailer-aad.txt` |
+| path-correct truncation | fails when run | **FAILED**: `cut 1: expected PackageTruncated, got SerializationFailed` | `truncation-path-correct.txt` |
+| `G0.3`–`G0.5` | green | 0 errors, 89 tests | `g0.3-g0.5-first.txt` |
+
+**The gates work.** `G0.7` named all seven Revision 8 claim-drift instances with
+file and line. `G0.8` failed in both directions on one run, which is the case a
+one-directional probe cannot express: the 64-byte master seed is reachable
+(`DENY` breach) *and* the device-trust journey is uncallable (`ALLOW` gap).
+
+## Findings produced by the first execution itself
+
+**1. Trailer AAD still has no failing form.** `chief-security-officer` predicted
+this exactly — their mutation table records "Header AAD on the **trailer**: 85
+pass → after I add 4 tests, *still 0*." Confirmed: symmetric removal of the
+header AAD from the trailer leaves **89/89 green**. The four new regressions
+close three of four controls, not four. **A fifth mutation regression is owed**,
+and this is the honest gap rather than a rounded-up result.
+
+**2. My frame-AAD mutant was wrong the first time, and the error is instructive.**
+I removed the AAD from `decrypt` only. That failed 14 tests — trivially caught,
+and *not* the dangerous mutation. Removing it from **both** sides stays
+self-consistent and fails exactly one. An asymmetric mutant tests nothing;
+symmetric removal is the state Revision 8 actually shipped.
+
+**3. My path-correct test would have forced `Debug` onto a secret-bearing type.**
+It used `.expect_err()`, which requires `Debug` on the `Ok` variant — and
+`VaultPayload` deliberately has none, because Global Constraints forbid `Debug`
+on secrets. The compiler's suggestion was *"add `#[derive(Debug)]` to
+`VaultPayload`"*, which would have printed key bytes into panic messages. Fixed
+by matching instead of unwrapping. Permitted under the scope freeze as an
+execution blocker, and disclosed here rather than folded in silently.
+
+## What the 17 `G0.7` failures are
+
+`A01` `seed.rs:29` `pub fn as_bytes(&self) -> &[u8; 64]` · `A02` `identity.rs:77`
+`pub fn sign` · `A03` `device.rs:45` · `A04` no NFC handling anywhere · `A05`–`A08`
+four AAD-covered fields still `pub` · `A10` four surviving per-byte `format!`
+sites including `hex_lower` on every certificate verification · `A11`
+`device.rs:80` unchecked `as u32` · `A12` two unchecked `*index += 1` on the
+nonce path · `A16` `aggregate.rs:383` restore re-implements admission · `A17`
+nonce unauthenticated · `A18` `head_epoch` re-derived · `A19` stale
+`allow(dead_code)` · `A20` `pub(super)` resolving crate-wide · `A21` caller
+ledger unvalidated.
+
+Passing: `A09`, `A13`–`A15`, `A22`.
 
 Purpose: Revision 9A introduced four validation layers against an
 implementation that Rust Architecture and Chief Security Officer had already
@@ -95,10 +151,13 @@ output.
 
 | Component | Written | Executed |
 |---|:-:|:-:|
-| `G0.7` claim assertions | ✓ | |
-| `G0.8` external-consumer probe | ✓ | |
-| Mutation regressions (`mut_*` ×4) | ✓ | |
-| Path-correct truncation test | ✓ | |
+| `G0.7` claim assertions | ✓ | ✓ |
+| `G0.8` external-consumer probe | ✓ | ✓ |
+| Mutation regressions (`mut_*` ×4) | ✓ | ✓ |
+| Path-correct truncation test | ✓ | ✓ |
+
+All four executed. **Revision 9A is complete.** One gap it produced rather than
+closed: the trailer-AAD control still has no failing form, owed in 9B.
 
 ---
 
@@ -114,9 +173,7 @@ If `G0.7` reports **green**, the gate is broken and that is the finding.
 
 ### First execution
 
-```
-NOT YET RUN
-```
+See `evidence/9A/g0.7-first.txt`. **5 passed, 17 FAILED.**
 
 ### Subsequent executions
 
@@ -133,9 +190,7 @@ the same time.
 
 ### First execution
 
-```
-NOT YET RUN
-```
+See `evidence/9A/g0.8-first.txt`. **3 passed, 6 FAILED** — 4 `DENY` breaches, 2 `ALLOW` gaps.
 
 ---
 
@@ -154,15 +209,11 @@ half alone would be satisfied by tests that assert nothing.
 
 ### First execution — real crate
 
-```
-NOT YET RUN
-```
+`evidence/9A/mut-real.txt`. **89 passed, 0 failed, 2 ignored.**
 
 ### First execution — per-mutant
 
-```
-NOT YET RUN
-```
+frame AAD → 1 fail · nonce pinning → 2 · position → 1 · **trailer AAD → 0, still undetected.**
 
 ---
 
@@ -175,6 +226,4 @@ as the reason until the authenticated frame count moves into the header.
 
 ### First execution
 
-```
-NOT YET RUN
-```
+`evidence/9A/truncation-path-correct.txt`. **FAILED**, as designed: `cut 1: expected PackageTruncated, got SerializationFailed`.
