@@ -142,12 +142,10 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           _MindActionCard(
             title: 'Mobile Actions & Tiny Garden',
             subtitle:
-                'Prepare offline FunctionGemma actions and a playful garden.',
+                'Try safe device commands and a playful natural-language garden.',
             icon: Icons.local_florist_outlined,
             color: Colors.teal.shade700,
-            onTap: () => context.push(
-              '/mind/chat?prefill=Use%20the%20offline%20Mobile%20Actions%20model%20for%20this%20approved%20device%20task.',
-            ),
+            onTap: () => context.push('/mind/mobile-actions'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(

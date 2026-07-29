@@ -19,6 +19,7 @@ import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
 import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
+import '../../features/mind/presentation/screens/mobile_actions_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -276,6 +277,11 @@ class AppRouter {
                       path: 'skills',
                       name: 'mind_agent_skills',
                       builder: (context, state) => const AgentSkillsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'mobile-actions',
+                      name: 'mind_mobile_actions',
+                      builder: (context, state) => const MobileActionsScreen(),
                     ),
                   ],
                 ),
