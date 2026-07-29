@@ -7,7 +7,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Stable entry point used by generated Flutter bindings to verify the v1 API.
 Future<RuntimeApiVersion> runtimeApiVersion() =>
@@ -57,6 +57,57 @@ enum ComputeAccelerator {
 
 /// Priority used by the inference scheduler.
 enum ExecutionPriority { interactive, foreground, background, maintenance }
+
+class ExecutionTrace {
+  const ExecutionTrace({required this.entries});
+  final List<ExecutionTraceEntry> entries;
+
+  @override
+  int get hashCode => entries.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExecutionTrace &&
+          runtimeType == other.runtimeType &&
+          entries == other.entries;
+}
+
+class ExecutionTraceEntry {
+  const ExecutionTraceEntry({
+    required this.sequence,
+    required this.event,
+    required this.elapsedMs,
+  });
+  final int sequence;
+  final ExecutionTraceEvent event;
+  final BigInt elapsedMs;
+
+  @override
+  int get hashCode => sequence.hashCode ^ event.hashCode ^ elapsedMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExecutionTraceEntry &&
+          runtimeType == other.runtimeType &&
+          sequence == other.sequence &&
+          event == other.event &&
+          elapsedMs == other.elapsedMs;
+}
+
+/// Stable lifecycle and execution trace events shared by every backend.
+enum ExecutionTraceEvent {
+  initializing,
+  ready,
+  generationStarted,
+  firstToken,
+  streaming,
+  generationFinished,
+  generationFailed,
+  shuttingDown,
+  stopped,
+}
 
 /// Immutable backend-neutral intermediate representation.
 class InferenceIr {
@@ -245,3 +296,41 @@ enum RuntimeHealthState {
 
 /// Stable runtime identifiers.
 enum RuntimeId { mock, liteRt, llamaCpp, mlx, onnx }
+
+class TelemetryEvent {
+  const TelemetryEvent({
+    required this.sequence,
+    required this.event,
+    required this.elapsedMs,
+    this.error,
+  });
+  final int sequence;
+  final TelemetryEventKind event;
+  final BigInt elapsedMs;
+  final RuntimeErrorCode? error;
+
+  @override
+  int get hashCode =>
+      sequence.hashCode ^ event.hashCode ^ elapsedMs.hashCode ^ error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TelemetryEvent &&
+          runtimeType == other.runtimeType &&
+          sequence == other.sequence &&
+          event == other.event &&
+          elapsedMs == other.elapsedMs &&
+          error == other.error;
+}
+
+/// Typed telemetry event kinds. Emission is intentionally non-blocking.
+enum TelemetryEventKind {
+  runtimeStarted,
+  runtimeReady,
+  generationStarted,
+  firstToken,
+  generationFinished,
+  generationFailed,
+  runtimeStopped,
+}
