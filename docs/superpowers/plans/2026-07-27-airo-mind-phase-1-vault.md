@@ -32,18 +32,19 @@
 > | Phase | Status |
 > |---|---|
 > | A — mechanical propagation | ✅ `G0` verified |
-> | B — `ADR-0017` implementation | ⏳ |
+> | B — `ADR-0017` implementation | ✅ `G0` verified |
 > | Security re-review | ⏳ |
 > | Rust Architecture re-review | ⏳ |
 >
-> **Phase A, `G0` verified** — rustc 1.96.1 (31fca3adb 2026-06-26):
+> **`G0` verified after each phase** — rustc 1.96.1 (31fca3adb 2026-06-26):
 >
 > ```
-> G0.1  extraction fidelity                        PASS
-> G0.3  cargo check --all-targets                  0 errors
-> G0.4  cargo test --lib      77 passed, 0 failed, 1 ignored
-> G0.5  cargo clippy --all-targets -- -D warnings  0 errors
-> RA-3  OsRng outside random.rs                    0   (was 3)
+>                                                  Phase A    Phase B
+> G0.1  extraction fidelity                        PASS       PASS
+> G0.3  cargo check --all-targets                  0 errors   0 errors
+> G0.4  cargo test --lib                           77 pass    84 pass
+> G0.5  cargo clippy --all-targets -- -D warnings  0 errors   0 errors
+> RA-3  OsRng outside random.rs                    0 (was 3)  0
 > ```
 >
 > **Proof ledger.** If a line below disappeared six months from now, the
@@ -71,8 +72,34 @@
 > fewer representation of an identity, one fewer admission path, one fewer
 > encoding, one fewer unnamed obligation. None of them adds a capability.
 >
-> **Phase B rows are added when `ADR-0017` lands.** Until then this is a
-> checkpoint, not a revision.
+> **Phase B — `ADR-0017`:**
+>
+> | Change | Evidence | Specific evidence | Frozen surface |
+> |---|---|---|---|
+> | Framed package format: bounded frames, per-frame nonce, sealed trailer | Benchmark | `V5` 10.7×–21.6× against a 4× budget, flat across sizes; `V7` +849% in the ledger dimension | **Freeze §4**, `ADR-0017` |
+> | `PackageTruncated` distinct from `DecryptionFailed` | Benchmark → design | A truncated package previously failed AEAD identically to a corrupt one, so the user was told their backup was corrupt | `ADR-0017` |
+> | `to_payload` **deleted** | Benchmark | Deep-cloned ledger and certificates purely to serialize: 26% of export peak RSS. Framing left it with no caller | **I8** |
+> | `RevocationLedger::entries()` borrowing iterator, `absorb()` batch | Benchmark | `all_revoked()` materialized the whole set; `apply_revocations` called it twice, ~38 MB each at 500k | **I8** |
+> | Base64 on `Wrapping.nonce` / `.ciphertext` | Benchmark | 976 B → 635 B at 3 wrappings; per content object, so it multiplies where the Vault no longer does | **Freeze §4** |
+> | `ContentKey::seal` / `open` | Review | `RA` Q4: `error[E0624]: method as_bytes is private` — the returned key was inert outside the crate | **C5** — no key material to the consumer, a capability instead |
+> | `SealedEnvelope`; `open_envelope` is the only parse route | Review | `RA` Q4 probe forged an envelope for content the Vault never minted — content with no revocation record, unshreddable | **C7** |
+> | Only an explicit destroy moves the epoch | — | `ADR-0017`: retention expiry is derived from logged operations, so recording it would cost 137.6 B forever per expired object | `ADR-0017`, **C1** |
+>
+> ### Hypotheses revised by evidence
+>
+> Not a defect list. Three places where executable validation changed the
+> design understanding rather than confirming it — which is the argument for
+> running the gate before writing the ledger instead of after.
+>
+> | Hypothesis | What the evidence showed |
+> |---|---|
+> | The trailer digest detects frame removal | It does not — the **count** check runs first and returns `PackageTruncated`. Frame integrity was already covered three ways (nonce-pinned index, position equals index, header AAD). The digest is defence in depth, not the load-bearing check. Found by writing the failing form and watching it fail |
+> | `SEC-1` was applied | `error[E0624]: method 'decrypt' is private` — `restore.rs` was still reaching for key material. The boundary became real only when the compiler enforced it, and the way I learned was my own code ceasing to compile |
+> | `push_len_prefixed` had moved; `purge_*` were in use | Dead-code lints proved both were documented and not done. Claim drift, twice, in a revision written specifically to eliminate it |
+>
+> The third row is the uncomfortable one: the Evidence Rule was written to stop
+> exactly this, and it did not — `G0` did. That is the asymmetry `Freeze §`
+> already records, observed rather than predicted.
 >
 > **Revision 7 (2026-07-28). THE FIRST REVISION TO PASS G0.**
 >
@@ -427,6 +454,13 @@ pub enum VaultError {
     #[error("device `{0}` has been revoked")]
     DeviceRevoked(String),
 
+    /// `ADR-0017`. Distinct from `DecryptionFailed` because the whole point of
+    /// the sealed trailer is that a truncated package is diagnosable: it says
+    /// how many frames survived, so a partial restore can be offered instead
+    /// of "your backup is corrupt".
+    #[error("recovery package is truncated: expected {expected} frames, found {found}")]
+    PackageTruncated { expected: u32, found: u32 },
+
     /// `SEC-14`. Identity retirement is irreversible — a destroyed context id
     /// can never be re-created. The user-visible name may be reused under a
     /// new id; the identity may not.
@@ -477,6 +511,7 @@ mod tests {
             ("UntrustedCertificate", "aggregate.rs"),
             ("DeviceRevoked", "aggregate.rs"),
             ("ContextRetired", "aggregate.rs"),
+            ("PackageTruncated", "package.rs"),
         ];
         assert!(CONSTRUCTED_IN.iter().all(|(_, site)| !site.is_empty()));
     }
@@ -603,8 +638,8 @@ pub use vault::{
     // Restore path — unreachable in revision 7 without the next two
     SealedRestore, AppliedRestore, RevocationSource, RevocationProvenance,
     PurgeDirective, UnlinkOutcome, RevocationSubject,
-    // Content path
-    ContentEnvelope, ContentKey,
+    // Content path — opaque handles
+    ContentEnvelope, ContentKey, SealedEnvelope,
     VaultError,
 };
 ```
@@ -2130,6 +2165,8 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+use zeroize::Zeroizing;
+
 use super::domain;
 use super::encoding::push_len_prefixed;
 use super::error::VaultError;
@@ -2211,11 +2248,27 @@ impl ContextKey {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Wrapping {
     context_id: String,
+    // `ADR-0017`. Decimal arrays cost ~3.68× raw against base64's 1.33×;
+    // measured, a 3-wrapping envelope is 976 B decimal against 635 B hex. This
+    // is per content object, so it multiplies by content count where the Vault
+    // no longer does — and it freezes the moment #1214 writes the first one.
+    #[serde(with = "super::encoding::base64_bytes")]
     nonce: Vec<u8>,
+    #[serde(with = "super::encoding::base64_bytes")]
     ciphertext: Vec<u8>,
 }
 
 /// All wrappings for one content object.
+///
+/// **No `Deserialize`.** `envelope.rs` claimed "the Vault is the only door",
+/// and `#[derive(Deserialize)]` was a second one, open to every consumer: a
+/// probe built a forged envelope for content the Vault never minted, which is
+/// content the Vault has no revocation record for and therefore content that
+/// can never be shredded (`RA` Q4). Parsing now goes through
+/// `Vault::open_envelope`, which is inside the door. The derive stays — serde
+/// needs it — but `SealedEnvelope` wraps opaque bytes, so no consumer holds a
+/// shape it can hand to `serde_json` directly, and `open_envelope` applies the
+/// revocation check that a bare derive skipped.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContentEnvelope {
     // Private: it is bound into the wrapping AAD. `envelope.content_id = ...`
@@ -2223,6 +2276,58 @@ pub struct ContentEnvelope {
     // (rust-architect M5).
     content_id: String,
     wrappings: Vec<Wrapping>,
+}
+
+/// A serialized envelope. Opaque bytes; only `Vault::open_envelope` parses it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SealedEnvelope(#[serde(with = "super::encoding::base64_bytes")] Vec<u8>);
+
+impl SealedEnvelope {
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+}
+
+impl ContentKey {
+    /// Encrypts a content object under this key.
+    ///
+    /// `RA` Q4: `add_content` returned a `ContentKey` whose every method was
+    /// `pub(crate)`, so the consumer received an object it could do nothing
+    /// with — `error[E0624]: method as_bytes is private`. The fix is not to
+    /// publish the bytes; it is to publish the capability. C5's "no encryption
+    /// primitives, no key material" applied honestly means the caller gets an
+    /// object that encrypts, never bytes it must encrypt with.
+    pub fn seal(&self, plaintext: &[u8]) -> Result<Vec<u8>, VaultError> {
+        let nonce = random_nonce()?;
+        let cipher = XChaCha20Poly1305::new(self.as_bytes().into());
+        let mut out = nonce.to_vec();
+        out.extend_from_slice(
+            &cipher
+                .encrypt(XNonce::from_slice(&nonce), plaintext)
+                .map_err(|_| VaultError::SerializationFailed)?,
+        );
+        Ok(out)
+    }
+
+    /// Decrypts a content object sealed with `seal`.
+    ///
+    /// Returns `Zeroizing` because the plaintext is user content.
+    pub fn open(&self, sealed: &[u8]) -> Result<Zeroizing<Vec<u8>>, VaultError> {
+        if sealed.len() < 24 {
+            return Err(VaultError::DecryptionFailed);
+        }
+        let (nonce, body) = sealed.split_at(24);
+        let cipher = XChaCha20Poly1305::new(self.as_bytes().into());
+        Ok(Zeroizing::new(
+            cipher
+                .decrypt(XNonce::from_slice(nonce), body)
+                .map_err(|_| VaultError::DecryptionFailed)?,
+        ))
+    }
 }
 
 // `pub(crate)` throughout. Minting keys or building envelopes outside the
@@ -2527,7 +2632,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod envelope;
 
-pub use envelope::{ContentEnvelope, ContentKey};
+pub use envelope::{ContentEnvelope, ContentKey, SealedEnvelope};
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2674,6 +2779,29 @@ pub struct RevocationLedger {
 impl RevocationLedger {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Borrowing iterator for framed export. `ADR-0017`.
+    ///
+    /// Clones per entry as it goes, so peak is `O(FRAME_ENTRIES)` rather than
+    /// `O(ledger)`. `all_revoked()` materializes the whole set and is used on
+    /// the restore path, where `apply_revocations` called it **twice** — two
+    /// full `Vec<RevocationSubject>` of cloned strings, ~38 MB each at 500k
+    /// entries.
+    pub(crate) fn entries(&self) -> impl Iterator<Item = (RevocationSubject, u64)> + '_ {
+        self.entries.iter().map(|(s, e)| (s.clone(), *e))
+    }
+
+    /// Absorbs a decoded batch during framed restore. `ADR-0017`.
+    ///
+    /// Fail-closed like `merge`: the higher epoch wins, so a batch can only
+    /// ever revoke more. `head_epoch` tracks the maximum seen.
+    pub(crate) fn absorb(&mut self, entries: Vec<(RevocationSubject, u64)>) {
+        for (subject, epoch) in entries {
+            let slot = self.entries.entry(subject).or_insert(epoch);
+            *slot = (*slot).max(epoch);
+            self.head_epoch = self.head_epoch.max(epoch);
+        }
     }
 
     /// Records a revocation and returns the epoch assigned to it.
@@ -2979,7 +3107,7 @@ of this into `mod.rs`, which the File Structure block forbids):
 use std::collections::BTreeMap;
 
 use super::device::DeviceCertificate;
-use super::envelope::{ContentEnvelope, ContentKey, ContextKey};
+use super::envelope::{ContentEnvelope, ContentKey, ContextKey, SealedEnvelope};
 use super::error::VaultError;
 use super::identity::RootPublicKey;
 use super::package::KeyBytes;
@@ -3176,6 +3304,29 @@ impl Vault {
             .get(context_id)
             .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?;
         envelope.add_wrapping(&content_key, context_id, target_key)
+    }
+
+    /// Serializes an envelope. `RA` Q4 — the only way out.
+    pub fn seal_envelope(&self, envelope: &ContentEnvelope) -> Result<SealedEnvelope, VaultError> {
+        Ok(SealedEnvelope::from_bytes(
+            serde_json::to_vec(envelope).map_err(|_| VaultError::SerializationFailed)?,
+        ))
+    }
+
+    /// Parses an envelope. **The only way in**, replacing the `Deserialize`
+    /// derive that let any consumer forge one for content the Vault never
+    /// minted — content with no revocation record, which can never be
+    /// shredded.
+    ///
+    /// Fails closed on revoked content: a stored envelope for something since
+    /// destroyed does not come back through this door.
+    pub fn open_envelope(&self, sealed: &SealedEnvelope) -> Result<ContentEnvelope, VaultError> {
+        let envelope: ContentEnvelope = serde_json::from_slice(sealed.as_bytes())
+            .map_err(|_| VaultError::SerializationFailed)?;
+        if self.revocations.is_content_revoked(envelope.content_id()) {
+            return Err(VaultError::ContentRevoked(envelope.content_id().to_string()));
+        }
+        Ok(envelope)
     }
 
     /// Removes one context link. Does not destroy anything.
@@ -3484,7 +3635,7 @@ use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use hkdf::Hkdf;
 use serde::{Deserialize, Serialize};
-use sha2::Sha512;
+use sha2::{Digest, Sha256, Sha512};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::domain;
@@ -3493,7 +3644,7 @@ use super::random::random_nonce;
 use super::identity::{RootIdentity, RootPublicKey};
 use super::error::VaultError;
 use super::restore::SealedRestore;
-use super::revocation::RevocationLedger;
+use super::revocation::{RevocationLedger, RevocationSubject};
 use super::seed::Seed;
 use super::{DeviceCertificate, Vault};
 
@@ -3643,8 +3794,51 @@ pub struct RecoveryPackage {
     // output: `identity_public_key` shipped as `[134,206,47,15,...]`.
     #[serde(with = "super::encoding::base64_bytes")]
     nonce: Vec<u8>,
+
+    /// `ADR-0017` framing. Bounded batches, each sealed independently.
+    frames: Vec<Frame>,
+
+    /// Sealed frame count and running digest. **Not optional** — without it a
+    /// truncated package fails AEAD identically to a corrupt one.
+    #[serde(with = "super::encoding::base64_bytes")]
+    trailer: Vec<u8>,
+}
+
+/// One sealed batch. `ADR-0017`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Frame {
+    index: u32,
     #[serde(with = "super::encoding::base64_bytes")]
     ciphertext: Vec<u8>,
+}
+
+/// Entries per frame. Bounds peak memory during export and restore
+/// independently of ledger size, which is the `ADR-0017` property: `V5`
+/// measured 10.7×–21.6× against a 4× budget on the single-blob format, and the
+/// ratio was flat across sizes, so it was structural.
+const FRAME_ENTRIES: usize = 1024;
+
+/// What a frame carries. Sections are emitted in this order and restore
+/// accepts them in any order, so a future writer may reorder without breaking
+/// readers.
+#[derive(Serialize, Deserialize)]
+enum FrameBody {
+    Root(RootPublicKey),
+    Contexts(Vec<(String, KeyBytes)>),
+    Devices(Vec<DeviceCertificate>),
+    Revocations(Vec<(RevocationSubject, u64)>),
+}
+
+/// Per-frame nonce: the package nonce with its last four bytes replaced by the
+/// frame index.
+///
+/// XChaCha20's nonce is 192 bits, so 160 random bits plus a bounded counter
+/// keeps every frame's nonce distinct under one key without a second KDF. The
+/// trailer uses `u32::MAX`, which `FRAME_ENTRIES` batching cannot reach.
+fn frame_nonce(package_nonce: &[u8; 24], index: u32) -> [u8; 24] {
+    let mut n = *package_nonce;
+    n[20..24].copy_from_slice(&index.to_be_bytes());
+    n
 }
 
 /// # Framing — `ADR-0017`, `Freeze §4`
@@ -3743,6 +3937,12 @@ impl RecoveryPackage {
         Ok(aad)
     }
 
+    /// Streams the Vault into bounded frames. `ADR-0017`.
+    ///
+    /// Sources directly from the Vault rather than from `to_payload`, which
+    /// deep-cloned the ledger and certificates purely to serialize them —
+    /// **26% of export peak RSS, measured.** Peak is now `O(FRAME_ENTRIES)`
+    /// rather than `O(ledger)`.
     pub fn export(vault: &Vault, seed: &Seed) -> Result<Self, VaultError> {
         // Bind at export, not at restore. A mismatched (vault, seed) pair used
         // to produce a perfectly valid package that `SealedRestore::load`
@@ -3751,39 +3951,114 @@ impl RecoveryPackage {
         if *vault.root_public_key() != RootIdentity::from_seed(seed)?.public_key() {
             return Err(VaultError::IdentityMismatch);
         }
-        let payload = vault.to_payload();
-        // `Zeroizing`: this buffer holds every context key in plaintext.
-        let plaintext = Zeroizing::new(
-            serde_json::to_vec(&payload).map_err(|_| VaultError::SerializationFailed)?,
-        );
 
         let mut salt = vec![0u8; 16];
         super::random::fill_random(&mut salt)?;
+        let package_nonce = random_nonce()?;
 
-        // Header is built first, because it is the AAD the ciphertext commits to.
         let mut package = Self {
             format_version: RECOVERY_PACKAGE_FORMAT_VERSION,
-            identity_public_key: payload.root_public_key,
-            revocation_epoch: payload.revocations.head_epoch(),
+            identity_public_key: *vault.root_public_key(),
+            revocation_epoch: vault.revocations().head_epoch(),
             passphrase_used: false,
             kdf_params: BTreeMap::new(),
             kdf_salt: salt,
-            nonce: random_nonce()?.to_vec(),
-            ciphertext: Vec::new(),
+            nonce: package_nonce.to_vec(),
+            frames: Vec::new(),
+            trailer: Vec::new(),
         };
 
-        let nonce_bytes: [u8; 24] = package
-            .nonce
-            .as_slice()
-            .try_into()
-            .map_err(|_| VaultError::SerializationFailed)?;
         let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
-        package.ciphertext = cipher
+        let aad = package.header_aad()?;
+        let mut digest = Sha256::new();
+        let mut index: u32 = 0;
+
+        let seal = |body: &FrameBody,
+                        index: &mut u32,
+                        frames: &mut Vec<Frame>,
+                        digest: &mut Sha256|
+         -> Result<(), VaultError> {
+            // `Zeroizing`: a Contexts frame holds context keys in plaintext.
+            let plain = Zeroizing::new(
+                serde_json::to_vec(body).map_err(|_| VaultError::SerializationFailed)?,
+            );
+            let n = frame_nonce(&package_nonce, *index);
+            let ciphertext = cipher
+                .encrypt(
+                    XNonce::from_slice(&n),
+                    Payload {
+                        msg: plain.as_slice(),
+                        aad: &aad,
+                    },
+                )
+                .map_err(|_| VaultError::SerializationFailed)?;
+            digest.update(&ciphertext);
+            frames.push(Frame {
+                index: *index,
+                ciphertext,
+            });
+            *index += 1;
+            Ok(())
+        };
+
+        seal(
+            &FrameBody::Root(*vault.root_public_key()),
+            &mut index,
+            &mut package.frames,
+            &mut digest,
+        )?;
+
+        // Batched by hand: `Iterator` has no `chunks`, and pulling in
+        // `itertools` for one call on the crypto path needs a governance
+        // scorecard (Constitution §6). `by_ref().take(N)` keeps peak at
+        // `O(FRAME_ENTRIES)`, which is the whole point.
+        let mut contexts = vault.context_entries();
+        loop {
+            let batch: Vec<_> = contexts.by_ref().take(FRAME_ENTRIES).collect();
+            if batch.is_empty() {
+                break;
+            }
+            seal(
+                &FrameBody::Contexts(batch),
+                &mut index,
+                &mut package.frames,
+                &mut digest,
+            )?;
+        }
+        for chunk in vault.trusted_devices().chunks(FRAME_ENTRIES) {
+            seal(
+                &FrameBody::Devices(chunk.to_vec()),
+                &mut index,
+                &mut package.frames,
+                &mut digest,
+            )?;
+        }
+        let mut revocations = vault.revocations().entries();
+        loop {
+            let batch: Vec<_> = revocations.by_ref().take(FRAME_ENTRIES).collect();
+            if batch.is_empty() {
+                break;
+            }
+            seal(
+                &FrameBody::Revocations(batch),
+                &mut index,
+                &mut package.frames,
+                &mut digest,
+            )?;
+        }
+
+        // Trailer last, over every frame ciphertext in order. A truncated file
+        // loses frames and the count stops matching; a corrupted one fails
+        // AEAD. Distinguishable, which is the `ADR-0017` requirement.
+        let mut trailer_plain = Vec::with_capacity(36);
+        trailer_plain.extend_from_slice(&index.to_be_bytes());
+        trailer_plain.extend_from_slice(&digest.finalize());
+        package.trailer = cipher
             .encrypt(
-                XNonce::from_slice(&nonce_bytes),
+                XNonce::from_slice(&frame_nonce(&package_nonce, u32::MAX)),
                 Payload {
-                    msg: plaintext.as_slice(),
-                    aad: &package.header_aad()?,
+                    msg: &trailer_plain,
+                    aad: &aad,
                 },
             )
             .map_err(|_| VaultError::SerializationFailed)?;
@@ -3822,24 +4097,92 @@ impl RecoveryPackage {
     /// `from_payload` rather than becoming the primary control.
     fn decrypt(&self, seed: &Seed) -> Result<VaultPayload, VaultError> {
         self.check_supported()?;
-        let nonce_bytes: [u8; 24] = self
+        let package_nonce: [u8; 24] = self
             .nonce
             .as_slice()
             .try_into()
             .map_err(|_| VaultError::DecryptionFailed)?;
         let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
-        let plaintext = Zeroizing::new(
+        let aad = self.header_aad()?;
+
+        // Trailer first. It states how many frames should be here, so
+        // truncation is detected before any frame is opened, and a truncated
+        // package reports truncation rather than failing like a corrupt one.
+        // `ADR-0017`.
+        let trailer = Zeroizing::new(
             cipher
                 .decrypt(
-                    XNonce::from_slice(&nonce_bytes),
+                    XNonce::from_slice(&frame_nonce(&package_nonce, u32::MAX)),
                     Payload {
-                        msg: self.ciphertext.as_slice(),
-                        aad: &self.header_aad()?,
+                        msg: self.trailer.as_slice(),
+                        aad: &aad,
                     },
                 )
                 .map_err(|_| VaultError::DecryptionFailed)?,
         );
-        serde_json::from_slice(&plaintext).map_err(|_| VaultError::SerializationFailed)
+        if trailer.len() != 36 {
+            return Err(VaultError::SerializationFailed);
+        }
+        let expected_count = u32::from_be_bytes(
+            trailer[0..4]
+                .try_into()
+                .map_err(|_| VaultError::SerializationFailed)?,
+        );
+        let expected_count_usize =
+            usize::try_from(expected_count).map_err(|_| VaultError::SerializationFailed)?;
+        if self.frames.len() != expected_count_usize {
+            return Err(VaultError::PackageTruncated {
+                expected: expected_count,
+                found: u32::try_from(self.frames.len()).unwrap_or(u32::MAX),
+            });
+        }
+
+        let mut digest = Sha256::new();
+        let mut root: Option<RootPublicKey> = None;
+        let mut context_keys = BTreeMap::new();
+        let mut device_certificates = Vec::new();
+        let mut revocations = RevocationLedger::new();
+
+        for (position, frame) in self.frames.iter().enumerate() {
+            // A reordered or renumbered frame is a reordered nonce, so this is
+            // not merely a sanity check: it pins each ciphertext to the nonce
+            // it was sealed under.
+            if usize::try_from(frame.index).map_err(|_| VaultError::SerializationFailed)?
+                != position
+            {
+                return Err(VaultError::SerializationFailed);
+            }
+            digest.update(&frame.ciphertext);
+            let plain = Zeroizing::new(
+                cipher
+                    .decrypt(
+                        XNonce::from_slice(&frame_nonce(&package_nonce, frame.index)),
+                        Payload {
+                            msg: frame.ciphertext.as_slice(),
+                            aad: &aad,
+                        },
+                    )
+                    .map_err(|_| VaultError::DecryptionFailed)?,
+            );
+            let body: FrameBody =
+                serde_json::from_slice(&plain).map_err(|_| VaultError::SerializationFailed)?;
+            match body {
+                FrameBody::Root(key) => root = Some(key),
+                FrameBody::Contexts(entries) => context_keys.extend(entries),
+                FrameBody::Devices(certs) => device_certificates.extend(certs),
+                FrameBody::Revocations(entries) => revocations.absorb(entries),
+            }
+        }
+
+        if digest.finalize().as_slice() != &trailer[4..36] {
+            return Err(VaultError::SerializationFailed);
+        }
+        Ok(VaultPayload {
+            root_public_key: root.ok_or(VaultError::SerializationFailed)?,
+            context_keys,
+            device_certificates,
+            revocations,
+        })
     }
 
     /// Rejects anything this build cannot open correctly.
@@ -3959,7 +4302,7 @@ mod tests {
     fn tampered_ciphertext_is_rejected() {
         let (vault, seed) = seeded_vault();
         let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.ciphertext[0] ^= 0xff;
+        package.frames[0].ciphertext[0] ^= 0xff;
 
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
     }
@@ -3993,6 +4336,145 @@ mod tests {
         let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
         package.kdf_salt[0] ^= 0xff;
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
+    }
+
+    /// `RA` Q4 in failing form: the round trip a content store performs, and
+    /// the reason `ContentKey` is now a capability rather than a byte holder.
+    #[test]
+    fn a_content_key_seals_and_opens_without_ever_exposing_bytes() {
+        let (mut vault, _) = seeded_vault();
+        let (key, _envelope) = vault.add_content("note-2", &["inbox"]).unwrap();
+        let sealed = key.seal(b"the quick brown fox").unwrap();
+        assert_ne!(sealed.as_slice(), b"the quick brown fox");
+        assert_eq!(key.open(&sealed).unwrap().as_slice(), b"the quick brown fox");
+        assert!(key.open(b"too short").is_err());
+    }
+
+    /// The envelope door: a stored envelope for content since destroyed does
+    /// not come back in. Before this, `#[derive(Deserialize)]` let any
+    /// consumer parse — or forge — one directly.
+    #[test]
+    fn open_envelope_refuses_destroyed_content() {
+        let (mut vault, _) = seeded_vault();
+        let (_key, envelope) = vault.add_content("note-3", &["inbox"]).unwrap();
+        let sealed = vault.seal_envelope(&envelope).unwrap();
+        assert!(vault.open_envelope(&sealed).is_ok());
+
+        let _directive = vault.destroy_content("note-3").unwrap();
+        assert!(matches!(
+            vault.open_envelope(&sealed),
+            Err(VaultError::ContentRevoked(id)) if id == "note-3"
+        ));
+    }
+
+    /// `ADR-0017`: retention-class expiry is derived from logged operations,
+    /// so it adds no ledger entry. An explicit destroy is a user decision no
+    /// replica can compute and must be recorded; an expiry is a function of
+    /// data every replica already holds, and recording it would cost 137.6 B
+    /// forever per expired object.
+    ///
+    /// Phase 1 has no retention engine, so the failing form available here is
+    /// the invariant it must not violate: only `destroy_*` moves the epoch.
+    #[test]
+    fn only_an_explicit_destroy_moves_the_revocation_epoch() {
+        let (mut vault, _) = seeded_vault();
+        let before = vault.revocations().head_epoch();
+
+        // Everything short of a destroy leaves the ledger alone.
+        vault.add_context("archive").unwrap();
+        let (_k, mut envelope) = vault.add_content("note-4", &["inbox"]).unwrap();
+        vault.link_content("archive", &mut envelope).unwrap();
+        vault.unlink_content("inbox", &mut envelope).unwrap();
+        assert_eq!(vault.revocations().head_epoch(), before);
+
+        let _directive = vault.destroy_content("note-4").unwrap();
+        assert_eq!(vault.revocations().head_epoch(), before + 1);
+    }
+
+    /// `ADR-0017`'s headline property in its failing form: a truncated package
+    /// reports truncation, where before it failed AEAD identically to a
+    /// corrupt one and the user was told their backup was corrupt.
+    #[test]
+    fn truncation_is_distinguishable_from_corruption() {
+        let (vault, seed) = seeded_vault();
+        let full = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(full.frames.len() > 1, "need >1 frame to truncate");
+
+        let mut truncated = full.clone();
+        let expected = u32::try_from(truncated.frames.len()).unwrap();
+        truncated.frames.pop();
+        assert!(matches!(
+            truncated.decrypt(&seed),
+            Err(VaultError::PackageTruncated { expected: e, found: f })
+                if e == expected && f == expected - 1
+        ));
+
+        let mut corrupted = full;
+        corrupted.frames[0].ciphertext[0] ^= 0xff;
+        assert!(matches!(
+            corrupted.decrypt(&seed),
+            Err(VaultError::DecryptionFailed)
+        ));
+    }
+
+    /// Frames are pinned to the nonce they were sealed under, so reordering
+    /// or renumbering fails rather than silently yielding a different vault.
+    #[test]
+    fn reordered_frames_are_rejected() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.frames.len() > 1);
+        package.frames.swap(0, 1);
+        assert!(package.decrypt(&seed).is_err());
+    }
+
+    /// A frame lifted verbatim from one package into another must not open:
+    /// the header AAD binds it to its own package.
+    #[test]
+    fn a_frame_does_not_transplant_between_packages() {
+        let (vault_a, seed_a) = seeded_vault();
+        let mut a = RecoveryPackage::export(&vault_a, &seed_a).unwrap();
+        let b = RecoveryPackage::export(&vault_a, &seed_a).unwrap();
+        // Same vault, same seed, different random package nonce and salt.
+        a.frames[0] = b.frames[0].clone();
+        assert!(matches!(a.decrypt(&seed_a), Err(VaultError::DecryptionFailed)));
+    }
+
+    /// Dropping a frame from the middle and renumbering the rest is still
+    /// truncation: the count is what catches it, not the digest.
+    ///
+    /// This test originally asserted the digest caught this case, and failed —
+    /// the count check runs first and returns `PackageTruncated`. Recorded
+    /// rather than quietly re-pointed, because it changes what the trailer's
+    /// digest is *for*.
+    ///
+    /// **The digest is defence in depth, not the load-bearing check.** Frame
+    /// integrity is already covered three ways: the index is pinned to the
+    /// nonce the frame was sealed under, the position must equal the index,
+    /// and the header AAD binds every frame to its own package. The digest
+    /// costs 32 bytes once and covers whatever a future writer adds that those
+    /// three do not — it is kept on that basis and not because anything today
+    /// needs it.
+    #[test]
+    fn dropping_a_middle_frame_is_truncation_not_corruption() {
+        let (mut vault, seed) = seeded_vault();
+        // A revocation gives a third section, so there is a genuine middle
+        // frame to drop: Root, Contexts, Revocations.
+        // `PurgeDirective` is `#[must_use]`: derived state must be purged, and
+        // dropping it silently defeats deletion. Bound explicitly even here.
+        let _directive = vault.destroy_content("note-1").unwrap();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert_eq!(package.frames.len(), 3);
+        let expected = u32::try_from(package.frames.len()).unwrap();
+        package.frames.remove(1);
+        for (position, frame) in package.frames.iter_mut().enumerate() {
+            frame.index = u32::try_from(position).unwrap();
+        }
+        assert!(matches!(
+            package.decrypt(&seed),
+            Err(VaultError::PackageTruncated { expected: e, found: f })
+                if e == expected && f == expected - 1
+        ));
     }
 
     #[test]
@@ -4054,18 +4536,21 @@ Add to `rust/airo_mind/src/vault/aggregate.rs`:
 ```rust
 impl Vault {
     /// Serializable interior. Crate-visible: only export and restore use it.
-    pub(crate) fn to_payload(&self) -> super::package::VaultPayload {
-        super::package::VaultPayload {
-            root_public_key: self.root_public_key,
-            context_keys: self
-                .context_keys
-                .iter()
-                .map(|(id, key)| (id.clone(), KeyBytes::new(*key.as_bytes())))
-                .collect(),
-            device_certificates: self.device_certificates.clone(),
-            revocations: self.revocations.clone(),
-        }
+    /// Borrowing iterator for framed export. `ADR-0017`, `PERF`.
+    ///
+    /// `to_payload` below deep-clones the ledger and certificates purely to
+    /// serialize them — 26% of export peak RSS, measured. Framed export walks
+    /// this instead and never materializes a second copy.
+    pub(crate) fn context_entries(&self) -> impl Iterator<Item = (String, KeyBytes)> + '_ {
+        self.context_keys
+            .iter()
+            .map(|(id, key)| (id.clone(), KeyBytes::new(*key.as_bytes())))
     }
+
+    // `to_payload` removed: framed export sources from `context_entries` and
+    // `revocations().entries()` directly. It deep-cloned the ledger and
+    // certificates purely to serialize them — 26% of export peak RSS,
+    // measured — and framing left it with no caller at all.
 }
 ```
 
