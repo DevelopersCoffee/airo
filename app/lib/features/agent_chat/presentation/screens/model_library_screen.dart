@@ -246,35 +246,37 @@ class AssistantModelLibraryState {
         local: true,
       ),
     );
-    addCandidate(
-      AssistantModelCandidate(
-        id: litertGemmaAssistantModelId,
-        name: 'Gemma mobile package',
-        runtime: 'LiteRT-LM local model',
-        description:
-            'Default local package for planning, documents, and medium reasoning.',
-        bestFor: const [
-          AssistantTask.reasoning,
-          AssistantTask.documents,
-          AssistantTask.skills,
-          AssistantTask.chat,
-        ],
-        tags: const ['Local', 'Downloadable', 'Gemma'],
-        privacyLabel: 'Prompt stays on device',
-        sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
-        available: liteRtReady,
-        actionLabel: liteRtReady ? 'Start' : 'Download package',
-        unavailableReason: liteRtReady
-            ? null
-            : 'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL, or install a compatible local model.',
-        local: true,
-        opensModelManager: !liteRtReady,
-        package: balancedPackage,
-        compatibility: balancedPackage == null
-            ? null
-            : compatibilityByModelId[balancedPackage.id],
-      ),
-    );
+    // A catalog entry is not an installed runtime. Do not put a LiteRT card
+    // in the Mind chooser when the device has neither an executable artifact
+    // nor a configured model path. Model Management remains the explicit
+    // place to download/install a package.
+    if (liteRtReady) {
+      addCandidate(
+        AssistantModelCandidate(
+          id: litertGemmaAssistantModelId,
+          name: 'Gemma mobile package',
+          runtime: 'LiteRT-LM local model',
+          description:
+              'Default local package for planning, documents, and medium reasoning.',
+          bestFor: const [
+            AssistantTask.reasoning,
+            AssistantTask.documents,
+            AssistantTask.skills,
+            AssistantTask.chat,
+          ],
+          tags: const ['Local', 'Downloadable', 'Gemma'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+          package: balancedPackage,
+          compatibility: balancedPackage == null
+              ? null
+              : compatibilityByModelId[balancedPackage.id],
+        ),
+      );
+    }
     addCandidate(
       AssistantModelCandidate(
         id: geminiCloudAssistantModelId,
@@ -299,12 +301,15 @@ class AssistantModelLibraryState {
       ),
     );
     for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addCandidate(
-        AssistantModelCandidate.fromOfflineModel(
-          await liteRtService.hydrateDownloadedModel(model),
-          compatibilityByModelId: compatibilityByModelId,
-        ),
-      );
+      final hydrated = await liteRtService.hydrateDownloadedModel(model);
+      if (hydrated.isDownloaded) {
+        addCandidate(
+          AssistantModelCandidate.fromOfflineModel(
+            hydrated,
+            compatibilityByModelId: compatibilityByModelId,
+          ),
+        );
+      }
     }
     for (final task in [
       AssistantTask.image,
@@ -314,7 +319,7 @@ class AssistantModelLibraryState {
       AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
-      if (model != null) {
+      if (model != null && model.isDownloaded) {
         addCandidate(
           AssistantModelCandidate.fromOfflineModel(
             model,
