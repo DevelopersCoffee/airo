@@ -630,6 +630,25 @@ the wrong invariant.
 So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
 architecture** — implementations, which deserve the same review as any other.
 
+### Provenance and correctness are independent
+
+An executable check has two qualities, and neither implies the other:
+
+| | Question | Established by |
+|---|---|---|
+| **Provenance** | Was the check created independently of the implementation? | Committing the gate before its first execution |
+| **Correctness** | Does the check encode the right architectural obligation? | Architectural review of the assertion against its invariant |
+
+Commit `1445efa7` fixes the gates in history before their behaviour was known,
+so no implementation change can have shaped them. That is strong provenance and
+it says nothing about correctness — `A04` was committed in exactly that state and
+is attached to the wrong layer.
+
+> **Clean provenance on a wrong check produces confident wrong evidence**, which
+> is worse than no evidence, because it survives review by being green.
+
+Automation strengthens the first quality and cannot supply the second.
+
 ### Assertions anchor to invariants, not to findings
 
 Every assertion traces to the **architectural invariant** it enforces, not merely
