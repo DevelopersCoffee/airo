@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -11,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/portability/airo_backup_service.dart';
 import '../../../../core/portability/airo_lan_sync_service.dart';
+import '../../../../core/portability/airo_portability_codec.dart';
 import '../../../agent_chat/data/services/chat_history_store.dart';
 
 /// Encrypted export/import for Airo Mind configuration and model metadata.
@@ -43,14 +43,7 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
     final preferences = await SharedPreferences.getInstance();
     Object? chatHistory;
     final encodedHistory = preferences.getString(ChatHistoryStore.storageKey);
-    if (encodedHistory != null) {
-      try {
-        final decoded = jsonDecode(encodedHistory);
-        if (decoded is Map) chatHistory = decoded['entries'];
-      } on Object {
-        chatHistory = null;
-      }
-    }
+    chatHistory = await AiroPortabilityCodec.decodeChatHistory(encodedHistory);
     return {
       'scope': 'airo-mind',
       'schemaVersion': 1,
@@ -135,7 +128,10 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
         _passphraseController.text,
       );
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_restoredPayloadKey, jsonEncode(payload));
+      await preferences.setString(
+        _restoredPayloadKey,
+        await AiroPortabilityCodec.encodePayload(payload),
+      );
       await _restoreChatHistoryPayload(preferences, payload);
       if (mounted) {
         setState(
@@ -158,10 +154,10 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
     if (entries is! List) return;
     await preferences.setString(
       ChatHistoryStore.storageKey,
-      jsonEncode({
-        'schemaVersion': ChatHistoryStore.schemaVersion,
-        'entries': entries,
-      }),
+      await AiroPortabilityCodec.encodeChatHistory(
+        List<Object?>.from(entries),
+        schemaVersion: ChatHistoryStore.schemaVersion,
+      ),
     );
   }
 
@@ -182,7 +178,10 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
         _passphraseController.text,
       );
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_restoredPayloadKey, jsonEncode(payload));
+      await preferences.setString(
+        _restoredPayloadKey,
+        await AiroPortabilityCodec.encodePayload(payload),
+      );
       await _restoreChatHistoryPayload(preferences, payload);
       if (mounted) {
         setState(

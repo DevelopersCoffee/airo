@@ -475,7 +475,7 @@ packages:
     source: path
     version: "0.0.1"
   core_workers:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../packages/core_workers"
       relative: true
