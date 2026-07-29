@@ -102,6 +102,9 @@ maximum-input protection for every profile; blocked input and output are
 reported as user-safe assistant messages. The model Download Location setting
 now selects private application documents or app-scoped external storage, with
 legacy internal artifacts still discoverable after a location change.
+GGUF artifacts without a native llama.cpp backend are now reported unavailable
+instead of returning fabricated local responses; compatible local servers
+remain supported through the OpenAI-compatible adapter.
 
 ## Airo Mind use-case catalog
 
