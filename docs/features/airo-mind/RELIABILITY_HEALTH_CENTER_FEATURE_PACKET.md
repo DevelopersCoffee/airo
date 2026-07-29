@@ -92,9 +92,10 @@ composition, and presentation seam. The application now also exposes a
 capability-driven Model Advisor, encrypted Airo Mind backup verification,
 expiring encrypted LAN backup transfer, read-aloud actions for assistant
 responses, resilient download controls, and an OpenAI-compatible client seam
-for LM Studio, Ollama, and llama.cpp servers. Cloud sync, full chat-history
-persistence, and additional native backends remain follow-up slices using
-these contracts.
+for LM Studio, Ollama, and llama.cpp servers. Cloud sync and additional native
+backends remain follow-up slices using these contracts; local chat history is
+now versioned, bounded, restored on-device, and included in encrypted backup
+exports.
 
 ## Airo Mind use-case catalog
 

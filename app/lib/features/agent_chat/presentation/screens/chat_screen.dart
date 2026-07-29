@@ -14,6 +14,7 @@ import '../../../agent_chat/data/connectors/life_track_status_connector_factory.
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
+import '../../../agent_chat/data/services/chat_history_store.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
@@ -54,6 +55,15 @@ class ChatMessage {
     this.traces = const [],
     this.metadata,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  ChatHistoryEntry toHistoryEntry() =>
+      ChatHistoryEntry(text: text, isUser: isUser, timestamp: timestamp);
+
+  static ChatMessage fromHistoryEntry(ChatHistoryEntry entry) => ChatMessage(
+    text: entry.text,
+    isUser: entry.isUser,
+    timestamp: entry.timestamp,
+  );
 }
 
 /// Agent chat screen
@@ -82,6 +92,9 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
   final List<ChatMessage> _messages = [];
+  final ChatHistoryStore _chatHistoryStore = ChatHistoryStore();
+  Timer? _historyPersistTimer;
+  bool _historyRestored = false;
   final ToolRegistry _toolRegistry = ToolRegistry();
   AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   late final AgentConnectorRegistry _connectorRegistry;
@@ -139,6 +152,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
     if (widget.enableAiInitialization) {
       _initializeAI();
+      if (widget.initialMessages == null) {
+        unawaited(_restoreChatHistory());
+      }
     }
     unawaited(initializeLifeTrackStatusConnector());
   }
@@ -269,7 +285,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _localRuntimePreloader.abortPreload();
     unawaited(closeLifeTrackStatusConnector());
     _messageController.dispose();
+    _historyPersistTimer?.cancel();
+    if (_historyRestored) {
+      unawaited(
+        _chatHistoryStore.save(
+          _messages.map((message) => message.toHistoryEntry()),
+        ),
+      );
+    }
     super.dispose();
+  }
+
+  Future<void> _restoreChatHistory() async {
+    final history = await _chatHistoryStore.load();
+    if (!mounted) return;
+    setState(() {
+      _historyRestored = true;
+      if (history.isNotEmpty) {
+        _messages
+          ..clear()
+          ..addAll(history.map(ChatMessage.fromHistoryEntry));
+      }
+    });
+  }
+
+  void _scheduleHistoryPersist() {
+    if (!_historyRestored) return;
+    _historyPersistTimer?.cancel();
+    _historyPersistTimer = Timer(const Duration(milliseconds: 250), () {
+      unawaited(
+        _chatHistoryStore.save(
+          _messages.map((message) => message.toHistoryEntry()),
+        ),
+      );
+    });
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _scheduleHistoryPersist();
   }
 
   void _moveComposerCursorToEnd() {
