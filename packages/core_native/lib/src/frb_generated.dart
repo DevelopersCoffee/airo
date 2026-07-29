@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/m3u.dart';
+import 'api/mock_runtime.dart';
 import 'api/native_engine.dart';
 import 'api/playlist_engine.dart';
 import 'api/relational_store.dart';
@@ -70,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 31565472;
+  int get rustContentHash => -1824425509;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,6 +82,61 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  MockConfig crateApiMockRuntimeMockRuntimeAutoAccessorGetConfig({
+    required MockRuntime that,
+  });
+
+  RuntimeSession crateApiMockRuntimeMockRuntimeAutoAccessorGetSession({
+    required MockRuntime that,
+  });
+
+  TelemetryStub crateApiMockRuntimeMockRuntimeAutoAccessorGetTelemetry({
+    required MockRuntime that,
+  });
+
+  ExecutionTrace crateApiMockRuntimeMockRuntimeAutoAccessorGetTrace({
+    required MockRuntime that,
+  });
+
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetConfig({
+    required MockRuntime that,
+    required MockConfig config,
+  });
+
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetSession({
+    required MockRuntime that,
+    required RuntimeSession session,
+  });
+
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetTelemetry({
+    required MockRuntime that,
+    required TelemetryStub telemetry,
+  });
+
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetTrace({
+    required MockRuntime that,
+    required ExecutionTrace trace,
+  });
+
+  RuntimeApiVersion
+  crateApiMockRuntimeRuntimeRegistryAutoAccessorGetContractVersion({
+    required RuntimeRegistry that,
+  });
+
+  List<RuntimeId> crateApiMockRuntimeRuntimeRegistryAutoAccessorGetRuntimes({
+    required RuntimeRegistry that,
+  });
+
+  void crateApiMockRuntimeRuntimeRegistryAutoAccessorSetContractVersion({
+    required RuntimeRegistry that,
+    required RuntimeApiVersion contractVersion,
+  });
+
+  void crateApiMockRuntimeRuntimeRegistryAutoAccessorSetRuntimes({
+    required RuntimeRegistry that,
+    required List<RuntimeId> runtimes,
+  });
+
   Future<VectorClockRelation> crateApiNativeEngineCompareVectorClocks({
     required List<VectorClockCounter> left,
     required List<VectorClockCounter> right,
@@ -101,6 +157,46 @@ abstract class RustLibApi extends BaseApi {
   Future<M3uParseStats> crateApiM3UM3UParseStatsDefault();
 
   Future<M3uPlaylist> crateApiM3UM3UPlaylistDefault();
+
+  Future<MockConfig> crateApiMockRuntimeMockConfigDefault();
+
+  Future<FailureInjection> crateApiMockRuntimeMockFailureInjectionDefault();
+
+  Future<void> crateApiMockRuntimeMockRuntimeCancel({
+    required MockRuntime runtime,
+  });
+
+  Future<RuntimeCapabilities> crateApiMockRuntimeMockRuntimeCapabilities();
+
+  Future<List<String>> crateApiMockRuntimeMockRuntimeGenerate({
+    required MockRuntime runtime,
+    required InferenceIr ir,
+    required int tokenCount,
+  });
+
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeHealth({
+    required MockRuntime runtime,
+  });
+
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeInitialize({
+    required MockRuntime runtime,
+  });
+
+  Future<MockRuntime> crateApiMockRuntimeMockRuntimeNew({
+    required MockConfig config,
+  });
+
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeShutdown({
+    required MockRuntime runtime,
+  });
+
+  Future<List<TelemetryEvent>> crateApiMockRuntimeMockRuntimeTelemetry({
+    required MockRuntime runtime,
+  });
+
+  Future<List<ExecutionTraceEntry>> crateApiMockRuntimeMockRuntimeTrace({
+    required MockRuntime runtime,
+  });
 
   Future<String> crateApiTextNormalizeChannelName({required String name});
 
@@ -193,6 +289,16 @@ abstract class RustLibApi extends BaseApi {
     required InferenceIr ir,
   });
 
+  Future<bool> crateApiMockRuntimeRuntimeRegistryContainsMock({
+    required RuntimeRegistry registry,
+  });
+
+  Future<RuntimeRegistry> crateApiMockRuntimeRuntimeRegistryNew();
+
+  Future<void> crateApiMockRuntimeRuntimeRegistryRegisterMock({
+    required RuntimeRegistry registry,
+  });
+
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
     required String indexPath,
     required String query,
@@ -225,6 +331,23 @@ abstract class RustLibApi extends BaseApi {
   Future<XmltvParseResult> crateApiXmltvXmltvParseResultDefault();
 
   Future<XmltvParseStats> crateApiXmltvXmltvParseStatsDefault();
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_MockRuntime;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_MockRuntime;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_MockRuntimePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_RuntimeRegistry;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_RuntimeRegistry;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_RuntimeRegistryPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -234,6 +357,413 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required super.generalizedFrbRustBinding,
     required super.portManager,
   });
+
+  @override
+  MockConfig crateApiMockRuntimeMockRuntimeAutoAccessorGetConfig({
+    required MockRuntime that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mock_config,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorGetConfigConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorGetConfigConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_get_config",
+        argNames: ["that"],
+      );
+
+  @override
+  RuntimeSession crateApiMockRuntimeMockRuntimeAutoAccessorGetSession({
+    required MockRuntime that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_session,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorGetSessionConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorGetSessionConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_get_session",
+        argNames: ["that"],
+      );
+
+  @override
+  TelemetryStub crateApiMockRuntimeMockRuntimeAutoAccessorGetTelemetry({
+    required MockRuntime that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_telemetry_stub,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorGetTelemetryConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorGetTelemetryConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_get_telemetry",
+        argNames: ["that"],
+      );
+
+  @override
+  ExecutionTrace crateApiMockRuntimeMockRuntimeAutoAccessorGetTrace({
+    required MockRuntime that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_execution_trace,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeAutoAccessorGetTraceConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorGetTraceConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_get_trace",
+        argNames: ["that"],
+      );
+
+  @override
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetConfig({
+    required MockRuntime that,
+    required MockConfig config,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          sse_encode_mock_config(config, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorSetConfigConstMeta,
+        argValues: [that, config],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorSetConfigConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_set_config",
+        argNames: ["that", "config"],
+      );
+
+  @override
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetSession({
+    required MockRuntime that,
+    required RuntimeSession session,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          sse_encode_runtime_session(session, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorSetSessionConstMeta,
+        argValues: [that, session],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorSetSessionConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_set_session",
+        argNames: ["that", "session"],
+      );
+
+  @override
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetTelemetry({
+    required MockRuntime that,
+    required TelemetryStub telemetry,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          sse_encode_telemetry_stub(telemetry, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeMockRuntimeAutoAccessorSetTelemetryConstMeta,
+        argValues: [that, telemetry],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorSetTelemetryConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_set_telemetry",
+        argNames: ["that", "telemetry"],
+      );
+
+  @override
+  void crateApiMockRuntimeMockRuntimeAutoAccessorSetTrace({
+    required MockRuntime that,
+    required ExecutionTrace trace,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            that,
+            serializer,
+          );
+          sse_encode_execution_trace(trace, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeAutoAccessorSetTraceConstMeta,
+        argValues: [that, trace],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeMockRuntimeAutoAccessorSetTraceConstMeta =>
+      const TaskConstMeta(
+        debugName: "MockRuntime_auto_accessor_set_trace",
+        argNames: ["that", "trace"],
+      );
+
+  @override
+  RuntimeApiVersion
+  crateApiMockRuntimeRuntimeRegistryAutoAccessorGetContractVersion({
+    required RuntimeRegistry that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_api_version,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeRuntimeRegistryAutoAccessorGetContractVersionConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeRuntimeRegistryAutoAccessorGetContractVersionConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeRegistry_auto_accessor_get_contract_version",
+        argNames: ["that"],
+      );
+
+  @override
+  List<RuntimeId> crateApiMockRuntimeRuntimeRegistryAutoAccessorGetRuntimes({
+    required RuntimeRegistry that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_runtime_id,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeRuntimeRegistryAutoAccessorGetRuntimesConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeRuntimeRegistryAutoAccessorGetRuntimesConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeRegistry_auto_accessor_get_runtimes",
+        argNames: ["that"],
+      );
+
+  @override
+  void crateApiMockRuntimeRuntimeRegistryAutoAccessorSetContractVersion({
+    required RuntimeRegistry that,
+    required RuntimeApiVersion contractVersion,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            that,
+            serializer,
+          );
+          sse_encode_runtime_api_version(contractVersion, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeRuntimeRegistryAutoAccessorSetContractVersionConstMeta,
+        argValues: [that, contractVersion],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeRuntimeRegistryAutoAccessorSetContractVersionConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeRegistry_auto_accessor_set_contract_version",
+        argNames: ["that", "contractVersion"],
+      );
+
+  @override
+  void crateApiMockRuntimeRuntimeRegistryAutoAccessorSetRuntimes({
+    required RuntimeRegistry that,
+    required List<RuntimeId> runtimes,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            that,
+            serializer,
+          );
+          sse_encode_list_runtime_id(runtimes, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMockRuntimeRuntimeRegistryAutoAccessorSetRuntimesConstMeta,
+        argValues: [that, runtimes],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMockRuntimeRuntimeRegistryAutoAccessorSetRuntimesConstMeta =>
+      const TaskConstMeta(
+        debugName: "RuntimeRegistry_auto_accessor_set_runtimes",
+        argNames: ["that", "runtimes"],
+      );
 
   @override
   Future<VectorClockRelation> crateApiNativeEngineCompareVectorClocks({
@@ -249,7 +779,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 13,
             port: port_,
           );
         },
@@ -281,7 +811,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 14,
             port: port_,
           );
         },
@@ -320,7 +850,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 15,
             port: port_,
           );
         },
@@ -350,7 +880,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 16,
             port: port_,
           );
         },
@@ -380,7 +910,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 17,
             port: port_,
           );
         },
@@ -410,7 +940,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 18,
             port: port_,
           );
         },
@@ -437,7 +967,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 19,
             port: port_,
           );
         },
@@ -456,6 +986,377 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "m_3_u_playlist_default", argNames: []);
 
   @override
+  Future<MockConfig> crateApiMockRuntimeMockConfigDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mock_config,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockConfigDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockConfigDefaultConstMeta =>
+      const TaskConstMeta(debugName: "mock_config_default", argNames: []);
+
+  @override
+  Future<FailureInjection> crateApiMockRuntimeMockFailureInjectionDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_failure_injection,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockFailureInjectionDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockFailureInjectionDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_failure_injection_default",
+        argNames: [],
+      );
+
+  @override
+  Future<void> crateApiMockRuntimeMockRuntimeCancel({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeCancelConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeCancelConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_cancel",
+        argNames: ["runtime"],
+      );
+
+  @override
+  Future<RuntimeCapabilities> crateApiMockRuntimeMockRuntimeCapabilities() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_capabilities,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeCapabilitiesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeCapabilitiesConstMeta =>
+      const TaskConstMeta(debugName: "mock_runtime_capabilities", argNames: []);
+
+  @override
+  Future<List<String>> crateApiMockRuntimeMockRuntimeGenerate({
+    required MockRuntime runtime,
+    required InferenceIr ir,
+    required int tokenCount,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          sse_encode_box_autoadd_inference_ir(ir, serializer);
+          sse_encode_u_32(tokenCount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeGenerateConstMeta,
+        argValues: [runtime, ir, tokenCount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeGenerateConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_generate",
+        argNames: ["runtime", "ir", "tokenCount"],
+      );
+
+  @override
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeHealth({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_health,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeHealthConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeHealthConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_health",
+        argNames: ["runtime"],
+      );
+
+  @override
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeInitialize({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_health,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeInitializeConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeInitializeConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_initialize",
+        argNames: ["runtime"],
+      );
+
+  @override
+  Future<MockRuntime> crateApiMockRuntimeMockRuntimeNew({
+    required MockConfig config,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_mock_config(config, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeNewConstMeta,
+        argValues: [config],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeNewConstMeta =>
+      const TaskConstMeta(debugName: "mock_runtime_new", argNames: ["config"]);
+
+  @override
+  Future<RuntimeHealth> crateApiMockRuntimeMockRuntimeShutdown({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_runtime_health,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeShutdownConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeShutdownConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_shutdown",
+        argNames: ["runtime"],
+      );
+
+  @override
+  Future<List<TelemetryEvent>> crateApiMockRuntimeMockRuntimeTelemetry({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 29,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_telemetry_event,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeTelemetryConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeTelemetryConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_telemetry",
+        argNames: ["runtime"],
+      );
+
+  @override
+  Future<List<ExecutionTraceEntry>> crateApiMockRuntimeMockRuntimeTrace({
+    required MockRuntime runtime,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+            runtime,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 30,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_execution_trace_entry,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeMockRuntimeTraceConstMeta,
+        argValues: [runtime],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeMockRuntimeTraceConstMeta =>
+      const TaskConstMeta(
+        debugName: "mock_runtime_trace",
+        argNames: ["runtime"],
+      );
+
+  @override
   Future<String> crateApiTextNormalizeChannelName({required String name}) {
     return handler.executeNormal(
       NormalTask(
@@ -465,7 +1366,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 31,
             port: port_,
           );
         },
@@ -502,7 +1403,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 32,
             port: port_,
           );
         },
@@ -539,7 +1440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 33,
             port: port_,
           );
         },
@@ -572,7 +1473,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 34,
             port: port_,
           );
         },
@@ -603,7 +1504,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 35,
             port: port_,
           );
         },
@@ -635,7 +1536,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 36,
             port: port_,
           );
         },
@@ -668,7 +1569,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 37,
             port: port_,
           );
         },
@@ -699,7 +1600,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 38,
             port: port_,
           );
         },
@@ -732,7 +1633,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 39,
             port: port_,
           );
         },
@@ -767,7 +1668,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 40,
             port: port_,
           );
         },
@@ -806,7 +1707,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 41,
             port: port_,
           );
         },
@@ -846,7 +1747,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 42,
             port: port_,
           );
         },
@@ -881,7 +1782,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 43,
             port: port_,
           );
         },
@@ -920,7 +1821,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 44,
             port: port_,
           );
         },
@@ -954,7 +1855,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 45,
             port: port_,
           );
         },
@@ -990,7 +1891,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 46,
             port: port_,
           );
         },
@@ -1020,7 +1921,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 47,
             port: port_,
           );
         },
@@ -1051,7 +1952,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 48,
             port: port_,
           );
         },
@@ -1086,7 +1987,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 49,
             port: port_,
           );
         },
@@ -1120,7 +2021,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 50,
             port: port_,
           );
         },
@@ -1153,7 +2054,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 51,
             port: port_,
           );
         },
@@ -1170,6 +2071,106 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiRuntimeContractsRuntimeIrRoundTripConstMeta =>
       const TaskConstMeta(debugName: "runtime_ir_round_trip", argNames: ["ir"]);
+
+  @override
+  Future<bool> crateApiMockRuntimeRuntimeRegistryContainsMock({
+    required RuntimeRegistry registry,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            registry,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 52,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeRuntimeRegistryContainsMockConstMeta,
+        argValues: [registry],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeRuntimeRegistryContainsMockConstMeta =>
+      const TaskConstMeta(
+        debugName: "runtime_registry_contains_mock",
+        argNames: ["registry"],
+      );
+
+  @override
+  Future<RuntimeRegistry> crateApiMockRuntimeRuntimeRegistryNew() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 53,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeRuntimeRegistryNewConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeRuntimeRegistryNewConstMeta =>
+      const TaskConstMeta(debugName: "runtime_registry_new", argNames: []);
+
+  @override
+  Future<void> crateApiMockRuntimeRuntimeRegistryRegisterMock({
+    required RuntimeRegistry registry,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+            registry,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 54,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMockRuntimeRuntimeRegistryRegisterMockConstMeta,
+        argValues: [registry],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMockRuntimeRuntimeRegistryRegisterMockConstMeta =>
+      const TaskConstMeta(
+        debugName: "runtime_registry_register_mock",
+        argNames: ["registry"],
+      );
 
   @override
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
@@ -1189,7 +2190,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 55,
             port: port_,
           );
         },
@@ -1230,7 +2231,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 56,
             port: port_,
           );
         },
@@ -1265,7 +2266,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 57,
             port: port_,
           );
         },
@@ -1301,7 +2302,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 58,
             port: port_,
           );
         },
@@ -1332,7 +2333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 59,
             port: port_,
           );
         },
@@ -1362,7 +2363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 60,
             port: port_,
           );
         },
@@ -1392,7 +2393,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 61,
             port: port_,
           );
         },
@@ -1422,7 +2423,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 62,
             port: port_,
           );
         },
@@ -1440,6 +2441,76 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiXmltvXmltvParseStatsDefaultConstMeta =>
       const TaskConstMeta(debugName: "xmltv_parse_stats_default", argNames: []);
 
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_MockRuntime => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_MockRuntime => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_RuntimeRegistry => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_RuntimeRegistry => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry;
+
+  @protected
+  MockRuntime
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  RuntimeRegistry
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  MockRuntime
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  RuntimeRegistry
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  MockRuntime
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  RuntimeRegistry
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
   @protected
   Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -1448,6 +2519,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         raw,
       ).map((e) => MapEntry(e.$1, e.$2)),
     );
+  }
+
+  @protected
+  MockRuntime
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  RuntimeRegistry
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -1490,6 +2579,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   InferenceRequest dco_decode_box_autoadd_inference_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_inference_request(raw);
+  }
+
+  @protected
+  MockConfig dco_decode_box_autoadd_mock_config(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_mock_config(raw);
   }
 
   @protected
@@ -1576,9 +2671,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ExecutionTrace dco_decode_execution_trace(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return ExecutionTrace(
+      entries: dco_decode_list_execution_trace_entry(arr[0]),
+    );
+  }
+
+  @protected
+  ExecutionTraceEntry dco_decode_execution_trace_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ExecutionTraceEntry(
+      sequence: dco_decode_u_32(arr[0]),
+      event: dco_decode_String(arr[1]),
+      elapsedMs: dco_decode_u_64(arr[2]),
+    );
+  }
+
+  @protected
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
+  }
+
+  @protected
+  FailureInjection dco_decode_failure_injection(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FailureInjection(
+      error: dco_decode_opt_box_autoadd_runtime_error_code(arr[0]),
+      afterTokens: dco_decode_opt_box_autoadd_u_32(arr[1]),
+      cancelAfterTokens: dco_decode_opt_box_autoadd_u_32(arr[2]),
+    );
   }
 
   @protected
@@ -1630,6 +2762,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<ExecutionTraceEntry> dco_decode_list_execution_trace_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_execution_trace_entry)
+        .toList();
   }
 
   @protected
@@ -1729,9 +2869,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RuntimeId> dco_decode_list_runtime_id(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_runtime_id).toList();
+  }
+
+  @protected
   List<SubtitleCue> dco_decode_list_subtitle_cue(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_subtitle_cue).toList();
+  }
+
+  @protected
+  List<TelemetryEvent> dco_decode_list_telemetry_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_telemetry_event).toList();
   }
 
   @protected
@@ -1857,6 +3009,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return M3uPlaylist(
       entries: dco_decode_list_m_3_u_entry(arr[0]),
       headers: dco_decode_Map_String_String_None(arr[1]),
+    );
+  }
+
+  @protected
+  MockConfig dco_decode_mock_config(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return MockConfig(
+      startupDelayMs: dco_decode_u_64(arr[0]),
+      firstTokenDelayMs: dco_decode_u_64(arr[1]),
+      tokenDelayMs: dco_decode_u_64(arr[2]),
+      tokenRate: dco_decode_u_32(arr[3]),
+      seed: dco_decode_u_64(arr[4]),
+      failure: dco_decode_opt_box_autoadd_runtime_error_code(arr[5]),
+      failAfterTokens: dco_decode_opt_box_autoadd_u_32(arr[6]),
+      cancelAfterTokens: dco_decode_opt_box_autoadd_u_32(arr[7]),
     );
   }
 
@@ -2250,6 +3420,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RuntimeSession dco_decode_runtime_session(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return RuntimeSession(
+      sessionId: dco_decode_String(arr[0]),
+      state: dco_decode_runtime_health_state(arr[1]),
+      generatedTokens: dco_decode_u_32(arr[2]),
+    );
+  }
+
+  @protected
   SubtitleCue dco_decode_subtitle_cue(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -2282,6 +3465,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TelemetryEvent dco_decode_telemetry_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return TelemetryEvent(
+      sequence: dco_decode_u_32(arr[0]),
+      event: dco_decode_String(arr[1]),
+      elapsedMs: dco_decode_u_64(arr[2]),
+      error: dco_decode_opt_box_autoadd_runtime_error_code(arr[3]),
+    );
+  }
+
+  @protected
+  TelemetryStub dco_decode_telemetry_stub(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return TelemetryStub(events: dco_decode_list_telemetry_event(arr[0]));
+  }
+
+  @protected
   int dco_decode_u_16(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -2309,6 +3515,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -2418,12 +3630,108 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MockRuntime
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  RuntimeRegistry
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  MockRuntime
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  RuntimeRegistry
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  MockRuntime
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  RuntimeRegistry
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   Map<String, String> sse_decode_Map_String_String_None(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_record_string_string(deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  MockRuntime
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return MockRuntimeImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  RuntimeRegistry
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return RuntimeRegistryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
   }
 
   @protected
@@ -2471,6 +3779,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_inference_request(deserializer));
+  }
+
+  @protected
+  MockConfig sse_decode_box_autoadd_mock_config(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_mock_config(deserializer));
   }
 
   @protected
@@ -2575,9 +3889,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ExecutionTrace sse_decode_execution_trace(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_entries = sse_decode_list_execution_trace_entry(deserializer);
+    return ExecutionTrace(entries: var_entries);
+  }
+
+  @protected
+  ExecutionTraceEntry sse_decode_execution_trace_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sequence = sse_decode_u_32(deserializer);
+    var var_event = sse_decode_String(deserializer);
+    var var_elapsedMs = sse_decode_u_64(deserializer);
+    return ExecutionTraceEntry(
+      sequence: var_sequence,
+      event: var_event,
+      elapsedMs: var_elapsedMs,
+    );
+  }
+
+  @protected
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FailureInjection sse_decode_failure_injection(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_error = sse_decode_opt_box_autoadd_runtime_error_code(deserializer);
+    var var_afterTokens = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_cancelAfterTokens = sse_decode_opt_box_autoadd_u_32(deserializer);
+    return FailureInjection(
+      error: var_error,
+      afterTokens: var_afterTokens,
+      cancelAfterTokens: var_cancelAfterTokens,
+    );
   }
 
   @protected
@@ -2640,6 +3989,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ExecutionTraceEntry> sse_decode_list_execution_trace_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ExecutionTraceEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_execution_trace_entry(deserializer));
     }
     return ans_;
   }
@@ -2802,6 +4165,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RuntimeId> sse_decode_list_runtime_id(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RuntimeId>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_runtime_id(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<SubtitleCue> sse_decode_list_subtitle_cue(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -2809,6 +4184,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <SubtitleCue>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_subtitle_cue(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<TelemetryEvent> sse_decode_list_telemetry_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <TelemetryEvent>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_telemetry_event(deserializer));
     }
     return ans_;
   }
@@ -2963,6 +4352,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_entries = sse_decode_list_m_3_u_entry(deserializer);
     var var_headers = sse_decode_Map_String_String_None(deserializer);
     return M3uPlaylist(entries: var_entries, headers: var_headers);
+  }
+
+  @protected
+  MockConfig sse_decode_mock_config(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_startupDelayMs = sse_decode_u_64(deserializer);
+    var var_firstTokenDelayMs = sse_decode_u_64(deserializer);
+    var var_tokenDelayMs = sse_decode_u_64(deserializer);
+    var var_tokenRate = sse_decode_u_32(deserializer);
+    var var_seed = sse_decode_u_64(deserializer);
+    var var_failure = sse_decode_opt_box_autoadd_runtime_error_code(
+      deserializer,
+    );
+    var var_failAfterTokens = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_cancelAfterTokens = sse_decode_opt_box_autoadd_u_32(deserializer);
+    return MockConfig(
+      startupDelayMs: var_startupDelayMs,
+      firstTokenDelayMs: var_firstTokenDelayMs,
+      tokenDelayMs: var_tokenDelayMs,
+      tokenRate: var_tokenRate,
+      seed: var_seed,
+      failure: var_failure,
+      failAfterTokens: var_failAfterTokens,
+      cancelAfterTokens: var_cancelAfterTokens,
+    );
   }
 
   @protected
@@ -3483,6 +4897,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RuntimeSession sse_decode_runtime_session(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sessionId = sse_decode_String(deserializer);
+    var var_state = sse_decode_runtime_health_state(deserializer);
+    var var_generatedTokens = sse_decode_u_32(deserializer);
+    return RuntimeSession(
+      sessionId: var_sessionId,
+      state: var_state,
+      generatedTokens: var_generatedTokens,
+    );
+  }
+
+  @protected
   SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_startMillis = sse_decode_u_64(deserializer);
@@ -3518,6 +4945,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TelemetryEvent sse_decode_telemetry_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sequence = sse_decode_u_32(deserializer);
+    var var_event = sse_decode_String(deserializer);
+    var var_elapsedMs = sse_decode_u_64(deserializer);
+    var var_error = sse_decode_opt_box_autoadd_runtime_error_code(deserializer);
+    return TelemetryEvent(
+      sequence: var_sequence,
+      event: var_event,
+      elapsedMs: var_elapsedMs,
+      error: var_error,
+    );
+  }
+
+  @protected
+  TelemetryStub sse_decode_telemetry_stub(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_events = sse_decode_list_telemetry_event(deserializer);
+    return TelemetryStub(events: var_events);
+  }
+
+  @protected
   int sse_decode_u_16(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint16();
@@ -3544,6 +4993,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -3664,6 +5119,84 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    MockRuntime self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as MockRuntimeImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as RuntimeRegistryImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    MockRuntime self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as MockRuntimeImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as RuntimeRegistryImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    MockRuntime self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as MockRuntimeImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as RuntimeRegistryImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_Map_String_String_None(
     Map<String, String> self,
     SseSerializer serializer,
@@ -3671,6 +5204,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_string_string(
       self.entries.map((e) => (e.key, e.value)).toList(),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMockRuntime(
+    MockRuntime self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as MockRuntimeImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRuntimeRegistry(
+    RuntimeRegistry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as RuntimeRegistryImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -3724,6 +5283,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_inference_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_mock_config(
+    MockConfig self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_mock_config(self, serializer);
   }
 
   @protected
@@ -3835,9 +5403,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_execution_trace(
+    ExecutionTrace self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_execution_trace_entry(self.entries, serializer);
+  }
+
+  @protected
+  void sse_encode_execution_trace_entry(
+    ExecutionTraceEntry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.sequence, serializer);
+    sse_encode_String(self.event, serializer);
+    sse_encode_u_64(self.elapsedMs, serializer);
+  }
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_failure_injection(
+    FailureInjection self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_box_autoadd_runtime_error_code(self.error, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.afterTokens, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.cancelAfterTokens, serializer);
   }
 
   @protected
@@ -3884,6 +5483,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_execution_trace_entry(
+    List<ExecutionTraceEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_execution_trace_entry(item, serializer);
     }
   }
 
@@ -4030,6 +5641,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_runtime_id(
+    List<RuntimeId> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_runtime_id(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_subtitle_cue(
     List<SubtitleCue> self,
     SseSerializer serializer,
@@ -4038,6 +5661,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_subtitle_cue(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_telemetry_event(
+    List<TelemetryEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_telemetry_event(item, serializer);
     }
   }
 
@@ -4156,6 +5791,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_m_3_u_entry(self.entries, serializer);
     sse_encode_Map_String_String_None(self.headers, serializer);
+  }
+
+  @protected
+  void sse_encode_mock_config(MockConfig self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.startupDelayMs, serializer);
+    sse_encode_u_64(self.firstTokenDelayMs, serializer);
+    sse_encode_u_64(self.tokenDelayMs, serializer);
+    sse_encode_u_32(self.tokenRate, serializer);
+    sse_encode_u_64(self.seed, serializer);
+    sse_encode_opt_box_autoadd_runtime_error_code(self.failure, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.failAfterTokens, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.cancelAfterTokens, serializer);
   }
 
   @protected
@@ -4570,6 +6218,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_runtime_session(
+    RuntimeSession self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.sessionId, serializer);
+    sse_encode_runtime_health_state(self.state, serializer);
+    sse_encode_u_32(self.generatedTokens, serializer);
+  }
+
+  @protected
   void sse_encode_subtitle_cue(SubtitleCue self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self.startMillis, serializer);
@@ -4595,6 +6254,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_subtitle_cue(self.cues, serializer);
     sse_encode_u_32(self.malformedCueCount, serializer);
     sse_encode_bool(self.truncated, serializer);
+  }
+
+  @protected
+  void sse_encode_telemetry_event(
+    TelemetryEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.sequence, serializer);
+    sse_encode_String(self.event, serializer);
+    sse_encode_u_64(self.elapsedMs, serializer);
+    sse_encode_opt_box_autoadd_runtime_error_code(self.error, serializer);
+  }
+
+  @protected
+  void sse_encode_telemetry_stub(TelemetryStub self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_telemetry_event(self.events, serializer);
   }
 
   @protected
@@ -4624,6 +6301,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected
@@ -4720,4 +6403,100 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.isPremiere, serializer);
     sse_encode_bool(self.previouslyShown, serializer);
   }
+}
+
+@sealed
+class MockRuntimeImpl extends RustOpaque implements MockRuntime {
+  // Not to be used by end users
+  MockRuntimeImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  MockRuntimeImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_MockRuntime,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_MockRuntime,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_MockRuntimePtr,
+  );
+
+  MockConfig get config => RustLib.instance.api
+      .crateApiMockRuntimeMockRuntimeAutoAccessorGetConfig(that: this);
+
+  RuntimeSession get session => RustLib.instance.api
+      .crateApiMockRuntimeMockRuntimeAutoAccessorGetSession(that: this);
+
+  TelemetryStub get telemetry => RustLib.instance.api
+      .crateApiMockRuntimeMockRuntimeAutoAccessorGetTelemetry(that: this);
+
+  ExecutionTrace get trace => RustLib.instance.api
+      .crateApiMockRuntimeMockRuntimeAutoAccessorGetTrace(that: this);
+
+  set config(MockConfig config) =>
+      RustLib.instance.api.crateApiMockRuntimeMockRuntimeAutoAccessorSetConfig(
+        that: this,
+        config: config,
+      );
+
+  set session(RuntimeSession session) =>
+      RustLib.instance.api.crateApiMockRuntimeMockRuntimeAutoAccessorSetSession(
+        that: this,
+        session: session,
+      );
+
+  set telemetry(TelemetryStub telemetry) => RustLib.instance.api
+      .crateApiMockRuntimeMockRuntimeAutoAccessorSetTelemetry(
+        that: this,
+        telemetry: telemetry,
+      );
+
+  set trace(ExecutionTrace trace) =>
+      RustLib.instance.api.crateApiMockRuntimeMockRuntimeAutoAccessorSetTrace(
+        that: this,
+        trace: trace,
+      );
+}
+
+@sealed
+class RuntimeRegistryImpl extends RustOpaque implements RuntimeRegistry {
+  // Not to be used by end users
+  RuntimeRegistryImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  RuntimeRegistryImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_RuntimeRegistry,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_RuntimeRegistry,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_RuntimeRegistryPtr,
+  );
+
+  RuntimeApiVersion get contractVersion => RustLib.instance.api
+      .crateApiMockRuntimeRuntimeRegistryAutoAccessorGetContractVersion(
+        that: this,
+      );
+
+  List<RuntimeId> get runtimes => RustLib.instance.api
+      .crateApiMockRuntimeRuntimeRegistryAutoAccessorGetRuntimes(that: this);
+
+  set contractVersion(RuntimeApiVersion contractVersion) => RustLib.instance.api
+      .crateApiMockRuntimeRuntimeRegistryAutoAccessorSetContractVersion(
+        that: this,
+        contractVersion: contractVersion,
+      );
+
+  set runtimes(List<RuntimeId> runtimes) => RustLib.instance.api
+      .crateApiMockRuntimeRuntimeRegistryAutoAccessorSetRuntimes(
+        that: this,
+        runtimes: runtimes,
+      );
 }
