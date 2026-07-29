@@ -606,6 +606,63 @@ This is the mechanical backstop for the Evidence Rule, which this document
 already marks *"human discipline — no mechanical backstop."* That row has failed
 in every revision it has been tested against.
 
+### Three validation failure modes, and they need different remedies
+
+Conflating these is why the same-looking failure kept recurring with different
+fixes applied to it.
+
+| Mode | The failure | Caught by |
+|---|---|---|
+| **Claim drift** | The claim is false. The code never had the feature | `G0.7` assertions, `G0.8` probes |
+| **Property drift** | The property exists; the test exercises a path no user takes | Entering through the user's door — for a format, bytes |
+| **Assertion drift** | The assertion faithfully checks something, and it is the **wrong architectural obligation** | Invariant anchoring, below |
+
+The third is the one with no mechanical remedy, and it was found before `G0.7`
+ever ran. `A04` asserts that `aggregate.rs` normalizes identifiers. That is a
+faithful, executable, greppable check — and satisfying it would **violate `I6`**,
+because `I6` forbids canonicalizing twice and Phase 1's Vault sits below the
+boundary where canonicalization belongs. The assertion is not lying, and the
+implementation has not been tested; the executable specification is attached to
+the wrong invariant.
+
+> **`G0.7` makes claims checkable. It does not make them correct.**
+
+So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
+architecture** — implementations, which deserve the same review as any other.
+
+### Assertions anchor to invariants, not to findings
+
+Every assertion traces to the **architectural invariant** it enforces, not merely
+to the finding that motivated it:
+
+```
+I6  Canonicalize exactly once, at the boundary
+ └── context-identifier canonicalization
+      ├── A04            (executable interpretation)
+      ├── conformance    (S1)
+      └── implementation (ContextId newtype)
+```
+
+rather than `SEC-32 → A04`. **Findings disappear once fixed; invariants
+persist.** An assertion anchored only to a finding loses its justification the
+moment the finding closes, and then nobody can say what would have to change for
+it to be wrong.
+
+This is what makes assertion drift visible: `A04` traced to `SEC-32` looks
+correct, because it does detect `SEC-32`. Traced to `I6` it is obviously
+misplaced, because `I6`'s own text — *"a function that accepts a raw value and a
+canonical one at the same type is a defect"* — demands a type boundary, and no
+grep of a method body can express one.
+
+**A required review, after the first execution and before Revision 9B.** One
+question, distinct from "did the gate catch the defect?":
+
+> Does each assertion enforce the architectural invariant, or only the finding
+> that motivated it?
+
+The assertions have not earned trust yet. The architecture has been reviewed and
+the implementation has been reviewed; the assertions have only been *designed*.
+
 ### Property tests enter through the user's door
 
 A test must reach the code the way a user or an attacker does. Revision 8's
