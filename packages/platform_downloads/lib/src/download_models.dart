@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 const int backgroundDownloadContractVersion = 1;
+const int _maxWireSafeInteger = 9007199254740991;
 
 @immutable
 class DownloadArtifactRequest {
@@ -263,8 +264,10 @@ int _nonNegativeInt(Map<Object?, Object?> map, String key) {
 
 int? _nullableNonNegativeInt(Map<Object?, Object?> map, String key) {
   final value = map[key];
-  if (value is! num) return null;
-  return value.toInt().clamp(0, 0x7fffffffffffffff);
+  if (value is! num || !value.isFinite) return null;
+  final integer = value.toInt();
+  if (integer < 0) return 0;
+  return integer > _maxWireSafeInteger ? _maxWireSafeInteger : integer;
 }
 
 double _nonNegativeDouble(Map<Object?, Object?> map, String key) {

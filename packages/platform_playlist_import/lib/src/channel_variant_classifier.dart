@@ -8,6 +8,13 @@ enum ChannelVariantRelationship { distinct, duplicate, variant }
 final class ChannelVariantClassifier {
   const ChannelVariantClassifier();
 
+  static final BigInt _fnv64OffsetBasis = BigInt.parse(
+    'cbf29ce484222325',
+    radix: 16,
+  );
+  static final BigInt _fnv64Prime = BigInt.parse('100000001b3', radix: 16);
+  static final BigInt _uint64Mask = (BigInt.one << 64) - BigInt.one;
+
   String canonicalName(String value) {
     var normalized = value.trim().toLowerCase();
     normalized = normalized.replaceAll(
@@ -258,10 +265,10 @@ final class ChannelVariantClassifier {
   }
 
   String _stableId(String value) {
-    var hash = 0xcbf29ce484222325;
+    var hash = _fnv64OffsetBasis;
     for (final byte in value.codeUnits) {
-      hash ^= byte;
-      hash = (hash * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
+      hash ^= BigInt.from(byte);
+      hash = (hash * _fnv64Prime) & _uint64Mask;
     }
     return 'byoc-${hash.toRadixString(16).padLeft(16, '0')}';
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64Util;
 
 import 'api/relational_store.dart' as native_store;
 import 'native_bridge.dart';
@@ -245,8 +247,10 @@ native_store.RelationalSyncEntity _toNativeEntity(
     entityType: entity.entityType,
     schemaVersion: entity.schemaVersion,
     entityVersion: entity.entityVersion,
-    updatedAtMicros: entity.updatedAtMicros,
-    deletedAtMicros: entity.deletedAtMicros,
+    updatedAtMicros: PlatformInt64Util.from(entity.updatedAtMicros),
+    deletedAtMicros: entity.deletedAtMicros == null
+        ? null
+        : PlatformInt64Util.from(entity.deletedAtMicros!),
     clock: _toNativeClock(entity.clock),
     deletionClock: _toNativeClock(entity.deletionClock),
     fields: entity.fields.map(_toNativeField).toList(growable: false),
@@ -266,10 +270,10 @@ native_store.RelationalSyncField _toNativeField(AiroRelationalSyncField field) {
       _ => throw ArgumentError.value(value, field.name, 'unsupported scalar'),
     },
     textValue: value is String ? value : null,
-    integerValue: value is int ? value : null,
+    integerValue: value is int ? PlatformInt64Util.from(value) : null,
     realValue: value is double ? value : null,
     booleanValue: value is bool ? value : null,
-    updatedAtMicros: field.updatedAtMicros,
+    updatedAtMicros: PlatformInt64Util.from(field.updatedAtMicros),
     originNodeId: field.originNodeId,
     clock: _toNativeClock(field.clock),
   );

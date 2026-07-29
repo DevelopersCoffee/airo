@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:core_data/core_data.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
 import '../content_source_store.dart';
@@ -43,24 +42,6 @@ final xtreamAuthenticatorProvider = Provider<XtreamAuthenticator>((ref) {
   };
 });
 
-/// Persists the user's configured content sources
-/// ([ContentSourceConfig]/[ContentSourceStore], Task 1), backed by the same
-/// [sharedPreferencesProvider] the rest of `feature_iptv` uses.
-final contentSourceStoreProvider = Provider<ContentSourceStore>((ref) {
-  return ContentSourceStore(
-    PreferencesStore(ref.watch(sharedPreferencesProvider)),
-  );
-});
-
-/// The list of configured content sources, as read from
-/// [contentSourceStoreProvider]. Invalidated by
-/// [addM3uContentSourceProvider] and [removeContentSourceProvider] so UI
-/// consumers refresh after a mutation.
-final configuredContentSourcesProvider =
-    FutureProvider<List<ContentSourceConfig>>((ref) async {
-      return ref.watch(contentSourceStoreProvider).getAll();
-    });
-
 /// Adds a new M3U [ContentSourceConfig] and invalidates
 /// [configuredContentSourcesProvider].
 final addM3uContentSourceProvider = FutureProvider.autoDispose
@@ -70,22 +51,40 @@ final addM3uContentSourceProvider = FutureProvider.autoDispose
       // the provider from being torn down mid-`await`, which would silently
       // truncate the write.
       final keepAlive = ref.keepAlive();
-      final id = 'm3u-${DateTime.now().microsecondsSinceEpoch}';
-      await ref
-          .watch(contentSourceStoreProvider)
-          .add(
-            ContentSourceConfig(
-              id: id,
-              kind: ContentSourceKind.m3u,
-              label: args.label,
-              url: args.url,
-            ),
-          );
-      ref.invalidate(iptvChannelsProvider);
-      ref.invalidate(configuredXtreamChannelsProvider);
-      ref.invalidate(configuredContentSourcesProvider);
-      keepAlive.close();
-    });
+      try {
+        final label = args.label.trim();
+        final url = _validatedHttpUrl(args.url, fieldName: 'playlist URL');
+        if (label.isEmpty) {
+          throw ArgumentError.value(args.label, 'label', 'Enter a label.');
+        }
+        final existing = await ref.read(contentSourceStoreProvider).getAll();
+        final legacyUrl = ref.read(m3uParserProvider).getPlaylistUrl();
+        if (legacyUrl == url ||
+            existing.any(
+              (source) =>
+                  source.kind == ContentSourceKind.m3u && source.url == url,
+            )) {
+          throw const DuplicatePlaylistSourceException();
+        }
+        final id = 'm3u-${DateTime.now().microsecondsSinceEpoch}';
+        await ref
+            .watch(contentSourceStoreProvider)
+            .add(
+              ContentSourceConfig(
+                id: id,
+                kind: ContentSourceKind.m3u,
+                label: label,
+                url: url,
+              ),
+            );
+        ref.invalidate(iptvChannelsProvider);
+        ref.invalidate(configuredM3uChannelsProvider);
+        ref.invalidate(configuredXtreamChannelsProvider);
+        ref.invalidate(configuredContentSourcesProvider);
+      } finally {
+        keepAlive.close();
+      }
+    }, retry: (_, _) => null);
 
 /// Adds a new Xtream Codes [ContentSourceConfig] and stores its
 /// credentials via [contentSourceCredentialStoreProvider], keyed on the
@@ -207,16 +206,54 @@ final addJellyfinContentSourceProvider = FutureProvider.autoDispose
 final removeContentSourceProvider = FutureProvider.autoDispose
     .family<void, String>((ref, id) async {
       final keepAlive = ref.keepAlive();
-      await ref.watch(contentSourceStoreProvider).remove(id);
-      await ref
-          .watch(contentSourceCredentialStoreProvider)
-          .delete(ContentSourceCredentialRef(id));
-      final epgRepository = ref.read(compactEpgRepositoryProvider);
-      if (epgRepository is MutableXmltvCompactEpgRepository) {
-        epgRepository.removeNamedSource('epg-$id');
+      try {
+        final sources = await ref.read(contentSourceStoreProvider).getAll();
+        ContentSourceConfig? removed;
+        for (final source in sources) {
+          if (source.id == id) {
+            removed = source;
+            break;
+          }
+        }
+        if (removed?.kind == ContentSourceKind.m3u) {
+          final legacyParser = ref.read(m3uParserProvider);
+          if (legacyParser.getPlaylistUrl() == removed!.url) {
+            await legacyParser.clearPlaylist();
+            ref.invalidate(userPlaylistUrlProvider);
+          }
+          await ref.read(m3uSourceParserFactoryProvider)(id).clearPlaylist();
+        }
+        await ref.watch(contentSourceStoreProvider).remove(id);
+        await ref
+            .watch(contentSourceCredentialStoreProvider)
+            .delete(ContentSourceCredentialRef(id));
+        final epgRepository = ref.read(compactEpgRepositoryProvider);
+        if (epgRepository is MutableXmltvCompactEpgRepository) {
+          epgRepository.removeNamedSource('epg-$id');
+        }
+        ref.invalidate(iptvChannelsProvider);
+        ref.invalidate(configuredM3uChannelsProvider);
+        ref.invalidate(configuredXtreamChannelsProvider);
+        ref.invalidate(configuredContentSourcesProvider);
+      } finally {
+        keepAlive.close();
       }
-      ref.invalidate(iptvChannelsProvider);
-      ref.invalidate(configuredXtreamChannelsProvider);
-      ref.invalidate(configuredContentSourcesProvider);
-      keepAlive.close();
     });
+
+class DuplicatePlaylistSourceException implements Exception {
+  const DuplicatePlaylistSourceException();
+
+  @override
+  String toString() => 'This playlist source is already configured.';
+}
+
+String _validatedHttpUrl(String value, {required String fieldName}) {
+  final normalized = value.trim();
+  final uri = Uri.tryParse(normalized);
+  if (uri == null ||
+      uri.host.isEmpty ||
+      !(uri.isScheme('http') || uri.isScheme('https'))) {
+    throw ArgumentError.value(value, fieldName, 'Enter a valid HTTP(S) URL.');
+  }
+  return normalized;
+}

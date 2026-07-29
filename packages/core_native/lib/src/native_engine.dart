@@ -1,3 +1,6 @@
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64Util;
+
 import 'api/native_engine.dart' as frb;
 import 'native_bridge.dart';
 
@@ -170,9 +173,13 @@ class FrbAiroNativeEngine implements AiroNativeEngine {
           frb.RecommendationCandidate(
             id: candidate.id,
             title: candidate.title,
-            genreAffinity: candidate.genreAffinity,
-            providerAffinity: candidate.providerAffinity,
-            languageAffinity: candidate.languageAffinity,
+            genreAffinity: PlatformInt64Util.from(candidate.genreAffinity),
+            providerAffinity: PlatformInt64Util.from(
+              candidate.providerAffinity,
+            ),
+            languageAffinity: PlatformInt64Util.from(
+              candidate.languageAffinity,
+            ),
             completionPermille: candidate.completionPermille,
             lastWatchedAgeDays: candidate.lastWatchedAgeDays,
             preferredTime: candidate.preferredTime,
@@ -184,14 +191,23 @@ class FrbAiroNativeEngine implements AiroNativeEngine {
       scores.map(
         (score) => AiroNativeRecommendationScore(
           id: score.id,
-          score: score.score,
-          genrePoints: score.genrePoints,
-          providerPoints: score.providerPoints,
-          languagePoints: score.languagePoints,
-          completionPoints: score.completionPoints,
-          recencyPoints: score.recencyPoints,
-          timeBucketPoints: score.timeBucketPoints,
-          deviceFitPoints: score.deviceFitPoints,
+          // PlatformInt64 is int on native and BigInt on web.
+          // ignore: noop_primitive_operations
+          score: score.score.toInt(),
+          // ignore: noop_primitive_operations
+          genrePoints: score.genrePoints.toInt(),
+          // ignore: noop_primitive_operations
+          providerPoints: score.providerPoints.toInt(),
+          // ignore: noop_primitive_operations
+          languagePoints: score.languagePoints.toInt(),
+          // ignore: noop_primitive_operations
+          completionPoints: score.completionPoints.toInt(),
+          // ignore: noop_primitive_operations
+          recencyPoints: score.recencyPoints.toInt(),
+          // ignore: noop_primitive_operations
+          timeBucketPoints: score.timeBucketPoints.toInt(),
+          // ignore: noop_primitive_operations
+          deviceFitPoints: score.deviceFitPoints.toInt(),
         ),
       ),
     );

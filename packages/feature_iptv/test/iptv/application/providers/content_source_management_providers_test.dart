@@ -68,6 +68,28 @@ void main() {
     },
   );
 
+  test('addM3uContentSourceProvider rejects a duplicate URL', () async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    const source = (label: 'First', url: 'https://example.com/playlist.m3u');
+
+    await container.read(addM3uContentSourceProvider(source).future);
+
+    await expectLater(
+      container.read(
+        addM3uContentSourceProvider((
+          label: 'Duplicate',
+          url: source.url,
+        )).future,
+      ),
+      throwsA(isA<DuplicatePlaylistSourceException>()),
+    );
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      hasLength(1),
+    );
+  });
+
   test('addXtreamContentSourceProvider persists config + credential', () async {
     final container = await buildContainer();
     addTearDown(container.dispose);
@@ -237,4 +259,26 @@ void main() {
       expect(credential, isNull);
     },
   );
+
+  test('removing a migrated legacy playlist prevents remigration', () async {
+    const legacyUrl = 'https://iptv-org.github.io/iptv/index.m3u';
+    SharedPreferences.setMockInitialValues({
+      'iptv_user_playlist_url': legacyUrl,
+    });
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    final migrated = await container.read(
+      configuredContentSourcesProvider.future,
+    );
+
+    await container.read(
+      removeContentSourceProvider(migrated.single.id).future,
+    );
+    final sources = await container.read(
+      configuredContentSourcesProvider.future,
+    );
+
+    expect(sources, isEmpty);
+    expect(container.read(m3uParserProvider).getPlaylistUrl(), isNull);
+  });
 }

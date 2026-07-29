@@ -449,6 +449,138 @@ void main() {
     });
   });
 
+  group('configured M3U sources', () {
+    test(
+      'migrates the legacy Pixel playlist once without deleting it',
+      () async {
+        const legacyUrl = 'https://iptv-org.github.io/iptv/index.m3u';
+        SharedPreferences.setMockInitialValues({
+          'iptv_user_playlist_url': legacyUrl,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
+
+        final firstRead = await container.read(
+          configuredContentSourcesProvider.future,
+        );
+        container.invalidate(configuredContentSourcesProvider);
+        final secondRead = await container.read(
+          configuredContentSourcesProvider.future,
+        );
+
+        expect(firstRead, hasLength(1));
+        expect(firstRead.single.id, 'm3u-legacy-primary');
+        expect(firstRead.single.label, 'IPTV.org');
+        expect(firstRead.single.url, legacyUrl);
+        expect(secondRead, hasLength(1));
+        expect(prefs.getString('iptv_user_playlist_url'), legacyUrl);
+      },
+    );
+
+    test(
+      'loads multiple M3U sources, merges duplicate channels, and isolates failure',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final store = ContentSourceStore(PreferencesStore(prefs));
+        await store.replaceAll(const [
+          ContentSourceConfig(
+            id: 'm3u-news',
+            kind: ContentSourceKind.m3u,
+            label: 'News',
+            url: 'https://example.com/news.m3u',
+          ),
+          ContentSourceConfig(
+            id: 'm3u-sports',
+            kind: ContentSourceKind.m3u,
+            label: 'Sports',
+            url: 'https://example.com/sports.m3u',
+          ),
+          ContentSourceConfig(
+            id: 'm3u-offline',
+            kind: ContentSourceKind.m3u,
+            label: 'Offline',
+            url: 'https://example.com/offline.m3u',
+          ),
+        ]);
+        final parsers = <String, _FakeSourceParser>{
+          'm3u-news': _FakeSourceParser(
+            prefs: prefs,
+            sourceId: 'm3u-news',
+            channels: const [
+              IPTVChannel(
+                id: 'shared',
+                name: 'Shared News',
+                streamUrl: 'https://cdn.example.com/shared-hd.m3u8',
+              ),
+              IPTVChannel(
+                id: 'news-only',
+                name: 'News Only',
+                streamUrl: 'https://cdn.example.com/news.m3u8',
+              ),
+            ],
+          ),
+          'm3u-sports': _FakeSourceParser(
+            prefs: prefs,
+            sourceId: 'm3u-sports',
+            channels: const [
+              IPTVChannel(
+                id: 'shared',
+                name: 'Shared News',
+                streamUrl: 'https://cdn.example.com/shared-sd.m3u8',
+              ),
+              IPTVChannel(
+                id: 'sports-only',
+                name: 'Sports Only',
+                streamUrl: 'https://cdn.example.com/sports.m3u8',
+              ),
+            ],
+          ),
+          'm3u-offline': _FakeSourceParser(
+            prefs: prefs,
+            sourceId: 'm3u-offline',
+            error: StateError('offline'),
+          ),
+        };
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            m3uSourceParserFactoryProvider.overrideWithValue(
+              (sourceId) => parsers[sourceId]!,
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final channels = await container.read(
+          configuredM3uChannelsProvider.future,
+        );
+
+        expect(channels.map((channel) => channel.id), [
+          'shared',
+          'news-only',
+          'sports-only',
+        ]);
+        final shared = channels.first;
+        expect(shared.streamSources, hasLength(2));
+        expect(
+          shared.streamSources.map((source) => source.url),
+          containsAll([
+            'https://cdn.example.com/shared-hd.m3u8',
+            'https://cdn.example.com/shared-sd.m3u8',
+          ]),
+        );
+        expect(
+          parsers.values.every((parser) => parser.fetchCalls == 1),
+          isTrue,
+        );
+      },
+    );
+  });
+
   group('channelFavoriteTogglerProvider', () {
     test(
       'toggling the same channel twice flips the state both times',
@@ -545,4 +677,33 @@ int _retainedFullChannelListCopies({
     }
   }
   return fullListIdentities.length;
+}
+
+class _FakeSourceParser extends M3UParserService {
+  _FakeSourceParser({
+    required super.prefs,
+    required String sourceId,
+    this.channels = const [],
+    this.error,
+  }) : super(dio: Dio(), sourceId: sourceId);
+
+  final List<IPTVChannel> channels;
+  final Object? error;
+  String? _url;
+  int fetchCalls = 0;
+
+  @override
+  String? getPlaylistUrl() => _url;
+
+  @override
+  Future<void> setPlaylistUrl(String url) async {
+    _url = url;
+  }
+
+  @override
+  Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
+    fetchCalls++;
+    if (error case final error?) throw error;
+    return channels;
+  }
 }

@@ -250,6 +250,90 @@ https://cdn.example.com/live.m3u8
       expect(parser.getPlaylistUrl(), 'http://example.com/playlist.m3u');
     });
 
+    test('isolates URL, validators, and cache file by source id', () async {
+      final first = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        sourceId: 'm3u-first',
+        cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
+      );
+      final second = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        sourceId: 'm3u-second',
+        cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
+      );
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      server.listen((request) async {
+        final isFirst = request.uri.path.contains('first');
+        request.response.headers.set(
+          HttpHeaders.etagHeader,
+          isFirst ? '"first-v1"' : '"second-v1"',
+        );
+        request.response.write('''
+#EXTM3U
+#EXTINF:-1,${isFirst ? 'First News' : 'Second Sports'}
+https://cdn.example.com/${isFirst ? 'first' : 'second'}.m3u8
+''');
+        await request.response.close();
+      });
+      final base = 'http://${server.address.address}:${server.port}';
+
+      await first.setPlaylistUrl('$base/first.m3u');
+      await second.setPlaylistUrl('$base/second.m3u');
+      final firstChannels = await first.fetchPlaylist(forceRefresh: true);
+      final secondChannels = await second.fetchPlaylist(forceRefresh: true);
+
+      expect(firstChannels.single.name, 'First News');
+      expect(secondChannels.single.name, 'Second Sports');
+      expect(
+        prefs.getString('iptv_user_playlist_url.m3u-first'),
+        '$base/first.m3u',
+      );
+      expect(
+        prefs.getString('iptv_user_playlist_url.m3u-second'),
+        '$base/second.m3u',
+      );
+      expect(prefs.getString('iptv_playlist_etag.m3u-first'), '"first-v1"');
+      expect(prefs.getString('iptv_playlist_etag.m3u-second'), '"second-v1"');
+      expect(
+        File('${cacheDir.path}/iptv_channel_cache_m3u-first.json').existsSync(),
+        isTrue,
+      );
+      expect(
+        File(
+          '${cacheDir.path}/iptv_channel_cache_m3u-second.json',
+        ).existsSync(),
+        isTrue,
+      );
+
+      await first.clearPlaylist();
+
+      expect(first.getPlaylistUrl(), isNull);
+      expect(second.getPlaylistUrl(), '$base/second.m3u');
+      expect(
+        File('${cacheDir.path}/iptv_channel_cache_m3u-first.json').existsSync(),
+        isFalse,
+      );
+      expect(
+        File(
+          '${cacheDir.path}/iptv_channel_cache_m3u-second.json',
+        ).existsSync(),
+        isTrue,
+      );
+    });
+
+    test('rejects source ids that could escape the cache directory', () {
+      expect(
+        () =>
+            M3UParserService(dio: Dio(), prefs: prefs, sourceId: '../private'),
+        throwsArgumentError,
+      );
+    });
+
     test('rejects oversized playlist URLs before persisting', () async {
       parser = M3UParserService(
         dio: Dio(),
