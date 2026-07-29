@@ -643,6 +643,10 @@ class _ModelLibraryContent extends ConsumerWidget {
     final candidate = state.recommendedFor(template.task);
     final hasDownloadedPackage = candidate.package?.isDownloaded ?? false;
     ref.read(selectedAssistantTaskProvider.notifier).state = template.task;
+    // Read the notifier up front: the library provider can reload while a
+    // local runtime prepares, which unmounts this element and makes `ref`
+    // unusable by the time preparation finishes.
+    final selection = ref.read(selectedAssistantModelIdProvider.notifier);
 
     if (candidate.opensModelManager && !hasDownloadedPackage) {
       final confirmed = await _confirmPackageSetup(
@@ -670,13 +674,11 @@ class _ModelLibraryContent extends ConsumerWidget {
         candidate: candidate,
         template: template,
       );
-      if (!context.mounted || !result.isReady) {
+      if (!result.isReady) {
         return;
       }
     }
-    await ref
-        .read(selectedAssistantModelIdProvider.notifier)
-        .select(candidate.id);
+    await selection.select(candidate.id);
     onModelSelected(candidate);
   }
 
@@ -694,6 +696,21 @@ class _ModelLibraryContent extends ConsumerWidget {
       ),
     );
     var cancelRequested = false;
+
+    // Preparation outlives this element: a library reload swaps the content
+    // subtree out while a runtime warms up. Hold the navigator and messenger
+    // captured here rather than reaching through `context` after the await,
+    // or the progress dialog is never dismissed and the prepared runtime is
+    // silently dropped instead of opening chat.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    var dialogVisible = true;
+
+    void closeSetupDialog() {
+      if (!dialogVisible) return;
+      dialogVisible = false;
+      navigator.pop();
+    }
 
     unawaited(
       showDialog<void>(
@@ -719,16 +736,23 @@ class _ModelLibraryContent extends ConsumerWidget {
                 actions: [
                   TextButton(
                     onPressed: () {
+                      // Close on the spot. The runtime notices the flag and
+                      // returns `cancelled`; waiting for that to dismiss the
+                      // dialog leaves no way out once preparation has already
+                      // finished.
                       cancelRequested = true;
+                      closeSetupDialog();
                     },
-                    child: Text(cancelRequested ? 'Stopping…' : 'Cancel'),
+                    child: const Text('Cancel'),
                   ),
                 ],
               );
             },
           );
         },
-      ),
+        // Covers the Android back button, which pops the dialog without going
+        // through closeSetupDialog().
+      ).then((_) => dialogVisible = false),
     );
 
     final result = await runtimeService.prepareRuntime(
@@ -738,22 +762,17 @@ class _ModelLibraryContent extends ConsumerWidget {
     );
 
     progress.dispose();
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
+    closeSetupDialog();
 
-    if (!context.mounted) {
-      return result;
-    }
     if (result.status == AssistantRuntimePreparationStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('${candidate.name} setup cancelled.')),
       );
       return result;
     }
     if (result.diagnostic != null) {
       await _showPreparationFailure(
-        context,
+        navigator.context,
         diagnostic: result.diagnostic!,
         candidate: candidate,
       );
