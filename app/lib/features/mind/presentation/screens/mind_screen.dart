@@ -111,7 +111,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Ground answers with tools, maps, and visual summaries.',
             icon: Icons.extension_outlined,
             color: Colors.amber.shade800,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/mind/skills'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(

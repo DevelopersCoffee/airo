@@ -10,6 +10,7 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_advisor_screen.dart';
+import '../../features/agent_chat/presentation/screens/agent_skills_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
@@ -270,6 +271,11 @@ class AppRouter {
                       path: 'audio-scribe',
                       name: 'mind_audio_scribe',
                       builder: (context, state) => const AudioScribeScreen(),
+                    ),
+                    GoRoute(
+                      path: 'skills',
+                      name: 'mind_agent_skills',
+                      builder: (context, state) => const AgentSkillsScreen(),
                     ),
                   ],
                 ),
