@@ -421,6 +421,35 @@ Recording it here rather than treating the stack as complete. A governance
 mechanism whose weakness is known is a different thing from one whose weakness
 is assumed absent.
 
+**Three levels of assurance, and only the first two are process:**
+
+| | Level | How |
+|---|---|---|
+| 1 | The identifier exists | Partially mechanical — the namespace is greppable |
+| 2 | The identifier is relevant to this change | Review judgment |
+| 3 | The change is correct | Compiler, benchmark, or reviewer |
+
+Automating level 2 before implementation evidence exists would add complexity
+without earning it. This is the stopping point.
+
+### Governance rules are held to the Evidence Rule
+
+**A new governance mechanism requires the same justification as a specification
+change: an observed failure that demanded it.** Not that it seems generally
+useful.
+
+Every rule in this document has one. G0 exists because three revisions shipped
+non-compiling code. The Evidence Rule exists because five properties were
+recorded as applied and were absent. Contract Impact exists because a
+conformance test stayed green for three reviews after the dimension it measured
+was deleted. The namespace reservation above exists because `S2` meant two
+things.
+
+Governance that grows on plausibility rather than evidence has the same failure
+mode as a specification that does: it accumulates, each addition locally
+defensible, until the process costs more than the defects it prevents. From here
+the bar is a concrete weakness exposed by Runtime Skeleton implementation.
+
 ### The changelog is a proof ledger, not a release note
 
 A revision's changelog exists to answer one question per entry:
@@ -454,6 +483,36 @@ Worked example, Revision 8:
 | Pre-sized `String` hex helper | Benchmark | `to_bytes()` on a 100k-context vault: 350.82 ms → 16.55 ms | **I8**, budget V4 — no contract governs it |
 | Base64 on the outer ciphertext | Benchmark | Hex leaves a hard 3.30× floor against V4's ≤ 3× | **§4** |
 | Re-export `RevocationSource` | Compiler | `error[E0433]` from an external probe; restore unreachable | `none — plan-local` |
+
+### Evidence Identifier Namespace — prefixes are reserved
+
+**Each prefix below means one thing across the whole project.** Reserved, not
+merely conventional: a prefix may not be reused for a different artifact kind,
+in this document, in the specs, in review reports, or in issue comments.
+
+| Prefix | Reserved for |
+|---|---|
+| `C#` | Frozen runtime contracts |
+| `I#` | Frozen invariants |
+| `S#` | Conformance suites |
+| `V#` / `H#` | Benchmark budgets and host datapoints |
+| `G0.#` | Buildability gate steps |
+| `SEC-#` | Chief Security Officer findings |
+| `RA-#` | Rust Architect findings |
+| `PERF-#` | Chief Performance Officer findings |
+| `ADR-####` | Architecture Decision Records |
+| `Freeze §#` | Numbered sections of this document |
+
+A new council role takes a new prefix. A new artifact kind takes a new prefix.
+Neither borrows an existing one.
+
+This is the forward-looking half of the rule below, and it is the half that
+matters in six months: the table below says what a citation may *name*, and this
+one stops someone introducing `SEC` conformance tests or `RA` benchmarks and
+recreating the collision that motivated both. The collision was not theoretical
+— review findings were numbered `S1`, `S2`, `S5` while the conformance suites
+were also `S1`–`S5`, and it survived four council reviews unnoticed because
+nobody had to cite one from the other until the proof ledger required it.
 
 ### Citations resolve to real identifiers
 
