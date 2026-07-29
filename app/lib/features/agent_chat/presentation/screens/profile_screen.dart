@@ -529,6 +529,35 @@ class _AIPreferencesSection extends ConsumerWidget {
                   ),
                 ],
               ),
+              ExpansionTile(
+                key: const Key('ai-safety-profile-section'),
+                leading: const Icon(Icons.health_and_safety_outlined),
+                title: const Text('Safety Profile'),
+                subtitle: Text(
+                  settings.safetyProfile.label,
+                  key: const Key('ai-safety-profile-subtitle'),
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Harmful-content protection always stays enabled. This setting controls additional advisory filters.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  _SettingDropdownRow<SafetyProfile>(
+                    label: 'Safety posture',
+                    value: settings.safetyProfile,
+                    items: SafetyProfile.values,
+                    itemLabel: (value) => value.label,
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(safetyProfile: value));
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
         ),

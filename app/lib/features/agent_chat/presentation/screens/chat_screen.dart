@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/accessibility/airo_speech_service.dart';
@@ -681,6 +682,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final safety = SafetyGuardrails.withDefaults(
+      profile: ref.read(aiPreferencesSettingsProvider).safetyProfile,
+    );
+    final safetyResult = safety.checkInput(message);
+    if (safetyResult.isErr) {
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            text:
+                safetyResult.getErrorOrNull()?.toString() ??
+                'This request was blocked by the selected safety profile.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
+
     _messageController.clear();
 
     // Add user message
@@ -965,6 +984,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       stopwatch.stop();
       if (latestChunk.trim().isEmpty) {
+        return null;
+      }
+      final outputResult = SafetyGuardrails.withDefaults(
+        profile: ref.read(aiPreferencesSettingsProvider).safetyProfile,
+      ).checkOutput(latestChunk);
+      if (outputResult.isErr) {
+        _replaceStreamingMessage(
+          outputResult.getErrorOrNull()?.toString() ??
+              'The response was blocked by the selected safety profile.',
+        );
         return null;
       }
       return _buildRuntimeMetadata(
