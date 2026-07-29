@@ -12,10 +12,13 @@ class ModelDownloadService {
   ModelDownloadService({
     BackgroundDownloads? downloads,
     ModelStorageManager? storageManager,
+    ModelStorageLocation storageLocation =
+        ModelStorageLocation.applicationDocuments,
   }) : this._from(
          _resolveDependencies(
            downloads: downloads,
            storageManager: storageManager,
+           storageLocation: storageLocation,
          ),
        );
 
@@ -26,12 +29,17 @@ class ModelDownloadService {
   static _ResolvedDependencies _resolveDependencies({
     BackgroundDownloads? downloads,
     ModelStorageManager? storageManager,
+    required ModelStorageLocation storageLocation,
   }) {
     final resolvedDownloads = downloads ?? MethodChannelBackgroundDownloads();
     return _ResolvedDependencies(
       downloads: resolvedDownloads,
       storageManager:
-          storageManager ?? ModelStorageManager(downloads: resolvedDownloads),
+          storageManager ??
+          ModelStorageManager(
+            downloads: resolvedDownloads,
+            location: storageLocation,
+          ),
     );
   }
 

@@ -9,6 +9,8 @@ import '../../agent_chat/application/assistant_model_preferences.dart';
 import '../../agent_chat/domain/models/assistant_model_selection.dart';
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 
+import 'ai_preferences_settings.dart';
+
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
@@ -96,7 +98,15 @@ final selectedModelProvider = Provider<OfflineModelInfo?>((ref) {
 });
 
 final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
-  final service = ModelDownloadService();
+  // Capture the root when the queue is created so changing preferences cannot
+  // interrupt an active platform download. Existing internal artifacts remain
+  // discoverable when the external root is selected.
+  final settings = ref.read(aiPreferencesSettingsProvider);
+  final location =
+      settings.downloadLocation == AIDownloadLocationPreference.appManaged
+      ? ModelStorageLocation.applicationExternal
+      : ModelStorageLocation.applicationDocuments;
+  final service = ModelDownloadService(storageLocation: location);
   ref.onDispose(() => service.dispose());
   return service;
 });

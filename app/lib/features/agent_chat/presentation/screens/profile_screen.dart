@@ -466,6 +466,16 @@ class _AIPreferencesSection extends ConsumerWidget {
                           .update(settings.copyWith(downloadLocation: value));
                     },
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      settings.downloadLocation ==
+                              AIDownloadLocationPreference.appManaged
+                          ? 'Uses app-scoped external storage when available; existing internal models remain discoverable.'
+                          : 'Uses the app documents directory for private model storage.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
                   ListTile(
                     title: const Text('Clear Model Cache'),
                     subtitle: const Text(
