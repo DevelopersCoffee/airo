@@ -9,5 +9,6 @@ pub mod m3u;
 pub mod native_engine;
 pub mod playlist_engine;
 pub mod relational_store;
+pub mod runtime_contracts;
 pub mod text;
 pub mod xmltv;

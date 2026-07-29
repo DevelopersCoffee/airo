@@ -5,5 +5,6 @@ export 'src/native_bridge.dart';
 export 'src/native_engine.dart';
 export 'src/playlist_index.dart';
 export 'src/relational_store.dart';
+export 'src/api/runtime_contracts.dart';
 export 'src/text.dart';
 export 'src/xmltv.dart';

@@ -7,6 +7,7 @@ import 'api/m3u.dart';
 import 'api/native_engine.dart';
 import 'api/playlist_engine.dart';
 import 'api/relational_store.dart';
+import 'api/runtime_contracts.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
 import 'dart:async';
@@ -42,6 +43,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
+  InferenceIr dco_decode_box_autoadd_inference_ir(dynamic raw);
+
+  @protected
+  InferenceRequest dco_decode_box_autoadd_inference_request(dynamic raw);
+
+  @protected
   RelationalMediaGraphQuery dco_decode_box_autoadd_relational_media_graph_query(
     dynamic raw,
   );
@@ -56,6 +63,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RuntimeCapabilities dco_decode_box_autoadd_runtime_capabilities(dynamic raw);
+
+  @protected
+  RuntimeErrorCode dco_decode_box_autoadd_runtime_error_code(dynamic raw);
+
+  @protected
+  RuntimeHealth dco_decode_box_autoadd_runtime_health(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_16(dynamic raw);
 
   @protected
@@ -65,6 +81,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw);
 
   @protected
+  CapabilityId dco_decode_capability_id(dynamic raw);
+
+  @protected
+  CapabilityState dco_decode_capability_state(dynamic raw);
+
+  @protected
+  ComputeAccelerator dco_decode_compute_accelerator(dynamic raw);
+
+  @protected
+  ExecutionPriority dco_decode_execution_priority(dynamic raw);
+
+  @protected
   double dco_decode_f_64(dynamic raw);
 
   @protected
@@ -72,6 +100,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  InferenceIr dco_decode_inference_ir(dynamic raw);
+
+  @protected
+  InferenceRequest dco_decode_inference_request(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -175,6 +209,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RuntimeErrorCode? dco_decode_opt_box_autoadd_runtime_error_code(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
 
   @protected
@@ -251,6 +288,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RelationalSyncField dco_decode_relational_sync_field(dynamic raw);
 
   @protected
+  RuntimeApiVersion dco_decode_runtime_api_version(dynamic raw);
+
+  @protected
+  RuntimeCapabilities dco_decode_runtime_capabilities(dynamic raw);
+
+  @protected
+  RuntimeErrorCode dco_decode_runtime_error_code(dynamic raw);
+
+  @protected
+  RuntimeHealth dco_decode_runtime_health(dynamic raw);
+
+  @protected
+  RuntimeHealthState dco_decode_runtime_health_state(dynamic raw);
+
+  @protected
+  RuntimeId dco_decode_runtime_id(dynamic raw);
+
+  @protected
   SubtitleCue dco_decode_subtitle_cue(dynamic raw);
 
   @protected
@@ -319,6 +374,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
+  InferenceIr sse_decode_box_autoadd_inference_ir(SseDeserializer deserializer);
+
+  @protected
+  InferenceRequest sse_decode_box_autoadd_inference_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RelationalMediaGraphQuery sse_decode_box_autoadd_relational_media_graph_query(
     SseDeserializer deserializer,
   );
@@ -335,6 +398,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RuntimeCapabilities sse_decode_box_autoadd_runtime_capabilities(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeErrorCode sse_decode_box_autoadd_runtime_error_code(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeHealth sse_decode_box_autoadd_runtime_health(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
 
   @protected
@@ -346,6 +424,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  CapabilityId sse_decode_capability_id(SseDeserializer deserializer);
+
+  @protected
+  CapabilityState sse_decode_capability_state(SseDeserializer deserializer);
+
+  @protected
+  ComputeAccelerator sse_decode_compute_accelerator(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExecutionPriority sse_decode_execution_priority(SseDeserializer deserializer);
+
+  @protected
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
@@ -353,6 +445,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  InferenceIr sse_decode_inference_ir(SseDeserializer deserializer);
+
+  @protected
+  InferenceRequest sse_decode_inference_request(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -466,6 +564,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RelationalSyncEntity? sse_decode_opt_box_autoadd_relational_sync_entity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeErrorCode? sse_decode_opt_box_autoadd_runtime_error_code(
     SseDeserializer deserializer,
   );
 
@@ -586,6 +689,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RuntimeApiVersion sse_decode_runtime_api_version(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeCapabilities sse_decode_runtime_capabilities(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeErrorCode sse_decode_runtime_error_code(SseDeserializer deserializer);
+
+  @protected
+  RuntimeHealth sse_decode_runtime_health(SseDeserializer deserializer);
+
+  @protected
+  RuntimeHealthState sse_decode_runtime_health_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RuntimeId sse_decode_runtime_id(SseDeserializer deserializer);
+
+  @protected
   SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer);
 
   @protected
@@ -670,6 +797,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_inference_ir(
+    InferenceIr self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_inference_request(
+    InferenceRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_relational_media_graph_query(
     RelationalMediaGraphQuery self,
     SseSerializer serializer,
@@ -688,6 +827,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_runtime_capabilities(
+    RuntimeCapabilities self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_runtime_error_code(
+    RuntimeErrorCode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_runtime_health(
+    RuntimeHealth self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
 
   @protected
@@ -700,6 +857,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_capability_id(CapabilityId self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_capability_state(
+    CapabilityState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_compute_accelerator(
+    ComputeAccelerator self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_execution_priority(
+    ExecutionPriority self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
@@ -707,6 +885,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_inference_ir(InferenceIr self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_inference_request(
+    InferenceRequest self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -862,6 +1049,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_runtime_error_code(
+    RuntimeErrorCode? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
 
   @protected
@@ -998,6 +1191,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     RelationalSyncField self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_runtime_api_version(
+    RuntimeApiVersion self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_runtime_capabilities(
+    RuntimeCapabilities self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_runtime_error_code(
+    RuntimeErrorCode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_runtime_health(RuntimeHealth self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_runtime_health_state(
+    RuntimeHealthState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_runtime_id(RuntimeId self, SseSerializer serializer);
 
   @protected
   void sse_encode_subtitle_cue(SubtitleCue self, SseSerializer serializer);
