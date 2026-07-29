@@ -34,6 +34,7 @@ export 'src/llm/gguf_model_config.dart';
 export 'src/llm/gguf_model_client.dart';
 export 'src/llm/batch_generation_service.dart';
 export 'src/llm/openai_compatible_client.dart';
+export 'src/llm/openai_compatible_image_client.dart';
 export 'src/llm/active_model_service.dart';
 export 'src/client/safety_guardrails.dart';
 export 'src/client/safety_filtered_client.dart';
