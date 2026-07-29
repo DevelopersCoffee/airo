@@ -604,6 +604,11 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 icon: const Icon(Icons.memory),
                 label: const Text('Warm now'),
               ),
+              OutlinedButton.icon(
+                onPressed: () => _benchmarkModel(context, ref, model.id),
+                icon: const Icon(Icons.speed_outlined),
+                label: const Text('Benchmark'),
+              ),
               if (model.hasUpdate)
                 OutlinedButton.icon(
                   onPressed: () => ref
@@ -661,6 +666,35 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
         'Model could not be warmed: ${result.detail ?? 'runtime unavailable'}.',
       ModelWarmupStatus.failed =>
         'Model warm-up failed: ${result.detail ?? 'unknown error'}.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _benchmarkModel(
+    BuildContext context,
+    WidgetRef ref,
+    String modelId,
+  ) async {
+    final stopwatch = Stopwatch()..start();
+    final result = await ref
+        .read(intelligentModelManagerProvider)
+        .warmModel(modelId);
+    stopwatch.stop();
+    if (!context.mounted) return;
+
+    final elapsed =
+        '${(stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(2)}s';
+    final message = switch (result.status) {
+      ModelWarmupStatus.warmed =>
+        'Warm-up benchmark: $elapsed. Model is ready for inference.',
+      ModelWarmupStatus.alreadyResident =>
+        'Warm-up benchmark: $elapsed. Model was already resident.',
+      ModelWarmupStatus.unavailable =>
+        'Benchmark unavailable: ${result.detail ?? 'runtime unavailable'}.',
+      ModelWarmupStatus.failed =>
+        'Benchmark failed after $elapsed: ${result.detail ?? 'unknown error'}.',
     };
     ScaffoldMessenger.of(
       context,
