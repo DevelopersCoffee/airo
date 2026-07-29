@@ -62,7 +62,35 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             color: Colors.indigo,
             onTap: () => _showReflectionPrompt(context),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          Text('Progress', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Row(
+            children: const [
+              Expanded(
+                child: _MindStatCard(
+                  label: 'Mind Streak',
+                  value: '4 days',
+                  detail: 'Daily check-ins',
+                  icon: Icons.local_fire_department,
+                  color: Colors.deepOrange,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _MindStatCard(
+                  label: 'Reflections',
+                  value: '2 this week',
+                  detail: 'Journaling momentum',
+                  icon: Icons.auto_stories,
+                  color: Colors.blue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const _MindProgressCard(),
+          const SizedBox(height: 24),
           Text('Airo Mind AI Lab', style: theme.textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
@@ -126,34 +154,14 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             color: Colors.deepPurple,
             onTap: () => context.push('/mind/models'),
           ),
-          const SizedBox(height: 16),
-          Text('Progress', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Row(
-            children: const [
-              Expanded(
-                child: _MindStatCard(
-                  label: 'Mind Streak',
-                  value: '4 days',
-                  detail: 'Daily check-ins',
-                  icon: Icons.local_fire_department,
-                  color: Colors.deepOrange,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _MindStatCard(
-                  label: 'Reflections',
-                  value: '2 this week',
-                  detail: 'Journaling momentum',
-                  icon: Icons.auto_stories,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Device Capability Report',
+            subtitle: 'See memory, on-device AI support, and model fit.',
+            icon: Icons.memory_outlined,
+            color: Colors.blueGrey,
+            onTap: () => context.push('/mind/device-capabilities'),
           ),
-          const SizedBox(height: 12),
-          const _MindProgressCard(),
         ],
       ),
     );

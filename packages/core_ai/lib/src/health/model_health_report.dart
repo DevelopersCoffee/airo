@@ -260,8 +260,9 @@ class ModelHealthReport {
   }) {
     if (download?.status == ModelDownloadStatus.failed) {
       final code = download?.failureCode;
-      if (code == 'integrityMismatch')
+      if (code == 'integrityMismatch') {
         return ModelHealthFailureCode.integrityFailed;
+      }
       return ModelHealthFailureCode.downloadIncomplete;
     }
     if (compatibility?.memorySeverity == MemorySeverity.blocked ||

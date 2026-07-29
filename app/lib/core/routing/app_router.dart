@@ -1,4 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -7,6 +8,7 @@ import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/airo_explore/presentation/screens/airo_explore_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
+import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
@@ -238,6 +240,14 @@ class AppRouter {
                           context.push('/mind/profile');
                         },
                       ),
+                    ),
+                    GoRoute(
+                      path: 'device-capabilities',
+                      name: 'mind_device_capabilities',
+                      builder: (context, state) =>
+                          DeviceCapabilityReportLoaderScreen(
+                            models: ModelCatalog.bundledModels,
+                          ),
                     ),
                   ],
                 ),

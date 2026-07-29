@@ -204,7 +204,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
       itemBuilder: (context, index) {
         final model = models[index];
         final downloadProgress = activeDownloads[model.id];
-        final isDownloading = downloadProgress?.isActive ?? false;
+        final isDownloading =
+            downloadProgress?.isActive == true ||
+            downloadProgress?.canRetry == true;
         final isActive = model.id == selectedModelId;
         final compatibility = ref.watch(modelCompatibilityProvider(model.id));
 
@@ -233,6 +235,15 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             onCancelDownload: isDownloading
                 ? () => _cancelDownload(model.id)
                 : null,
+            onPauseDownload: downloadProgress?.canPause == true
+                ? () => _pauseDownload(model.id)
+                : null,
+            onResumeDownload: downloadProgress?.canResume == true
+                ? () => _resumeDownload(model.id)
+                : null,
+            onRetryDownload: downloadProgress?.canRetry == true
+                ? () => _retryDownload(model.id)
+                : null,
             onLearnMore: model.learnMoreUri != null
                 ? () => launchModelLearnMore(context, model)
                 : null,
@@ -259,6 +270,15 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                 : null,
             onCancelDownload: isDownloading
                 ? () => _cancelDownload(model.id)
+                : null,
+            onPauseDownload: downloadProgress?.canPause == true
+                ? () => _pauseDownload(model.id)
+                : null,
+            onResumeDownload: downloadProgress?.canResume == true
+                ? () => _resumeDownload(model.id)
+                : null,
+            onRetryDownload: downloadProgress?.canRetry == true
+                ? () => _retryDownload(model.id)
                 : null,
             onLearnMore: model.learnMoreUri != null
                 ? () => launchModelLearnMore(context, model)
@@ -288,6 +308,15 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             onCancelDownload: isDownloading
                 ? () => _cancelDownload(model.id)
                 : null,
+            onPauseDownload: downloadProgress?.canPause == true
+                ? () => _pauseDownload(model.id)
+                : null,
+            onResumeDownload: downloadProgress?.canResume == true
+                ? () => _resumeDownload(model.id)
+                : null,
+            onRetryDownload: downloadProgress?.canRetry == true
+                ? () => _retryDownload(model.id)
+                : null,
             onLearnMore: model.learnMoreUri != null
                 ? () => launchModelLearnMore(context, model)
                 : null,
@@ -315,6 +344,18 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Download cancelled')));
+  }
+
+  void _pauseDownload(String modelId) {
+    ref.read(activeDownloadsProvider.notifier).pauseDownload(modelId);
+  }
+
+  void _resumeDownload(String modelId) {
+    ref.read(activeDownloadsProvider.notifier).resumeDownload(modelId);
+  }
+
+  void _retryDownload(String modelId) {
+    ref.read(activeDownloadsProvider.notifier).retryDownload(modelId);
   }
 
   Future<void> _deleteModel(OfflineModelInfo model) async {

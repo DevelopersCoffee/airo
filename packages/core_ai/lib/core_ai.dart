@@ -8,6 +8,7 @@ export 'src/provider/ai_provider.dart';
 
 // Device Capabilities
 export 'src/device/device_capability_service.dart';
+export 'src/device/device_capability_report.dart';
 export 'src/device/memory_budget_manager.dart';
 export 'src/device/memory_severity.dart';
 export 'src/residency/model_residency_manager.dart';
