@@ -5,6 +5,7 @@ import '../content_source_store.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import 'content_source_providers.dart';
 import 'iptv_providers.dart';
+import 'provider_health_providers.dart';
 
 export 'content_source_providers.dart'
     show secureStoreProvider, contentSourceCredentialStoreProvider;
@@ -227,6 +228,7 @@ final removeContentSourceProvider = FutureProvider.autoDispose
         await ref
             .watch(contentSourceCredentialStoreProvider)
             .delete(ContentSourceCredentialRef(id));
+        ref.read(providerHealthTrackerProvider).clearFor(id);
         final epgRepository = ref.read(compactEpgRepositoryProvider);
         if (epgRepository is MutableXmltvCompactEpgRepository) {
           epgRepository.removeNamedSource('epg-$id');

@@ -218,6 +218,49 @@ void main() {
     expect(find.text('VOD'), findsOneWidget);
   });
 
+  testWidgets('source list shows a privacy-safe provider health hint', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addXtreamContentSourceProvider((
+        label: 'Xtream',
+        url: 'https://xtream.example.com',
+        username: 'u',
+        password: 'p',
+      )).future,
+    );
+    final source = (await container.read(
+      configuredContentSourcesProvider.future,
+    )).single;
+    container
+        .read(providerHealthTrackerProvider)
+        .record(
+          ProviderHealthSample.fetchFailure(
+            sourceId: source.id,
+            timestampUtc: DateTime.utc(2026, 7, 29),
+            failureCategory: ProviderHealthFailureCategory.auth,
+            httpStatus: 401,
+          ),
+        );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('Frequent recent issues'), findsOneWidget);
+    expect(find.textContaining('Credentials rejected'), findsOneWidget);
+    expect(find.textContaining('xtream.example.com'), findsNothing);
+  });
+
   testWidgets('removing a source requires confirmation', (tester) async {
     final container = await buildContainer();
     addTearDown(container.dispose);

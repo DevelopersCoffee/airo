@@ -7,6 +7,7 @@ export "domain/local_iptv_search.dart";
 export "domain/vod_resume_coordinator.dart";
 export "domain/favorite_reimport_coordinator.dart";
 export "application/providers/iptv_providers.dart";
+export "application/providers/provider_health_providers.dart";
 export "application/providers/iptv_org_api_providers.dart";
 export "application/providers/last_channel_provider.dart";
 export "application/providers/rails_provider.dart";
