@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Voice search state
@@ -125,9 +127,110 @@ class MockVoiceSearchService implements VoiceSearchService {
   }
 }
 
+/// Android speech-recognition adapter. The platform recognizer is used only
+/// for capture/transcription; generated answers still follow Airo's normal
+/// local/cloud runtime policy.
+class AndroidVoiceSearchService implements VoiceSearchService {
+  AndroidVoiceSearchService({MethodChannel? channel})
+    : _channel = channel ?? const MethodChannel('com.airo.voice_search');
+
+  final MethodChannel _channel;
+  VoiceSearchState _state = VoiceSearchState.idle;
+  final _stateController = StreamController<VoiceSearchState>.broadcast();
+  bool _disposed = false;
+
+  @override
+  VoiceSearchState get state => _state;
+
+  @override
+  Stream<VoiceSearchState> get stateStream => _stateController.stream;
+
+  void _setState(VoiceSearchState value) {
+    if (_disposed) return;
+    _state = value;
+    _stateController.add(value);
+  }
+
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      return await _channel.invokeMethod<bool>('isAvailable') ?? false;
+    } on PlatformException catch (_) {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  @override
+  Future<VoiceSearchResult> startListening() async {
+    if (!await isAvailable()) {
+      const message = 'Speech recognition is unavailable on this device.';
+      _setState(VoiceSearchState.error);
+      return VoiceSearchResult.error(message);
+    }
+
+    _setState(VoiceSearchState.listening);
+    try {
+      final response = await _channel.invokeMethod<Map<Object?, Object?>>(
+        'startListening',
+      );
+      _setState(VoiceSearchState.processing);
+      final result = response == null
+          ? const <Object?, Object?>{}
+          : Map<Object?, Object?>.from(response);
+      final text = (result['text'] as String?)?.trim();
+      final error = (result['error'] as String?)?.trim();
+      if (text != null && text.isNotEmpty) {
+        _setState(VoiceSearchState.completed);
+        return VoiceSearchResult.success(
+          text,
+          confidence: (result['confidence'] as num?)?.toDouble() ?? 1.0,
+        );
+      }
+      final message = error?.isNotEmpty == true
+          ? error!
+          : 'No speech was recognized.';
+      _setState(VoiceSearchState.error);
+      return VoiceSearchResult.error(message);
+    } on PlatformException catch (error) {
+      _setState(VoiceSearchState.error);
+      return VoiceSearchResult.error(
+        error.message ?? 'Speech recognition failed.',
+      );
+    } on MissingPluginException {
+      _setState(VoiceSearchState.error);
+      return VoiceSearchResult.error(
+        'Speech recognition is not installed in this build.',
+      );
+    }
+  }
+
+  @override
+  Future<void> stopListening() async {
+    try {
+      await _channel.invokeMethod<void>('stopListening');
+    } on PlatformException catch (_) {
+      // Stopping is best effort; always restore the public state.
+    } on MissingPluginException {
+      // Unsupported platform/build: keep the state contract consistent.
+    }
+    _setState(VoiceSearchState.idle);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    unawaited(stopListening());
+    _stateController.close();
+  }
+}
+
 /// Provider for VoiceSearchService
 final voiceSearchServiceProvider = Provider<VoiceSearchService>((ref) {
-  final service = MockVoiceSearchService();
+  final service = defaultTargetPlatform == TargetPlatform.android
+      ? AndroidVoiceSearchService()
+      : MockVoiceSearchService();
   ref.onDispose(service.dispose);
   return service;
 });
