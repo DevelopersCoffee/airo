@@ -265,9 +265,19 @@ class _GeneratedImageView extends StatelessWidget {
       image.base64Data,
     );
     final rawBase64 = base64Data ?? image.base64Data;
-    final child = rawBase64 != null
-        ? Image.memory(base64Decode(rawBase64), fit: BoxFit.contain)
-        : Image.network(image.url!, fit: BoxFit.contain);
+    Widget child;
+    if (rawBase64 != null) {
+      try {
+        child = Image.memory(base64Decode(rawBase64), fit: BoxFit.contain);
+      } on FormatException {
+        child = const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('The image server returned malformed image data.'),
+        );
+      }
+    } else {
+      child = Image.network(image.url!, fit: BoxFit.contain);
+    }
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
