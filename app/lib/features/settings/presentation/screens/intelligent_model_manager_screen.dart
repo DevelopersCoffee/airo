@@ -611,7 +611,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 label: const Text('Benchmark'),
               ),
               OutlinedButton.icon(
-                onPressed: () => _openHealthCenter(context, modelInfo),
+                onPressed: () => _openHealthCenter(context, ref, modelInfo),
                 icon: const Icon(Icons.help_outline),
                 label: const Text('Why?'),
               ),
@@ -707,12 +707,23 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _openHealthCenter(BuildContext context, OfflineModelInfo model) {
-    final report = ModelHealthReport.fromFacts(model: model);
+  void _openHealthCenter(
+    BuildContext context,
+    WidgetRef ref,
+    OfflineModelInfo model,
+  ) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ModelHealthCenterScreen(
-          report: report,
+        builder: (_) => ModelHealthCenterLoaderScreen(
+          model: model,
+          compatibilityFuture: ref
+              .read(modelRegistryProvider)
+              .checkCompatibility(model)
+              .timeout(
+                const Duration(milliseconds: 750),
+                onTimeout: () =>
+                    ModelCompatibilityResult.compatible(MemorySeverity.warning),
+              ),
           onAction: (action) {
             Navigator.of(context).pop();
             final message = switch (action) {

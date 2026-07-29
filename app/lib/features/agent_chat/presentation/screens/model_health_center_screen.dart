@@ -1,6 +1,54 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 
+/// Loads live compatibility facts without blocking navigation to the health
+/// center. Platform probes can be slow or unavailable after an OS update.
+class ModelHealthCenterLoaderScreen extends StatelessWidget {
+  const ModelHealthCenterLoaderScreen({
+    super.key,
+    required this.model,
+    required this.compatibilityFuture,
+    this.onAction,
+  });
+
+  final OfflineModelInfo model;
+  final Future<ModelCompatibilityResult> compatibilityFuture;
+  final ValueChanged<ModelHealthAction>? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ModelCompatibilityResult>(
+      future: compatibilityFuture,
+      builder: (context, snapshot) {
+        final compatibility = snapshot.data;
+        if (compatibility != null) {
+          return ModelHealthCenterScreen(
+            report: ModelHealthReport.fromFacts(
+              model: model,
+              compatibility: compatibility,
+            ),
+            onAction: onAction,
+          );
+        }
+        if (snapshot.hasError) {
+          return ModelHealthCenterScreen(
+            report: ModelHealthReport.fromFacts(model: model),
+            onAction: onAction,
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(title: const Text('Runtime Health Center')),
+          body: const Center(
+            child: CircularProgressIndicator(
+              semanticsLabel: 'Reading device facts',
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Explains model readiness in user-facing language without exposing runtime
 /// exception strings or platform-specific implementation details.
 class ModelHealthCenterScreen extends StatelessWidget {

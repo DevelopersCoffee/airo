@@ -38,8 +38,10 @@ void main() {
       family: ModelFamily.gemma,
       fileSizeBytes: 2048,
     );
-    final registry = ModelRegistry()
-      ..registerModels([installedInfo, queuedInfo]);
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModels([installedInfo, queuedInfo]);
     const failedProgress = ModelDownloadProgress(
       modelId: 'queued',
       totalBytes: 2048,
