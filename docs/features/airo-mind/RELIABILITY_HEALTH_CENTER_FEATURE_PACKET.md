@@ -96,7 +96,10 @@ LM Studio, Ollama, and llama.cpp servers. Cloud sync and additional native
 backends remain follow-up slices using these contracts; local chat history is
 now versioned, bounded, restored on-device, and included in encrypted backup
 exports. Chat responses also render fenced code with language labels and
-one-tap code copying.
+one-tap code copying. The chat surface applies a persisted SafetyProfile
+(strict, balanced, or permissive) while retaining harmful-content blocking and
+maximum-input protection for every profile; blocked input and output are
+reported as user-safe assistant messages.
 
 ## Airo Mind use-case catalog
 
