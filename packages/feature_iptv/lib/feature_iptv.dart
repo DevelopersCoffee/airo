@@ -71,6 +71,7 @@ export "presentation/widgets/iptv_cast_prompt_card.dart";
 export "presentation/widgets/iptv_mini_player.dart";
 export "presentation/widgets/iptv_navigation_drawer.dart";
 export "presentation/widgets/phone_media_play_on_tv_sheet.dart";
+export "presentation/widgets/playlist_source_manager_sheet.dart";
 export "presentation/widgets/xmltv_source_sheet.dart";
 export "presentation/widgets/epg_match_override_sheet.dart";
 export "presentation/widgets/local_search_results_panel.dart";

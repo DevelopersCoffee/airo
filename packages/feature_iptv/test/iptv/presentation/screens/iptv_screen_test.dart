@@ -1,7 +1,3 @@
-import "dart:async";
-import "dart:io";
-
-import "package:dio/dio.dart";
 import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:flutter/foundation.dart';
@@ -10,35 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-/// Test double for [M3UParserService] that lets tests drive
-/// `fetchPlaylistWithProgress` via a fixture [ImportProgress] stream instead
-/// of hitting real HTTP. Every call opens a fresh [StreamController] (Save
-/// and Retry both re-invoke the import) so tests can push emissions onto
-/// whichever controller `streamControllers.last` refers to after each call.
-class _FixtureM3UParserService extends M3UParserService {
-  _FixtureM3UParserService({required super.dio, required super.prefs})
-    : super(
-        // `setPlaylistUrl`/`clearCache` touch the real cache directory via
-        // path_provider, which has no platform-channel mock under
-        // `flutter_test` and would otherwise hang forever awaiting a reply
-        // that never arrives. Point it at the test's temp dir instead.
-        cacheDirectoryProvider: () async => Directory.systemTemp,
-      );
-
-  final List<StreamController<ImportProgress>> streamControllers = [];
-  int fetchWithProgressCallCount = 0;
-
-  @override
-  Stream<ImportProgress> fetchPlaylistWithProgress({
-    bool forceRefresh = false,
-  }) {
-    fetchWithProgressCallCount++;
-    final controller = StreamController<ImportProgress>();
-    streamControllers.add(controller);
-    return controller.stream;
-  }
-}
 
 void main() {
   final channels = [
@@ -455,7 +422,11 @@ void main() {
 
       await activateAppBarAction(tester, 'Playlist source');
 
-      expect(find.text('Add Playlist Source'), findsOneWidget);
+      expect(find.text('Playlist sources'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('playlist-source-add-button')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -472,233 +443,66 @@ void main() {
     expect(find.text('No XMLTV source configured yet.'), findsOneWidget);
   });
 
-  testWidgets(
-    'Add Playlist sheet shows a progress indicator and stage label while '
-    'the import stream emits',
-    (tester) async {
-      late _FixtureM3UParserService parser;
-      await tester.pumpWidget(
-        createWidget(
-          extraOverrides: [
-            m3uParserProvider.overrideWith((ref) {
-              parser = _FixtureM3UParserService(
-                dio: Dio(),
-                prefs: ref.watch(sharedPreferencesProvider),
-              );
-              return parser;
-            }),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('playlist manager adds a named source from the app bar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
 
-      await activateAppBarAction(tester, 'Playlist source');
+    await activateAppBarAction(tester, 'Playlist source');
+    await tester.tap(find.byKey(const ValueKey('playlist-source-add-button')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('playlist-source-label-field')),
+      'India',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('playlist-source-url-field')),
+      'https://iptv-org.github.io/iptv/countries/in.m3u',
+    );
+    final saveButton = find.byKey(
+      const ValueKey('playlist-source-save-button'),
+    );
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.byType(TextField),
-        'https://example.com/playlist.m3u',
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      // Not pumpAndSettle: the indeterminate LinearProgressIndicator
-      // schedules frames continuously while importing, so settling never
-      // completes until the stream reaches a terminal stage.
-      await tester.pump();
-      await tester.pump();
+    expect(find.text('India'), findsOneWidget);
+    expect(find.text('1 playlist source'), findsOneWidget);
+  });
 
-      expect(parser.fetchWithProgressCallCount, 1);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-      expect(find.text('Starting playlist import'), findsOneWidget);
+  testWidgets('adding a playlist preserves existing favorites', (tester) async {
+    await tester.pumpWidget(
+      createWidget(
+        initialPreferences: const {
+          'iptv_favorite_channel_ids': ['news-1'],
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      parser.streamControllers.last.add(
-        const ImportProgress(
-          stage: ImportStage.download,
-          message: 'Downloading playlist',
-        ),
-      );
-      await tester.pump();
+    await activateAppBarAction(tester, 'Playlist source');
+    await tester.tap(find.byKey(const ValueKey('playlist-source-add-button')));
+    await tester.pump();
+    await tester.tap(find.text('By country'));
+    await tester.pump();
+    final saveButton = find.byKey(
+      const ValueKey('playlist-source-save-button'),
+    );
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Downloading playlist'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'Add Playlist sheet shows an error and Retry on a failed import, and '
-    'Retry re-invokes the import',
-    (tester) async {
-      late _FixtureM3UParserService parser;
-      await tester.pumpWidget(
-        createWidget(
-          extraOverrides: [
-            m3uParserProvider.overrideWith((ref) {
-              parser = _FixtureM3UParserService(
-                dio: Dio(),
-                prefs: ref.watch(sharedPreferencesProvider),
-              );
-              return parser;
-            }),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await activateAppBarAction(tester, 'Playlist source');
-      await tester.enterText(
-        find.byType(TextField),
-        'https://example.com/playlist.m3u',
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      // Not pumpAndSettle: see note in the progress-indicator test above.
-      await tester.pump();
-      await tester.pump();
-
-      expect(parser.fetchWithProgressCallCount, 1);
-
-      parser.streamControllers.last.add(
-        ImportProgress(stage: ImportStage.failed, error: StateError('boom')),
-      );
-      await tester.pump();
-      // The failed panel has no animating widgets, so it's safe to settle.
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Import failed'), findsWidgets);
-      expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
-      // The sheet stays open on failure so the user can retry or edit the URL.
-      expect(find.text('Add Playlist Source'), findsOneWidget);
-
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Retry'));
-      await tester.pump();
-      await tester.pump();
-
-      expect(parser.fetchWithProgressCallCount, 2);
-      expect(find.text('Starting playlist import'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'Add Playlist sheet closes and invalidates railsProvider when the '
-    'import reaches ImportStage.ready',
-    (tester) async {
-      late _FixtureM3UParserService parser;
-      var railsBuildCount = 0;
-      await tester.pumpWidget(
-        createWidget(
-          extraOverrides: [
-            m3uParserProvider.overrideWith((ref) {
-              parser = _FixtureM3UParserService(
-                dio: Dio(),
-                prefs: ref.watch(sharedPreferencesProvider),
-              );
-              return parser;
-            }),
-            railsProvider.overrideWith((ref) async {
-              railsBuildCount++;
-              return [];
-            }),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(railsBuildCount, 1);
-
-      await activateAppBarAction(tester, 'Playlist source');
-      await tester.enterText(
-        find.byType(TextField),
-        'https://example.com/playlist.m3u',
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      // Not pumpAndSettle: see note in the progress-indicator test above.
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Add Playlist Source'), findsOneWidget);
-
-      parser.streamControllers.last.add(
-        const ImportProgress(
-          stage: ImportStage.ready,
-          fraction: 1,
-          message: 'Imported 3 channels',
-        ),
-      );
-      // Sheet pops in response to `ready`; the indeterminate bar is gone
-      // once it's off the tree, so settling is safe again.
-      await tester.pumpAndSettle();
-
-      expect(find.text('Add Playlist Source'), findsNothing);
-      expect(railsBuildCount, 2);
-    },
-  );
-
-  testWidgets(
-    'playlist source reimport preserves name-only favorite for review',
-    (tester) async {
-      const oldChannel = IPTVChannel(
-        id: 'favorite-old',
-        name: 'Fixture News HD',
-        streamUrl: 'https://example.com/old.m3u8',
-      );
-      const newChannel = IPTVChannel(
-        id: 'favorite-new',
-        name: 'fixture-news',
-        streamUrl: 'https://example.com/new.m3u8',
-      );
-      late _FixtureM3UParserService parser;
-      var importReady = false;
-
-      await tester.pumpWidget(
-        createWidget(
-          initialPreferences: const {
-            'iptv_favorite_channel_ids': ['favorite-old'],
-          },
-          channelLoader: () => importReady ? [newChannel] : [oldChannel],
-          extraOverrides: [
-            m3uParserProvider.overrideWith((ref) {
-              parser = _FixtureM3UParserService(
-                dio: Dio(),
-                prefs: ref.watch(sharedPreferencesProvider),
-              );
-              return parser;
-            }),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await activateAppBarAction(tester, 'Playlist source');
-      await tester.enterText(
-        find.byType(TextField),
-        'https://example.com/playlist-b.m3u',
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      await tester.pump();
-      await tester.pump();
-
-      importReady = true;
-      parser.streamControllers.last.add(
-        const ImportProgress(
-          stage: ImportStage.ready,
-          fraction: 1,
-          message: 'Imported playlist B',
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final scope = ProviderScope.containerOf(
-        tester.element(find.byType(IPTVScreen)),
-      );
-      final candidates = scope.read(favoriteReimportReviewCandidatesProvider);
-      expect(candidates, hasLength(1));
-      expect(candidates.single.oldChannel.id, 'favorite-old');
-      expect(candidates.single.candidate.id, 'favorite-new');
-      expect(
-        await scope
-            .read(favoriteChannelsStorageProvider)
-            .getFavoriteChannelIds(),
-        {'favorite-old'},
-      );
-    },
-  );
+    final scope = ProviderScope.containerOf(
+      tester.element(find.byType(IPTVScreen)),
+    );
+    expect(
+      await scope.read(favoriteChannelsStorageProvider).getFavoriteChannelIds(),
+      {'news-1'},
+    );
+  });
 
   testWidgets('fresh install shows bring-your-own playlist state', (
     tester,

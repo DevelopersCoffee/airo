@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:core_data/core_data.dart';
+import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,15 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        m3uSourceParserFactoryProvider.overrideWithValue(
+          (sourceId) => M3UParserService(
+            dio: Dio(),
+            prefs: prefs,
+            sourceId: sourceId,
+            cacheDirectoryProvider: () async => Directory.systemTemp,
+            downloadDirectoryProvider: () async => Directory.systemTemp,
+          ),
+        ),
         xtreamAuthenticatorProvider.overrideWithValue(
           ({
             required String serverUrl,
@@ -241,6 +253,7 @@ void main() {
     final sources = await container.read(
       configuredContentSourcesProvider.future,
     );
+    await tester.pump();
     expect(sources, isEmpty);
   });
 

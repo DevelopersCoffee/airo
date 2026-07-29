@@ -13,14 +13,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'channel_variant_classifier.dart';
 
+String? _validatedSourceId(String? sourceId) {
+  if (sourceId == null) return null;
+  final normalized = sourceId.trim();
+  if (!RegExp(r'^[A-Za-z0-9_-]{1,96}$').hasMatch(normalized)) {
+    throw ArgumentError.value(
+      sourceId,
+      'sourceId',
+      'Use 1-96 letters, numbers, underscores, or hyphens.',
+    );
+  }
+  return normalized;
+}
+
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
-  static const String _playlistUrlKey = 'iptv_user_playlist_url';
-  static const String _legacyCacheKey = 'iptv_playlist_cache';
-  static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
-  static const String _cacheEtagKey = 'iptv_playlist_etag';
-  static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
-  static const String _cacheFileName = 'iptv_channel_cache.json';
+  static const String _playlistUrlKeyBase = 'iptv_user_playlist_url';
+  static const String _legacyCacheKeyBase = 'iptv_playlist_cache';
+  static const String _cacheTimestampKeyBase = 'iptv_playlist_timestamp';
+  static const String _cacheEtagKeyBase = 'iptv_playlist_etag';
+  static const String _cacheLastModifiedKeyBase = 'iptv_playlist_last_modified';
+  static const String _cacheFileNameBase = 'iptv_channel_cache';
   static const String _downloadDirectoryName = 'playlist_downloads';
   static const Duration _cacheValidity = Duration(hours: 24);
 
@@ -29,6 +42,7 @@ class M3UParserService {
   final KeyValueStore _store;
   final Future<Directory> Function() _cacheDirectoryProvider;
   final Future<Directory> Function() _downloadDirectoryProvider;
+  final String? _sourceId;
   final AiroWorkerExecutor workerExecutor;
 
   M3UParserService({
@@ -38,6 +52,7 @@ class M3UParserService {
     int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
     Future<Directory> Function()? cacheDirectoryProvider,
     Future<Directory> Function()? downloadDirectoryProvider,
+    String? sourceId,
     this.workerExecutor = const AiroWorkerExecutor(),
     // Keep the public constructor API as `dio`/`prefs` instead of exposing
     // private field names to callers.
@@ -50,7 +65,24 @@ class M3UParserService {
        _cacheDirectoryProvider =
            cacheDirectoryProvider ?? getApplicationSupportDirectory,
        _downloadDirectoryProvider =
-           downloadDirectoryProvider ?? getTemporaryDirectory;
+           downloadDirectoryProvider ?? getTemporaryDirectory,
+       _sourceId = _validatedSourceId(sourceId);
+
+  String _key(String base) => _sourceId == null ? base : '$base.$_sourceId';
+
+  String get _playlistUrlKey => _key(_playlistUrlKeyBase);
+
+  String get _legacyCacheKey => _key(_legacyCacheKeyBase);
+
+  String get _cacheTimestampKey => _key(_cacheTimestampKeyBase);
+
+  String get _cacheEtagKey => _key(_cacheEtagKeyBase);
+
+  String get _cacheLastModifiedKey => _key(_cacheLastModifiedKeyBase);
+
+  String get _cacheFileName => _sourceId == null
+      ? '$_cacheFileNameBase.json'
+      : '${_cacheFileNameBase}_$_sourceId.json';
 
   /// Fetch and parse the user-supplied playlist with caching.
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {

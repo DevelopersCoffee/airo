@@ -83,6 +83,60 @@ final m3uParserProvider = Provider<M3UParserService>((ref) {
   );
 });
 
+/// Persists the user's configured content sources, backed by the same local
+/// preferences store as the legacy single-playlist setting.
+final contentSourceStoreProvider = Provider<ContentSourceStore>((ref) {
+  return ContentSourceStore(
+    PreferencesStore(ref.watch(sharedPreferencesProvider)),
+  );
+});
+
+/// All configured content sources.
+///
+/// The first read performs an additive migration of the legacy single M3U URL.
+/// The old value remains in place for rollback compatibility; source-aware
+/// loading uses the new record and therefore does not fetch it twice.
+final configuredContentSourcesProvider =
+    FutureProvider<List<ContentSourceConfig>>((ref) async {
+      final store = ref.watch(contentSourceStoreProvider);
+      final sources = await store.getAll();
+      final legacyUrl = ref.watch(m3uParserProvider).getPlaylistUrl();
+      if (legacyUrl == null ||
+          sources.any(
+            (source) =>
+                source.kind == ContentSourceKind.m3u && source.url == legacyUrl,
+          )) {
+        return sources;
+      }
+
+      var id = 'm3u-legacy-primary';
+      var suffix = 1;
+      final existingIds = sources.map((source) => source.id).toSet();
+      while (existingIds.contains(id)) {
+        id = 'm3u-legacy-primary-${suffix++}';
+      }
+      final uri = Uri.tryParse(legacyUrl);
+      final config = ContentSourceConfig(
+        id: id,
+        kind: ContentSourceKind.m3u,
+        label: uri?.host == 'iptv-org.github.io' ? 'IPTV.org' : 'My Playlist',
+        url: legacyUrl,
+      );
+      await store.add(config);
+      return List.unmodifiable([...sources, config]);
+    });
+
+typedef M3uSourceParserFactory = M3UParserService Function(String sourceId);
+
+/// Creates an M3U parser whose preferences, HTTP validators, and parsed cache
+/// are isolated to one configured source.
+final m3uSourceParserFactoryProvider = Provider<M3uSourceParserFactory>((ref) {
+  final dio = ref.watch(dioProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return (sourceId) =>
+      M3UParserService(dio: dio, prefs: prefs, sourceId: sourceId);
+});
+
 /// User-supplied playlist URL.
 final userPlaylistUrlProvider = FutureProvider<String?>((ref) async {
   return ref.watch(m3uParserProvider).getPlaylistUrl();
@@ -156,21 +210,79 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
     debugPrint('[Provider] ChannelDataService failed, falling back to M3U: $e');
   }
 
-  if (primaryChannels.isEmpty) {
+  final configuredM3uChannels = await ref.watch(
+    configuredM3uChannelsProvider.future,
+  );
+  if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
     // Fallback to legacy M3U parser.
     primaryChannels = await ref.watch(m3uParserProvider).fetchPlaylist();
   }
 
   final byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
-  return [...primaryChannels, ...byocChannels];
+  return _mergeChannelLibraries([
+    primaryChannels,
+    configuredM3uChannels,
+    byocChannels,
+  ]);
 });
+
+/// Loads every configured M3U source with an independent cache namespace.
+///
+/// Sources are intentionally processed one at a time. Large public playlists
+/// can already occupy meaningful memory while parsing; serial loading keeps
+/// peak memory bounded on touch devices while still allowing a failed source
+/// to fall back to its own cache and leave sibling sources usable.
+final configuredM3uChannelsProvider = FutureProvider<List<IPTVChannel>>((
+  ref,
+) async {
+  final configs = await ref.watch(configuredContentSourcesProvider.future);
+  return _loadConfiguredM3uChannels(
+    configs,
+    ref.read(m3uSourceParserFactoryProvider),
+  );
+});
+
+final _refreshConfiguredM3uChannelsProvider =
+    FutureProvider.family<List<IPTVChannel>, bool>((ref, forceRefresh) async {
+      final configs = await ref.watch(configuredContentSourcesProvider.future);
+      return _loadConfiguredM3uChannels(
+        configs,
+        ref.read(m3uSourceParserFactoryProvider),
+        forceRefresh: forceRefresh,
+      );
+    });
+
+Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
+  List<ContentSourceConfig> configs,
+  M3uSourceParserFactory parserFactory, {
+  bool forceRefresh = false,
+}) async {
+  final m3uConfigs = configs
+      .where((source) => source.kind == ContentSourceKind.m3u)
+      .toList(growable: false);
+  if (m3uConfigs.isEmpty) return const [];
+
+  final channels = <IPTVChannel>[];
+  for (final config in m3uConfigs) {
+    final parser = parserFactory(config.id);
+    try {
+      if (parser.getPlaylistUrl() != config.url) {
+        await parser.setPlaylistUrl(config.url);
+      }
+      channels.addAll(await parser.fetchPlaylist(forceRefresh: forceRefresh));
+    } catch (_) {
+      // Source URLs may contain private tokens. Keep diagnostics coarse and
+      // continue loading the remaining configured sources.
+      debugPrint('[Provider] M3U source ${config.id} could not be refreshed.');
+    }
+  }
+  return _mergeChannelLibraries([channels]);
+}
 
 final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   ref,
 ) async {
-  final configs = await ContentSourceStore(
-    PreferencesStore(ref.read(sharedPreferencesProvider)),
-  ).getAll();
+  final configs = await ref.watch(configuredContentSourcesProvider.future);
   final xtreamConfigs = configs
       .where((source) => source.kind == ContentSourceKind.xtream)
       .toList(growable: false);
@@ -222,6 +334,60 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   return channels;
 });
 
+List<IPTVChannel> _mergeChannelLibraries(
+  Iterable<List<IPTVChannel>> libraries,
+) {
+  final channelsById = <String, IPTVChannel>{};
+  final channelIdByStreamUrl = <String, String>{};
+
+  for (final library in libraries) {
+    for (final channel in library) {
+      final existingId = channelsById.containsKey(channel.id)
+          ? channel.id
+          : channelIdByStreamUrl[channel.streamUrl];
+      if (existingId == null) {
+        channelsById[channel.id] = channel;
+        channelIdByStreamUrl[channel.streamUrl] = channel.id;
+        continue;
+      }
+
+      final existing = channelsById[existingId]!;
+      final streamSources = <String, ChannelStreamSource>{
+        for (final source in existing.streamSources) source.url: source,
+        for (final source in channel.streamSources) source.url: source,
+      };
+      for (final url in [
+        existing.streamUrl,
+        ...existing.sources,
+        channel.streamUrl,
+        ...channel.sources,
+      ]) {
+        streamSources.putIfAbsent(url, () => ChannelStreamSource(url: url));
+        channelIdByStreamUrl[url] = existingId;
+      }
+      final orderedSources = streamSources.values.toList()
+        ..sort(compareChannelStreamSources);
+
+      channelsById[existingId] = existing.copyWith(
+        sources: orderedSources.map((source) => source.url).toList(),
+        streamSources: orderedSources,
+        qualityUrls: {
+          ...?existing.qualityUrls,
+          ...?channel.qualityUrls,
+          for (var index = 1; index < orderedSources.length; index++)
+            'source-$index': orderedSources[index].url,
+        },
+        languages: {...existing.languages, ...channel.languages}.toList(),
+        altNames: {...existing.altNames, ...channel.altNames}.toList(),
+        categories: {...existing.categories, ...channel.categories}.toList(),
+        isWorking: existing.isWorking || channel.isWorking,
+      );
+    }
+  }
+
+  return List.unmodifiable(channelsById.values);
+}
+
 /// Refresh channels provider
 final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   ref,
@@ -234,24 +400,33 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   final oldChannels = ref.read(iptvChannelsProvider).value ?? const [];
 
   List<IPTVChannel> newChannels;
+  List<IPTVChannel> primaryChannels = const [];
   final channelDataService = ref.watch(channelDataServiceProvider);
   try {
     final channels = await channelDataService.fetchChannels(
       forceRefresh: forceRefresh,
     );
-    newChannels = channels.isNotEmpty
-        ? channels
-        : await ref
-              .watch(m3uParserProvider)
-              .fetchPlaylist(forceRefresh: forceRefresh);
+    primaryChannels = channels;
   } catch (e) {
     debugPrint(
       '[Provider] ChannelDataService refresh failed, falling back to M3U: $e',
     );
-    newChannels = await ref
+  }
+
+  final configuredM3uChannels = await ref.watch(
+    _refreshConfiguredM3uChannelsProvider(forceRefresh).future,
+  );
+  if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
+    primaryChannels = await ref
         .watch(m3uParserProvider)
         .fetchPlaylist(forceRefresh: forceRefresh);
   }
+  final byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
+  newChannels = _mergeChannelLibraries([
+    primaryChannels,
+    configuredM3uChannels,
+    byocChannels,
+  ]);
 
   final needsReview = await applyFavoriteRemapOnReimport(
     favoriteStorage: ref.read(favoriteChannelsStorageProvider),
