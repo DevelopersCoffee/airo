@@ -679,6 +679,23 @@ correct":
 reviewed — it greps a method body where `I6` demands a type boundary. Green on
 `A04` would be wrong evidence, and only the second column can say so.
 
+**Reviewed is not a permanent status.** A gate keeps executing after the
+architecture moves, and it goes on reporting green while proving something that
+no longer matters — the same defect as a conformance test measuring a deleted
+dimension, one layer up. So an assertion reviewed against `v1` of an invariant is
+not reviewed against `v2`.
+
+Therefore the `Contract Impact` table's *"which conformance tests become
+invalid?"* row covers **assertions, consumer probes, and mutation regressions
+too.** Any ADR that changes an invariant re-opens the review for every mechanism
+enforcing it.
+
+The failure mode this guards against is specifically maturity: a validation stack
+with committed evidence, a first-execution record, and a review reads as
+authoritative, and that is exactly the condition under which `A09` acquired
+undeserved authority by being green while the fields it guarded were still `pub`.
+**The framework's rules apply to the framework.**
+
 ### A mutant must be a plausible defective implementation
 
 Not an arbitrarily broken program. Otherwise a mutation suite rewards itself for
