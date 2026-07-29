@@ -108,6 +108,16 @@
 > | `hex_array_32` was applied to the key types | It was written in `encoding.rs` prose and applied to neither `KeyBytes` nor `RootPublicKey` — `RA-1` exactly, committed inside the revision written to eliminate it, in a **frozen** format, invisible to `G0` and caught only by a benchmark |
 > | `V7` was a valid failing form for `I7` | It measured total process peak, which includes a resident ledger no export strategy can bound. The property passes at −6%; the artifact fails at +588% |
 >
+> **Observed pattern.** Every meaningful correction in Revision 8 came from
+> executable evidence — compiler, tests, benchmarks — refining either an
+> implementation or the interpretation of a property. **None required changing
+> the architectural intent.** The compiler corrected an architectural boundary
+> (`E0624`), the tests corrected a mechanism-versus-property confusion (the
+> trailer digest), and the benchmarks corrected both an implementation strategy
+> (streaming) and a budget's interpretation (`V7`). The architecture held
+> across all six; the implementation and the understanding of it got more
+> precise.
+>
 > The third row is the uncomfortable one: the Evidence Rule was written to stop
 > exactly this, and it did not — `G0` did. That is the asymmetry `Freeze §`
 > already records, observed rather than predicted.
@@ -5418,7 +5428,7 @@ established:
 - [ ] **Repository-wide verification passes (#1287), not reviewer memory.** These are CI checks because the last two defects were both "fixed in one file, forgotten in another":
   - no `panic!`, `unwrap()`, `expect()`, or `todo!()` outside `#[cfg(test)]`
   - no `fill_bytes`; only `try_fill_bytes`
-  - no direct RNG use outside `random_key` / `random_nonce`
+  - no direct RNG use outside `random.rs` — `rg 'OsRng' src/ | grep -v random.rs` returns nothing. **Measured: 0 (was 3).** `RA-3`
   - no `AeadCore::generate_nonce`
   - every `Serialize`/`Deserialize` type has a round-trip test
   - every AAD-bound field has a tamper test (invariant I3)
@@ -5427,7 +5437,10 @@ established:
 - [ ] `crate-type = ["rlib"]`; no `flutter_rust_bridge` dependency
 - [ ] Third-party notices updated for BSD-3-Clause, and for CC0 if Path A was chosen
 - [ ] `[profile.release]` added to `rust/Cargo.toml` — measured at 650 KB → 424 KB, and free
-- [ ] **The plan's code compiles.** Paste every Rust block into a scratch crate and run `cargo clippy --all-targets -- -D warnings`. Under ten minutes including dependency build. **Revision 4 does not circulate without this** — three prior revisions shipped code that could not compile, and two reviewers' time was spent finding `E0433`.
+- [x] **`G0` passes.** `docs/superpowers/plans/extract-phase-1-vault.sh` extracts every Rust block into a scratch crate; it compensates exactly three documented artifacts, so anything failing is a specification defect. **Revision 8, rustc 1.96.1: check 0 errors · 85 tests pass, 0 fail, 1 ignored · clippy `-D warnings` 0 errors.** Run after *each* phase, not once at the end — Phase A's run caught two claims recorded as applied and absent from the code.
+- [ ] **Every public item names an external consumer.** `G0` proves the crate builds; it cannot prove the surface is minimal. `RA-18`: revision 7 compiled cleanly while shipping no reachable restore path, and the DoD check below passed for the wrong reason. Anything answering "none" or "a future phase" is `pub(crate)` until that phase exists.
+- [x] **`ADR-0017` implemented.** Framed format, streaming `export_to`, derived expiry, base64 outer blobs, `hex_array_32` on every `[u8; 32]` field including `KeyBytes` and `RootPublicKey`. Contract Impact table discharged: `C1` and `C7` amended, `C1`/`C2`/`C3` conformance tests restated, `V4`/`V5`/`V7` re-measured, `G0` re-run.
+- [ ] **Streaming is the default export path.** `export_to` for anything user-sized; `export` is retained for tests and small vaults and is documented as materializing. Peak overhead measured flat at 0.56–0.69 MB across a 50× range in ledger size, against 1.0 → 32.6 MB linear before.
 - [ ] `#![forbid(unsafe_code)]` present in `lib.rs`
 - [ ] Rust Architect's accepted-transitive-`unsafe` note is recorded and names the crates actually in `cargo tree` — `curve25519-dalek` (35 sites) and `subtle` (2 sites, `black_box` shims that exist *to preserve* the constant-time property), plus the RustCrypto set. **`fiat-crypto` is NOT in the tree** and was struck: it resolves only under `--cfg curve25519_dalek_backend="fiat"`, which nothing sets. Setting that cfg requires a fresh note.
 - [ ] `[profile.release]` shaped per rust-architect — `lto`/`strip` workspace-wide, `opt-level`/`codegen-units` under `[profile.release.package.airo_mind]` only. **Never `panic = "abort"`**: `airo_core` is a `cdylib` whose FRB bridge relies on `catch_unwind` to turn panics into Dart errors. Chief Performance Officer signs the `airo_core` half.

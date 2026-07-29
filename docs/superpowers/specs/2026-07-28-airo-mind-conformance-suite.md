@@ -56,6 +56,26 @@ written against the implementation and is a unit test wearing the wrong label.
 - [ ] **Retention-class expiry adds no ledger entry** — running a `recoverable`
       object past its 30-day window, or an `ephemeral` object past its derived
       artifact, destroys the content and leaves `head_epoch` unchanged (ADR-0017)
+- [ ] **Export peak memory is `O(1)` in ledger size** — export *overhead* above
+      the resident vault, at 100k revocation entries, within 20% of overhead at
+      10k. *Stated over overhead rather than total process peak: total peak
+      necessarily includes the resident ledger at 137.6 B/entry, which is
+      `O(N)` by design. Measured −6% streaming, against +588% for the same
+      shape read as total peak.* (`ADR-0017`, `I7`)
+- [ ] **Truncation is distinguishable from corruption** — a Recovery Package
+      missing frames reports how many survived; a package with a flipped byte
+      reports decryption failure. Before framing both failed AEAD identically,
+      and the user was told a truncated backup was corrupt (`ADR-0017`)
+- [ ] **The export path's production model does not change the wire format** —
+      streaming and materializing export produce byte-identical packages. This
+      is what makes streaming an execution-strategy change rather than a second
+      format freeze
+- [ ] **The Vault is the only door to an envelope** — an envelope cannot be
+      constructed, parsed, or forged outside it, including via `serde`. A
+      forged envelope is content with no revocation record, which can never be
+      shredded
+- [ ] **A content key is a capability, not bytes** — `seal`/`open` exist; no
+      accessor returns key material to a consumer (`C5`)
 - [ ] **Expiry is derived from logged time, never local wall clock** — two
       devices with clocks skewed by a week reach byte-identical state from the
       same log. *Without this, expiry is device-dependent, which makes it a
