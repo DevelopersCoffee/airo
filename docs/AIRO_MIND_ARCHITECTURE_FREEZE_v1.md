@@ -344,6 +344,61 @@ a mobile device: Android kills processes without warning, flash corrupts, and
 disks fill. A contract verified only on the happy path is verified for the
 conditions under which nobody needed it.
 
+### Phase exit gate
+
+Runtime Validation is complete when all ten hold:
+
+| Criterion | Status |
+|---|---|
+| G0 passes | Required |
+| Security approves | Required |
+| Rust Architecture approves | Required |
+| Performance approves | Required |
+| ADR-0017 implemented | Required |
+| Conformance suites updated | Required |
+| Runtime contracts unchanged | Required unless superseded by an approved ADR |
+| No new primitives | Required |
+| No new invariants | Required |
+| **No implementation evidence requiring an ADR** | Required |
+
+The last row is phrased deliberately. **"No ADRs opened" would have been the
+wrong rule** — it rewards suppressing an architectural problem to keep a
+checklist clean, which is the opposite of what the freeze is for. The decision
+hierarchy explicitly ends at "ADR, if the evidence from steps 2–4 shows the
+contract is inadequate", and an ADR arriving through that path is the process
+working.
+
+What the row actually asks: *did implementation surface evidence that a frozen
+contract is wrong, and is it still unaddressed?* An ADR opened, reviewed, and
+approved satisfies this row. An ADR that should exist and does not, fails it.
+
+## Every change cites its evidence
+
+**From Revision 8 onward, every substantive change carries one of three
+justifications:**
+
+| Evidence class | Means |
+|---|---|
+| **Compiler** | G0 — it did not build, or it built and should not have |
+| **Benchmark** | A measured number against a declared budget |
+| **Review** | A council finding, with the probe or reasoning that produced it |
+
+Anything with none of the three is deferred. Not rejected — deferred, because a
+change worth making will acquire evidence, and a change that never does was
+preference.
+
+This exists because of a specific recurring failure: **five times a property was
+recorded as applied and was absent from the code.** Header AAD, the
+revocation-subject rewrite, error variants declared and never constructed, the
+checklist's runtime API, and `hex_array` never applied to `RootPublicKey`. I5
+was written for this and did not stop it, because I5 governs invariants and this
+was drift in the record of what had been done.
+
+Requiring each change to name its evidence attacks it from the other side. A
+changelog entry that must cite the probe, the benchmark, or the compiler error
+that demanded it cannot describe work that was never performed — the citation
+either resolves or it does not.
+
 ## G0 — Buildability. A revision does not exist until it builds.
 
 **Gate zero, ahead of everything else.**
