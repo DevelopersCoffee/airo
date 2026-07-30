@@ -131,8 +131,26 @@
 > |---|---|
 > | A — mechanical propagation | ✅ `G0` verified |
 > | B — `ADR-0017` implementation | ✅ `G0` verified |
+> | 9A — validation infrastructure | ✅ executed, reviewed, baselined |
+> | 9B — Security findings | ✅ closed |
+> | 9B — Rust Architecture findings | ✅ closed |
+> | 9B — validation gates | ✅ `G0` · `G0.7` 23/23 · `G0.8` 9/9 |
+> | 9B — Performance findings | ❌ **`PERF-1` and `PERF-2` remain** |
 > | Security re-review | ⏳ |
 > | Rust Architecture re-review | ⏳ |
+> | Performance re-review | ⏳ |
+>
+> **Status: Revision 9B — Security and Architecture complete, pending
+> Performance closure.** Not "9B complete". The stated success criterion is
+> *all verified findings resolved*, and two verified Performance findings are
+> open: `PERF-1` (restore is not streaming — 8.9×–9.8× against a 4× budget,
+> flat across a 100× range) and `PERF-2` (the authenticated frame count has not
+> moved into the header, so truncation is still indistinguishable from
+> corruption on any real file; the ignored test records it).
+>
+> Recorded because the first report of this batch was headed "Revision 9B
+> complete" and disclosed both findings afterwards. **The status follows the
+> evidence, not the milestone.**
 >
 > **`G0` verified after each phase** — rustc 1.96.1 (31fca3adb 2026-06-26):
 >
