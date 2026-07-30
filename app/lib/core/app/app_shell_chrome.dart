@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:core_ui/core_ui.dart';
 
 import '../auth/auth_service.dart';
 import '../providers/navigation_provider.dart';
@@ -33,12 +34,13 @@ class AppShellChrome extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isCompact = width < config.compactWidthBreakpoint;
+    final visual = AiroVisualTokens.of(context);
 
     return AppBar(
       leading: InkWell(
         key: const ValueKey('app_shell_home_button'),
         onTap: onHomeTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: visual.mediumRadius,
         child: const Padding(
           padding: EdgeInsets.all(8),
           child: AppIconPlaceholder(size: 32, errorBuilder: _homeIconFallback),
@@ -84,6 +86,8 @@ class AppShellChrome extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildCompactOverflowMenu(BuildContext context) {
+    final error = Theme.of(context).colorScheme.error;
+
     return PopupMenuButton<_CompactShellMenuAction>(
       key: const ValueKey('app_shell_overflow_button'),
       tooltip: 'More actions',
@@ -95,21 +99,21 @@ class AppShellChrome extends StatelessWidget implements PreferredSizeWidget {
             onLogoutTap();
         }
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem<_CompactShellMenuAction>(
+      itemBuilder: (context) => [
+        const PopupMenuItem<_CompactShellMenuAction>(
           value: _CompactShellMenuAction.profile,
           child: Row(
             children: [Icon(Icons.person), SizedBox(width: 8), Text('Profile')],
           ),
         ),
-        PopupMenuDivider(),
+        const PopupMenuDivider(),
         PopupMenuItem<_CompactShellMenuAction>(
           value: _CompactShellMenuAction.logout,
           child: Row(
             children: [
-              Icon(Icons.logout, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Logout', style: TextStyle(color: Colors.red)),
+              Icon(Icons.logout, color: error),
+              const SizedBox(width: 8),
+              Text('Logout', style: TextStyle(color: error)),
             ],
           ),
         ),
@@ -165,13 +169,13 @@ class AppShellChrome extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Logout', style: TextStyle(color: Colors.red)),
+              Icon(Icons.logout, color: colorScheme.error),
+              const SizedBox(width: 8),
+              Text('Logout', style: TextStyle(color: colorScheme.error)),
             ],
           ),
         ),
