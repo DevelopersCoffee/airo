@@ -26,8 +26,9 @@ and release concerns.
 Officer, Media Intelligence Architect, and Coins / Finance Agent for the
 manifest-only ownership correction.
 
-**Impacted modules/files:** Android shared resources, TV build scripts and
-release checks, `feature_coin/module.yaml`, and release evidence.
+**Impacted modules/files:** Android shared resources, TV build scripts,
+performance/soak tooling, release checks, `feature_coin/module.yaml`, and
+release evidence.
 
 **Base branch/worktree:** Confirmed. The worktree was created from the freshly
 fetched `origin/main` commit `3c4bd8b2`.
@@ -80,6 +81,15 @@ temporary backups are removed, and the TV release contract passes.
 **Then:** The debug fixture is seeded without replacing user state, the shell
 is visible, screenshots are captured, and no Flutter overflow is emitted.
 
+### UC-006: Sustained Pixel playback and PiP lifecycle
+
+**Given:** A live channel is playing in the TV release on the Pixel 9.
+**When:** RSS is sampled every 30 seconds for at least 30 minutes and the TV
+activity transitions from foreground playback to PiP beside the Super App.
+**Then:** All samples complete, the TV process and media session remain alive,
+PiP continues rendering, memory plateaus or falls, and logs contain no app
+fatal, ANR, native-library, playback, media-control, or out-of-memory error.
+
 ## Pixel 9 Results
 
 ### Airo TV artifact
@@ -106,6 +116,25 @@ Passed journeys:
 - settled PiP shows video without the app browse chrome;
 - no app fatal exception, ANR, `UnsatisfiedLinkError`,
   `ExoPlaybackException`, or `CustomAction` exception after the fix.
+
+### Pixel 9 playback soak
+
+- Duration: 1,868 seconds (31 minutes, 8 seconds)
+- Samples: 61 at 30-second target intervals
+- Lifecycle: foreground live playback followed by sustained PiP while the
+  Super App remained usable in the foreground
+- Peak TV RSS: 408 MB
+- Final TV RSS: 276 MB
+- Result: accepted against the expanded 3 GB+ Pixel support profile
+- Final TV media session: `PLAYING`
+- Crash/ANR/native/playback/media-control/OOM log scan: clean
+- Dart heap and image-cache snapshots were not available in the locally signed
+  release build and remain recorded as unknown (`0`) in the runner artifact;
+  this result proves process/RSS/lifecycle stability, not Dart-heap drift
+- JSON SHA-256:
+  `155dfdceda32509ac26d17f46cc76bc1d8d5b357dfec5a5fa30af9b8cef0f367`
+- Markdown SHA-256:
+  `8109ad36abd2ca746cb6a4806210fd36455be317350c5c7e537ff33f77f6963e`
 
 ### Airo Super App artifact
 
@@ -146,6 +175,19 @@ Passed journeys:
    seeds only an empty playlist preference, preserves existing user state, and
    has focused regression coverage.
 
+5. The playback-soak and memory-timeline tools could not select one device when
+   ADB exposed multiple connections. Both tools now use one shared ADB-target
+   argument helper and accept an explicit `--device` / `AIRO_TV_DEVICE`.
+
+6. The documented host-side soak command imported Flutter UI libraries through
+   the broad device-profile barrel and failed because `dart:ui` is unavailable
+   to `dart run`. A host-safe device-profile entrypoint now exposes the same
+   shared memory models without UI dependencies.
+
+7. Android 17 reports `TOTAL RSS` beside `TOTAL PSS` without the older `K`
+   suffix. The shared parser now supports both formats and has regression
+   coverage from the Pixel 9 output shape.
+
 ## Local Qualification
 
 Passed:
@@ -162,6 +204,13 @@ Passed:
 - TV profile restoration regression test;
 - web bootstrap regression tests: 2 tests;
 - browser viewport matrix: 4 viewports with no Flutter overflow;
+- platform benchmark targeting, Android 17 parsing, progress, and evidence
+  tests: 10 tests;
+- complete `platform_benchmarks` suite: 37 tests passed, 2 opt-in native/EPG
+  benchmarks skipped as designed;
+- host-side targeted soak smoke: 2 samples, accepted;
+- Pixel 9 live playback/PiP soak: 61 samples over 31 minutes, accepted for the
+  expanded Pixel support profile;
 - v2 merge-readiness tests and same-commit dry run;
 - `git diff --check`.
 

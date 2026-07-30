@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile_host.dart';
+
+import 'adb_target.dart';
 
 typedef AiroProcessRunner =
     Future<ProcessResult> Function(String executable, List<String> arguments);
@@ -14,6 +16,7 @@ class AiroTvAdbMemoryTimelineConfig {
   const AiroTvAdbMemoryTimelineConfig({
     required this.packageName,
     this.adbPath = 'adb',
+    this.deviceSerial,
     this.reportId = 'airo-tv-adb-memory-timeline',
     this.scenarioId = 'manual-tv-memory-capture',
     this.sampleCount = 60,
@@ -29,6 +32,7 @@ class AiroTvAdbMemoryTimelineConfig {
   });
 
   final String adbPath;
+  final String? deviceSerial;
   final String packageName;
   final String reportId;
   final String scenarioId;
@@ -62,6 +66,7 @@ class AiroTvAdbMemoryTimelineConfig {
     }
     return AiroTvAdbMemoryTimelineConfig(
       adbPath: adbPath.trim().isEmpty ? 'adb' : adbPath.trim(),
+      deviceSerial: deviceSerial?.trim(),
       packageName: normalizedPackage,
       reportId: reportId.trim().isEmpty
           ? 'airo-tv-adb-memory-timeline'
@@ -106,12 +111,15 @@ class AiroTvAdbMemoryTimelineCapture {
       if (index > 0 && config.sampleInterval > Duration.zero) {
         await _delay(config.sampleInterval);
       }
-      final result = await _processRunner(config.adbPath, [
-        'shell',
-        'dumpsys',
-        'meminfo',
-        config.packageName,
-      ]);
+      final result = await _processRunner(
+        config.adbPath,
+        airoAdbArguments(config.deviceSerial, [
+          'shell',
+          'dumpsys',
+          'meminfo',
+          config.packageName,
+        ]),
+      );
       if (result.exitCode != 0) {
         throw StateError(
           'adb meminfo failed for ${config.packageName}: '
@@ -163,7 +171,7 @@ class AiroTvMeminfoParser {
 
   static int parseTotalRssMb(String output) {
     final totalRss = RegExp(
-      r'^\s*TOTAL\s+RSS:\s*([0-9,]+)\s*K\b',
+      r'\bTOTAL\s+RSS:\s*([0-9,]+)\s*K?\b',
       multiLine: true,
     ).firstMatch(output);
     if (totalRss != null) {

@@ -7,6 +7,7 @@ import 'package:platform_device_profile/platform_device_profile.dart';
 void main() {
   test('runs playback key events while sampling adb memory', () async {
     final commands = <List<String>>[];
+    final samples = <(int, int, int)>[];
     var clockTick = 0;
     var meminfoCalls = 0;
     final runner = AiroTvPlaybackSoakRunner(
@@ -30,11 +31,15 @@ void main() {
         }
         return ProcessResult(42, 0, '', '');
       },
+      onSample: (completed, total, rssMb) {
+        samples.add((completed, total, rssMb));
+      },
     );
 
     final report = await runner.run(
       const AiroTvPlaybackSoakConfig(
         packageName: 'io.airo.app.tv',
+        deviceSerial: 'pixel-9',
         duration: Duration(seconds: 60),
         sampleInterval: Duration(seconds: 30),
         dartHeapStartMb: 40,
@@ -50,9 +55,12 @@ void main() {
     ]);
     expect(report.duration, const Duration(seconds: 60));
     expect(report.evaluate().accepted, isTrue);
+    expect(samples, [(1, 3, 121), (2, 3, 122), (3, 3, 123)]);
     expect(
       commands.first,
       containsAllInOrder([
+        '-s',
+        'pixel-9',
         'shell',
         'monkey',
         '-p',
@@ -63,8 +71,8 @@ void main() {
       ]),
     );
     expect(commands.where((command) => command.contains('keyevent')).toList(), [
-      ['shell', 'input', 'keyevent', 'DPAD_CENTER'],
-      ['shell', 'input', 'keyevent', 'DPAD_DOWN'],
+      ['-s', 'pixel-9', 'shell', 'input', 'keyevent', 'DPAD_CENTER'],
+      ['-s', 'pixel-9', 'shell', 'input', 'keyevent', 'DPAD_DOWN'],
     ]);
   });
 
