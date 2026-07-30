@@ -100,7 +100,7 @@ class OpenAICompatibleClient implements LLMClient {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$_baseUrl/models',
-        options: Options(headers: _headers, receiveTimeout: _config.timeout),
+        options: _requestOptions(),
       );
       final statusCode = response.statusCode;
       if (statusCode == 401 || statusCode == 403) {
@@ -186,7 +186,7 @@ class OpenAICompatibleClient implements LLMClient {
           'max_tokens': _config.maxOutputTokens,
           'top_p': _config.topP,
         },
-        options: Options(headers: _headers, receiveTimeout: _config.timeout),
+        options: _requestOptions(),
       );
       final data = response.data;
       final text = _extractText(data);
@@ -233,11 +233,7 @@ class OpenAICompatibleClient implements LLMClient {
           'max_tokens': _config.maxOutputTokens,
           'stream': true,
         },
-        options: Options(
-          headers: _headers,
-          responseType: ResponseType.stream,
-          receiveTimeout: _config.timeout,
-        ),
+        options: _requestOptions(responseType: ResponseType.stream),
       );
       final body = response.data;
       if (body == null) return;
@@ -266,6 +262,16 @@ class OpenAICompatibleClient implements LLMClient {
 
   @override
   Future<void> dispose() async {}
+
+  Options _requestOptions({ResponseType? responseType}) {
+    return Options(
+      headers: _headers,
+      responseType: responseType,
+      connectTimeout: _config.timeout,
+      sendTimeout: _config.timeout,
+      receiveTimeout: _config.timeout,
+    );
+  }
 
   String _extractText(Map<String, dynamic>? data) {
     final choices = data?['choices'];

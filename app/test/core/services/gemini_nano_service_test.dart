@@ -51,6 +51,21 @@ void main() {
     },
   );
 
+  test('warmup returns false when the native channel stalls', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      return switch (call.method) {
+        'warmup' => Future<void>.delayed(const Duration(milliseconds: 100)),
+        _ => fail('Unexpected method call: ${call.method}'),
+      };
+    });
+
+    final service = GeminiNanoService.forTesting(
+      operationTimeout: const Duration(milliseconds: 10),
+    );
+
+    expect(await service.warmup(), isFalse);
+  });
+
   test(
     'support check, initialize, and warmup can be exercised in one host run',
     () async {
@@ -74,6 +89,31 @@ void main() {
       expect(initialized, isTrue);
       expect(warmed, isTrue);
       expect(calls, ['isAvailable', 'isAvailable', 'initialize', 'warmup']);
+    },
+  );
+
+  test(
+    'dispose releases the native session and resets initialization state',
+    () async {
+      final calls = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call.method);
+        return switch (call.method) {
+          'isAvailable' => true,
+          'initialize' => true,
+          'dispose' => null,
+          _ => fail('Unexpected method call: ${call.method}'),
+        };
+      });
+
+      final service = GeminiNanoService.forTesting();
+      expect(await service.initialize(), isTrue);
+      expect(service.isInitialized, isTrue);
+
+      await service.dispose();
+
+      expect(service.isInitialized, isFalse);
+      expect(calls, ['isAvailable', 'initialize', 'dispose']);
     },
   );
 }

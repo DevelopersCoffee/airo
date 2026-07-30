@@ -67,6 +67,9 @@ void main() {
       when(
         () => mockStorage.readInstallReceipt(any()),
       ).thenAnswer((_) async => null);
+      when(
+        () => mockStorage.verifyModelIntegrity(any()),
+      ).thenAnswer((_) async => true);
       when(() => mockWarmup.residentModelIds).thenReturn(<String>{});
     });
 
@@ -143,6 +146,25 @@ void main() {
       },
     );
 
+    test(
+      'listModels does not advertise an unverified artifact as downloaded',
+      () async {
+        when(() => mockRegistry.allModels).thenReturn([testModel]);
+        when(
+          () =>
+              mockStorage.findExistingModelPath(testModel.id, model: testModel),
+        ).thenAnswer((_) async => '/path/to/stale.gguf');
+        when(
+          () => mockStorage.verifyModelIntegrity(any()),
+        ).thenAnswer((_) async => false);
+
+        final entry = (await manager.listModels()).single;
+
+        expect(entry.isDownloaded, isFalse);
+        expect(entry.updateState, ModelUpdateState.notInstalled);
+      },
+    );
+
     test('downloadModel starts download via ModelDownloadService', () async {
       when(() => mockRegistry.getModel(testModel.id)).thenReturn(testModel);
       when(
@@ -189,6 +211,20 @@ void main() {
           () => mockDownload.retryDownload(testModel.id, model: testModel),
         ).called(1);
         verify(() => mockDownload.cancelDownload(testModel.id)).called(1);
+      },
+    );
+
+    test(
+      'repairModel delegates a clean repair to the download service',
+      () async {
+        when(() => mockRegistry.getModel(testModel.id)).thenReturn(testModel);
+        when(
+          () => mockDownload.repairModel(testModel),
+        ).thenAnswer((_) async {});
+
+        await manager.repairModel(testModel.id);
+
+        verify(() => mockDownload.repairModel(testModel)).called(1);
       },
     );
 

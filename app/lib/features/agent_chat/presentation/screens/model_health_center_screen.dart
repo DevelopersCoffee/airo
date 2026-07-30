@@ -8,23 +8,30 @@ class ModelHealthCenterLoaderScreen extends StatelessWidget {
     super.key,
     required this.model,
     required this.compatibilityFuture,
+    this.artifactPresentFuture,
     this.onAction,
   });
 
   final OfflineModelInfo model;
   final Future<ModelCompatibilityResult> compatibilityFuture;
+  final Future<bool>? artifactPresentFuture;
   final ValueChanged<ModelHealthAction>? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ModelCompatibilityResult>(
-      future: compatibilityFuture,
+    return FutureBuilder<List<Object?>>(
+      future: Future.wait<Object?>([
+        compatibilityFuture,
+        artifactPresentFuture ?? Future<bool>.value(model.isDownloaded),
+      ]),
       builder: (context, snapshot) {
-        final compatibility = snapshot.data;
-        if (compatibility != null) {
+        final compatibility = snapshot.data?[0] as ModelCompatibilityResult?;
+        final artifactPresent = snapshot.data?[1] as bool?;
+        if (compatibility != null && artifactPresent != null) {
           return ModelHealthCenterScreen(
             report: ModelHealthReport.fromFacts(
               model: model,
+              artifactPresent: artifactPresent,
               compatibility: compatibility,
             ),
             onAction: onAction,

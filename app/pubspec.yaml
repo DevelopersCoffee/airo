@@ -114,6 +114,9 @@ dependencies:
   audioplayers: ^6.7.1
   cached_network_image: 3.4.1
   flutter_tts: 4.2.5
+  # Android/iOS GGUF execution adapter. The app-facing wrapper keeps this
+  # platform plugin behind the core_ai runtime boundary.
+  llama_flutter_android: ^0.2.6
   chess: 0.8.1
   stockfish: 1.8.1
   flutter_contacts: ^2.1.0
@@ -155,7 +158,6 @@ dev_dependencies:
   riverpod_generator: 4.0.4
   mocktail: ^1.0.5
   alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
-  patrol: ^4.7.0  # E2E testing for iOS/Android devices
   shared_preferences_platform_interface: ^2.4.1
   flutter_lints: 6.0.0
   custom_lint: ^0.8.1

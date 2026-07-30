@@ -51,6 +51,12 @@ enum ModelHealthFailureCode {
   runtimeUnavailable,
   backendUnavailable,
   initializationFailed,
+  modelMissing,
+  permissionDenied,
+  unsupportedModel,
+  plannerFailure,
+  timeout,
+  cancelled,
   thermalLimit,
   contextTooLarge,
   storageFailure,
@@ -102,6 +108,7 @@ class ModelHealthReport {
   factory ModelHealthReport.fromFacts({
     required OfflineModelInfo model,
     ModelDownloadProgress? download,
+    bool? artifactPresent,
     ModelCompatibilityResult? compatibility,
     RuntimeHealth? runtimeHealth,
     ExecutionPlan? plan,
@@ -110,7 +117,7 @@ class ModelHealthReport {
     final downloadStatus = download?.status;
     final downloaded =
         downloadStatus == ModelDownloadStatus.completed ||
-        (download == null && model.isDownloaded);
+        (download == null && (artifactPresent ?? model.isDownloaded));
     final downloading =
         downloadStatus == ModelDownloadStatus.downloading ||
         downloadStatus == ModelDownloadStatus.pending ||
@@ -137,12 +144,12 @@ class ModelHealthReport {
             ? ModelHealthStageStatus.passed
             : downloadStatus == ModelDownloadStatus.failed
             ? ModelHealthStageStatus.failed
-            : model.isDownloaded
+            : (artifactPresent ?? model.isDownloaded)
             ? ModelHealthStageStatus.unknown
             : ModelHealthStageStatus.pending,
         detail: downloadStatus == ModelDownloadStatus.failed
             ? (download?.error ?? 'Integrity verification failed.')
-            : model.isDownloaded
+            : (artifactPresent ?? model.isDownloaded)
             ? 'Integrity receipt is not available in this snapshot.'
             : 'Verification starts after download completion.',
       ),
@@ -186,6 +193,7 @@ class ModelHealthReport {
 
     final failureCode = _failureCode(
       download: download,
+      artifactPresent: artifactPresent,
       compatibility: compatibility,
       runtimeHealth: runtimeHealth,
     );
@@ -255,12 +263,23 @@ class ModelHealthReport {
 
   static ModelHealthFailureCode _failureCode({
     required ModelDownloadProgress? download,
+    required bool? artifactPresent,
     required ModelCompatibilityResult? compatibility,
     required RuntimeHealth? runtimeHealth,
   }) {
+    // A live artifact probe is authoritative. A persisted file path can outlive
+    // the file itself, so surface that state as recoverable instead of leaving
+    // the Health Center stuck at "unknown".
+    if (download == null && artifactPresent == false) {
+      return ModelHealthFailureCode.downloadIncomplete;
+    }
     if (download?.status == ModelDownloadStatus.failed) {
       final code = download?.failureCode;
-      if (code == 'integrityMismatch') {
+      // Accept both the legacy camel-case value and the shared download
+      // service's snake-case value while older persisted progress is migrated.
+      if (code == 'integrityMismatch' ||
+          code == 'integrity_mismatch' ||
+          code == 'integrity-mismatch') {
         return ModelHealthFailureCode.integrityFailed;
       }
       return ModelHealthFailureCode.downloadIncomplete;
@@ -277,10 +296,19 @@ class ModelHealthReport {
         ModelHealthFailureCode.backendUnavailable,
       RuntimeErrorCode.initializationFailed =>
         ModelHealthFailureCode.initializationFailed,
+      RuntimeErrorCode.modelMissing => ModelHealthFailureCode.modelMissing,
+      RuntimeErrorCode.permissionDenied =>
+        ModelHealthFailureCode.permissionDenied,
+      RuntimeErrorCode.unsupportedModel =>
+        ModelHealthFailureCode.unsupportedModel,
+      RuntimeErrorCode.plannerFailure => ModelHealthFailureCode.plannerFailure,
+      RuntimeErrorCode.timeout => ModelHealthFailureCode.timeout,
+      RuntimeErrorCode.cancelled => ModelHealthFailureCode.cancelled,
       RuntimeErrorCode.thermalLimit => ModelHealthFailureCode.thermalLimit,
       RuntimeErrorCode.contextTooLarge =>
         ModelHealthFailureCode.contextTooLarge,
       RuntimeErrorCode.storageFailure => ModelHealthFailureCode.storageFailure,
+      RuntimeErrorCode.unknown => ModelHealthFailureCode.unknown,
       _ => ModelHealthFailureCode.none,
     };
   }
@@ -311,14 +339,29 @@ class ModelHealthReport {
       case ModelHealthFailureCode.initializationFailed:
         return runtimeHealth?.detail ??
             'The runtime failed during initialization.';
+      case ModelHealthFailureCode.modelMissing:
+        return 'The selected model artifact is missing from local storage.';
+      case ModelHealthFailureCode.permissionDenied:
+        return 'A required device or storage permission was denied.';
+      case ModelHealthFailureCode.unsupportedModel:
+        return 'The selected runtime cannot execute this model format.';
+      case ModelHealthFailureCode.plannerFailure:
+        return runtimeHealth?.detail ??
+            'Airo could not produce a safe execution plan for this request.';
+      case ModelHealthFailureCode.timeout:
+        return 'The runtime did not respond before the operation timed out.';
+      case ModelHealthFailureCode.cancelled:
+        return 'The inference request was cancelled before it completed.';
       case ModelHealthFailureCode.thermalLimit:
         return 'The device is thermally limited; pause and retry when it cools.';
       case ModelHealthFailureCode.contextTooLarge:
         return 'The requested context is too large for the current memory budget.';
       case ModelHealthFailureCode.storageFailure:
         return 'The model storage operation failed; repair the local artifact.';
-      case ModelHealthFailureCode.none:
       case ModelHealthFailureCode.unknown:
+        return runtimeHealth?.detail ??
+            'The runtime reported an unknown failure while handling this model.';
+      case ModelHealthFailureCode.none:
         return 'Airo is still collecting runtime facts for this model.';
     }
   }
@@ -341,6 +384,10 @@ class ModelHealthReport {
       ModelHealthFailureCode.integrityFailed ||
       ModelHealthFailureCode.storageFailure => const [
         ModelHealthAction.repair,
+        ModelHealthAction.chooseAlternative,
+      ],
+      ModelHealthFailureCode.modelMissing => const [
+        ModelHealthAction.resumeDownload,
         ModelHealthAction.chooseAlternative,
       ],
       ModelHealthFailureCode.none => const [],

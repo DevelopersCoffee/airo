@@ -14,7 +14,9 @@ import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/llama_gguf_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'model_health_center_screen.dart';
 
@@ -174,21 +176,26 @@ class AssistantModelLibraryState {
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
   /// A native LiteRT channel is not proof that a model can be loaded. The
-  /// runtime must either have an installed package or an explicit local model
-  /// path configured. A URL alone is only a download source, not a runnable
-  /// model.
+  /// runtime must have an installed and verified package. A configured path is
+  /// intentionally not enough for the model picker: the path may be stale,
+  /// point at an artifact with no catalog metadata, or be a developer-only
+  /// setting. The runtime itself still validates explicit paths when it is
+  /// initialized.
   static bool isLiteRtReady({
     required bool runtimeAvailable,
     required bool hasDownloadedPackage,
     required bool hasConfiguredModelPath,
   }) {
-    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModelPath);
+    // A file is only a candidate after the download/storage layer has verified
+    // it. Do not let a configured path (or a native channel alone) make the
+    // picker show LiteRT as ready when the artifact is missing on disk.
+    return runtimeAvailable && hasDownloadedPackage;
   }
 
   /// A downloaded file is not automatically an executable local runtime.
   /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
   /// handled by the LiteRT adapter; plain `.gguf` files require the native
-  /// llama.cpp backend, which is not bundled in the public app yet.
+  /// llama.cpp backend and are only runnable when that backend is available.
   static bool isLiteRtPackage(OfflineModelInfo model) {
     final source =
         '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
@@ -207,6 +214,7 @@ class AssistantModelLibraryState {
     final deviceInfo = await nanoService.getDeviceInfo();
     final liteRtService = LiteRtLmService();
     final liteRtAvailable = await liteRtService.isAvailable();
+    final ggufAvailable = await LlamaGgufService().isAvailable();
 
     await geminiApiService.initialize();
     final cloudAvailable = geminiApiService.isAvailable;
@@ -322,6 +330,7 @@ class AssistantModelLibraryState {
           AssistantModelCandidate.fromOfflineModel(
             hydrated,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -339,6 +348,7 @@ class AssistantModelLibraryState {
           AssistantModelCandidate.fromOfflineModel(
             model,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -519,9 +529,10 @@ class AssistantModelCandidate {
   factory AssistantModelCandidate.fromOfflineModel(
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
+    bool nativeGgufAvailable = false,
   }) {
     final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
-    final isRunnable = model.isDownloaded && isLiteRt;
+    final isRunnable = model.isDownloaded && (isLiteRt || nativeGgufAvailable);
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -543,13 +554,15 @@ class AssistantModelCandidate {
           : model.isDownloaded
           ? 'Native backend unavailable'
           : 'Download package',
-      unavailableReason: model.isDownloaded && !isLiteRt
+      unavailableReason: model.isDownloaded && !isLiteRt && !nativeGgufAvailable
           ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
           : model.isDownloaded
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
-      opensModelManager: !model.isDownloaded,
+      // A downloaded artifact without a matching local backend still needs a
+      // setup action. It must never look like a runnable chat target.
+      opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
     );
@@ -749,6 +762,14 @@ class _ModelLibraryContent extends ConsumerWidget {
       }
       return;
     }
+    if (!candidate.available && hasDownloadedPackage) {
+      await _showUnavailablePackage(
+        context,
+        template: template,
+        candidate: candidate,
+      );
+      return;
+    }
     if (!candidate.available && !hasDownloadedPackage) {
       await _showUnavailablePackage(
         context,
@@ -860,8 +881,9 @@ class _ModelLibraryContent extends ConsumerWidget {
       return result;
     }
     if (result.diagnostic != null) {
+      if (!context.mounted) return result;
       await _showPreparationFailure(
-        navigator.context,
+        context,
         diagnostic: result.diagnostic!,
         candidate: candidate,
       );
@@ -1105,13 +1127,21 @@ class _RuntimeHealthButton extends ConsumerWidget {
                     ModelHealthAction.resumeDownload =>
                       'Resume the model download from Model Management.',
                     ModelHealthAction.repair =>
-                      'Repair or re-download the model from Model Management.',
+                      'Repairing the model download now.',
                     ModelHealthAction.chooseAlternative =>
                       'Choose another installed model from Model Management.',
                   };
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
+                  if (action == ModelHealthAction.repair &&
+                      candidate.package != null) {
+                    unawaited(
+                      ref
+                          .read(intelligentModelManagerProvider)
+                          .repairModel(candidate.package!.id),
+                    );
+                  }
                   onOpenModelManager();
                 },
               ),
@@ -1184,6 +1214,9 @@ class _ProjectTemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasDownloadedPackage =
+        package?.isDownloaded == true ||
+        candidate.package?.isDownloaded == true;
     final outline = selected
         ? theme.colorScheme.primary
         : theme.colorScheme.outlineVariant;
@@ -1333,7 +1366,9 @@ class _ProjectTemplateCard extends StatelessWidget {
                       ),
                       label: Text(
                         candidate.opensModelManager
-                            ? 'Download package'
+                            ? (hasDownloadedPackage
+                                  ? 'Configure runtime'
+                                  : 'Download package')
                             : template.primaryAction,
                       ),
                     ),

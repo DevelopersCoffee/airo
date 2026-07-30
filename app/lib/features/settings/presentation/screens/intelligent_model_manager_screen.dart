@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
+import '../../application/ai_preferences_settings.dart';
 import '../intelligent_model_manager_provider.dart';
 import '../../../agent_chat/presentation/screens/model_health_center_screen.dart';
 
@@ -712,6 +714,15 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     WidgetRef ref,
     OfflineModelInfo model,
   ) {
+    final manager = ref.read(intelligentModelManagerProvider);
+    late final Future<bool> artifactPresentFuture;
+    try {
+      artifactPresentFuture = manager.isModelInstalled(model.id);
+    } on Object {
+      // Test and legacy gateways may not expose artifact inspection yet; the
+      // health center remains usable with the model snapshot as a fallback.
+      artifactPresentFuture = Future<bool>.value(model.isDownloaded);
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ModelHealthCenterLoaderScreen(
@@ -724,27 +735,84 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 onTimeout: () =>
                     ModelCompatibilityResult.compatible(MemorySeverity.warning),
               ),
+          artifactPresentFuture: artifactPresentFuture,
           onAction: (action) {
             Navigator.of(context).pop();
-            final message = switch (action) {
-              ModelHealthAction.retry =>
-                'Retry the model warm-up from Model Management.',
-              ModelHealthAction.resumeDownload =>
-                'Resume the download from Model Management.',
-              ModelHealthAction.repair =>
-                'Repair or re-download this model from Model Management.',
-              ModelHealthAction.reduceContext =>
-                'Reduce context in AI preferences, then warm the model again.',
-              ModelHealthAction.chooseAlternative =>
-                'Choose another installed model from Model Management.',
-            };
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(message)));
+            unawaited(_runHealthAction(context, ref, model, action));
           },
         ),
       ),
     );
+  }
+
+  Future<void> _runHealthAction(
+    BuildContext context,
+    WidgetRef ref,
+    OfflineModelInfo model,
+    ModelHealthAction action,
+  ) async {
+    try {
+      final manager = ref.read(intelligentModelManagerProvider);
+      final message = switch (action) {
+        ModelHealthAction.retry => await _retryWarmup(manager, model.id),
+        ModelHealthAction.resumeDownload => await _resumeDownload(
+          manager,
+          model.id,
+        ),
+        ModelHealthAction.repair => await _repairDownload(manager, model.id),
+        ModelHealthAction.reduceContext => await _reduceContext(ref),
+        ModelHealthAction.chooseAlternative =>
+          'Choose another installed model from Model Management.',
+      };
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Recovery failed: $error')));
+    }
+  }
+
+  Future<String> _retryWarmup(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    final result = await manager.warmModel(modelId);
+    return switch (result.status) {
+      ModelWarmupStatus.warmed ||
+      ModelWarmupStatus.alreadyResident => 'Model warm-up succeeded.',
+      ModelWarmupStatus.unavailable =>
+        'Retry unavailable: ${result.detail ?? 'runtime unavailable'}.',
+      ModelWarmupStatus.failed =>
+        'Warm-up failed: ${result.detail ?? 'runtime failure'}.',
+    };
+  }
+
+  Future<String> _resumeDownload(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    await manager.resumeDownload(modelId);
+    return 'Model download resumed.';
+  }
+
+  Future<String> _repairDownload(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    await manager.repairModel(modelId);
+    return 'Repair started with a fresh verified download.';
+  }
+
+  Future<String> _reduceContext(WidgetRef ref) async {
+    final notifier = ref.read(aiPreferencesSettingsProvider.notifier);
+    final settings = ref.read(aiPreferencesSettingsProvider);
+    final nextContext = settings.contextLength <= 1024 ? 512 : 1024;
+    await notifier.update(settings.copyWith(contextLength: nextContext));
+    return 'Context reduced to $nextContext tokens. Retry the model now.';
   }
 
   void _showDeleteConfirmation(

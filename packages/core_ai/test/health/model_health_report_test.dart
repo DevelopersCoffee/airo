@@ -93,4 +93,77 @@ void main() {
     expect(report.stage(ModelHealthStage.verified).isPassed, isFalse);
     expect(report.actions, [ModelHealthAction.resumeDownload]);
   });
+
+  test('does not trust a stale persisted path as a downloaded artifact', () {
+    final report = ModelHealthReport.fromFacts(
+      model: const OfflineModelInfo(
+        id: 'stale',
+        name: 'Stale model',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/removed.litertlm',
+      ),
+      artifactPresent: false,
+    );
+
+    expect(
+      report.stage(ModelHealthStage.downloaded).status,
+      ModelHealthStageStatus.blocked,
+    );
+    expect(
+      report.stage(ModelHealthStage.verified).status,
+      ModelHealthStageStatus.pending,
+    );
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.downloadIncomplete);
+    expect(report.actions, contains(ModelHealthAction.resumeDownload));
+  });
+
+  test('maps the download service integrity failure to repair guidance', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      download: const ModelDownloadProgress(
+        modelId: 'gemma-4b',
+        totalBytes: 2_000,
+        downloadedBytes: 2_000,
+        status: ModelDownloadStatus.failed,
+        failureCode: 'integrity_mismatch',
+        error: 'Checksum mismatch',
+      ),
+    );
+
+    expect(report.failureCode, ModelHealthFailureCode.integrityFailed);
+    expect(report.explanation, contains('integrity verification'));
+    expect(report.actions, contains(ModelHealthAction.repair));
+  });
+
+  test('surfaces typed runtime failures instead of leaving health unknown', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.failed,
+        error: RuntimeErrorCode.timeout,
+        detail: 'Native generation timed out',
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.timeout);
+    expect(report.explanation, contains('timed out'));
+    expect(report.actions, contains(ModelHealthAction.retry));
+  });
+
+  test('does not hide an unknown runtime failure as pending health', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.failed,
+        error: RuntimeErrorCode.unknown,
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.unknown);
+    expect(report.explanation, contains('unknown failure'));
+  });
 }

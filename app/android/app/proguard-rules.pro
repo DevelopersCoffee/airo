@@ -15,6 +15,14 @@
 # Keep Flutter plugins
 -keep class io.flutter.plugins.** { *; }
 
+# llama.cpp GGUF adapter (Pigeon bridge, Kotlin callbacks, and JNI entrypoints)
+# must remain discoverable after release shrinking.
+-keep class com.write4me.llama_flutter_android.** { *; }
+-keep class kotlin.jvm.functions.Function1 { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # ============================================
 # Google ML Kit (Gemini Nano)
 # ============================================

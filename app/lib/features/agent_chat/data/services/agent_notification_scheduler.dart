@@ -407,6 +407,7 @@ class LocalAgentNotificationScheduler
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
+      macOS: iosSettings,
     );
     await _notificationsPlugin.initialize(
       settings: settings,
