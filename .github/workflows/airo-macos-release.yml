@@ -196,6 +196,7 @@ jobs:
             .github/workflows/airo-macos-release.yml
           python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
           scripts/check-build-profiles.py
+          scripts/test-build-macos-tv.sh
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
           cd packages/core_release && flutter test
@@ -238,6 +239,10 @@ jobs:
       - name: Build macOS app
         run: |
           cd app
+          # The checked-in lock reflects the full app profile. Resolve pods
+          # afresh after switching to the TV profile to avoid stale Firebase
+          # constraints blocking the macOS release build.
+          rm -f macos/Podfile.lock
           flutter build macos --release \
             --target="$TARGET_ENTRYPOINT" \
             --dart-define=APP_VARIANT="$APP_VARIANT" \
