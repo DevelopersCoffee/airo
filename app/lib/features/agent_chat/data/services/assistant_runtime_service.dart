@@ -371,6 +371,11 @@ class AssistantRuntimeService {
         final warmCancel = cancelled();
         if (warmCancel != null) return warmCancel;
         await (_warmupGeminiNanoOverride?.call() ?? _geminiNano.warmup());
+        // Warmup is the longest step, so it is where cancellation usually
+        // lands. Re-check before reporting ready, the same way the shared tail
+        // below does, or a cancelled setup still launches the runtime.
+        final postWarmupCancel = cancelled();
+        if (postWarmupCancel != null) return postWarmupCancel;
         emit(
           AssistantRuntimePreparationPhase.ready,
           1,

@@ -187,13 +187,24 @@ class AppShell extends ConsumerWidget {
     // Reset fullscreen mode and orientation when changing tabs.
     if (ref.read(isFullscreenModeProvider)) {
       ref.read(isFullscreenModeProvider.notifier).state = false;
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      restoreChromeAfterFullscreen();
     }
 
     ref.read(currentNavigationTabProvider.notifier).state = index;
     navigationShell.goBranch(index);
   }
+}
+
+/// Restores shell chrome after a fullscreen surface (player, game) is left.
+///
+/// Orientation goes back to the system default rather than forced portrait:
+/// tablets and foldables already using landscape as their default layout must
+/// not be rotated out of it. `packages/feature_iptv` restores the same way on
+/// fullscreen exit, so both paths agree.
+@visibleForTesting
+void restoreChromeAfterFullscreen() {
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setPreferredOrientations(const []);
 }
 
 /// Context-aware mini players shown only on their owning media tabs.
