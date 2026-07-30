@@ -5,6 +5,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../widgets/favorite_reimport_review_banner.dart';
 import '../widgets/favorites_backup_menu.dart';
 import '../widgets/iptv_icon_placeholder.dart';
+import '../widgets/channel_load_error_view.dart';
 
 /// Mobile screen listing the user's favorited channels — the mobile
 /// counterpart to [TvFavoritesScreen], with a tap-to-unfavorite trailing
@@ -36,8 +37,15 @@ class MobileFavoritesScreen extends ConsumerWidget {
           Expanded(
             child: favoritesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  Center(child: Text('Could not load favorites: $error')),
+              error: (error, _) => ChannelLoadErrorView(
+                message: 'Could not load favorites: $error',
+                onRetry: () {
+                  // Favorites can fail on its own stored list as well as on
+                  // the channels it resolves against, so invalidate both.
+                  invalidateChannelLibraries(ref);
+                  ref.invalidate(favoriteChannelsProvider);
+                },
+              ),
               data: (channels) {
                 if (channels.isEmpty) {
                   return Center(
