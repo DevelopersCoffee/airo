@@ -4,7 +4,10 @@ import 'model_library_screen.dart';
 
 /// Helps users choose a model by capability instead of model names.
 class ModelAdvisorScreen extends StatefulWidget {
-  const ModelAdvisorScreen({super.key});
+  const ModelAdvisorScreen({super.key, this.loadRecommendation});
+
+  final Future<AssistantModelLibraryState> Function(AssistantTask task)?
+  loadRecommendation;
 
   @override
   State<ModelAdvisorScreen> createState() => _ModelAdvisorScreenState();
@@ -17,14 +20,19 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
   @override
   void initState() {
     super.initState();
-    _recommendation = AssistantModelLibraryState.load(task: _task);
+    _recommendation = _load(_task);
   }
 
   void _choose(AssistantTask task) {
     setState(() {
       _task = task;
-      _recommendation = AssistantModelLibraryState.load(task: task);
+      _recommendation = _load(task);
     });
+  }
+
+  Future<AssistantModelLibraryState> _load(AssistantTask task) {
+    return widget.loadRecommendation?.call(task) ??
+        AssistantModelLibraryState.load(task: task);
   }
 
   @override
