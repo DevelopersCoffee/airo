@@ -9,6 +9,48 @@ import 'llm_config.dart';
 import 'llm_response.dart';
 import '../utils/token_counter.dart';
 
+/// Normalizes a host-only OpenAI-compatible endpoint to its conventional v1
+/// API root while preserving explicit paths such as `/v1` or `/api`.
+String normalizeOpenAICompatibleBaseUrl(String value) {
+  final trimmed = value.trim().replaceFirst(RegExp(r'/+$'), '');
+  if (trimmed.isEmpty) return '';
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.host.isEmpty) return trimmed;
+  final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
+  if (path.isEmpty || path == '/') {
+    return uri.replace(path: '/v1').toString().replaceFirst(RegExp(r'/+$'), '');
+  }
+  return trimmed;
+}
+
+/// Result of probing an OpenAI-compatible local or private inference server.
+enum RemoteServerHealth {
+  ready,
+  unauthorized,
+  notFound,
+  unavailable,
+  invalidResponse,
+}
+
+/// Structured diagnostics for a remote runtime connection.
+class RemoteServerDiagnostics {
+  const RemoteServerDiagnostics({
+    required this.health,
+    required this.baseUrl,
+    this.statusCode,
+    this.modelIds = const [],
+    this.message,
+  });
+
+  final RemoteServerHealth health;
+  final String baseUrl;
+  final int? statusCode;
+  final List<String> modelIds;
+  final String? message;
+
+  bool get isReady => health == RemoteServerHealth.ready;
+}
+
 /// OpenAI-compatible client for local servers such as LM Studio, Ollama,
 /// llama.cpp server, and compatible private gateways.
 class OpenAICompatibleClient implements LLMClient {
@@ -18,7 +60,7 @@ class OpenAICompatibleClient implements LLMClient {
     String? apiKey,
     Dio? dio,
     Duration timeout = const Duration(seconds: 45),
-  }) : _baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
+  }) : _baseUrl = normalizeOpenAICompatibleBaseUrl(baseUrl),
        _model = model,
        _apiKey = apiKey,
        _dio = dio ?? Dio(),
@@ -49,14 +91,74 @@ class OpenAICompatibleClient implements LLMClient {
 
   @override
   Future<bool> isAvailable() async {
+    final diagnostics = await diagnose();
+    return diagnostics.isReady;
+  }
+
+  /// Probes the server and returns actionable connection and model details.
+  Future<RemoteServerDiagnostics> diagnose() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$_baseUrl/models',
         options: Options(headers: _headers, receiveTimeout: _config.timeout),
       );
-      return response.statusCode != null && response.statusCode! < 400;
-    } on DioException {
-      return false;
+      final statusCode = response.statusCode;
+      if (statusCode == 401 || statusCode == 403) {
+        return RemoteServerDiagnostics(
+          health: RemoteServerHealth.unauthorized,
+          baseUrl: _baseUrl,
+          statusCode: statusCode,
+          message: 'The server rejected the API key or credentials.',
+        );
+      }
+      if (statusCode == 404) {
+        return RemoteServerDiagnostics(
+          health: RemoteServerHealth.notFound,
+          baseUrl: _baseUrl,
+          statusCode: statusCode,
+          message:
+              'The server is reachable, but its OpenAI-compatible /models endpoint was not found. Check the /v1 base path.',
+        );
+      }
+      if (statusCode == null || statusCode >= 400) {
+        return RemoteServerDiagnostics(
+          health: RemoteServerHealth.unavailable,
+          baseUrl: _baseUrl,
+          statusCode: statusCode,
+          message: 'The server returned HTTP ${statusCode ?? 'unknown'}.',
+        );
+      }
+      final modelIds = _extractModelIds(response.data);
+      return RemoteServerDiagnostics(
+        health: modelIds.isEmpty
+            ? RemoteServerHealth.invalidResponse
+            : RemoteServerHealth.ready,
+        baseUrl: _baseUrl,
+        statusCode: statusCode,
+        modelIds: modelIds,
+        message: modelIds.isEmpty
+            ? 'The server responded, but did not return any model ids.'
+            : null,
+      );
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      final health = switch (statusCode) {
+        401 || 403 => RemoteServerHealth.unauthorized,
+        404 => RemoteServerHealth.notFound,
+        _ => RemoteServerHealth.unavailable,
+      };
+      final message = switch (statusCode) {
+        401 || 403 => 'The server rejected the API key or credentials.',
+        404 =>
+          'The server is reachable, but its OpenAI-compatible /models endpoint was not found. Check the /v1 base path.',
+        _ => _remoteErrorMessage(error),
+      };
+      return RemoteServerDiagnostics(
+        health: health,
+        baseUrl: _baseUrl,
+        statusCode: statusCode,
+        message: message,
+      );
     }
   }
 
@@ -105,10 +207,7 @@ class OpenAICompatibleClient implements LLMClient {
       );
     } on DioException catch (error) {
       return Failure(
-        ServerFailure(
-          message: 'Remote model request failed: ${error.message}',
-          cause: error,
-        ),
+        ServerFailure(message: _remoteErrorMessage(error), cause: error),
       );
     } on Object catch (error) {
       return Failure(
@@ -158,7 +257,7 @@ class OpenAICompatibleClient implements LLMClient {
         }
       }
     } on DioException catch (error) {
-      yield '[Remote model error: ${error.message}]';
+      yield '[Remote model error: ${_remoteErrorMessage(error)}]';
     }
   }
 
@@ -173,5 +272,24 @@ class OpenAICompatibleClient implements LLMClient {
     if (choices is! List || choices.isEmpty) return '';
     final message = (choices.first as Map)['message'];
     return message is Map ? message['content'] as String? ?? '' : '';
+  }
+
+  static List<String> _extractModelIds(Map<String, dynamic>? data) {
+    final rawModels = data?['data'];
+    if (rawModels is! List) return const [];
+    return rawModels
+        .whereType<Map>()
+        .map((model) => model['id'])
+        .whereType<String>()
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static String _remoteErrorMessage(DioException error) {
+    final status = error.response?.statusCode;
+    final suffix = status == null ? '' : ' (HTTP $status)';
+    return 'Remote model request failed$suffix: ${error.message ?? 'connection unavailable'}. '
+        'Verify the server is reachable and its OpenAI-compatible /v1 endpoint is enabled.';
   }
 }
