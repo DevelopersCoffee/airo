@@ -240,16 +240,26 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
     Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);
   }
   return merged;
-}, retry: _surfaceFailureInsteadOfRetrying);
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
-/// Opts the channel libraries out of Riverpod's automatic retry.
+/// Opts a channel-derived provider out of Riverpod's automatic retry.
 ///
-/// A retrying provider stays in `AsyncLoading` with the error attached, so the
-/// screen shows its spinner forever and `_buildError`'s Retry button never
-/// renders. Channel loading is user-initiated and already has an explicit
-/// Retry, so a failure must settle as `AsyncError` and be shown.
-Duration? _surfaceFailureInsteadOfRetrying(int retryCount, Object error) =>
-    null;
+/// Two reasons, both observed on the rig Pixel 9 with an unreachable source:
+///
+/// * A retrying provider stays in `AsyncLoading` with the error attached, so
+///   the screen shows its spinner forever and the error state with its Retry
+///   button never renders.
+/// * Every dependent that retries re-drives the failed ancestor, which
+///   re-contacts the dead source. With rails, vod, guide, and metadata
+///   enrichment all retrying, one unreachable playlist was refetched several
+///   times a second.
+///
+/// Channel loading is user-initiated and already has an explicit Retry, so a
+/// failure must settle as `AsyncError` and stay settled.
+Duration? surfaceChannelFailureInsteadOfRetrying(
+  int retryCount,
+  Object error,
+) => null;
 
 /// Loads every configured M3U source with an independent cache namespace.
 ///
@@ -265,7 +275,7 @@ final configuredM3uChannelsProvider = FutureProvider<List<IPTVChannel>>((
     configs,
     ref.read(m3uSourceParserFactoryProvider),
   );
-}, retry: _surfaceFailureInsteadOfRetrying);
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _refreshConfiguredM3uChannelsProvider =
     FutureProvider.family<List<IPTVChannel>, bool>((ref, forceRefresh) async {
