@@ -16,6 +16,109 @@ void main() {
     registerFallbackValue(<OfflineModelInfo>[]);
   });
 
+  testWidgets('renders empty snapshot state', (tester) async {
+    final downloads = _MockDownloadService();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(ModelRegistry()),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => const ModelManagerSnapshot(
+              models: [],
+              downloadQueue: [],
+              storageUsedBytes: 0,
+            ),
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('No models found in the catalog.'), findsOneWidget);
+  });
+
+  testWidgets('starts a download for a catalog model that is not installed', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1100, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'downloadable',
+      name: 'Downloadable Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 734003200,
+      parameterCount: 270000000,
+      contextLength: 2048,
+      author: 'Airo',
+      description: 'Small local action model.',
+    );
+    final registry = ModelRegistry()..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'downloadable',
+          name: 'Downloadable Model',
+          version: 'Unversioned',
+          description: 'Small local action model.',
+          sizeBytes: 734003200,
+          updateState: ModelUpdateState.notInstalled,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 0,
+    );
+    final downloads = _MockDownloadService();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(
+      () => downloads.downloadModel(modelInfo),
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Size'), findsOneWidget);
+    expect(find.text('0.7 GB'), findsOneWidget);
+    expect(find.text('270.0M'), findsOneWidget);
+    await tester.tap(find.text('Download Model (0.7 GB)'));
+    await tester.pump();
+
+    verify(() => downloads.downloadModel(modelInfo)).called(1);
+  });
+
   testWidgets('renders complete manager state and wires lifecycle controls', (
     tester,
   ) async {

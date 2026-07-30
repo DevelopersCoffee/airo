@@ -139,6 +139,55 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('export and import failures show actionable status text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiroPortabilityScreen(
+          getDocumentsDirectory: () async => throw StateError('disk full'),
+          backupService: _FastBackupService(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'release-passphrase');
+    await tester.tap(find.text('Export encrypted backup'));
+    await _pumpAsyncWork(tester);
+
+    expect(
+      find.textContaining('Export failed:', skipOffstage: false),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiroPortabilityScreen(
+          pickBackupPath: () async => '/tmp/missing.airobackup',
+          readBackupContent: (_) async => 'bad-backup',
+          backupService: _FailingBackupService(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'release-passphrase');
+    final importButton = find.widgetWithText(
+      OutlinedButton,
+      'Verify and import backup',
+    );
+    await tester.ensureVisible(importButton);
+    final result =
+        (tester.widget<OutlinedButton>(importButton).onPressed as dynamic)
+            ?.call();
+    if (result is Future<void>) await result;
+    await _pumpAsyncWork(tester);
+
+    expect(
+      find.textContaining('Import failed:', skipOffstage: false),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpAsyncWork(WidgetTester tester) async {
@@ -184,5 +233,15 @@ class _FastBackupService extends AiroBackupService {
         {'id': 'chat-1', 'title': 'Release check'},
       ],
     };
+  }
+}
+
+class _FailingBackupService extends AiroBackupService {
+  @override
+  Future<Map<String, Object?>> decrypt(
+    String encoded,
+    String passphrase,
+  ) async {
+    throw StateError('cannot decrypt');
   }
 }
