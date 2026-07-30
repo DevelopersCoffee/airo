@@ -17,6 +17,7 @@ enum IntentType {
   askImage,
   audioScribe,
   mobileActions,
+  openWifiSettings,
   modelManagement,
   openOffers,
   openReader,
@@ -94,6 +95,8 @@ class IntentParser {
     'transcribe audio': IntentType.audioScribe,
     'mobile actions': IntentType.mobileActions,
     'open mobile actions': IntentType.mobileActions,
+    'open wifi settings': IntentType.openWifiSettings,
+    'open wi-fi settings': IntentType.openWifiSettings,
     'manage models': IntentType.modelManagement,
     'model management': IntentType.modelManagement,
     'offline models': IntentType.modelManagement,
@@ -192,6 +195,10 @@ class IntentParser {
 
     if (_containsAny(text, ['mobile actions', 'device control'])) {
       return IntentType.mobileActions;
+    }
+
+    if (_containsAny(text, ['wifi settings', 'wi-fi settings'])) {
+      return IntentType.openWifiSettings;
     }
 
     if (_containsAny(text, [
@@ -330,6 +337,8 @@ class IntentParser {
         return 'Opening Audio Scribe';
       case IntentType.mobileActions:
         return 'Opening Mobile Actions';
+      case IntentType.openWifiSettings:
+        return 'Opening Wi-Fi settings';
       case IntentType.modelManagement:
         return 'Opening Model Management';
       case IntentType.openOffers:

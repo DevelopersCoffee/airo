@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/services/device_actions_service.dart';
 import 'intent_parser.dart';
 
 /// Gallery-style card describing an agent skill/use case.
@@ -117,6 +118,35 @@ class MusicTool implements Tool {
       default:
         return null;
     }
+  }
+}
+
+/// Safe platform actions exposed through the Mobile Actions skill.
+class DeviceActionsTool implements Tool {
+  DeviceActionsTool({DeviceActionsService? service})
+    : _service = service ?? DeviceActionsService();
+
+  final DeviceActionsService _service;
+
+  @override
+  String get key => 'mobile_actions';
+
+  @override
+  String get name => 'Mobile Actions';
+
+  @override
+  bool canHandle(Intent intent) => intent.type == IntentType.openWifiSettings;
+
+  @override
+  Future<AgentToolResult?> handle(Intent intent) async {
+    if (intent.type != IntentType.openWifiSettings) return null;
+    final opened = await _service.openWifiSettings();
+    return AgentToolResult(
+      message: opened
+          ? 'Opened Wi-Fi settings.'
+          : 'Airo could not open Wi-Fi settings on this device.',
+      isError: !opened,
+    );
   }
 }
 
@@ -397,6 +427,7 @@ class ToolRegistry {
     'Arena': GamesTool(),
     'Loot': OffersTool(),
     'Tales': ReaderTool(),
+    'mobile_actions': DeviceActionsTool(),
     'social': SocialTool(),
   };
 

@@ -63,6 +63,10 @@ void main() {
         IntentType.mobileActions,
       );
       expect(
+        IntentParser.parse('open Wi-Fi settings').type,
+        IntentType.openWifiSettings,
+      );
+      expect(
         IntentParser.parse('manage offline models').type,
         IntentType.modelManagement,
       );

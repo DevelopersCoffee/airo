@@ -1,8 +1,12 @@
 import 'package:airo_app/features/agent_chat/domain/services/intent_parser.dart';
 import 'package:airo_app/features/agent_chat/domain/services/tool_registry.dart';
+import 'package:airo_app/core/services/device_actions_service.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ToolRegistry', () {
     late ToolRegistry registry;
 
@@ -71,5 +75,26 @@ void main() {
       expect(models.route, '/agent/profile');
       expect(models.message, contains('Profile model settings'));
     });
+
+    test(
+      'executes the safe Wi-Fi device action through its platform boundary',
+      () async {
+        const channel = MethodChannel('test.tool-device-actions');
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+        messenger.setMockMethodCallHandler(
+          channel,
+          (call) async => const {'opened': true},
+        );
+
+        final result = await DeviceActionsTool(
+          service: DeviceActionsService(channel: channel),
+        ).handle(IntentParser.parse('open wifi settings'));
+
+        expect(result?.isError, isFalse);
+        expect(result?.message, 'Opened Wi-Fi settings.');
+      },
+    );
   });
 }
