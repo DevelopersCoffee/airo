@@ -69,6 +69,17 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     return color == ChessColor.white ? ChessColor.black : ChessColor.white;
   }
 
+  /// The rank digit that belongs on [displayRow] for [playerColor].
+  ///
+  /// Ranks have to follow the same flip as the pieces. They did not: the
+  /// labels were drawn 8..1 top-to-bottom regardless of orientation, so a
+  /// black player -- half of all games, since the colour is random -- saw
+  /// rank 1's pieces at the top of the board under a label reading "8".
+  static String rankLabelForDisplayRow(int displayRow, ChessColor playerColor) {
+    final row = displayRowForPlayerPerspective(displayRow, playerColor);
+    return (row + 1).toString();
+  }
+
   static int displayRowForPlayerPerspective(int row, ChessColor playerColor) {
     return playerColor == ChessColor.white ? 7 - row : row;
   }
@@ -423,7 +434,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
 
     // Draw rank labels (1-8) on left
     for (int row = 0; row < 8; row++) {
-      final rank = (8 - row).toString(); // 8-1 (top to bottom)
+      final rank = rankLabelForDisplayRow(row, playerColor);
       final textPainter = TextPainter(
         text: TextSpan(
           text: rank,
