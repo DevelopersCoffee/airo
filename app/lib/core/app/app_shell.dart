@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ui/core_ui.dart';
 import '../auth/auth_service.dart';
 import '../auth/google_auth_service.dart';
 import '../providers/bedtime_mode_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../routing/route_names.dart';
-import '../theme/bedtime_theme.dart';
+import '../theme/airo_domain_resolver.dart';
 import 'app_shell_chrome.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -33,12 +34,24 @@ class AppShell extends ConsumerWidget {
     final sleepTimer = ref.watch(sleepTimerProvider);
     final isFullscreen = ref.watch(isFullscreenModeProvider);
     final user = AuthService.instance.currentUser;
+    final domain = airoDomainForLocation(currentLocation);
+
+    Widget applyShellTheme(Widget child) {
+      final theme = isBedtimeMode
+          ? BedtimeTheme.bedtimeTheme
+          : Theme.of(context);
+      return Theme(
+        data: theme,
+        child: isBedtimeMode
+            ? child
+            : AiroDomainTheme(domain: domain, child: child),
+      );
+    }
 
     // In fullscreen mode, return just the navigation shell content without app bar or bottom nav
     if (isFullscreen) {
-      return Theme(
-        data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
-        child: Scaffold(body: navigationShell),
+      return applyShellTheme(
+        Scaffold(body: AiroAmbientBackground(child: navigationShell)),
       );
     }
 
@@ -55,9 +68,8 @@ class AppShell extends ConsumerWidget {
       navigationLayout,
     );
 
-    return Theme(
-      data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
-      child: Scaffold(
+    return applyShellTheme(
+      Scaffold(
         appBar: headerMode == AppShellHeaderMode.shell
             ? AppShellChrome(
                 title: Text(currentPageName),
@@ -81,9 +93,11 @@ class AppShell extends ConsumerWidget {
                 },
               )
             : null,
-        body: _ContextAwareMiniPlayers(
-          currentIndex: navigationShell.currentIndex,
-          child: navigationShell,
+        body: AiroAmbientBackground(
+          child: _ContextAwareMiniPlayers(
+            currentIndex: navigationShell.currentIndex,
+            child: navigationShell,
+          ),
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: selectedNavIndex,

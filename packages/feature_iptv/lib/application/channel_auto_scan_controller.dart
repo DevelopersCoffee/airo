@@ -72,6 +72,16 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
   int _scanGeneration = 0;
   final Map<String, StreamAvailability> _cachedAvailabilityByChannelId = {};
 
+  /// Probe results not yet published to [state].
+  ///
+  /// A scan of a user's full list can be tens of thousands of channels, and
+  /// publishing each result separately invalidated every provider derived from
+  /// availability -- the browse rails among them -- once per probed channel.
+  /// Results are coalesced instead: everything that lands in one turn of the
+  /// event loop is published as a single state change.
+  final Map<String, StreamAvailability> _pendingAvailability = {};
+  var _availabilityFlushScheduled = false;
+
   Future<void> start({
     required String scopeId,
     required List<IPTVChannel> channels,
@@ -126,18 +136,13 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
       onResult: (result, completedProbeCount) {
         if (generation != _scanGeneration || cancellation.isCancelled) return;
         _cachedAvailabilityByChannelId[result.channelId] = result.availability;
-        final nextAvailability = <String, StreamAvailability>{
-          ...state.availabilityByChannelId,
-          result.channelId: result.availability,
-        };
-        state = state.copyWith(
-          completedCount: nextAvailability.length,
-          availabilityByChannelId: nextAvailability,
-        );
+        _pendingAvailability[result.channelId] = result.availability;
+        _scheduleAvailabilityFlush();
       },
     );
     if (generation != _scanGeneration) return;
     _cancellation = null;
+    _flushAvailability();
     if (result.wasCancelled || cancellation.isCancelled) {
       state = state.copyWith(phase: ChannelAutoScanPhase.cancelled);
       return;
@@ -145,6 +150,31 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
     state = state.copyWith(
       phase: ChannelAutoScanPhase.complete,
       completedCount: state.availabilityByChannelId.length,
+    );
+  }
+
+  /// Publishes coalesced probe results on the next turn of the event loop.
+  ///
+  /// Deferring also keeps the write out of a build that is already running: a
+  /// probe result arriving while the browse grid built marked the provider
+  /// scope dirty mid-build ("setState() called during build").
+  void _scheduleAvailabilityFlush() {
+    if (_availabilityFlushScheduled) return;
+    _availabilityFlushScheduled = true;
+    Future<void>.microtask(_flushAvailability);
+  }
+
+  void _flushAvailability() {
+    _availabilityFlushScheduled = false;
+    if (_pendingAvailability.isEmpty || !mounted) return;
+    final next = <String, StreamAvailability>{
+      ...state.availabilityByChannelId,
+      ..._pendingAvailability,
+    };
+    _pendingAvailability.clear();
+    state = state.copyWith(
+      completedCount: next.length,
+      availabilityByChannelId: next,
     );
   }
 

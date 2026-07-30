@@ -72,13 +72,13 @@ void main() {
         // player must show on both tabs.
         expect(
           visibility.showIptvPlayer,
-          tab == AppNavigationTab.live || tab == AppNavigationTab.home,
+          tab == AppNavigationTab.live,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }
     });
 
-    test('IPTV mini player is visible on both the Live and Home tabs', () {
+    test('IPTV mini player is visible only on the Live tab', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -92,7 +92,7 @@ void main() {
         container
             .read(miniPlayerVisibilityProvider(AppNavigationTab.home.index))
             .showIptvPlayer,
-        isTrue,
+        isFalse,
       );
     });
 
@@ -138,8 +138,7 @@ void main() {
       }, containsAll(AppNavigationTab.values));
     });
 
-    test('wide layouts show a curated 8-tab set: the original six domains '
-        'plus Guide and Favorites, excluding the placeholder Home tab', () {
+    test('wide layouts show the six core domains plus Guide and Favorites', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -157,9 +156,8 @@ void main() {
         'Guide',
         'Favorites',
       ]);
-      // Home is a phone-only placeholder for the unified browse entry
-      // point; Mind already serves that role on wide layouts, so Home
-      // must not appear here (it would read as a confusing duplicate).
+      // Home remains reachable from the persistent shell identity, so wide
+      // navigation can prioritize the eight daily-use destinations.
       expect(wideLayout.persistentTabs, isNot(contains(AppNavigationTab.home)));
       // Settings has never had a persistent nav slot; it stays reachable
       // via the profile menu regardless of screen width.
@@ -183,6 +181,7 @@ void main() {
         AppShellHeaderMode.shell,
       );
       expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
+      expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.shell);
       expect(appShellHeaderModeForLocation('/guide'), AppShellHeaderMode.shell);
       expect(
         appShellHeaderModeForLocation('/favorites'),
@@ -193,9 +192,6 @@ void main() {
     test('switches custom and nested routes to route-owned headers', () {
       expect(appShellHeaderModeForLocation('/music'), AppShellHeaderMode.route);
       expect(appShellHeaderModeForLocation('/iptv'), AppShellHeaderMode.route);
-      // Home (unified-browse Task 6) renders the same IPTVScreen as Live and
-      // owns its own AppBar too, so shell chrome must stay hidden here.
-      expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.route);
       expect(appShellHeaderModeForLocation('/quest'), AppShellHeaderMode.route);
       expect(
         appShellHeaderModeForLocation('/quest/new'),

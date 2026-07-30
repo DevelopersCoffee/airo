@@ -16,6 +16,7 @@ import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/screens/airo_portability_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
+import '../../features/home/screens/home_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
 import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
@@ -34,8 +35,6 @@ import '../../features/life_track/presentation/screens/track_detail_screen.dart'
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
-import '../../features/iptv/phone_media_local_picker.dart';
-import '../config/feature_flags.dart';
 import '../http/http_dog.dart';
 import 'route_names.dart';
 
@@ -334,23 +333,13 @@ class AppRouter {
                 ),
               ],
             ),
-            // Home branch (CV unified-browse Task 6): the source design's
-            // sidebar has Home and Live TV both call the same `goToBrowse`
-            // handler — Home and Live are the same destination — so this
-            // mirrors the Stream branch's IPTVScreen wiring exactly rather
-            // than the Task 5 MindScreen placeholder. Matches
-            // AppNavigationTab.home — see task-6-report.md for the decision.
+            // Airo Living Console home. Live remains available at /iptv.
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: '/home',
                   name: 'Home',
-                  builder: (context, state) => IPTVScreen(
-                    onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
-                        ? pickPhoneLocalMediaForTv
-                        : null,
-                  ),
+                  builder: (context, state) => const HomeScreen(),
                 ),
               ],
             ),

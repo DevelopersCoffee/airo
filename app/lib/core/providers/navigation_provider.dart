@@ -242,6 +242,7 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     '/mind/chat',
     '/mind/models',
     '/games',
+    '/home',
   };
   if (shellOwnedExactLocations.contains(normalizedLocation)) {
     return AppShellHeaderMode.shell;
@@ -252,10 +253,6 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     '/mind/',
     '/music',
     '/iptv',
-    // Home (CV unified-browse Task 6) renders the same IPTVScreen as Live —
-    // it owns its own AppBar too, so shell chrome must stay hidden here for
-    // the same reason it's hidden on '/iptv'.
-    '/home',
     '/games/',
     '/quest',
     // SettingsHubScreen renders its own Scaffold + AppBar (see
@@ -293,12 +290,7 @@ final miniPlayerVisibilityProvider = Provider.family<MiniPlayerVisibility, int>(
   (ref, currentIndex) {
     return MiniPlayerVisibility(
       showMusicPlayer: currentIndex == AppNavigationTab.beats.index,
-      // Home renders the same real browse/player flow as Live (Task 6
-      // mirrors the source design's Home==Live routing), so the mini player
-      // must show on both tabs, not just Live.
-      showIptvPlayer:
-          currentIndex == AppNavigationTab.live.index ||
-          currentIndex == AppNavigationTab.home.index,
+      showIptvPlayer: currentIndex == AppNavigationTab.live.index,
     );
   },
 );
