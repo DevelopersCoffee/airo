@@ -692,14 +692,74 @@ exit code rather than reporting PASS or FAIL. Currently: the source tree exists,
 and it holds at least the expected number of files. An abort is not a failure —
 it says the question could not be asked.
 
+### Every validator has a demonstrated failing form
+
+**A gate that has never been observed failing is provisional.** Each one must
+answer, with a recorded mutation:
+
+> What change to the code proved this gate can fail?
+
+Not "is it mutation-covered" — *recorded*, in `evidence/`, naming the mutation
+and the observed output. A gate whose answer is "none" has not earned the right
+to be cited as evidence, however sound its logic reads.
+
+This is `I5` applied to the validators themselves: *an invariant is not complete
+until something fails when it is violated.* The validators are implementations
+of the architecture, so they inherit the rule they enforce.
+
+It would have caught `SEC-50` far earlier. Eight named controls have no failing
+form and five of them guard Revision 9B's own fixes — deleting
+`push_len_prefixed(&mut aad, &self.nonce)`, `source.ledger.validate()?`, the
+revocation check in `admit_device`, `set_head_epoch`'s guard, or `add_context`'s
+retired-id refusal each leaves the suite at **92 passed, 0 failed**.
+
+### Assertions attach to obligations, not locations
+
+`SEC-49` is `A12`'s exact subject — an unchecked increment — at a second site.
+`SEC-47` is `A04`'s exact subject — a raw identifier — on a second identifier
+kind. Neither is a new defect class; both are the same obligation, unguarded
+where the assertion did not happen to look.
+
+The shape recurs:
+
+```
+invariant enforced at site A
+        ↓
+assertion written for site A
+        ↓
+invariant later appears at site B
+        ↓
+assertion never generalized
+```
+
+That is a **locality** problem, not a pattern-quality problem. An assertion
+pinned to a file and a spelling is pinned to where the obligation was *first
+observed*, not to the obligation. Tightening the regex does not move it.
+
+The remedy is the level hierarchy: an obligation that holds *everywhere* is a
+Level 1 check over a complete enumeration, not a Level 2 grep at the sites
+someone remembered.
+
 ### Gate levels, and why order matters
 
-| Level | Proves | Examples |
-|---|---|---|
-| **0 — Preconditions** | the question can be asked | tree exists, enumeration non-empty |
-| **1 — Mechanical integrity** | a complete enumeration matches an approved one | public-surface allowlist, forbidden dependencies |
-| **2 — Property assertions** | a named property holds | security invariants, mutation regressions |
-| **3 — Consumer journeys** | reachability from outside | compile probes, `DENY`/`ALLOW` |
+| Level | Contract | On violation | Examples |
+|---|---|---|---|
+| **L0 — Preconditions** | the validator has a valid universe to inspect | **abort** | tree exists, enumeration non-empty |
+| **L1 — Mechanical soundness** | the observed surface matches the approved surface | fail | public-surface allowlist, forbidden dependencies |
+| **L2 — Property validation** | required invariants hold | fail | security invariants, mutation regressions |
+| **L3 — Consumer behaviour** | consumers observe the intended semantics | fail | compile probes, `DENY`/`ALLOW` |
+
+**Gates are named by level, not by sequence.** `G0.9` is the first **L1** gate,
+not the ninth gate; `G0.7` is **L2**, `G0.8` is **L3**. A flat number says when
+a gate was written, which is the least useful thing about it, and it invites the
+next concept to become `G0.10` rather than to be placed. New gates take an
+`L{level}.{n}` identity and the existing `G0.*` names are retained as aliases
+because they are cited in committed evidence.
+
+**L0 aborts rather than failing**, and the distinction is load-bearing: a
+failure says the property does not hold, an abort says *the question could not
+be asked*. Reporting the second as either PASS or FAIL is the soundness
+violation itself.
 
 Level 1 runs **before** Level 2, and that ordering is the lesson of `G0.9` vs
 `G0.7`. Level 1 enumerates *approved surface* and fails on anything else, so it
