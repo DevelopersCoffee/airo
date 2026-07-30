@@ -91,4 +91,29 @@ void main() {
       expect(calls, ['isAvailable', 'isAvailable', 'initialize', 'warmup']);
     },
   );
+
+  test(
+    'dispose releases the native session and resets initialization state',
+    () async {
+      final calls = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call.method);
+        return switch (call.method) {
+          'isAvailable' => true,
+          'initialize' => true,
+          'dispose' => null,
+          _ => fail('Unexpected method call: ${call.method}'),
+        };
+      });
+
+      final service = GeminiNanoService.forTesting();
+      expect(await service.initialize(), isTrue);
+      expect(service.isInitialized, isTrue);
+
+      await service.dispose();
+
+      expect(service.isInitialized, isFalse);
+      expect(calls, ['isAvailable', 'initialize', 'dispose']);
+    },
+  );
 }

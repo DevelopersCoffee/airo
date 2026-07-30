@@ -315,7 +315,9 @@ class GeminiNanoService {
   /// Dispose resources
   Future<void> dispose() async {
     try {
-      // Mock dispose
+      if (!kIsWeb) {
+        await _channel.invokeMethod('dispose').timeout(operationTimeout);
+      }
       _isInitialized = false;
     } catch (e) {
       debugPrint('Error disposing Gemini Nano: $e');
