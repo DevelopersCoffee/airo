@@ -51,6 +51,21 @@ void main() {
     },
   );
 
+  test('warmup returns false when the native channel stalls', () async {
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      return switch (call.method) {
+        'warmup' => Future<void>.delayed(const Duration(milliseconds: 100)),
+        _ => fail('Unexpected method call: ${call.method}'),
+      };
+    });
+
+    final service = GeminiNanoService.forTesting(
+      operationTimeout: const Duration(milliseconds: 10),
+    );
+
+    expect(await service.warmup(), isFalse);
+  });
+
   test(
     'support check, initialize, and warmup can be exercised in one host run',
     () async {
