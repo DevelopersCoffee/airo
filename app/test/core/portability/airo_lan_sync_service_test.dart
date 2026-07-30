@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:airo_app/core/portability/airo_backup_service.dart';
 import 'package:airo_app/core/portability/airo_lan_sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +33,28 @@ void main() {
     await expectLater(
       AiroLanSyncService().fetchShare(Uri.parse('ftp://example.test/x')),
       throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('LAN share import times out when the response stalls', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((request) async {
+      request.response
+        ..statusCode = HttpStatus.ok
+        ..headers.contentLength = 1;
+      await request.response.flush();
+      // Leave the declared byte unread to model a stalled transfer.
+    });
+
+    final service = AiroLanSyncService(
+      transferTimeout: const Duration(milliseconds: 50),
+    );
+    await expectLater(
+      service.fetchShare(
+        Uri.parse('http://127.0.0.1:${server.port}/stalled'),
+      ),
+      throwsA(isA<TimeoutException>()),
     );
   });
 }
