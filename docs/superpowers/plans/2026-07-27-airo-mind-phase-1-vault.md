@@ -1796,12 +1796,12 @@ impl DeviceKey {
 /// A root-signed statement that a device belongs to this user's mesh.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceCertificate {
-    pub device_id: String,
+    device_id: String,
     #[serde(with = "super::encoding::hex_array_32")]
-    pub device_public_key: [u8; 32],
-    pub issued_at_epoch: u64,
+    device_public_key: [u8; 32],
+    issued_at_epoch: u64,
     #[serde(with = "super::encoding::hex_array_64")]
-    pub signature: [u8; 64],
+    signature: [u8; 64],
 }
 
 impl DeviceCertificate {
@@ -1820,6 +1820,51 @@ impl DeviceCertificate {
         };
         certificate.signature = root.sign(&certificate.signing_payload()?);
         Ok(certificate)
+    }
+
+    /// `RA-23a` / `A07`,`A08`. Read accessors; the four fields are
+    /// signature-covered.
+    pub fn device_id(&self) -> &str {
+        &self.device_id
+    }
+
+    pub fn device_public_key(&self) -> &[u8; 32] {
+        &self.device_public_key
+    }
+
+    pub fn issued_at_epoch(&self) -> u64 {
+        self.issued_at_epoch
+    }
+
+    /// An unsigned certificate, for the test that proves admission rejects it.
+    /// `#[cfg(test)]`: outside tests, `issue` is the only constructor, which is
+    /// the `RA-23a` construction boundary.
+    #[cfg(test)]
+    pub(crate) fn forged_unsigned(device: &DeviceKey, issued_at_epoch: u64) -> Self {
+        Self {
+            device_id: device.device_id(),
+            device_public_key: device.public_key(),
+            issued_at_epoch,
+            signature: [0u8; 64],
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_device_id_tampered(mut self, v: &str) -> Self {
+        self.device_id = v.to_string();
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_public_key_tampered(mut self, v: [u8; 32]) -> Self {
+        self.device_public_key = v;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_issued_at_tampered(mut self, v: u64) -> Self {
+        self.issued_at_epoch = v;
+        self
     }
 
     /// The exact bytes covered by the signature.
@@ -1898,24 +1943,24 @@ mod tests {
     #[test]
     fn swapping_the_public_key_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
-        certificate.device_public_key = DeviceKey::generate().unwrap().public_key();
+        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
+        let certificate = certificate.with_public_key_tampered(DeviceKey::generate().unwrap().public_key());
         assert!(!certificate.verify_against(&root.public_key()));
     }
 
     #[test]
     fn device_id_must_match_the_public_key() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
-        certificate.device_id = "deadbeef".into();
+        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
+        let certificate = certificate.with_device_id_tampered("deadbeef");
         assert!(!certificate.verify_against(&root.public_key()));
     }
 
     #[test]
     fn changing_the_issue_epoch_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
-        certificate.issued_at_epoch = 99;
+        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
+        let certificate = certificate.with_issued_at_tampered(99);
         assert!(!certificate.verify_against(&root.public_key()));
     }
 }
@@ -3658,7 +3703,7 @@ impl Vault {
     /// device that cannot be evicted makes the trust boundary decorative.
     pub fn revoke_device(&mut self, device_id: &str) -> Result<PurgeDirective, VaultError> {
         let before = self.device_certificates.len();
-        self.device_certificates.retain(|c| c.device_id != device_id);
+        self.device_certificates.retain(|c| c.device_id() != device_id);
         if self.device_certificates.len() == before {
             return Err(VaultError::DeviceNotFound(device_id.to_string()));
         }
@@ -3717,14 +3762,14 @@ impl Vault {
     /// the ledger second would still be correct, but it does cryptographic
     /// work on behalf of an identity already refused.
     fn admit_device(&mut self, certificate: DeviceCertificate) -> Result<(), VaultError> {
-        let subject = RevocationSubject::Device(certificate.device_id.clone());
+        let subject = RevocationSubject::Device(certificate.device_id().to_string());
         if self.revocations.is_revoked(&subject) {
-            return Err(VaultError::DeviceRevoked(certificate.device_id.clone()));
+            return Err(VaultError::DeviceRevoked(certificate.device_id().to_string()));
         }
         if !certificate.verify_against(&self.root_public_key) {
             return Err(VaultError::UntrustedCertificate);
         }
-        self.device_certificates.retain(|c| c.device_id != certificate.device_id);
+        self.device_certificates.retain(|c| c.device_id() != certificate.device_id());
         self.device_certificates.push(certificate);
         Ok(())
     }
@@ -3855,12 +3900,7 @@ mod tests {
     fn an_unsigned_device_certificate_is_rejected() {
         use crate::vault::device::{DeviceCertificate, DeviceKey};
         let device = DeviceKey::generate().unwrap();
-        let forged = DeviceCertificate {
-            device_id: device.device_id(),
-            device_public_key: device.public_key(),
-            issued_at_epoch: 1,
-            signature: [0u8; 64],
-        };
+        let forged = DeviceCertificate::forged_unsigned(&device, 1);
 
         let mut vault = vault();
         assert!(vault.trust_device(forged).is_err());
@@ -4001,7 +4041,7 @@ impl VaultPayload {
 
     pub(super) fn purge_device(&mut self, id: &str) -> bool {
         let before = self.device_certificates.len();
-        self.device_certificates.retain(|c| c.device_id != id);
+        self.device_certificates.retain(|c| c.device_id() != id);
         self.device_certificates.len() != before
     }
 
@@ -4064,12 +4104,12 @@ impl KeyBytes {
 /// `RootPublicKey::from_bytes` already uses.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecoveryPackage {
-    pub format_version: u32,
-    pub identity_public_key: RootPublicKey,
+    format_version: u32,
+    identity_public_key: RootPublicKey,
     /// Head epoch at export time. Deliberately **outside** the ciphertext:
     /// restore must read it before it can decrypt anything, to know how far
     /// behind this backup is.
-    pub revocation_epoch: u64,
+    revocation_epoch: u64,
 
     // ── Reserved in v1, not yet used ────────────────────────────────────────
     //
@@ -4087,10 +4127,10 @@ pub struct RecoveryPackage {
     // `UnsupportedPackageVersion` until the feature ships — a package this
     // build cannot open must fail loudly, never silently ignore the flag and
     // derive the wrong key.
-    pub passphrase_used: bool,
-    pub kdf_params: BTreeMap<String, u64>,
+    passphrase_used: bool,
+    kdf_params: BTreeMap<String, u64>,
     #[serde(with = "super::encoding::base64_bytes")]
-    pub kdf_salt: Vec<u8>,
+    kdf_salt: Vec<u8>,
 
     // `ADR-0017`. Base64, not hex and never decimal arrays. The package
     // double-encodes — a JSON payload, then that ciphertext text-encoded again
@@ -4245,6 +4285,62 @@ impl RecoveryPackage {
         // authenticated -- two byte-different files decrypting to one vault.
         push_len_prefixed(&mut aad, &self.nonce)?;
         Ok(aad)
+    }
+
+    /// `RA-23a` / `A05`,`A06`. Read accessors: every field below is covered by
+    /// `header_aad`, so a `pub` field let a consumer build a package guaranteed
+    /// to fail restore. Read is safe; write is not.
+    pub fn format_version(&self) -> u32 {
+        self.format_version
+    }
+
+    pub fn identity_public_key(&self) -> &RootPublicKey {
+        &self.identity_public_key
+    }
+
+    /// Drives the "your backup is N revocations behind" warning, which is read
+    /// before anything is decrypted.
+    pub fn revocation_epoch(&self) -> u64 {
+        self.revocation_epoch
+    }
+
+    /// Tamper constructors. `#[cfg(test)]`, so the six `I3` tamper tests can
+    /// still prove the AAD catches each field while no consumer can write one.
+    /// Same shape as `RootPublicKey::from_bytes`.
+    #[cfg(test)]
+    pub(crate) fn with_format_version_tampered(mut self, v: u32) -> Self {
+        self.format_version = v;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_revocation_epoch_tampered(mut self, v: u64) -> Self {
+        self.revocation_epoch = v;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_identity_tampered(mut self, v: RootPublicKey) -> Self {
+        self.identity_public_key = v;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_kdf_salt_tampered(mut self) -> Self {
+        self.kdf_salt[0] ^= 0xff;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_kdf_param_tampered(mut self, k: &str, v: u64) -> Self {
+        self.kdf_params.insert(k.to_string(), v);
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_passphrase_flag_tampered(mut self) -> Self {
+        self.passphrase_used = true;
+        self
     }
 
     /// Number of sealed frames. Lets a caller — and `V5`/`V7` — see that peak
@@ -4749,7 +4845,7 @@ mod tests {
         let _ = vault.destroy_content("note-1").unwrap();
         let package = RecoveryPackage::export(&vault, &seed).unwrap();
 
-        assert_eq!(package.revocation_epoch, 1);
+        assert_eq!(package.revocation_epoch(), 1);
     }
 
     #[test]
@@ -4765,8 +4861,8 @@ mod tests {
     #[test]
     fn an_unknown_format_version_is_rejected() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.format_version = 99;
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = package.with_format_version_tampered(99);
 
         assert!(matches!(package.decrypt(&seed), Err(VaultError::UnsupportedPackageVersion(99))));
     }
@@ -4789,16 +4885,17 @@ mod tests {
     #[test]
     fn tampering_with_revocation_epoch_fails_decryption() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.revocation_epoch += 1;
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let bumped = package.revocation_epoch() + 1;
+        let package = package.with_revocation_epoch_tampered(bumped);
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
     }
 
     #[test]
     fn tampering_with_identity_public_key_fails_decryption() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.identity_public_key = RootPublicKey::from_bytes([0xff; 32]);
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = package.with_identity_tampered(RootPublicKey::from_bytes([0xff; 32]));
         // Caught by the AAD, before the identity check in SealedRestore.
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
     }
@@ -4806,8 +4903,8 @@ mod tests {
     #[test]
     fn tampering_with_kdf_salt_fails_decryption() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.kdf_salt[0] ^= 0xff;
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = package.with_kdf_salt_tampered();
         assert!(matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)));
     }
 
@@ -4928,10 +5025,10 @@ mod tests {
     fn mut_each_frame_is_bound_to_the_header_aad() {
         let (mut vault, seed) = seeded_vault();
         let _d = vault.destroy_content("note-1").unwrap();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
         assert!(package.decrypt(&seed).is_ok(), "control: untampered opens");
 
-        package.kdf_salt[0] ^= 0xff; // AAD-covered, ciphertext-external
+        let mut package = package.with_kdf_salt_tampered(); // AAD-covered, ciphertext-external
         let aad = package.header_aad().unwrap();
         let cipher = XChaCha20Poly1305::new(&package_key(&seed).unwrap().into());
         let package_nonce: [u8; 24] = package.nonce.as_slice().try_into().unwrap();
@@ -5154,8 +5251,8 @@ mod tests {
     #[test]
     fn adding_a_kdf_param_fails_decryption() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.kdf_params.insert("rounds".into(), 1);
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = package.with_kdf_param_tampered("rounds", 1);
         // check_supported rejects non-empty kdf_params first; assert the
         // distinct error so this does not silently stop testing the AAD.
         assert!(matches!(package.decrypt(&seed), Err(VaultError::UnsupportedProtectionMode)));
@@ -5164,13 +5261,13 @@ mod tests {
     #[test]
     fn format_version_is_bound_by_the_aad_not_only_by_check_supported() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
         // Bump then restore the version so check_supported passes, leaving the
         // AAD as the only thing that can catch a mismatch. Achieved by
         // tampering the salt instead is NOT equivalent — this asserts the
         // version specifically participates in the binding.
-        let original = package.format_version;
-        package.format_version = original + 1;
+        let original = package.format_version();
+        let package = package.with_format_version_tampered(original + 1);
         let tampered_aad_matches = package.decrypt(&seed).is_ok();
         assert!(!tampered_aad_matches);
     }
@@ -5178,8 +5275,8 @@ mod tests {
     #[test]
     fn an_unsupported_protection_mode_is_rejected_distinctly() {
         let (vault, seed) = seeded_vault();
-        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
-        package.passphrase_used = true;
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        let package = package.with_passphrase_flag_tampered();
         // NOT UnsupportedPackageVersion — reporting a protection mode as a
         // version problem is false and misdirects whoever debugs it.
         assert!(matches!(package.decrypt(&seed), Err(VaultError::UnsupportedProtectionMode)));
