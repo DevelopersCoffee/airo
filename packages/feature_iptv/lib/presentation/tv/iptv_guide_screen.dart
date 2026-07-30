@@ -13,6 +13,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../widgets/epg_touch_timeline_grid.dart';
 import '../widgets/epg_timeline_grid.dart';
 import '../widgets/richer_context_prototype.dart';
+import '../widgets/channel_load_error_view.dart';
 
 /// TV Guide: a virtualized horizontal-timeline EPG grid (CV-015 slice 2),
 /// sourced from [guidePagedWindowProvider]. Selecting a channel plays it and
@@ -52,11 +53,9 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
       body: SafeArea(
         child: channelsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(
-            child: Text(
-              'Could not load the guide: $error',
-              textAlign: TextAlign.center,
-            ),
+          error: (error, _) => ChannelLoadErrorView(
+            message: 'Could not load the guide: $error',
+            onRetry: () => invalidateChannelLibraries(ref),
           ),
           data: (channels) {
             if (channels.isEmpty) {
