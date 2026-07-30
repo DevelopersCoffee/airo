@@ -178,7 +178,11 @@ class AIPreferencesSettingsNotifier
   }
 
   Future<int> clearModelCache() async {
-    final manager = ModelStorageManager();
+    final location =
+        state.downloadLocation == AIDownloadLocationPreference.appManaged
+        ? ModelStorageLocation.applicationExternal
+        : ModelStorageLocation.applicationDocuments;
+    final manager = ModelStorageManager(location: location);
     final deleted = await manager.cleanupOrphanedFiles(
       ModelCatalog.bundledModels,
     );
