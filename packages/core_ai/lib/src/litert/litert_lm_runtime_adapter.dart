@@ -389,13 +389,12 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
     OfflineModelInfo model,
   ) async {
     if (kIsWeb) return model;
-    if (model.filePath?.trim().isNotEmpty == true) {
-      return model;
-    }
-
     final modelPath = await downloadedModelPath(model.id, model: model);
     if (modelPath == null) {
-      return model;
+      // A persisted receipt can outlive the artifact it described. Clear the
+      // stale path so the catalog cannot present a non-existent LiteRT model
+      // as runnable on the next launch.
+      return model.copyWith(clearFilePath: true);
     }
     return model.copyWith(filePath: modelPath);
   }

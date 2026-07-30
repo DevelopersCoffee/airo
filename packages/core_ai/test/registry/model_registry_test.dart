@@ -410,14 +410,14 @@ void main() {
 
         expect(result.isCompatible, isTrue);
         expect(result.memorySeverity, MemorySeverity.critical);
-        expect(result.reason, contains('fits the device budget'));
+        expect(result.reason, contains('may fit the device capacity'));
         expect(result.reason, contains('2.4 GB'));
         registry.dispose();
       },
     );
 
     test(
-      'blocks when the device memory budget is genuinely too small',
+      'keeps low transient memory recoverable for planner fallback',
       () async {
         final registry = ModelRegistry(
           loadMemoryInfo: () async =>
@@ -432,11 +432,10 @@ void main() {
 
         final result = await registry.checkCompatibility(model);
 
-        expect(result.isCompatible, isFalse);
-        expect(result.memorySeverity, MemorySeverity.blocked);
-        expect(result.reason, contains('device memory budget'));
+        expect(result.isCompatible, isTrue);
+        expect(result.memorySeverity, MemorySeverity.critical);
+        expect(result.reason, contains('currently free'));
         expect(result.reason, contains('2.4 GB'));
-        expect(result.reason, isNot(contains(model.fileSizeDisplay)));
         registry.dispose();
       },
     );

@@ -222,7 +222,7 @@ class ModelRegistry {
 
       final lowTransientMemory = memoryInfo.availableBytes < requiredBytes;
       final reason = lowTransientMemory
-          ? 'This package fits the device budget, but only '
+          ? 'This package may fit the device capacity, but only '
                 '${_formatMemory(memoryInfo.availableBytes)} is currently free. '
                 'It needs ${_formatMemory(requiredBytes)} available to warm up cleanly.'
           : null;
