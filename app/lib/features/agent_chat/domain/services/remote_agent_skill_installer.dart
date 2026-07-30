@@ -12,10 +12,8 @@ typedef RemoteSkillDocumentFetcher = Future<String> Function(Uri uri);
 /// Imported skills are quarantined (disabled) until the user explicitly
 /// enables them in the Agent Skills screen.
 class RemoteAgentSkillInstaller {
-  RemoteAgentSkillInstaller({
-    RemoteSkillDocumentFetcher? fetcher,
-    this._store,
-  }) : _fetcher = fetcher ?? _fetchOverHttps;
+  RemoteAgentSkillInstaller({RemoteSkillDocumentFetcher? fetcher, this._store})
+    : _fetcher = fetcher ?? _fetchOverHttps;
 
   static const maxDocumentBytes = RemoteAgentSkillStore.maxDocumentBytes;
   final RemoteSkillDocumentFetcher _fetcher;
