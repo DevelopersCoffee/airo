@@ -11,7 +11,8 @@ import 'package:core_ai/core_ai.dart';
 /// Flutter bridge. Non-Android targets report unavailable and keep their
 /// existing runtime fallbacks.
 class LlamaGgufService {
-  LlamaGgufService({LlamaController? controller}) : _controller = controller;
+  LlamaGgufService({LlamaController? nativeController})
+    : _controller = nativeController;
 
   LlamaController? _controller;
   bool _loaded = false;
