@@ -12,6 +12,7 @@ import '../../application/assistant_model_preferences.dart';
 import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
+import '../../../../core/platform/platform_config.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/llama_gguf_service.dart';
@@ -210,8 +211,16 @@ class AssistantModelLibraryState {
     required AssistantTask task,
   }) async {
     final nanoService = GeminiNanoService();
-    final nanoSupported = await nanoService.isSupported();
-    final deviceInfo = await nanoService.getDeviceInfo();
+    // Gemini Nano is only exposed by Android's AICore. Do not probe the
+    // native channel on desktop/web (including widget tests), where an
+    // unsupported channel can leave the service timeout pending during
+    // teardown.
+    final nanoSupported = PlatformConfig.isAndroid
+        ? await nanoService.isSupported()
+        : false;
+    final deviceInfo = PlatformConfig.isAndroid
+        ? await nanoService.getDeviceInfo()
+        : const <String, dynamic>{};
     final liteRtService = LiteRtLmService();
     final liteRtAvailable = await liteRtService.isAvailable();
     final ggufAvailable = await LlamaGgufService().isAvailable();

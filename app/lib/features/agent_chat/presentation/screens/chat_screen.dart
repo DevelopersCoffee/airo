@@ -8,6 +8,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/accessibility/airo_speech_service.dart';
+import '../../../../core/platform/platform_config.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
@@ -201,6 +202,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _initializeAI() async {
     try {
+      // Gemini Nano is an Android/AICore capability. Avoid probing the native
+      // channel on desktop and web hosts (including Flutter widget tests),
+      // where there is no platform implementation to answer the request.
+      // Besides avoiding needless work, this prevents an orphaned timeout
+      // timer when a test/widget is torn down before an unsupported channel
+      // call completes.
+      if (!PlatformConfig.isAndroid) {
+        if (mounted) {
+          setState(() {
+            _isDeviceSupported = false;
+          });
+        }
+        unawaited(_preloadLocalRuntimes());
+        return;
+      }
+
       // Check device support
       final isSupported = await _geminiNano.isSupported();
 
