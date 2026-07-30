@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -202,6 +203,25 @@ void main() {
       expect(downloads.requests, isEmpty);
     },
   );
+
+  test('installed state requires verified catalog integrity', () async {
+    final directory = await Directory.systemTemp.createTemp('airo-model-');
+    addTearDown(() => directory.delete(recursive: true));
+    final artifactPath = '${directory.path}/model-a.gguf';
+    await File(artifactPath).writeAsBytes(const <int>[1]);
+    when(
+      () => storage.findExistingModelPath(model.id, model: model),
+    ).thenAnswer((_) async => artifactPath);
+    when(
+      () => storage.verifyModelIntegrity(any()),
+    ).thenAnswer((_) async => false);
+
+    expect(
+      await downloadService.isModelDownloaded(model.id, model: model),
+      isFalse,
+    );
+    verify(() => storage.verifyModelIntegrity(any())).called(1);
+  });
 
   test('insufficient space fails before enqueue', () async {
     when(

@@ -234,7 +234,14 @@ class ModelDownloadService {
     final existingPath = await resolveExistingModelPath(modelId, model: model);
     if (existingPath == null) return false;
     final file = File(existingPath);
-    return await file.exists() && await file.length() > 0;
+    if (!await file.exists() || await file.length() == 0) return false;
+    if (model == null) return true;
+
+    // Installed state must mean the exact catalog artifact is usable, not
+    // merely that a stale or truncated file remains in the models directory.
+    return _storageManager.verifyModelIntegrity(
+      model.copyWith(filePath: existingPath),
+    );
   }
 
   Future<bool> deleteModel(String modelId) async {
