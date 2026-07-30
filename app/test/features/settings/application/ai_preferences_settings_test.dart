@@ -28,6 +28,9 @@ void main() {
         debugLogging: true,
         downloadLocation: AIDownloadLocationPreference.appManaged,
         safetyProfile: SafetyProfile.balanced,
+        remoteServerUrl: 'http://127.0.0.1:11434/v1',
+        remoteServerModel: 'qwen2.5:7b',
+        remoteServerApiKey: 'secret',
       ),
     );
 
@@ -40,6 +43,9 @@ void main() {
     expect(state.memoryBudgetPercent, 70);
     expect(state.debugLogging, isTrue);
     expect(state.downloadLocation, AIDownloadLocationPreference.appManaged);
+    expect(state.remoteServerUrl, 'http://127.0.0.1:11434/v1');
+    expect(state.remoteServerModel, 'qwen2.5:7b');
+    expect(state.remoteServerApiKey, 'secret');
 
     expect(
       prefs.getString(AIPreferencesSettingsNotifier.routingStrategyKey),
@@ -67,6 +73,18 @@ void main() {
     expect(
       prefs.getString(AIPreferencesSettingsNotifier.safetyProfileKey),
       SafetyProfile.balanced.name,
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerUrlKey),
+      'http://127.0.0.1:11434/v1',
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerModelKey),
+      'qwen2.5:7b',
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerApiKeyKey),
+      'secret',
     );
   });
 }

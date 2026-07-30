@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'ai_provider.dart';
+import 'package:core_ai/core_ai.dart';
 import '../services/gemini_nano_service.dart';
 import '../services/gemini_api_service.dart';
 
@@ -13,6 +13,29 @@ class AIRouterService {
 
   AIProvider _selectedProvider = AIProvider.auto;
   final Map<AIProvider, AIProviderStatus> _providerStatus = {};
+  OpenAICompatibleClient? _remoteClient;
+
+  /// Configures an OpenAI-compatible local/private server such as Ollama,
+  /// LM Studio, or llama.cpp server. Empty URL disables the remote backend.
+  void configureRemoteServer({
+    required String baseUrl,
+    required String model,
+    String? apiKey,
+  }) {
+    final normalizedUrl = baseUrl.trim();
+    final normalizedModel = model.trim();
+    _remoteClient = normalizedUrl.isEmpty || normalizedModel.isEmpty
+        ? null
+        : OpenAICompatibleClient(
+            baseUrl: normalizedUrl,
+            model: normalizedModel,
+            apiKey: apiKey,
+          );
+  }
+
+  Future<RemoteServerDiagnostics?> diagnoseRemoteServer() {
+    return _remoteClient?.diagnose() ?? Future.value(null);
+  }
 
   /// Get current selected provider
   AIProvider get selectedProvider => _selectedProvider;
@@ -162,6 +185,14 @@ class AIRouterService {
             systemPrompt: systemPrompt,
           );
         }
+        final remote = _remoteClient;
+        if (remote != null) {
+          final result = await remote.generate(query);
+          return result.fold(
+            (error, _) => 'Remote model is unavailable: $error',
+            (response) => response.text,
+          );
+        }
         return _unsupportedLocalProviderMessage(provider);
     }
   }
@@ -203,7 +234,12 @@ class AIRouterService {
             systemPrompt: systemPrompt,
           );
         } else {
-          yield _unsupportedLocalProviderMessage(provider);
+          final remote = _remoteClient;
+          if (remote != null) {
+            yield* remote.generateStream(query);
+          } else {
+            yield _unsupportedLocalProviderMessage(provider);
+          }
         }
         break;
     }
