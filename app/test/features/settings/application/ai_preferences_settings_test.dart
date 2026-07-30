@@ -4,6 +4,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:airo_app/core/ai/ai_router_service.dart';
 
 void main() {
   test('persists AI preferences updates', () async {
@@ -86,5 +87,25 @@ void main() {
       prefs.getString(AIPreferencesSettingsNotifier.remoteServerApiKeyKey),
       'secret',
     );
+    expect(container.read(aiRouterServiceProvider).hasRemoteServer, isTrue);
+  });
+
+  test('rehydrates the persisted remote server into the router', () async {
+    SharedPreferences.setMockInitialValues({
+      AIPreferencesSettingsNotifier.remoteServerUrlKey:
+          'http://127.0.0.1:11434/v1',
+      AIPreferencesSettingsNotifier.remoteServerModelKey: 'qwen2.5:7b',
+      AIPreferencesSettingsNotifier.remoteServerApiKeyKey: 'secret',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    container.read(aiPreferencesSettingsProvider);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(container.read(aiRouterServiceProvider).hasRemoteServer, isTrue);
   });
 }

@@ -15,6 +15,8 @@ class AIRouterService {
   final Map<AIProvider, AIProviderStatus> _providerStatus = {};
   OpenAICompatibleClient? _remoteClient;
 
+  bool get hasRemoteServer => _remoteClient != null;
+
   /// Configures an OpenAI-compatible local/private server such as Ollama,
   /// LM Studio, or llama.cpp server. Empty URL disables the remote backend.
   void configureRemoteServer({

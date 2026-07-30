@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'ai_model_management.dart';
+import '../../../core/ai/ai_router_service.dart';
 
 enum AIAccelerationPreference {
   auto('Auto'),
@@ -142,6 +143,7 @@ class AIPreferencesSettingsNotifier
       remoteServerModel: prefs.getString(remoteServerModelKey) ?? '',
       remoteServerApiKey: prefs.getString(remoteServerApiKeyKey) ?? '',
     );
+    _syncRemoteServer(state);
   }
 
   Future<void> update(AIPreferencesSettings settings) async {
@@ -162,6 +164,17 @@ class AIPreferencesSettingsNotifier
     await prefs.setString(remoteServerUrlKey, settings.remoteServerUrl);
     await prefs.setString(remoteServerModelKey, settings.remoteServerModel);
     await prefs.setString(remoteServerApiKeyKey, settings.remoteServerApiKey);
+    _syncRemoteServer(settings);
+  }
+
+  void _syncRemoteServer(AIPreferencesSettings settings) {
+    _ref
+        .read(aiRouterServiceProvider)
+        .configureRemoteServer(
+          baseUrl: settings.remoteServerUrl,
+          model: settings.remoteServerModel,
+          apiKey: settings.remoteServerApiKey,
+        );
   }
 
   Future<int> clearModelCache() async {
