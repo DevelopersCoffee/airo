@@ -84,15 +84,19 @@ class ProfileScreen extends ConsumerWidget {
             Text('Features', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
 
-            // Agent as default
+            // Agent entry point
             ListTile(
+              leading: const Icon(Icons.psychology_outlined),
               title: const Text('Agent as Default'),
-              subtitle: const Text('Start with Agent tab on login'),
-              trailing: Switch(
-                value: true,
-                onChanged: (value) {
-                  // TODO: Implement agent default toggle
-                },
+              subtitle: const Text(
+                'Open the Mind workspace; startup defaults are controlled by the app shell.',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                context.go('/mind');
+              },
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
 

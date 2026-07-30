@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 
@@ -82,24 +84,76 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
   }
 }
 
-class DeviceCapabilityReportLoaderScreen extends StatelessWidget {
+class DeviceCapabilityReportLoaderScreen extends StatefulWidget {
   const DeviceCapabilityReportLoaderScreen({
     super.key,
     this.models = const <OfflineModelInfo>[],
+    this.reportFuture,
   });
 
   final Iterable<OfflineModelInfo> models;
+  final Future<DeviceCapabilityReport>? reportFuture;
+
+  @override
+  State<DeviceCapabilityReportLoaderScreen> createState() =>
+      _DeviceCapabilityReportLoaderScreenState();
+}
+
+class _DeviceCapabilityReportLoaderScreenState
+    extends State<DeviceCapabilityReportLoaderScreen> {
+  late Future<DeviceCapabilityReport> _reportFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reportFuture = _collectReport();
+  }
+
+  Future<DeviceCapabilityReport> _collectReport() {
+    final supplied = widget.reportFuture;
+    final future =
+        supplied ?? DeviceCapabilityReport.collect(models: widget.models);
+    return future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw TimeoutException(
+        'Device analysis took too long. Check platform permissions and retry.',
+      ),
+    );
+  }
+
+  void _retry() {
+    setState(() => _reportFuture = _collectReport());
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DeviceCapabilityReport>(
-      future: DeviceCapabilityReport.collect(models: models),
+      future: _reportFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
             appBar: AppBar(title: const Text('Device Capability Report')),
             body: Center(
-              child: Text('Could not read device facts: ${snapshot.error}'),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_outlined, size: 40),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Airo could not finish device analysis. Check permissions, then try again.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _retry,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry analysis'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         }

@@ -100,7 +100,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           const SizedBox(height: 12),
           _MindActionCard(
             title: 'AI Chat',
-            subtitle: 'Multi-turn chat with optional thinking mode.',
+            subtitle: 'Multi-turn chat with runtime and action traces.',
             icon: Icons.chat_bubble_outline,
             color: Colors.blue,
             onTap: () => context.push('/mind/chat'),
@@ -111,24 +111,24 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             subtitle: 'Ground answers with tools, maps, and visual summaries.',
             icon: Icons.extension_outlined,
             color: Colors.amber.shade800,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/mind/skills'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Ask Image',
-            subtitle: 'Describe images and solve visual questions on device.',
+            subtitle: 'Upload an image and ask Airo questions about it.',
             icon: Icons.image_outlined,
             color: Colors.red.shade700,
-            onTap: () => context.push('/mind/prompt-lab?mode=image'),
+            onTap: () => context.push('/quest/new'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Audio Scribe',
             subtitle:
-                'Prepare a private transcription workflow when an audio model is installed.',
+                'Capture speech, review the transcript, and translate with Airo.',
             icon: Icons.mic_none,
             color: Colors.green.shade700,
-            onTap: () => context.push('/mind/models'),
+            onTap: () => context.push('/mind/audio-scribe'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
@@ -141,12 +141,11 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           const SizedBox(height: 10),
           _MindActionCard(
             title: 'Mobile Actions & Tiny Garden',
-            subtitle: 'Try offline FunctionGemma actions and a playful garden.',
+            subtitle:
+                'Try safe device commands and a playful natural-language garden.',
             icon: Icons.local_florist_outlined,
             color: Colors.teal.shade700,
-            onTap: () => context.push(
-              '/mind/chat?prefill=Use%20the%20offline%20Mobile%20Actions%20model%20for%20this%20approved%20device%20task.',
-            ),
+            onTap: () => context.push('/mind/mobile-actions'),
           ),
           const SizedBox(height: 10),
           _MindActionCard(
@@ -296,40 +295,46 @@ class _MindActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+    return Semantics(
+      container: true,
+      button: true,
+      excludeSemantics: true,
+      label: '$title. $subtitle',
+      onTap: onTap,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color),
                 ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(subtitle),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(subtitle),
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
+                const Icon(Icons.chevron_right),
+              ],
+            ),
           ),
         ),
       ),
@@ -354,28 +359,33 @@ class _MindStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 10),
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(detail),
-        ],
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: '$label: $value. $detail',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 10),
+            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(detail),
+          ],
+        ),
       ),
     );
   }
@@ -386,29 +396,35 @@ class _MindProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Focus Momentum',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            const _ProgressRow(
-              label: 'Breathing goal',
-              value: '60%',
-              progress: 0.6,
-            ),
-            const SizedBox(height: 12),
-            const _ProgressRow(
-              label: 'Reflection goal',
-              value: '40%',
-              progress: 0.4,
-            ),
-          ],
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label:
+          'Focus Momentum. Breathing goal 60 percent. Reflection goal 40 percent.',
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Focus Momentum',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              const _ProgressRow(
+                label: 'Breathing goal',
+                value: '60%',
+                progress: 0.6,
+              ),
+              const SizedBox(height: 12),
+              const _ProgressRow(
+                label: 'Reflection goal',
+                value: '40%',
+                progress: 0.4,
+              ),
+            ],
+          ),
         ),
       ),
     );

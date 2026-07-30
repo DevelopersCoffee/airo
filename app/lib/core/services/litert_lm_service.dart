@@ -51,6 +51,11 @@ class LiteRtLmService {
   /// prevents UI and orchestration layers from treating that state as ready.
   bool get hasConfiguredModel => config.hasModelPath || config.hasModelUrl;
 
+  /// Whether an explicit local artifact path is configured. A download URL is
+  /// a source, not a ready-to-run model, and must not make the chooser claim
+  /// that LiteRT is available.
+  bool get hasConfiguredModelPath => config.hasModelPath;
+
   Future<bool> isAvailable() =>
       _isWeb ? _webAdapter!.isAvailable() : _nativeAdapter!.isAvailable();
 

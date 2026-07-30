@@ -10,6 +10,7 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_advisor_screen.dart';
+import '../../features/agent_chat/presentation/screens/agent_skills_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
@@ -17,6 +18,8 @@ import '../../features/settings/presentation/screens/airo_portability_screen.dar
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
+import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
+import '../../features/mind/presentation/screens/mobile_actions_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -264,6 +267,21 @@ class AppRouter {
                         initialImageMode:
                             state.uri.queryParameters['mode'] == 'image',
                       ),
+                    ),
+                    GoRoute(
+                      path: 'audio-scribe',
+                      name: 'mind_audio_scribe',
+                      builder: (context, state) => const AudioScribeScreen(),
+                    ),
+                    GoRoute(
+                      path: 'skills',
+                      name: 'mind_agent_skills',
+                      builder: (context, state) => const AgentSkillsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'mobile-actions',
+                      name: 'mind_mobile_actions',
+                      builder: (context, state) => const MobileActionsScreen(),
                     ),
                   ],
                 ),

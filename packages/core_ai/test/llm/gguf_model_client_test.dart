@@ -190,4 +190,42 @@ void main() {
       expect((result as Ok<LLMResponse>).value.text, 'remote response');
     },
   );
+
+  test(
+    'exposes remote diagnostics without claiming local model readiness',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      server.listen((request) async {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.json
+          ..write(
+            jsonEncode({
+              'data': [
+                {'id': 'remote-qwen'},
+              ],
+            }),
+          );
+        await request.response.close();
+      });
+
+      final remote = GGUFModelClient(
+        modelConfig: GGUFModelConfig(
+          modelPath: '',
+          modelName: 'remote-qwen',
+          serverUrl: 'http://127.0.0.1:${server.port}',
+        ),
+        activeModelService: activeModelService,
+      );
+
+      final diagnostics = await remote.diagnoseRemoteServer();
+      expect(diagnostics?.isReady, isTrue);
+      expect(diagnostics?.modelIds, ['remote-qwen']);
+      expect(
+        (await remote.ensureLoaded()).getErrorOrNull().toString(),
+        contains('do not load'),
+      );
+    },
+  );
 }

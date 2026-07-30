@@ -38,8 +38,10 @@ void main() {
       family: ModelFamily.gemma,
       fileSizeBytes: 2048,
     );
-    final registry = ModelRegistry()
-      ..registerModels([installedInfo, queuedInfo]);
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModels([installedInfo, queuedInfo]);
     const failedProgress = ModelDownloadProgress(
       modelId: 'queued',
       totalBytes: 2048,
@@ -142,6 +144,12 @@ void main() {
     await tester.ensureVisible(find.text('Warm now'));
     await tester.tap(find.text('Warm now'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Runtime Health Center'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Preload when frequently used'));
     await tester.tap(find.text('Preload when frequently used'));
     await tester.pump();

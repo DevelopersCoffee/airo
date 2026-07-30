@@ -6,6 +6,7 @@ import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
 import '../intelligent_model_manager_provider.dart';
+import '../../../agent_chat/presentation/screens/model_health_center_screen.dart';
 
 /// Screen for displaying and managing AI models using glassmorphic UI elements,
 /// gradient backgrounds, and animations.
@@ -604,6 +605,16 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 icon: const Icon(Icons.memory),
                 label: const Text('Warm now'),
               ),
+              OutlinedButton.icon(
+                onPressed: () => _benchmarkModel(context, ref, model.id),
+                icon: const Icon(Icons.speed_outlined),
+                label: const Text('Benchmark'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openHealthCenter(context, ref, modelInfo),
+                icon: const Icon(Icons.help_outline),
+                label: const Text('Why?'),
+              ),
               if (model.hasUpdate)
                 OutlinedButton.icon(
                   onPressed: () => ref
@@ -665,6 +676,75 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _benchmarkModel(
+    BuildContext context,
+    WidgetRef ref,
+    String modelId,
+  ) async {
+    final stopwatch = Stopwatch()..start();
+    final result = await ref
+        .read(intelligentModelManagerProvider)
+        .warmModel(modelId);
+    stopwatch.stop();
+    if (!context.mounted) return;
+
+    final elapsed =
+        '${(stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(2)}s';
+    final message = switch (result.status) {
+      ModelWarmupStatus.warmed =>
+        'Warm-up benchmark: $elapsed. Model is ready for inference.',
+      ModelWarmupStatus.alreadyResident =>
+        'Warm-up benchmark: $elapsed. Model was already resident.',
+      ModelWarmupStatus.unavailable =>
+        'Benchmark unavailable: ${result.detail ?? 'runtime unavailable'}.',
+      ModelWarmupStatus.failed =>
+        'Benchmark failed after $elapsed: ${result.detail ?? 'unknown error'}.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openHealthCenter(
+    BuildContext context,
+    WidgetRef ref,
+    OfflineModelInfo model,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ModelHealthCenterLoaderScreen(
+          model: model,
+          compatibilityFuture: ref
+              .read(modelRegistryProvider)
+              .checkCompatibility(model)
+              .timeout(
+                const Duration(milliseconds: 750),
+                onTimeout: () =>
+                    ModelCompatibilityResult.compatible(MemorySeverity.warning),
+              ),
+          onAction: (action) {
+            Navigator.of(context).pop();
+            final message = switch (action) {
+              ModelHealthAction.retry =>
+                'Retry the model warm-up from Model Management.',
+              ModelHealthAction.resumeDownload =>
+                'Resume the download from Model Management.',
+              ModelHealthAction.repair =>
+                'Repair or re-download this model from Model Management.',
+              ModelHealthAction.reduceContext =>
+                'Reduce context in AI preferences, then warm the model again.',
+              ModelHealthAction.chooseAlternative =>
+                'Choose another installed model from Model Management.',
+            };
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          },
+        ),
+      ),
+    );
   }
 
   void _showDeleteConfirmation(

@@ -64,6 +64,12 @@ class GGUFModelClient implements LLMClient {
   /// Gets the GGUF model configuration.
   GGUFModelConfig get modelConfig => _modelConfig;
 
+  /// Probes a configured remote server without pretending to load it locally.
+  /// Returns null for local-only configurations.
+  Future<RemoteServerDiagnostics?> diagnoseRemoteServer() async {
+    return _remoteClient?.diagnose();
+  }
+
   /// Ensures the model is loaded and ready.
   Future<Result<ActiveModelInfo>> ensureLoaded({
     ModelLoadProgressCallback? onProgress,

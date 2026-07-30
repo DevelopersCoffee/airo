@@ -74,6 +74,8 @@ dependencies:
     path: ../packages/core_ui
   core_ai:
     path: ../packages/core_ai
+  core_workers:
+    path: ../packages/core_workers
   core_auth:
     path: ../packages/core_auth
   airo_pro_bootstrap:

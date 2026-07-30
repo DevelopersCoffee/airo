@@ -57,10 +57,11 @@ class ModelCompatibilityResult {
 /// - Track downloaded vs available models
 class ModelRegistry {
   ModelRegistry({
-    this._loadMemoryInfo,
+    Future<MemoryInfo> Function()? loadMemoryInfo,
     DeviceCapabilityService? deviceCapabilityService,
     MemoryBudgetManager? memoryBudgetManager,
-  }) : _deviceService = deviceCapabilityService ?? DeviceCapabilityService(),
+  }) : _loadMemoryInfo = loadMemoryInfo,
+       _deviceService = deviceCapabilityService ?? DeviceCapabilityService(),
        _memoryBudgetManager =
            memoryBudgetManager ??
            MemoryBudgetManager(

@@ -9,6 +9,47 @@ void main() {
 
   group('AssistantRuntimeService', () {
     test(
+      'blocks generic GGUF packages instead of routing them through LiteRT',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'qwen2-1.5b-q4',
+          name: 'Qwen2 1.5B',
+          family: ModelFamily.qwen,
+          fileSizeBytes: 1_100_000_000,
+          filePath: '/models/qwen2-1.5b-q4.gguf',
+          provider: AIProvider.gguf,
+        );
+        final candidate = AssistantModelCandidate(
+          id: assistantModelIdForOfflineModel(package.id),
+          name: package.name,
+          runtime: 'Qwen GGUF',
+          description: 'Downloaded GGUF package',
+          bestFor: const [AssistantTask.chat],
+          tags: const ['Local', 'GGUF'],
+          privacyLabel: 'Prompt stays on device after install',
+          sizeLabel: package.fileSizeDisplay,
+          available: false,
+          actionLabel: 'Native backend unavailable',
+          local: true,
+          package: package,
+        );
+        final service = AssistantRuntimeService(
+          loadDeviceInfo: () async => {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+        );
+
+        final result = await service.prepareRuntime(candidate: candidate);
+
+        expect(result.status, AssistantRuntimePreparationStatus.blocked);
+        expect(result.diagnostic?.reasonCode, 'native_backend_unavailable');
+        expect(result.diagnostic?.detail, contains('llama.cpp'));
+      },
+    );
+
+    test(
       'emits bounded debug traces for Gemini Nano requests and responses',
       () async {
         final traces = <AssistantRuntimeDebugTrace>[];

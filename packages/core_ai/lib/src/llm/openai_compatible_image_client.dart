@@ -4,6 +4,8 @@ import 'package:core_domain/core_domain.dart';
 import 'package:dio/dio.dart';
 import 'package:meta/meta.dart';
 
+import 'openai_compatible_client.dart' show normalizeOpenAICompatibleBaseUrl;
+
 @immutable
 class ImageGenerationRequest {
   const ImageGenerationRequest({
@@ -49,7 +51,7 @@ class OpenAICompatibleImageClient {
     this._apiKey,
     Dio? dio,
     this._timeout = const Duration(seconds: 90),
-  }) : _baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
+  }) : _baseUrl = normalizeOpenAICompatibleBaseUrl(baseUrl),
        _dio = dio ?? Dio();
 
   final String _baseUrl;

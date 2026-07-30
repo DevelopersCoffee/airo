@@ -174,14 +174,29 @@ class AssistantModelLibraryState {
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
   /// A native LiteRT channel is not proof that a model can be loaded. The
-  /// runtime must either have an installed package or an explicit model
-  /// source configured (path/URL).
+  /// runtime must either have an installed package or an explicit local model
+  /// path configured. A URL alone is only a download source, not a runnable
+  /// model.
   static bool isLiteRtReady({
     required bool runtimeAvailable,
     required bool hasDownloadedPackage,
-    required bool hasConfiguredModel,
+    required bool hasConfiguredModelPath,
   }) {
-    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModel);
+    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModelPath);
+  }
+
+  /// A downloaded file is not automatically an executable local runtime.
+  /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
+  /// handled by the LiteRT adapter; plain `.gguf` files require the native
+  /// llama.cpp backend, which is not bundled in the public app yet.
+  static bool isLiteRtPackage(OfflineModelInfo model) {
+    final source =
+        '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
+            .toLowerCase();
+    return source.contains('.litertlm') ||
+        source.contains('litertlm') ||
+        source.contains('.task') ||
+        model.tags.any((tag) => tag.toLowerCase().contains('litert'));
   }
 
   static Future<AssistantModelLibraryState> load({
@@ -201,7 +216,7 @@ class AssistantModelLibraryState {
     final liteRtReady = isLiteRtReady(
       runtimeAvailable: liteRtAvailable,
       hasDownloadedPackage: hasDownloadedBalancedPackage,
-      hasConfiguredModel: liteRtService.hasConfiguredModel,
+      hasConfiguredModelPath: liteRtService.hasConfiguredModelPath,
     );
     final compatibilityByModelId = await _loadCompatibilityByModelId(
       liteRtService,
@@ -246,35 +261,37 @@ class AssistantModelLibraryState {
         local: true,
       ),
     );
-    addCandidate(
-      AssistantModelCandidate(
-        id: litertGemmaAssistantModelId,
-        name: 'Gemma mobile package',
-        runtime: 'LiteRT-LM local model',
-        description:
-            'Default local package for planning, documents, and medium reasoning.',
-        bestFor: const [
-          AssistantTask.reasoning,
-          AssistantTask.documents,
-          AssistantTask.skills,
-          AssistantTask.chat,
-        ],
-        tags: const ['Local', 'Downloadable', 'Gemma'],
-        privacyLabel: 'Prompt stays on device',
-        sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
-        available: liteRtReady,
-        actionLabel: liteRtReady ? 'Start' : 'Download package',
-        unavailableReason: liteRtReady
-            ? null
-            : 'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL, or install a compatible local model.',
-        local: true,
-        opensModelManager: !liteRtReady,
-        package: balancedPackage,
-        compatibility: balancedPackage == null
-            ? null
-            : compatibilityByModelId[balancedPackage.id],
-      ),
-    );
+    // A catalog entry is not an installed runtime. Do not put a LiteRT card
+    // in the Mind chooser when the device has neither an executable artifact
+    // nor a configured model path. Model Management remains the explicit
+    // place to download/install a package.
+    if (liteRtReady) {
+      addCandidate(
+        AssistantModelCandidate(
+          id: litertGemmaAssistantModelId,
+          name: 'Gemma mobile package',
+          runtime: 'LiteRT-LM local model',
+          description:
+              'Default local package for planning, documents, and medium reasoning.',
+          bestFor: const [
+            AssistantTask.reasoning,
+            AssistantTask.documents,
+            AssistantTask.skills,
+            AssistantTask.chat,
+          ],
+          tags: const ['Local', 'Downloadable', 'Gemma'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+          package: balancedPackage,
+          compatibility: balancedPackage == null
+              ? null
+              : compatibilityByModelId[balancedPackage.id],
+        ),
+      );
+    }
     addCandidate(
       AssistantModelCandidate(
         id: geminiCloudAssistantModelId,
@@ -299,12 +316,15 @@ class AssistantModelLibraryState {
       ),
     );
     for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addCandidate(
-        AssistantModelCandidate.fromOfflineModel(
-          await liteRtService.hydrateDownloadedModel(model),
-          compatibilityByModelId: compatibilityByModelId,
-        ),
-      );
+      final hydrated = await liteRtService.hydrateDownloadedModel(model);
+      if (hydrated.isDownloaded) {
+        addCandidate(
+          AssistantModelCandidate.fromOfflineModel(
+            hydrated,
+            compatibilityByModelId: compatibilityByModelId,
+          ),
+        );
+      }
     }
     for (final task in [
       AssistantTask.image,
@@ -314,7 +334,7 @@ class AssistantModelLibraryState {
       AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
-      if (model != null) {
+      if (model != null && model.isDownloaded) {
         addCandidate(
           AssistantModelCandidate.fromOfflineModel(
             model,
@@ -500,6 +520,8 @@ class AssistantModelCandidate {
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
   }) {
+    final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
+    final isRunnable = model.isDownloaded && isLiteRt;
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -515,9 +537,15 @@ class AssistantModelCandidate {
       ],
       privacyLabel: 'Prompt stays on device after install',
       sizeLabel: model.fileSizeDisplay,
-      available: model.isDownloaded,
-      actionLabel: model.isDownloaded ? 'Start' : 'Download package',
-      unavailableReason: model.isDownloaded
+      available: isRunnable,
+      actionLabel: isRunnable
+          ? 'Start'
+          : model.isDownloaded
+          ? 'Native backend unavailable'
+          : 'Download package',
+      unavailableReason: model.isDownloaded && !isLiteRt
+          ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
+          : model.isDownloaded
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
@@ -666,7 +694,13 @@ class _ModelLibraryContent extends ConsumerWidget {
             child: _ProjectTemplateCard(
               template: template,
               candidate: state.recommendedFor(template.task),
-              package: state.packageFor(template.task),
+              // Keep the catalog package available to setup callbacks, but do
+              // not render an uninstalled LiteRT artifact as if it were part
+              // of the active project. The card should describe executable
+              // state, not a download recommendation.
+              package: state.packageFor(template.task)?.isDownloaded == true
+                  ? state.packageFor(template.task)
+                  : null,
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
