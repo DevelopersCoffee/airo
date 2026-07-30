@@ -209,6 +209,17 @@ class IntelligentModelManager {
     return gateway.warm(model.copyWith(filePath: installed));
   }
 
+  /// Checks the live artifact location instead of trusting persisted model
+  /// metadata. Diagnostics use this before showing a model as downloaded.
+  Future<bool> isModelInstalled(String modelId) async {
+    final model = _requireModel(modelId);
+    return await _storageManager.findExistingModelPath(
+          model.id,
+          model: model,
+        ) !=
+        null;
+  }
+
   Future<void> deleteModel(String modelId) async {
     final model = _requireModel(modelId);
     await _downloadService.deleteModel(modelId);

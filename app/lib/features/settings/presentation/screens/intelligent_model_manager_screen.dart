@@ -714,6 +714,15 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     WidgetRef ref,
     OfflineModelInfo model,
   ) {
+    final manager = ref.read(intelligentModelManagerProvider);
+    late final Future<bool> artifactPresentFuture;
+    try {
+      artifactPresentFuture = manager.isModelInstalled(model.id);
+    } on Object {
+      // Test and legacy gateways may not expose artifact inspection yet; the
+      // health center remains usable with the model snapshot as a fallback.
+      artifactPresentFuture = Future<bool>.value(model.isDownloaded);
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ModelHealthCenterLoaderScreen(
@@ -726,6 +735,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 onTimeout: () =>
                     ModelCompatibilityResult.compatible(MemorySeverity.warning),
               ),
+          artifactPresentFuture: artifactPresentFuture,
           onAction: (action) {
             Navigator.of(context).pop();
             unawaited(_runHealthAction(context, ref, model, action));

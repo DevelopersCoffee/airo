@@ -93,4 +93,26 @@ void main() {
     expect(report.stage(ModelHealthStage.verified).isPassed, isFalse);
     expect(report.actions, [ModelHealthAction.resumeDownload]);
   });
+
+  test('does not trust a stale persisted path as a downloaded artifact', () {
+    final report = ModelHealthReport.fromFacts(
+      model: const OfflineModelInfo(
+        id: 'stale',
+        name: 'Stale model',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/removed.litertlm',
+      ),
+      artifactPresent: false,
+    );
+
+    expect(
+      report.stage(ModelHealthStage.downloaded).status,
+      ModelHealthStageStatus.blocked,
+    );
+    expect(
+      report.stage(ModelHealthStage.verified).status,
+      ModelHealthStageStatus.pending,
+    );
+  });
 }

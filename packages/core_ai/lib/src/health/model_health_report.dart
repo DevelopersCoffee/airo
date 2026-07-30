@@ -102,6 +102,7 @@ class ModelHealthReport {
   factory ModelHealthReport.fromFacts({
     required OfflineModelInfo model,
     ModelDownloadProgress? download,
+    bool? artifactPresent,
     ModelCompatibilityResult? compatibility,
     RuntimeHealth? runtimeHealth,
     ExecutionPlan? plan,
@@ -110,7 +111,7 @@ class ModelHealthReport {
     final downloadStatus = download?.status;
     final downloaded =
         downloadStatus == ModelDownloadStatus.completed ||
-        (download == null && model.isDownloaded);
+        (download == null && (artifactPresent ?? model.isDownloaded));
     final downloading =
         downloadStatus == ModelDownloadStatus.downloading ||
         downloadStatus == ModelDownloadStatus.pending ||
@@ -137,12 +138,12 @@ class ModelHealthReport {
             ? ModelHealthStageStatus.passed
             : downloadStatus == ModelDownloadStatus.failed
             ? ModelHealthStageStatus.failed
-            : model.isDownloaded
+            : (artifactPresent ?? model.isDownloaded)
             ? ModelHealthStageStatus.unknown
             : ModelHealthStageStatus.pending,
         detail: downloadStatus == ModelDownloadStatus.failed
             ? (download?.error ?? 'Integrity verification failed.')
-            : model.isDownloaded
+            : (artifactPresent ?? model.isDownloaded)
             ? 'Integrity receipt is not available in this snapshot.'
             : 'Verification starts after download completion.',
       ),
