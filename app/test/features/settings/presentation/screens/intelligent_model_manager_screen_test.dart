@@ -275,4 +275,98 @@ void main() {
     verify(() => manager.deleteModel('installed')).called(1);
     expect(find.text('Model is already warm.'), findsOneWidget);
   });
+
+  testWidgets('activates and benchmarks an installed inactive model', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'inactive',
+      name: 'Inactive Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 123456789,
+      parameterCount: 1500000000,
+      contextLength: 4096,
+      filePath: '/models/inactive.task',
+      description: 'Installed and ready.',
+    );
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'inactive',
+          name: 'Inactive Model',
+          version: 'Unversioned',
+          description: 'Installed and ready.',
+          sizeBytes: 123456789,
+          isDownloaded: true,
+          updateState: ModelUpdateState.unknown,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 123456789,
+    );
+    final downloads = _MockDownloadService();
+    final manager = _MockManager();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(() => manager.activateModel('inactive')).thenAnswer((_) async {});
+    when(() => manager.warmModel('inactive')).thenAnswer(
+      (_) async => const ModelWarmupResult(
+        modelId: 'inactive',
+        status: ModelWarmupStatus.warmed,
+      ),
+    );
+    when(
+      () => manager.setPreloadFrequentlyUsed('inactive', true),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerProvider.overrideWithValue(manager),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Version unknown'), findsOneWidget);
+    expect(find.text('1.5B'), findsOneWidget);
+    expect(find.text('4096 tokens'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Activate'));
+    await tester.tap(find.text('Activate'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Benchmark'));
+    await tester.tap(find.text('Benchmark'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Preload when frequently used'));
+    await tester.tap(find.text('Preload when frequently used'));
+    await tester.pump();
+
+    verify(() => manager.activateModel('inactive')).called(1);
+    verify(() => manager.warmModel('inactive')).called(1);
+    verify(() => manager.setPreloadFrequentlyUsed('inactive', true)).called(1);
+    expect(find.textContaining('Warm-up benchmark:'), findsOneWidget);
+  });
 }

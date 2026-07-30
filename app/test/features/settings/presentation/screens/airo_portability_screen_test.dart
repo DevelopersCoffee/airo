@@ -97,6 +97,57 @@ void main() {
     );
   });
 
+  testWidgets('export payload preserves model metadata and chat history', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync(
+      'airo-portability-payload-export-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final backupService = _RecordingBackupService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiroPortabilityScreen(
+          getDocumentsDirectory: () async => directory,
+          shareExportPath: (_) async {},
+          backupService: backupService,
+          buildPayload: () async => {
+            'scope': 'airo-mind',
+            'schemaVersion': 1,
+            'modelCatalogIds': ['gemma-4-e2b-it-litertlm'],
+            'chatHistory': [
+              {'id': 'chat-default', 'title': 'Default export'},
+            ],
+            'privacy': 'local-first',
+          },
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).first, 'release-passphrase');
+    final exportButton = find.widgetWithText(
+      FilledButton,
+      'Export encrypted backup',
+    );
+    final result =
+        (tester.widget<FilledButton>(exportButton).onPressed as dynamic)
+            ?.call();
+    if (result is Future<void>) await result;
+    await _pumpAsyncWork(tester);
+
+    final payload = backupService.lastPayload;
+    expect(payload, isNotNull);
+    expect(payload?['scope'], 'airo-mind');
+    expect(payload?['privacy'], 'local-first');
+    expect(payload?['modelCatalogIds'], isA<List>());
+    expect(payload?['chatHistory'], isA<List>());
+    expect(
+      (payload?['chatHistory'] as List).single,
+      containsPair('id', 'chat-default'),
+    );
+  });
+
   testWidgets('imports encrypted chat history from an injected backup file', (
     tester,
   ) async {
@@ -243,5 +294,23 @@ class _FailingBackupService extends AiroBackupService {
     String passphrase,
   ) async {
     throw StateError('cannot decrypt');
+  }
+}
+
+class _RecordingBackupService extends _FastBackupService {
+  Map<String, Object?>? lastPayload;
+
+  @override
+  Future<File> writeExport({
+    required Directory directory,
+    required Map<String, Object?> payload,
+    required String passphrase,
+  }) {
+    lastPayload = payload;
+    return super.writeExport(
+      directory: directory,
+      payload: payload,
+      passphrase: passphrase,
+    );
   }
 }

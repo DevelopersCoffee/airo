@@ -373,6 +373,197 @@ void main() {
       },
     );
 
+    test('blocks Gemini Nano when initialization fails', () async {
+      final progress = <AssistantRuntimePreparationProgress>[];
+      final service = AssistantRuntimeService(
+        isGeminiNanoSupported: () async => true,
+        initializeGeminiNano: () async => false,
+        loadDeviceInfo: () async => {
+          'manufacturer': 'Google',
+          'model': 'Pixel 9',
+          'platform': 'android',
+        },
+      );
+
+      final result = await service.prepareRuntime(
+        candidate: const AssistantModelCandidate(
+          id: geminiNanoAssistantModelId,
+          name: 'Gemini Nano',
+          runtime: 'AICore on-device',
+          description: 'Local runtime',
+          bestFor: [AssistantTask.chat],
+          tags: ['Local'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: 'System managed',
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+        ),
+        onProgress: progress.add,
+      );
+
+      expect(result.status, AssistantRuntimePreparationStatus.blocked);
+      expect(result.diagnostic?.reasonCode, 'init_failed');
+      expect(
+        progress.map((event) => event.phase),
+        containsAllInOrder([
+          AssistantRuntimePreparationPhase.validate,
+          AssistantRuntimePreparationPhase.allocate,
+        ]),
+      );
+    });
+
+    test('cancels Gemini Nano preparation after warmup', () async {
+      var cancelChecks = 0;
+      final service = AssistantRuntimeService(
+        isGeminiNanoSupported: () async => true,
+        initializeGeminiNano: () async => true,
+        warmupGeminiNano: () async => true,
+        loadDeviceInfo: () async => const {'platform': 'android'},
+      );
+
+      final result = await service.prepareRuntime(
+        candidate: const AssistantModelCandidate(
+          id: geminiNanoAssistantModelId,
+          name: 'Gemini Nano',
+          runtime: 'AICore on-device',
+          description: 'Local runtime',
+          bestFor: [AssistantTask.chat],
+          tags: ['Local'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: 'System managed',
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+        ),
+        isCancelled: () => ++cancelChecks >= 4,
+      );
+
+      expect(result.status, AssistantRuntimePreparationStatus.cancelled);
+    });
+
+    test('streams Gemini Nano chunks and ignores empty tokens', () async {
+      final traces = <AssistantRuntimeDebugTrace>[];
+      final service = AssistantRuntimeService(
+        isGeminiNanoSupported: () async => true,
+        initializeGeminiNano: () async => true,
+        generateGeminiNanoStream: (_) =>
+            Stream<String>.fromIterable(['', 'hello', ' ', ' world']),
+        debugTraceEmitter: traces.add,
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: geminiNanoAssistantModelId,
+            prompt: 'say hello',
+            systemPrompt: 'brief',
+          )
+          .toList();
+
+      expect(chunks, ['hello', ' world']);
+      expect(
+        traces.where((trace) => trace.detail == 'stream-chunk'),
+        hasLength(2),
+      );
+    });
+
+    test('reports empty Gemini Nano streams as unavailable', () async {
+      final service = AssistantRuntimeService(
+        isGeminiNanoSupported: () async => true,
+        initializeGeminiNano: () async => true,
+        generateGeminiNanoStream: (_) =>
+            Stream<String>.fromIterable(['', '   ']),
+      );
+
+      await expectLater(
+        () => service
+            .generateTextStream(
+              selectedModelId: geminiNanoAssistantModelId,
+              prompt: 'hello',
+            )
+            .drain<void>(),
+        throwsA(isA<AssistantRuntimeUnavailableException>()),
+      );
+    });
+
+    test('routes non-stream runtimes through single response stream', () async {
+      final service = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => 'cloud response',
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: geminiCloudAssistantModelId,
+            prompt: 'hello',
+          )
+          .toList();
+
+      expect(chunks, ['cloud response']);
+    });
+
+    test('throws structured errors for missing and unknown runtimes', () async {
+      final service = AssistantRuntimeService();
+
+      await expectLater(
+        () => service.generateText(selectedModelId: '  ', prompt: 'hello'),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            noAssistantModelSelectedMessage,
+          ),
+        ),
+      );
+      await expectLater(
+        () => service.generateText(
+          selectedModelId: 'runtime-does-not-exist',
+          prompt: 'hello',
+        ),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            unsupportedAssistantRuntimeMessage,
+          ),
+        ),
+      );
+    });
+
+    test('trims cloud responses and rejects empty cloud output', () async {
+      final service = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => '  trimmed cloud  ',
+      );
+
+      final text = await service.generateText(
+        selectedModelId: geminiCloudAssistantModelId,
+        prompt: 'hello',
+      );
+      expect(text, 'trimmed cloud');
+
+      final emptyService = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => '   ',
+      );
+      await expectLater(
+        () => emptyService.generateText(
+          selectedModelId: geminiCloudAssistantModelId,
+          prompt: 'hello',
+        ),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            geminiCloudEmptyResponseMessage,
+          ),
+        ),
+      );
+    });
+
     test('cancels preparation before runtime work starts', () async {
       final service = AssistantRuntimeService(
         loadDeviceInfo: () async => {'manufacturer': 'Web', 'model': 'Browser'},
@@ -551,6 +742,123 @@ void main() {
         expect(result.status, AssistantRuntimePreparationStatus.ready);
         expect(warmedPackageId, 'gemma-4-e2b-it-litertlm');
         expect(warmedInstalled, isFalse);
+      },
+    );
+
+    test(
+      'blocks LiteRT setup when warmup fails or package is only a download card',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+          filePath: '/models/gemma-4-e2b-it-litertlm.task',
+          backendPreference: ModelBackendPreference.gpu,
+          provider: AIProvider.gemma,
+          capabilities: const [ModelCapability.chat],
+        );
+        final service = AssistantRuntimeService(
+          isLiteRtAvailable: () async => true,
+          warmupLiteRtModel: (_) async => false,
+          loadDeviceInfo: () async => const {'platform': 'android'},
+          checkModelCompatibility: (_) async =>
+              ModelCompatibilityResult.compatible(MemorySeverity.safe),
+        );
+
+        final failedWarmup = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+        );
+        expect(failedWarmup.status, AssistantRuntimePreparationStatus.blocked);
+        expect(failedWarmup.diagnostic?.reasonCode, 'warmup_failed');
+
+        final downloadOnlyService = AssistantRuntimeService(
+          isLiteRtAvailable: () async => true,
+          warmupLiteRtModel: (_) async => true,
+          loadDeviceInfo: () async => const {'platform': 'android'},
+        );
+        final downloadOnly = await downloadOnlyService.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: false,
+            actionLabel: 'Download',
+            local: true,
+            opensModelManager: true,
+            package: package,
+          ),
+        );
+        expect(downloadOnly.status, AssistantRuntimePreparationStatus.blocked);
+        expect(downloadOnly.diagnostic?.reasonCode, 'package_missing');
+      },
+    );
+
+    test(
+      'returns no fallback when every alternate runtime is unavailable',
+      () async {
+        const nano = AssistantModelCandidate(
+          id: geminiNanoAssistantModelId,
+          name: 'Gemini Nano',
+          runtime: 'AICore',
+          description: 'Local',
+          bestFor: [AssistantTask.chat],
+          tags: ['Local'],
+          privacyLabel: 'Private',
+          sizeLabel: 'System',
+          available: false,
+          actionLabel: 'Blocked',
+          local: true,
+        );
+        const cloud = AssistantModelCandidate(
+          id: geminiCloudAssistantModelId,
+          name: 'Gemini Cloud',
+          runtime: 'Cloud',
+          description: 'Cloud',
+          bestFor: [AssistantTask.chat],
+          tags: ['Cloud'],
+          privacyLabel: 'Remote',
+          sizeLabel: 'No download',
+          available: false,
+          actionLabel: 'Configure',
+          local: false,
+        );
+        final service = AssistantRuntimeService(
+          loadAssistantModelLibrary: () async =>
+              const AssistantModelLibraryState(
+                task: AssistantTask.chat,
+                deviceLabel: 'Pixel 9',
+                platformLabel: 'ANDROID',
+                candidates: [nano, cloud],
+                recommended: nano,
+                defaultPackages: {},
+              ),
+        );
+
+        final fallback = await service.resolveFallback(
+          failedRuntimeId: geminiNanoAssistantModelId,
+          excludedRuntimeIds: {geminiCloudAssistantModelId},
+        );
+
+        expect(fallback, isNull);
       },
     );
   });
