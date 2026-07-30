@@ -44,6 +44,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
     private val VOICE_PERMISSION_REQUEST = 9003
+    private val FLASHLIGHT_PERMISSION_REQUEST = 9004
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
@@ -52,6 +53,8 @@ class MainActivity : AudioServiceFragmentActivity() {
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var pendingVoiceResult: MethodChannel.Result? = null
+    private var pendingFlashlightResult: MethodChannel.Result? = null
+    private var pendingFlashlightEnabled: Boolean? = null
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
@@ -247,6 +250,20 @@ class MainActivity : AudioServiceFragmentActivity() {
                     )
                 }
             }
+            FLASHLIGHT_PERMISSION_REQUEST -> {
+                val result = pendingFlashlightResult
+                val enabled = pendingFlashlightEnabled
+                pendingFlashlightResult = null
+                pendingFlashlightEnabled = null
+                if (result == null || enabled == null) return
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    applyFlashlight(enabled, result)
+                } else {
+                    result.success(mapOf("changed" to false, "reason" to "camera_permission_denied"))
+                }
+            }
         }
     }
 
@@ -392,6 +409,8 @@ class MainActivity : AudioServiceFragmentActivity() {
         speechRecognizer?.destroy()
         speechRecognizer = null
         pendingVoiceResult = null
+        pendingFlashlightResult = null
+        pendingFlashlightEnabled = null
         super.onDestroy()
     }
 
@@ -535,11 +554,16 @@ class MainActivity : AudioServiceFragmentActivity() {
 
     private fun setFlashlight(call: MethodCall, result: MethodChannel.Result) {
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            result.success(mapOf("changed" to false, "reason" to "camera_permission_required"))
+            pendingFlashlightResult = result
+            pendingFlashlightEnabled = call.argument<Boolean>("enabled") ?: false
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), FLASHLIGHT_PERMISSION_REQUEST)
             return
         }
+        applyFlashlight(call.argument<Boolean>("enabled") ?: false, result)
+    }
+
+    private fun applyFlashlight(enabled: Boolean, result: MethodChannel.Result) {
         try {
-            val enabled = call.argument<Boolean>("enabled") ?: false
             val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
                 cameraManager.getCameraCharacteristics(id)
