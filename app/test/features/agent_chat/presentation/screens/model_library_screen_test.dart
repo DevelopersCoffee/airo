@@ -52,13 +52,15 @@ void main() {
       ),
       isFalse,
     );
+    // A path setting alone is not enough for the picker to advertise a
+    // runnable Gemma card; the artifact must be verified as installed.
     expect(
       AssistantModelLibraryState.isLiteRtReady(
         runtimeAvailable: true,
         hasDownloadedPackage: false,
         hasConfiguredModelPath: true,
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       AssistantModelLibraryState.isLiteRtReady(

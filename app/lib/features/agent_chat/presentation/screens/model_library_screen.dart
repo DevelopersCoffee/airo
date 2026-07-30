@@ -176,18 +176,20 @@ class AssistantModelLibraryState {
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
   /// A native LiteRT channel is not proof that a model can be loaded. The
-  /// runtime must either have an installed package or an explicit local model
-  /// path configured. A URL alone is only a download source, not a runnable
-  /// model.
+  /// runtime must have an installed and verified package. A configured path is
+  /// intentionally not enough for the model picker: the path may be stale,
+  /// point at an artifact with no catalog metadata, or be a developer-only
+  /// setting. The runtime itself still validates explicit paths when it is
+  /// initialized.
   static bool isLiteRtReady({
     required bool runtimeAvailable,
     required bool hasDownloadedPackage,
     required bool hasConfiguredModelPath,
   }) {
-    // A file or configured path is only a candidate. Do not advertise it as
-    // runnable while the native runtime itself is unavailable (for example
-    // after a platform update or a missing LiteRT plugin).
-    return runtimeAvailable && (hasDownloadedPackage || hasConfiguredModelPath);
+    // A file is only a candidate after the download/storage layer has verified
+    // it. Do not let a configured path (or a native channel alone) make the
+    // picker show LiteRT as ready when the artifact is missing on disk.
+    return runtimeAvailable && hasDownloadedPackage;
   }
 
   /// A downloaded file is not automatically an executable local runtime.
