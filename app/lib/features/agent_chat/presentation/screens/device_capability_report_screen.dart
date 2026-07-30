@@ -111,8 +111,8 @@ class _DeviceCapabilityReportLoaderScreenState
 
   Future<DeviceCapabilityReport> _collectReport() {
     final supplied = widget.reportFuture;
-    if (supplied != null) return supplied;
-    final future = DeviceCapabilityReport.collect(models: widget.models);
+    final future =
+        supplied ?? DeviceCapabilityReport.collect(models: widget.models);
     return future.timeout(
       const Duration(seconds: 15),
       onTimeout: () => throw TimeoutException(
