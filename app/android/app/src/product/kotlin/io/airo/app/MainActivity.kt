@@ -346,6 +346,11 @@ class MainActivity : AudioServiceFragmentActivity() {
             )
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Prefer the device speech pack so Audio Scribe does not silently
+            // send microphone audio to a network recognizer when an offline
+            // language pack is installed. Android may still report an
+            // explicit unavailable/network error when no offline pack exists.
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         try {
             recognizer.startListening(intent)
