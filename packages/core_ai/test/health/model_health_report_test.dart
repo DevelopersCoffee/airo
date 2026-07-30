@@ -118,4 +118,22 @@ void main() {
     expect(report.failureCode, ModelHealthFailureCode.downloadIncomplete);
     expect(report.actions, contains(ModelHealthAction.resumeDownload));
   });
+
+  test('maps the download service integrity failure to repair guidance', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      download: const ModelDownloadProgress(
+        modelId: 'gemma-4b',
+        totalBytes: 2_000,
+        downloadedBytes: 2_000,
+        status: ModelDownloadStatus.failed,
+        failureCode: 'integrity_mismatch',
+        error: 'Checksum mismatch',
+      ),
+    );
+
+    expect(report.failureCode, ModelHealthFailureCode.integrityFailed);
+    expect(report.explanation, contains('integrity verification'));
+    expect(report.actions, contains(ModelHealthAction.repair));
+  });
 }

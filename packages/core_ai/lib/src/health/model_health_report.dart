@@ -269,7 +269,11 @@ class ModelHealthReport {
     }
     if (download?.status == ModelDownloadStatus.failed) {
       final code = download?.failureCode;
-      if (code == 'integrityMismatch') {
+      // Accept both the legacy camel-case value and the shared download
+      // service's snake-case value while older persisted progress is migrated.
+      if (code == 'integrityMismatch' ||
+          code == 'integrity_mismatch' ||
+          code == 'integrity-mismatch') {
         return ModelHealthFailureCode.integrityFailed;
       }
       return ModelHealthFailureCode.downloadIncomplete;
