@@ -17,7 +17,9 @@ import kotlinx.coroutines.withContext
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.BufferedInputStream
+import java.io.FileOutputStream
 import java.io.File
+import java.net.HttpURLConnection
 import java.net.URL
 
 /**
@@ -162,17 +164,38 @@ class LiteRtLmPlugin(private val context: Context) : MethodChannel.MethodCallHan
     }
 
     private fun downloadToFile(url: String, destination: File, huggingFaceToken: String?) {
-        val connection = URL(url).openConnection()
+        val partial = File("${destination.absolutePath}.part")
+        val offset = if (partial.exists()) partial.length() else 0L
+        val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 30_000
         connection.readTimeout = 120_000
+        if (offset > 0L) {
+            connection.setRequestProperty("Range", "bytes=$offset-")
+        }
         if (!huggingFaceToken.isNullOrBlank()) {
             connection.setRequestProperty("Authorization", "Bearer $huggingFaceToken")
         }
 
-        BufferedInputStream(connection.getInputStream()).use { input ->
-            destination.outputStream().use { output ->
+        val append = offset > 0L && connection.responseCode == HttpURLConnection.HTTP_PARTIAL
+        if (!append) {
+            partial.delete()
+        }
+
+        BufferedInputStream(connection.inputStream).use { input ->
+            FileOutputStream(partial, append).use { output ->
                 input.copyTo(output)
+                output.fd.sync()
             }
+        }
+
+        if (!partial.exists() || partial.length() == 0L) {
+            throw IllegalStateException("LiteRT-LM download produced an empty artifact")
+        }
+        if (destination.exists() && !destination.delete()) {
+            throw IllegalStateException("Could not replace the existing LiteRT-LM artifact")
+        }
+        if (!partial.renameTo(destination)) {
+            throw IllegalStateException("Could not finalize the LiteRT-LM artifact")
         }
     }
 
