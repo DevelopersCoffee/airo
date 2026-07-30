@@ -145,6 +145,7 @@ dependencies:
     path: ../packages/platform_history
   platform_streams:
     path: ../packages/platform_streams
+  google_mlkit_image_labeling: ^0.15.0
 
 dev_dependencies:
   flutter_test:

@@ -85,6 +85,7 @@ dependencies:
   permission_handler: 12.0.0+1
   image_picker: 1.2.1
   google_mlkit_text_recognition: 0.16.0
+  google_mlkit_image_labeling: 0.15.0
   video_player: ^2.13.0
   flutter_chrome_cast: ^1.4.6
   wakelock_plus: 1.5.2
@@ -138,6 +139,8 @@ dependency_overrides:
     path: ../packages/stubs/flame_stub
   google_mlkit_text_recognition:
     path: ../packages/stubs/mlkit_stub
+  google_mlkit_image_labeling:
+    path: ../packages/stubs/mlkit_image_labeling_stub
   flutter_tts:
     path: ../packages/stubs/flutter_tts_stub
   image_picker:

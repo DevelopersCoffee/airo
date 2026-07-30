@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart'
+    as ml_label;
 import '../models/quest_models.dart';
 import 'quest_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
@@ -34,14 +36,35 @@ class GeminiQuestService implements QuestService {
     }
 
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    final labeler = ml_label.ImageLabeler(
+      options: ml_label.ImageLabelerOptions(confidenceThreshold: 0.5),
+    );
     try {
       final result = await recognizer.processImage(InputImage.fromFile(image));
-      return result.text.trim();
+      var labels = const <ml_label.ImageLabel>[];
+      try {
+        labels = await labeler.processImage(
+          ml_label.InputImage.fromFile(image),
+        );
+      } catch (error) {
+        debugPrint('Local image labeling failed: $error');
+      }
+      final labelText = labels
+          .map(
+            (label) =>
+                '${label.label} (${(label.confidence * 100).round()}% confidence)',
+          )
+          .join(', ');
+      return [
+        result.text.trim(),
+        if (labelText.isNotEmpty) 'Objects: $labelText',
+      ].where((part) => part.isNotEmpty).join('\n');
     } catch (error) {
       debugPrint('Local image text extraction failed: $error');
       return '';
     } finally {
       await recognizer.close();
+      await labeler.close();
     }
   }
 
