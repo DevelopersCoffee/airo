@@ -107,7 +107,7 @@ probe DENY SEC-43 'an envelope cannot be deserialized outside the Vault' \
 echo
 echo "Supported journeys must be reachable:"
 probe ALLOW RA-18 'the full restore path is callable' \
-  'let (_k, _e) = vault.add_content("n", &["inbox"]).unwrap();
+  'let (_k, _e) = vault.add_content("n", &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
    let p = RecoveryPackage::export(&vault, &seed).unwrap();
    let v = SealedRestore::load(&p, &seed).unwrap()
        .apply_revocations(&RevocationSource::package_only()).into_vault();
@@ -121,7 +121,7 @@ probe ALLOW SEC-38 'the device-trust journey is callable' \
   'let cert: DeviceCertificate = unimplemented!();
    vault.trust_device(cert).unwrap(); println!("{}", vault.trusted_devices().len());'
 probe ALLOW RA-Q4 'content can actually be sealed and opened' \
-  'let (k, e) = vault.add_content("n", &["inbox"]).unwrap();
+  'let (k, e) = vault.add_content("n", &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
    let c = k.seal(b"plaintext").unwrap();
    assert_eq!(k.open(&c).unwrap().as_slice(), b"plaintext");
    let s = vault.seal_envelope(&e).unwrap();

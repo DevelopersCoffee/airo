@@ -566,6 +566,12 @@ pub enum VaultError {
     #[error("device certificate is not signed by this identity")]
     UntrustedCertificate,
 
+    /// `SEC-32` / `I6`. An identifier that is not printable ASCII, which
+    /// includes every non-NFC form, every control character, and the bidi
+    /// overrides that render as one thing and compare as another.
+    #[error("identifier is not canonical: printable ASCII only")]
+    InvalidIdentifier,
+
     /// `SEC-15`. Distinct from `UntrustedCertificate` on purpose: a revoked
     /// device's certificate *is* validly signed, and collapsing the two would
     /// tell an operator the signature failed when the truth is that a genuine
@@ -590,6 +596,8 @@ pub enum VaultError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
 
     #[test]
     fn error_messages_are_actionable() {
@@ -630,6 +638,7 @@ mod tests {
             ("UntrustedCertificate", "aggregate.rs"),
             ("DeviceRevoked", "aggregate.rs"),
             ("ContextRetired", "aggregate.rs"),
+            ("InvalidIdentifier", "identifier.rs"),
             ("PackageTruncated", "package.rs"),
         ];
         assert!(CONSTRUCTED_IN.iter().all(|(_, site)| !site.is_empty()));
@@ -752,6 +761,9 @@ pub use vault::{
     // Onboarding and recovery journey — #1234 / #1235
     generate_mnemonic, seed_from_mnemonic, Seed,     // Seed is opaque: no as_bytes
     RootIdentity, RootPublicKey,
+    // `I6` / `A04`: the canonical identifier. A consumer cannot call the Vault
+    // without constructing one, which is the boundary made unavoidable.
+    ContextId,
     Vault,
     RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION,
     // Restore path — unreachable in revision 7 without the next two
@@ -831,6 +843,8 @@ pub const ALL: &[&[u8]] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
 
     #[test]
     fn no_domain_string_is_a_prefix_of_another() {
@@ -874,6 +888,7 @@ mod domain;
 mod encoding;
 mod envelope;
 mod error;
+mod identifier;
 mod identity;
 mod package;
 mod random;
@@ -884,6 +899,7 @@ mod wordlist;
 
 pub use aggregate::{PurgeDirective, UnlinkOutcome, Vault};
 pub use error::VaultError;
+pub use identifier::ContextId;
 pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
 pub use restore::{AppliedRestore, RevocationProvenance, RevocationSource, SealedRestore};
 ```
@@ -1246,6 +1262,8 @@ fn pbkdf2_hmac_sha512(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
 
     #[test]
     fn generated_mnemonic_has_24_words() {
@@ -1605,6 +1623,8 @@ pub(crate) fn verify(public_key: &RootPublicKey, msg: &[u8], signature: &[u8; 64
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
     use crate::vault::seed::seed_from_mnemonic;
 
     fn test_seed() -> Seed {
@@ -1837,6 +1857,8 @@ fn hex_lower(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
     use crate::vault::seed::seed_from_mnemonic;
     use crate::vault::Seed;
 
@@ -2131,6 +2153,126 @@ pub(crate) mod base64_bytes {
         use serde::de::Error;
         let text = String::deserialize(d)?;
         decode(&text).map_err(D::Error::custom)
+    }
+}
+```
+
+Create `rust/airo_mind/src/vault/identifier.rs` — the canonical identifier type
+(`SEC-32`, `I6`, `A04`):
+
+```rust
+//! `ContextId` — an identifier that has already been canonicalized.
+//!
+//! `I6` requires canonicalization exactly once, at the boundary, and states the
+//! defect test directly: *"a function that accepts a raw value and a canonical
+//! one at the same type is a defect: the type must distinguish them, or the raw
+//! form must be unreachable past the boundary."*
+//!
+//! A normalization call inside the Vault would satisfy neither half. Phase 1
+//! takes ids from its caller, so if the Vault normalized *and* Phase 2's
+//! runtime normalized, that is canonicalization twice -- which `I6` forbids in
+//! the same breath: *"re-canonicalizing hides the layer that forgot."* A
+//! `ContextId` cannot be re-canonicalized. It can only be constructed from a
+//! raw `&str`, exactly once, wherever the boundary currently is.
+//!
+//! # Why ASCII rather than NFC
+//!
+//! `Freeze §4` requires subject ids to be *"NFC-normalized and rejected if they
+//! contain control characters."* This type enforces **printable ASCII**, which
+//! is strictly stronger: every ASCII string is already in NFC, because no ASCII
+//! scalar has a canonical decomposition. So the frozen requirement is satisfied
+//! rather than amended, and no ADR is needed.
+//!
+//! The alternative was a `unicode-normalization` dependency, which Constitution
+//! §6 gates behind a scorecard and chief-open-source-officer sign-off -- a human
+//! gate, on the crypto path, for a case Phase 1 does not have: **identity
+//! strings are minted by the runtime, not typed by a user.** User-visible names
+//! arrive with the Phase 2 ontology layer, and `SEC-14`'s ruling already
+//! separates them: a name may be reused, the identity behind it may not.
+//!
+//! If Phase 2 ever needs user-typed identifiers, widening ASCII to NFC is a
+//! constructor change in one file, and every existing id remains valid because
+//! ASCII is a subset of NFC.
+
+use std::fmt;
+
+use super::error::VaultError;
+
+/// A canonical context identifier. Construction is the only canonicalization
+/// point in the crate.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ContextId(String);
+
+impl ContextId {
+    /// The boundary. Rejects anything that is not printable ASCII.
+    ///
+    /// `SEC-32` reproduced the failure this closes: destroy a context, re-add
+    /// the same name in NFD, and the retired identity is resurrected while
+    /// `is_content_destroyed` reports it live -- a crypto-shredding bypass
+    /// reachable by keystroke rather than by attack. Two ids differing only by
+    /// Unicode form are different subjects, so destroying one does not revoke
+    /// the other.
+    pub fn new(raw: &str) -> Result<Self, VaultError> {
+        if raw.is_empty() {
+            return Err(VaultError::InvalidIdentifier);
+        }
+        // Printable ASCII only: rejects control characters (`\r`, `\n`,
+        // `\0`), bidi overrides such as U+202E, and every non-NFC form at
+        // once, because a non-ASCII byte cannot appear at all.
+        if !raw.bytes().all(|b| (0x20..0x7f).contains(&b)) {
+            return Err(VaultError::InvalidIdentifier);
+        }
+        Ok(Self(raw.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Test-only shorthand. Not `pub`: production code constructs at the boundary
+/// and handles the error, which is the point of the type.
+#[cfg(test)]
+pub(crate) fn cid(raw: &str) -> ContextId {
+    ContextId::new(raw).expect("test identifier must be canonical")
+}
+
+impl fmt::Display for ContextId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
+
+    #[test]
+    fn rejects_the_sec_32_bypass_inputs() {
+        // NFD "café" -- the exact input that resurrected a retired identity.
+        assert!(ContextId::new("cafe\u{301}").is_err());
+        assert!(ContextId::new("a\u{0}b").is_err());
+        assert!(ContextId::new("a\nb").is_err());
+        assert!(ContextId::new("\u{202E}evil").is_err());
+        assert!(ContextId::new("").is_err());
+    }
+
+    #[test]
+    fn accepts_the_ids_the_runtime_mints() {
+        for ok in ["inbox", "tax-2026", "ctx-000000000001", "a:b", "A_b.c"] {
+            assert_eq!(ContextId::new(ok).unwrap().as_str(), ok);
+        }
+    }
+
+    #[test]
+    fn ascii_is_already_nfc_so_two_ids_cannot_differ_by_form() {
+        // The property `Freeze §4` asks for, in its failing form: there is no
+        // pair of accepted ids that are canonically equivalent yet unequal.
+        let a = ContextId::new("cafe").unwrap();
+        assert!(ContextId::new("cafe\u{301}").is_err());
+        assert_eq!(a.as_str(), "cafe");
     }
 }
 ```
@@ -2609,6 +2751,8 @@ fn wrapping_aad(content_id: &str, context_id: &str) -> Result<Vec<u8>, VaultErro
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
 
     #[test]
     fn content_unwraps_through_the_context_that_wrapped_it() {
@@ -3045,6 +3189,8 @@ impl RevocationLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
 
     #[test]
     fn a_new_ledger_is_empty_at_epoch_zero() {
@@ -3252,6 +3398,7 @@ use std::collections::BTreeMap;
 
 use super::device::DeviceCertificate;
 use super::envelope::{ContentEnvelope, ContentKey, ContextKey, SealedEnvelope};
+use super::identifier::ContextId;
 use super::error::VaultError;
 use super::identity::RootPublicKey;
 use super::package::KeyBytes;
@@ -3354,7 +3501,11 @@ impl Vault {
     ///
     /// Fallible because key generation is fallible — `or_insert_with` cannot
     /// carry a `Result`, so this is written long-hand.
-    pub fn add_context(&mut self, context_id: &str) -> Result<&ContextKey, VaultError> {
+    /// Takes a `ContextId`, not a `&str`. `I6` / `A04`: the raw form is
+    /// unreachable past the boundary, so no caller can hand this a
+    /// non-canonical identifier and no second canonicalization can occur here.
+    pub fn add_context(&mut self, context_id: &ContextId) -> Result<&ContextKey, VaultError> {
+        let context_id = context_id.as_str();
         if self.revocations.is_revoked(&RevocationSubject::Context(context_id.to_string())) {
             return Err(VaultError::ContextRetired(context_id.to_string()));
         }
@@ -3380,7 +3531,7 @@ impl Vault {
     pub fn add_content(
         &mut self,
         content_id: &str,
-        context_ids: &[&str],
+        context_ids: &[&ContextId],
     ) -> Result<(ContentKey, ContentEnvelope), VaultError> {
         if self.revocations.is_content_revoked(content_id) {
             return Err(VaultError::ContentRevoked(content_id.to_string()));
@@ -3391,9 +3542,9 @@ impl Vault {
             self.add_context(context_id)?;
             let context_key = self
                 .context_keys
-                .get(*context_id)
-                .ok_or_else(|| VaultError::NoWrappingForContext((*context_id).to_string()))?;
-            envelope.add_wrapping(&content_key, context_id, context_key)?;
+                .get(context_id.as_str())
+                .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?;
+            envelope.add_wrapping(&content_key, context_id.as_str(), context_key)?;
         }
         // The envelope is RETURNED, not stored. It belongs beside the content
         // object in the content store — the Vault holds no per-content record
@@ -3423,7 +3574,7 @@ impl Vault {
     /// and its `#[allow(dead_code)]` disappears.
     pub fn link_content(
         &mut self,
-        context_id: &str,
+        context_id: &ContextId,
         envelope: &mut ContentEnvelope,
     ) -> Result<(), VaultError> {
         let content_id = envelope.content_id().to_string();
@@ -3445,9 +3596,9 @@ impl Vault {
         // caller's. No clone of a secret is needed here (rust-architect O2).
         let target_key = self
             .context_keys
-            .get(context_id)
+            .get(context_id.as_str())
             .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?;
-        envelope.add_wrapping(&content_key, context_id, target_key)
+        envelope.add_wrapping(&content_key, context_id.as_str(), target_key)
     }
 
     /// Serializes an envelope. `RA` Q4 — the only way out.
@@ -3527,7 +3678,11 @@ impl Vault {
     /// Destroying the context key is sufficient: every wrapping under it
     /// becomes undecryptable wherever it is stored. Identifying which content
     /// is now orphaned is a content-store query, driven by the directive.
-    pub fn destroy_context(&mut self, context_id: &str) -> Result<PurgeDirective, VaultError> {
+    pub fn destroy_context(
+        &mut self,
+        context_id: &ContextId,
+    ) -> Result<PurgeDirective, VaultError> {
+        let context_id = context_id.as_str();
         if self.context_keys.remove(context_id).is_none() {
             return Err(VaultError::NoWrappingForContext(context_id.to_string()));
         }
@@ -3590,6 +3745,8 @@ impl Vault {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
     use crate::vault::identity::RootIdentity;
     use crate::vault::seed::{seed_from_mnemonic, Seed};
 
@@ -3610,7 +3767,7 @@ mod tests {
     fn content_is_readable_through_every_context_it_was_created_in() {
         let mut vault = vault();
         let (key, envelope) = vault
-            .add_content("bill-001", &["hospitalization", "finance", "tax-2026"])
+            .add_content("bill-001", &[&cid("hospitalization"), &cid("finance"), &cid("tax-2026")])
             .unwrap();
 
         for context in ["hospitalization", "finance", "tax-2026"] {
@@ -3626,7 +3783,7 @@ mod tests {
     fn unlinking_reports_what_survives() {
         let mut vault = vault();
         let (_key, mut envelope) = vault
-            .add_content("bill-001", &["hospitalization", "finance", "tax-2026"])
+            .add_content("bill-001", &[&cid("hospitalization"), &cid("finance"), &cid("tax-2026")])
             .unwrap();
 
         let outcome = vault.unlink_content("hospitalization", &mut envelope).unwrap();
@@ -3638,7 +3795,7 @@ mod tests {
     #[test]
     fn unlinking_the_last_context_reports_orphaned() {
         let mut vault = vault();
-        let (_key, mut envelope) = vault.add_content("note-1", &["inbox"]).unwrap();
+        let (_key, mut envelope) = vault.add_content("note-1", &[&cid("inbox")]).unwrap();
 
         let outcome = vault.unlink_content("inbox", &mut envelope).unwrap();
 
@@ -3649,9 +3806,9 @@ mod tests {
     #[test]
     fn linking_adds_a_context_without_re_encrypting_content() {
         let mut vault = vault();
-        let (key, mut envelope) = vault.add_content("bill-001", &["hospitalization"]).unwrap();
+        let (key, mut envelope) = vault.add_content("bill-001", &[&cid("hospitalization")]).unwrap();
 
-        vault.link_content("tax-2026", &mut envelope).unwrap();
+        vault.link_content(&cid("tax-2026"), &mut envelope).unwrap();
 
         let tax_key = vault.context_key("tax-2026").unwrap();
         let recovered = envelope.unwrap_with("tax-2026", tax_key).unwrap();
@@ -3661,7 +3818,7 @@ mod tests {
     #[test]
     fn destroy_revokes_and_returns_a_purge_directive() {
         let mut vault = vault();
-        vault.add_content("note-1", &["inbox"]).unwrap();
+        vault.add_content("note-1", &[&cid("inbox")]).unwrap();
 
         let directive = vault.destroy_content("note-1").unwrap();
 
@@ -3677,11 +3834,11 @@ mod tests {
     #[test]
     fn destroyed_content_cannot_be_recreated_under_the_same_id() {
         let mut vault = vault();
-        vault.add_content("note-1", &["inbox"]).unwrap();
+        vault.add_content("note-1", &[&cid("inbox")]).unwrap();
         let _ = vault.destroy_content("note-1").unwrap();
 
         assert_eq!(
-            vault.add_content("note-1", &["inbox"]).unwrap_err(),
+            vault.add_content("note-1", &[&cid("inbox")]).unwrap_err(),
             VaultError::ContentRevoked("note-1".into())
         );
     }
@@ -3689,8 +3846,8 @@ mod tests {
     #[test]
     fn adding_a_context_twice_keeps_the_same_key() {
         let mut vault = vault();
-        let first = vault.add_context("inbox").unwrap().as_bytes().to_owned();
-        let second = vault.add_context("inbox").unwrap().as_bytes().to_owned();
+        let first = vault.add_context(&cid("inbox")).unwrap().as_bytes().to_owned();
+        let second = vault.add_context(&cid("inbox")).unwrap().as_bytes().to_owned();
         assert_eq!(first, second);
     }
 
@@ -4543,6 +4700,8 @@ fn package_key(seed: &Seed) -> Result<[u8; 32], VaultError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
     use crate::vault::seed::{generate_mnemonic, seed_from_mnemonic};
     use crate::vault::{RootIdentity, Vault};
 
@@ -4557,8 +4716,8 @@ mod tests {
         let mut vault = Vault::new(identity.public_key());
         // Envelopes are returned and belong to the content store; the vault
         // keeps only the context keys these calls create.
-        vault.add_content("note-1", &["inbox"]).unwrap();
-        vault.add_content("bill-001", &["hospitalization", "tax-2026"]).unwrap();
+        vault.add_content("note-1", &[&cid("inbox")]).unwrap();
+        vault.add_content("bill-001", &[&cid("hospitalization"), &cid("tax-2026")]).unwrap();
         (vault, seed)
     }
 
@@ -4665,7 +4824,7 @@ mod tests {
     fn streaming_export_is_byte_identical_to_the_materializing_one() {
         let (mut vault, seed) = seeded_vault();
         let _d = vault.destroy_content("note-1").unwrap();
-        vault.add_context("archive").unwrap();
+        vault.add_context(&cid("archive")).unwrap();
 
         let mut streamed = Vec::new();
         RecoveryPackage::export_to(&vault, &seed, &mut streamed).unwrap();
@@ -4696,7 +4855,7 @@ mod tests {
     #[test]
     fn a_content_key_seals_and_opens_without_ever_exposing_bytes() {
         let (mut vault, _) = seeded_vault();
-        let (key, _envelope) = vault.add_content("note-2", &["inbox"]).unwrap();
+        let (key, _envelope) = vault.add_content("note-2", &[&cid("inbox")]).unwrap();
         let sealed = key.seal(b"the quick brown fox").unwrap();
         assert_ne!(sealed.as_slice(), b"the quick brown fox");
         assert_eq!(key.open(&sealed).unwrap().as_slice(), b"the quick brown fox");
@@ -4709,7 +4868,7 @@ mod tests {
     #[test]
     fn open_envelope_refuses_destroyed_content() {
         let (mut vault, _) = seeded_vault();
-        let (_key, envelope) = vault.add_content("note-3", &["inbox"]).unwrap();
+        let (_key, envelope) = vault.add_content("note-3", &[&cid("inbox")]).unwrap();
         let sealed = vault.seal_envelope(&envelope).unwrap();
         assert!(vault.open_envelope(&sealed).is_ok());
 
@@ -4734,9 +4893,9 @@ mod tests {
         let before = vault.revocations().head_epoch();
 
         // Everything short of a destroy leaves the ledger alone.
-        vault.add_context("archive").unwrap();
-        let (_k, mut envelope) = vault.add_content("note-4", &["inbox"]).unwrap();
-        vault.link_content("archive", &mut envelope).unwrap();
+        vault.add_context(&cid("archive")).unwrap();
+        let (_k, mut envelope) = vault.add_content("note-4", &[&cid("inbox")]).unwrap();
+        vault.link_content(&cid("archive"), &mut envelope).unwrap();
         vault.unlink_content("inbox", &mut envelope).unwrap();
         assert_eq!(vault.revocations().head_epoch(), before);
 
@@ -4878,7 +5037,7 @@ mod tests {
     fn truncation_on_disk_is_distinguishable_from_corruption() {
         let (mut vault, seed) = seeded_vault();
         for i in 0..3000 {
-            vault.add_context(&format!("c{i:08}")).unwrap();
+            vault.add_context(&cid(&format!("c{i:08}"))).unwrap();
         }
         let mut bytes = Vec::new();
         RecoveryPackage::export_to(&vault, &seed, &mut bytes).unwrap();
@@ -5382,6 +5541,8 @@ impl AppliedRestore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::vault::identifier::cid;
     use crate::vault::seed::seed_from_mnemonic;
     use crate::vault::{RootIdentity, Vault};
 
@@ -5397,8 +5558,8 @@ mod tests {
     fn vault_with_content() -> Vault {
         let identity = RootIdentity::from_seed(&seed()).unwrap();
         let mut vault = Vault::new(identity.public_key());
-        vault.add_content("hiv-test-result", &["health"]).unwrap();
-        vault.add_content("grocery-list", &["home"]).unwrap();
+        vault.add_content("hiv-test-result", &[&cid("health")]).unwrap();
+        vault.add_content("grocery-list", &[&cid("home")]).unwrap();
         vault
     }
 
@@ -5583,24 +5744,31 @@ impl Vault {
         payload: super::package::VaultPayload,
         _: super::restore::RevocationsApplied,
     ) -> Self {
-        Self {
+        let mut vault = Self {
             root_public_key: payload.root_public_key,
             context_keys: payload
                 .context_keys
                 .into_iter()
                 .map(|(id, bytes)| (id, ContextKey::from_bytes(*bytes.as_bytes())))
                 .collect(),
-            // Verify rather than admit verbatim. The payload is AEAD-
-            // authenticated so this is not exploitable without the seed, but
-            // admitting unverified certificates is the wrong default and
-            // re-admits certificates signed by a root that has since rotated.
-            device_certificates: payload
-                .device_certificates
-                .into_iter()
-                .filter(|c| c.verify_against(&payload.root_public_key))
-                .collect(),
+            device_certificates: Vec::new(),
             revocations: payload.revocations,
+        };
+        // `SEC-38` / `A16`: restore admits through the single choke point.
+        //
+        // This previously filtered on `verify_against` inline -- re-implementing
+        // the signature half of `admit_device` while omitting the revocation
+        // half and the dedup, and *silently dropping* certificates that failed
+        // rather than reporting them. Safe only because `apply_revocations`
+        // purges revoked devices first, and "safe because of ordering
+        // elsewhere" is exactly the reasoning `SEC-15` rejected.
+        for certificate in payload.device_certificates {
+            // A certificate that fails admission is dropped, as before: the
+            // payload is AEAD-authenticated, so a failure here means the root
+            // rotated, not that an attacker wrote it.
+            let _ = vault.admit_device(certificate);
         }
+        vault
     }
 
     /// Whether this content has been revoked.
