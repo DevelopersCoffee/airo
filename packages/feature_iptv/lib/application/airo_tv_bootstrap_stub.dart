@@ -3,12 +3,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mutable_xmltv_compact_epg_repository.dart';
 
+const _legacyPlaylistUrlKey = 'iptv_user_playlist_url';
+
 Future<bool> seedAiroTvDebugDefaultPlaylist(
   SharedPreferences prefs, {
   required String playlistUrl,
   Object? parser,
 }) async {
-  return false;
+  final normalizedUrl = playlistUrl.trim();
+  if (normalizedUrl.isEmpty) return false;
+
+  final existingUrl = prefs.getString(_legacyPlaylistUrlKey)?.trim();
+  if (existingUrl != null && existingUrl.isNotEmpty) return false;
+
+  await prefs.setString(_legacyPlaylistUrlKey, normalizedUrl);
+  return true;
 }
 
 Future<void> warmAiroTvDebugDefaultPlaylistCache(

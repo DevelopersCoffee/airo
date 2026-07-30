@@ -27,10 +27,12 @@ run_case() {
   local expected_status="$2"
   local registrant="$3"
   local apk="$4"
+  local resource_keep_file="${5:-$good_resource_keep}"
 
   set +e
   AIRO_TV_PLUGIN_REGISTRANT="$registrant" \
     AIRO_TV_RELEASE_APK="$apk" \
+    AIRO_TV_RESOURCE_KEEP_FILE="$resource_keep_file" \
     "$SCRIPT" >"$TMP_DIR/$name.out" 2>&1
   local actual_status=$?
   set -e
@@ -53,6 +55,18 @@ flutterEngine.getPlugins().add(new io.flutter.plugins.videoplayer.VideoPlayerPlu
 flutterEngine.getPlugins().add(new com.alexmercerind.media_kit_libs_android_video.MediaKitLibsAndroidVideoPlugin());
 EOF
 
+good_resource_keep="$TMP_DIR/good-resource-keep.xml"
+cat >"$good_resource_keep" <<'EOF'
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/audio_service_*" />
+EOF
+
+bad_resource_keep="$TMP_DIR/bad-resource-keep.xml"
+cat >"$bad_resource_keep" <<'EOF'
+<resources xmlns:tools="http://schemas.android.com/tools" />
+EOF
+
 good_apk="$TMP_DIR/good.apk"
 bad_apk="$TMP_DIR/bad.apk"
 make_apk "$good_apk"
@@ -63,5 +77,7 @@ run_case "rejects-media-kit-registration" 1 "$bad_registrant" "$good_apk"
 grep -q "registrant includes media_kit" "$TMP_DIR/rejects-media-kit-registration.out"
 run_case "rejects-excluded-native-library" 1 "$good_registrant" "$bad_apk"
 grep -q "unexpectedly packages media_kit native libraries" "$TMP_DIR/rejects-excluded-native-library.out"
+run_case "rejects-missing-media-control-icons" 1 "$good_registrant" "$good_apk" "$bad_resource_keep"
+grep -q "must retain audio_service media-control icons" "$TMP_DIR/rejects-missing-media-control-icons.out"
 
 echo "Android TV native media contract tests passed"

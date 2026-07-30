@@ -1,0 +1,178 @@
+# Airo TV and Super App Pixel 9 QA Evidence
+
+Date: 2026-07-30
+Base: fetched `origin/main` at `3c4bd8b2`
+Branch: `codex/release-qa-pixel9-tv-20260730`
+Device: physical Pixel 9 (`tokay`), Android 17 / API 37
+Playlist fixture: `https://iptv-org.github.io/iptv/index.m3u`
+
+## Critical Agent Gate
+
+**Problem:** The next release candidate needed physical-device proof that the
+Airo TV journey is smooth and crash-free on Pixel 9, that shared IPTV behavior
+also works inside the Airo Super App, and that release tooling leaves the
+source tree reproducible.
+
+**User / actor:** Airo TV and Airo Super App viewers, QA automation, and release
+engineering.
+
+**Framework or application layer:** Mixed. The IPTV journey is application
+behavior; Android resources and build-profile restoration are shared platform
+and release concerns.
+
+**Owning agents:** Airo TV Flutter Architect and Chief Release/DevOps Officer.
+
+**Reviewing agents:** Chief QA Officer, Chief Architect, Chief Performance
+Officer, Media Intelligence Architect, and Coins / Finance Agent for the
+manifest-only ownership correction.
+
+**Impacted modules/files:** Android shared resources, TV build scripts and
+release checks, `feature_coin/module.yaml`, and release evidence.
+
+**Base branch/worktree:** Confirmed. The worktree was created from the freshly
+fetched `origin/main` commit `3c4bd8b2`.
+
+**Open questions:** Fire TV D-pad, Cast receiver switching, iPad, signing/store
+credentials, compliance forms, and the required 30-minute constrained-TV soak
+still need their owning release lanes.
+
+**Decision:** Ready for Pixel 9 regression qualification. Not ready for public
+release while the official required gates remain unknown.
+
+## Deterministic Use Cases
+
+### UC-001: Clean Airo TV first launch
+
+**Given:** No Airo TV app data exists on the Pixel 9.
+**When:** The release-profile APK is installed and launched.
+**Then:** A BYOC playlist setup state renders, no bundled channels appear, the
+process remains active, and startup emits no fatal, ANR, native-library, or
+media-control exception.
+
+### UC-002: Import, find, and play an authorized channel
+
+**Given:** The IPTV.org public test playlist is selected through the in-app
+quick choice.
+**When:** The user adds the source, searches for `CNN`, and selects CNN
+Headlines.
+**Then:** Channels load, search results appear, video and audio start, fullscreen
+works, Home enters PiP, and PiP settles to video-only playback.
+
+### UC-003: Shared Super App IPTV path
+
+**Given:** The full Airo release APK is installed without clearing existing app
+data.
+**When:** The user opens the Super App and selects the Live destination.
+**Then:** The shared Airo TV browser and existing channel playback render inside
+the Super App without a media-control exception.
+
+### UC-004: Reproducible TV profile build
+
+**Given:** The TV build swaps `pubspec_tv.yaml` into the app directory.
+**When:** dependency resolution changes `pubspec.lock` during the build.
+**Then:** both the original pubspec and original lockfile are restored exactly,
+temporary backups are removed, and the TV release contract passes.
+
+### UC-005: Responsive browser fallback
+
+**Given:** The TV web profile is built with a local authorized fixture.
+**When:** The UI renders at 1920x1080, 1280x720, 1024x576, and 390x844.
+**Then:** The debug fixture is seeded without replacing user state, the shell
+is visible, screenshots are captured, and no Flutter overflow is emitted.
+
+## Pixel 9 Results
+
+### Airo TV artifact
+
+- Package: `io.airo.app.tv`
+- Version: `0.0.5` (`versionCode 5`)
+- Profile: lightweight TV release, local validation signing
+- Size: 29 MiB
+- SHA-256:
+  `e2a3a41a71824f20408442e56597c0ccaf3b636c5c9a9cacb0d32adf1daf5bf7`
+- TV native media contract: passed
+- Retained media resources: `audio_service_play_arrow`,
+  `audio_service_pause`, and `audio_service_stop` present in the final APK
+
+Passed journeys:
+
+- clean first launch and BYOC empty state;
+- playlist quick choice, import, channel parsing, and persistence after
+  relaunch;
+- country selector and playlist-source management;
+- `CNN` search and live CNN Headlines playback;
+- inline playback, resolution display, fullscreen, Android Back/Home lifecycle,
+  and automatic PiP;
+- settled PiP shows video without the app browse chrome;
+- no app fatal exception, ANR, `UnsatisfiedLinkError`,
+  `ExoPlaybackException`, or `CustomAction` exception after the fix.
+
+### Airo Super App artifact
+
+- Package: `io.airo.app`
+- Version: `0.0.5` (`versionCode 5`)
+- Profile: full Android release, local debug signing override
+- Size: 101 MiB
+- SHA-256:
+  `cd813c74f7b6f6f1d0e2bcf08c0ef2b0e0e4690acd88288f4998a04352741ca2`
+- Installed in place with `-r -d`; existing Super App data was preserved
+- Clean launch passed
+- Live destination rendered the shared Airo TV browser and resumed existing
+  live playback
+- The final APK retains the same play, pause, and stop media resources
+- No app fatal exception, ANR, native-library error, or `CustomAction`
+  exception was observed
+
+## Defects Fixed
+
+1. Android resource shrinking removed `audio_service` media-control icons.
+   Android threw `IllegalArgumentException: You must specify an icon resource
+   id to build a CustomAction` at TV startup and again when playback began.
+   A shared Android keep rule now protects the complete media-control icon set
+   for both Airo TV and the Super App. The TV release check and negative fixture
+   enforce the contract.
+
+2. The lightweight TV build restored `pubspec.yaml` but left
+   `app/pubspec.lock` changed after dependency resolution. Shell and PowerShell
+   build paths now back up and restore the lockfile. A deterministic fake-build
+   regression test verifies exact restoration and backup cleanup.
+
+3. `feature_coin` depended on `core_product_shell` without declaring it in
+   `module.yaml`, causing the release module-manifest gate to fail. The manifest
+   now matches the real shared dependency.
+
+4. The web-safe TV bootstrap discarded `DEBUG_IPTV_PLAYLIST_URL`, so all four
+   release viewport checks timed out despite rendering correctly. The stub now
+   seeds only an empty playlist preference, preserves existing user state, and
+   has focused regression coverage.
+
+## Local Qualification
+
+Passed:
+
+- build-profile tests and profile contract check;
+- bundled-model artifact guard;
+- module manifest tests and all 62 real manifests;
+- module-size gate;
+- worker-offload policy tests and guard;
+- release manifest and qualification-report tests;
+- `core_release` package: 89 tests;
+- TV media-session focused tests: 8 tests;
+- Android TV native media contract fixtures;
+- TV profile restoration regression test;
+- web bootstrap regression tests: 2 tests;
+- browser viewport matrix: 4 viewports with no Flutter overflow;
+- v2 merge-readiness tests and same-commit dry run;
+- `git diff --check`.
+
+## Remaining Public-Release Blockers
+
+The official v2 readiness preflight remains `publicReady: false`. Required
+unknown gates include Firebase clients/distribution, production signing, store
+credentials and track decisions, Data Safety, content rating, legal provenance,
+repository governance, Kotlin Gradle Plugin scope, release qualification
+approval, physical Fire TV/Android TV D-pad evidence, Cast receiver evidence,
+iPad evidence, and the 30-minute TV memory/playback soak.
+
+No Fire TV Stick was connected during this run, so Pixel 9 evidence must not be
+used as a substitute for ten-foot D-pad qualification.

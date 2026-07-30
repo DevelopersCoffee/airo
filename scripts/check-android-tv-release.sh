@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
 TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
 TV_PUBSPEC="$ROOT_DIR/app/pubspec_tv.yaml"
+RESOURCE_KEEP_FILE="${AIRO_TV_RESOURCE_KEEP_FILE:-$ROOT_DIR/app/android/app/src/main/res/raw/keep.xml}"
 PLUGIN_REGISTRANT="${AIRO_TV_PLUGIN_REGISTRANT:-$ROOT_DIR/app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java}"
 MIN_TARGET_SDK="${AIRO_TV_MIN_TARGET_SDK:-34}"
 TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-io.airo.app.tv}"
@@ -50,6 +51,10 @@ registrant_looks_like_tv() {
   ! grep -qE 'GoogleMlKit|MlKit|FlutterContactsPlugin|ImageCompressPlugin' \
     "$PLUGIN_REGISTRANT"
 }
+
+[[ -f "$RESOURCE_KEEP_FILE" ]] || fail "Android resource keep file not found: $RESOURCE_KEEP_FILE"
+grep -q 'tools:keep="@drawable/audio_service_\*"' "$RESOURCE_KEEP_FILE" ||
+  fail "Android resource shrinker must retain audio_service media-control icons"
 
 check_plugin_registrant() {
   [[ -f "$PLUGIN_REGISTRANT" ]] || fail "Generated plugin registrant not found: $PLUGIN_REGISTRANT"

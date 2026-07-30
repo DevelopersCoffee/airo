@@ -99,6 +99,10 @@ cleanup() {
         cp pubspec_backup.yaml pubspec.yaml
         rm -f pubspec_backup.yaml
         flutter pub get > /dev/null 2>&1
+        if [[ -f "pubspec_backup.lock" ]]; then
+            cp pubspec_backup.lock pubspec.lock
+            rm -f pubspec_backup.lock
+        fi
         echo "  Restored pubspec.yaml"
     fi
     if [[ "$SIGNING_CREATED" == true ]]; then
@@ -136,6 +140,10 @@ echo -e "\033[0;33mSwapping to TV-specific pubspec (excludes stockfish, flame, m
 if [[ -f "pubspec.yaml" ]]; then
     cp pubspec.yaml pubspec_backup.yaml
     echo "  Backed up pubspec.yaml"
+fi
+if [[ -f "pubspec.lock" ]]; then
+    cp pubspec.lock pubspec_backup.lock
+    echo "  Backed up pubspec.lock"
 fi
 
 # Swap to TV pubspec
