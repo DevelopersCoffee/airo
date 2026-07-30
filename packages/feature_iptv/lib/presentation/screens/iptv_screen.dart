@@ -11,7 +11,6 @@ import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
-import '../../application/providers/rails_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
@@ -1312,7 +1311,6 @@ class _StreamTabContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
-    ref.watch(railsProvider);
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),

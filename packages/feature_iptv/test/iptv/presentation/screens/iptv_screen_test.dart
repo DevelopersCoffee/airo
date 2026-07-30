@@ -279,9 +279,6 @@ void main() {
               liveDelay: const Duration(seconds: 1),
               currentChannel: channels.first,
             ),
-            extraOverrides: [
-              railsProvider.overrideWith((ref) async => const []),
-            ],
           ),
         );
         await tester.pump();
@@ -361,7 +358,6 @@ void main() {
             liveDelay: const Duration(seconds: 1),
             currentChannel: channels.first,
           ),
-          extraOverrides: [railsProvider.overrideWith((ref) async => const [])],
         ),
       );
       await tester.pump();
