@@ -1188,7 +1188,6 @@ class _StreamTabContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
-    ref.watch(railsProvider);
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
