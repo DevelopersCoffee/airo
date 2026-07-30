@@ -61,6 +61,15 @@ void main() {
       expect(routine.shouldNavigate, false);
     });
 
+    test('routes Audio Scribe to its capture workflow', () async {
+      final result = await registry.executeIntent(
+        IntentParser.parse('transcribe audio'),
+      );
+
+      expect(result.route, '/mind/audio-scribe');
+      expect(result.message, contains('on-device capture'));
+    });
+
     test('routes game and model management requests to Airo screens', () async {
       final game = await registry.executeIntent(
         IntentParser.parse('start chess'),

@@ -433,13 +433,14 @@ class SocialTool implements Tool {
         );
       case IntentType.audioScribe:
         return const AgentToolResult(
+          route: '/mind/audio-scribe',
           message:
-              'Audio Scribe is mapped to Airo voice workflows. Use voice input now; full offline transcription can plug into the meeting-minutes pipeline.',
+              'Opening Audio Scribe for on-device capture, transcript review, and translation.',
         );
       case IntentType.mobileActions:
         return const AgentToolResult(
           message:
-              'Mobile Actions ready: try commands like "open WiFi settings", "show budget", "play chess", or "split this bill". Sensitive device actions should ask for confirmation before execution.',
+              'Mobile Actions ready: try "open WiFi settings", "turn the flashlight on", "create contact", "send email", or "show location on map". Sensitive device actions should ask for confirmation before execution.',
         );
       case IntentType.openChat:
         return const AgentToolResult(route: '/agent', message: 'Opening Chat');
