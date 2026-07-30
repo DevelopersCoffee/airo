@@ -277,14 +277,21 @@ class _GeneratedImageView extends StatelessWidget {
     if (rawBase64 != null) {
       try {
         child = Image.memory(base64Decode(rawBase64), fit: BoxFit.contain);
-      } on FormatException {
+      } on Object {
         child = const Padding(
           padding: EdgeInsets.all(16),
           child: Text('The image server returned malformed image data.'),
         );
       }
     } else {
-      child = Image.network(image.url!, fit: BoxFit.contain);
+      child = Image.network(
+        image.url!,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('The image could not be loaded from the image server.'),
+        ),
+      );
     }
     return Card(
       clipBehavior: Clip.antiAlias,
