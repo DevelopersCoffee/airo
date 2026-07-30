@@ -188,6 +188,12 @@ Passed journeys:
    suffix. The shared parser now supports both formats and has regression
    coverage from the Pixel 9 output shape.
 
+8. The legal preflight found ten Airo-owned packages without package-level
+   license files. Each now carries the repository's existing DevelopersCoffee
+   MIT license. The preflight confirms every scanned Airo package has a
+   matching license; only maintainer provenance/private-dependency decisions
+   remain.
+
 ## Local Qualification
 
 Passed:
@@ -214,14 +220,34 @@ Passed:
 - v2 merge-readiness tests and same-commit dry run;
 - `git diff --check`.
 
+## Release-owner Preflight Findings
+
+- Data Safety: locally ready for Google Play console entry; maintainer console
+  submission remains required.
+- Content rating: questionnaire is locally ready; Google Play/IARC must assign
+  the final rating.
+- Firebase App Distribution: ready because distribution mode is intentionally
+  `none` for this local release configuration.
+- Android production signing: blocked on four absent secret inputs.
+- Firebase mobile client: blocked because `io.airo.app` is absent from
+  `google-services.json` and Android Firebase options remain placeholders.
+- Google Play upload: blocked on the service-account credential.
+- Legal package coverage: all scanned package licenses now present and
+  matching; blocked only on the private-dependency confirmation and provenance
+  policy decision.
+- Repository health: all required files, templates, labels, and CODEOWNERS are
+  present; maintainer decisions for Discussions, ownership policy, and funding
+  remain unrecorded.
+
 ## Remaining Public-Release Blockers
 
 The official v2 readiness preflight remains `publicReady: false`. Required
-unknown gates include Firebase clients/distribution, production signing, store
-credentials and track decisions, Data Safety, content rating, legal provenance,
-repository governance, Kotlin Gradle Plugin scope, release qualification
-approval, physical Fire TV/Android TV D-pad evidence, Cast receiver evidence,
-iPad evidence, and the 30-minute TV memory/playback soak.
+unknown or externally incomplete gates include Firebase clients, production
+signing, Play credentials and track decisions, Data Safety/IARC console
+submission, legal provenance decisions, repository governance decisions,
+Kotlin Gradle Plugin scope, release qualification approval, physical Fire
+TV/Android TV D-pad evidence, Cast receiver evidence, iPad evidence, and the
+30-minute constrained-TV memory/playback soak.
 
 No Fire TV Stick was connected during this run, so Pixel 9 evidence must not be
 used as a substitute for ten-foot D-pad qualification.
