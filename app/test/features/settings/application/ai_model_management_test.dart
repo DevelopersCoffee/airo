@@ -80,13 +80,50 @@ void main() {
         isFalse,
       );
     });
+
+    test(
+      'does not expose an artifact that fails integrity verification',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            modelDownloadServiceProvider.overrideWithValue(
+              _FakeModelDownloadService(
+                const {
+                  'gemma-4-e2b-it-litertlm':
+                      '/models/gemma-4-e2b-it-litertlm.litertlm',
+                },
+                invalidIds: {'gemma-4-e2b-it-litertlm'},
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final registry = container.read(modelRegistryProvider);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          registry.downloadedModels.any(
+            (model) => model.id == 'gemma-4-e2b-it-litertlm',
+          ),
+          isFalse,
+        );
+      },
+    );
   });
 }
 
 class _FakeModelDownloadService implements ModelDownloadService {
-  _FakeModelDownloadService(this.paths);
+  _FakeModelDownloadService(this.paths, {this.invalidIds = const {}});
 
   final Map<String, String> paths;
+  final Set<String> invalidIds;
+
+  @override
+  Future<bool> isModelDownloaded(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async => paths.containsKey(modelId) && !invalidIds.contains(modelId);
 
   @override
   Future<String?> resolveExistingModelPath(

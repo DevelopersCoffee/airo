@@ -32,6 +32,12 @@ Future<void> _hydrateDownloadedModels(
   ModelDownloadService service,
 ) async {
   for (final model in ModelCatalog.bundledModels) {
+    // A path alone is not proof of an installed model. Require the download
+    // service to validate size/checksum before the registry exposes it to the
+    // picker or runtime health center.
+    if (!await service.isModelDownloaded(model.id, model: model)) {
+      continue;
+    }
     final existingPath = await service.resolveExistingModelPath(
       model.id,
       model: model,
