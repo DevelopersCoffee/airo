@@ -1,3 +1,5 @@
+import 'package:feature_coin/feature_coin.dart';
+
 class RouteNames {
   // Private constructor to prevent instantiation
   RouteNames._();
@@ -20,9 +22,10 @@ class RouteNames {
   static const String coinsGroups = 'coins_groups';
   static const String coinsGroupDetail = 'coins_group_detail';
   static const String coinsAddSplit = 'coins_add_split';
-  static const String coinVault = 'coin_vault';
-  static const String coinVaultAdd = 'coin_vault_add';
-  static const String coinVaultEdit = 'coin_vault_edit';
+  // Owned by packages/feature_coin so both shells mount the same names.
+  static const String coinVault = CoinVaultRouteNames.vault;
+  static const String coinVaultAdd = CoinVaultRouteNames.add;
+  static const String coinVaultEdit = CoinVaultRouteNames.edit;
 
   // Coins Full Paths (for direct navigation)
   static const String coinsDashboardPath = '/money/dashboard';
