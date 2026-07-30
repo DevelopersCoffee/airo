@@ -1045,7 +1045,10 @@ const PBKDF2_ROUNDS: u32 = 2048;
 pub struct Seed([u8; 64]);
 
 impl Seed {
-    pub fn as_bytes(&self) -> &[u8; 64] {
+    /// `SEC-33` / `A01`. `pub(crate)`: the two HKDF derivations need it and no
+    /// consumer does. The 64-byte master seed is the one secret whose
+    /// compromise is total.
+    pub(crate) fn as_bytes(&self) -> &[u8; 64] {
         &self.0
     }
 }
@@ -1579,7 +1582,9 @@ impl RootIdentity {
         self.public_key().as_bytes().iter().map(|b| format!("{b:02x}")).collect()
     }
 
-    pub fn sign(&self, msg: &[u8]) -> [u8; 64] {
+    /// `RA-17` / `A02`. `pub(crate)`: a raw signing oracle over the root key
+    /// must not be reachable from outside the crate.
+    pub(crate) fn sign(&self, msg: &[u8]) -> [u8; 64] {
         self.signing_key.sign(msg).to_bytes()
     }
 }
@@ -1724,11 +1729,12 @@ Create `rust/airo_mind/src/vault/device.rs`:
 //! v1 has exactly one trust domain: the user's own device mesh. A device that
 //! cannot present a certificate signed by the root identity cannot write.
 
-use ed25519_dalek::{Signer, SigningKey};
+use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use zeroize::ZeroizeOnDrop;
 
 use super::domain;
+use super::encoding::push_len_prefixed;
 use super::error::VaultError;
 use super::identity::{verify, RootIdentity, RootPublicKey};
 
@@ -1763,9 +1769,8 @@ impl DeviceKey {
         self.public_key().iter().map(|b| format!("{b:02x}")).collect()
     }
 
-    pub fn sign(&self, msg: &[u8]) -> [u8; 64] {
-        self.signing_key.sign(msg).to_bytes()
-    }
+    // `RA-17b` / `A03`: `DeviceKey::sign` deleted -- zero callers anywhere,
+    // including tests. A device signing oracle with no consumer is surface.
 }
 
 /// A root-signed statement that a device belongs to this user's mesh.
@@ -1780,41 +1785,53 @@ pub struct DeviceCertificate {
 }
 
 impl DeviceCertificate {
-    pub fn issue(root: &RootIdentity, device: &DeviceKey, issued_at_epoch: u64) -> Self {
+    /// Fallible since `RA-19`: the signing payload is length-prefixed with a
+    /// checked cast, so building it can fail rather than truncate silently.
+    pub fn issue(
+        root: &RootIdentity,
+        device: &DeviceKey,
+        issued_at_epoch: u64,
+    ) -> Result<Self, VaultError> {
         let mut certificate = Self {
             device_id: device.device_id(),
             device_public_key: device.public_key(),
             issued_at_epoch,
             signature: [0u8; 64],
         };
-        certificate.signature = root.sign(&certificate.signing_payload());
-        certificate
+        certificate.signature = root.sign(&certificate.signing_payload()?);
+        Ok(certificate)
     }
 
     /// The exact bytes covered by the signature.
     ///
     /// Field order is fixed and length-prefixed so no two distinct
     /// certificates can ever produce the same payload.
-    pub fn signing_payload(&self) -> Vec<u8> {
+    /// `RA-19` / `A11`: fallible, so the checked length helper can be used.
+    /// `as u32` truncates silently and a truncated length breaks injectivity.
+    pub fn signing_payload(&self) -> Result<Vec<u8>, VaultError> {
         let mut payload = Vec::new();
         payload.extend_from_slice(domain::DEVICE_CERTIFICATE);
-        payload.extend_from_slice(&(self.device_id.len() as u32).to_be_bytes());
-        payload.extend_from_slice(self.device_id.as_bytes());
+        push_len_prefixed(&mut payload, self.device_id.as_bytes())?;
         payload.extend_from_slice(&self.device_public_key);
         payload.extend_from_slice(&self.issued_at_epoch.to_be_bytes());
-        payload
+        Ok(payload)
     }
 
     pub fn verify_against(&self, root_public_key: &RootPublicKey) -> bool {
         if self.device_id != hex_lower(&self.device_public_key) {
             return false;
         }
-        verify(root_public_key, &self.signing_payload(), &self.signature)
+        let Ok(payload) = self.signing_payload() else {
+            return false;
+        };
+        verify(root_public_key, &payload, &self.signature)
     }
 }
 
 fn hex_lower(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
+    // `RA-24` / `A10`: one pre-sized allocation, not one `String` per byte.
+    // This runs on every certificate verification, i.e. on every restore.
+    super::encoding::hex_of(bytes)
 }
 
 #[cfg(test)]
@@ -1841,7 +1858,7 @@ mod tests {
     fn issued_certificate_verifies_against_the_issuing_root() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
         let device = DeviceKey::generate().unwrap();
-        let certificate = DeviceCertificate::issue(&root, &device, 1);
+        let certificate = DeviceCertificate::issue(&root, &device, 1).unwrap();
         assert!(certificate.verify_against(&root.public_key()));
     }
 
@@ -1852,14 +1869,14 @@ mod tests {
             &seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap(),
         )
         .unwrap();
-        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
+        let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
         assert!(!certificate.verify_against(&stranger.public_key()));
     }
 
     #[test]
     fn swapping_the_public_key_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
         certificate.device_public_key = DeviceKey::generate().unwrap().public_key();
         assert!(!certificate.verify_against(&root.public_key()));
     }
@@ -1867,7 +1884,7 @@ mod tests {
     #[test]
     fn device_id_must_match_the_public_key() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
         certificate.device_id = "deadbeef".into();
         assert!(!certificate.verify_against(&root.public_key()));
     }
@@ -1875,7 +1892,7 @@ mod tests {
     #[test]
     fn changing_the_issue_epoch_invalidates_the_certificate() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
-        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1);
+        let mut certificate = DeviceCertificate::issue(&root, &DeviceKey::generate().unwrap(), 1).unwrap();
         certificate.issued_at_epoch = 99;
         assert!(!certificate.verify_against(&root.public_key()));
     }
@@ -2541,7 +2558,6 @@ impl ContentEnvelope {
         ContentKey::from_slice(&plaintext)
     }
 
-    #[allow(dead_code)] // consumed by link_content once S2's fix lands
     pub(crate) fn content_id(&self) -> &str {
         &self.content_id
     }
@@ -4067,6 +4083,10 @@ impl RecoveryPackage {
             aad.extend_from_slice(&value.to_be_bytes());
         }
         push_len_prefixed(&mut aad, &self.kdf_salt)?;
+        // `SEC-35` / `A17`. `frame_nonce` overwrites bytes 20..24 with the
+        // index, so without this those 32 bits are never read and never
+        // authenticated -- two byte-different files decrypting to one vault.
+        push_len_prefixed(&mut aad, &self.nonce)?;
         Ok(aad)
     }
 
@@ -4169,7 +4189,8 @@ impl RecoveryPackage {
                 super::encoding::base64_bytes::encode(&ciphertext)
             )
             .map_err(io)?;
-            *index += 1;
+            // `SEC-46` / `A12`: checked. A release-mode wrap to 0 is nonce reuse.
+            *index = index.checked_add(1).ok_or(VaultError::ValueTooLong)?;
             Ok(())
         };
 
@@ -4289,7 +4310,8 @@ impl RecoveryPackage {
                 index: *index,
                 ciphertext,
             });
-            *index += 1;
+            // `SEC-46` / `A12`: checked. A release-mode wrap to 0 is nonce reuse.
+            *index = index.checked_add(1).ok_or(VaultError::ValueTooLong)?;
             Ok(())
         };
 
@@ -4664,7 +4686,7 @@ mod tests {
         // And the streamed package is a working package, not merely valid JSON.
         let restored = crate::vault::restore::SealedRestore::load(&reparsed, &seed)
             .unwrap()
-            .apply_revocations(&crate::vault::restore::RevocationSource::package_only())
+            .apply_revocations(&crate::vault::restore::RevocationSource::package_only()).unwrap()
             .into_vault();
         assert!(restored.is_content_destroyed("note-1"));
     }
@@ -5244,7 +5266,15 @@ impl SealedRestore {
     /// revocations —
     /// all three are revocable subjects, and omitting devices means a stale
     /// backup readmits a revoked device.
-    pub fn apply_revocations(mut self, source: &RevocationSource) -> AppliedRestore {
+    /// Fallible since `SEC-40`: a caller-supplied ledger is validated, and an
+    /// invalid one must fail closed rather than be merged.
+    pub fn apply_revocations(
+        mut self,
+        source: &RevocationSource,
+    ) -> Result<AppliedRestore, VaultError> {
+        // `SEC-40` / `A21`: fail closed on caller-supplied data. `open`
+        // validates the package's own ledger; this one arrives from a caller.
+        source.ledger.validate()?;
         let package_revocations = self.payload.revocations_mut().all_revoked();
         self.payload.revocations_mut().merge(&source.ledger);
 
@@ -5284,12 +5314,12 @@ impl SealedRestore {
             .iter()
             .all(|subject| source.ledger.is_revoked(subject));
 
-        AppliedRestore {
+        Ok(AppliedRestore {
             payload: self.payload,
             purged,
             provenance: source.provenance.clone(),
             source_missing_backup_revocations: missing,
-        }
+        })
     }
 }
 
@@ -5379,7 +5409,7 @@ mod tests {
 
         let restored = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::package_only());
+            .apply_revocations(&RevocationSource::package_only()).unwrap();
 
         assert!(restored.purged().is_empty());
         let vault = restored.into_vault();
@@ -5400,7 +5430,7 @@ mod tests {
 
         let restored = SealedRestore::load(&stale_backup, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(current_revocations, LogHead::for_test("op-42")));
+            .apply_revocations(&RevocationSource::replayed_from_log(current_revocations, LogHead::for_test("op-42"))).unwrap();
 
         // `purged()` reports what the VAULT destroyed. Content lives in the
         // content store, so the Vault destroyed nothing — the assertions
@@ -5430,7 +5460,7 @@ mod tests {
 
         let restored = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::package_only());
+            .apply_revocations(&RevocationSource::package_only()).unwrap();
 
         let vault = restored.into_vault();
         assert!(vault.is_content_destroyed("hiv-test-result"));
@@ -5447,12 +5477,12 @@ mod tests {
         let device_id = device.device_id();
 
         let mut vault = Vault::new(identity.public_key());
-        vault.trust_device(DeviceCertificate::issue(&identity, &device, 1)).unwrap();
+        vault.trust_device(DeviceCertificate::issue(&identity, &device, 1).unwrap()).unwrap();
         let stale_backup = RecoveryPackage::export(&vault, &seed()).unwrap();
 
         // ... the laptop is stolen and revoked on the phone.
         let mut live = Vault::new(identity.public_key());
-        live.trust_device(DeviceCertificate::issue(&identity, &device, 1)).unwrap();
+        live.trust_device(DeviceCertificate::issue(&identity, &device, 1).unwrap()).unwrap();
         let _ = live.revoke_device(&device_id).unwrap();
 
         let restored = SealedRestore::load(&stale_backup, &seed())
@@ -5460,7 +5490,7 @@ mod tests {
             .apply_revocations(&RevocationSource::replayed_from_log(
                 live.revocations().clone(),
                 LogHead::for_test("op-7"),
-            ));
+            )).unwrap();
 
         let vault = restored.into_vault();
         assert!(vault.trusted_devices().is_empty());
@@ -5475,13 +5505,13 @@ mod tests {
 
         let once = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42")));
+            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42"))).unwrap();
         let vault = once.into_vault();
 
         let repackaged = RecoveryPackage::export(&vault, &seed()).unwrap();
         let twice = SealedRestore::load(&repackaged, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42")));
+            .apply_revocations(&RevocationSource::replayed_from_log(live.revocations().clone(), LogHead::for_test("op-42"))).unwrap();
 
         assert!(twice.purged().is_empty());
         assert!(twice.into_vault().is_content_destroyed("hiv-test-result"));
@@ -5495,12 +5525,12 @@ mod tests {
 
         let blind = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::package_only());
+            .apply_revocations(&RevocationSource::package_only()).unwrap();
         assert!(blind.was_blind());
 
         let acknowledged = SealedRestore::load(&package, &seed())
             .unwrap()
-            .apply_revocations(&RevocationSource::acknowledged_blind_restore());
+            .apply_revocations(&RevocationSource::acknowledged_blind_restore()).unwrap();
         assert!(acknowledged.was_blind());
 
         let from_log = SealedRestore::load(&package, &seed())
@@ -5508,7 +5538,7 @@ mod tests {
             .apply_revocations(&RevocationSource::replayed_from_log(
                 RevocationLedger::new(),
                 LogHead::for_test("op-1"),
-            ));
+            )).unwrap();
         assert!(!from_log.was_blind());
     }
 
@@ -5526,7 +5556,7 @@ mod tests {
             .apply_revocations(&RevocationSource::replayed_from_log(
                 vault.revocations().clone(),
                 LogHead::for_test("op-9"),
-            ));
+            )).unwrap();
 
         assert!(!applied.source_missing_backup_revocations());
     }
