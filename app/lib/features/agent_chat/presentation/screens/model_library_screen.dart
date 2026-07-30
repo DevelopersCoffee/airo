@@ -183,7 +183,10 @@ class AssistantModelLibraryState {
     required bool hasDownloadedPackage,
     required bool hasConfiguredModelPath,
   }) {
-    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModelPath);
+    // A file or configured path is only a candidate. Do not advertise it as
+    // runnable while the native runtime itself is unavailable (for example
+    // after a platform update or a missing LiteRT plugin).
+    return runtimeAvailable && (hasDownloadedPackage || hasConfiguredModelPath);
   }
 
   /// A downloaded file is not automatically an executable local runtime.

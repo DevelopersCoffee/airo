@@ -66,7 +66,7 @@ void main() {
         hasDownloadedPackage: true,
         hasConfiguredModelPath: false,
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       AssistantModelLibraryState.isLiteRtReady(
