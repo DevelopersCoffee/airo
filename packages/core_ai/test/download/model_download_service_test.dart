@@ -255,6 +255,35 @@ void main() {
     verify(() => storage.verifyModelIntegrity(any())).called(1);
   });
 
+  test(
+    'explicit model paths are only resolved when the file still exists',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('airo-explicit-');
+      addTearDown(() => directory.delete(recursive: true));
+      final artifactPath = '${directory.path}/model-a.gguf';
+      await File(artifactPath).writeAsBytes(const <int>[1]);
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => null);
+
+      final hydrated = model.copyWith(filePath: artifactPath);
+      expect(
+        await downloadService.resolveExistingModelPath(
+          model.id,
+          model: hydrated,
+        ),
+        artifactPath,
+      );
+      expect(
+        await downloadService.resolveExistingModelPath(
+          model.id,
+          model: model.copyWith(filePath: '${directory.path}/missing.gguf'),
+        ),
+        isNull,
+      );
+    },
+  );
+
   test('insufficient space fails before enqueue', () async {
     when(
       () => storage.hasEnoughDiskSpace(model.fileSizeBytes),
