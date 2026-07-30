@@ -24,7 +24,7 @@ final mediaHubDiscoverySourceProvider =
           final channels = await ref.watch(iptvChannelsProvider.future);
           return channels.map(UnifiedMediaContent.fromChannel).toList();
       }
-    });
+    }, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final mediaHubDiscoveryProvider =
     AsyncNotifierProvider.family<DiscoveryNotifier, DiscoveryState, MediaMode>(
