@@ -9,6 +9,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('does not advertise a downloaded GGUF file as locally runnable', () {
+    final model = OfflineModelInfo(
+      id: 'qwen2-1.5b-q4',
+      name: 'Qwen2 1.5B',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1_100_000_000,
+      filePath: '/models/qwen2-1.5b-q4.gguf',
+      downloadUrl: 'https://example.test/qwen2.gguf',
+      provider: AIProvider.gguf,
+    );
+
+    final candidate = AssistantModelCandidate.fromOfflineModel(model);
+
+    expect(candidate.available, isFalse);
+    expect(candidate.actionLabel, 'Native backend unavailable');
+    expect(candidate.unavailableReason, contains('llama.cpp'));
+  });
+
+  test('recognizes downloaded LiteRT artifacts as runnable candidates', () {
+    final model = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2_000_000_000,
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+      provider: AIProvider.gemma,
+    );
+
+    final candidate = AssistantModelCandidate.fromOfflineModel(model);
+
+    expect(candidate.available, isTrue);
+    expect(candidate.actionLabel, 'Start');
+  });
+
   test('LiteRT is not ready from native availability alone', () {
     expect(
       AssistantModelLibraryState.isLiteRtReady(

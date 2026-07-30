@@ -190,9 +190,11 @@ class AssistantModelLibraryState {
   /// handled by the LiteRT adapter; plain `.gguf` files require the native
   /// llama.cpp backend, which is not bundled in the public app yet.
   static bool isLiteRtPackage(OfflineModelInfo model) {
-    final source = '${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
-        .toLowerCase();
+    final source =
+        '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
+            .toLowerCase();
     return source.contains('.litertlm') ||
+        source.contains('litertlm') ||
         source.contains('.task') ||
         model.tags.any((tag) => tag.toLowerCase().contains('litert'));
   }
