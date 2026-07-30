@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../models/quest_models.dart';
 import 'quest_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
@@ -17,7 +19,31 @@ class QuestProcessingUnavailableException implements Exception {
 class GeminiQuestService implements QuestService {
   final Map<String, Quest> _quests = {};
   final GeminiNanoService _geminiNano = GeminiNanoService();
+  final Future<String> Function(File image)? _imageTextExtractor;
   static const uuid = Uuid();
+
+  GeminiQuestService({this._imageTextExtractor});
+
+  Future<String> _extractImageText(File image) async {
+    final extractor = _imageTextExtractor;
+    if (extractor != null) return extractor(image);
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      throw const QuestProcessingUnavailableException(
+        'On-device image understanding is available on Android and iOS only.',
+      );
+    }
+
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    try {
+      final result = await recognizer.processImage(InputImage.fromFile(image));
+      return result.text.trim();
+    } catch (error) {
+      debugPrint('Local image text extraction failed: $error');
+      return '';
+    } finally {
+      await recognizer.close();
+    }
+  }
 
   @override
   Future<Quest> createQuest(String title, {String? description}) async {
@@ -81,14 +107,15 @@ class GeminiQuestService implements QuestService {
     if (quest == null) throw Exception('Quest not found');
 
     try {
-      final imageAttachment = quest.files.any(
-        (file) => file.mimeType.startsWith('image/'),
-      );
-      if (imageAttachment) {
-        throw const QuestProcessingUnavailableException(
-          'Image understanding is not connected to the selected local runtime yet. '
-          'Choose a vision-capable runtime before asking Airo to describe an image.',
-        );
+      final imageAttachments = quest.files
+          .where((file) => file.mimeType.startsWith('image/'))
+          .toList();
+      final recognizedImageText = <String>[];
+      for (final image in imageAttachments) {
+        final text = await _extractImageText(File(image.path));
+        if (text.isNotEmpty) {
+          recognizedImageText.add('${image.name}:\n$text');
+        }
       }
       if (!await _geminiNano.isSupported()) {
         throw const QuestProcessingUnavailableException(
@@ -119,6 +146,18 @@ class GeminiQuestService implements QuestService {
           quest.files.single.mimeType == 'text/plain') {
         context +=
             'File content:\n${await extractTextFromFile(quest.files.single)}\n\n';
+      }
+
+      if (imageAttachments.isNotEmpty) {
+        if (recognizedImageText.isEmpty) {
+          throw const QuestProcessingUnavailableException(
+            'No readable text was found in the image. Local object understanding '
+            'is not available in the selected runtime yet.',
+          );
+        }
+        context +=
+            'Text recognized locally from the attached image(s):\n'
+            '${recognizedImageText.join('\n\n')}\n\n';
       }
 
       final systemPrompt = '''You are a helpful AI assistant.

@@ -17,9 +17,12 @@ void main() {
       of: find.text('Plant sunflower on plot 1'),
       matching: find.byType(ActionChip),
     );
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
-    await tester.pump();
-    await tester.ensureVisible(plantChip);
+    await tester.scrollUntilVisible(
+      plantChip,
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(plantChip);
     await tester.pump();
     expect(find.text('🌱'), findsOneWidget);
