@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -247,6 +248,157 @@ void main() {
     // Tracked as Pixel 9 fullscreen overlay/back hit-test follow-up.
     skip: true,
   );
+
+  testWidgets(
+    'macOS full player owns one native transition and restores on native exit',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      const fullscreenChannel = MethodChannel(
+        'com.developerscoffee.airo.window/fullscreen',
+      );
+      final nativeCalls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        fullscreenChannel,
+        (call) async {
+          nativeCalls.add(call);
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          fullscreenChannel,
+          null,
+        ),
+      );
+      try {
+        await tester.pumpWidget(
+          createWidget(
+            streamingState: StreamingState(
+              playbackState: PlaybackState.playing,
+              isLiveStream: true,
+              liveDelay: const Duration(seconds: 1),
+              currentChannel: channels.first,
+            ),
+            extraOverrides: [
+              railsProvider.overrideWith((ref) async => const []),
+            ],
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(
+          tester
+              .widget<VideoPlayerWidget>(find.byType(VideoPlayerWidget))
+              .handleNativeFullscreen,
+          isFalse,
+        );
+        tester
+            .widget<IconButton>(
+              find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+            )
+            .onPressed
+            ?.call();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(
+          nativeCalls.where((call) => call.method == 'enterFullscreen'),
+          hasLength(1),
+        );
+        expect(
+          find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+          findsOneWidget,
+        );
+
+        AiroNativeFullscreen.debugNotifyMacosFullscreenExited();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(
+          find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+          findsOneWidget,
+        );
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
+
+  testWidgets('restored native macOS fullscreen synchronizes player state', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    const fullscreenChannel = MethodChannel(
+      'com.developerscoffee.airo.window/fullscreen',
+    );
+    final nativeCalls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      fullscreenChannel,
+      (call) async {
+        nativeCalls.add(call);
+        if (call.method != 'isFullscreen') return null;
+        return nativeCalls
+                .where((nativeCall) => nativeCall.method == 'isFullscreen')
+                .length >
+            1;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        fullscreenChannel,
+        null,
+      ),
+    );
+    try {
+      await tester.pumpWidget(
+        createWidget(
+          streamingState: StreamingState(
+            playbackState: PlaybackState.playing,
+            isLiveStream: true,
+            liveDelay: const Duration(seconds: 1),
+            currentChannel: channels.first,
+          ),
+          extraOverrides: [railsProvider.overrideWith((ref) async => const [])],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(
+        nativeCalls.where((call) => call.method == 'isFullscreen'),
+        hasLength(2),
+      );
+      expect(
+        nativeCalls.where((call) => call.method == 'enterFullscreen'),
+        isEmpty,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+        findsOneWidget,
+      );
+
+      AiroNativeFullscreen.debugNotifyMacosFullscreenExited();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 
   testWidgets('portrait preview exposes usable compact player controls', (
     tester,

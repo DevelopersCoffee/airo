@@ -1240,6 +1240,10 @@ class _TvPlayerPanel extends StatelessWidget {
                       : VideoPlayerWidget(
                           showControls: true,
                           enableTouchGestures: false,
+                          // The fullscreen route owns the native macOS window
+                          // transition. Requesting it here as well races two
+                          // NSWindow toggles and can cancel fullscreen entry.
+                          handleNativeFullscreen: false,
                           onFullscreenToggle: () =>
                               _openFullscreenPlayer(context),
                         ),
@@ -1319,13 +1323,12 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
-    // Entering this page only maximizes the video within the current
-    // window bounds; it never asked the OS to actually go fullscreen.
-    // dispose() below already pairs with an exit call, so request the
-    // matching enter here.
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // Wait until the route has rendered before asking NSWindow to enter
+        // fullscreen. Requests made while the pointer-driven Navigator push
+        // is still building can be ignored by AppKit.
+        unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
         _focusNode.requestFocus();
       }
     });
@@ -1377,6 +1380,8 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
             enableSwipeChannelChange: false,
             enableTouchGestures: false,
             initiallyFullscreen: true,
+            // This route pairs native entry/exit with its own lifecycle.
+            handleNativeFullscreen: false,
             onFullscreenToggle: _close,
           ),
         ),
