@@ -630,6 +630,35 @@ the wrong invariant.
 So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
 architecture** — implementations, which deserve the same review as any other.
 
+### Falsification comes from outside the mechanism that produced the claim
+
+Self-consistency is necessary and never sufficient. A mechanism cannot establish
+its own evidentiary value, because the reasoning that built it is the reasoning
+that would have to find it wrong.
+
+Observed, four times in one revision:
+
+| Claim | Who falsified it, and how |
+|---|---|
+| "every pre-existing tamper test passes against the new format" | Security did not dispute it. They built mutants showing it was **true and not evidence** — removing three of four controls left the suite green |
+| "the façade hides key material" | Rust Architecture did not read the code. They compiled an **external consumer** and reached the master seed |
+| "`A04` is a valid check" | The assertion-vs-invariant review asked what it *proves*, not whether it runs |
+| "the frame-AAD mutant is sound" | Critiqued **before its result was accepted** — asymmetric, so it tested nothing |
+
+In every case the producing mechanism reported success and an independent one
+did not.
+
+**Therefore validation infrastructure is subject to council review like any
+other change.** `G0.7` assertions, `G0.8` probes, and mutation regressions are
+implementations of the architecture and carry the same obligation as the code
+they judge — reviewed by a role that did not write them, against the invariant
+rather than the finding.
+
+The gap this closes is specific and was demonstrated: the author reviewed his own
+22 assertions and passed eleven that could not prove their obligations. Nothing
+in the Decision Matrix required otherwise, because the matrix covers code and
+contracts and did not contemplate the gates.
+
 ### Match the mechanism to the proof obligation
 
 Not a list of tools — a mapping from what must be proved to what can prove it.
