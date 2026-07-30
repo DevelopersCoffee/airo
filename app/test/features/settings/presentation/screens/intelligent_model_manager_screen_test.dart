@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:airo_app/features/settings/application/ai_model_management.dart';
 import 'package:airo_app/features/settings/presentation/intelligent_model_manager_provider.dart';
 import 'package:airo_app/features/settings/presentation/screens/intelligent_model_manager_screen.dart';
@@ -27,6 +29,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        key: UniqueKey(),
         overrides: [
           modelRegistryProvider.overrideWithValue(ModelRegistry()),
           modelDownloadServiceProvider.overrideWithValue(downloads),
@@ -47,6 +50,145 @@ void main() {
     await tester.pump();
 
     expect(find.text('No models found in the catalog.'), findsOneWidget);
+  });
+
+  testWidgets('renders loading state while snapshot is pending', (
+    tester,
+  ) async {
+    final downloads = _MockDownloadService();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(ModelRegistry()),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) => Completer<ModelManagerSnapshot>().future,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('renders error state for snapshot failures', (tester) async {
+    final downloads = _MockDownloadService();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(ModelRegistry()),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => throw StateError('catalog unavailable'),
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('catalog unavailable'), findsOneWidget);
+  });
+
+  testWidgets('shows active download progress and pauses the queue item', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'downloading',
+      name: 'Downloading Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 4096,
+      description: 'Currently downloading.',
+    );
+    final registry = ModelRegistry()..registerModel(modelInfo);
+    const progress = ModelDownloadProgress(
+      modelId: 'downloading',
+      totalBytes: 4096,
+      downloadedBytes: 2048,
+      status: ModelDownloadStatus.downloading,
+      speedBytesPerSecond: 512,
+      queuePosition: 1,
+      resumeSupported: true,
+    );
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'downloading',
+          name: 'Downloading Model',
+          version: 'Unversioned',
+          description: 'Currently downloading.',
+          sizeBytes: 4096,
+          updateState: ModelUpdateState.notInstalled,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 0,
+    );
+    final downloads = _MockDownloadService();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(() => downloads.pauseDownload('downloading')).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) =>
+                ActiveDownloadsNotifier(ref)..state = {'downloading': progress},
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData.dark(),
+          home: const IntelligentModelManagerScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Download queue'), findsOneWidget);
+    expect(find.textContaining('#2 downloading'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsWidgets);
+    await tester.ensureVisible(find.byTooltip('Pause'));
+    await tester.tap(find.byTooltip('Pause'));
+    await tester.pump();
+
+    verify(() => downloads.pauseDownload('downloading')).called(1);
   });
 
   testWidgets('starts a download for a catalog model that is not installed', (
