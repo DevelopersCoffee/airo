@@ -51,9 +51,7 @@ void main() {
       transferTimeout: const Duration(milliseconds: 50),
     );
     await expectLater(
-      service.fetchShare(
-        Uri.parse('http://127.0.0.1:${server.port}/stalled'),
-      ),
+      service.fetchShare(Uri.parse('http://127.0.0.1:${server.port}/stalled')),
       throwsA(isA<TimeoutException>()),
     );
   });
