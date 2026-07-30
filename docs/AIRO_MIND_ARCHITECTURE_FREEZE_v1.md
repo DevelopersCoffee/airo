@@ -669,6 +669,53 @@ The gap this closes is specific and was demonstrated: the author reviewed his ow
 in the Decision Matrix required otherwise, because the matrix covers code and
 contracts and did not contemplate the gates.
 
+### Validation soundness — PASS must mean the property was checked
+
+A gate makes one promise: **PASS means this property was actually examined.**
+Everything else it reports is downstream of that. Three defects found in one
+pass of Revision 9B's own gates each break it, and none is a coverage gap:
+
+| Defect | What PASS actually meant | Found by |
+|---|---|---|
+| **Name-pinning** | a *spelling* is absent, not the property | Rust Architect: renaming `as_bytes` to `material` left `G0.7` 23/23 while an external consumer printed the 64-byte master seed |
+| **Missing source passes** | **nothing was examined** | `G0.7` against `/nonexistent` reported **18 of 23 passing** — every `absent` assertion passes trivially when `grep` has no tree to search |
+| **Empty enumeration passes** | an *empty universe* satisfies every rule | `G0.9` recorded **0 public items** against a cleaned scratch tree and passed a crate that publishes the master seed |
+
+The second and third are the same failure: **vacuous success.** They are worse
+than name-pinning, because a name-pinned gate at least examined code.
+
+> Soundness is not completeness. A gate can be incomplete and honest. A gate
+> that reports PASS without examining anything is neither.
+
+**Every gate declares and enforces its preconditions**, aborting with a distinct
+exit code rather than reporting PASS or FAIL. Currently: the source tree exists,
+and it holds at least the expected number of files. An abort is not a failure —
+it says the question could not be asked.
+
+### Gate levels, and why order matters
+
+| Level | Proves | Examples |
+|---|---|---|
+| **0 — Preconditions** | the question can be asked | tree exists, enumeration non-empty |
+| **1 — Mechanical integrity** | a complete enumeration matches an approved one | public-surface allowlist, forbidden dependencies |
+| **2 — Property assertions** | a named property holds | security invariants, mutation regressions |
+| **3 — Consumer journeys** | reachability from outside | compile probes, `DENY`/`ALLOW` |
+
+Level 1 runs **before** Level 2, and that ordering is the lesson of `G0.9` vs
+`G0.7`. Level 1 enumerates *approved surface* and fails on anything else, so it
+catches additions **without a rule for them**. Level 2 enumerates *known
+defects*, so it catches only what someone already thought of. A Level 2 gate
+cannot substitute for a missing Level 1 gate, which is exactly what `G0.7` was
+asked to do and could not.
+
+Same mutant, both gates, one run:
+
+```
+G0.7:  23 passed, 0 FAILED           (name-pinned, blind)
+G0.9:  FAILED -- 1 unapproved public item
+       + vault/seed.rs :: fn material
+```
+
 ### Match the mechanism to the proof obligation
 
 Not a list of tools — a mapping from what must be proved to what can prove it.

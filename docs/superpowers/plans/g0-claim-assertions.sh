@@ -31,6 +31,22 @@ SRC="${1:-$SP/rev7/src}"
 PASS=0
 FAIL=0
 
+# PRECONDITION. Without this, every `absent` assertion passes trivially against
+# a missing tree: `grep` finds nothing in a directory that is not there. Run
+# against /nonexistent this script reported "18 passed, 5 FAILED (of 23)" --
+# mostly green, measuring no code at all. A gate that cannot tell "the defect is
+# absent" from "the source is absent" is not evidence; it is the strongest form
+# of the vacuity it was built to prevent.
+if [ ! -d "$SRC" ]; then
+  echo "G0.7: ABORT -- source tree not found: $SRC" >&2
+  exit 2
+fi
+n_rs=$(find "$SRC" -name '*.rs' | wc -l | tr -d ' ')
+if [ "$n_rs" -lt 10 ]; then
+  echo "G0.7: ABORT -- only $n_rs .rs files under $SRC; expected the full crate" >&2
+  exit 2
+fi
+
 # assert KIND ID FINDING GLOB PATTERN DESC
 assert() {
   local kind="$1" id="$2" finding="$3" glob="$4" pat="$5" desc="$6" hits
