@@ -131,8 +131,11 @@ class ActiveModelInfo {
 /// Ensures only one model is loaded at a time to prevent memory issues.
 /// Implements the singleton pattern from the reference implementation.
 class ActiveModelService {
-  ActiveModelService._internal({MemoryBudgetManager? memoryBudgetManager})
-    : _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager();
+  ActiveModelService._internal({
+    MemoryBudgetManager? memoryBudgetManager,
+    bool simulateLoad = false,
+  }) : _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager(),
+       _simulateLoad = simulateLoad;
 
   static ActiveModelService? _instance;
 
@@ -146,9 +149,11 @@ class ActiveModelService {
   /// In production, use [instance] instead.
   factory ActiveModelService.forTesting({
     MemoryBudgetManager? memoryBudgetManager,
+    bool simulateLoad = true,
   }) {
     return ActiveModelService._internal(
       memoryBudgetManager: memoryBudgetManager,
+      simulateLoad: simulateLoad,
     );
   }
 
@@ -158,6 +163,9 @@ class ActiveModelService {
   }
 
   final MemoryBudgetManager _memoryBudgetManager;
+  // Production must never claim a GGUF model is executable without a native
+  // loader. Tests can opt into the deterministic lifecycle simulation.
+  final bool _simulateLoad;
 
   ActiveModelInfo? _activeModel;
   ActiveRuntimeInfo? _activeRuntime;
@@ -199,6 +207,15 @@ class ActiveModelService {
     ModelLoadProgressCallback? onProgress,
     ModelMemoryWarningCallback? onMemoryWarning,
   }) async {
+    if (!_simulateLoad) {
+      const message =
+          'Local GGUF inference is unavailable because the native llama.cpp '
+          'backend is not installed. Configure a supported remote server or '
+          'install the native backend before loading this model.';
+      developer.log(message, name: 'ActiveModelService', level: 900);
+      return Err(StateError(message), StackTrace.current);
+    }
+
     developer.log(
       'Loading model: ${config.modelName}',
       name: 'ActiveModelService',
