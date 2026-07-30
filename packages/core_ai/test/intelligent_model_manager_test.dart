@@ -193,6 +193,20 @@ void main() {
     );
 
     test(
+      'repairModel delegates a clean repair to the download service',
+      () async {
+        when(() => mockRegistry.getModel(testModel.id)).thenReturn(testModel);
+        when(
+          () => mockDownload.repairModel(testModel),
+        ).thenAnswer((_) async {});
+
+        await manager.repairModel(testModel.id);
+
+        verify(() => mockDownload.repairModel(testModel)).called(1);
+      },
+    );
+
+    test(
       'deleteModel calls delete on download service and marks as removed in registry',
       () async {
         when(

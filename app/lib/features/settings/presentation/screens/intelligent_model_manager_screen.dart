@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -731,8 +732,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 'Retry the model warm-up from Model Management.',
               ModelHealthAction.resumeDownload =>
                 'Resume the download from Model Management.',
-              ModelHealthAction.repair =>
-                'Repair or re-download this model from Model Management.',
+              ModelHealthAction.repair => 'Repairing the model download now.',
               ModelHealthAction.reduceContext =>
                 'Reduce context in AI preferences, then warm the model again.',
               ModelHealthAction.chooseAlternative =>
@@ -741,6 +741,11 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(message)));
+            if (action == ModelHealthAction.repair) {
+              unawaited(
+                ref.read(intelligentModelManagerProvider).repairModel(model.id),
+              );
+            }
           },
         ),
       ),

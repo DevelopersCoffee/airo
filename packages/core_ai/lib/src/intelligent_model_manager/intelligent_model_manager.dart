@@ -155,6 +155,12 @@ class IntelligentModelManager {
     return _downloadService.retryDownload(modelId, model: model);
   }
 
+  /// Clears stale/partial files before starting a clean verified download.
+  Future<void> repairModel(String modelId) {
+    final model = _requireModel(modelId);
+    return _downloadService.repairModel(model);
+  }
+
   Future<void> cancelDownload(String modelId) =>
       _downloadService.cancelDownload(modelId);
 

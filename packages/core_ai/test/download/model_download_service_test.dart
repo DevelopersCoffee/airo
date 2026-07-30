@@ -257,6 +257,19 @@ void main() {
     },
   );
 
+  test('repair clears stale files before starting a fresh request', () async {
+    when(
+      () => storage.getCandidateModelPaths(model.id),
+    ).thenAnswer((_) async => const ['/sandbox/model-a.gguf']);
+
+    await downloadService.repairModel(model);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(downloads.actions, contains('cancel:model-a'));
+    expect(downloads.requests, hasLength(1));
+    verify(() => storage.deleteInstallReceipt(model.id)).called(1);
+  });
+
   test(
     'restoreQueue maps persisted platform state after engine restart',
     () async {

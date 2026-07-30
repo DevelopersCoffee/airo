@@ -259,6 +259,13 @@ class ModelDownloadService {
     return deleted;
   }
 
+  /// Removes a corrupt or incomplete artifact and starts a fresh verified
+  /// download using the current catalog metadata.
+  Future<void> repairModel(OfflineModelInfo model) async {
+    await deleteModel(model.id);
+    downloadModel(model);
+  }
+
   Future<int> getStorageUsed() async {
     final directory = await _storageManager.getModelsDirectory();
     if (!await directory.exists()) return 0;

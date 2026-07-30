@@ -15,6 +15,7 @@ import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'model_health_center_screen.dart';
 
@@ -860,8 +861,9 @@ class _ModelLibraryContent extends ConsumerWidget {
       return result;
     }
     if (result.diagnostic != null) {
+      if (!context.mounted) return result;
       await _showPreparationFailure(
-        navigator.context,
+        context,
         diagnostic: result.diagnostic!,
         candidate: candidate,
       );
@@ -1105,13 +1107,21 @@ class _RuntimeHealthButton extends ConsumerWidget {
                     ModelHealthAction.resumeDownload =>
                       'Resume the model download from Model Management.',
                     ModelHealthAction.repair =>
-                      'Repair or re-download the model from Model Management.',
+                      'Repairing the model download now.',
                     ModelHealthAction.chooseAlternative =>
                       'Choose another installed model from Model Management.',
                   };
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
+                  if (action == ModelHealthAction.repair &&
+                      candidate.package != null) {
+                    unawaited(
+                      ref
+                          .read(intelligentModelManagerProvider)
+                          .repairModel(candidate.package!.id),
+                    );
+                  }
                   onOpenModelManager();
                 },
               ),
