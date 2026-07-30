@@ -66,13 +66,42 @@ class LlamaGgufService {
     if (!_loaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
-    return _nativeController.generate(
+    return _guardedGeneration(
       prompt: prompt,
       maxTokens: maxTokens,
       temperature: temperature,
       topP: topP,
       topK: topK,
     );
+  }
+
+  /// The Android plugin normally closes its token stream with `onDone`.
+  /// Keep a bounded safety net around that platform boundary so a lost
+  /// terminal callback cannot leave a chat request awaiting forever.
+  Stream<String> _guardedGeneration({
+    required String prompt,
+    required int maxTokens,
+    required double temperature,
+    required double topP,
+    required int topK,
+  }) async* {
+    try {
+      await for (final token
+          in _nativeController
+              .generate(
+                prompt: prompt,
+                maxTokens: maxTokens,
+                temperature: temperature,
+                topP: topP,
+                topK: topK,
+              )
+              .timeout(const Duration(minutes: 2))) {
+        yield token;
+      }
+    } on TimeoutException {
+      await stop();
+      throw TimeoutException('GGUF generation timed out.');
+    }
   }
 
   Future<void> stop() async {

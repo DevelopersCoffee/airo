@@ -193,7 +193,7 @@ class AssistantModelLibraryState {
   /// A downloaded file is not automatically an executable local runtime.
   /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
   /// handled by the LiteRT adapter; plain `.gguf` files require the native
-  /// llama.cpp backend, which is not bundled in the public app yet.
+  /// llama.cpp backend and are only runnable when that backend is available.
   static bool isLiteRtPackage(OfflineModelInfo model) {
     final source =
         '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
