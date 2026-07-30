@@ -649,10 +649,20 @@ In every case the producing mechanism reported success and an independent one
 did not.
 
 **Therefore validation infrastructure is subject to council review like any
-other change.** `G0.7` assertions, `G0.8` probes, and mutation regressions are
-implementations of the architecture and carry the same obligation as the code
-they judge — reviewed by a role that did not write them, against the invariant
-rather than the finding.
+other change.** The rule covers **every artifact that produces evidence about
+the implementation** — `G0.7` assertions, `G0.8` probes, mutation regressions,
+and property or path-correct tests. The shared characteristic is what makes them
+vulnerable: each generates evidence, so a self-contained review of one inherits
+the same self-consistency failure it exists to detect. They are implementations
+of the architecture and carry the same obligation as the code they judge —
+reviewed by a role that did not write them, against the invariant rather than
+the finding.
+
+Path-correct tests are not an afterthought in that list. The one written this
+revision used `.expect_err()`, which requires `Debug` on the `Ok` variant, and
+rustc's suggested remedy was to derive `Debug` on `VaultPayload` — printing key
+bytes into panic messages, in direct violation of a Global Constraint. A test
+can breach the architecture it was written to defend.
 
 The gap this closes is specific and was demonstrated: the author reviewed his own
 22 assertions and passed eleven that could not prove their obligations. Nothing
