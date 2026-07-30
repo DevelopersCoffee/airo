@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../support/gemini_nano_channel.dart';
 
 void main() {
   testWidgets('pasted finance SMS is added to Coins from chat', (tester) async {
@@ -20,6 +21,7 @@ void main() {
       tester.view.resetPhysicalSize();
     });
 
+    stubGeminiNanoChannel();
     SharedPreferences.setMockInitialValues({
       'selected_assistant_model_id': geminiNanoAssistantModelId,
     });
@@ -59,7 +61,14 @@ void main() {
       find.byKey(const Key('agent_chat_input')),
       'INR 450.00 spent on your HDFC Bank Credit Card at Swiggy on 20-06-26.',
     );
-    await tester.tap(find.byIcon(Icons.send));
+    // Once AI initialisation completes it adds a message, which scrolls the
+    // composer out of the test viewport.
+    await tester.ensureVisible(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    // The send handler is fire-and-forget, so let the ingestion future land
+    // before asserting on the ledger.
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(repository.transactions, hasLength(1));
@@ -90,6 +99,7 @@ void main() {
       tester.view.resetPhysicalSize();
     });
 
+    stubGeminiNanoChannel();
     SharedPreferences.setMockInitialValues({
       'selected_assistant_model_id': geminiNanoAssistantModelId,
     });
@@ -129,7 +139,14 @@ void main() {
       find.byKey(const Key('agent_chat_input')),
       'Rs 299 spent',
     );
-    await tester.tap(find.byIcon(Icons.send));
+    // Once AI initialisation completes it adds a message, which scrolls the
+    // composer out of the test viewport.
+    await tester.ensureVisible(find.byIcon(Icons.send));
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    // The send handler is fire-and-forget, so let the ingestion future land
+    // before asserting on the ledger.
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     expect(repository.transactions, hasLength(1));
