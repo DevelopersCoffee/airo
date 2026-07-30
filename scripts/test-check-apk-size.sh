@@ -90,6 +90,34 @@ run_case "fails-over-baseline-growth" 1 \
     "$SCRIPT"
 grep -q "exceeds 5% baseline increase" "$TMP_DIR/fails-over-baseline-growth.out"
 
+# Baseline growth is reportable rather than fatal when enforcement is off. CI
+# uses this on main pushes: a failing run there skips the baseline refresh that
+# follows it, so enforcing the delta would deadlock the gate against a baseline
+# it can never update.
+run_case "reports-baseline-growth-when-not-enforced" 0 \
+  env APK_SIZE_APK_GLOB="$growth_apk" \
+    APK_SIZE_COMPONENT=demo \
+    APK_SIZE_BASELINE_FILE="$baseline_file" \
+    APK_SIZE_REPORT_FILE="$TMP_DIR/growth-reported-report.md" \
+    APK_SIZE_MAX_BYTES=2000 \
+    APK_SIZE_MAX_INCREASE_PERCENT=5 \
+    APK_SIZE_BASELINE_DELTA_ENFORCED=false \
+    "$SCRIPT"
+grep -q "reported, not enforced" "$TMP_DIR/reports-baseline-growth-when-not-enforced.out"
+grep -q "WARN: exceeds 5% baseline increase" "$TMP_DIR/growth-reported-report.md"
+
+# The absolute budget stays fatal even with delta enforcement off.
+run_case "still-fails-absolute-cap-when-delta-not-enforced" 1 \
+  env APK_SIZE_APK_GLOB="$over_cap_apk" \
+    APK_SIZE_COMPONENT=demo \
+    APK_SIZE_BASELINE_FILE="$baseline_file" \
+    APK_SIZE_REPORT_FILE="$TMP_DIR/over-cap-unenforced-report.md" \
+    APK_SIZE_MAX_BYTES=1100 \
+    APK_SIZE_MAX_INCREASE_PERCENT=5 \
+    APK_SIZE_BASELINE_DELTA_ENFORCED=false \
+    "$SCRIPT"
+grep -q "exceeds max APK size" "$TMP_DIR/still-fails-absolute-cap-when-delta-not-enforced.out"
+
 run_case "fails-missing-baseline" 1 \
   env APK_SIZE_APK_GLOB="$missing_apk" \
     APK_SIZE_COMPONENT=demo \

@@ -561,6 +561,13 @@ jobs:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
           APK_SIZE_REPORT_FILE: apk-size-${{ matrix.platform.name }}.md
+          # Growth past the recorded baseline blocks a pull request, where a
+          # human can attribute it. On main it is reported instead: a failing
+          # run there skips "Generate APK baseline update" below and the
+          # update-apk-size-baselines job that consumes it, so enforcing the
+          # delta on main deadlocks the gate against a baseline it can never
+          # refresh. The absolute per-component budget stays enforced on both.
+          APK_SIZE_BASELINE_DELTA_ENFORCED: ${{ github.event_name == 'pull_request' }}
         run: |
           scripts/check-apk-size.sh
 
