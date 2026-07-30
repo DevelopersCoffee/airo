@@ -1,0 +1,27 @@
+G0.7 claim assertions -- /private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad/rev7/src
+
+  PASS  A01  SEC-33   Seed::as_bytes deleted (64-byte master seed)
+  PASS  A02  RA-17    RootIdentity::sign not pub (signing oracle)
+  PASS  A03  RA-17b   DeviceKey::sign deleted (zero callers)
+  PASS  A04  SEC-32   canonical identifier type exists (I6: a boundary, not a call)
+  PASS  A04b SEC-32   no raw identifier crosses the PUBLIC Vault boundary
+  PASS  A05  RA-23a   RecoveryPackage::revocation_epoch private
+  PASS  A06  RA-23a   RecoveryPackage::identity_public_key private
+  PASS  A07  RA-23a   DeviceCertificate::device_id private
+  PASS  A08  RA-23a   DeviceCertificate::signature private
+  PASS  A09  RA-23a   cfg(test) tamper constructors exist
+  PASS  A10  RA-24    no per-byte format! in CODE (350.82ms vs 16.55ms)
+  PASS  A11  RA-19    no unchecked length cast on a signing payload
+  PASS  A12  SEC-46   no unchecked increment on the nonce path
+  PASS  A13  RA-3     seed.rs does not call OsRng
+  PASS  A14  RA-3     device.rs does not call OsRng
+  PASS  A15  RA-3     package.rs does not call OsRng
+  PASS  A16  SEC-38   restore admits via admit_device, not an inline filter
+  PASS  A17  SEC-35   the package nonce is authenticated
+  PASS  A18  SEC-36   head_epoch is carried in the sealed trailer, not re-derived
+  PASS  A19  RA-25    no stale allow(dead_code) on content_id
+  PASS  A20  SEC-37   KeyBytes::as_bytes is package-scoped, not crate-wide
+  PASS  A21  SEC-40   a caller-supplied ledger is validated
+  PASS  A22  SEC-32   no 32-byte seed accessor either
+
+G0.7: 23 passed, 0 FAILED  (of 23 assertions)

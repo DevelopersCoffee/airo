@@ -100,9 +100,15 @@ probe DENY RA-23a 'a package header cannot be rewritten by a consumer' \
 
 echo
 echo "The Vault must be the only door to an envelope:"
-probe DENY SEC-43 'an envelope cannot be deserialized outside the Vault' \
+# `SEC-43` restated. The original DENY -- "an envelope cannot be deserialized
+# outside the Vault" -- asserted a property the architecture forbids: design
+# §4.1 removed all per-content state from the Vault, so it cannot know which
+# content ids it minted. RA §5 recommended withdrawing the claim rather than
+# adding a MAC to chase it. What IS enforced is that a forged envelope yields
+# no key material, because `unwrap_with` is `pub(crate)`.
+probe DENY SEC-43 'a forged envelope yields no content key' \
   'let e: ContentEnvelope = serde_json::from_slice(br#"{"content_id":"forged","wrappings":[]}"#).unwrap();
-   println!("{:?}", e);'
+   let _k = e.unwrap_with("inbox", unimplemented!());'
 
 echo
 echo "Supported journeys must be reachable:"
@@ -110,12 +116,13 @@ probe ALLOW RA-18 'the full restore path is callable' \
   'let (_k, _e) = vault.add_content("n", &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
    let p = RecoveryPackage::export(&vault, &seed).unwrap();
    let v = SealedRestore::load(&p, &seed).unwrap()
-       .apply_revocations(&RevocationSource::package_only()).into_vault();
+       .apply_revocations(&RevocationSource::package_only()).unwrap().into_vault();
    println!("{}", v.is_content_destroyed("n"));'
 probe ALLOW SEC-39 'a NON-blind restore is constructible' \
   'let p = RecoveryPackage::export(&vault, &seed).unwrap();
-   let src = RevocationSource::replayed_from_log(Default::default(), Default::default());
-   let a = SealedRestore::load(&p, &seed).unwrap().apply_revocations(&src);
+   let src = RevocationSource::replayed_from_log(
+       airo_mind::RevocationLedger::new(), airo_mind::LogHead::new("op-1"));
+   let a = SealedRestore::load(&p, &seed).unwrap().apply_revocations(&src).unwrap();
    assert!(!a.was_blind());'
 probe ALLOW SEC-38 'the device-trust journey is callable' \
   'let cert: DeviceCertificate = unimplemented!();

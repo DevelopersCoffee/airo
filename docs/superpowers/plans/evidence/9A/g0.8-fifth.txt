@@ -1,0 +1,20 @@
+G0.8 external-consumer probe -- against /private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad/rev7
+
+Key material and signing must be unreachable:
+  PASS  DENY   SEC-33   the 64-byte master seed is not readable
+  PASS  DENY   RA-17    the root identity is not a signing oracle
+  PASS  DENY   RA-17b   device keys cannot be minted or used to sign
+
+AAD-covered header fields must not be publicly mutable:
+  PASS  DENY   RA-23a   a package header cannot be rewritten by a consumer
+
+The Vault must be the only door to an envelope:
+  PASS  DENY   SEC-43   a forged envelope yields no content key
+
+Supported journeys must be reachable:
+  PASS  ALLOW  RA-18    the full restore path is callable
+  PASS  ALLOW  SEC-39   a NON-blind restore is constructible
+  PASS  ALLOW  SEC-38   the device-trust journey is callable
+  PASS  ALLOW  RA-Q4    content can actually be sealed and opened
+
+G0.8: 9 passed, 0 FAILED

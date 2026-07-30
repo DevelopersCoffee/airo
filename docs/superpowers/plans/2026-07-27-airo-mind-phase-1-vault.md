@@ -768,6 +768,13 @@ pub use vault::{
     RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION,
     // Restore path — unreachable in revision 7 without the next two
     SealedRestore, AppliedRestore, RevocationSource, RevocationProvenance,
+    // `SEC-39`: `replayed_from_log` is the only constructor producing a
+    // non-blind restore, and both its inputs were unexported, so every
+    // externally reachable restore was `was_blind() == true`.
+    RevocationLedger, LogHead,
+    // `SEC-38`: `trust_device` is `pub` and takes this, so a `pub` API took an
+    // unnameable type and the device-trust journey (#1257) was uncallable.
+    DeviceCertificate, DeviceKey,
     PurgeDirective, UnlinkOutcome, RevocationSubject,
     // Content path — opaque handles
     ContentEnvelope, ContentKey, SealedEnvelope,
@@ -901,7 +908,7 @@ pub use aggregate::{PurgeDirective, UnlinkOutcome, Vault};
 pub use error::VaultError;
 pub use identifier::ContextId;
 pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
-pub use restore::{AppliedRestore, RevocationProvenance, RevocationSource, SealedRestore};
+pub use restore::{AppliedRestore, LogHead, RevocationProvenance, RevocationSource, SealedRestore};
 ```
 
 `mod.rs` carries declarations and re-exports and **nothing else** — no types,
@@ -1417,7 +1424,7 @@ mod tests {
     }
 
     fn hex_lower(bytes: &[u8]) -> String {
-        bytes.iter().map(|b| format!("{b:02x}")).collect()
+        crate::vault::encoding::hex_of(bytes)
     }
 }
 ```
@@ -1597,7 +1604,7 @@ impl RootIdentity {
 
     /// Lowercase hex of the public key. Stable, human-comparable.
     pub fn identity_id(&self) -> String {
-        self.public_key().as_bytes().iter().map(|b| format!("{b:02x}")).collect()
+        super::encoding::hex_of(self.public_key().as_bytes())
     }
 
     /// `RA-17` / `A02`. `pub(crate)`: a raw signing oracle over the root key
@@ -1786,7 +1793,7 @@ impl DeviceKey {
     }
 
     pub fn device_id(&self) -> String {
-        self.public_key().iter().map(|b| format!("{b:02x}")).collect()
+        super::encoding::hex_of(&self.public_key())
     }
 
     // `RA-17b` / `A03`: `DeviceKey::sign` deleted -- zero callers anywhere,
@@ -1971,7 +1978,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod device;
 
-pub use device::DeviceCertificate;
+pub use device::{DeviceCertificate, DeviceKey};
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -3125,6 +3132,20 @@ impl RevocationLedger {
         self.entries.iter().map(|(s, e)| (s.clone(), *e))
     }
 
+    /// Sets the carried head during framed restore. `SEC-36`.
+    ///
+    /// Fail-closed: the head may only move forward and may never be below the
+    /// highest entry, so a hostile or buggy writer cannot rewind the epoch and
+    /// make `revoked_since` skip revocations.
+    pub(crate) fn set_head_epoch(&mut self, head: u64) -> Result<(), VaultError> {
+        let max_entry = self.entries.values().copied().max().unwrap_or(0);
+        if head < max_entry {
+            return Err(VaultError::SerializationFailed);
+        }
+        self.head_epoch = head;
+        Ok(())
+    }
+
     /// Absorbs a decoded batch during framed restore. `ADR-0017`.
     ///
     /// Fail-closed like `merge`: the higher epoch wins, so a batch can only
@@ -3372,7 +3393,7 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod revocation;
 
-pub use revocation::RevocationSubject;
+pub use revocation::{RevocationLedger, RevocationSubject};
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -3653,10 +3674,21 @@ impl Vault {
         ))
     }
 
-    /// Parses an envelope. **The only way in**, replacing the `Deserialize`
-    /// derive that let any consumer forge one for content the Vault never
-    /// minted — content with no revocation record, which can never be
-    /// shredded.
+    /// Parses an envelope, applying the revocation check.
+    ///
+    /// **The provenance claim is withdrawn** (`SEC-43`, `RA` §5). An earlier
+    /// version said this "replaced the `Deserialize` derive that let any
+    /// consumer forge an envelope for content the Vault never minted". That is
+    /// unachievable and always was: design §4.1 removed **all** per-content
+    /// state from the Vault, so the Vault cannot know which content ids it
+    /// minted, now or ever. A claim the architecture forbids is not a claim to
+    /// enforce; it is one to stop making.
+    ///
+    /// What this door does provide, and what the test below verifies: a
+    /// **revocation check on the read path**. A stored envelope for content
+    /// since destroyed does not come back in. Forging an envelope for a
+    /// never-minted id yields nothing, because `unwrap_with` is `pub(crate)`
+    /// and no content key exists for it.
     ///
     /// Fails closed on revoked content: a stored envelope for something since
     /// destroyed does not come back through this door.
@@ -3672,10 +3704,10 @@ impl Vault {
     /// Removes one context link. Does not destroy anything.
     pub fn unlink_content(
         &self,
-        context_id: &str,
+        context_id: &ContextId,
         envelope: &mut ContentEnvelope,
     ) -> Result<UnlinkOutcome, VaultError> {
-        if !envelope.remove_wrapping(context_id) {
+        if !envelope.remove_wrapping(context_id.as_str()) {
             return Err(VaultError::NoWrappingForContext(context_id.to_string()));
         }
         Ok(UnlinkOutcome {
@@ -3831,7 +3863,7 @@ mod tests {
             .add_content("bill-001", &[&cid("hospitalization"), &cid("finance"), &cid("tax-2026")])
             .unwrap();
 
-        let outcome = vault.unlink_content("hospitalization", &mut envelope).unwrap();
+        let outcome = vault.unlink_content(&cid("hospitalization"), &mut envelope).unwrap();
 
         assert!(!outcome.now_orphaned);
         assert_eq!(outcome.remaining_contexts, vec!["finance".to_string(), "tax-2026".to_string()]);
@@ -3842,7 +3874,7 @@ mod tests {
         let mut vault = vault();
         let (_key, mut envelope) = vault.add_content("note-1", &[&cid("inbox")]).unwrap();
 
-        let outcome = vault.unlink_content("inbox", &mut envelope).unwrap();
+        let outcome = vault.unlink_content(&cid("inbox"), &mut envelope).unwrap();
 
         assert!(outcome.now_orphaned);
         assert!(outcome.remaining_contexts.is_empty());
@@ -3981,6 +4013,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::domain;
 use super::encoding::push_len_prefixed;
+use super::envelope::ContextKey;
 use super::random::random_nonce;
 use super::identity::{RootIdentity, RootPublicKey};
 use super::error::VaultError;
@@ -4050,6 +4083,17 @@ impl VaultPayload {
         self.context_keys.len()
     }
 
+    /// `SEC-37` / `A20`: the conversion happens HERE, inside `package.rs`, so
+    /// `aggregate.rs` never names a key byte. Narrowing `KeyBytes::as_bytes` to
+    /// `pub(in crate::vault::package)` broke `Vault::from_payload`, which is
+    /// the finding: the aggregate was reaching into key material.
+    pub(super) fn into_context_keys(self) -> std::collections::BTreeMap<String, ContextKey> {
+        self.context_keys
+            .into_iter()
+            .map(|(id, k)| (id, ContextKey::from_bytes(*k.as_bytes())))
+            .collect()
+    }
+
     pub(super) fn root_public_key(&self) -> &RootPublicKey {
         &self.root_public_key
     }
@@ -4089,9 +4133,16 @@ impl KeyBytes {
         Self(bytes)
     }
 
-    /// `SEC-1`. `pub(super)`, so only `package.rs` can name a key byte. Its
-    /// one remaining caller is `Vault::from_payload`.
-    pub(super) fn as_bytes(&self) -> &[u8; 32] {
+    /// `SEC-1` / `SEC-37` / `A20`. `pub(in crate::vault::package)`, not
+    /// `pub(super)`.
+    ///
+    /// `pub(super)` inside `vault::package` resolves to `pub(in crate::vault)` --
+    /// every module in the crate, not this one. `SEC-37` proved it with a
+    /// sibling module standing in for Phase 2's log and sync, which compiled
+    /// against these key bytes. `RA-1`'s whole argument for choosing visibility
+    /// over a witness was that visibility is compiler-checked on every build,
+    /// so the spelling has to mean what the doc says.
+    pub(in crate::vault::package) fn as_bytes(&self) -> &[u8; 32] {
         &self.0
     }
 }
@@ -4478,8 +4529,20 @@ impl RecoveryPackage {
             emit(&FrameBody::Revocations(batch), &mut index, &mut digest, out)?;
         }
 
-        let mut trailer_plain = Vec::with_capacity(36);
+        // `SEC-36` / `A18`: the head is CARRIED, not re-derived.
+        //
+        // `FrameBody::Revocations` holds entries only, so `absorb` had to
+        // reconstruct `head_epoch` as `max(entry epoch)` -- while `validate()`
+        // permits `head_epoch > max(entry)`. A ledger that passes `validate`
+        // could therefore export successfully and be unrestorable, with the
+        // failure surfacing on restore day. Two checks disagreeing about one
+        // value, which is `SEC-2`'s defect class in the format layer.
+        //
+        // The trailer's plaintext layout is internal, not a frozen header
+        // field, so widening it is inside `Freeze §4`'s latitude.
+        let mut trailer_plain = Vec::with_capacity(44);
         trailer_plain.extend_from_slice(&index.to_be_bytes());
+        trailer_plain.extend_from_slice(&vault.revocations().head_epoch().to_be_bytes());
         trailer_plain.extend_from_slice(&digest.finalize());
         let trailer = cipher
             .encrypt(
@@ -4617,8 +4680,20 @@ impl RecoveryPackage {
         // Trailer last, over every frame ciphertext in order. A truncated file
         // loses frames and the count stops matching; a corrupted one fails
         // AEAD. Distinguishable, which is the `ADR-0017` requirement.
-        let mut trailer_plain = Vec::with_capacity(36);
+        // `SEC-36` / `A18`: the head is CARRIED, not re-derived.
+        //
+        // `FrameBody::Revocations` holds entries only, so `absorb` had to
+        // reconstruct `head_epoch` as `max(entry epoch)` -- while `validate()`
+        // permits `head_epoch > max(entry)`. A ledger that passes `validate`
+        // could therefore export successfully and be unrestorable, with the
+        // failure surfacing on restore day. Two checks disagreeing about one
+        // value, which is `SEC-2`'s defect class in the format layer.
+        //
+        // The trailer's plaintext layout is internal, not a frozen header
+        // field, so widening it is inside `Freeze §4`'s latitude.
+        let mut trailer_plain = Vec::with_capacity(44);
         trailer_plain.extend_from_slice(&index.to_be_bytes());
+        trailer_plain.extend_from_slice(&vault.revocations().head_epoch().to_be_bytes());
         trailer_plain.extend_from_slice(&digest.finalize());
         package.trailer = cipher
             .encrypt(
@@ -4687,7 +4762,7 @@ impl RecoveryPackage {
                 )
                 .map_err(|_| VaultError::DecryptionFailed)?,
         );
-        if trailer.len() != 36 {
+        if trailer.len() != 44 {
             return Err(VaultError::SerializationFailed);
         }
         let expected_count = u32::from_be_bytes(
@@ -4741,9 +4816,16 @@ impl RecoveryPackage {
             }
         }
 
-        if digest.finalize().as_slice() != &trailer[4..36] {
+        if digest.finalize().as_slice() != &trailer[12..44] {
             return Err(VaultError::SerializationFailed);
         }
+        // Restore the carried head rather than trusting `max(entry)`.
+        let carried_head = u64::from_be_bytes(
+            trailer[4..12]
+                .try_into()
+                .map_err(|_| VaultError::SerializationFailed)?,
+        );
+        revocations.set_head_epoch(carried_head)?;
         Ok(VaultPayload {
             root_public_key: root.ok_or(VaultError::SerializationFailed)?,
             context_keys,
@@ -4993,7 +5075,7 @@ mod tests {
         vault.add_context(&cid("archive")).unwrap();
         let (_k, mut envelope) = vault.add_content("note-4", &[&cid("inbox")]).unwrap();
         vault.link_content(&cid("archive"), &mut envelope).unwrap();
-        vault.unlink_content("inbox", &mut envelope).unwrap();
+        vault.unlink_content(&cid("inbox"), &mut envelope).unwrap();
         assert_eq!(vault.revocations().head_epoch(), before);
 
         let _directive = vault.destroy_content("note-4").unwrap();
@@ -5032,13 +5114,16 @@ mod tests {
         let aad = package.header_aad().unwrap();
         let cipher = XChaCha20Poly1305::new(&package_key(&seed).unwrap().into());
         let package_nonce: [u8; 24] = package.nonce.as_slice().try_into().unwrap();
+        let carried_head = vault.revocations().head_epoch();
         let mut digest = Sha256::new();
         for frame in &package.frames {
             digest.update(&frame.ciphertext);
         }
-        let mut trailer_plain = Vec::with_capacity(36);
+        // 44-byte layout since `SEC-36`: count | head_epoch | digest.
+        let mut trailer_plain = Vec::with_capacity(44);
         trailer_plain
             .extend_from_slice(&u32::try_from(package.frames.len()).unwrap().to_be_bytes());
+        trailer_plain.extend_from_slice(&carried_head.to_be_bytes());
         trailer_plain.extend_from_slice(&digest.finalize());
         package.trailer = cipher
             .encrypt(
@@ -5431,9 +5516,24 @@ pub struct LogHead(String);
 // `ReplayedFromLog` provenance and suppress `was_blind()`. That is R1's
 // original bypass, reopened (chief-security-officer S6).
 
+impl LogHead {
+    /// `SEC-39` / `A18`. Public, because `replayed_from_log` is the only
+    /// constructor that yields a non-blind restore and it takes one of these.
+    ///
+    /// Revision 8 had no public constructor at all, so **every externally
+    /// reachable restore was `was_blind() == true`** — the same defect class as
+    /// `RA-18`, closed for `SealedRestore` and left open for provenance. The
+    /// operation id comes from the caller's log; the Vault does not mint it.
+    pub fn new(operation_id: impl Into<String>) -> Self {
+        LogHead(operation_id.into())
+    }
+
+}
+
+/// Tests only. Production callers get a `LogHead` from the log or build one
+/// with `LogHead::new`.
 #[cfg(test)]
 impl LogHead {
-    /// Tests only. Production callers get a `LogHead` from the log.
     pub(crate) fn for_test(id: &str) -> LogHead {
         LogHead(id.to_string())
     }
@@ -5841,15 +5941,16 @@ impl Vault {
         payload: super::package::VaultPayload,
         _: super::restore::RevocationsApplied,
     ) -> Self {
+        let root_public_key = payload.root_public_key;
+        let revocations = payload.revocations.clone();
+        let device_certificates_in = payload.device_certificates.clone();
+        // `SEC-37` / `A20`: the aggregate never names a key byte. `package.rs`
+        // owns the conversion.
         let mut vault = Self {
-            root_public_key: payload.root_public_key,
-            context_keys: payload
-                .context_keys
-                .into_iter()
-                .map(|(id, bytes)| (id, ContextKey::from_bytes(*bytes.as_bytes())))
-                .collect(),
+            root_public_key,
+            context_keys: payload.into_context_keys(),
             device_certificates: Vec::new(),
-            revocations: payload.revocations,
+            revocations,
         };
         // `SEC-38` / `A16`: restore admits through the single choke point.
         //
@@ -5859,7 +5960,7 @@ impl Vault {
         // rather than reporting them. Safe only because `apply_revocations`
         // purges revoked devices first, and "safe because of ordering
         // elsewhere" is exactly the reasoning `SEC-15` rejected.
-        for certificate in payload.device_certificates {
+        for certificate in device_certificates_in {
             // A certificate that fails admission is dropped, as before: the
             // payload is AEAD-authenticated, so a failure here means the root
             // rotated, not that an attacker wrote it.
