@@ -9,6 +9,13 @@ COMPONENT="${APK_SIZE_COMPONENT:-default}"
 MAX_MB="${APK_SIZE_MAX_MB:-35}"
 MAX_BYTES="${APK_SIZE_MAX_BYTES:-}"
 MAX_INCREASE_PERCENT="${APK_SIZE_MAX_INCREASE_PERCENT:-5}"
+# Whether growth past the recorded baseline fails the run, as opposed to being
+# reported. The absolute budget is always enforced; only this delta is
+# switchable. CI enforces it on pull requests, where a human can react, and
+# reports it on main pushes -- a failing run on main skips the baseline refresh
+# that follows it, so enforcing there deadlocks the gate against a baseline it
+# can never update.
+BASELINE_DELTA_ENFORCED="${APK_SIZE_BASELINE_DELTA_ENFORCED:-true}"
 REPORT_FILE="${APK_SIZE_REPORT_FILE:-apk-size-report.md}"
 TOP_ENTRIES="${APK_SIZE_TOP_ENTRIES:-20}"
 
@@ -190,13 +197,22 @@ for apk in "${apk_files[@]}"; do
   fi
 
   if over_threshold "$size_bytes" "$threshold_bytes"; then
-    if [ "$status" = "OK" ]; then
-      status="FAIL: exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+    if [ "$BASELINE_DELTA_ENFORCED" = "true" ]; then
+      if [ "$status" = "OK" ]; then
+        status="FAIL: exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      else
+        status="$status; exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      fi
+      echo "::error file=$apk::$artifact is ${delta}% over baseline, exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      failed=1
     else
-      status="$status; exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      if [ "$status" = "OK" ]; then
+        status="WARN: exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      else
+        status="$status; exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
+      fi
+      echo "::warning file=$apk::$artifact is ${delta}% over baseline, exceeds ${MAX_INCREASE_PERCENT}% baseline increase (reported, not enforced)"
     fi
-    echo "::error file=$apk::$artifact is ${delta}% over baseline, exceeds ${MAX_INCREASE_PERCENT}% baseline increase"
-    failed=1
   fi
 
   echo "| $COMPONENT | $artifact | $(format_bytes "$size_bytes") | $(format_bytes "$budget_bytes") | $(format_bytes "$baseline_bytes") | ${delta}% | $status |" >>"$REPORT_FILE"
