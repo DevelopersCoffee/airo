@@ -187,6 +187,7 @@ class ModelHealthReport {
 
     final failureCode = _failureCode(
       download: download,
+      artifactPresent: artifactPresent,
       compatibility: compatibility,
       runtimeHealth: runtimeHealth,
     );
@@ -256,9 +257,16 @@ class ModelHealthReport {
 
   static ModelHealthFailureCode _failureCode({
     required ModelDownloadProgress? download,
+    required bool? artifactPresent,
     required ModelCompatibilityResult? compatibility,
     required RuntimeHealth? runtimeHealth,
   }) {
+    // A live artifact probe is authoritative. A persisted file path can outlive
+    // the file itself, so surface that state as recoverable instead of leaving
+    // the Health Center stuck at "unknown".
+    if (download == null && artifactPresent == false) {
+      return ModelHealthFailureCode.downloadIncomplete;
+    }
     if (download?.status == ModelDownloadStatus.failed) {
       final code = download?.failureCode;
       if (code == 'integrityMismatch') {

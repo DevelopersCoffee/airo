@@ -114,5 +114,8 @@ void main() {
       report.stage(ModelHealthStage.verified).status,
       ModelHealthStageStatus.pending,
     );
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.downloadIncomplete);
+    expect(report.actions, contains(ModelHealthAction.resumeDownload));
   });
 }
