@@ -16,6 +16,29 @@ fun dartDefine(name: String): String? {
         ?.substringAfter("=")
 }
 
+/// Every ABI an Android artifact in this project can carry.
+val ALL_ANDROID_ABIS = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+
+/// The one ABI this build targets, or null when it targets several.
+///
+/// Flutter passes its `--target-platform` values through the `target-platform`
+/// Gradle property; `--split-per-abi` passes all of them.
+val singleAbi: String? =
+    (providers.gradleProperty("target-platform").orNull ?: "")
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .singleOrNull()
+        ?.let { platform ->
+            when (platform) {
+                "android-arm64" -> "arm64-v8a"
+                "android-arm" -> "armeabi-v7a"
+                "android-x64" -> "x86_64"
+                "android-x86" -> "x86"
+                else -> null
+            }
+        }
+
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
@@ -186,6 +209,21 @@ android {
 
     packaging {
         jniLibs {
+            // Flutter's --target-platform filters only the libs Flutter itself
+            // contributes (libflutter.so, libapp.so). Native libs that arrive
+            // inside a plugin AAR keep every ABI they were published with, so a
+            // single-ABI build still ships the others as dead weight -- 2.9 MB
+            // of x86_64 and armeabi-v7a libsqlite3.so in the arm64-only TV APK.
+            //
+            // Drop them when the build declares exactly one ABI. A
+            // --split-per-abi build passes every platform, so singleAbi is null
+            // there and nothing is excluded; ABI splitting stays Flutter's job
+            // (see the splits.abi note above).
+            singleAbi?.let { abi ->
+                for (other in ALL_ANDROID_ABIS.filter { it != abi }) {
+                    excludes += "lib/$other/**"
+                }
+            }
             if (isLeanVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
