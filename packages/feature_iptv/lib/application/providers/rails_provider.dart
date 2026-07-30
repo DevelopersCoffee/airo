@@ -44,4 +44,4 @@ final railsProvider = FutureProvider<List<RailResult>>((ref) async {
         .toList(growable: false),
   );
   return [...personal, ...regional];
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);

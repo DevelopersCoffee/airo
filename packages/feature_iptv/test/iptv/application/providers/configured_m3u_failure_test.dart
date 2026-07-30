@@ -240,6 +240,66 @@ void main() {
     );
   });
 
+  testWidgets(
+    'a dead source is fetched once, not re-driven by every dependent that '
+    'retries on the propagated error',
+    (tester) async {
+      var fetchAttempts = 0;
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          m3uSourceParserFactoryProvider.overrideWithValue(
+            (sourceId) => _CountingSourceParser(
+              prefs: prefs,
+              sourceId: sourceId,
+              onFetch: () => fetchAttempts++,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(contentSourceStoreProvider).replaceAll([
+        source('m3u-dead'),
+      ]);
+      container.invalidate(configuredContentSourcesProvider);
+
+      // The channel screen watches the rails alongside the channels; rails
+      // await iptvChannelsProvider and so inherit its failure.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Consumer(
+              builder: (context, ref, _) {
+                ref.watch(railsProvider);
+                final channels = ref.watch(iptvChannelsProvider);
+                return Text(
+                  channels.hasError ? 'error' : 'pending',
+                  textDirection: TextDirection.ltr,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('error'), findsOneWidget);
+
+      // Let every retry timer in the chain fire.
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      expect(
+        fetchAttempts,
+        1,
+        reason:
+            'an unreachable source must be contacted once per user-initiated '
+            'load, not hammered because dependents retry the error',
+      );
+    },
+  );
+
   test('the failure message names no source URL', () {
     expect(
       const PlaylistSourcesUnavailableException(3).toString(),
