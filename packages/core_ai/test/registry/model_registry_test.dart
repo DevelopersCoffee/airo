@@ -52,6 +52,15 @@ void main() {
         filePath: '/path/to/model.gguf',
       );
       expect(downloaded.isDownloaded, true);
+
+      const missingPath = OfflineModelInfo(
+        id: 'missing-path',
+        name: 'Missing Path',
+        family: ModelFamily.phi,
+        fileSizeBytes: 1000000000,
+        filePath: '   ',
+      );
+      expect(missingPath.isDownloaded, false);
     });
 
     test('should serialize to/from JSON', () {

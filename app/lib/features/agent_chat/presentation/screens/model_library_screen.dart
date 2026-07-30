@@ -14,6 +14,7 @@ import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/llama_gguf_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
@@ -211,6 +212,7 @@ class AssistantModelLibraryState {
     final deviceInfo = await nanoService.getDeviceInfo();
     final liteRtService = LiteRtLmService();
     final liteRtAvailable = await liteRtService.isAvailable();
+    final ggufAvailable = await LlamaGgufService().isAvailable();
 
     await geminiApiService.initialize();
     final cloudAvailable = geminiApiService.isAvailable;
@@ -326,6 +328,7 @@ class AssistantModelLibraryState {
           AssistantModelCandidate.fromOfflineModel(
             hydrated,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -343,6 +346,7 @@ class AssistantModelLibraryState {
           AssistantModelCandidate.fromOfflineModel(
             model,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -523,9 +527,10 @@ class AssistantModelCandidate {
   factory AssistantModelCandidate.fromOfflineModel(
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
+    bool nativeGgufAvailable = false,
   }) {
     final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
-    final isRunnable = model.isDownloaded && isLiteRt;
+    final isRunnable = model.isDownloaded && (isLiteRt || nativeGgufAvailable);
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -547,7 +552,7 @@ class AssistantModelCandidate {
           : model.isDownloaded
           ? 'Native backend unavailable'
           : 'Download package',
-      unavailableReason: model.isDownloaded && !isLiteRt
+      unavailableReason: model.isDownloaded && !isLiteRt && !nativeGgufAvailable
           ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
           : model.isDownloaded
           ? null

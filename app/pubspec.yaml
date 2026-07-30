@@ -114,6 +114,9 @@ dependencies:
   audioplayers: ^6.7.1
   cached_network_image: 3.4.1
   flutter_tts: 4.2.5
+  # Android/iOS GGUF execution adapter. The app-facing wrapper keeps this
+  # platform plugin behind the core_ai runtime boundary.
+  llama_flutter_android: ^0.2.6
   chess: 0.8.1
   stockfish: 1.8.1
   flutter_contacts: ^2.1.0

@@ -246,7 +246,7 @@ class OfflineModelInfo {
   final String? webAssetUrl;
 
   /// Whether the model is downloaded and available locally.
-  bool get isDownloaded => filePath != null;
+  bool get isDownloaded => filePath?.trim().isNotEmpty ?? false;
 
   /// Whether the model supports audio input.
   bool get supportsAudio => modalities.contains(ModelModality.audio);
