@@ -126,6 +126,34 @@ class ModelDownloadService {
     if (progress.status == DownloadStatus.completed) {
       final model = _scheduledModels[progress.artifactId];
       if (model != null) {
+        _emit(
+          ModelDownloadProgress(
+            modelId: progress.artifactId,
+            totalBytes: progress.totalBytes,
+            downloadedBytes: progress.downloadedBytes,
+            status: ModelDownloadStatus.verifying,
+            retryCount: progress.retryCount,
+            resumeSupported: progress.resumeSupported,
+          ),
+        );
+        final verified = await _storageManager.verifyModelIntegrity(model);
+        if (!verified) {
+          _emit(
+            ModelDownloadProgress(
+              modelId: progress.artifactId,
+              totalBytes: progress.totalBytes,
+              downloadedBytes: progress.downloadedBytes,
+              status: ModelDownloadStatus.failed,
+              error: 'The downloaded artifact failed integrity verification.',
+              failureCode: 'integrity_mismatch',
+              retryCount: progress.retryCount,
+              resumeSupported: progress.resumeSupported,
+            ),
+          );
+          _scheduledIds.remove(progress.artifactId);
+          _scheduledModels.remove(progress.artifactId);
+          return;
+        }
         await _tryWriteReceipt(model);
       }
     }

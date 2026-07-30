@@ -149,6 +149,10 @@ void main() {
   );
 
   test('completed platform transfer records an install receipt', () async {
+    var verificationCalls = 0;
+    when(
+      () => storage.verifyModelIntegrity(model),
+    ).thenAnswer((_) async => ++verificationCalls >= 2);
     final progressValues = <ModelDownloadProgress>[];
     final subscription = downloadService
         .downloadModel(model)
@@ -169,6 +173,34 @@ void main() {
     expect(progressValues.last.status, ModelDownloadStatus.completed);
     await subscription.cancel();
   });
+
+  test(
+    'completed platform transfer is rejected when integrity fails',
+    () async {
+      final progressValues = <ModelDownloadProgress>[];
+      final subscription = downloadService
+          .downloadModel(model)
+          .listen(progressValues.add);
+      await Future<void>.delayed(Duration.zero);
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.completed,
+          downloadedBytes: 1000,
+          totalBytes: 1000,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(progressValues, hasLength(3));
+      expect(progressValues[1].status, ModelDownloadStatus.verifying);
+      expect(progressValues.last.status, ModelDownloadStatus.failed);
+      expect(progressValues.last.failureCode, 'integrity_mismatch');
+      verifyNever(() => storage.writeInstallReceipt(model));
+      await subscription.cancel();
+    },
+  );
 
   test(
     'pause resume retry and cancel delegate to the shared controller',
