@@ -29,14 +29,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    const order = [
-      'All',
-      'Alpha',
-      'Bravo',
-      'Charlie',
-      'Delta',
-      'Echo',
-    ];
+    const order = ['All', 'Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'];
 
     // Which option row holds focus now? A row is "focused" when the focus
     // ancestor of its Text widget has primary focus.

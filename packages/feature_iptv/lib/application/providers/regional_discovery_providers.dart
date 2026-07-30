@@ -43,4 +43,4 @@ final regionalDiscoveryRailsProvider = FutureProvider<List<RailResult>>((
     },
     availabilityByChannelId: availability,
   );
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
