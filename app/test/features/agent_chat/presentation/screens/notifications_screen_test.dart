@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../support/gemini_nano_channel.dart';
 
 void main() {
   test('buildNotificationChatPrefill includes reminder context', () {
@@ -31,6 +32,7 @@ void main() {
   testWidgets('notification card opens chat with a prefilled composer', (
     tester,
   ) async {
+    stubGeminiNanoChannel();
     SharedPreferences.setMockInitialValues({
       'selected_assistant_model_id': geminiNanoAssistantModelId,
     });

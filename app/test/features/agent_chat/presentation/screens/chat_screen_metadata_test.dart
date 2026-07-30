@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../support/gemini_nano_channel.dart';
 
 void main() {
   test('buildRuntimeChatResponseMetadata records tokens and timings', () {
@@ -283,6 +284,8 @@ Future<void> _pumpChatScreen(
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();
   });
+
+  stubGeminiNanoChannel();
 
   SharedPreferences.setMockInitialValues({
     'selected_assistant_model_id': geminiNanoAssistantModelId,
