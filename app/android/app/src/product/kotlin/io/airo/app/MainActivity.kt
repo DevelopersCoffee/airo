@@ -8,9 +8,12 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -19,6 +22,7 @@ import android.telephony.TelephonyManager
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -84,6 +88,10 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
                     }
                     "openWifiSettings" -> openWifiSettings(result)
+                    "setFlashlight" -> setFlashlight(call, result)
+                    "composeEmail" -> composeEmail(call, result)
+                    "createContact" -> createContact(call, result)
+                    "openMap" -> openMap(call, result)
                     else -> result.notImplemented()
                 }
             }
@@ -521,6 +529,85 @@ class MainActivity : AudioServiceFragmentActivity() {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
             result.success(mapOf("opened" to true))
         } catch (error: android.content.ActivityNotFoundException) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun setFlashlight(call: MethodCall, result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            result.success(mapOf("changed" to false, "reason" to "camera_permission_required"))
+            return
+        }
+        try {
+            val enabled = call.argument<Boolean>("enabled") ?: false
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+            if (cameraId == null) {
+                result.success(mapOf("changed" to false, "reason" to "flash_unavailable"))
+                return
+            }
+            cameraManager.setTorchMode(cameraId, enabled)
+            result.success(mapOf("changed" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("changed" to false, "reason" to (error.message ?: "flashlight_failed")))
+        }
+    }
+
+    private fun composeEmail(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:")
+                call.argument<String>("to")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(it))
+                }
+                call.argument<String>("subject")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_SUBJECT, it)
+                }
+                call.argument<String>("body")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_TEXT, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose email app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun createContact(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
+                call.argument<String>("name")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.NAME, it)
+                }
+                call.argument<String>("phone")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.PHONE, it)
+                }
+                call.argument<String>("email")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.EMAIL, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose contacts app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun openMap(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val query = call.argument<String>("query")?.trim().orEmpty()
+            val uri = if (query.isEmpty()) {
+                Uri.parse("geo:0,0")
+            } else {
+                Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+            }
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, uri), "Choose map app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
             result.success(mapOf("opened" to false))
         }
     }

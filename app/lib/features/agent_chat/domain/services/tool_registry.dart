@@ -135,19 +135,54 @@ class DeviceActionsTool implements Tool {
   String get name => 'Mobile Actions';
 
   @override
-  bool canHandle(Intent intent) => intent.type == IntentType.openWifiSettings;
+  bool canHandle(Intent intent) => {
+    IntentType.openWifiSettings,
+    IntentType.setFlashlight,
+    IntentType.composeEmail,
+    IntentType.createContact,
+    IntentType.openMap,
+  }.contains(intent.type);
 
   @override
   Future<AgentToolResult?> handle(Intent intent) async {
-    if (intent.type != IntentType.openWifiSettings) return null;
-    final opened = await _service.openWifiSettings();
+    if (!canHandle(intent)) return null;
+    final opened = switch (intent.type) {
+      IntentType.openWifiSettings => await _service.openWifiSettings(),
+      IntentType.setFlashlight => await _service.setFlashlight(
+        enabled: intent.parameters['enabled'] != false,
+      ),
+      IntentType.composeEmail => await _service.composeEmail(),
+      IntentType.createContact => await _service.createContact(),
+      IntentType.openMap => await _service.openMap(),
+      _ => false,
+    };
     return AgentToolResult(
-      message: opened
-          ? 'Opened Wi-Fi settings.'
-          : 'Airo could not open Wi-Fi settings on this device.',
+      message: opened ? _successMessage(intent) : _failureMessage(intent),
       isError: !opened,
     );
   }
+
+  String _successMessage(Intent intent) => switch (intent.type) {
+    IntentType.openWifiSettings => 'Opened Wi-Fi settings.',
+    IntentType.setFlashlight =>
+      intent.parameters['enabled'] == false
+          ? 'Turned the flashlight off.'
+          : 'Turned the flashlight on.',
+    IntentType.composeEmail => 'Opened the email composer.',
+    IntentType.createContact => 'Opened the contact form.',
+    IntentType.openMap => 'Opened the map.',
+    _ => 'Completed the device action.',
+  };
+
+  String _failureMessage(Intent intent) => switch (intent.type) {
+    IntentType.openWifiSettings =>
+      'Airo could not open Wi-Fi settings on this device.',
+    IntentType.setFlashlight => 'Airo could not change the flashlight.',
+    IntentType.composeEmail => 'Airo could not open an email composer.',
+    IntentType.createContact => 'Airo could not open the contact form.',
+    IntentType.openMap => 'Airo could not open a map on this device.',
+    _ => 'Airo could not complete the device action.',
+  };
 }
 
 /// Money and model-management routing tool.

@@ -96,5 +96,25 @@ void main() {
         expect(result?.message, 'Opened Wi-Fi settings.');
       },
     );
+
+    test('executes typed Mobile Actions through the same boundary', () async {
+      const channel = MethodChannel('test.tool-device-actions.typed');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => call.method == 'setFlashlight'
+            ? const {'changed': true}
+            : const {'opened': true},
+      );
+
+      final result = await DeviceActionsTool(
+        service: DeviceActionsService(channel: channel),
+      ).handle(IntentParser.parse('turn flashlight on'));
+
+      expect(result?.isError, isFalse);
+      expect(result?.message, 'Turned the flashlight on.');
+    });
   });
 }
