@@ -550,7 +550,9 @@ class AssistantModelCandidate {
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
-      opensModelManager: !model.isDownloaded,
+      // A downloaded artifact without a matching local backend still needs a
+      // setup action. It must never look like a runnable chat target.
+      opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
     );
@@ -748,6 +750,14 @@ class _ModelLibraryContent extends ConsumerWidget {
       if (confirmed == true && context.mounted) {
         onOpenModelManager();
       }
+      return;
+    }
+    if (!candidate.available && hasDownloadedPackage) {
+      await _showUnavailablePackage(
+        context,
+        template: template,
+        candidate: candidate,
+      );
       return;
     }
     if (!candidate.available && !hasDownloadedPackage) {
@@ -1194,6 +1204,9 @@ class _ProjectTemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasDownloadedPackage =
+        package?.isDownloaded == true ||
+        candidate.package?.isDownloaded == true;
     final outline = selected
         ? theme.colorScheme.primary
         : theme.colorScheme.outlineVariant;
@@ -1343,7 +1356,9 @@ class _ProjectTemplateCard extends StatelessWidget {
                       ),
                       label: Text(
                         candidate.opensModelManager
-                            ? 'Download package'
+                            ? (hasDownloadedPackage
+                                  ? 'Configure runtime'
+                                  : 'Download package')
                             : template.primaryAction,
                       ),
                     ),
