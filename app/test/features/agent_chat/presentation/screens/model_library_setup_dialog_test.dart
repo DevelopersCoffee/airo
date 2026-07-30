@@ -4,7 +4,6 @@ import 'package:airo_app/features/agent_chat/application/assistant_model_prefere
 import 'package:airo_app/features/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
-import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
