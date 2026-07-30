@@ -386,6 +386,25 @@ class AssistantRuntimeService {
           preferredPackage: candidate.package,
         );
         final package = downloadedPackage ?? candidate.package;
+        if (package != null &&
+            !AssistantModelLibraryState.isLiteRtPackage(package)) {
+          return AssistantRuntimePreparationResult.blocked(
+            AssistantRuntimeDiagnosticEnvelope(
+              runtimeId: candidate.id,
+              runtimeName: candidate.name,
+              summary: 'This GGUF package cannot run in the local adapter.',
+              detail:
+                  'The native llama.cpp backend is not bundled, so a downloaded GGUF file must not be routed through LiteRT-LM.',
+              deviceLabel: resolvedDeviceLabel,
+              platformLabel: platformLabel,
+              reasonCode: 'native_backend_unavailable',
+              repairActions: const [
+                'Configure an OpenAI-compatible llama.cpp, Ollama, or LM Studio server.',
+                'Choose a LiteRT-LM package from Model Management.',
+              ],
+            ),
+          );
+        }
         final runtimeReportedAvailable =
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
@@ -603,6 +622,12 @@ class AssistantRuntimeService {
           );
         }
         final package = await _resolveOfflinePackage(runtimeId);
+        if (!AssistantModelLibraryState.isLiteRtPackage(package)) {
+          throw AssistantRuntimeUnavailableException(
+            runtimeId,
+            'This downloaded GGUF package cannot run locally because the native llama.cpp backend is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.',
+          );
+        }
         final response = _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateLiteRtModelTextOverride?.call(

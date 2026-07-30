@@ -185,6 +185,18 @@ class AssistantModelLibraryState {
     return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModelPath);
   }
 
+  /// A downloaded file is not automatically an executable local runtime.
+  /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
+  /// handled by the LiteRT adapter; plain `.gguf` files require the native
+  /// llama.cpp backend, which is not bundled in the public app yet.
+  static bool isLiteRtPackage(OfflineModelInfo model) {
+    final source = '${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
+        .toLowerCase();
+    return source.contains('.litertlm') ||
+        source.contains('.task') ||
+        model.tags.any((tag) => tag.toLowerCase().contains('litert'));
+  }
+
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
   }) async {
@@ -506,6 +518,8 @@ class AssistantModelCandidate {
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
   }) {
+    final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
+    final isRunnable = model.isDownloaded && isLiteRt;
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -521,9 +535,15 @@ class AssistantModelCandidate {
       ],
       privacyLabel: 'Prompt stays on device after install',
       sizeLabel: model.fileSizeDisplay,
-      available: model.isDownloaded,
-      actionLabel: model.isDownloaded ? 'Start' : 'Download package',
-      unavailableReason: model.isDownloaded
+      available: isRunnable,
+      actionLabel: isRunnable
+          ? 'Start'
+          : model.isDownloaded
+          ? 'Native backend unavailable'
+          : 'Download package',
+      unavailableReason: model.isDownloaded && !isLiteRt
+          ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
+          : model.isDownloaded
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
