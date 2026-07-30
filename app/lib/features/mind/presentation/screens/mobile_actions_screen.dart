@@ -48,10 +48,7 @@ class _MobileActionsScreenState extends State<MobileActionsScreen> {
                         'Open Wi-Fi settings',
                         'Open WiFi settings.',
                       ),
-                      _commandChip(
-                        'Flashlight on',
-                        'Turn the flashlight on.',
-                      ),
+                      _commandChip('Flashlight on', 'Turn the flashlight on.'),
                       _commandChip(
                         'Flashlight off',
                         'Turn the flashlight off.',

@@ -84,10 +84,9 @@ class AiroLanSyncService {
       if (response.contentLength > maxPayloadBytes) {
         throw const FormatException('LAN share is too large');
       }
-      final bytes = await response.fold<List<int>>(
-        <int>[],
-        (buffer, chunk) => buffer..addAll(chunk),
-      ).timeout(transferTimeout);
+      final bytes = await response
+          .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk))
+          .timeout(transferTimeout);
       if (bytes.length > maxPayloadBytes) {
         throw const FormatException('LAN share is too large');
       }
