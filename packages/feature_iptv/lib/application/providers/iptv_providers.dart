@@ -917,7 +917,7 @@ final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   return allChannels
       .where((channel) => favoriteIds.contains(channel.id))
       .toList(growable: false);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 /// Toggles a channel's favorite state and returns the new state.
 ///

@@ -63,4 +63,4 @@ final resumeChannelProvider = FutureProvider<IPTVChannel?>((ref) async {
 
   final channels = await ref.watch(iptvChannelsProvider.future);
   return findResumeChannel(lastChannelId: lastChannelId, channels: channels);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);

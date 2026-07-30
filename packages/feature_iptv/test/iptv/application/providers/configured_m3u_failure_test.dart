@@ -300,6 +300,64 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a consumer of the favorites list does not re-drive the dead source '
+    'either',
+    (tester) async {
+      var fetchAttempts = 0;
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          favoriteChannelIdsProvider.overrideWith((ref) async => const {'x'}),
+          m3uSourceParserFactoryProvider.overrideWithValue(
+            (sourceId) => _CountingSourceParser(
+              prefs: prefs,
+              sourceId: sourceId,
+              onFetch: () => fetchAttempts++,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(contentSourceStoreProvider).replaceAll([
+        source('m3u-dead'),
+      ]);
+      container.invalidate(configuredContentSourcesProvider);
+
+      // The Favorites tab watches this and nothing else channel-shaped.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Consumer(
+              builder: (context, ref, _) {
+                final favorites = ref.watch(favoriteChannelsProvider);
+                return Text(
+                  favorites.hasError ? 'error' : 'pending',
+                  textDirection: TextDirection.ltr,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('error'), findsOneWidget);
+
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      expect(
+        fetchAttempts,
+        1,
+        reason:
+            'favorites inherits the channel failure; retrying it re-contacts '
+            'the dead source just like the rails did',
+      );
+    },
+  );
+
   test('the failure message names no source URL', () {
     expect(
       const PlaylistSourcesUnavailableException(3).toString(),
