@@ -54,24 +54,25 @@ abstract final class AppColors {
   static const Color primaryDark = Color(0xFFD0BCFF);
   static const Color onPrimaryDark = Color(0xFF381E72);
 
-  // Airo Cyber colors
-  static const Color cyberBackground = Color(0xFF041C1C);
-  static const Color cyberSurface = Color(0x99041C1C);
-  static const Color cyberSurfaceHigh = Color(0x33192424);
-  static const Color cyberChrome = Color(0xFF041C1C);
-  static const Color cyberPrimary = Color(0xFFFFE6CB);
-  static const Color cyberOnPrimary = Color(0xFF041C1C);
-  static const Color cyberSecondary = Color(0xFFFFFF89);
-  static const Color cyberTertiary = Color(0xFF7FE8DE);
-  static const Color cyberText = Color(0xFFFFE6CB);
-  static const Color cyberMutedText = Color(0xB3FFE6CB);
-  static const Color cyberOutline = Color(0x66FFE6CB);
-  static const Color cyberGridLine = Color(0x33FFE6CB);
-  static const Color cyberGlow = Color(0x38FFBD38);
+  // Airo Living Console colors. The `cyber` names remain stable because the
+  // persisted theme identifier is a compatibility contract.
+  static const Color cyberBackground = Color(0xFF05080B);
+  static const Color cyberSurface = Color(0xFF0B1116);
+  static const Color cyberSurfaceHigh = Color(0xFF111A21);
+  static const Color cyberChrome = Color(0xFF080C10);
+  static const Color cyberPrimary = Color(0xFF5CE1E6);
+  static const Color cyberOnPrimary = Color(0xFF041014);
+  static const Color cyberSecondary = Color(0xFF9B8CFF);
+  static const Color cyberTertiary = Color(0xFF47D7A0);
+  static const Color cyberText = Color(0xFFF4F1EA);
+  static const Color cyberMutedText = Color(0xFFAEB8C2);
+  static const Color cyberOutline = Color(0x4DFFFFFF);
+  static const Color cyberGridLine = Color(0x24FFFFFF);
+  static const Color cyberGlow = Color(0x335CE1E6);
 
-  // Cyber semantic surfaces
-  static const Color cyberSurfaceSolid = Color(0xFF0A2020);
-  static const Color cyberSurfaceRaised = Color(0xFF0F2828);
+  // Living Console semantic surfaces
+  static const Color cyberSurfaceSolid = Color(0xFF0B1116);
+  static const Color cyberSurfaceRaised = Color(0xFF17222B);
 
   // Live / status
   static const Color live = Color(0xFFE53935);
