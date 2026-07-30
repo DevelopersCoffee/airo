@@ -136,4 +136,20 @@ void main() {
     expect(report.explanation, contains('integrity verification'));
     expect(report.actions, contains(ModelHealthAction.repair));
   });
+
+  test('surfaces typed runtime failures instead of leaving health unknown', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.failed,
+        error: RuntimeErrorCode.timeout,
+        detail: 'Native generation timed out',
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.timeout);
+    expect(report.explanation, contains('timed out'));
+    expect(report.actions, contains(ModelHealthAction.retry));
+  });
 }

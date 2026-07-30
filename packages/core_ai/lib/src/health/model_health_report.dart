@@ -51,6 +51,12 @@ enum ModelHealthFailureCode {
   runtimeUnavailable,
   backendUnavailable,
   initializationFailed,
+  modelMissing,
+  permissionDenied,
+  unsupportedModel,
+  plannerFailure,
+  timeout,
+  cancelled,
   thermalLimit,
   contextTooLarge,
   storageFailure,
@@ -290,6 +296,14 @@ class ModelHealthReport {
         ModelHealthFailureCode.backendUnavailable,
       RuntimeErrorCode.initializationFailed =>
         ModelHealthFailureCode.initializationFailed,
+      RuntimeErrorCode.modelMissing => ModelHealthFailureCode.modelMissing,
+      RuntimeErrorCode.permissionDenied =>
+        ModelHealthFailureCode.permissionDenied,
+      RuntimeErrorCode.unsupportedModel =>
+        ModelHealthFailureCode.unsupportedModel,
+      RuntimeErrorCode.plannerFailure => ModelHealthFailureCode.plannerFailure,
+      RuntimeErrorCode.timeout => ModelHealthFailureCode.timeout,
+      RuntimeErrorCode.cancelled => ModelHealthFailureCode.cancelled,
       RuntimeErrorCode.thermalLimit => ModelHealthFailureCode.thermalLimit,
       RuntimeErrorCode.contextTooLarge =>
         ModelHealthFailureCode.contextTooLarge,
@@ -324,6 +338,19 @@ class ModelHealthReport {
       case ModelHealthFailureCode.initializationFailed:
         return runtimeHealth?.detail ??
             'The runtime failed during initialization.';
+      case ModelHealthFailureCode.modelMissing:
+        return 'The selected model artifact is missing from local storage.';
+      case ModelHealthFailureCode.permissionDenied:
+        return 'A required device or storage permission was denied.';
+      case ModelHealthFailureCode.unsupportedModel:
+        return 'The selected runtime cannot execute this model format.';
+      case ModelHealthFailureCode.plannerFailure:
+        return runtimeHealth?.detail ??
+            'Airo could not produce a safe execution plan for this request.';
+      case ModelHealthFailureCode.timeout:
+        return 'The runtime did not respond before the operation timed out.';
+      case ModelHealthFailureCode.cancelled:
+        return 'The inference request was cancelled before it completed.';
       case ModelHealthFailureCode.thermalLimit:
         return 'The device is thermally limited; pause and retry when it cools.';
       case ModelHealthFailureCode.contextTooLarge:
@@ -354,6 +381,10 @@ class ModelHealthReport {
       ModelHealthFailureCode.integrityFailed ||
       ModelHealthFailureCode.storageFailure => const [
         ModelHealthAction.repair,
+        ModelHealthAction.chooseAlternative,
+      ],
+      ModelHealthFailureCode.modelMissing => const [
+        ModelHealthAction.resumeDownload,
         ModelHealthAction.chooseAlternative,
       ],
       ModelHealthFailureCode.none => const [],
