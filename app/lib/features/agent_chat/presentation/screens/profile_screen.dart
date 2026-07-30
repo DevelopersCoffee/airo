@@ -652,6 +652,7 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
   late final TextEditingController _urlController;
   late final TextEditingController _modelController;
   late final TextEditingController _keyController;
+  bool _testing = false;
 
   @override
   void initState() {
@@ -699,6 +700,32 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
     );
   }
 
+  Future<void> _testConnection() async {
+    final url = _urlController.text.trim();
+    final model = _modelController.text.trim();
+    final apiKey = _keyController.text.trim();
+    if (url.isEmpty || model.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a server URL and model id first.')),
+      );
+      return;
+    }
+    setState(() => _testing = true);
+    final router = ref.read(aiRouterServiceProvider);
+    router.configureRemoteServer(baseUrl: url, model: model, apiKey: apiKey);
+    final diagnostics = await router.diagnoseRemoteServer();
+    if (!mounted) return;
+    setState(() => _testing = false);
+    final message = diagnostics == null
+        ? 'Remote server diagnostics are unavailable.'
+        : diagnostics.isReady
+        ? 'Connected. ${diagnostics.modelIds.length} model(s) reported.'
+        : diagnostics.message ?? 'The remote server is not ready.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -726,13 +753,28 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
             decoration: const InputDecoration(labelText: 'API key (optional)'),
           ),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Save server'),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                key: const Key('ai-remote-server-test'),
+                onPressed: _testing ? null : _testConnection,
+                icon: _testing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.network_check_outlined),
+                label: Text(_testing ? 'Testing…' : 'Test connection'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save server'),
+              ),
+            ],
           ),
         ],
       ),
