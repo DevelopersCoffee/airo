@@ -107,7 +107,6 @@ dev_dependencies:
   # Testing
   mocktail: 1.0.4
   alchemist: ^0.13.0
-  patrol: ^4.7.0
 
   # Linting
   flutter_lints: 6.0.0
