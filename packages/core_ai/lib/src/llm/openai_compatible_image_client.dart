@@ -98,7 +98,12 @@ class OpenAICompatibleImageClient {
           'n': 1,
           if (request.seed != null) 'seed': request.seed,
         },
-        options: Options(headers: _headers, receiveTimeout: _timeout),
+        options: Options(
+          headers: _headers,
+          connectTimeout: _timeout,
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+        ),
       );
       final data = response.data?['data'];
       if (data is! List || data.isEmpty || data.first is! Map) {
