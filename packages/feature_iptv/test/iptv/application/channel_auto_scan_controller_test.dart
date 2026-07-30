@@ -49,6 +49,51 @@ void main() {
   );
 
   test(
+    'coalesces probe results into one state change per event-loop turn',
+    () async {
+      // Every probe result used to publish its own state change. Each one
+      // invalidates the providers derived from availability -- the browse
+      // rails among them -- so a full-list scan on the rig (12,843 channels)
+      // meant that many invalidations of the browse grid.
+      final responses = <String, StreamProbeHttpResponse>{
+        for (var i = 0; i < 12; i++)
+          'ch-$i': const StreamProbeHttpResponse(statusCode: 200),
+      };
+      final controller = ChannelAutoScanController(
+        probe: StreamAvailabilityProbe(
+          transport: _FakeProbeTransport(responses),
+        ),
+      );
+      addTearDown(controller.dispose);
+
+      final emitted = <int>[];
+      controller.addListener(
+        (state) => emitted.add(state.availabilityByChannelId.length),
+      );
+
+      await controller.start(
+        scopeId: 'coalesce',
+        channels: [for (var i = 0; i < 12; i++) _channel('ch-$i')],
+        maxConcurrentRequests: 12,
+      );
+
+      expect(
+        controller.state.availabilityByChannelId.length,
+        12,
+        reason: 'coalescing must not drop or delay any result',
+      );
+      expect(controller.state.phase, ChannelAutoScanPhase.complete);
+      expect(
+        emitted.length,
+        4,
+        reason:
+            'scan start, two coalesced result flushes, and completion -- '
+            'before coalescing the same twelve results cost 15 state changes',
+      );
+    },
+  );
+
+  test(
     'uses the active player as an available result without probing it',
     () async {
       final transport = _FakeProbeTransport({
