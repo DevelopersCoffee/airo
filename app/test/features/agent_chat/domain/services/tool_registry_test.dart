@@ -61,6 +61,15 @@ void main() {
       expect(routine.shouldNavigate, false);
     });
 
+    test('routes Audio Scribe to its capture workflow', () async {
+      final result = await registry.executeIntent(
+        IntentParser.parse('transcribe audio'),
+      );
+
+      expect(result.route, '/mind/audio-scribe');
+      expect(result.message, contains('on-device capture'));
+    });
+
     test('routes game and model management requests to Airo screens', () async {
       final game = await registry.executeIntent(
         IntentParser.parse('start chess'),
@@ -96,5 +105,25 @@ void main() {
         expect(result?.message, 'Opened Wi-Fi settings.');
       },
     );
+
+    test('executes typed Mobile Actions through the same boundary', () async {
+      const channel = MethodChannel('test.tool-device-actions.typed');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      messenger.setMockMethodCallHandler(
+        channel,
+        (call) async => call.method == 'setFlashlight'
+            ? const {'changed': true}
+            : const {'opened': true},
+      );
+
+      final result = await DeviceActionsTool(
+        service: DeviceActionsService(channel: channel),
+      ).handle(IntentParser.parse('turn flashlight on'));
+
+      expect(result?.isError, isFalse);
+      expect(result?.message, 'Turned the flashlight on.');
+    });
   });
 }

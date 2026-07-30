@@ -38,4 +38,38 @@ void main() {
       isFalse,
     );
   });
+
+  test('forwards supported Mobile Actions with typed arguments', () async {
+    const channel = MethodChannel('test.device-actions.typed');
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return switch (call.method) {
+        'setFlashlight' => const {'changed': true},
+        'composeEmail' ||
+        'createContact' ||
+        'openMap' => const {'opened': true},
+        _ => fail('Unexpected method call: ${call.method}'),
+      };
+    });
+
+    final service = DeviceActionsService(channel: channel);
+    expect(await service.setFlashlight(enabled: true), isTrue);
+    expect(
+      await service.composeEmail(to: 'airo@example.com', subject: 'Hello'),
+      isTrue,
+    );
+    expect(await service.createContact(name: 'Airo', phone: '123'), isTrue);
+    expect(await service.openMap(query: 'Airo HQ'), isTrue);
+    expect(calls.map((call) => call.method), [
+      'setFlashlight',
+      'composeEmail',
+      'createContact',
+      'openMap',
+    ]);
+    expect(calls.first.arguments, {'enabled': true});
+  });
 }

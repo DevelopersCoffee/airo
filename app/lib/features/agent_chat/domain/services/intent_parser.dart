@@ -18,6 +18,10 @@ enum IntentType {
   audioScribe,
   mobileActions,
   openWifiSettings,
+  setFlashlight,
+  composeEmail,
+  createContact,
+  openMap,
   modelManagement,
   openOffers,
   openReader,
@@ -97,6 +101,16 @@ class IntentParser {
     'open mobile actions': IntentType.mobileActions,
     'open wifi settings': IntentType.openWifiSettings,
     'open wi-fi settings': IntentType.openWifiSettings,
+    'turn flashlight on': IntentType.setFlashlight,
+    'turn flashlight off': IntentType.setFlashlight,
+    'turn torch on': IntentType.setFlashlight,
+    'turn torch off': IntentType.setFlashlight,
+    'send email': IntentType.composeEmail,
+    'compose email': IntentType.composeEmail,
+    'create contact': IntentType.createContact,
+    'add contact': IntentType.createContact,
+    'show location on map': IntentType.openMap,
+    'open map': IntentType.openMap,
     'manage models': IntentType.modelManagement,
     'model management': IntentType.modelManagement,
     'offline models': IntentType.modelManagement,
@@ -201,6 +215,26 @@ class IntentParser {
       return IntentType.openWifiSettings;
     }
 
+    if (_containsAny(text, ['flashlight', 'torch'])) {
+      return IntentType.setFlashlight;
+    }
+
+    if (_containsAny(text, ['send email', 'compose email', 'write an email'])) {
+      return IntentType.composeEmail;
+    }
+
+    if (_containsAny(text, ['create contact', 'add contact', 'save contact'])) {
+      return IntentType.createContact;
+    }
+
+    if (_containsAny(text, [
+      'show location on map',
+      'open map',
+      'show on map',
+    ])) {
+      return IntentType.openMap;
+    }
+
     if (_containsAny(text, [
       'manage model',
       'offline model',
@@ -258,6 +292,10 @@ class IntentParser {
       'study plan',
     ])) {
       params['prompt'] = text.trim();
+    }
+
+    if (lowerText.contains('flashlight') || lowerText.contains('torch')) {
+      params['enabled'] = !lowerText.contains(' off');
     }
 
     return params;
@@ -339,6 +377,16 @@ class IntentParser {
         return 'Opening Mobile Actions';
       case IntentType.openWifiSettings:
         return 'Opening Wi-Fi settings';
+      case IntentType.setFlashlight:
+        return intent.parameters['enabled'] == false
+            ? 'Turning the flashlight off'
+            : 'Turning the flashlight on';
+      case IntentType.composeEmail:
+        return 'Opening email composer';
+      case IntentType.createContact:
+        return 'Opening contact form';
+      case IntentType.openMap:
+        return 'Opening a map';
       case IntentType.modelManagement:
         return 'Opening Model Management';
       case IntentType.openOffers:

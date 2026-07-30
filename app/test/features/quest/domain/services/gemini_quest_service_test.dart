@@ -76,27 +76,55 @@ void main() {
     );
   });
 
-  test(
-    'image requests fail explicitly until a vision runtime is connected',
-    () async {
-      final directory = await Directory.systemTemp.createTemp('airo-quest-');
-      addTearDown(() => directory.delete(recursive: true));
-      final source = File('${directory.path}/photo.jpg');
-      await source.writeAsBytes(<int>[1, 2, 3]);
-      final service = GeminiQuestService();
-      final quest = await service.createQuest('Image quest');
-      await service.uploadFile(quest.id, source);
+  test('image requests report unsupported local vision on desktop', () async {
+    final directory = await Directory.systemTemp.createTemp('airo-quest-');
+    addTearDown(() => directory.delete(recursive: true));
+    final source = File('${directory.path}/photo.jpg');
+    await source.writeAsBytes(<int>[1, 2, 3]);
+    final service = GeminiQuestService();
+    final quest = await service.createQuest('Image quest');
+    await service.uploadFile(quest.id, source);
 
-      expect(
-        () => service.processQuery(quest.id, 'Describe this image'),
-        throwsA(
-          isA<QuestProcessingUnavailableException>().having(
-            (error) => error.message,
-            'message',
-            contains('Image understanding is not connected'),
-          ),
+    expect(
+      () => service.processQuery(quest.id, 'Describe this image'),
+      throwsA(
+        isA<QuestProcessingUnavailableException>().having(
+          (error) => error.message,
+          'message',
+          contains('available on Android and iOS only'),
         ),
-      );
-    },
-  );
+      ),
+    );
+  });
+
+  test('image OCR stays local and is passed to the on-device model', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          switch (call.method) {
+            case 'isAvailable':
+              return true;
+            case 'initialize':
+              return true;
+            case 'generateContent':
+              final arguments = call.arguments as Map<dynamic, dynamic>;
+              expect(arguments['prompt'], contains('TOTAL 42.00'));
+              return 'I found the total locally.';
+            default:
+              return null;
+          }
+        });
+    final service = GeminiQuestService(
+      imageTextExtractor: (_) async => 'TOTAL 42.00',
+    );
+    final directory = await Directory.systemTemp.createTemp('airo-quest-');
+    addTearDown(() => directory.delete(recursive: true));
+    final source = File('${directory.path}/receipt.jpg');
+    await source.writeAsBytes(<int>[1, 2, 3]);
+    final quest = await service.createQuest('Local image quest');
+    await service.uploadFile(quest.id, source);
+
+    final response = await service.processQuery(quest.id, 'What is the total?');
+
+    expect(response, 'I found the total locally.');
+  });
 }

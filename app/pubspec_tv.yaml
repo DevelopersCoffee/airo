@@ -100,6 +100,7 @@ dependencies:
   chess: 0.8.1
   flame: 1.35.0
   google_mlkit_text_recognition: 0.16.0
+  google_mlkit_image_labeling: 0.15.0
   just_audio: 0.10.5
   audioplayers: 6.5.1
   flutter_tts: 4.2.5
@@ -155,6 +156,8 @@ dependency_overrides:
     path: ../packages/stubs/flame_stub
   google_mlkit_text_recognition:
     path: ../packages/stubs/mlkit_stub
+  google_mlkit_image_labeling:
+    path: ../packages/stubs/mlkit_image_labeling_stub
 
   # Audio package stubs (not needed for TV)
   just_audio:
