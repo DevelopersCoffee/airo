@@ -152,4 +152,18 @@ void main() {
     expect(report.explanation, contains('timed out'));
     expect(report.actions, contains(ModelHealthAction.retry));
   });
+
+  test('does not hide an unknown runtime failure as pending health', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.failed,
+        error: RuntimeErrorCode.unknown,
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.unknown);
+    expect(report.explanation, contains('unknown failure'));
+  });
 }

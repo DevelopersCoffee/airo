@@ -308,6 +308,7 @@ class ModelHealthReport {
       RuntimeErrorCode.contextTooLarge =>
         ModelHealthFailureCode.contextTooLarge,
       RuntimeErrorCode.storageFailure => ModelHealthFailureCode.storageFailure,
+      RuntimeErrorCode.unknown => ModelHealthFailureCode.unknown,
       _ => ModelHealthFailureCode.none,
     };
   }
@@ -357,8 +358,10 @@ class ModelHealthReport {
         return 'The requested context is too large for the current memory budget.';
       case ModelHealthFailureCode.storageFailure:
         return 'The model storage operation failed; repair the local artifact.';
-      case ModelHealthFailureCode.none:
       case ModelHealthFailureCode.unknown:
+        return runtimeHealth?.detail ??
+            'The runtime reported an unknown failure while handling this model.';
+      case ModelHealthFailureCode.none:
         return 'Airo is still collecting runtime facts for this model.';
     }
   }

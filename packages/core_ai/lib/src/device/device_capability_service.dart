@@ -30,7 +30,10 @@ class DeviceCapabilityService {
 
   /// Platform probes must not leave the capability report spinning forever
   /// when a native bridge is unavailable or wedged after an OS update.
-  static const Duration _probeTimeout = Duration(seconds: 3);
+  // Capability probes are advisory and must never hold device analysis or
+  // model selection hostage. A healthy platform channel answers far faster;
+  // one second gives it room while bounding OS/plugin regressions tightly.
+  static const Duration _probeTimeout = Duration(seconds: 1);
 
   /// Gets the current device memory information.
   ///
