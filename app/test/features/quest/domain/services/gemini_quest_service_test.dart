@@ -55,6 +55,58 @@ void main() {
     },
   );
 
+  test(
+    'file extraction reports missing and unsupported files clearly',
+    () async {
+      final service = GeminiQuestService();
+      final missing = QuestFile(
+        id: 'missing',
+        name: 'missing.txt',
+        path: '/tmp/airo-missing-quest-file.txt',
+        mimeType: 'text/plain',
+        sizeBytes: 0,
+        uploadedAt: DateTime(2026),
+      );
+
+      expect(
+        () => service.extractTextFromFile(missing),
+        throwsA(
+          isA<QuestProcessingUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            contains('no longer available'),
+          ),
+        ),
+      );
+
+      final directory = await Directory.systemTemp.createTemp('airo-quest-');
+      addTearDown(() => directory.delete(recursive: true));
+      final source = File('${directory.path}/notes.pdf');
+      await source.writeAsBytes(<int>[1, 2, 3]);
+      final sourceLength = await source.length();
+
+      expect(
+        () => service.extractTextFromFile(
+          QuestFile(
+            id: 'pdf',
+            name: 'notes.pdf',
+            path: source.path,
+            mimeType: 'application/pdf',
+            sizeBytes: sourceLength,
+            uploadedAt: DateTime(2026),
+          ),
+        ),
+        throwsA(
+          isA<QuestProcessingUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            contains('Text extraction is not available'),
+          ),
+        ),
+      );
+    },
+  );
+
   test('missing Nano never returns a canned answer', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
@@ -75,6 +127,48 @@ void main() {
       ),
     );
   });
+
+  test(
+    'text quest context is sent to Nano and empty answers fail closed',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('airo-quest-');
+      addTearDown(() => directory.delete(recursive: true));
+      final source = File('${directory.path}/notes.txt');
+      await source.writeAsString('Use this exact quest context.');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            switch (call.method) {
+              case 'isAvailable':
+                return true;
+              case 'initialize':
+                return true;
+              case 'generateContent':
+                final arguments = call.arguments as Map<dynamic, dynamic>;
+                expect(
+                  arguments['prompt'],
+                  contains('Use this exact quest context.'),
+                );
+                return '   ';
+              default:
+                return null;
+            }
+          });
+      final service = GeminiQuestService();
+      final quest = await service.createQuest('Text quest');
+      await service.uploadFile(quest.id, source);
+
+      expect(
+        () => service.processQuery(quest.id, 'Summarize it'),
+        throwsA(
+          isA<QuestProcessingUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            contains('returned no answer'),
+          ),
+        ),
+      );
+    },
+  );
 
   test('image requests report unsupported local vision on desktop', () async {
     final directory = await Directory.systemTemp.createTemp('airo-quest-');
@@ -127,4 +221,52 @@ void main() {
 
     expect(response, 'I found the total locally.');
   });
+
+  test('quest reminders, listing, and deletion stay local', () async {
+    final service = GeminiQuestService();
+    final quest = await service.createQuest('Reminder quest');
+
+    final reminder = await service.createReminder(
+      quest.id,
+      'Follow up',
+      'Check the local plan',
+      DateTime(2026, 7, 30, 10),
+      isRecurring: true,
+      recurringPattern: 'daily',
+    );
+
+    expect(reminder.questId, quest.id);
+    expect(reminder.isRecurring, isTrue);
+    expect(
+      (await service.getQuest(quest.id))?.reminders.single.id,
+      reminder.id,
+    );
+    expect(await service.listQuests(limit: 1), hasLength(1));
+
+    await service.deleteQuest(quest.id);
+
+    expect(await service.getQuest(quest.id), isNull);
+  });
+
+  test(
+    'missing quest operations throw instead of creating orphan state',
+    () async {
+      final service = GeminiQuestService();
+      final directory = await Directory.systemTemp.createTemp('airo-quest-');
+      addTearDown(() => directory.delete(recursive: true));
+      final source = File('${directory.path}/notes.docx');
+      await source.writeAsBytes(<int>[1, 2, 3]);
+
+      expect(() => service.uploadFile('missing', source), throwsException);
+      expect(
+        () => service.createReminder(
+          'missing',
+          'No quest',
+          'No quest',
+          DateTime(2026),
+        ),
+        throwsException,
+      );
+    },
+  );
 }

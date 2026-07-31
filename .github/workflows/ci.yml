@@ -293,7 +293,7 @@ jobs:
             app_platform: mobileFull
             use_stubs: false
             enforce_size: false
-            size_target_mb: 35
+            size_target_mb: 450
             description: "Full app with all features (size report only)"
           - name: tv
             target: lib/main_tv.dart

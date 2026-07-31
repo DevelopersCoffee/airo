@@ -209,40 +209,72 @@ class AssistantModelLibraryState {
 
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
+    Future<bool> Function()? isNanoSupported,
+    Future<Map<String, dynamic>> Function()? loadDeviceInfo,
+    Future<bool> Function()? isLiteRtAvailable,
+    bool? hasConfiguredModelPath,
+    Future<bool> Function()? isGgufAvailable,
+    Future<void> Function()? initializeCloud,
+    bool Function()? isCloudAvailable,
+    Future<Map<AssistantTask, OfflineModelInfo>> Function()?
+    loadDefaultPackages,
+    Future<Map<String, ModelCompatibilityResult>> Function(
+      Map<AssistantTask, OfflineModelInfo> packages,
+    )?
+    loadCompatibilityByModelId,
+    Future<OfflineModelInfo> Function(OfflineModelInfo model)?
+    hydrateDownloadedModel,
+    Iterable<OfflineModelInfo>? mobileRecommended,
+    String? platformLabelOverride,
   }) async {
     final nanoService = GeminiNanoService();
     // Gemini Nano is only exposed by Android's AICore. Do not probe the
     // native channel on desktop/web (including widget tests), where an
     // unsupported channel can leave the service timeout pending during
     // teardown.
-    final nanoSupported = PlatformConfig.isAndroid
+    final nanoSupported = isNanoSupported != null
+        ? await isNanoSupported()
+        : PlatformConfig.isAndroid
         ? await nanoService.isSupported()
         : false;
-    final deviceInfo = PlatformConfig.isAndroid
+    final deviceInfo = loadDeviceInfo != null
+        ? await loadDeviceInfo()
+        : PlatformConfig.isAndroid
         ? await nanoService.getDeviceInfo()
         : const <String, dynamic>{};
     final liteRtService = LiteRtLmService();
-    final liteRtAvailable = await liteRtService.isAvailable();
-    final ggufAvailable = await LlamaGgufService().isAvailable();
+    final liteRtAvailable = isLiteRtAvailable != null
+        ? await isLiteRtAvailable()
+        : await liteRtService.isAvailable();
+    final ggufAvailable = isGgufAvailable != null
+        ? await isGgufAvailable()
+        : await LlamaGgufService().isAvailable();
 
-    await geminiApiService.initialize();
-    final cloudAvailable = geminiApiService.isAvailable;
-    final defaultPackages = await _defaultPackages(liteRtService);
+    if (initializeCloud != null) {
+      await initializeCloud();
+    } else {
+      await geminiApiService.initialize();
+    }
+    final cloudAvailable =
+        isCloudAvailable?.call() ?? geminiApiService.isAvailable;
+    final defaultPackages = loadDefaultPackages == null
+        ? await _defaultPackages(liteRtService)
+        : await loadDefaultPackages();
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
     final liteRtReady = isLiteRtReady(
       runtimeAvailable: liteRtAvailable,
       hasDownloadedPackage: hasDownloadedBalancedPackage,
-      hasConfiguredModelPath: liteRtService.hasConfiguredModelPath,
+      hasConfiguredModelPath:
+          hasConfiguredModelPath ?? liteRtService.hasConfiguredModelPath,
     );
-    final compatibilityByModelId = await _loadCompatibilityByModelId(
-      liteRtService,
-      defaultPackages,
-    );
+    final compatibilityByModelId = loadCompatibilityByModelId == null
+        ? await _loadCompatibilityByModelId(liteRtService, defaultPackages)
+        : await loadCompatibilityByModelId(defaultPackages);
 
-    final platformLabel = kIsWeb
-        ? 'Web'
-        : defaultTargetPlatform.name.toUpperCase();
+    final platformLabel =
+        platformLabelOverride ??
+        (kIsWeb ? 'Web' : defaultTargetPlatform.name.toUpperCase());
     final manufacturer = (deviceInfo['manufacturer'] as String?)?.trim();
     final model = (deviceInfo['model'] as String?)?.trim();
     final deviceLabel = [
@@ -332,8 +364,11 @@ class AssistantModelLibraryState {
         local: false,
       ),
     );
-    for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      final hydrated = await liteRtService.hydrateDownloadedModel(model);
+    for (final model
+        in (mobileRecommended ?? ModelCatalog.mobileRecommended).take(3)) {
+      final hydrated = hydrateDownloadedModel == null
+          ? await liteRtService.hydrateDownloadedModel(model)
+          : await hydrateDownloadedModel(model);
       if (hydrated.isDownloaded) {
         addCandidate(
           AssistantModelCandidate.fromOfflineModel(

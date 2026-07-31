@@ -86,4 +86,55 @@ void main() {
 
     expect(service.state, VoiceSearchState.idle);
   });
+
+  test(
+    'Android speech success emits completed state with confidence',
+    () async {
+      const channel = MethodChannel('test.airo.voice_search.success');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'isAvailable') return true;
+        if (call.method == 'startListening') {
+          return {'text': 'open model advisor', 'confidence': 0.84};
+        }
+        if (call.method == 'stopListening') return null;
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final service = AndroidVoiceSearchService(channel: channel);
+      addTearDown(service.dispose);
+
+      final result = await service.startListening();
+
+      expect(result.isSuccess, isTrue);
+      expect(result.text, 'open model advisor');
+      expect(result.confidence, 0.84);
+      expect(service.state, VoiceSearchState.completed);
+    },
+  );
+
+  test('Android speech reports platform errors without throwing', () async {
+    const channel = MethodChannel('test.airo.voice_search.platform-error');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'isAvailable') return true;
+      if (call.method == 'startListening') {
+        throw PlatformException(code: 'speech_error', message: 'Mic denied');
+      }
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final service = AndroidVoiceSearchService(channel: channel);
+    addTearDown(service.dispose);
+
+    final result = await service.startListening();
+
+    expect(result.isSuccess, isFalse);
+    expect(result.errorMessage, 'Mic denied');
+    expect(service.state, VoiceSearchState.error);
+  });
 }

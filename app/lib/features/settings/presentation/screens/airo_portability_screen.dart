@@ -15,7 +15,30 @@ import '../../../agent_chat/data/services/chat_history_store.dart';
 
 /// Encrypted export/import for Airo Mind configuration and model metadata.
 class AiroPortabilityScreen extends StatefulWidget {
-  const AiroPortabilityScreen({super.key});
+  const AiroPortabilityScreen({
+    super.key,
+    this.getDocumentsDirectory,
+    this.pickBackupPath,
+    this.shareExportPath,
+    this.readBackupContent,
+    this.backupService,
+    this.buildPayload,
+    this.encodePayload,
+    this.encodeChatHistory,
+  });
+
+  final Future<Directory> Function()? getDocumentsDirectory;
+  final Future<String?> Function()? pickBackupPath;
+  final Future<void> Function(String path)? shareExportPath;
+  final Future<String> Function(String path)? readBackupContent;
+  final AiroBackupService? backupService;
+  final Future<Map<String, Object?>> Function()? buildPayload;
+  final Future<String> Function(Map<String, Object?> payload)? encodePayload;
+  final Future<String> Function(
+    List<Object?> entries, {
+    required int schemaVersion,
+  })?
+  encodeChatHistory;
 
   @override
   State<AiroPortabilityScreen> createState() => _AiroPortabilityScreenState();
@@ -25,11 +48,12 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
   static const _restoredPayloadKey = 'airo_mind.backup_payload.v1';
   final _passphraseController = TextEditingController();
   final _lanUrlController = TextEditingController();
-  final _service = AiroBackupService();
   final _lanService = AiroLanSyncService();
   AiroLanShare? _lanShare;
   bool _busy = false;
   String? _status;
+
+  AiroBackupService get _service => widget.backupService ?? AiroBackupService();
 
   @override
   void dispose() {
@@ -40,6 +64,8 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
   }
 
   Future<Map<String, Object?>> _payload() async {
+    final payloadBuilder = widget.buildPayload;
+    if (payloadBuilder != null) return payloadBuilder();
     final preferences = await SharedPreferences.getInstance();
     Object? chatHistory;
     final encodedHistory = preferences.getString(ChatHistoryStore.storageKey);
@@ -64,13 +90,20 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
       _status = null;
     });
     try {
-      final directory = await getApplicationDocumentsDirectory();
+      final directory =
+          await widget.getDocumentsDirectory?.call() ??
+          await getApplicationDocumentsDirectory();
       final file = await _service.writeExport(
         directory: Directory('${directory.path}/exports'),
         passphrase: _passphraseController.text,
         payload: await _payload(),
       );
-      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      final shareExportPath = widget.shareExportPath;
+      if (shareExportPath != null) {
+        await shareExportPath(file.path);
+      } else {
+        await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      }
       if (mounted) {
         setState(
           () => _status = 'Encrypted backup created and ready to share.',
@@ -130,7 +163,7 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(
         _restoredPayloadKey,
-        await AiroPortabilityCodec.encodePayload(payload),
+        await _encodePayload(payload),
       );
       await _restoreChatHistoryPayload(preferences, payload);
       if (mounted) {
@@ -154,7 +187,7 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
     if (entries is! List) return;
     await preferences.setString(
       ChatHistoryStore.storageKey,
-      await AiroPortabilityCodec.encodeChatHistory(
+      await _encodeChatHistory(
         List<Object?>.from(entries),
         schemaVersion: ChatHistoryStore.schemaVersion,
       ),
@@ -167,20 +200,24 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
       _status = null;
     });
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['airobackup'],
-      );
-      final path = result?.files.single.path;
+      final path =
+          await widget.pickBackupPath?.call() ??
+          (await FilePicker.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: ['airobackup'],
+          ))?.files.single.path;
       if (path == null) return;
+      final encoded =
+          await widget.readBackupContent?.call(path) ??
+          await File(path).readAsString();
       final payload = await _service.decrypt(
-        await File(path).readAsString(),
+        encoded,
         _passphraseController.text,
       );
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(
         _restoredPayloadKey,
-        await AiroPortabilityCodec.encodePayload(payload),
+        await _encodePayload(payload),
       );
       await _restoreChatHistoryPayload(preferences, payload);
       if (mounted) {
@@ -194,6 +231,25 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<String> _encodePayload(Map<String, Object?> payload) {
+    return widget.encodePayload?.call(payload) ??
+        AiroPortabilityCodec.encodePayload(payload);
+  }
+
+  Future<String> _encodeChatHistory(
+    List<Object?> entries, {
+    required int schemaVersion,
+  }) {
+    return widget.encodeChatHistory?.call(
+          entries,
+          schemaVersion: schemaVersion,
+        ) ??
+        AiroPortabilityCodec.encodeChatHistory(
+          entries,
+          schemaVersion: schemaVersion,
+        );
   }
 
   @override

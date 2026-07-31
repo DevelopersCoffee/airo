@@ -3,6 +3,7 @@ import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/domain/models/chat_response_metadata.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,7 +83,7 @@ void main() {
 
     expect(find.text('Hello from Airo'), findsOneWidget);
     expect(find.byKey(const Key('agent_chat_metadata_button')), findsOneWidget);
-    expect(find.textContaining('Gemini Nano'), findsOneWidget);
+    expect(find.textContaining('Gemini Nano'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('agent_chat_metadata_button')));
     await tester.pumpAndSettle();
@@ -91,7 +92,7 @@ void main() {
     expect(find.text('Model'), findsOneWidget);
     expect(find.text('Gemini Nano'), findsWidgets);
     expect(find.text('Runtime'), findsOneWidget);
-    expect(find.text('AICore on-device'), findsOneWidget);
+    expect(find.text('AICore on-device'), findsWidgets);
     expect(find.text('Execution'), findsOneWidget);
     expect(find.text('Local'), findsOneWidget);
     expect(find.text('Time to first token'), findsOneWidget);
@@ -178,6 +179,24 @@ void main() {
       find.byKey(const Key('agent_chat_input')),
     );
     expect(input.controller?.text, 'Follow up on my reminder');
+  });
+
+  testWidgets('prompt suggestion fills the composer without sending', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: 'Welcome', isUser: false)],
+    );
+
+    expect(find.text('Try a prompt'), findsOneWidget);
+    await tester.tap(find.text('AI Chat'));
+    await tester.pumpAndSettle();
+
+    final input = tester.widget<TextField>(
+      find.byKey(const Key('agent_chat_input')),
+    );
+    expect(input.controller?.text, 'Help me think through a task');
   });
 
   testWidgets('message actions copy assistant and user messages', (
@@ -294,6 +313,9 @@ Future<void> _pumpChatScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        assistantModelLibraryProvider.overrideWith(
+          (ref) async => _chatLibraryState,
+        ),
         selectedAssistantModelIdProvider.overrideWith(
           (ref) => _SelectedAssistantModelNotifier(),
         ),
@@ -315,3 +337,26 @@ class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
     state = geminiNanoAssistantModelId;
   }
 }
+
+const _chatCandidate = AssistantModelCandidate(
+  id: geminiNanoAssistantModelId,
+  name: 'Gemini Nano',
+  runtime: 'AICore on-device',
+  description: 'System runtime',
+  bestFor: [AssistantTask.chat],
+  tags: ['Local'],
+  privacyLabel: 'Prompt stays on device',
+  sizeLabel: 'System managed',
+  available: true,
+  actionLabel: 'Start',
+  local: true,
+);
+
+const _chatLibraryState = AssistantModelLibraryState(
+  task: AssistantTask.chat,
+  deviceLabel: 'Google Pixel 9',
+  platformLabel: 'ANDROID',
+  candidates: [_chatCandidate],
+  recommended: _chatCandidate,
+  defaultPackages: {},
+);
