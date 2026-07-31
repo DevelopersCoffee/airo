@@ -113,6 +113,75 @@ void main() {
       },
     );
 
+    test(
+      'blocks the LiteRT runtime when its package is not a LiteRT artifact',
+      () async {
+        // Selecting the LiteRT runtime with a GGUF artifact attached is the
+        // dangerous combination: the earlier GGUF guard is keyed on the
+        // offline model id, so a plain `litert-gemma-mobile` candidate walks
+        // straight past it and would otherwise hand a .gguf file to LiteRT-LM.
+        final service = AssistantRuntimeService(
+          loadDeviceInfo: () async => const {'platform': 'android'},
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma Mobile',
+            runtime: 'LiteRT-LM',
+            description: 'LiteRT runtime pointed at a GGUF file',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: '1.1 GB',
+            available: true,
+            actionLabel: 'Start chat',
+            local: true,
+            package: OfflineModelInfo(
+              id: 'qwen2-1.5b-q4',
+              name: 'Qwen2 1.5B',
+              family: ModelFamily.qwen,
+              fileSizeBytes: 1_100_000_000,
+              filePath: '/models/qwen2-1.5b-q4.gguf',
+              provider: AIProvider.gguf,
+            ),
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.blocked);
+        expect(result.diagnostic?.reasonCode, 'native_backend_unavailable');
+      },
+    );
+
+    test('blocks the LiteRT runtime when no model backs it', () async {
+      // A native channel can answer "available" on a device that has no model
+      // installed. Reporting ready there is what produced a setup dialog that
+      // reached 100% and then never opened a chat.
+      final service = AssistantRuntimeService(
+        loadDeviceInfo: () async => const {'platform': 'android'},
+        isLiteRtAvailable: () async => false,
+      );
+
+      final result = await service.prepareRuntime(
+        candidate: const AssistantModelCandidate(
+          id: litertGemmaAssistantModelId,
+          name: 'Gemma Mobile',
+          runtime: 'LiteRT-LM',
+          description: 'No installed package',
+          bestFor: [AssistantTask.chat],
+          tags: ['Local'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: 'Not installed',
+          available: false,
+          actionLabel: 'Install',
+          local: true,
+        ),
+      );
+
+      expect(result.status, AssistantRuntimePreparationStatus.blocked);
+      expect(result.diagnostic?.reasonCode, 'runtime_unavailable');
+    });
+
     test('blocks missing generic GGUF packages before native setup', () async {
       final service = AssistantRuntimeService(
         loadDeviceInfo: () async => const {'platform': 'android'},
