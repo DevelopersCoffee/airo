@@ -1,0 +1,17 @@
+L1.2 enumerable obligations -- /private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad/rev7/src
+
+  FAIL  unchecked-arith no unchecked += / -= / * on integers
+          + vault/revocation.rs :: self.head_epoch += 1;
+  FAIL  raw-identifier no raw identifier at a public entry point
+          + vault/aggregate.rs :: pub fn destroy_content(&mut self, content_id: &str) -> Result<PurgeDirective, VaultError> {
+          + vault/aggregate.rs :: pub fn is_content_destroyed(&self, content_id: &str) -> bool {
+          + vault/aggregate.rs :: pub fn revoke_device(&mut self, device_id: &str) -> Result<PurgeDirective, VaultError> {
+          + vault/revocation.rs :: pub fn is_content_revoked(&self, content_id: &str) -> bool {
+  PASS  rng-sites      OsRng appears only in random.rs  (2 allowlisted)
+  PASS  per-byte-hex   no per-byte hex formatting  (1 allowlisted)
+
+L1.2: FAILED -- 5 site(s) not in an allowlist
+
+A new site is the SAME obligation appearing somewhere new. That is how
+SEC-47 and SEC-49 reached a shipped revision: the assertion was pinned
+to where the obligation was first observed.
