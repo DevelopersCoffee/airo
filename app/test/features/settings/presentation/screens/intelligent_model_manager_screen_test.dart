@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockDownloadService extends Mock implements ModelDownloadService {}
 
@@ -16,6 +17,10 @@ class _MockManager extends Mock implements IntelligentModelManager {}
 void main() {
   setUpAll(() {
     registerFallbackValue(<OfflineModelInfo>[]);
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('renders empty snapshot state', (tester) async {
@@ -137,6 +142,13 @@ void main() {
       queuePosition: 1,
       resumeSupported: true,
     );
+    const queuedProgress = ModelDownloadProgress(
+      modelId: 'queued-before',
+      totalBytes: 1024,
+      downloadedBytes: 0,
+      status: ModelDownloadStatus.pending,
+      queuePosition: 0,
+    );
     const snapshot = ModelManagerSnapshot(
       models: [
         ModelEntry(
@@ -169,8 +181,11 @@ void main() {
             (ref) async => snapshot,
           ),
           activeDownloadsProvider.overrideWith(
-            (ref) =>
-                ActiveDownloadsNotifier(ref)..state = {'downloading': progress},
+            (ref) => ActiveDownloadsNotifier(ref)
+              ..state = {
+                'downloading': progress,
+                'queued-before': queuedProgress,
+              },
           ),
         ],
         child: MaterialApp(
@@ -182,6 +197,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Download queue'), findsOneWidget);
+    expect(find.textContaining('#1 queued-before'), findsOneWidget);
     expect(find.textContaining('#2 downloading'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsWidgets);
     await tester.ensureVisible(find.byTooltip('Pause'));
@@ -510,5 +526,360 @@ void main() {
     verify(() => manager.warmModel('inactive')).called(1);
     verify(() => manager.setPreloadFrequentlyUsed('inactive', true)).called(1);
     expect(find.textContaining('Warm-up benchmark:'), findsOneWidget);
+  });
+
+  testWidgets('health center recovery actions execute manager callbacks', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'memory-bound',
+      name: 'Memory Bound Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1024,
+      parameterCount: 999,
+      contextLength: 4096,
+      filePath: '/models/memory-bound.gguf',
+      minMemoryBytes: 6 * 1024 * 1024 * 1024,
+      description: 'Installed but needs a smaller runtime context.',
+    );
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 512),
+    )..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'memory-bound',
+          name: 'Memory Bound Model',
+          version: 'Unversioned',
+          description: 'Installed but needs a smaller runtime context.',
+          sizeBytes: 1024,
+          isDownloaded: true,
+          updateState: ModelUpdateState.unknown,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 1024,
+    );
+    final downloads = _MockDownloadService();
+    final manager = _MockManager();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(
+      () => manager.isModelInstalled('memory-bound'),
+    ).thenAnswer((_) async => true);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerProvider.overrideWithValue(manager),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('999'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Retry with reduced context'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Context reduced to 1024 tokens'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 4));
+
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose another installed model'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('health center resumes and retries incomplete downloads', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'stale-path',
+      name: 'Stale Path Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2048,
+      filePath: '/models/stale.gguf',
+      description: 'Registry says installed, but the file is missing.',
+    );
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'stale-path',
+          name: 'Stale Path Model',
+          version: 'Unversioned',
+          description: 'Registry says installed, but the file is missing.',
+          sizeBytes: 2048,
+          isDownloaded: true,
+          updateState: ModelUpdateState.unknown,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 2048,
+    );
+    final downloads = _MockDownloadService();
+    final manager = _MockManager();
+    var warmupCall = 0;
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(
+      () => manager.isModelInstalled('stale-path'),
+    ).thenAnswer((_) async => false);
+    when(() => manager.resumeDownload('stale-path')).thenAnswer((_) async {});
+    when(() => manager.warmModel('stale-path')).thenAnswer((_) async {
+      warmupCall += 1;
+      return ModelWarmupResult(
+        modelId: 'stale-path',
+        status: warmupCall == 1
+            ? ModelWarmupStatus.warmed
+            : ModelWarmupStatus.failed,
+        detail: warmupCall == 1 ? null : 'runtime failure',
+      );
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerProvider.overrideWithValue(manager),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Resume download'));
+    await tester.pumpAndSettle();
+    expect(find.text('Model download resumed.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Retry runtime'));
+    await tester.pumpAndSettle();
+    expect(find.text('Model warm-up succeeded.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+
+    await tester.ensureVisible(find.text('Why?'));
+    await tester.tap(find.text('Why?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Retry runtime'));
+    await tester.pumpAndSettle();
+    expect(find.text('Warm-up failed: runtime failure.'), findsOneWidget);
+
+    verify(() => manager.resumeDownload('stale-path')).called(1);
+    verify(() => manager.warmModel('stale-path')).called(2);
+  });
+
+  testWidgets('warm and benchmark report unavailable and failed statuses', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'runtime-offline',
+      name: 'Runtime Offline Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1234,
+      filePath: '/models/runtime-offline.gguf',
+      description: 'Installed but runtime is unavailable.',
+    );
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'runtime-offline',
+          name: 'Runtime Offline Model',
+          version: 'Unversioned',
+          description: 'Installed but runtime is unavailable.',
+          sizeBytes: 1234,
+          isDownloaded: true,
+          updateState: ModelUpdateState.unknown,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 1234,
+    );
+    final downloads = _MockDownloadService();
+    final manager = _MockManager();
+    var warmupCall = 0;
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(() => manager.warmModel('runtime-offline')).thenAnswer((_) async {
+      warmupCall += 1;
+      if (warmupCall == 1) {
+        return const ModelWarmupResult(
+          modelId: 'runtime-offline',
+          status: ModelWarmupStatus.unavailable,
+          detail: 'adapter_missing',
+        );
+      }
+      return const ModelWarmupResult(
+        modelId: 'runtime-offline',
+        status: ModelWarmupStatus.failed,
+        detail: 'kernel crash',
+      );
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerProvider.overrideWithValue(manager),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Warm now'));
+    await tester.tap(find.text('Warm now'));
+    await tester.pump();
+    expect(
+      find.text('Model could not be warmed: adapter_missing.'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('benchmark reports failed runtime status', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const modelInfo = OfflineModelInfo(
+      id: 'benchmark-fails',
+      name: 'Benchmark Fails Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1234,
+      filePath: '/models/benchmark-fails.gguf',
+      description: 'Installed but benchmark fails.',
+    );
+    final registry = ModelRegistry(
+      loadMemoryInfo: () async =>
+          MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+    )..registerModel(modelInfo);
+    const snapshot = ModelManagerSnapshot(
+      models: [
+        ModelEntry(
+          id: 'benchmark-fails',
+          name: 'Benchmark Fails Model',
+          version: 'Unversioned',
+          description: 'Installed but benchmark fails.',
+          sizeBytes: 1234,
+          isDownloaded: true,
+          updateState: ModelUpdateState.unknown,
+        ),
+      ],
+      downloadQueue: [],
+      storageUsedBytes: 1234,
+    );
+    final downloads = _MockDownloadService();
+    final manager = _MockManager();
+    when(
+      () => downloads.globalProgressStream,
+    ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+    when(
+      () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+    ).thenAnswer((_) async => []);
+    when(() => manager.warmModel('benchmark-fails')).thenAnswer(
+      (_) async => const ModelWarmupResult(
+        modelId: 'benchmark-fails',
+        status: ModelWarmupStatus.failed,
+        detail: 'kernel crash',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloads),
+          intelligentModelManagerProvider.overrideWithValue(manager),
+          intelligentModelManagerSnapshotProvider.overrideWith(
+            (ref) async => snapshot,
+          ),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+          ),
+        ],
+        child: const MaterialApp(home: IntelligentModelManagerScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.widgetWithText(OutlinedButton, 'Benchmark'),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Benchmark'));
+    await tester.pump();
+    expect(find.textContaining('Benchmark failed after'), findsOneWidget);
   });
 }

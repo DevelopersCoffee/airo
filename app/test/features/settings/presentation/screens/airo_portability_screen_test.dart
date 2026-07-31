@@ -148,6 +148,49 @@ void main() {
     );
   });
 
+  testWidgets(
+    'default export payload includes bundled models without weights',
+    (tester) async {
+      final directory = Directory.systemTemp.createTempSync(
+        'airo-portability-default-export-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final backupService = _RecordingBackupService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiroPortabilityScreen(
+            getDocumentsDirectory: () async => directory,
+            shareExportPath: (_) async {},
+            backupService: backupService,
+            encodePayload: (payload) async => jsonEncode(payload),
+          ),
+        ),
+      );
+
+      await tester.enterText(
+        find.byType(TextField).first,
+        'release-passphrase',
+      );
+      final exportButton = find.widgetWithText(
+        FilledButton,
+        'Export encrypted backup',
+      );
+      final result =
+          (tester.widget<FilledButton>(exportButton).onPressed as dynamic)
+              ?.call();
+      if (result is Future<void>) await result;
+      await _pumpAsyncWork(tester);
+
+      final payload = backupService.lastPayload;
+      expect(payload?['scope'], 'airo-mind');
+      expect(payload?['privacy'], 'local-first');
+      expect(payload?['note'], contains('model weights are not copied'));
+      expect(payload?['modelCatalogIds'], isA<List>());
+      expect(payload?['chatHistory'], isEmpty);
+    },
+  );
+
   testWidgets('imports encrypted chat history from an injected backup file', (
     tester,
   ) async {
