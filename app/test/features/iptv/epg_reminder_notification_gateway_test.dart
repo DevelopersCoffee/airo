@@ -112,6 +112,91 @@ void main() {
     );
   });
 
+  test('Android permission request goes through the Android plugin', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    AndroidFlutterLocalNotificationsPlugin.registerWith();
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    expect(await gateway.requestPermission(), isTrue);
+    expect(
+      methodCalls.map((call) => call.method),
+      containsAllInOrder(['initialize', 'requestNotificationsPermission']),
+      reason: 'the plugin has to be initialized before it can be asked',
+    );
+  });
+
+  test('iOS permission request asks for alert, badge, and sound', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    IOSFlutterLocalNotificationsPlugin.registerWith();
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    expect(await gateway.requestPermission(), isTrue);
+
+    final request = methodCalls.singleWhere(
+      (call) => call.method == 'requestPermissions',
+    );
+    expect(request.arguments, containsPair('alert', true));
+    expect(request.arguments, containsPair('badge', true));
+    expect(request.arguments, containsPair('sound', true));
+  });
+
+  test('a permission request on a vanished plugin fails closed', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    AndroidFlutterLocalNotificationsPlugin.registerWith();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(notificationsChannel, null);
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    // initialize() swallows MissingPluginException and flips the gateway to
+    // unavailable. Returning "no permission" there would look like a user
+    // denial; the caller has to be able to tell the two apart.
+    await expectLater(
+      gateway.requestPermission(),
+      throwsA(isA<EpgReminderGatewayUnavailableException>()),
+    );
+  });
+
+  test('a plugin that vanishes after initialize fails closed', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    AndroidFlutterLocalNotificationsPlugin.registerWith();
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    await gateway.initialize();
+    expect(gateway.isAvailable, isTrue);
+
+    // Initialization succeeded, so the earlier unavailable guard is already
+    // behind us; the failure now surfaces from zonedSchedule itself. A
+    // reminder that silently fails to schedule is worse than one that reports
+    // it, because the user is told the reminder is set.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(notificationsChannel, null);
+
+    await expectLater(
+      gateway.schedule(
+        notificationId: 9,
+        title: 'Late Show',
+        body: 'Starting now',
+        at: DateTime.now().toUtc().add(const Duration(hours: 1)),
+        payloadChannelId: 'channel-2',
+      ),
+      throwsA(isA<EpgReminderGatewayUnavailableException>()),
+    );
+    expect(gateway.isAvailable, isFalse);
+  });
+
+  test('cancel forwards the notification id to the plugin', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    AndroidFlutterLocalNotificationsPlugin.registerWith();
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    await gateway.cancel(7);
+
+    final cancelCall = methodCalls.singleWhere(
+      (call) => call.method == 'cancel',
+    );
+    expect(cancelCall.arguments, containsPair('id', 7));
+  });
+
   test('missing plugin marks gateway unavailable', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     AndroidFlutterLocalNotificationsPlugin.registerWith();
