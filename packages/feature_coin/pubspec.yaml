@@ -16,7 +16,7 @@ dependencies:
     path: ../core_ui
   platform_coin_vault:
     path: ../platform_coin_vault
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter_riverpod: 3.3.2
   go_router: ^17.3.0
   local_auth: ^2.3.0

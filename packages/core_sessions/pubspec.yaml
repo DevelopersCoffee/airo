@@ -17,7 +17,7 @@ dependencies:
     path: ../core_pairing
   core_protocol:
     path: ../core_protocol
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
 

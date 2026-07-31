@@ -60,9 +60,38 @@ RS
   out=$(cd "$WORK" && cargo build --quiet 2>&1)
   local built=$?
   if [ "$kind" = DENY ]; then
-    if [ $built -ne 0 ]; then
-      printf '  PASS  DENY   %-8s %s\n' "$id" "$desc"
+    # DISCRIMINATE WHY IT FAILED. Branching on the exit code alone makes a DENY
+    # pass on ANY build failure: Rust Architect introduced `seed.as_byteZZZ()`
+    # into the SEC-33 body and the harness reported
+    # "PASS DENY ... the 64-byte master seed is not readable". A renamed method,
+    # a changed arity, or a moved type converts a DENY probe to permanently
+    # green -- the probe goes stale and reports success for it.
+    #
+    # A denial is only a denial if the compiler says the item is not VISIBLE:
+    #   E0603 private module/item   E0616 private field
+    #   E0624 private method        E0433 unresolved path (item absent)
+    # Anything else means the probe no longer expresses what it was written to
+    # express, and someone has to look.
+    # Visibility codes by default. A probe whose claim is DELETION passes on
+    # E0599 instead -- but E0599 cannot distinguish "deleted as intended" from
+    # "renamed", so those probes are sound only in combination with L1.1's
+    # surface allowlist, which enumerates what EXISTS rather than what is
+    # private. Neither gate is sufficient alone; that is the point of levels.
+    local codes='E0(603|616|624|433)'
+    case "$id" in
+      RA-17b) codes='E0(599|603|616|624|433)' ;;
+    esac
+    local why
+    why=$(echo "$out" | grep -oE "error\[$codes\]" | head -1)
+    if [ $built -ne 0 ] && [ -n "$why" ]; then
+      printf '  PASS  DENY   %-8s %s  (%s)\n' "$id" "$desc" "$why"
       PASS=$((PASS + 1))
+    elif [ $built -ne 0 ]; then
+      printf '  STALE DENY   %-8s %s\n' "$id" "$desc"
+      printf '        rejected, but NOT for a visibility reason -- the probe no longer\n'
+      printf '        expresses its claim and proves nothing:\n'
+      echo "$out" | grep -m2 '^error' | sed 's/^/          /'
+      FAIL=$((FAIL + 1))
     else
       printf '  FAIL  DENY   %-8s %s\n' "$id" "$desc"
       printf '        COMPILED from outside the crate; the façade is open\n'

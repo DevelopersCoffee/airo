@@ -692,6 +692,53 @@ exit code rather than reporting PASS or FAIL. Currently: the source tree exists,
 and it holds at least the expected number of files. An abort is not a failure —
 it says the question could not be asked.
 
+### Soundness, then calibration, then evidence
+
+Two independent properties, and a gate needs both:
+
+| | Asks | Without it |
+|---|---|---|
+| **Soundness** | did the validator examine the intended universe, and does it discriminate the intended property? | a PASS is illegitimate — it cannot produce evidence at all |
+| **Calibration** | is there a *recorded* mutation proving it fails when the property is violated? | a PASS is unverified evidence |
+
+```
+L0 preconditions → soundness → calibration → evidence
+```
+
+The order is not decorative. A gate that is calibrated but unsound has a
+recorded failing form for the wrong property. A gate that is sound but
+uncalibrated may be correct and nobody has checked.
+
+**Status at the time of writing** — this table is the maturity metric, and it
+replaces "how many gates are green":
+
+| Gate | Sound | Calibrated | Failing form on record |
+|---|---|---|---|
+| **L1.1** public surface | ✅ complete enumeration + L0 | ✅ | `pub fn material` → `+ vault/seed.rs :: fn material` |
+| **L2** claim assertions | ⚠️ name-pinned, locality-bound | ⚠️ 1 of 7 tested | `A18` alone fails its own defect |
+| **L3** consumer probes | ✅ discriminates visibility codes | ✅ | typo in a `DENY` body → `STALE`, was `PASS` |
+
+### Which level does an obligation belong to?
+
+One question, and it decides the mechanism:
+
+> **Can I enumerate the complete universe of things this obligation applies to?**
+
+**Yes → L1.** Public API surface, every `pub` item, every identifier-bearing
+entry point, every unchecked increment, every `OsRng` call site, every
+visibility boundary. Finite, enumerable sets; an allowlist over a complete
+enumeration is the natural mechanism, and it catches additions *without a rule
+for them*.
+
+**No → L2.** Cryptographic invariants, state-transition correctness, ledger
+semantics, restore authenticity, AAD construction. These need reasoning about
+behaviour, so the mechanism is a test or a mutation regression.
+
+**The review heuristic that follows:** *if an architectural obligation is
+enforced by a validator that names a file, a function, or an implementation
+location, ask whether the obligation actually belongs to an enumerable universe
+instead.* `SEC-47` and `SEC-49` are both what a "no" to that question costs.
+
 ### Every validator has a demonstrated failing form
 
 **A gate that has never been observed failing is provisional.** Each one must

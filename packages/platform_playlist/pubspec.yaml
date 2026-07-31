@@ -14,7 +14,7 @@ dependencies:
     path: ../core_data
   dio: ^5.10.0
   drift: ^2.23.1
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   path: ^1.9.0
   path_provider: ^2.1.5
   platform_channels:
