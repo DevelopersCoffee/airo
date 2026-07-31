@@ -69,6 +69,19 @@ void main() {
     );
   });
 
+  test('initializes notification navigation on macOS', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    MacOSFlutterLocalNotificationsPlugin.registerWith();
+    final macosScheduler = LocalAgentNotificationScheduler(
+      notificationsPlugin: FlutterLocalNotificationsPlugin(),
+      preferences: preferences,
+    );
+
+    await macosScheduler.initialize();
+
+    expect(methodCalls.map((call) => call.method), contains('initialize'));
+  });
+
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(notificationsChannel, null);

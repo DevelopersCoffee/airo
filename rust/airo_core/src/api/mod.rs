@@ -6,8 +6,11 @@
 //   - Every function must have a pure-Dart fallback path on the Dart side.
 
 pub mod m3u;
+pub mod mock_runtime;
 pub mod native_engine;
+pub mod planner;
 pub mod playlist_engine;
 pub mod relational_store;
+pub mod runtime_contracts;
 pub mod text;
 pub mod xmltv;

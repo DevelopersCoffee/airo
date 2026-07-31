@@ -23,6 +23,9 @@ class ModelCard extends StatelessWidget {
     this.onDelete,
     this.onSetActive,
     this.onCancelDownload,
+    this.onPauseDownload,
+    this.onResumeDownload,
+    this.onRetryDownload,
     this.onLearnMore,
   });
 
@@ -64,6 +67,11 @@ class ModelCard extends StatelessWidget {
 
   /// Callback to cancel an in-progress download.
   final VoidCallback? onCancelDownload;
+
+  /// Pause, resume, or retry callbacks for the persistent download manager.
+  final VoidCallback? onPauseDownload;
+  final VoidCallback? onResumeDownload;
+  final VoidCallback? onRetryDownload;
 
   /// Callback to open the model source page.
   final VoidCallback? onLearnMore;
@@ -236,7 +244,35 @@ class ModelCard extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
-                // Cancel button
+                if ((downloadStatus ?? '').toLowerCase() == 'paused' &&
+                    onResumeDownload != null)
+                  IconButton(
+                    onPressed: onResumeDownload,
+                    icon: const Icon(Icons.play_arrow, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Resume download',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  )
+                else if ((downloadStatus ?? '').toLowerCase() == 'failed' &&
+                    onRetryDownload != null)
+                  IconButton(
+                    onPressed: onRetryDownload,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Retry download',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  )
+                else if (onPauseDownload != null)
+                  IconButton(
+                    onPressed: onPauseDownload,
+                    icon: const Icon(Icons.pause, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Pause download',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
                 if (onCancelDownload != null)
                   IconButton(
                     onPressed: onCancelDownload,

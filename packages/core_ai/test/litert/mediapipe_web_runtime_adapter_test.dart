@@ -4,13 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeMediaPipeWebClient implements MediaPipeWebClient {
   _FakeMediaPipeWebClient({
     this.webGpuSupported = true,
-    this.cached = false,
-    this.response = 'Hello from the browser model.',
   });
 
   final bool webGpuSupported;
-  bool cached;
-  final String response;
+  bool cached = false;
+  final String response = 'Hello from the browser model.';
   bool loadModelCalled = false;
   MediaPipeWebBackend? lastBackend;
 

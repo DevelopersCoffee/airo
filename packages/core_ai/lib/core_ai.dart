@@ -3,17 +3,25 @@
 /// Contains LLM client abstractions, prompt management, and AI utilities.
 library;
 
+// Runtime diagnostics are part of the framework API consumed by app-facing
+// health and explainability surfaces. Re-export the backend-neutral trace
+// contracts so feature packages do not depend on the native bridge directly.
+export 'package:core_native/core_native.dart'
+    show ExecutionTrace, ExecutionTraceEntry, ExecutionTraceEvent;
+
 // AI Provider
 export 'src/provider/ai_provider.dart';
 
 // Device Capabilities
 export 'src/device/device_capability_service.dart';
+export 'src/device/device_capability_report.dart';
 export 'src/device/memory_budget_manager.dart';
 export 'src/device/memory_severity.dart';
 export 'src/residency/model_residency_manager.dart';
 export 'src/preload/model_preloader.dart';
 export 'src/runtime/local_inference_runtime_adapter.dart';
 export 'src/litert/litert_lm_runtime_adapter.dart';
+export 'src/litert/litert_lm_execution_adapter.dart';
 export 'src/litert/mediapipe_web_runtime_adapter.dart';
 
 // LLM Client
@@ -30,7 +38,12 @@ export 'src/router/model_health_checker.dart';
 // GGUF Model Support
 export 'src/llm/gguf_model_config.dart';
 export 'src/llm/gguf_model_client.dart';
+export 'src/llm/batch_generation_service.dart';
+export 'src/llm/openai_compatible_client.dart';
+export 'src/llm/openai_compatible_image_client.dart';
 export 'src/llm/active_model_service.dart';
+export 'src/client/safety_guardrails.dart';
+export 'src/client/safety_filtered_client.dart';
 
 // Model Registry
 export 'src/models/model_credibility.dart';
@@ -42,6 +55,7 @@ export 'src/registry/model_catalog.dart';
 export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';
 export 'src/storage/model_storage_manager.dart';
+export 'src/health/model_health_report.dart';
 
 // Agent Skill Schemas
 export 'src/skills/ai_trajectory_trace.dart';

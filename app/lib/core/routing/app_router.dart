@@ -1,4 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -7,11 +8,19 @@ import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/airo_explore/presentation/screens/airo_explore_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
+import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
+import '../../features/agent_chat/presentation/screens/model_advisor_screen.dart';
+import '../../features/agent_chat/presentation/screens/agent_skills_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
+import '../../features/settings/presentation/screens/airo_portability_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
+import '../../features/home/screens/home_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
+import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
+import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
+import '../../features/mind/presentation/screens/mobile_actions_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -26,8 +35,6 @@ import '../../features/life_track/presentation/screens/track_detail_screen.dart'
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
-import '../../features/iptv/phone_media_local_picker.dart';
-import '../config/feature_flags.dart';
 import '../http/http_dog.dart';
 import 'route_names.dart';
 
@@ -239,6 +246,42 @@ class AppRouter {
                         },
                       ),
                     ),
+                    GoRoute(
+                      path: 'device-capabilities',
+                      name: 'mind_device_capabilities',
+                      builder: (context, state) =>
+                          DeviceCapabilityReportLoaderScreen(
+                            models: ModelCatalog.bundledModels,
+                          ),
+                    ),
+                    GoRoute(
+                      path: 'model-advisor',
+                      name: 'mind_model_advisor',
+                      builder: (context, state) => const ModelAdvisorScreen(),
+                    ),
+                    GoRoute(
+                      path: 'prompt-lab',
+                      name: 'mind_prompt_lab',
+                      builder: (context, state) => PromptLabScreen(
+                        initialImageMode:
+                            state.uri.queryParameters['mode'] == 'image',
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'audio-scribe',
+                      name: 'mind_audio_scribe',
+                      builder: (context, state) => const AudioScribeScreen(),
+                    ),
+                    GoRoute(
+                      path: 'skills',
+                      name: 'mind_agent_skills',
+                      builder: (context, state) => const AgentSkillsScreen(),
+                    ),
+                    GoRoute(
+                      path: 'mobile-actions',
+                      name: 'mind_mobile_actions',
+                      builder: (context, state) => const MobileActionsScreen(),
+                    ),
                   ],
                 ),
               ],
@@ -290,23 +333,13 @@ class AppRouter {
                 ),
               ],
             ),
-            // Home branch (CV unified-browse Task 6): the source design's
-            // sidebar has Home and Live TV both call the same `goToBrowse`
-            // handler — Home and Live are the same destination — so this
-            // mirrors the Stream branch's IPTVScreen wiring exactly rather
-            // than the Task 5 MindScreen placeholder. Matches
-            // AppNavigationTab.home — see task-6-report.md for the decision.
+            // Airo Living Console home. Live remains available at /iptv.
             StatefulShellBranch(
               routes: [
                 GoRoute(
                   path: '/home',
                   name: 'Home',
-                  builder: (context, state) => IPTVScreen(
-                    onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
-                        ? pickPhoneLocalMediaForTv
-                        : null,
-                  ),
+                  builder: (context, state) => const HomeScreen(),
                 ),
               ],
             ),
@@ -348,6 +381,14 @@ class AppRouter {
                   path: RouteNames.settings,
                   name: RouteNames.settings,
                   builder: (context, state) => const SettingsHubScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'airo-portability',
+                      name: 'airo_portability',
+                      builder: (context, state) =>
+                          const AiroPortabilityScreen(),
+                    ),
+                  ],
                 ),
               ],
             ),

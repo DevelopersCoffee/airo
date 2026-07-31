@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/dictionary/dictionary.dart';
@@ -18,6 +19,13 @@ class ReaderScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const AiroPageHeader(
+                  eyebrow: 'Reader',
+                  title: 'Your quiet library',
+                  subtitle:
+                      'Read, download, and look up words without clutter.',
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 // Continue reading section
                 Text(
                   'Continue Reading',

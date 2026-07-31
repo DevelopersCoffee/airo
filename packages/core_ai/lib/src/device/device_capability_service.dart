@@ -28,6 +28,13 @@ class DeviceCapabilityService {
   /// Cache duration for memory info (5 seconds).
   static const Duration _cacheDuration = Duration(seconds: 5);
 
+  /// Platform probes must not leave the capability report spinning forever
+  /// when a native bridge is unavailable or wedged after an OS update.
+  // Capability probes are advisory and must never hold device analysis or
+  // model selection hostage. A healthy platform channel answers far faster;
+  // one second gives it room while bounding OS/plugin regressions tightly.
+  static const Duration _probeTimeout = Duration(seconds: 1);
+
   /// Gets the current device memory information.
   ///
   /// Returns cached info if available and fresh (within [_cacheDuration]).
@@ -51,9 +58,9 @@ class DeviceCapabilityService {
     }
 
     try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'getMemoryInfo',
-      );
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('getMemoryInfo')
+          .timeout(_probeTimeout);
 
       _cachedMemoryInfo = MemoryInfo(
         totalBytes: (result['totalBytes'] as num?)?.toInt() ?? 0,
@@ -77,9 +84,9 @@ class DeviceCapabilityService {
     }
 
     try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        'getDeviceInfo',
-      );
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('getDeviceInfo')
+          .timeout(_probeTimeout);
 
       return DeviceInfo(
         manufacturer: result['manufacturer'] as String? ?? 'Unknown',

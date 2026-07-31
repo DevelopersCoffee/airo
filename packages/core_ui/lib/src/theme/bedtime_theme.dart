@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'airo_effects.dart';
+import 'airo_domain.dart';
 import 'airo_theme_tokens.dart';
+import 'airo_visual_tokens.dart';
 import 'app_colors.dart';
 
 /// Bedtime mode theme with AMOLED black, warm tint, and reduced motion
@@ -223,6 +225,28 @@ class BedtimeTheme {
           warning: AppColors.warning,
         ),
         AiroEffects.bedtime,
+        AiroVisualTokens(
+          canvas: _amoledBlack,
+          surface: _darkGray,
+          surfaceRaised: _mediumGray,
+          surfaceFloating: Color(0xFF383838),
+          surfaceGlass: Color(0xF21A1A1A),
+          textPrimary: _warmTint,
+          textSecondary: Color(0xFFCCCCCC),
+          border: _mediumGray,
+          identityStart: _warmTint,
+          identityEnd: Color(0xFFFFD699),
+          radiusSmall: 10,
+          radiusMedium: 16,
+          radiusLarge: 24,
+          radiusExtraLarge: 32,
+        ),
+        AiroDomainTokens(
+          domain: AiroDomain.neutral,
+          accent: _warmTint,
+          accentSecondary: Color(0xFFFFD699),
+          onAccent: _amoledBlack,
+        ),
       ],
     );
   }

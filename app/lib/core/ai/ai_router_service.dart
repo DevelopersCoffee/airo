@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'ai_provider.dart';
+import 'package:core_ai/core_ai.dart';
 import '../services/gemini_nano_service.dart';
+import '../services/gemini_api_service.dart';
 
 /// AI Router Service - Routes queries to appropriate AI provider
 class AIRouterService {
@@ -12,6 +13,31 @@ class AIRouterService {
 
   AIProvider _selectedProvider = AIProvider.auto;
   final Map<AIProvider, AIProviderStatus> _providerStatus = {};
+  OpenAICompatibleClient? _remoteClient;
+
+  bool get hasRemoteServer => _remoteClient != null;
+
+  /// Configures an OpenAI-compatible local/private server such as Ollama,
+  /// LM Studio, or llama.cpp server. Empty URL disables the remote backend.
+  void configureRemoteServer({
+    required String baseUrl,
+    required String model,
+    String? apiKey,
+  }) {
+    final normalizedUrl = baseUrl.trim();
+    final normalizedModel = model.trim();
+    _remoteClient = normalizedUrl.isEmpty || normalizedModel.isEmpty
+        ? null
+        : OpenAICompatibleClient(
+            baseUrl: normalizedUrl,
+            model: normalizedModel,
+            apiKey: apiKey,
+          );
+  }
+
+  Future<RemoteServerDiagnostics?> diagnoseRemoteServer() {
+    return _remoteClient?.diagnose() ?? Future.value(null);
+  }
 
   /// Get current selected provider
   AIProvider get selectedProvider => _selectedProvider;
@@ -86,14 +112,21 @@ class AIRouterService {
       debugPrint('Gemini Nano check failed: $e');
     }
 
-    // Check Cloud API (always available if API key is configured)
+    // Check Cloud API from the same initialized service used for requests.
+    // Never advertise a backend that has no configured credentials.
+    await geminiApiService.initialize();
+    final cloudAvailable = geminiApiService.isAvailable;
     _providerStatus[AIProvider.cloud] = AIProviderStatus(
       provider: AIProvider.cloud,
-      capabilities: AICapabilities.fromCloud(),
-      isInitialized: true,
+      capabilities: cloudAvailable
+          ? AICapabilities.fromCloud()
+          : AICapabilities.unavailable('Gemini API key is not configured'),
+      isInitialized: cloudAvailable,
       lastChecked: DateTime.now(),
     );
-    debugPrint('Gemini Cloud: Available');
+    debugPrint(
+      'Gemini Cloud: ${cloudAvailable ? "Available" : "Unavailable (no API key)"}',
+    );
   }
 
   /// Get the best available provider
@@ -104,6 +137,10 @@ class AIRouterService {
       if (status?.isAvailable == true) {
         return _selectedProvider;
       }
+      // Preserve an explicit local choice so the caller gets an actionable
+      // unavailable-runtime message instead of silently sending data to the
+      // cloud. Auto routing is the only mode allowed to choose a fallback.
+      if (_selectedProvider.isOnDevice) return _selectedProvider;
     }
 
     // Auto-select: prefer Nano if available, fallback to Cloud
@@ -143,13 +180,22 @@ class AIRouterService {
       case AIProvider.phi:
       case AIProvider.llama:
       case AIProvider.custom:
-        // GGUF models and auto fallback to cloud for now
-        // TODO: Implement GGUF model processing when ActiveModelService is ready
-        return await _processWithCloud(
-          query,
-          fileContext: fileContext,
-          systemPrompt: systemPrompt,
-        );
+        if (provider == AIProvider.auto) {
+          return await _processWithCloud(
+            query,
+            fileContext: fileContext,
+            systemPrompt: systemPrompt,
+          );
+        }
+        final remote = _remoteClient;
+        if (remote != null) {
+          final result = await remote.generate(query);
+          return result.fold(
+            (error, _) => 'Remote model is unavailable: $error',
+            (response) => response.text,
+          );
+        }
+        return _unsupportedLocalProviderMessage(provider);
     }
   }
 
@@ -183,14 +229,28 @@ class AIRouterService {
       case AIProvider.phi:
       case AIProvider.llama:
       case AIProvider.custom:
-        // GGUF models and auto fallback to cloud for now
-        yield* _processStreamWithCloud(
-          query,
-          fileContext: fileContext,
-          systemPrompt: systemPrompt,
-        );
+        if (provider == AIProvider.auto) {
+          yield* _processStreamWithCloud(
+            query,
+            fileContext: fileContext,
+            systemPrompt: systemPrompt,
+          );
+        } else {
+          final remote = _remoteClient;
+          if (remote != null) {
+            yield* remote.generateStream(query);
+          } else {
+            yield _unsupportedLocalProviderMessage(provider);
+          }
+        }
         break;
     }
+  }
+
+  String _unsupportedLocalProviderMessage(AIProvider provider) {
+    return '${provider.displayName} is selected, but its native local runtime '
+        'is unavailable. Install a supported local backend or configure an '
+        'OpenAI-compatible llama.cpp, Ollama, or LM Studio server.';
   }
 
   // Private methods for provider-specific processing
@@ -233,20 +293,16 @@ class AIRouterService {
     String? fileContext,
     String? systemPrompt,
   }) async {
-    // TODO: Implement actual Gemini Cloud API call
-    // For now, return a mock response
-    await Future.delayed(const Duration(seconds: 1));
-
-    return '''[Cloud AI Response]
-
-I'm processing your query using Gemini Cloud API.
-
-Query: $query
-
-${fileContext != null ? 'File context provided: Yes\n' : ''}
-${systemPrompt != null ? 'System prompt: Yes\n' : ''}
-
-This is a placeholder response. Implement actual Gemini API integration here.''';
+    var prompt = query;
+    if (systemPrompt != null && systemPrompt.trim().isNotEmpty) {
+      prompt = '$systemPrompt\n\n$prompt';
+    }
+    if (fileContext != null && fileContext.trim().isNotEmpty) {
+      prompt = '$prompt\n\nContext:\n$fileContext';
+    }
+    final response = await geminiApiService.generateText(prompt);
+    return response ??
+        'Gemini Cloud is unavailable. Configure an API key or select an on-device runtime.';
   }
 
   Stream<String> _processStreamWithCloud(
@@ -254,7 +310,6 @@ This is a placeholder response. Implement actual Gemini API integration here.'''
     String? fileContext,
     String? systemPrompt,
   }) async* {
-    // TODO: Implement actual Gemini Cloud API streaming
     final response = await _processWithCloud(
       query,
       fileContext: fileContext,

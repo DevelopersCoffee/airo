@@ -37,7 +37,7 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
     recentChannelIds: [for (final channel in recentChannels) channel.id],
     hiddenGroupIds: hiddenGroupIds,
   );
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 /// The search screen's query text. Independent of [channelSearchQueryProvider]
 /// (the Live TV grid's quick-filter) -- opening search must not perturb the

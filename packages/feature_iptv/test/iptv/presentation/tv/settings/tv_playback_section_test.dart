@@ -40,24 +40,21 @@ void main() {
     expect(find.text('Stretch to fill'), findsOneWidget);
   });
 
-  testWidgets(
-    'does not offer Picture-in-picture -- no Android TV / Fire TV '
-    'multi-window model for it to float into',
-    (tester) async {
-      final container = await buildContainer();
-      addTearDown(container.dispose);
+  testWidgets('does not offer Picture-in-picture -- no Android TV / Fire TV '
+      'multi-window model for it to float into', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
-        ),
-      );
-      await tester.pump();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
+      ),
+    );
+    await tester.pump();
 
-      expect(find.text('Picture-in-picture'), findsNothing);
-    },
-  );
+    expect(find.text('Picture-in-picture'), findsNothing);
+  });
 
   testWidgets('selecting a fit option updates videoAspectRatioProvider', (
     tester,

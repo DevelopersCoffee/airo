@@ -21,6 +21,38 @@ class SafetyCheckResult {
   }
 }
 
+/// User-selectable safety posture for advisory content.
+///
+/// Harmful-content blocking and maximum-input protection are enabled for every
+/// profile. The profile only controls additional advisory filters, so choosing
+/// a less restrictive posture can never disable the core safety boundary.
+enum SafetyProfile {
+  strict(
+    'Strict',
+    'Blocks harmful, medical, investment, and PII-sensitive requests.',
+  ),
+  balanced(
+    'Balanced',
+    'Blocks harmful requests and warns about personal information.',
+  ),
+  permissive(
+    'Permissive',
+    'Blocks harmful requests while allowing general advice topics.',
+  );
+
+  const SafetyProfile(this.label, this.description);
+
+  final String label;
+  final String description;
+
+  static SafetyProfile fromName(String? raw) {
+    return SafetyProfile.values.firstWhere(
+      (profile) => profile.name == raw,
+      orElse: () => SafetyProfile.strict,
+    );
+  }
+}
+
 /// Safety rule for content filtering.
 abstract interface class SafetyRule {
   /// Unique identifier for this rule.
@@ -252,17 +284,23 @@ class SafetyGuardrails {
   /// Get all registered rules (legacy - returns input rules).
   List<SafetyRule> get rules => List.unmodifiable(_inputRules);
 
-  /// Create with default rules.
-  factory SafetyGuardrails.withDefaults() {
+  /// Create the default rules for a user-selectable safety profile.
+  factory SafetyGuardrails.withDefaults({
+    SafetyProfile profile = SafetyProfile.strict,
+  }) {
     final guardrails = SafetyGuardrails();
-    // Input rules
-    guardrails.addInputRule(NoMedicalAdviceRule());
-    guardrails.addInputRule(NoInvestmentAdviceRule());
+    // These protections are never removable through the profile setting.
     guardrails.addInputRule(NoHarmfulContentRule());
-    guardrails.addInputRule(PIIDetectionRule());
     guardrails.addInputRule(MaxLengthRule());
-    // Output rules (same harmful content check)
     guardrails.addOutputRule(NoHarmfulContentRule());
+
+    if (profile == SafetyProfile.strict) {
+      guardrails.addInputRule(NoMedicalAdviceRule());
+      guardrails.addInputRule(NoInvestmentAdviceRule());
+    }
+    if (profile != SafetyProfile.permissive) {
+      guardrails.addInputRule(PIIDetectionRule());
+    }
     return guardrails;
   }
 }

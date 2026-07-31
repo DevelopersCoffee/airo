@@ -39,6 +39,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool enableSwipeChannelChange;
   final bool initiallyFullscreen;
   final bool enableTouchGestures;
+  final bool handleNativeFullscreen;
   final PlayerBrightnessController? brightnessController;
 
   /// Whether to offer system Picture-in-Picture (the floating-window
@@ -78,6 +79,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.enableTouchGestures = true,
+    this.handleNativeFullscreen = true,
     this.showPictureInPicture = true,
     this.useTvTransportBar = false,
     this.brightnessController,
@@ -308,7 +310,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _toggleWebFullscreen();
     }
     setState(() => _isFullscreen = enteringFullscreen);
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    if (widget.handleNativeFullscreen) {
+      unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    }
     widget.onFullscreenToggle?.call();
   }
 

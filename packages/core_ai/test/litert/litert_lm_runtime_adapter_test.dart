@@ -1,4 +1,5 @@
 import 'package:core_ai/core_ai.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -34,6 +35,43 @@ void main() {
       );
 
       expect(supported, isTrue);
+    });
+
+    test(
+      'does not report ready when only an install URL is configured',
+      () async {
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: _FakeLiteRtLmClient(hasActiveModel: false),
+          activeModelService: activeModelService,
+          runtimeConfig: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
+
+        expect(await adapter.isAvailable(), isFalse);
+      },
+    );
+
+    test('bounds a wedged native availability operation', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('test.litert_lm.timeout');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return false;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final client = MethodChannelLiteRtLmClient(
+        config: const LiteRtLmConfig(
+          modelPath: '/models/gemma.task',
+          operationTimeout: Duration(milliseconds: 10),
+        ),
+        channel: channel,
+      );
+
+      expect(await client.activeModelExists(), isFalse);
     });
 
     test('surfaces unsupported tool-calling requests explicitly', () async {
@@ -104,6 +142,33 @@ void main() {
         );
 
         expect(hydrated.filePath, '/models/gemma-4-e2b-it-litertlm.gguf');
+      },
+    );
+
+    test(
+      'clears a stale persisted path when the artifact is missing',
+      () async {
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: _FakeLiteRtLmClient(hasActiveModel: false),
+          activeModelService: activeModelService,
+          downloadService: _FakeModelDownloadService(downloadedPaths: const {}),
+        );
+
+        final hydrated = await adapter.hydrateDownloadedModel(
+          const OfflineModelInfo(
+            id: 'gemma-stale',
+            name: 'Stale Gemma',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 1024,
+            filePath: '/models/removed.litertlm',
+            downloadUrl: 'https://example.com/removed.litertlm',
+            provider: AIProvider.gemma,
+            tags: ['litert-lm'],
+          ),
+        );
+
+        expect(hydrated.filePath, isNull);
+        expect(hydrated.isDownloaded, isFalse);
       },
     );
   });

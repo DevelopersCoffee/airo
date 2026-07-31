@@ -35,6 +35,8 @@ void main() {
       expect(config.useMmap, true);
       expect(config.useMlock, false);
       expect(config.vocabOnly, false);
+      expect(config.serverUrl, isNull);
+      expect(config.hasRemoteServer, isFalse);
     });
 
     test('should create config with custom values', () {
@@ -123,6 +125,19 @@ void main() {
       // Original should be unchanged
       expect(original.modelName, 'Original');
       expect(original.temperature, 0.7);
+    });
+
+    test('supports an optional OpenAI-compatible remote server', () {
+      const config = GGUFModelConfig(
+        modelPath: '',
+        modelName: 'qwen-local-server',
+        serverUrl: 'http://127.0.0.1:1234/v1',
+        serverApiKey: 'secret',
+      );
+
+      expect(config.hasRemoteServer, isTrue);
+      expect(config.copyWith(serverUrl: '').hasRemoteServer, isFalse);
+      expect(config.copyWith(serverApiKey: 'next').serverApiKey, 'next');
     });
   });
 

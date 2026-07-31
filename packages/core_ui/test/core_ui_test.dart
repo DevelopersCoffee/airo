@@ -5,12 +5,12 @@ import 'package:core_ui/core_ui.dart';
 
 void main() {
   group('AppTheme', () {
-    test('defaults to Airo Cyber', () {
+    test('defaults to Airo Living Console with stable cyber id', () {
       final defaultTheme = AppTheme.defaultTheme;
 
       expect(AppTheme.defaultThemeId, AppThemeId.cyber);
       expect(defaultTheme.id, AppThemeId.cyber);
-      expect(defaultTheme.name, 'Airo Cyber');
+      expect(defaultTheme.name, 'Airo Living Console');
       expect(defaultTheme.themeMode, ThemeMode.dark);
       expect(
         AppTheme.defaultLight.brightness,
@@ -51,20 +51,38 @@ void main() {
       expect(AppTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
     });
 
-    test('cyber theme exposes Hermes-style editorial tokens', () {
+    test('living console exposes ambient precision tokens', () {
       final theme = AppTheme.byId(AppThemeId.cyber).darkTheme;
       final tokens = theme.extension<AiroThemeTokens>();
+      final visual = theme.extension<AiroVisualTokens>();
+      final domain = theme.extension<AiroDomainTokens>();
 
       expect(theme.brightness, Brightness.dark);
-      expect(theme.scaffoldBackgroundColor, const Color(0xFF041C1C));
-      expect(theme.colorScheme.primary, const Color(0xFFFFE6CB));
-      expect(theme.colorScheme.secondary, const Color(0xFFFFFF89));
-      expect(theme.textTheme.bodyMedium?.fontFamily, 'AiroMondwest');
+      expect(theme.scaffoldBackgroundColor, const Color(0xFF05080B));
+      expect(theme.colorScheme.primary, const Color(0xFF5CE1E6));
+      expect(theme.colorScheme.secondary, const Color(0xFF9B8CFF));
+      expect(theme.textTheme.bodyMedium?.fontFamily, isNot('AiroMondwest'));
       expect(theme.textTheme.displayLarge?.fontFamily, 'AiroRulesExpanded');
       expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
       expect(tokens, isNotNull);
-      expect(tokens!.gridLine, const Color(0x33FFE6CB));
-      expect(tokens.chromeSurface, const Color(0xFF041C1C));
+      expect(tokens!.gridLine, const Color(0x24FFFFFF));
+      expect(tokens.chromeSurface, const Color(0xFF080C10));
+      expect(visual, AiroVisualTokens.livingConsole);
+      expect(visual!.radiusMedium, 16);
+      expect(domain!.domain, AiroDomain.airo);
+      expect(domain.accent, theme.colorScheme.primary);
+      expect(theme.cardTheme.margin, EdgeInsets.zero);
+    });
+
+    test('domain accents retain accessible foreground contrast', () {
+      for (final domain in AiroDomain.values) {
+        final tokens = AiroDomainTokens.forDomain(domain);
+        expect(
+          _contrastRatio(tokens.accent, tokens.onAccent),
+          greaterThanOrEqualTo(4.5),
+          reason: '${domain.name} accent contrast',
+        );
+      }
     });
 
     test('light theme returns valid ThemeData', () {
@@ -185,4 +203,88 @@ void main() {
       expect(retryPressed, isTrue);
     });
   });
+
+  group('Living Console widgets', () {
+    testWidgets('domain theme applies its accessible accent', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.defaultDark,
+          home: const AiroDomainTheme(
+            domain: AiroDomain.money,
+            child: Builder(builder: _domainProbe),
+          ),
+        ),
+      );
+
+      final context = tester.element(find.byKey(const ValueKey('probe')));
+      expect(AiroDomainTokens.of(context).domain, AiroDomain.money);
+      expect(
+        Theme.of(context).colorScheme.primary,
+        AiroDomainTokens.forDomain(AiroDomain.money).accent,
+      );
+    });
+
+    testWidgets('surface exposes button semantics and shared geometry', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.defaultDark,
+          home: Scaffold(
+            body: AiroSurface(
+              onTap: () {},
+              semanticLabel: 'Open money',
+              child: const Text('Money'),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        tester.getSemantics(find.text('Money')),
+        matchesSemantics(
+          label: 'Open money',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      final material = tester.widget<Material>(find.byType(Material).last);
+      expect(material.shape, isA<RoundedRectangleBorder>());
+    });
+
+    testWidgets('reduced motion resolves transitions immediately', (
+      tester,
+    ) async {
+      late Duration resolved;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: Builder(
+              builder: (context) {
+                resolved = AiroMotion.resolve(context, AiroMotion.spatial);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(resolved, Duration.zero);
+    });
+  });
+}
+
+Widget _domainProbe(BuildContext context) {
+  return const SizedBox(key: ValueKey('probe'));
+}
+
+double _contrastRatio(Color first, Color second) {
+  final lighter = first.computeLuminance() > second.computeLuminance()
+      ? first.computeLuminance()
+      : second.computeLuminance();
+  final darker = first.computeLuminance() > second.computeLuminance()
+      ? second.computeLuminance()
+      : first.computeLuminance();
+  return (lighter + 0.05) / (darker + 0.05);
 }

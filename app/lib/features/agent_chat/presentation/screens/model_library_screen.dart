@@ -9,12 +9,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../application/assistant_model_preferences.dart';
+import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
+import '../../../../core/platform/platform_config.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/llama_gguf_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
+import 'model_health_center_screen.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -33,7 +38,9 @@ enum AssistantTask {
   image('Image Project', Icons.image_outlined),
   audio('Audio Project', Icons.mic_none),
   skills('Agent Skills Project', Icons.extension_outlined),
-  actions('Action Project', Icons.touch_app_outlined);
+  actions('Action Project', Icons.touch_app_outlined),
+  promptLab('Prompt Lab Project', Icons.tune),
+  tinyGarden('Tiny Garden Project', Icons.local_florist_outlined);
 
   const AssistantTask(this.label, this.icon);
 
@@ -48,6 +55,8 @@ enum AssistantTask {
     AssistantTask.audio => ModelCapability.audioUnderstanding,
     AssistantTask.skills => ModelCapability.agentSkills,
     AssistantTask.actions => ModelCapability.mobileActions,
+    AssistantTask.promptLab => ModelCapability.promptLab,
+    AssistantTask.tinyGarden => ModelCapability.mobileActions,
   };
 }
 
@@ -126,6 +135,23 @@ class AssistantProjectTemplate {
       defaultPackage: 'Gemma 3n E2B Multimodal',
       artifactLabel: 'Transcript draft',
     ),
+    AssistantProjectTemplate(
+      task: AssistantTask.promptLab,
+      title: 'Prompt Lab',
+      description: 'Compare prompts with controlled generation settings.',
+      primaryAction: 'Open prompt lab',
+      defaultPackage: 'Gemma 4 E2B Instruct',
+      artifactLabel: 'Prompt experiment',
+    ),
+    AssistantProjectTemplate(
+      task: AssistantTask.tinyGarden,
+      title: 'Tiny Garden',
+      description:
+          'Try a playful offline world controlled with natural language.',
+      primaryAction: 'Open Tiny Garden',
+      defaultPackage: 'FunctionGemma 270M',
+      artifactLabel: 'Garden state',
+    ),
   ];
 
   static AssistantProjectTemplate forTask(AssistantTask task) {
@@ -150,29 +176,105 @@ class AssistantModelLibraryState {
   final AssistantModelCandidate recommended;
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
+  /// A native LiteRT channel is not proof that a model can be loaded. The
+  /// runtime must have an installed and verified package. A configured path is
+  /// intentionally not enough for the model picker: the path may be stale,
+  /// point at an artifact with no catalog metadata, or be a developer-only
+  /// setting. The runtime itself still validates explicit paths when it is
+  /// initialized.
+  static bool isLiteRtReady({
+    required bool runtimeAvailable,
+    required bool hasDownloadedPackage,
+    required bool hasConfiguredModelPath,
+  }) {
+    // A file is only a candidate after the download/storage layer has verified
+    // it. Do not let a configured path (or a native channel alone) make the
+    // picker show LiteRT as ready when the artifact is missing on disk.
+    return runtimeAvailable && hasDownloadedPackage;
+  }
+
+  /// A downloaded file is not automatically an executable local runtime.
+  /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
+  /// handled by the LiteRT adapter; plain `.gguf` files require the native
+  /// llama.cpp backend and are only runnable when that backend is available.
+  static bool isLiteRtPackage(OfflineModelInfo model) {
+    final source =
+        '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
+            .toLowerCase();
+    return source.contains('.litertlm') ||
+        source.contains('litertlm') ||
+        source.contains('.task') ||
+        model.tags.any((tag) => tag.toLowerCase().contains('litert'));
+  }
+
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
+    Future<bool> Function()? isNanoSupported,
+    Future<Map<String, dynamic>> Function()? loadDeviceInfo,
+    Future<bool> Function()? isLiteRtAvailable,
+    bool? hasConfiguredModelPath,
+    Future<bool> Function()? isGgufAvailable,
+    Future<void> Function()? initializeCloud,
+    bool Function()? isCloudAvailable,
+    Future<Map<AssistantTask, OfflineModelInfo>> Function()?
+    loadDefaultPackages,
+    Future<Map<String, ModelCompatibilityResult>> Function(
+      Map<AssistantTask, OfflineModelInfo> packages,
+    )?
+    loadCompatibilityByModelId,
+    Future<OfflineModelInfo> Function(OfflineModelInfo model)?
+    hydrateDownloadedModel,
+    Iterable<OfflineModelInfo>? mobileRecommended,
+    String? platformLabelOverride,
   }) async {
     final nanoService = GeminiNanoService();
-    final nanoSupported = await nanoService.isSupported();
-    final deviceInfo = await nanoService.getDeviceInfo();
+    // Gemini Nano is only exposed by Android's AICore. Do not probe the
+    // native channel on desktop/web (including widget tests), where an
+    // unsupported channel can leave the service timeout pending during
+    // teardown.
+    final nanoSupported = isNanoSupported != null
+        ? await isNanoSupported()
+        : PlatformConfig.isAndroid
+        ? await nanoService.isSupported()
+        : false;
+    final deviceInfo = loadDeviceInfo != null
+        ? await loadDeviceInfo()
+        : PlatformConfig.isAndroid
+        ? await nanoService.getDeviceInfo()
+        : const <String, dynamic>{};
     final liteRtService = LiteRtLmService();
-    final liteRtAvailable = await liteRtService.isAvailable();
+    final liteRtAvailable = isLiteRtAvailable != null
+        ? await isLiteRtAvailable()
+        : await liteRtService.isAvailable();
+    final ggufAvailable = isGgufAvailable != null
+        ? await isGgufAvailable()
+        : await LlamaGgufService().isAvailable();
 
-    await geminiApiService.initialize();
-    final cloudAvailable = geminiApiService.isAvailable;
-    final defaultPackages = await _defaultPackages(liteRtService);
+    if (initializeCloud != null) {
+      await initializeCloud();
+    } else {
+      await geminiApiService.initialize();
+    }
+    final cloudAvailable =
+        isCloudAvailable?.call() ?? geminiApiService.isAvailable;
+    final defaultPackages = loadDefaultPackages == null
+        ? await _defaultPackages(liteRtService)
+        : await loadDefaultPackages();
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
-    final liteRtReady = liteRtAvailable || hasDownloadedBalancedPackage;
-    final compatibilityByModelId = await _loadCompatibilityByModelId(
-      liteRtService,
-      defaultPackages,
+    final liteRtReady = isLiteRtReady(
+      runtimeAvailable: liteRtAvailable,
+      hasDownloadedPackage: hasDownloadedBalancedPackage,
+      hasConfiguredModelPath:
+          hasConfiguredModelPath ?? liteRtService.hasConfiguredModelPath,
     );
+    final compatibilityByModelId = loadCompatibilityByModelId == null
+        ? await _loadCompatibilityByModelId(liteRtService, defaultPackages)
+        : await loadCompatibilityByModelId(defaultPackages);
 
-    final platformLabel = kIsWeb
-        ? 'Web'
-        : defaultTargetPlatform.name.toUpperCase();
+    final platformLabel =
+        platformLabelOverride ??
+        (kIsWeb ? 'Web' : defaultTargetPlatform.name.toUpperCase());
     final manufacturer = (deviceInfo['manufacturer'] as String?)?.trim();
     final model = (deviceInfo['model'] as String?)?.trim();
     final deviceLabel = [
@@ -208,35 +310,37 @@ class AssistantModelLibraryState {
         local: true,
       ),
     );
-    addCandidate(
-      AssistantModelCandidate(
-        id: litertGemmaAssistantModelId,
-        name: 'Gemma mobile package',
-        runtime: 'LiteRT-LM local model',
-        description:
-            'Default local package for planning, documents, and medium reasoning.',
-        bestFor: const [
-          AssistantTask.reasoning,
-          AssistantTask.documents,
-          AssistantTask.skills,
-          AssistantTask.chat,
-        ],
-        tags: const ['Local', 'Downloadable', 'Gemma'],
-        privacyLabel: 'Prompt stays on device',
-        sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
-        available: liteRtReady,
-        actionLabel: liteRtReady ? 'Start' : 'Download package',
-        unavailableReason: liteRtReady
-            ? null
-            : 'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL, or install a compatible local model.',
-        local: true,
-        opensModelManager: !liteRtReady,
-        package: balancedPackage,
-        compatibility: balancedPackage == null
-            ? null
-            : compatibilityByModelId[balancedPackage.id],
-      ),
-    );
+    // A catalog entry is not an installed runtime. Do not put a LiteRT card
+    // in the Mind chooser when the device has neither an executable artifact
+    // nor a configured model path. Model Management remains the explicit
+    // place to download/install a package.
+    if (liteRtReady) {
+      addCandidate(
+        AssistantModelCandidate(
+          id: litertGemmaAssistantModelId,
+          name: 'Gemma mobile package',
+          runtime: 'LiteRT-LM local model',
+          description:
+              'Default local package for planning, documents, and medium reasoning.',
+          bestFor: const [
+            AssistantTask.reasoning,
+            AssistantTask.documents,
+            AssistantTask.skills,
+            AssistantTask.chat,
+          ],
+          tags: const ['Local', 'Downloadable', 'Gemma'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+          package: balancedPackage,
+          compatibility: balancedPackage == null
+              ? null
+              : compatibilityByModelId[balancedPackage.id],
+        ),
+      );
+    }
     addCandidate(
       AssistantModelCandidate(
         id: geminiCloudAssistantModelId,
@@ -260,25 +364,35 @@ class AssistantModelLibraryState {
         local: false,
       ),
     );
-    for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addCandidate(
-        AssistantModelCandidate.fromOfflineModel(
-          await liteRtService.hydrateDownloadedModel(model),
-          compatibilityByModelId: compatibilityByModelId,
-        ),
-      );
+    for (final model
+        in (mobileRecommended ?? ModelCatalog.mobileRecommended).take(3)) {
+      final hydrated = hydrateDownloadedModel == null
+          ? await liteRtService.hydrateDownloadedModel(model)
+          : await hydrateDownloadedModel(model);
+      if (hydrated.isDownloaded) {
+        addCandidate(
+          AssistantModelCandidate.fromOfflineModel(
+            hydrated,
+            compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
+          ),
+        );
+      }
     }
     for (final task in [
       AssistantTask.image,
       AssistantTask.audio,
       AssistantTask.actions,
+      AssistantTask.promptLab,
+      AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
-      if (model != null) {
+      if (model != null && model.isDownloaded) {
         addCandidate(
           AssistantModelCandidate.fromOfflineModel(
             model,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -323,6 +437,14 @@ class AssistantModelLibraryState {
       AssistantTask.image || AssistantTask.audio => [
         if (package != null) assistantModelIdForOfflineModel(package.id),
         geminiCloudAssistantModelId,
+      ],
+      AssistantTask.promptLab => [
+        litertGemmaAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
+      ],
+      AssistantTask.tinyGarden => [
+        geminiNanoAssistantModelId,
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
     };
 
@@ -395,6 +517,8 @@ class AssistantModelLibraryState {
       AssistantTask.audio: gemma3n,
       AssistantTask.skills: gemma4E2b,
       AssistantTask.actions: functionGemma,
+      AssistantTask.promptLab: gemma4E2b,
+      AssistantTask.tinyGarden: functionGemma,
     };
   }
 
@@ -449,7 +573,10 @@ class AssistantModelCandidate {
   factory AssistantModelCandidate.fromOfflineModel(
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
+    bool nativeGgufAvailable = false,
   }) {
+    final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
+    final isRunnable = model.isDownloaded && (isLiteRt || nativeGgufAvailable);
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -465,13 +592,21 @@ class AssistantModelCandidate {
       ],
       privacyLabel: 'Prompt stays on device after install',
       sizeLabel: model.fileSizeDisplay,
-      available: model.isDownloaded,
-      actionLabel: model.isDownloaded ? 'Start' : 'Download package',
-      unavailableReason: model.isDownloaded
+      available: isRunnable,
+      actionLabel: isRunnable
+          ? 'Start'
+          : model.isDownloaded
+          ? 'Native backend unavailable'
+          : 'Download package',
+      unavailableReason: model.isDownloaded && !isLiteRt && !nativeGgufAvailable
+          ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
+          : model.isDownloaded
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
-      opensModelManager: !model.isDownloaded,
+      // A downloaded artifact without a matching local backend still needs a
+      // setup action. It must never look like a runnable chat target.
+      opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
     );
@@ -603,6 +738,11 @@ class _ModelLibraryContent extends ConsumerWidget {
         const SizedBox(height: 16),
         _ProjectHierarchyBanner(state: state),
         const SizedBox(height: 16),
+        _RuntimeHealthButton(
+          candidate: state.recommended,
+          onOpenModelManager: onOpenModelManager,
+        ),
+        const SizedBox(height: 16),
         Text('Choose category', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         for (final template in AssistantProjectTemplate.values)
@@ -611,7 +751,13 @@ class _ModelLibraryContent extends ConsumerWidget {
             child: _ProjectTemplateCard(
               template: template,
               candidate: state.recommendedFor(template.task),
-              package: state.packageFor(template.task),
+              // Keep the catalog package available to setup callbacks, but do
+              // not render an uninstalled LiteRT artifact as if it were part
+              // of the active project. The card should describe executable
+              // state, not a download recommendation.
+              package: state.packageFor(template.task)?.isDownloaded == true
+                  ? state.packageFor(template.task)
+                  : null,
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
@@ -643,6 +789,10 @@ class _ModelLibraryContent extends ConsumerWidget {
     final candidate = state.recommendedFor(template.task);
     final hasDownloadedPackage = candidate.package?.isDownloaded ?? false;
     ref.read(selectedAssistantTaskProvider.notifier).state = template.task;
+    // Read the notifier up front: the library provider can reload while a
+    // local runtime prepares, which unmounts this element and makes `ref`
+    // unusable by the time preparation finishes.
+    final selection = ref.read(selectedAssistantModelIdProvider.notifier);
 
     if (candidate.opensModelManager && !hasDownloadedPackage) {
       final confirmed = await _confirmPackageSetup(
@@ -654,6 +804,14 @@ class _ModelLibraryContent extends ConsumerWidget {
       if (confirmed == true && context.mounted) {
         onOpenModelManager();
       }
+      return;
+    }
+    if (!candidate.available && hasDownloadedPackage) {
+      await _showUnavailablePackage(
+        context,
+        template: template,
+        candidate: candidate,
+      );
       return;
     }
     if (!candidate.available && !hasDownloadedPackage) {
@@ -670,13 +828,11 @@ class _ModelLibraryContent extends ConsumerWidget {
         candidate: candidate,
         template: template,
       );
-      if (!context.mounted || !result.isReady) {
+      if (!result.isReady) {
         return;
       }
     }
-    await ref
-        .read(selectedAssistantModelIdProvider.notifier)
-        .select(candidate.id);
+    await selection.select(candidate.id);
     onModelSelected(candidate);
   }
 
@@ -694,6 +850,21 @@ class _ModelLibraryContent extends ConsumerWidget {
       ),
     );
     var cancelRequested = false;
+
+    // Preparation outlives this element: a library reload swaps the content
+    // subtree out while a runtime warms up. Hold the navigator and messenger
+    // captured here rather than reaching through `context` after the await,
+    // or the progress dialog is never dismissed and the prepared runtime is
+    // silently dropped instead of opening chat.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    var dialogVisible = true;
+
+    void closeSetupDialog() {
+      if (!dialogVisible) return;
+      dialogVisible = false;
+      navigator.pop();
+    }
 
     unawaited(
       showDialog<void>(
@@ -719,16 +890,23 @@ class _ModelLibraryContent extends ConsumerWidget {
                 actions: [
                   TextButton(
                     onPressed: () {
+                      // Close on the spot. The runtime notices the flag and
+                      // returns `cancelled`; waiting for that to dismiss the
+                      // dialog leaves no way out once preparation has already
+                      // finished.
                       cancelRequested = true;
+                      closeSetupDialog();
                     },
-                    child: Text(cancelRequested ? 'Stopping…' : 'Cancel'),
+                    child: const Text('Cancel'),
                   ),
                 ],
               );
             },
           );
         },
-      ),
+        // Covers the Android back button, which pops the dialog without going
+        // through closeSetupDialog().
+      ).then((_) => dialogVisible = false),
     );
 
     final result = await runtimeService.prepareRuntime(
@@ -738,20 +916,16 @@ class _ModelLibraryContent extends ConsumerWidget {
     );
 
     progress.dispose();
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
+    closeSetupDialog();
 
-    if (!context.mounted) {
-      return result;
-    }
     if (result.status == AssistantRuntimePreparationStatus.cancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('${candidate.name} setup cancelled.')),
       );
       return result;
     }
     if (result.diagnostic != null) {
+      if (!context.mounted) return result;
       await _showPreparationFailure(
         context,
         diagnostic: result.diagnostic!,
@@ -935,6 +1109,94 @@ class _ModelLibraryContent extends ConsumerWidget {
   }
 }
 
+class _RuntimeHealthButton extends ConsumerWidget {
+  const _RuntimeHealthButton({
+    required this.candidate,
+    required this.onOpenModelManager,
+  });
+
+  final AssistantModelCandidate candidate;
+  final VoidCallback onOpenModelManager;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.health_and_safety_outlined),
+        title: const Text('Runtime Health Center'),
+        subtitle: const Text(
+          'See why this model is ready, blocked, or still preparing.',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final model = candidate.package;
+          if (model == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Health details will appear after a local model is selected.',
+                ),
+              ),
+            );
+            return;
+          }
+          final report = ModelHealthReport.fromFacts(
+            model: model,
+            compatibility: candidate.compatibility,
+          );
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ModelHealthCenterScreen(
+                report: report,
+                onAction: (action) {
+                  var reducedContext = 1024;
+                  if (action == ModelHealthAction.reduceContext) {
+                    final settings = ref.read(aiPreferencesSettingsProvider);
+                    reducedContext = settings.contextLength <= 1024
+                        ? 512
+                        : 1024;
+                    unawaited(
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(
+                            settings.copyWith(contextLength: reducedContext),
+                          ),
+                    );
+                  }
+                  final message = switch (action) {
+                    ModelHealthAction.retry =>
+                      'Retrying is available from Model Management after checking the runtime status.',
+                    ModelHealthAction.reduceContext =>
+                      'Context profile reduced to $reducedContext tokens. Retry the model now.',
+                    ModelHealthAction.resumeDownload =>
+                      'Resume the model download from Model Management.',
+                    ModelHealthAction.repair =>
+                      'Repairing the model download now.',
+                    ModelHealthAction.chooseAlternative =>
+                      'Choose another installed model from Model Management.',
+                  };
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                  if (action == ModelHealthAction.repair &&
+                      candidate.package != null) {
+                    unawaited(
+                      ref
+                          .read(intelligentModelManagerProvider)
+                          .repairModel(candidate.package!.id),
+                    );
+                  }
+                  onOpenModelManager();
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _ProjectHierarchyBanner extends StatelessWidget {
   const _ProjectHierarchyBanner({required this.state});
 
@@ -996,6 +1258,9 @@ class _ProjectTemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasDownloadedPackage =
+        package?.isDownloaded == true ||
+        candidate.package?.isDownloaded == true;
     final outline = selected
         ? theme.colorScheme.primary
         : theme.colorScheme.outlineVariant;
@@ -1145,7 +1410,9 @@ class _ProjectTemplateCard extends StatelessWidget {
                       ),
                       label: Text(
                         candidate.opensModelManager
-                            ? 'Download package'
+                            ? (hasDownloadedPackage
+                                  ? 'Configure runtime'
+                                  : 'Download package')
                             : template.primaryAction,
                       ),
                     ),

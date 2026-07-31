@@ -63,6 +63,26 @@ void main() {
         IntentType.mobileActions,
       );
       expect(
+        IntentParser.parse('open Wi-Fi settings').type,
+        IntentType.openWifiSettings,
+      );
+      expect(
+        IntentParser.parse('turn the flashlight off').type,
+        IntentType.setFlashlight,
+      );
+      expect(
+        IntentParser.parse('turn the flashlight off').parameters['enabled'],
+        false,
+      );
+      expect(
+        IntentParser.parse('create contact').type,
+        IntentType.createContact,
+      );
+      expect(
+        IntentParser.parse('show location on map').type,
+        IntentType.openMap,
+      );
+      expect(
         IntentParser.parse('manage offline models').type,
         IntentType.modelManagement,
       );
