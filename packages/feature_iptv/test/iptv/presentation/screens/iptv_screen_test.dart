@@ -214,40 +214,37 @@ void main() {
     expect(find.byType(AppBar), findsOneWidget);
   });
 
-  testWidgets(
-    'browse preview exposes a full player entry point',
-    (tester) async {
-      await tester.pumpWidget(
-        createWidget(
-          streamingState: StreamingState(
-            playbackState: PlaybackState.playing,
-            isLiveStream: true,
-            liveDelay: const Duration(seconds: 1),
-            currentChannel: channels.first,
-          ),
+  testWidgets('browse preview exposes a full player entry point', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+          currentChannel: channels.first,
         ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      final fullscreenButton = find.byKey(
-        const ValueKey('iptv-preview-fullscreen-button'),
-      );
-      expect(fullscreenButton, findsOneWidget);
+    final fullscreenButton = find.byKey(
+      const ValueKey('iptv-preview-fullscreen-button'),
+    );
+    expect(fullscreenButton, findsOneWidget);
 
-      await tester.tap(fullscreenButton);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(fullscreenButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      expect(fullscreenButton, findsNothing);
-      expect(
-        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
-        findsOneWidget,
-      );
-    },
-    // Tracked as Pixel 9 fullscreen overlay/back hit-test follow-up.
-    skip: true,
-  );
+    expect(fullscreenButton, findsNothing);
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'macOS full player owns one native transition and restores on native exit',
@@ -448,47 +445,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'system Back exits fullscreen playback before popping the app',
-    (tester) async {
-      await tester.pumpWidget(
-        createWidget(
-          streamingState: StreamingState(
-            playbackState: PlaybackState.playing,
-            isLiveStream: true,
-            liveDelay: const Duration(seconds: 1),
-            currentChannel: channels.first,
-          ),
+  testWidgets('system Back exits fullscreen playback before popping the app', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+          currentChannel: channels.first,
         ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.tap(
-        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      expect(
-        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
-        findsOneWidget,
-      );
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsOneWidget,
+    );
 
-      final handled = await tester.binding.handlePopRoute();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+    final handled = await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      expect(handled, isTrue);
-      expect(find.text('Airo TV'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
-        findsOneWidget,
-      );
-    },
-    // Tracked as Pixel 9 fullscreen overlay/back hit-test follow-up.
-    skip: true,
-  );
+    expect(handled, isTrue);
+    expect(find.text('Airo TV'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'hamburger menu opens the drawer and Guide pushes the guide screen',
