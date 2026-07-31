@@ -304,6 +304,15 @@ jobs:
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
+          - name: coins
+            target: lib/main_coins.dart
+            variant: coins
+            app_platform: mobileFull
+            use_stubs: true
+            enforce_size: true
+            pubspec: pubspec_coins.yaml
+            size_target_mb: 25
+            description: "Airo Coins (local-first vault only)"
     steps:
       - uses: actions/checkout@v7
 
@@ -381,6 +390,7 @@ jobs:
           case "${{ matrix.platform.variant }}" in
             full) package_name="io.airo.app" ;;
             tv) package_name="io.airo.app.tv" ;;
+            coins) package_name="io.airo.app.coins" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
               exit 1
