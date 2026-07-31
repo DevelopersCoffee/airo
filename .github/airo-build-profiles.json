@@ -134,7 +134,7 @@
       "appVariant": "coins",
       "appPlatform": "mobileFull",
       "deviceClass": "phone",
-      "ciBuild": false,
+      "ciBuild": true,
       "edgeProfile": true,
       "requiredPackages": ["feature_coin"],
       "featureModules": ["feature_coin"],

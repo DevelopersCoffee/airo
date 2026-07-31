@@ -4,6 +4,36 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## [Airo v0.0.6-rc.1] - 2026-07-30
+
+Preview (release-candidate) cut for direct download / APKPure across the Android
+TV, full-app, and macOS TV profiles. Store submission, iOS/iPadOS, and macOS
+notarization are out of scope. See
+[docs/release/AIRO_v0.0.6-rc.1.md](docs/release/AIRO_v0.0.6-rc.1.md).
+
+### Added
+
+- Apple picture-in-picture wiring and player-layer lifecycle in
+  `platform_player`.
+- EPG programme-enrichment metadata contract and a programme-details dialog.
+- IPTV source-management extension seam and a source-diagnostics entitlement.
+- Airo Coins (`io.airo.app.coins`) promoted into the CI build matrix for
+  package-size and architecture qualification (25 MiB budget). Qualification
+  only — not a published artifact in this release.
+
+### Changed
+
+- Agent chat prefers an installed Gemma model when present.
+- Bootstrap accepts provider overrides.
+- CI hardening: deterministic cross-platform validation, safe partial
+  APK-size-baseline merges, and the physical-device rig as the default run path.
+
+### Known Issues
+
+- Preview APKs signed without a stable dogfood keystore use an ephemeral CI
+  cert and will not upgrade over a prior build.
+- Fire TV D-pad focus regressions from #1244 remain open (#1272).
+
 ## [Airo TV v0.0.5] - 2026-07-22
 
 ### Added
