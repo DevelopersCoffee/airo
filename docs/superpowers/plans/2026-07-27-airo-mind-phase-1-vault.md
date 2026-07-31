@@ -3946,6 +3946,61 @@ mod tests {
         assert_eq!(first, second);
     }
 
+    /// `SEC-15` / `SEC-38` failing form. The LIVE path must refuse a revoked
+    /// device.
+    ///
+    /// `SEC-50`: deleting the revocation check from `admit_device` left the
+    /// suite at 92 passed, 0 failed. The existing
+    /// `a_stale_backup_does_not_readmit_a_revoked_device` passes through
+    /// `purge_device` on the RESTORE path, so it *masks* the control it appears
+    /// to cover -- the same masking the four framing regressions were written
+    /// to break. `SEC-15`'s finding was live-path re-admission and nothing
+    /// tested it.
+    #[test]
+    fn mut_a_revoked_device_is_refused_on_the_live_path() {
+        use crate::vault::device::{DeviceCertificate, DeviceKey};
+        let identity = RootIdentity::from_seed(&test_seed()).unwrap();
+        let mut vault = Vault::new(identity.public_key());
+
+        let device = DeviceKey::generate().unwrap();
+        let certificate = DeviceCertificate::issue(&identity, &device, 1).unwrap();
+        vault.trust_device(certificate.clone()).unwrap();
+        assert_eq!(vault.trusted_devices().len(), 1);
+
+        let _directive = vault.revoke_device(certificate.device_id()).unwrap();
+        assert!(vault.trusted_devices().is_empty());
+
+        // The certificate is still validly signed. That is exactly why the
+        // signature alone was never the answer.
+        assert!(
+            matches!(vault.trust_device(certificate), Err(VaultError::DeviceRevoked(_))),
+            "a revoked device was re-admitted -- SEC-15 has no failing form"
+        );
+        assert!(vault.trusted_devices().is_empty());
+    }
+
+    /// `SEC-14` failing form. A destroyed context id is retired permanently.
+    ///
+    /// `SEC-50`: deleting the refusal from `add_context` left the suite at 92
+    /// passed, 0 failed. Without it, restore later applies the ledger, sees the
+    /// id revoked, and destroys everything wrapped under the *new* key --
+    /// content created after the deletion, lost silently.
+    #[test]
+    fn mut_a_destroyed_context_id_cannot_be_recreated() {
+        let mut vault = vault();
+
+        vault.add_context(&cid("clinic")).unwrap();
+        let _directive = vault.destroy_context(&cid("clinic")).unwrap();
+
+        assert!(
+            matches!(
+                vault.add_context(&cid("clinic")),
+                Err(VaultError::ContextRetired(id)) if id == "clinic"
+            ),
+            "a retired context identity was resurrected -- SEC-14 has no failing form"
+        );
+    }
+
     #[test]
     fn an_unsigned_device_certificate_is_rejected() {
         use crate::vault::device::{DeviceCertificate, DeviceKey};
@@ -5258,6 +5313,50 @@ mod tests {
                 Ok(_) => panic!("cut {cut}: a truncated package must not open"),
             }
         }
+    }
+
+    /// `SEC-35` / `A17` failing form. The package nonce must be inside
+    /// `header_aad`.
+    ///
+    /// `frame_nonce` overwrites bytes 20..24 with the frame index, so those
+    /// four bytes are never *read*. Without the AAD line they are also never
+    /// *authenticated*: two byte-different files decrypt to the same vault, and
+    /// 32 bits of a frozen header field become mutable filler. `SEC-50` found
+    /// that deleting `push_len_prefixed(&mut aad, &self.nonce)` left the suite
+    /// at 92 passed, 0 failed. This is the test that stops that.
+    #[test]
+    fn mut_the_package_nonce_is_authenticated() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.decrypt(&seed).is_ok(), "control: untampered opens");
+
+        // Byte 20 is inside the range `frame_nonce` overwrites, so only the
+        // AAD can object to this.
+        package.nonce[20] ^= 0xff;
+        assert!(
+            matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)),
+            "the nonce tail is unauthenticated -- SEC-35 has no failing form"
+        );
+    }
+
+    /// `SEC-36` failing form. `set_head_epoch` must refuse a head below the
+    /// highest entry.
+    ///
+    /// Without it a hostile or buggy writer rewinds the epoch, and
+    /// `revoked_since` then skips every revocation above the rewound head --
+    /// resurrecting destroyed content on the restore path.
+    #[test]
+    fn mut_set_head_epoch_refuses_to_rewind() {
+        let mut ledger = RevocationLedger::new();
+        for i in 0..5u32 {
+            ledger.revoke(RevocationSubject::Content(format!("c{i}")));
+        }
+        assert_eq!(ledger.head_epoch(), 5);
+        assert!(ledger.set_head_epoch(9).is_ok(), "forward is allowed");
+        assert!(
+            ledger.set_head_epoch(3).is_err(),
+            "head below max(entry) accepted -- SEC-36 has no failing form"
+        );
     }
 
     /// `ADR-0017`'s headline property in its failing form: a truncated package
