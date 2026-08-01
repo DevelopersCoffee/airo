@@ -1,9 +1,21 @@
 name: Build and Release
 
+# Not triggered by tags. release-orchestrator.yml also fires on `v*`, so while
+# both were tag-triggered a single version tag started two workflows that each
+# published a GitHub Release for it, last writer winning. They do not agree on
+# what a release is: the orchestrator fails closed (missing manifest, missing
+# required asset, or ungenerated notes each exit 1) and covers TV, mobile/tablet
+# and macOS with qualification reports, while this one was built to tolerate
+# partial platform failures.
+#
+# The collision has never actually fired: this workflow ran alone on
+# v0.0.4-rc.2 (2026-07-19), the orchestrator gained its `v*` trigger on
+# 2026-07-22, and no `v*` tag has been pushed since -- only `airo-tv-v*`, which
+# `v*` does not match. The next Airo version tag would have been the first.
+#
+# Kept on workflow_dispatch so the legacy path stays available deliberately
+# rather than by accident.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
