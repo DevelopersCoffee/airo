@@ -50,6 +50,9 @@ class ModelDownloadService {
       {};
   final Set<String> _scheduledIds = {};
   final Map<String, OfflineModelInfo> _scheduledModels = {};
+  final Map<String, DateTime> _downloadStartedAt = {};
+  final Map<String, DateTime> _lastByteProgressAt = {};
+  final Map<String, int> _lastDownloadedBytes = {};
   final StreamController<ModelDownloadProgress> _globalProgressController =
       StreamController<ModelDownloadProgress>.broadcast();
 
@@ -96,6 +99,10 @@ class ModelDownloadService {
     }
 
     _emit(ModelDownloadProgress.starting(model.id, model.fileSizeBytes));
+    final now = DateTime.now();
+    _downloadStartedAt[model.id] = now;
+    _lastByteProgressAt[model.id] = now;
+    _lastDownloadedBytes[model.id] = 0;
     try {
       final destinationPath = await _storageManager.getModelPath(
         model.id,
@@ -152,6 +159,7 @@ class ModelDownloadService {
           );
           _scheduledIds.remove(progress.artifactId);
           _scheduledModels.remove(progress.artifactId);
+          _clearProgressTracking(progress.artifactId);
           return;
         }
         await _tryWriteReceipt(model);
@@ -159,13 +167,16 @@ class ModelDownloadService {
     }
     _emit(_toModelProgress(progress));
     if (progress.status == DownloadStatus.completed ||
-        progress.status == DownloadStatus.cancelled) {
+        progress.status == DownloadStatus.cancelled ||
+        progress.status == DownloadStatus.failed) {
       _scheduledIds.remove(progress.artifactId);
       _scheduledModels.remove(progress.artifactId);
+      _clearProgressTracking(progress.artifactId);
     }
   }
 
   ModelDownloadProgress _toModelProgress(DownloadProgress progress) {
+    final now = DateTime.now();
     final status = switch (progress.status) {
       DownloadStatus.queued => ModelDownloadStatus.pending,
       DownloadStatus.downloading => ModelDownloadStatus.downloading,
@@ -175,12 +186,27 @@ class ModelDownloadService {
       DownloadStatus.failed => ModelDownloadStatus.failed,
       DownloadStatus.cancelled => ModelDownloadStatus.cancelled,
     };
+    final startedAt = status == ModelDownloadStatus.downloading
+        ? _downloadStartedAt.putIfAbsent(progress.artifactId, () => now)
+        : _downloadStartedAt[progress.artifactId];
+    var lastProgressAt = _lastByteProgressAt[progress.artifactId];
+    if (status == ModelDownloadStatus.downloading) {
+      final previousBytes = _lastDownloadedBytes[progress.artifactId];
+      if (previousBytes == null || progress.downloadedBytes > previousBytes) {
+        _lastDownloadedBytes[progress.artifactId] = progress.downloadedBytes;
+        lastProgressAt = now;
+        _lastByteProgressAt[progress.artifactId] = now;
+      }
+      lastProgressAt ??= startedAt;
+    }
     return ModelDownloadProgress(
       modelId: progress.artifactId,
       totalBytes: progress.totalBytes,
       downloadedBytes: progress.downloadedBytes,
       status: status,
       speedBytesPerSecond: progress.speedBytesPerSecond,
+      startTime: startedAt,
+      lastProgressAt: lastProgressAt,
       error: progress.failure?.message,
       failureCode: progress.failure?.code.name,
       retryCount: progress.retryCount,
@@ -342,6 +368,12 @@ class ModelDownloadService {
     );
   }
 
+  void _clearProgressTracking(String modelId) {
+    _downloadStartedAt.remove(modelId);
+    _lastByteProgressAt.remove(modelId);
+    _lastDownloadedBytes.remove(modelId);
+  }
+
   Future<void> dispose() async {
     await _progressSubscription?.cancel();
     await _globalProgressController.close();
@@ -351,6 +383,9 @@ class ModelDownloadService {
     _progressStreams.clear();
     _scheduledIds.clear();
     _scheduledModels.clear();
+    _downloadStartedAt.clear();
+    _lastByteProgressAt.clear();
+    _lastDownloadedBytes.clear();
   }
 }
 

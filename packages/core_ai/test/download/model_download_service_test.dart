@@ -148,6 +148,44 @@ void main() {
     },
   );
 
+  test(
+    'download progress records last byte movement for stall recovery',
+    () async {
+      final progressValues = <ModelDownloadProgress>[];
+      final subscription = downloadService
+          .downloadModel(model)
+          .listen(progressValues.add);
+      await Future<void>.delayed(Duration.zero);
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.downloading,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+          speedBytesPerSecond: 0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final firstMovement = progressValues.last.lastProgressAt;
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.downloading,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+          speedBytesPerSecond: 0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(progressValues.last.startTime, isNotNull);
+      expect(progressValues.last.lastProgressAt, firstMovement);
+      await subscription.cancel();
+    },
+  );
+
   test('completed platform transfer records an install receipt', () async {
     var verificationCalls = 0;
     when(
