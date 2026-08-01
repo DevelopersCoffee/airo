@@ -187,7 +187,16 @@ release_apk=""
 release_aab=""
 if [[ "$BUILD_APK" == true ]]; then
     if [[ "$SPLIT_PER_ABI" == true ]]; then
-        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+        # Prefer the 32-bit split: --split-per-abi exists for the Fire TV rig,
+        # and the Fire TV Stick 3rd Gen (AFTSSS, API 28) is an armeabi-v7a
+        # target. Qualifying the arm64 split instead would pass here and then
+        # fail on the device with libflutter.so missing for its ABI, which is
+        # the rejection recorded in AIRO_TV_V0.0.6_QUALIFICATION.md. Fall back
+        # to arm64 so a 64-bit-only split build is still checked.
+        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk"
+        if [[ ! -s "$release_apk" ]]; then
+            release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+        fi
     else
         release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
     fi
