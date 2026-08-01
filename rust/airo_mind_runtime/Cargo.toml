@@ -1,0 +1,17 @@
+[package]
+name = "airo_mind_runtime"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind runtime — Supervisor and inference engine boundary."
+license = "MIT"
+
+[lib]
+name = "airo_mind_runtime"
+# rlib only. Nothing crosses FFI yet; declaring cdylib links an empty artifact
+# on every CI push.
+crate-type = ["rlib"]
+
+[dependencies]
+# Deliberately none. The Supervisor MVP schedules, cancels and budgets; it does
+# not need an async runtime to do that, and taking tokio here would be a
+# Constitution §6 dependency decision made for convenience rather than need.
