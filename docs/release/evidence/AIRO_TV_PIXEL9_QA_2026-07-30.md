@@ -334,30 +334,33 @@ Issue #589 therefore remains open for the final eight-card and Help traversal.
 
 ### Super App boundary
 
-The exact rebased PR head `d7f24813` full-app candidate was built and installed
-in place on the physical Pixel 9 without clearing existing data:
+The rebased executable tree at `e68d4e95` produced a full-app candidate that
+was installed in place on the physical Pixel 9 without clearing existing data:
 
-- Artifact: `airo-super-app-d7f24813-arm64-v8a-release.apk`
+- Artifact: `airo-super-app-e68d4e95-arm64-v8a-release.apk`
 - Package/version: `io.airo.app`, `0.0.6-rc.1` (`versionCode 2008`)
 - Size: 106,264,984 bytes
 - SHA-256:
-  `fbd4395c3f002cdfb902f54a1b6cfc4299ca7862c68ece963dc705eda2cabaea`
+  `ffc47b268c1fb7c1378eff9a51295460e1a9f5f5c6044c67bee0996f832773ae`
 
-The shared Live destination rendered the persisted playlist, current channel,
-filters, and channel grid. Live video also rendered during the app's PiP
-transition. The process remained alive, and the bounded signature scan found
-no fatal exception, ANR, OOM, `UnsatisfiedLinkError`, playback exception, or
-media-control `CustomAction` failure. This replaces the earlier
-immediately-preceding-candidate evidence with exact-artifact proof.
+On the immediately preceding rebased candidate (`d7f24813`), the shared Live
+destination rendered the persisted playlist, current channel, filters, and
+channel grid. Live video also rendered during the app's PiP transition. The
+process remained alive, and the bounded signature scan found no fatal
+exception, ANR, OOM, `UnsatisfiedLinkError`, playback exception, or
+media-control `CustomAction` failure. The only executable changes introduced
+by the subsequent rebase are confined to Airo Mind screens, but the exact
+`e68d4e95` shared-Live rerun remains pending because the Pixel locked after
+installation; the earlier result is not promoted to exact-artifact proof.
 
 ### Rebased TV artifact awaiting deployment
 
-The same rebased PR head produced a fresh Fire TV APK locally:
+The same rebased executable tree produced a fresh Fire TV APK locally:
 
-- Artifact: `airo-tv-d7f24813-armeabi-v7a-release.apk`
+- Artifact: `airo-tv-e68d4e95-armeabi-v7a-release.apk`
 - Size: 27,372,706 bytes
 - SHA-256:
-  `c9a6f6084b7ece7f72720ccf6aa866fbcda69b68d9b3b84a654adde701efb5d2`
+  `a6eeec553f1f706fa3903157e227534b22366f1d7c83a487a57e7840a4b1a52d`
 - TV release contract: passed with compile/target SDK 36 and required minimum
   SDK 34
 
@@ -369,8 +372,10 @@ open rather than being inferred from the earlier artifact.
 ### Release decision
 
 The physical Fire TV playback, sleep prevention, Back containment, recovery,
-and constrained-TV soak gates pass for the exact candidate. Public readiness
-remains `false`: production signing, Firebase/mobile configuration, Play
+and constrained-TV soak gates pass for the immediately preceding executable
+candidate. Deployment of the rebased candidate and its D-pad/Help gate remain
+open. Public readiness remains `false`: production signing,
+Firebase/mobile configuration, Play
 credentials and console submissions, legal provenance/private-dependency
 decisions, final D-pad/Help evidence, Cast receiver evidence, iPad evidence,
 and release-owner approval remain external or incomplete.
