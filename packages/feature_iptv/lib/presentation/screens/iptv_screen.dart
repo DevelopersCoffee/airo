@@ -309,11 +309,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
     final lastFullscreenBackAt = _lastFullscreenBackAt;
     if (lastFullscreenBackAt != null &&
-        DateTime.now().difference(lastFullscreenBackAt) <
-            const Duration(seconds: 1)) {
+        (widget.tenFootMode ||
+            DateTime.now().difference(lastFullscreenBackAt) <
+                const Duration(seconds: 1))) {
       // Fire OS can dispatch one remote BACK as two pop-route callbacks.
       // Consume the duplicate so returning to browse never closes the app.
-      _lastFullscreenBackAt = null;
+      if (!widget.tenFootMode) {
+        _lastFullscreenBackAt = null;
+      }
       return true;
     }
     return false;
@@ -776,8 +779,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       final lastFullscreenBackAt = _lastFullscreenBackAt;
       final suppressDuplicateBack =
           lastFullscreenBackAt != null &&
-          DateTime.now().difference(lastFullscreenBackAt) <
-              const Duration(seconds: 1);
+          (widget.tenFootMode ||
+              DateTime.now().difference(lastFullscreenBackAt) <
+                  const Duration(seconds: 1));
+      final guardedChild =
+          widget.tenFootMode && !isFullscreen && suppressDuplicateBack
+          ? CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape): () {
+                  setState(() => _lastFullscreenBackAt = null);
+                },
+                const SingleActivator(LogicalKeyboardKey.goBack): () {
+                  setState(() => _lastFullscreenBackAt = null);
+                },
+                const SingleActivator(LogicalKeyboardKey.browserBack): () {
+                  setState(() => _lastFullscreenBackAt = null);
+                },
+              },
+              child: child,
+            )
+          : child;
       return PopScope<void>(
         canPop: !isFullscreen && !suppressDuplicateBack,
         onPopInvokedWithResult: (didPop, _) {
@@ -788,11 +809,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           // pop (canPop above) still keeps the callback from closing the app.
           if (isFullscreen && !widget.tenFootMode) {
             _exitFullscreen();
-          } else if (suppressDuplicateBack) {
+          } else if (suppressDuplicateBack && !widget.tenFootMode) {
             _lastFullscreenBackAt = null;
           }
         },
-        child: child,
+        child: guardedChild,
       );
     }
 
