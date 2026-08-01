@@ -827,6 +827,9 @@ class _ModelLibraryContent extends ConsumerWidget {
         context,
         candidate: candidate,
         template: template,
+        contextLengthOverride: ref
+            .read(aiPreferencesSettingsProvider)
+            .contextLength,
       );
       if (!result.isReady) {
         return;
@@ -840,6 +843,7 @@ class _ModelLibraryContent extends ConsumerWidget {
     BuildContext context, {
     required AssistantModelCandidate candidate,
     required AssistantProjectTemplate template,
+    required int contextLengthOverride,
   }) async {
     final progress = ValueNotifier(
       const AssistantRuntimePreparationProgress(
@@ -911,6 +915,7 @@ class _ModelLibraryContent extends ConsumerWidget {
 
     final result = await runtimeService.prepareRuntime(
       candidate: candidate,
+      contextLengthOverride: contextLengthOverride,
       onProgress: (value) => progress.value = value,
       isCancelled: () => cancelRequested,
     );

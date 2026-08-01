@@ -291,6 +291,50 @@ void main() {
     );
 
     test(
+      'honors reduced context override when preparing GGUF models',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'qwen2-1.5b-q4',
+          name: 'Qwen2 1.5B',
+          family: ModelFamily.qwen,
+          fileSizeBytes: 1_100_000_000,
+          filePath: '/models/qwen2-1.5b-q4.gguf',
+          contextLength: 16384,
+          provider: AIProvider.gguf,
+        );
+        final loadedService = _FakeLlamaGgufService(
+          isAvailableResult: true,
+          loadModelResult: true,
+        );
+        final service = AssistantRuntimeService(
+          llamaGguf: loadedService,
+          loadDeviceInfo: () async => const {'platform': 'android'},
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: assistantModelIdForOfflineModel(package.id),
+            name: package.name,
+            runtime: 'Qwen GGUF',
+            description: 'Downloaded GGUF package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local', 'GGUF'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+          contextLengthOverride: 1024,
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.ready);
+        expect(loadedService.loadedContextSize, 1024);
+      },
+    );
+
+    test(
       'streams installed GGUF responses through the native backend',
       () async {
         final package = OfflineModelInfo(
@@ -1051,6 +1095,63 @@ void main() {
         expect(result.status, AssistantRuntimePreparationStatus.ready);
         expect(warmedPackageId, 'gemma-4-e2b-it-litertlm');
         expect(warmedInstalled, isFalse);
+      },
+    );
+
+    test(
+      'honors reduced context override for LiteRT checks and warmup',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+          filePath: '/models/gemma-4-e2b-it-litertlm.task',
+          contextLength: 32768,
+          backendPreference: ModelBackendPreference.gpu,
+          provider: AIProvider.gemma,
+          capabilities: const [ModelCapability.chat, ModelCapability.reasoning],
+        );
+        var compatibilityContext = 0;
+        var warmedContext = 0;
+        final service = AssistantRuntimeService(
+          isLiteRtAvailable: () async => true,
+          warmupLiteRtModel: (model) async {
+            warmedContext = model.contextLength;
+            return true;
+          },
+          loadDeviceInfo: () async => const {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+          checkModelCompatibility: (model) async {
+            compatibilityContext = model.contextLength;
+            return ModelCompatibilityResult.compatible(MemorySeverity.safe);
+          },
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: const [AssistantTask.chat, AssistantTask.reasoning],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+          contextLengthOverride: 1024,
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.ready);
+        expect(compatibilityContext, 1024);
+        expect(warmedContext, 1024);
       },
     );
 

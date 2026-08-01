@@ -10,6 +10,7 @@ void main() {
   });
 
   testWidgets('recommends a model by task capability', (tester) async {
+    final semantics = tester.ensureSemantics();
     String selected = 'none';
     Future<AssistantModelLibraryState> load(AssistantTask task) async {
       final candidate = AssistantModelCandidate(
@@ -73,15 +74,31 @@ void main() {
     expect(find.text('Chat'), findsOneWidget);
     expect(find.text('Thinking'), findsOneWidget);
     expect(find.text('Why this choice'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Capability: Chat. Selected.'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Recommended model Mock Chat Project. Runtime MockRuntime. '
+        'Prompt stays on device. 1 MB. Ready.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Image'));
     await tester.pump();
     await tester.pumpAndSettle();
 
     expect(find.text('Recommended for Image'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Capability: Image. Selected.'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Use this model'));
     await tester.pumpAndSettle();
 
     expect(find.text('Selected: mock-image'), findsOneWidget);
+    semantics.dispose();
   });
 }

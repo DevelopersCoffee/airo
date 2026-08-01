@@ -200,4 +200,54 @@ void main() {
     );
     expect(find.text('Remote model server saved.'), findsOneWidget);
   });
+
+  testWidgets('profile shows persistent remote server diagnostics', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final notifier = AppThemeNotifier.withPreferences(prefs);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appThemeProvider.overrideWith((ref) => notifier),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          aiStorageDashboardProvider.overrideWith((ref) async {
+            return const AIStorageDashboardSummary(categories: []);
+          }),
+        ],
+        child: const MaterialApp(home: ProfileScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const Key('ai-remote-server-section')),
+    );
+    await tester.tap(find.byKey(const Key('ai-remote-server-section')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('ai-remote-server-url')),
+      'http://127.0.0.1:11434',
+    );
+    await tester.enterText(
+      find.byKey(const Key('ai-remote-server-model')),
+      'qwen2.5:7b',
+    );
+    await tester.tap(find.byKey(const Key('ai-remote-server-test')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('ai-remote-server-diagnostics')), findsOne);
+    expect(find.text('Remote diagnostics: Needs attention'), findsOneWidget);
+    expect(find.text('Endpoint: http://127.0.0.1:11434/v1'), findsOneWidget);
+    expect(find.text('Requested model: qwen2.5:7b'), findsOneWidget);
+    expect(find.text('Models reported: 0'), findsOneWidget);
+    expect(
+      find.text(
+        'Next step: Confirm the server is running and reachable from this device.',
+      ),
+      findsOneWidget,
+    );
+  });
 }

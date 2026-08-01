@@ -390,6 +390,12 @@ void main() {
 
     expect(find.text('Installed: 1'), findsOneWidget);
     expect(find.text('Download queue'), findsOneWidget);
+    expect(find.text('Download Manager'), findsWidgets);
+    expect(find.text('Integrity: verified'), findsOneWidget);
+    expect(find.text('Local storage: 1.0 KB'), findsOneWidget);
+    expect(find.text('Downloaded: 512 B of 2.0 KB'), findsOneWidget);
+    expect(find.text('Resume supported'), findsOneWidget);
+    expect(find.text('Failure: Download was interrupted.'), findsOneWidget);
     expect(find.text('Recommended'), findsOneWidget);
     expect(find.text('Update available'), findsOneWidget);
     expect(find.text('Warm'), findsOneWidget);

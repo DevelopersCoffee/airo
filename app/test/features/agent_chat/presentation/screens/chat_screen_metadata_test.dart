@@ -325,6 +325,47 @@ void main() {
     );
   });
 
+  testWidgets('clear chat confirms before removing visible messages', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Clear conversation?'), findsOneWidget);
+    expect(find.text('Assistant answer'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Assistant answer'), findsOneWidget);
+    expect(find.text('User prompt'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear chat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Assistant answer'), findsNothing);
+    expect(find.text('User prompt'), findsNothing);
+    expect(find.text('Conversation cleared'), findsOneWidget);
+    final clearButton = tester.widget<IconButton>(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    expect(clearButton.onPressed, isNull);
+  });
+
   testWidgets('empty streaming placeholder hides copy action', (tester) async {
     await _pumpChatScreen(
       tester,

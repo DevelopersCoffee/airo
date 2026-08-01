@@ -653,6 +653,8 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
   late final TextEditingController _modelController;
   late final TextEditingController _keyController;
   bool _testing = false;
+  RemoteServerDiagnostics? _lastDiagnostics;
+  String? _lastDiagnosticModel;
 
   @override
   void initState() {
@@ -715,7 +717,11 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
     router.configureRemoteServer(baseUrl: url, model: model, apiKey: apiKey);
     final diagnostics = await router.diagnoseRemoteServer();
     if (!mounted) return;
-    setState(() => _testing = false);
+    setState(() {
+      _testing = false;
+      _lastDiagnostics = diagnostics;
+      _lastDiagnosticModel = model;
+    });
     final message = diagnostics == null
         ? 'Remote server diagnostics are unavailable.'
         : diagnostics.isReady
@@ -776,10 +782,96 @@ class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
               ),
             ],
           ),
+          if (_lastDiagnostics case final diagnostics?) ...[
+            const SizedBox(height: 12),
+            _RemoteServerDiagnosticsCard(
+              diagnostics: diagnostics,
+              modelId: _lastDiagnosticModel ?? _modelController.text.trim(),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _RemoteServerDiagnosticsCard extends StatelessWidget {
+  const _RemoteServerDiagnosticsCard({
+    required this.diagnostics,
+    required this.modelId,
+  });
+
+  final RemoteServerDiagnostics diagnostics;
+  final String modelId;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = diagnostics.isReady ? 'Ready' : 'Needs attention';
+    final reason = diagnostics.message ?? 'The server reported models.';
+    final modelCount = diagnostics.modelIds.length;
+    final action = _remoteServerRecommendation(diagnostics);
+    return Semantics(
+      container: true,
+      label:
+          'Remote server diagnostics: $status. Endpoint ${diagnostics.baseUrl}. '
+          'Requested model $modelId. $reason $action',
+      child: Card(
+        key: const Key('ai-remote-server-diagnostics'),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    diagnostics.isReady
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
+                    color: diagnostics.isReady
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Remote diagnostics: $status',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Endpoint: ${diagnostics.baseUrl}'),
+              Text('Requested model: $modelId'),
+              if (diagnostics.statusCode case final statusCode?)
+                Text('HTTP status: $statusCode'),
+              Text('Models reported: $modelCount'),
+              if (diagnostics.modelIds.isNotEmpty)
+                Text('Available: ${diagnostics.modelIds.take(3).join(', ')}'),
+              const SizedBox(height: 8),
+              Text('Reason: $reason'),
+              Text('Next step: $action'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _remoteServerRecommendation(RemoteServerDiagnostics diagnostics) {
+  return switch (diagnostics.health) {
+    RemoteServerHealth.ready =>
+      'Save this server, then choose the same model id when chatting.',
+    RemoteServerHealth.unauthorized =>
+      'Check the API key or disable authentication on your local server.',
+    RemoteServerHealth.notFound =>
+      'Use the OpenAI-compatible base URL, usually ending in /v1.',
+    RemoteServerHealth.invalidResponse =>
+      'Check that Ollama, LM Studio, or llama.cpp is exposing a /models response.',
+    RemoteServerHealth.unavailable =>
+      'Confirm the server is running and reachable from this device.',
+  };
 }
 
 String _routingStrategyLabel(AIRoutingStrategy strategy) {
