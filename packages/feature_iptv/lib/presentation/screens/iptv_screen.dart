@@ -1522,10 +1522,12 @@ Future<void> showPlaylistSourceSheet(
   BuildContext context,
   WidgetRef ref, {
   String? initialUrl,
+  bool absorbAndroidTvRawBack = false,
 }) async {
   await showAdaptiveIptvSheet<void>(
     context: context,
     maxWidth: 640,
+    absorbAndroidTvRawBack: absorbAndroidTvRawBack,
     builder: (_) => PlaylistSourceManagerSheet(initialUrl: initialUrl),
   );
 }
