@@ -251,10 +251,10 @@ final addJellyfinContentSourceProvider = FutureProvider.autoDispose
       keepAlive.close();
     });
 
-/// Removes a content source by id and deletes any credential stored for it
-/// via [contentSourceCredentialStoreProvider] — otherwise a removed source
-/// leaves an orphaned secret behind with no owner. Invalidates
-/// [configuredContentSourcesProvider] afterwards.
+/// Removes a content source by id and deletes credentials for source kinds
+/// that own them. Credential cleanup happens before the source record is
+/// removed so a secure-store failure cannot report failure after deletion.
+/// Invalidates [configuredContentSourcesProvider] afterwards.
 final removeContentSourceProvider = FutureProvider.autoDispose
     .family<void, String>((ref, id) async {
       final keepAlive = ref.keepAlive();
@@ -275,14 +275,17 @@ final removeContentSourceProvider = FutureProvider.autoDispose
           }
           await ref.read(m3uSourceParserFactoryProvider)(id).clearPlaylist();
         }
+        if (removed?.kind == ContentSourceKind.xtream ||
+            removed?.kind == ContentSourceKind.jellyfin) {
+          await ref
+              .watch(contentSourceCredentialStoreProvider)
+              .delete(ContentSourceCredentialRef(id));
+        }
         final store = ref.watch(contentSourceStoreProvider);
         await store.remove(id);
         if (await store.getActiveSourceId() == id) {
           await store.setActiveSourceId(null);
         }
-        await ref
-            .watch(contentSourceCredentialStoreProvider)
-            .delete(ContentSourceCredentialRef(id));
         ref.read(providerHealthTrackerProvider).clearFor(id);
         final epgRepository = ref.read(compactEpgRepositoryProvider);
         if (epgRepository is MutableXmltvCompactEpgRepository) {
