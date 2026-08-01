@@ -94,22 +94,36 @@ class _MobileActionsScreenState extends State<MobileActionsScreen> {
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
                         ),
-                    itemBuilder: (context, index) => InkWell(
-                      onTap: () => _plant(index),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.brown.shade100,
+                    itemBuilder: (context, index) {
+                      final isPlanted = _plantedPlots.contains(index);
+                      final plotNumber = index + 1;
+                      return Semantics(
+                        button: true,
+                        selected: isPlanted,
+                        label: isPlanted
+                            ? 'Tiny Garden plot $plotNumber, planted'
+                            : 'Tiny Garden plot $plotNumber, empty',
+                        child: InkWell(
+                          onTap: () => _plant(index),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.brown.shade300),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.brown.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.brown.shade300),
+                            ),
+                            child: Center(
+                              child: isPlanted
+                                  ? const Text(
+                                      '🌱',
+                                      style: TextStyle(fontSize: 30),
+                                    )
+                                  : Text('$plotNumber'),
+                            ),
+                          ),
                         ),
-                        child: Center(
-                          child: _plantedPlots.contains(index)
-                              ? const Text('🌱', style: TextStyle(fontSize: 30))
-                              : Text('${index + 1}'),
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   Wrap(
