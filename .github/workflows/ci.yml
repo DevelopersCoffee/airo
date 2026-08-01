@@ -754,14 +754,22 @@ jobs:
           git add .github/apk-size-baselines.tsv
           git commit -m "ci: update APK size baselines"
 
-          # main is a protected branch requiring status checks,
-          # which a direct push here never satisfies. Don't fail the run for
-          # this best-effort housekeeping step; log it and let a human land
-          # the baseline update via PR instead.
-          if ! git push; then
-            echo "::warning::Could not push updated APK size baselines directly to protected main. Update .github/apk-size-baselines.tsv manually via PR."
-            exit 0
+          # main is a protected branch requiring status checks, which a direct
+          # push from here can never satisfy -- it fails with GH006 on every
+          # run. The old code pushed straight at main and downgraded the
+          # rejection to a warning, so the measurement was computed, thrown
+          # away, and the committed baselines silently froze (issue #1364).
+          #
+          # Park the refresh on a branch instead. Pushing a branch needs only
+          # the contents:write this job already has, so the measured numbers
+          # survive the run and a human can open the PR from them.
+          refresh_branch="chore/apk-size-baselines"
+          if git push --force origin "HEAD:$refresh_branch"; then
+            echo "::warning::APK size baselines changed. Refresh pushed to '$refresh_branch' -- open a PR from it to land the update (see $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$refresh_branch?expand=1)."
+          else
+            echo "::warning::Could not push the APK size baseline refresh to '$refresh_branch'. Update .github/apk-size-baselines.tsv manually via PR."
           fi
+          exit 0
 
   # ============================================
   # Build Summary Job
