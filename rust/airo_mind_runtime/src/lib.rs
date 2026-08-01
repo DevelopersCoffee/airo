@@ -26,6 +26,7 @@
 mod budget;
 mod cancel;
 mod engine;
+mod store;
 mod supervisor;
 
 #[cfg(feature = "llama")]
@@ -39,6 +40,7 @@ pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
     TranscriptSegment,
 };
+pub use store::{Meeting, MeetingStore, StoreError};
 pub use supervisor::{RuntimeError, Supervisor};
 
 #[cfg(feature = "llama")]
