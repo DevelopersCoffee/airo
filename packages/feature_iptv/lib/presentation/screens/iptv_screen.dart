@@ -30,6 +30,7 @@ import '../tv_ux/iptv_resume_gate.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
+import 'shared_channel_import_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
@@ -110,6 +111,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// or determined the channel doesn't exist. Gates the first frame so the
   /// browse grid never flashes before deep-linked playback begins.
   late bool _deepLinkPending = widget.effectiveDeepLinkChannelId != null;
+  late bool _sharedImportPending = widget.deepLinkIntent?.canImport ?? false;
 
   /// True once the user has tapped Cancel on the deep-link loading screen.
   /// Sticky for the lifetime of this deep-link attempt: unlike
@@ -160,7 +162,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     final deepLinkId = widget.effectiveDeepLinkChannelId;
-    if (deepLinkId != null) {
+    if (deepLinkId != null && !_sharedImportPending) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final deepLinkFilters = widget.deepLinkIntent?.filters;
@@ -228,6 +230,53 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   void _cancelDeepLinkWait() {
     _deepLinkCancelled = true;
     setState(() => _deepLinkPending = false);
+  }
+
+  IPTVChannel _buildSharedChannel() {
+    final intent = widget.deepLinkIntent!;
+    return ref
+        .read(personalChannelRepositoryProvider)
+        .buildChannel(
+          name: intent.channelName!,
+          streamUrl: intent.streamUrl.toString(),
+        );
+  }
+
+  void _playSharedChannelOnce() {
+    final channel = _buildSharedChannel();
+    ref.read(isFullscreenModeProvider.notifier).state = true;
+    _playChannel(channel);
+    setState(() {
+      _sharedImportPending = false;
+      _deepLinkPending = false;
+    });
+  }
+
+  Future<void> _saveAndPlaySharedChannel() async {
+    final intent = widget.deepLinkIntent!;
+    final channel = await ref
+        .read(personalChannelRepositoryProvider)
+        .upsert(
+          name: intent.channelName!,
+          streamUrl: intent.streamUrl.toString(),
+        );
+    ref.invalidate(personalChannelsProvider);
+    ref.invalidate(iptvChannelsProvider);
+    if (!mounted) return;
+    ref.read(isFullscreenModeProvider.notifier).state = true;
+    _playChannel(channel);
+    setState(() {
+      _sharedImportPending = false;
+      _deepLinkPending = false;
+    });
+  }
+
+  void _cancelSharedChannelImport() {
+    _deepLinkCancelled = true;
+    setState(() {
+      _sharedImportPending = false;
+      _deepLinkPending = false;
+    });
   }
 
   @override
@@ -761,12 +810,25 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       );
     }
 
+    if (_sharedImportPending) {
+      final intent = widget.deepLinkIntent!;
+      return SharedChannelImportScreen(
+        channelName: intent.channelName!,
+        sourceHost: intent.streamUrl!.host,
+        onSaveAndPlay: _saveAndPlaySharedChannel,
+        onPlayOnce: _playSharedChannelOnce,
+        onCancel: _cancelSharedChannelImport,
+      );
+    }
+
     // A deep link is "pending" until its resolution (in initState's
     // post-frame callback) either starts playback or determines the
     // channel doesn't exist (which clears _deepLinkPending). While
     // pending, the browse grid must never be the first frame rendered.
     final isWaitingForDeepLink =
-        widget.deepLinkChannelId != null && _deepLinkPending && !isPlaying;
+        widget.effectiveDeepLinkChannelId != null &&
+        _deepLinkPending &&
+        !isPlaying;
 
     if (isWaitingForDeepLink) {
       return guardRouteBack(

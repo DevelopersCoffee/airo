@@ -57,6 +57,29 @@ void main() {
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 
+  testWidgets('shared channel app link opens the confirmation screen', (
+    tester,
+  ) async {
+    final uri = IptvDeepLinkIntent(
+      channelId: 'shared-9xm',
+      channelName: '9XM',
+      streamUrl: Uri.parse('https://9xjio.wiseplayout.com/9XM/master.m3u8'),
+    ).toUri();
+
+    await pumpTvRouter(
+      tester,
+      initialLocation: Uri(
+        path: uri.path,
+        queryParameters: uri.queryParameters,
+      ).toString(),
+      surfaceSize: const Size(1280, 720),
+    );
+
+    expect(find.text('A friend shared 9XM'), findsOneWidget);
+    expect(find.text('Save & play'), findsOneWidget);
+    expect(find.text('Play once'), findsOneWidget);
+  });
+
   testWidgets(
     '1920x1080 Fire TV empty playlist content clears the navigation rail',
     (tester) async {

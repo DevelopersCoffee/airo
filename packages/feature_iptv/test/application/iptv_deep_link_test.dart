@@ -36,7 +36,9 @@ void main() {
   test('internal and custom-scheme routes parse through the same contract', () {
     for (final uri in [
       Uri.parse('/iptv?channel=one&country=in'),
+      Uri.parse('/airo/iptv?channel=one&country=in'),
       Uri.parse('airo://iptv?channel=one&country=in'),
+      Uri.parse('airo://iptv/iptv?channel=one&country=in'),
     ]) {
       final parsed = IptvDeepLinkIntent.tryParse(uri);
       expect(parsed?.channelId, 'one');
@@ -75,5 +77,40 @@ void main() {
     expect(link, isNot(contains('stream')));
     expect(link, isNot(contains('token')));
     expect(link, isNot(contains('password')));
+  });
+
+  test('portable shared channel round-trips name and safe stream', () {
+    final intent = IptvDeepLinkIntent(
+      channelId: 'sender-id',
+      channelName: '9XM',
+      streamUrl: Uri.parse('https://9xjio.wiseplayout.com/9XM/master.m3u8'),
+    );
+
+    final uri = intent.toUri();
+    final parsed = IptvDeepLinkIntent.tryParse(uri);
+
+    expect(uri.queryParameters['v'], '2');
+    expect(parsed?.canImport, isTrue);
+    expect(parsed?.channelName, '9XM');
+    expect(parsed?.streamUrl, intent.streamUrl);
+  });
+
+  test('portable links reject credential-bearing stream URLs', () {
+    final intent = IptvDeepLinkIntent(
+      channelId: 'private',
+      channelName: 'Private',
+      streamUrl: Uri.parse('https://example.com/live.m3u8?token=secret'),
+    );
+
+    expect(intent.toUri, throwsArgumentError);
+    expect(
+      IptvDeepLinkIntent.tryParse(
+        Uri.parse(
+          '/iptv?v=2&channel=private&name=Private&'
+          'stream=https%3A%2F%2Fexample.com%2Flive.m3u8%3Ftoken%3Dsecret',
+        ),
+      ),
+      isNull,
+    );
   });
 }

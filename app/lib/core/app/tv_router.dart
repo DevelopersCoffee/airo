@@ -63,6 +63,18 @@ class TvRouter {
         ShellRoute(
           builder: (context, state, child) => _AdaptiveTvShell(child: child),
           routes: [
+            GoRoute(
+              path: '/airo/iptv',
+              builder: (context, state) => _AdaptiveLiveTvScreen(
+                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+              ),
+            ),
+            GoRoute(
+              path: '/iptv',
+              builder: (context, state) => _AdaptiveLiveTvScreen(
+                deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+              ),
+            ),
             // Live TV / IPTV (main screen)
             GoRoute(
               path: TvRouteNames.live,
@@ -141,7 +153,9 @@ class _AdaptiveTvShell extends StatelessWidget {
 }
 
 class _AdaptiveLiveTvScreen extends StatelessWidget {
-  const _AdaptiveLiveTvScreen();
+  const _AdaptiveLiveTvScreen({this.deepLinkIntent});
+
+  final IptvDeepLinkIntent? deepLinkIntent;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +165,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
         onPickLocalMediaForTv: isGoogleCastSenderPlatform
             ? pickPhoneLocalMediaForTv
             : null,
+        deepLinkIntent: deepLinkIntent,
       );
     }
 
@@ -158,7 +173,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
     // (app bar, drawer, cast entry) suppressed — the TvShell sidebar owns
     // navigation. The older IptvTvScreen remains only as a reference until
     // it is removed.
-    return const IPTVScreen(tenFootMode: true);
+    return IPTVScreen(tenFootMode: true, deepLinkIntent: deepLinkIntent);
   }
 }
 

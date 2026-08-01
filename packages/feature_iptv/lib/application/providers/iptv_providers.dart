@@ -109,6 +109,18 @@ final localMediaLibraryCapabilitiesProvider =
       return ref.watch(localMediaLibraryAdapterProvider).capabilities();
     });
 
+final personalChannelRepositoryProvider = Provider<PersonalChannelRepository>((
+  ref,
+) {
+  return PersonalChannelRepository(
+    PreferencesStore(ref.watch(sharedPreferencesProvider)),
+  );
+});
+
+final personalChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) {
+  return ref.watch(personalChannelRepositoryProvider).list();
+});
+
 /// All configured content sources.
 ///
 /// The first read performs an additive migration of the legacy single M3U URL.
@@ -283,7 +295,11 @@ Duration? surfaceChannelFailureInsteadOfRetrying(
 /// All runtime channels. A configured active source is exclusive; the public
 /// catalog/legacy fallback is used only when no source is configured.
 final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
-  return ref.watch(_runtimeChannelsProvider(false).future);
+  final runtimeChannels = await ref.watch(
+    _runtimeChannelsProvider(false).future,
+  );
+  final personalChannels = await ref.watch(personalChannelsProvider.future);
+  return _mergeChannelLibraries([runtimeChannels, personalChannels]);
 }, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
@@ -626,9 +642,14 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   // first import, which applyFavoriteRemapOnReimport treats as a no-op.
   final oldChannels = ref.read(iptvChannelsProvider).value ?? const [];
 
-  final newChannels = await ref.watch(
+  final runtimeChannels = await ref.watch(
     _runtimeChannelsProvider(forceRefresh).future,
   );
+  final personalChannels = await ref.watch(personalChannelsProvider.future);
+  final newChannels = _mergeChannelLibraries([
+    runtimeChannels,
+    personalChannels,
+  ]);
 
   final needsReview = await applyFavoriteRemapOnReimport(
     favoriteStorage: ref.read(favoriteChannelsStorageProvider),
