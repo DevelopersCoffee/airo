@@ -152,17 +152,30 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
+              echo "::error::Missing Android release signing secret: $name"
               missing=1
             fi
           done
-          if [ "$missing" -eq 0 ]; then
-            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
-            chmod 600 release.keystore key.properties
-          else
-            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
+          # This used to warn and continue. Gradle's own signing guard is
+          # disabled under CI (`!isCiBuild` in app/android/app/build.gradle.kts)
+          # and the release buildType falls back to `signingConfigs["debug"]`, so
+          # continuing here produced a debug-signed artifact that create-release
+          # then published as a live, non-draft GitHub Release.
+          #
+          # The Android debug keystore is a well-known shared key, so such a
+          # build carries no authenticity guarantee, and a properly signed update
+          # cannot replace it -- users would have to uninstall first, which on a
+          # local-first app means losing their data, including the Coins vault.
+          #
+          # airo-mobile-tablet-release.yml and airo-tv-release.yml already fail
+          # closed this way when production_signing is on; this matches them.
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Refusing to build a publishable release without Android signing secrets."
+            exit 1
           fi
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -296,17 +309,30 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
+              echo "::error::Missing Android release signing secret: $name"
               missing=1
             fi
           done
-          if [ "$missing" -eq 0 ]; then
-            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
-            chmod 600 release.keystore key.properties
-          else
-            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
+          # This used to warn and continue. Gradle's own signing guard is
+          # disabled under CI (`!isCiBuild` in app/android/app/build.gradle.kts)
+          # and the release buildType falls back to `signingConfigs["debug"]`, so
+          # continuing here produced a debug-signed artifact that create-release
+          # then published as a live, non-draft GitHub Release.
+          #
+          # The Android debug keystore is a well-known shared key, so such a
+          # build carries no authenticity guarantee, and a properly signed update
+          # cannot replace it -- users would have to uninstall first, which on a
+          # local-first app means losing their data, including the Coins vault.
+          #
+          # airo-mobile-tablet-release.yml and airo-tv-release.yml already fail
+          # closed this way when production_signing is on; this matches them.
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Refusing to build a publishable release without Android signing secrets."
+            exit 1
           fi
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -422,17 +448,30 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
+              echo "::error::Missing Android release signing secret: $name"
               missing=1
             fi
           done
-          if [ "$missing" -eq 0 ]; then
-            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
-            chmod 600 release.keystore key.properties
-          else
-            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
+          # This used to warn and continue. Gradle's own signing guard is
+          # disabled under CI (`!isCiBuild` in app/android/app/build.gradle.kts)
+          # and the release buildType falls back to `signingConfigs["debug"]`, so
+          # continuing here produced a debug-signed artifact that create-release
+          # then published as a live, non-draft GitHub Release.
+          #
+          # The Android debug keystore is a well-known shared key, so such a
+          # build carries no authenticity guarantee, and a properly signed update
+          # cannot replace it -- users would have to uninstall first, which on a
+          # local-first app means losing their data, including the Coins vault.
+          #
+          # airo-mobile-tablet-release.yml and airo-tv-release.yml already fail
+          # closed this way when production_signing is on; this matches them.
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Refusing to build a publishable release without Android signing secrets."
+            exit 1
           fi
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -769,6 +808,35 @@ jobs:
           echo "files<<EOF" >> $GITHUB_OUTPUT
           cat release_files.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
+      # The three Android build jobs carry `continue-on-error: true`, this job
+      # runs `if: always()`, the collect step above keeps only files that exist,
+      # and the publish step below sets `fail_on_unmatched_files: false`. Every
+      # one of those is deliberate, but together they mean a failed Android
+      # build publishes a live release with the APK simply absent -- while the
+      # notes still advertise it and print `adb install` for it. Desktop and web
+      # stay best-effort; Android is the product and must not ship empty.
+      - name: Require Android artifacts before publishing
+        run: |
+          missing=()
+          for pattern in \
+            "android-apk-arm64/airo-*-arm64-v8a.apk" \
+            "android-apk-arm32/airo-*-armeabi-v7a.apk" \
+            "android-aab/airo-*.aab"; do
+            found=""
+            for file in $pattern; do
+              if [ -f "$file" ]; then found="$file"; break; fi
+            done
+            if [ -z "$found" ]; then missing+=("$pattern"); else echo "present: $found"; fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            for m in "${missing[@]}"; do
+              echo "::error::Android release artifact missing: $m"
+            done
+            echo "::error::Refusing to publish a release without the Android artifacts the notes advertise."
+            exit 1
+          fi
+          echo "All Android release artifacts present."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
