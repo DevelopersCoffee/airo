@@ -334,12 +334,37 @@ Issue #589 therefore remains open for the final eight-card and Help traversal.
 
 ### Super App boundary
 
-The shared Live path passed on the physical Pixel 9 with the `990dd1c4`
-candidate immediately preceding the TV-only wake-lock change. The exact
-`29124bbd` full-app rebuild did not complete during this run because several
-concurrent Gradle release builds held the shared build resources. The prior
-result is relevant shared-path regression evidence, but it is not represented
-as exact-artifact proof.
+The exact rebased PR head `d7f24813` full-app candidate was built and installed
+in place on the physical Pixel 9 without clearing existing data:
+
+- Artifact: `airo-super-app-d7f24813-arm64-v8a-release.apk`
+- Package/version: `io.airo.app`, `0.0.6-rc.1` (`versionCode 2008`)
+- Size: 106,264,984 bytes
+- SHA-256:
+  `fbd4395c3f002cdfb902f54a1b6cfc4299ca7862c68ece963dc705eda2cabaea`
+
+The shared Live destination rendered the persisted playlist, current channel,
+filters, and channel grid. Live video also rendered during the app's PiP
+transition. The process remained alive, and the bounded signature scan found
+no fatal exception, ANR, OOM, `UnsatisfiedLinkError`, playback exception, or
+media-control `CustomAction` failure. This replaces the earlier
+immediately-preceding-candidate evidence with exact-artifact proof.
+
+### Rebased TV artifact awaiting deployment
+
+The same rebased PR head produced a fresh Fire TV APK locally:
+
+- Artifact: `airo-tv-d7f24813-armeabi-v7a-release.apk`
+- Size: 27,372,706 bytes
+- SHA-256:
+  `c9a6f6084b7ece7f72720ccf6aa866fbcda69b68d9b3b84a654adde701efb5d2`
+- TV release contract: passed with compile/target SDK 36 and required minimum
+  SDK 34
+
+The AFTSSS left the LAN immediately after this build (`Host is down`, no ARP
+entry), so this rebased artifact has not yet replaced the physically qualified
+pre-rebase candidate. Deployment and the final D-pad/Help traversal remain
+open rather than being inferred from the earlier artifact.
 
 ### Release decision
 
