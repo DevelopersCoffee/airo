@@ -409,8 +409,13 @@ jobs:
 
       - name: Apply mobile/tablet pubspec
         run: |
-          cp app/pubspec.yaml app/pubspec.yaml.backup
-          cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+          # The full profile builds from pubspec.yaml itself; copying it onto
+          # itself errors under `set -e` ("same file"). Only swap when the
+          # profile uses a distinct pubspec (e.g. pubspec_coins.yaml).
+          if [ "$PROFILE_PUBSPEC" != "pubspec.yaml" ]; then
+            cp app/pubspec.yaml app/pubspec.yaml.backup
+            cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+          fi
 
       - name: Get dependencies
         run: |
