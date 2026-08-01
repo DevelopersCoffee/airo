@@ -197,6 +197,14 @@ class TvFocusable extends StatefulWidget {
   final bool? semanticButton;
   final bool announceFocus;
 
+  /// Whether descendants may hold focus of their own.
+  ///
+  /// Defaults to false so a Material child such as [IconButton] cannot add a
+  /// second, invisible D-pad stop inside one visual target. Set it true when
+  /// the child genuinely needs focus itself -- a [TextField] must be able to
+  /// take focus or it can never receive typed input.
+  final bool descendantsAreFocusable;
+
   const TvFocusable({
     super.key,
     required this.child,
@@ -216,6 +224,7 @@ class TvFocusable extends StatefulWidget {
     this.semanticHint,
     this.semanticButton,
     this.announceFocus = false,
+    this.descendantsAreFocusable = false,
   });
 
   @override
@@ -357,70 +366,88 @@ class _TvFocusableState extends State<TvFocusable>
         ? Duration.zero
         : TvFocusConstants.focusAnimationDuration;
 
-    Widget result = Focus(
-      focusNode: _focusNode,
-      autofocus: widget.autofocus,
-      onKeyEvent: _handleKeyEvent,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _isFocused,
-        child: widget.child,
-        builder: (context, isFocused, child) {
-          final decoration = isFocused && widget.showBorderEffect
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(widget.borderRadius),
-                  border: Border.all(
-                    color: focusColor,
-                    width: TvFocusConstants.focusBorderWidth,
-                  ),
-                  boxShadow: widget.showGlowEffect
-                      ? [
-                          BoxShadow(
-                            color: focusColor.withValues(
-                              alpha: TvFocusConstants.focusGlowOpacity,
+    Widget result = Actions(
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            _handleSelect();
+            return null;
+          },
+        ),
+      },
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: widget.autofocus,
+        onKeyEvent: _handleKeyEvent,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _isFocused,
+          // TvFocusable is the single D-pad stop for this control. Material
+          // children such as IconButton, ChoiceChip, and FilledButton own
+          // their own Focus widgets; leaving those enabled creates a second
+          // invisible stop inside the same visual target. Children that must
+          // hold focus to work at all (text fields) opt out.
+          child: ExcludeFocus(
+            excluding: !widget.descendantsAreFocusable,
+            child: widget.child,
+          ),
+          builder: (context, isFocused, child) {
+            final decoration = isFocused && widget.showBorderEffect
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(widget.borderRadius),
+                    border: Border.all(
+                      color: focusColor,
+                      width: TvFocusConstants.focusBorderWidth,
+                    ),
+                    boxShadow: widget.showGlowEffect
+                        ? [
+                            BoxShadow(
+                              color: focusColor.withValues(
+                                alpha: TvFocusConstants.focusGlowOpacity,
+                              ),
+                              spreadRadius: TvFocusConstants.focusGlowSpread,
                             ),
-                            spreadRadius: TvFocusConstants.focusGlowSpread,
-                          ),
-                        ]
-                      : null,
-                )
-              : const BoxDecoration();
+                          ]
+                        : null,
+                  )
+                : const BoxDecoration();
 
-          Widget focusEffect = AnimatedBuilder(
-            animation: _scaleAnimation,
-            child: child,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: widget.showScaleEffect && !reduceMotion
-                    ? _scaleAnimation.value
-                    : 1,
-                child: DecoratedBox(
-                  // Foreground, not background: an opaque child (e.g. a
-                  // filled Material chip) fully covers a background-painted
-                  // border, leaving no visible focus ring. Painting on top
-                  // guarantees the ring shows regardless of what the child
-                  // draws underneath it.
-                  position: DecorationPosition.foreground,
-                  decoration: decoration,
-                  child: child,
-                ),
-              );
-            },
-          );
-
-          if (widget.semanticLabel != null || isButton) {
-            focusEffect = Semantics(
-              label: widget.semanticLabel,
-              hint: widget.semanticHint,
-              button: isButton,
-              enabled: widget.enabled,
-              focused: isFocused,
-              onTap: widget.onSelect,
-              child: focusEffect,
+            Widget focusEffect = AnimatedBuilder(
+              animation: _scaleAnimation,
+              child: child,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: widget.showScaleEffect && !reduceMotion
+                      ? _scaleAnimation.value
+                      : 1,
+                  child: DecoratedBox(
+                    // Foreground, not background: an opaque child (e.g. a
+                    // filled Material chip) fully covers a background-painted
+                    // border, leaving no visible focus ring. Painting on top
+                    // guarantees the ring shows regardless of what the child
+                    // draws underneath it.
+                    position: DecorationPosition.foreground,
+                    decoration: decoration,
+                    child: child,
+                  ),
+                );
+              },
             );
-          }
 
-          return focusEffect;
-        },
+            if (widget.semanticLabel != null || isButton) {
+              focusEffect = Semantics(
+                label: widget.semanticLabel,
+                hint: widget.semanticHint,
+                button: isButton,
+                enabled: widget.enabled,
+                focused: isFocused,
+                onTap: widget.onSelect,
+                child: focusEffect,
+              );
+            }
+
+            return focusEffect;
+          },
+        ),
       ),
     );
     return MouseRegion(

@@ -733,7 +733,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         canPop: !isFullscreen && !suppressDuplicateBack,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
-          if (isFullscreen) {
+          // On a ten-foot host the full-screen player owns BACK outright and
+          // absorbs Fire OS's duplicate platform callbacks. Exiting here as
+          // well would undo the raw key the player just handled. Blocking the
+          // pop (canPop above) still keeps the callback from closing the app.
+          if (isFullscreen && !widget.tenFootMode) {
             _exitFullscreen();
           } else if (suppressDuplicateBack) {
             _lastFullscreenBackAt = null;
@@ -849,6 +853,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               showControls: true,
               initiallyFullscreen: true,
               handleNativeFullscreen: false,
+              // Only the ten-foot host hands BACK to the player, because only
+              // Fire OS duplicates the platform half. On touch, guardRouteBack
+              // below answers that pop; letting the player answer it too would
+              // exit fullscreen and immediately re-enter it.
+              ownsPlatformBack: widget.tenFootMode,
+              // The guarded exit, not the raw toggle: it is a no-op once
+              // fullscreen is already off, so a second handler does nothing.
+              onBack: _exitFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
               // PiP is a phone/tablet multitasking action. Keep it out of
@@ -1268,7 +1280,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
           ? PopScope<void>(
               canPop: false,
               onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) _exitFullscreen();
+                // The fullscreen VideoPlayerWidget owns raw BACK: it either
+                // dismisses its active overlay or leaves fullscreen.
+                // Android/Fire OS follows that raw event with a platform pop;
+                // this inner scope only absorbs the paired callback.
               },
               child: Focus(
                 focusNode: _fullscreenFocusNode,
@@ -1282,6 +1297,13 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                     showControls: true,
                     initiallyFullscreen: true,
                     handleNativeFullscreen: false,
+                    // Deliberately the guarded exit rather than the raw
+                    // toggle. guardRouteBack() above also answers this same
+                    // pop, and two unguarded toggles would leave fullscreen
+                    // and immediately re-enter it. _exitFullscreen is a no-op
+                    // once fullscreen is already off, so whichever handler
+                    // runs second does nothing.
+                    onBack: _exitFullscreen,
                     onFullscreenToggle: _toggleFullscreen,
                     enableSwipeChannelChange: true,
                   ),
