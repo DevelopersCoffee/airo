@@ -506,14 +506,15 @@ class AssistantRuntimeService {
         final runtimeReportedAvailable =
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
-        // A native channel may be present on the device even when no model
-        // source was configured. Treat that as unavailable in production;
-        // test overrides remain explicit and can model a ready backend.
+        // A native channel or configured download URL is not a runnable model.
+        // Default LiteRT startup requires either a verified package path or an
+        // explicit local artifact path. Test overrides remain explicit and can
+        // model a ready backend without depending on device storage.
         final available =
             (downloadedPackage?.filePath?.trim().isNotEmpty ?? false) ||
             (runtimeReportedAvailable &&
                 (_isLiteRtAvailableOverride != null ||
-                    _liteRtLm.hasConfiguredModel));
+                    _liteRtLm.hasConfiguredModelPath));
         if (!available) {
           return AssistantRuntimePreparationResult.blocked(
             AssistantRuntimeDiagnosticEnvelope(
@@ -527,7 +528,7 @@ class AssistantRuntimeService {
               reasonCode: 'runtime_unavailable',
               repairActions: const [
                 'Open Profile > AI Models and install a compatible package.',
-                'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL when launching locally.',
+                'Set LITERT_LM_MODEL_PATH to a verified local artifact when launching locally.',
               ],
             ),
           );
