@@ -156,3 +156,4 @@ artifacts/release/
 
 # Airo Mind model weights — 74 MB+, fetched by the Model Manager, never committed
 rust/airo_mind_runtime/models/*.bin
+rust/airo_mind_runtime/models/*.gguf

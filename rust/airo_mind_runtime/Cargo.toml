@@ -16,9 +16,12 @@ crate-type = ["rlib"]
 # that only needs the engine boundary -- CI, the web target, a capability test
 # -- does not compile whisper.cpp.
 whisper-rs = { version = "0.16", optional = true }
+llama-cpp-2 = { version = "0.1.153", optional = true }
 
 [features]
 default = []
 # Real offline transcription. Requires cmake and a C++ toolchain, and pulls in
 # whisper.cpp. Constitution §6 scorecard owed before this leaves a dev build.
 whisper = ["dep:whisper-rs"]
+# Real offline generation. Same toolchain requirement and the same §6 debt.
+llama = ["dep:llama-cpp-2"]

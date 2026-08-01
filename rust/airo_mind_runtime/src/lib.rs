@@ -28,6 +28,8 @@ mod cancel;
 mod engine;
 mod supervisor;
 
+#[cfg(feature = "llama")]
+mod llama;
 #[cfg(feature = "whisper")]
 mod whisper;
 
@@ -39,5 +41,7 @@ pub use engine::{
 };
 pub use supervisor::{RuntimeError, Supervisor};
 
+#[cfg(feature = "llama")]
+pub use llama::LlamaGenerationEngine;
 #[cfg(feature = "whisper")]
 pub use whisper::WhisperSpeechEngine;
