@@ -22,11 +22,20 @@ void main() {
       expect(titles, contains('Agent Skills'));
       expect(titles, contains('Split Bill'));
       expect(titles, contains('Diet Plan'));
+      expect(titles, contains('Ask Image'));
       expect(titles, contains('Audio Scribe'));
       expect(titles, contains('Mobile Actions'));
       expect(titles, contains('Tiny Garden'));
       expect(titles, contains('Model Management'));
       expect(titles, contains('Arena Games'));
+      expect(
+        cards.singleWhere((card) => card.title == 'Ask Image').route,
+        '/quest/new',
+      );
+      expect(
+        cards.singleWhere((card) => card.title == 'Audio Scribe').route,
+        '/mind/audio-scribe',
+      );
       expect(
         cards.singleWhere((card) => card.title == 'Tiny Garden').route,
         '/mind/mobile-actions',

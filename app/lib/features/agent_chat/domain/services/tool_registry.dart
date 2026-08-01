@@ -542,6 +542,7 @@ class ToolRegistry {
         title: 'Audio Scribe',
         description: 'Prepare offline transcription workflows',
         iconKey: 'mic',
+        route: '/mind/audio-scribe',
       ),
       AgentSkillCard(
         key: 'mobile_actions',
