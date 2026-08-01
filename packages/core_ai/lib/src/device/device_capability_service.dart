@@ -96,6 +96,11 @@ class DeviceCapabilityService {
         sdkVersion: (result['sdkVersion'] as num?)?.toInt() ?? 0,
         isPixelDevice: result['isPixel'] as bool? ?? false,
         supportsOnDeviceAI: result['supportsGeminiNano'] as bool? ?? false,
+        cpuSummary: result['cpuSummary'] as String?,
+        gpuSummary: result['gpuSummary'] as String?,
+        npuSummary: result['npuSummary'] as String?,
+        storageSummary: result['storageSummary'] as String?,
+        thermalSummary: result['thermalSummary'] as String?,
       );
     } catch (e) {
       if (!shouldSuppressPlatformChannelErrorLog(e)) {
@@ -137,6 +142,11 @@ class DeviceInfo {
   final int sdkVersion;
   final bool isPixelDevice;
   final bool supportsOnDeviceAI;
+  final String? cpuSummary;
+  final String? gpuSummary;
+  final String? npuSummary;
+  final String? storageSummary;
+  final String? thermalSummary;
 
   const DeviceInfo({
     required this.manufacturer,
@@ -146,6 +156,11 @@ class DeviceInfo {
     required this.sdkVersion,
     required this.isPixelDevice,
     required this.supportsOnDeviceAI,
+    this.cpuSummary,
+    this.gpuSummary,
+    this.npuSummary,
+    this.storageSummary,
+    this.thermalSummary,
   });
 
   factory DeviceInfo.unknown() => const DeviceInfo(
@@ -169,6 +184,28 @@ class DeviceInfo {
   );
 
   String get displayName => '$manufacturer $model';
+
+  String get cpuDisplay => cpuSummary?.trim().isNotEmpty == true
+      ? cpuSummary!.trim()
+      : 'Not reported by platform adapter';
+
+  String get gpuDisplay => gpuSummary?.trim().isNotEmpty == true
+      ? gpuSummary!.trim()
+      : 'Not reported by platform adapter';
+
+  String get npuDisplay => npuSummary?.trim().isNotEmpty == true
+      ? npuSummary!.trim()
+      : supportsOnDeviceAI
+      ? 'On-device AI service reported'
+      : 'Not reported by platform adapter';
+
+  String get storageDisplay => storageSummary?.trim().isNotEmpty == true
+      ? storageSummary!.trim()
+      : 'Not reported by platform adapter';
+
+  String get thermalDisplay => thermalSummary?.trim().isNotEmpty == true
+      ? thermalSummary!.trim()
+      : 'Not reported by platform adapter';
 
   @override
   String toString() => 'DeviceInfo($displayName, OS: $osVersion)';
