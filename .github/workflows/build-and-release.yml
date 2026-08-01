@@ -770,6 +770,35 @@ jobs:
           cat release_files.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      # The three Android build jobs carry `continue-on-error: true`, this job
+      # runs `if: always()`, the collect step above keeps only files that exist,
+      # and the publish step below sets `fail_on_unmatched_files: false`. Every
+      # one of those is deliberate, but together they mean a failed Android
+      # build publishes a live release with the APK simply absent -- while the
+      # notes still advertise it and print `adb install` for it. Desktop and web
+      # stay best-effort; Android is the product and must not ship empty.
+      - name: Require Android artifacts before publishing
+        run: |
+          missing=()
+          for pattern in \
+            "android-apk-arm64/airo-*-arm64-v8a.apk" \
+            "android-apk-arm32/airo-*-armeabi-v7a.apk" \
+            "android-aab/airo-*.aab"; do
+            found=""
+            for file in $pattern; do
+              if [ -f "$file" ]; then found="$file"; break; fi
+            done
+            if [ -z "$found" ]; then missing+=("$pattern"); else echo "present: $found"; fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            for m in "${missing[@]}"; do
+              echo "::error::Android release artifact missing: $m"
+            done
+            echo "::error::Refusing to publish a release without the Android artifacts the notes advertise."
+            exit 1
+          fi
+          echo "All Android release artifacts present."
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
