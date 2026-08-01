@@ -18,6 +18,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   String _targetLanguage = 'English';
   bool _capturing = false;
   String? _error;
+  int _captureEpoch = 0;
 
   @override
   void dispose() {
@@ -27,12 +28,13 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
 
   Future<void> _capture() async {
     final service = ref.read(voiceSearchServiceProvider);
+    final captureEpoch = ++_captureEpoch;
     setState(() {
       _capturing = true;
       _error = null;
     });
     final result = await service.startListening();
-    if (!mounted) return;
+    if (!mounted || captureEpoch != _captureEpoch) return;
     setState(() {
       _capturing = false;
       if (result.isSuccess && result.text != null) {
@@ -50,6 +52,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   }
 
   Future<void> _stop() async {
+    _captureEpoch++;
     await ref.read(voiceSearchServiceProvider).stopListening();
     if (mounted) setState(() => _capturing = false);
   }
