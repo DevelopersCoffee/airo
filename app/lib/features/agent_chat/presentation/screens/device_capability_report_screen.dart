@@ -45,6 +45,20 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
+          Text('Runtime diagnostics', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final diagnostic in report.diagnostics)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  _diagnosticIcon(diagnostic.severity),
+                  color: _diagnosticColor(theme, diagnostic.severity),
+                ),
+                title: Text(diagnostic.title),
+                subtitle: Text(diagnostic.detail),
+              ),
+            ),
+          const SizedBox(height: 18),
           Text('Recommended models', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           if (report.recommendedModels.isEmpty)
@@ -81,6 +95,24 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static IconData _diagnosticIcon(MemorySeverity severity) {
+    return switch (severity) {
+      MemorySeverity.safe => Icons.check_circle_outline,
+      MemorySeverity.warning => Icons.info_outline,
+      MemorySeverity.critical => Icons.warning_amber_outlined,
+      MemorySeverity.blocked => Icons.error_outline,
+    };
+  }
+
+  static Color _diagnosticColor(ThemeData theme, MemorySeverity severity) {
+    return switch (severity) {
+      MemorySeverity.safe => Colors.green.shade700,
+      MemorySeverity.warning => theme.colorScheme.primary,
+      MemorySeverity.critical ||
+      MemorySeverity.blocked => theme.colorScheme.error,
+    };
   }
 }
 

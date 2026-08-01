@@ -29,6 +29,95 @@ class DeviceCapabilityReport {
         '${memory.totalMB.toStringAsFixed(0)} MB total.';
   }
 
+  /// Human-readable planner facts for the Device Capability Report.
+  ///
+  /// This is intentionally derived from already collected facts. It performs no
+  /// platform calls, so the screen can explain the current state without
+  /// risking another stuck device probe.
+  List<DeviceCapabilityDiagnostic> get diagnostics {
+    final diagnostics = <DeviceCapabilityDiagnostic>[];
+    if (!hasMemoryFacts) {
+      diagnostics.add(
+        const DeviceCapabilityDiagnostic(
+          title: 'Memory probe unavailable',
+          detail:
+              'Airo could not read live transient memory. Model loading will run a final preflight before warm-up.',
+          severity: MemorySeverity.warning,
+        ),
+      );
+    } else {
+      final availablePercent = memory.availablePercent;
+      diagnostics.add(
+        DeviceCapabilityDiagnostic(
+          title: 'Transient memory',
+          detail:
+              '${memory.availableMB.toStringAsFixed(0)} MB is available right now. '
+              'Airo checks this again immediately before loading a model.',
+          severity: availablePercent >= 0.35
+              ? MemorySeverity.safe
+              : availablePercent >= 0.20
+              ? MemorySeverity.warning
+              : MemorySeverity.critical,
+        ),
+      );
+    }
+
+    diagnostics.add(
+      DeviceCapabilityDiagnostic(
+        title: 'On-device AI service',
+        detail: device.supportsOnDeviceAI
+            ? 'The platform reports an on-device AI service. Airo can consider it as a system-managed runtime when a model supports that path.'
+            : 'The platform did not report a system-managed on-device AI service. Airo will prefer installed local runtimes and compatible model files.',
+        severity: device.supportsOnDeviceAI
+            ? MemorySeverity.safe
+            : MemorySeverity.warning,
+      ),
+    );
+
+    if (device.isPixelDevice) {
+      diagnostics.add(
+        const DeviceCapabilityDiagnostic(
+          title: 'Pixel runtime profile',
+          detail:
+              'Pixel hardware is treated as a high-capability mobile profile, but Airo still validates the selected runtime and artifact before inference.',
+          severity: MemorySeverity.safe,
+        ),
+      );
+    }
+
+    final blocked = recommendedModels
+        .where((model) => model.severity == MemorySeverity.blocked)
+        .length;
+    final risky = recommendedModels
+        .where((model) => model.severity == MemorySeverity.critical)
+        .length;
+    if (blocked > 0 || risky > 0) {
+      diagnostics.add(
+        DeviceCapabilityDiagnostic(
+          title: 'Model fit warnings',
+          detail: [
+            if (risky > 0) '$risky model(s) may need reduced context',
+            if (blocked > 0) '$blocked model(s) need a smaller plan or model',
+          ].join(' · '),
+          severity: blocked > 0
+              ? MemorySeverity.blocked
+              : MemorySeverity.critical,
+        ),
+      );
+    }
+
+    diagnostics.add(
+      const DeviceCapabilityDiagnostic(
+        title: 'Final runtime preflight',
+        detail:
+            'This report is advisory. The runtime still verifies storage, integrity, memory, and backend readiness before generation.',
+        severity: MemorySeverity.safe,
+      ),
+    );
+
+    return List.unmodifiable(diagnostics);
+  }
+
   static Future<DeviceCapabilityReport> collect({
     Iterable<OfflineModelInfo> models = const <OfflineModelInfo>[],
     DeviceCapabilityService? service,
@@ -95,4 +184,17 @@ class DeviceModelRecommendation {
   final double estimatedMemoryMb;
 
   bool get recommended => severity.canLoad;
+}
+
+@immutable
+class DeviceCapabilityDiagnostic {
+  const DeviceCapabilityDiagnostic({
+    required this.title,
+    required this.detail,
+    required this.severity,
+  });
+
+  final String title;
+  final String detail;
+  final MemorySeverity severity;
 }

@@ -36,7 +36,48 @@ void main() {
 
     expect(find.textContaining('Pixel 9'), findsOneWidget);
     expect(find.text('8192 MB available of 16384 MB total.'), findsOneWidget);
+    expect(find.text('Runtime diagnostics'), findsOneWidget);
+    expect(find.text('Transient memory'), findsOneWidget);
+    expect(find.text('On-device AI service'), findsOneWidget);
+    expect(find.text('Pixel runtime profile'), findsOneWidget);
+    expect(find.text('Final runtime preflight'), findsOneWidget);
     expect(find.text('Retry analysis'), findsNothing);
+  });
+
+  testWidgets('surfaces model fit warnings in the report', (tester) async {
+    final report = DeviceCapabilityReport(
+      device: DeviceInfo.unknown(),
+      memory: MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 1024),
+      recommendedModels: const [
+        DeviceModelRecommendation(
+          modelId: 'gemma-4b',
+          modelName: 'Gemma 4B',
+          severity: MemorySeverity.critical,
+          estimatedMemoryMb: 3600,
+        ),
+        DeviceModelRecommendation(
+          modelId: 'vision-large',
+          modelName: 'Vision Large',
+          severity: MemorySeverity.blocked,
+          estimatedMemoryMb: 7000,
+        ),
+      ],
+      generatedAt: DateTime(2026, 7, 30),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: DeviceCapabilityReportScreen(report: report)),
+    );
+
+    expect(find.text('Model fit warnings'), findsOneWidget);
+    expect(
+      find.textContaining('1 model(s) may need reduced context'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('1 model(s) need a smaller plan or model'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows a retry action when device analysis fails', (
