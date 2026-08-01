@@ -273,6 +273,24 @@ void main() {
   testWidgets('renders fenced code with language label and copy action', (
     tester,
   ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
     await _pumpChatScreen(
       tester,
       initialMessages: [
@@ -289,6 +307,14 @@ void main() {
     );
     expect(code.textSpan?.toPlainText(), contains('final answer = true;'));
     expect(find.byTooltip('Copy code'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Copy code'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('final answer = true;\n'),
+    );
   });
 }
 
