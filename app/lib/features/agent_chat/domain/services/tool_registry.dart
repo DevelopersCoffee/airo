@@ -548,6 +548,14 @@ class ToolRegistry {
         title: 'Mobile Actions',
         description: 'Control Airo features with commands',
         iconKey: 'bolt',
+        route: '/mind/mobile-actions',
+      ),
+      AgentSkillCard(
+        key: 'tiny_garden',
+        title: 'Tiny Garden',
+        description: 'Play the local language garden experiment',
+        iconKey: 'local_florist',
+        route: '/mind/mobile-actions',
       ),
       AgentSkillCard(
         key: 'model_management',

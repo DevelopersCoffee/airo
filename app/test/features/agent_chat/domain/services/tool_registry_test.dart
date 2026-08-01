@@ -14,23 +14,24 @@ void main() {
       registry = ToolRegistry();
     });
 
-    test(
-      'exposes Gallery and Off Grid inspired skill cards without Tiny Garden',
-      () {
-        final cards = registry.getSkillCards();
-        final titles = cards.map((card) => card.title).toList();
+    test('exposes Gallery and Off Grid inspired skill cards', () {
+      final cards = registry.getSkillCards();
+      final titles = cards.map((card) => card.title).toList();
 
-        expect(titles, contains('AI Chat'));
-        expect(titles, contains('Agent Skills'));
-        expect(titles, contains('Split Bill'));
-        expect(titles, contains('Diet Plan'));
-        expect(titles, contains('Audio Scribe'));
-        expect(titles, contains('Mobile Actions'));
-        expect(titles, contains('Model Management'));
-        expect(titles, contains('Arena Games'));
-        expect(titles, isNot(contains('Tiny Garden')));
-      },
-    );
+      expect(titles, contains('AI Chat'));
+      expect(titles, contains('Agent Skills'));
+      expect(titles, contains('Split Bill'));
+      expect(titles, contains('Diet Plan'));
+      expect(titles, contains('Audio Scribe'));
+      expect(titles, contains('Mobile Actions'));
+      expect(titles, contains('Tiny Garden'));
+      expect(titles, contains('Model Management'));
+      expect(titles, contains('Arena Games'));
+      expect(
+        cards.singleWhere((card) => card.title == 'Tiny Garden').route,
+        '/mind/mobile-actions',
+      );
+    });
 
     test(
       'splits bills directly in chat when amount and participants exist',
