@@ -79,10 +79,8 @@ vault/restore.rs :: fn apply_revocations
 vault/restore.rs :: fn backup_epoch
 vault/restore.rs :: fn into_vault
 vault/restore.rs :: fn load
-vault/restore.rs :: fn new
 vault/restore.rs :: fn package_only
 vault/restore.rs :: fn purged
-vault/restore.rs :: fn replayed_from_log
 vault/restore.rs :: fn source_missing_backup_revocations
 vault/restore.rs :: fn was_blind
 vault/restore.rs :: struct AppliedRestore

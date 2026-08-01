@@ -80,6 +80,7 @@ RS
     local codes='E0(603|616|624|433)'
     case "$id" in
       RA-17b) codes='E0(599|603|616|624|433)' ;;
+      SEC-48) codes='E0(599|603|616|624|433)' ;;
     esac
     local why
     why=$(echo "$out" | grep -oE "error\[$codes\]" | head -1)
@@ -147,12 +148,23 @@ probe ALLOW RA-18 'the full restore path is callable' \
    let v = SealedRestore::load(&p, &seed).unwrap()
        .apply_revocations(&RevocationSource::package_only()).unwrap().into_vault();
    println!("{}", v.is_content_destroyed("n"));'
-probe ALLOW SEC-39 'a NON-blind restore is constructible' \
+# SEC-48 INVERTS SEC-39's probe. Revision 9B made a non-blind restore reachable
+# and, in the same change, made it FORGEABLE -- an empty ledger plus a free
+# string reports was_blind() == false, which is R1's original bypass. This probe
+# asserted the bypass as a supported journey. Phase 1 has no operation log, so
+# there is nothing honest for it to assert; the non-blind path arrives with
+# #1260.
+probe DENY SEC-48 'non-blind provenance cannot be forged by a consumer' \
+  'let src = RevocationSource::replayed_from_log(
+       airo_mind::RevocationLedger::new(), airo_mind::LogHead::new("i-made-this-up"));
+   println!("{:?}", src.provenance());'
+probe ALLOW SEC-39 'the blind-restore journeys are reachable and honest' \
   'let p = RecoveryPackage::export(&vault, &seed).unwrap();
-   let src = RevocationSource::replayed_from_log(
-       airo_mind::RevocationLedger::new(), airo_mind::LogHead::new("op-1"));
-   let a = SealedRestore::load(&p, &seed).unwrap().apply_revocations(&src).unwrap();
-   assert!(!a.was_blind());'
+   for src in [RevocationSource::package_only(),
+               RevocationSource::acknowledged_blind_restore()] {
+       let a = SealedRestore::load(&p, &seed).unwrap().apply_revocations(&src).unwrap();
+       assert!(a.was_blind(), "Phase 1 restores are blind and must say so");
+   }'
 probe ALLOW SEC-38 'the device-trust journey is callable' \
   'let cert: DeviceCertificate = unimplemented!();
    vault.trust_device(cert).unwrap(); println!("{}", vault.trusted_devices().len());'

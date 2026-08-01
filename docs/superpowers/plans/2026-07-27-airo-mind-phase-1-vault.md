@@ -786,10 +786,10 @@ pub use vault::{
     RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION,
     // Restore path — unreachable in revision 7 without the next two
     SealedRestore, AppliedRestore, RevocationSource, RevocationProvenance,
-    // `SEC-39`: `replayed_from_log` is the only constructor producing a
-    // non-blind restore, and both its inputs were unexported, so every
-    // externally reachable restore was `was_blind() == true`.
-    RevocationLedger, LogHead,
+    // `SEC-48`: `RevocationLedger` and `LogHead` are NOT exported. Revision 9B
+    // exported them to make a non-blind restore reachable, which made forging
+    // one reachable at the same time. Phase 1 has no log, so it has no honest
+    // ReplayedFromLog to reach.
     // `SEC-38`: `trust_device` is `pub` and takes this, so a `pub` API took an
     // unnameable type and the device-trust journey (#1257) was uncallable.
     DeviceCertificate, DeviceKey,
@@ -926,7 +926,8 @@ pub use aggregate::{PurgeDirective, UnlinkOutcome, Vault};
 pub use error::VaultError;
 pub use identifier::ContextId;
 pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
-pub use restore::{AppliedRestore, LogHead, RevocationProvenance, RevocationSource, SealedRestore};
+pub use restore::{AppliedRestore, RevocationProvenance, RevocationSource, SealedRestore};
+pub(crate) use restore::LogHead;
 ```
 
 `mod.rs` carries declarations and re-exports and **nothing else** — no types,
@@ -3411,7 +3412,8 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 ```rust
 mod revocation;
 
-pub use revocation::{RevocationLedger, RevocationSubject};
+pub use revocation::RevocationSubject;
+pub(crate) use revocation::RevocationLedger;
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -5706,14 +5708,28 @@ pub struct LogHead(String);
 // original bypass, reopened (chief-security-officer S6).
 
 impl LogHead {
-    /// `SEC-39` / `A18`. Public, because `replayed_from_log` is the only
-    /// constructor that yields a non-blind restore and it takes one of these.
+    /// `SEC-48`. **`pub(crate)`, not `pub`.** Reverted from Revision 9B.
     ///
-    /// Revision 8 had no public constructor at all, so **every externally
-    /// reachable restore was `was_blind() == true`** — the same defect class as
-    /// `RA-18`, closed for `SealedRestore` and left open for provenance. The
-    /// operation id comes from the caller's log; the Vault does not mint it.
-    pub fn new(operation_id: impl Into<String>) -> Self {
+    /// Making this public to satisfy `SEC-39` reopened `R1`'s blind-restore
+    /// bypass, and `restore.rs`'s own doc comment already described it:
+    ///
+    /// > Revision 3 took a bare `RevocationLedger` and a free `String`, and the
+    /// > plan's own test then built one from an EMPTY ledger and asserted
+    /// > `!was_blind()` — reaching R1's original bypass through the constructor
+    /// > named "trustworthy". Provenance was a claim, not a proof.
+    ///
+    /// With `LogHead::new` and `RevocationLedger::new` both `pub`, a consumer
+    /// writes exactly that expression. Executed: destroyed content readable,
+    /// `was_blind() == false`, `source_missing_backup_revocations() == false`,
+    /// `purged()` empty. **Both warnings silent.**
+    ///
+    /// The resolution is not a tighter constructor. **Phase 1 has no operation
+    /// log, therefore Phase 1 has no honest `ReplayedFromLog`.** Shipping a
+    /// public way to assert it means shipping a way to forge it. The non-blind
+    /// path arrives with the log in #1260; until then the reachable journeys
+    /// are `package_only` and `acknowledged_blind_restore`, both of which
+    /// report `was_blind() == true` honestly.
+    pub(crate) fn new(operation_id: impl Into<String>) -> Self {
         LogHead(operation_id.into())
     }
 
@@ -5743,7 +5759,10 @@ impl RevocationSource {
     /// `!was_blind()` — reaching R1's original bypass through the constructor
     /// named "trustworthy". Provenance was a claim, not a proof: the same
     /// shape as `RevocationSubject` before the tag.
-    pub fn replayed_from_log(ledger: RevocationLedger, head: LogHead) -> Self {
+    /// `SEC-48`: `pub(crate)` until #1260 ships the operation log. A public
+    /// constructor here is a public way to assert provenance the caller does
+    /// not have.
+    pub(crate) fn replayed_from_log(ledger: RevocationLedger, head: LogHead) -> Self {
         Self {
             ledger,
             provenance: RevocationProvenance::ReplayedFromLog {
