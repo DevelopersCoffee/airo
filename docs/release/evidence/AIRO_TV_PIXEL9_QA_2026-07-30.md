@@ -251,3 +251,101 @@ TV/Android TV D-pad evidence, Cast receiver evidence, iPad evidence, and the
 
 No Fire TV Stick was connected during this run, so Pixel 9 evidence must not be
 used as a substitute for ten-foot D-pad qualification.
+
+## 2026-08-01 Fire TV Addendum
+
+This addendum supersedes the statement above that no Fire TV was connected.
+It qualifies commit `29124bbd` on a physical Fire TV Stick AFTSSS (Fire OS,
+API 28) through ADB remote-key injection. A handheld remote was not used, so
+the input method is part of the evidence boundary.
+
+### Exact TV candidate
+
+- Artifact: `airo-tv-29124bbd-armeabi-v7a-release.apk`
+- Package/version: `io.airo.app.tv`, `0.0.6-rc.1` (`versionCode 1006`)
+- Profile: lightweight TV release with local validation signing; it is not a
+  distributable production-signed artifact
+- Size: 27,339,658 bytes
+- SHA-256:
+  `accb5b554aff5d60a6955980c1e41e7b37df186c4003e2aea77551e8d75557ba`
+
+Passed physical journeys:
+
+- imported the IPTV.org public playlist and rendered the channel library;
+- dismissed the playlist modal with Back without leaving Airo;
+- recovered from dead streams through Try Again / Skip channel / Report dead
+  link and reached playable `1+1 Ukraina (1080p)`;
+- played live video continuously for 30 minutes;
+- retained `FLAG_KEEP_SCREEN_ON` for every soak sample, with Airo recorded as
+  both the wake-lock-holding and hold-screen window;
+- returned from fullscreen playback to the grid with one Back and remained in
+  Airo for the following 25 seconds;
+- persisted playlist/current-channel state across an unexpected physical
+  device reboot.
+
+The reboot reset uptime and changed the process ID, so it invalidated the
+planned Home/resume process-retention observation. It must not be reported as
+an Airo crash or as proof of same-process resume. Persistence across the
+stronger reboot lifecycle passed.
+
+### Exact-candidate constrained-TV soak
+
+- Duration/samples: 30 minutes, 61 samples at 30-second intervals
+- Foreground: true for all samples
+- PID: stable (`9442`) for all samples
+- Keep-screen-on: true for all samples
+- Start/final PSS: 193,403 KB / 185,340 KB
+- PSS delta: -8,063 KB; minimum 174,016 KB; maximum 197,658 KB
+- Crash/ANR/OOM/`UnsatisfiedLinkError` scan: clean
+- CSV SHA-256:
+  `77bd3aad69859ee8b3c2a52df5cdfcd16bfeee4430a003d5b8e5f1ccad6acfe1`
+- Logcat SHA-256:
+  `81ddf6f208034d1269c21bba826d5cb5c680c8179d8dbf092dd58c7566b3fa91`
+
+Dart heap and image-cache drift remain unknown because those counters are not
+available from the release build. This result proves process/PSS, playback,
+foreground, and display-awake stability only.
+
+### Fire TV defects fixed in this branch
+
+1. Back could escape the playlist dialog on Fire OS; the dialog now owns and
+   consumes that Back transition.
+2. Closing the on-screen keyboard could also close the playlist form; the form
+   now remains open.
+3. Fire OS could dispatch a delayed duplicate Back after leaving fullscreen
+   playback; the callback is contained so the browse screen remains open.
+4. The TV flavor's former no-op `wakelock_plus` override allowed the Fire OS
+   dream/screensaver to interrupt playback. The lightweight override is now a
+   functional, KGP-free Android plugin that applies `FLAG_KEEP_SCREEN_ON`.
+5. The bounded Fire TV error-log classifier treated two stable Fire OS startup
+   messages (unavailable JDWP agent and unsupported ION ioctl) as app defects.
+   They are now counted as known runtime noise while every other error remains
+   actionable.
+
+### Incomplete Fire TV input gate
+
+The eight-card D-pad plus Help open/dismiss report is not accepted. During the
+capture, another local qualification process replaced the installed candidate
+at 23:46:07 with a differently signed APK (pulled APK SHA-256
+`7381b67d46954a2630c7ce26eb5fba5d3e5c62471a2845db35d59d83d946b422`),
+clearing the playlist and invalidating the run. The exact candidate was
+restored afterward, but no report is generated from the contaminated capture.
+Issue #589 therefore remains open for the final eight-card and Help traversal.
+
+### Super App boundary
+
+The shared Live path passed on the physical Pixel 9 with the `990dd1c4`
+candidate immediately preceding the TV-only wake-lock change. The exact
+`29124bbd` full-app rebuild did not complete during this run because several
+concurrent Gradle release builds held the shared build resources. The prior
+result is relevant shared-path regression evidence, but it is not represented
+as exact-artifact proof.
+
+### Release decision
+
+The physical Fire TV playback, sleep prevention, Back containment, recovery,
+and constrained-TV soak gates pass for the exact candidate. Public readiness
+remains `false`: production signing, Firebase/mobile configuration, Play
+credentials and console submissions, legal provenance/private-dependency
+decisions, final D-pad/Help evidence, Cast receiver evidence, iPad evidence,
+and release-owner approval remain external or incomplete.
