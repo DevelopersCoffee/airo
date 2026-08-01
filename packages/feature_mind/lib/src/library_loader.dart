@@ -4,63 +4,49 @@ import 'dart:io';
 // generated code reaches for it through this entry point, so this file does the
 // same rather than depending on an internal path directly.
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'package:path/path.dart' as p;
 
 import 'frb_generated.dart';
 
-/// Finds `libairo_mind_runtime`.
+/// Finds `airo_mind_runtime`, whatever shape the platform's build gave it.
 ///
-/// The generated loader assumes a path relative to the process working
-/// directory, which holds for `flutter_rust_bridge`'s own example layout and
-/// not for this workspace: `flutter run` sets the working directory to `app/`,
-/// and the crate is two levels away in the other direction.
+/// Cargokit compiles the crate during the ordinary Flutter build, but it does
+/// not produce the same artefact everywhere:
 ///
-/// Rather than patch generated code — the next codegen run would revert it —
-/// the candidates are listed here, most-specific first.
+/// - **iOS and macOS** get a static library that the podspec force-loads into
+///   the app binary. There is no file to open — the symbols are already in the
+///   process, and asking for a dylib fails on a build that is working.
+/// - **Android** gets a `.so` inside the APK, resolved by name.
+/// - **Linux and Windows** get a shared library beside the executable.
+///
+/// The generated loader's `ioDirectory` points at the crate's `target/`, while
+/// this workspace builds into the cargo *workspace's* `rust/target/`. Rather
+/// than patch generated code — the next codegen run reverts it — the fallbacks
+/// live here.
 Future<ExternalLibrary?> resolveMindLibrary() async {
-  // iOS and Android link the runtime into the process: there is no separate
-  // file to open, and asking for one fails on a build that is working.
-  if (Platform.isIOS || Platform.isAndroid) {
+  if (Platform.isIOS || Platform.isMacOS) {
     return ExternalLibrary.process(iKnowHowToUseIt: true);
   }
 
+  // Returning null hands over to the generated loader, which resolves an
+  // Android `.so` by name from the APK.
+  if (Platform.isAndroid) return null;
+
   final name = Platform.isWindows
       ? 'airo_mind_runtime.dll'
-      : Platform.isMacOS
-          ? 'libairo_mind_runtime.dylib'
-          : 'libairo_mind_runtime.so';
+      : 'libairo_mind_runtime.so';
+  final exeDir = File(Platform.resolvedExecutable).parent.path;
 
-  final exeDir = p.dirname(Platform.resolvedExecutable);
-  final candidates = <String>[
-    // A bundled desktop app: macOS puts dylibs in Frameworks, Linux and
-    // Windows beside the executable.
-    p.join(exeDir, '..', 'Frameworks', name),
-    p.join(exeDir, name),
-    p.join(exeDir, 'lib', name),
-    // Developer machine. `flutter run` leaves the working directory at the
-    // Flutter project, so walk up to the workspace root. The target directory
-    // is the CARGO WORKSPACE's (`rust/target`), not the crate's -- a detail
-    // that costs an afternoon when it is guessed wrong.
-    for (final root in [
-      p.join(Directory.current.path, '..', 'rust', 'target'),
-      p.join(Directory.current.path, 'rust', 'target'),
-    ])
-      for (final profile in ['release', 'debug']) p.join(root, profile, name),
-  ];
-
-  for (final candidate in candidates) {
-    final file = File(p.normalize(candidate));
+  for (final candidate in ['$exeDir/$name', '$exeDir/lib/$name']) {
+    final file = File(candidate);
     if (file.existsSync()) return ExternalLibrary.open(file.path);
   }
+  // Nothing found: let the generated loader try its own convention rather than
+  // failing on a build that wired the library somewhere this file has not
+  // heard of.
   return null;
 }
 
 /// Initialises the bridge, resolving the library first.
-///
-/// Falls back to the generated loader so that a build which *has* wired the
-/// library in the conventional place keeps working without this file knowing
-/// about it.
 Future<void> initializeMindBridge() async {
-  final library = await resolveMindLibrary();
-  await RustLib.init(externalLibrary: library);
+  await RustLib.init(externalLibrary: await resolveMindLibrary());
 }

@@ -3,14 +3,12 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-
-import '../frb_generated.dart';
-
 part 'mind.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `lock`, `minutes_prompt`, `model_name`
+// These functions are ignored because they are not marked as `pub`: `lock`, `minutes_prompt`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
@@ -62,6 +60,13 @@ Future<MeetingRecord?> getMeeting({required String id}) =>
 /// storage record are allowed to diverge, and coupling them means a storage
 /// change becomes a Dart change.
 class MeetingRecord {
+  final String id;
+  final String title;
+  final BigInt recordedAt;
+  final String transcript;
+  final String minutes;
+  final String model;
+
   const MeetingRecord({
     required this.id,
     required this.title,
@@ -70,12 +75,6 @@ class MeetingRecord {
     required this.minutes,
     required this.model,
   });
-  final String id;
-  final String title;
-  final BigInt recordedAt;
-  final String transcript;
-  final String minutes;
-  final String model;
 
   @override
   int get hashCode =>
@@ -102,34 +101,32 @@ class MeetingRecord {
 /// Where the models and the store live. Supplied by Dart, which owns the
 /// platform's notion of an application directory.
 class MindConfig {
-  const MindConfig({
-    required this.speechModelPath,
-    required this.generationModelPath,
-    required this.storePath,
-    required this.memoryBudgetMb,
-  });
-  final String speechModelPath;
-  final String generationModelPath;
+  /// Where the Model Manager looks. **Not** a model path — `ADR-0018 §4`
+  /// says nothing above the Manager names a file, a quantisation or a
+  /// runtime, and this type is above the Manager.
+  final String modelsDir;
   final String storePath;
 
   /// Admission ceiling for the Supervisor (`C6`). A device that cannot afford
   /// the model is told so before anything allocates.
   final int memoryBudgetMb;
 
+  const MindConfig({
+    required this.modelsDir,
+    required this.storePath,
+    required this.memoryBudgetMb,
+  });
+
   @override
   int get hashCode =>
-      speechModelPath.hashCode ^
-      generationModelPath.hashCode ^
-      storePath.hashCode ^
-      memoryBudgetMb.hashCode;
+      modelsDir.hashCode ^ storePath.hashCode ^ memoryBudgetMb.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is MindConfig &&
           runtimeType == other.runtimeType &&
-          speechModelPath == other.speechModelPath &&
-          generationModelPath == other.generationModelPath &&
+          modelsDir == other.modelsDir &&
           storePath == other.storePath &&
           memoryBudgetMb == other.memoryBudgetMb;
 }
@@ -162,16 +159,17 @@ sealed class ProcessingEvent with _$ProcessingEvent {
 
 /// A search result, with the line that matched.
 class SearchHit {
+  final String meetingId;
+  final String title;
+  final BigInt recordedAt;
+  final String snippet;
+
   const SearchHit({
     required this.meetingId,
     required this.title,
     required this.recordedAt,
     required this.snippet,
   });
-  final String meetingId;
-  final String title;
-  final BigInt recordedAt;
-  final String snippet;
 
   @override
   int get hashCode =>

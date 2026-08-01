@@ -23,8 +23,8 @@ class MeetingScreen extends StatefulWidget {
     required this.service,
     required rust.MeetingRecord this._meeting,
     super.key,
-  })  : _progress = null,
-        title = '';
+  }) : _progress = null,
+       title = '';
 
   final MindService service;
   final String title;
@@ -58,8 +58,12 @@ class _MeetingScreenState extends State<MeetingScreen> {
       // half-finished transcript is the failure that looks like a hang.
       onError: (Object e) {
         if (mounted) {
-          setState(() => _progress =
-              _progress.copyWith(stage: MindStage.failed, error: '$e'));
+          setState(
+            () => _progress = _progress.copyWith(
+              stage: MindStage.failed,
+              error: '$e',
+            ),
+          );
         }
       },
     );
@@ -71,13 +75,13 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _progress.stage == MindStage.saving;
 
   String get _stageLabel => switch (_progress.stage) {
-        MindStage.transcribing => 'Transcribing…',
-        MindStage.generating => 'Writing minutes…',
-        MindStage.saving => 'Saving…',
-        MindStage.done => 'Saved on this device',
-        MindStage.failed => 'Failed',
-        _ => '',
-      };
+    MindStage.transcribing => 'Transcribing…',
+    MindStage.generating => 'Writing minutes…',
+    MindStage.saving => 'Saving…',
+    MindStage.done => 'Saved on this device',
+    MindStage.failed => 'Failed',
+    _ => '',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +151,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+  );
 }

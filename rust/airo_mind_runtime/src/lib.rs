@@ -51,6 +51,20 @@ pub mod api;
 // generator overwrites it, so a fix made here is a fix that disappears.
 mod frb_generated;
 
+/// SHA-256 for model verification. Private: the Model Manager is the only
+/// caller, and a hash function on the public surface invites reuse it was not
+/// reviewed for.
+mod digest;
+
+/// Re-exported for `api::setup`, which is the only caller outside `models`.
+pub(crate) use digest::file_digest as digest_file;
+
+/// The Model Manager (`ADR-0018`). A platform service, not a Dart API: a
+/// capability asks it for a task and a budget, and Flutter never sees it. It
+/// sits outside `api` for the same reason `wav` does -- anything under `api` is
+/// generated into Dart.
+mod models;
+
 mod budget;
 mod cancel;
 mod engine;

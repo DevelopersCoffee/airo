@@ -33,6 +33,7 @@ use flutter_rust_bridge::frb;
 // compile.
 use crate::frb_generated::StreamSink;
 
+use crate::models;
 use crate::{
     AudioInput, CancelToken, GenerationRequest, LlamaGenerationEngine, Meeting, MeetingStore,
     ResourceBudget, SearchIndex, Supervisor, WhisperSpeechEngine,
@@ -45,8 +46,10 @@ use crate::{
 /// Where the models and the store live. Supplied by Dart, which owns the
 /// platform's notion of an application directory.
 pub struct MindConfig {
-    pub speech_model_path: String,
-    pub generation_model_path: String,
+    /// Where the Model Manager looks. **Not** a model path — `ADR-0018 §4`
+    /// says nothing above the Manager names a file, a quantisation or a
+    /// runtime, and this type is above the Manager.
+    pub models_dir: String,
     pub store_path: String,
     /// Admission ceiling for the Supervisor (`C6`). A device that cannot afford
     /// the model is told so before anything allocates.
@@ -156,13 +159,6 @@ fn minutes_prompt(transcript: &str) -> String {
     )
 }
 
-fn model_name(path: &str) -> String {
-    std::path::Path::new(path)
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| path.to_string())
-}
-
 // ---------------------------------------------------------------------------
 // The capability surface
 // ---------------------------------------------------------------------------
@@ -174,14 +170,45 @@ fn model_name(path: &str) -> String {
 /// A missing model is an ordinary error carrying the path, because on a real
 /// device it is the most likely failure and the user can act on it.
 pub fn initialize(config: MindConfig) -> Result<(), String> {
-    let speech = WhisperSpeechEngine::load(std::path::Path::new(&config.speech_model_path), 512)
-        .map_err(|e| format!("speech model at {}: {e}", config.speech_model_path))?;
+    let models_dir = std::path::Path::new(&config.models_dir);
+
+    // `ADR-0018 §1`: ask for a CAPABILITY and a budget, never for a file. The
+    // capability does not know which model it got, only that one resolved.
+    let speech_model = models::resolve(
+        &models::ModelRequirement {
+            task: models::ModelTask::Speech,
+            memory_budget_mb: config.memory_budget_mb,
+            minimum_quality: models::ModelQuality::Draft,
+        },
+        models_dir,
+        &[],
+        false,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let generation_model = models::resolve(
+        &models::ModelRequirement {
+            task: models::ModelTask::Generation,
+            memory_budget_mb: config.memory_budget_mb,
+            minimum_quality: models::ModelQuality::Draft,
+        },
+        models_dir,
+        &[],
+        false,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let speech = WhisperSpeechEngine::load(
+        std::path::Path::new(&speech_model.path),
+        speech_model.memory_mb,
+    )
+    .map_err(|e| format!("{}: {e}", speech_model.logical_id))?;
     let generation = LlamaGenerationEngine::load(
-        std::path::Path::new(&config.generation_model_path),
-        1024,
+        std::path::Path::new(&generation_model.path),
+        generation_model.memory_mb,
         2048,
     )
-    .map_err(|e| format!("generation model at {}: {e}", config.generation_model_path))?;
+    .map_err(|e| format!("{}: {e}", generation_model.logical_id))?;
 
     let mut supervisor = Supervisor::new(ResourceBudget::new(config.memory_budget_mb));
     supervisor.register_speech(Box::new(speech));
@@ -194,7 +221,13 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&LIBRARY) = Some(Library {
         store,
         index,
-        generation_model: model_name(&config.generation_model_path),
+        // `ADR-0018 §5`: the LOGICAL identity and version, recorded with the
+        // content it produces. A file name would not survive a model update
+        // that changes quantisation, and replay must reproduce the reference.
+        generation_model: format!(
+            "{}@{}",
+            generation_model.logical_id, generation_model.version
+        ),
     });
     Ok(())
 }
@@ -396,13 +429,19 @@ mod tests {
         assert!(p.contains("Do not invent facts"));
     }
 
-    /// The model name is recorded with the meeting, so it must survive a full
-    /// path. `ADR-0018`.
+    /// `ADR-0018 §4`: nothing above the Model Manager names a file. If a
+    /// quantisation or an extension appears in this module again, the file
+    /// coupling the ADR removed has come back.
     #[test]
-    fn the_model_name_comes_from_the_file_not_the_path() {
-        assert_eq!(
-            model_name("/data/models/qwen2.5-0.5b-instruct-q4_k_m.gguf"),
-            "qwen2.5-0.5b-instruct-q4_k_m"
-        );
+    fn the_capability_never_names_a_model_file() {
+        let source = include_str!("mind.rs");
+        for forbidden in [".gguf", ".bin", "q4_k_m"] {
+            // The literal in this test is the only permitted occurrence.
+            let occurrences = source.matches(forbidden).count();
+            assert_eq!(
+                occurrences, 1,
+                "`{forbidden}` appears {occurrences} times -- the capability is naming model files again"
+            );
+        }
     }
 }

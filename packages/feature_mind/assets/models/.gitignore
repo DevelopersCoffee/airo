@@ -1,0 +1,6 @@
+# Model weights are bundled into the app but are not source. `ADR-0018 §2`
+# pins their digests in rust/airo_mind_runtime/src/models.rs, which is what
+# makes an untracked binary safe to ship: the app refuses a file that does not
+# match.
+*.bin
+*.gguf

@@ -103,10 +103,8 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     if (!mounted || meeting == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => MeetingScreen.stored(
-          service: widget.service,
-          meeting: meeting,
-        ),
+        builder: (_) =>
+            MeetingScreen.stored(service: widget.service, meeting: meeting),
       ),
     );
   }
@@ -195,7 +193,11 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
         return ListTile(
           title: Text(hit.title),
           // The line that matched, so the user can see WHY before opening.
-          subtitle: Text(hit.snippet, maxLines: 2, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            hit.snippet,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
           onTap: () => _open(hit.meetingId),
         );
       },
@@ -230,11 +232,11 @@ class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(message, textAlign: TextAlign.center),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Text(message, textAlign: TextAlign.center),
+    ),
+  );
 }
 
 /// Why the app cannot start, and what to do about it.
@@ -251,20 +253,20 @@ class _Unavailable extends StatelessWidget {
   Widget build(BuildContext context) {
     final (title, body) = switch (status.unavailable!) {
       MindUnavailable.bridgeMissing => (
-          'Airo Mind is not available on this platform',
-          'The on-device engine could not be loaded. Airo Mind needs the '
-              'native runtime, which the web build does not include.',
-        ),
+        'Airo Mind is not available on this platform',
+        'The on-device engine could not be loaded. Airo Mind needs the '
+            'native runtime, which the web build does not include.',
+      ),
       MindUnavailable.modelsMissing => (
-          'Models are not installed yet',
-          'Airo Mind runs entirely on this device, so it needs the speech and '
-              'writing models on disk before it can record.',
-        ),
+        'Models are not installed yet',
+        'Airo Mind runs entirely on this device, so it needs the speech and '
+            'writing models on disk before it can record.',
+      ),
       MindUnavailable.loadFailed => (
-          'The models could not be loaded',
-          'They are present but did not open. The device may be short of '
-              'memory.',
-        ),
+        'The models could not be loaded',
+        'They are present but did not open. The device may be short of '
+            'memory.',
+      ),
     };
 
     return Center(

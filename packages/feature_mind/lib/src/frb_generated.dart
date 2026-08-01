@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/mind.dart';
+import 'api/setup.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -64,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1570854843;
+  int get rustContentHash => -425026298;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -91,7 +92,13 @@ abstract class RustLibApi extends BaseApi {
     required BigInt recordedAtMs,
   });
 
+  Future<List<RequiredModel>> crateApiSetupRequiredModels();
+
   Future<List<SearchHit>> crateApiMindSearchMeetings({required String query});
+
+  Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
+    required String modelsDir,
+  });
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -272,6 +279,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<RequiredModel>> crateApiSetupRequiredModels() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_required_model,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSetupRequiredModelsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetupRequiredModelsConstMeta =>
+      const TaskConstMeta(debugName: "required_models", argNames: []);
+
+  @override
   Future<List<SearchHit>> crateApiMindSearchMeetings({required String query}) {
     return handler.executeNormal(
       NormalTask(
@@ -281,7 +315,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -298,6 +332,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiMindSearchMeetingsConstMeta =>
       const TaskConstMeta(debugName: "search_meetings", argNames: ["query"]);
+
+  @override
+  Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
+    required String modelsDir,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(modelsDir, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_installed_model,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSetupVerifyInstalledModelsConstMeta,
+        argValues: [modelsDir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetupVerifyInstalledModelsConstMeta =>
+      const TaskConstMeta(
+        debugName: "verify_installed_models",
+        argNames: ["modelsDir"],
+      );
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -338,6 +405,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  InstalledModel dco_decode_installed_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return InstalledModel(
+      fileName: dco_decode_String(arr[0]),
+      present: dco_decode_bool(arr[1]),
+      verified: dco_decode_bool(arr[2]),
+      detail: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  List<InstalledModel> dco_decode_list_installed_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_installed_model).toList();
+  }
+
+  @protected
   List<MeetingRecord> dco_decode_list_meeting_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_meeting_record).toList();
@@ -347,6 +434,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<RequiredModel> dco_decode_list_required_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_required_model).toList();
   }
 
   @protected
@@ -375,13 +468,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MindConfig dco_decode_mind_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return MindConfig(
-      speechModelPath: dco_decode_String(arr[0]),
-      generationModelPath: dco_decode_String(arr[1]),
-      storePath: dco_decode_String(arr[2]),
-      memoryBudgetMb: dco_decode_u_32(arr[3]),
+      modelsDir: dco_decode_String(arr[0]),
+      storePath: dco_decode_String(arr[1]),
+      memoryBudgetMb: dco_decode_u_32(arr[2]),
     );
   }
 
@@ -410,6 +502,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       default:
         throw Exception("unreachable");
     }
+  }
+
+  @protected
+  RequiredModel dco_decode_required_model(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return RequiredModel(
+      fileName: dco_decode_String(arr[0]),
+      sizeBytes: dco_decode_u_64(arr[1]),
+      sha256: dco_decode_String(arr[2]),
+    );
   }
 
   @protected
@@ -493,6 +598,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  InstalledModel sse_decode_installed_model(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_fileName = sse_decode_String(deserializer);
+    var var_present = sse_decode_bool(deserializer);
+    var var_verified = sse_decode_bool(deserializer);
+    var var_detail = sse_decode_String(deserializer);
+    return InstalledModel(
+      fileName: var_fileName,
+      present: var_present,
+      verified: var_verified,
+      detail: var_detail,
+    );
+  }
+
+  @protected
+  List<InstalledModel> sse_decode_list_installed_model(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <InstalledModel>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_installed_model(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<MeetingRecord> sse_decode_list_meeting_record(
     SseDeserializer deserializer,
   ) {
@@ -511,6 +645,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<RequiredModel> sse_decode_list_required_model(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RequiredModel>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_required_model(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -547,13 +695,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   MindConfig sse_decode_mind_config(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_speechModelPath = sse_decode_String(deserializer);
-    var var_generationModelPath = sse_decode_String(deserializer);
+    var var_modelsDir = sse_decode_String(deserializer);
     var var_storePath = sse_decode_String(deserializer);
     var var_memoryBudgetMb = sse_decode_u_32(deserializer);
     return MindConfig(
-      speechModelPath: var_speechModelPath,
-      generationModelPath: var_generationModelPath,
+      modelsDir: var_modelsDir,
       storePath: var_storePath,
       memoryBudgetMb: var_memoryBudgetMb,
     );
@@ -598,6 +744,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       default:
         throw UnimplementedError('');
     }
+  }
+
+  @protected
+  RequiredModel sse_decode_required_model(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_fileName = sse_decode_String(deserializer);
+    var var_sizeBytes = sse_decode_u_64(deserializer);
+    var var_sha256 = sse_decode_String(deserializer);
+    return RequiredModel(
+      fileName: var_fileName,
+      sizeBytes: var_sizeBytes,
+      sha256: var_sha256,
+    );
   }
 
   @protected
@@ -701,6 +860,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_installed_model(
+    InstalledModel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.fileName, serializer);
+    sse_encode_bool(self.present, serializer);
+    sse_encode_bool(self.verified, serializer);
+    sse_encode_String(self.detail, serializer);
+  }
+
+  @protected
+  void sse_encode_list_installed_model(
+    List<InstalledModel> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_installed_model(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_meeting_record(
     List<MeetingRecord> self,
     SseSerializer serializer,
@@ -720,6 +903,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_required_model(
+    List<RequiredModel> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_required_model(item, serializer);
+    }
   }
 
   @protected
@@ -748,8 +943,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_mind_config(MindConfig self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.speechModelPath, serializer);
-    sse_encode_String(self.generationModelPath, serializer);
+    sse_encode_String(self.modelsDir, serializer);
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
   }
@@ -792,6 +986,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case ProcessingEvent_Cancelled():
         sse_encode_i_32(5, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_required_model(RequiredModel self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.fileName, serializer);
+    sse_encode_u_64(self.sizeBytes, serializer);
+    sse_encode_String(self.sha256, serializer);
   }
 
   @protected

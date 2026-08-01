@@ -8,6 +8,7 @@ import 'package:record/record.dart';
 
 import 'api/mind.dart' as rust;
 import 'library_loader.dart';
+import 'model_installer.dart';
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -26,9 +27,7 @@ enum MindUnavailable {
 /// The result of trying to start.
 @immutable
 class MindStatus {
-  const MindStatus.ready()
-      : unavailable = null,
-        detail = '';
+  const MindStatus.ready() : unavailable = null, detail = '';
   const MindStatus.unavailable(this.unavailable, this.detail);
 
   final MindUnavailable? unavailable;
@@ -41,7 +40,15 @@ class MindStatus {
 ///
 /// Mirrors `ProcessingEvent` on the Rust side into something a widget can hold:
 /// the accumulated text so far, plus which stage produced it.
-enum MindStage { idle, recording, transcribing, generating, saving, done, failed }
+enum MindStage {
+  idle,
+  recording,
+  transcribing,
+  generating,
+  saving,
+  done,
+  failed,
+}
 
 @immutable
 class MindProgress {
@@ -82,9 +89,12 @@ class MindProgress {
 /// runnable without a Rust library present, and it means the day the bridge
 /// changes shape, one file changes.
 class MindService {
-  MindService({AudioRecorder? recorder}) : _recorder = recorder ?? AudioRecorder();
+  MindService({AudioRecorder? recorder, ModelInstaller? installer})
+    : _recorder = recorder ?? AudioRecorder(),
+      _installer = installer ?? const ModelInstaller();
 
   final AudioRecorder _recorder;
+  final ModelInstaller _installer;
   String? _recordingPath;
 
   /// Loads the native library and the models.
@@ -100,20 +110,28 @@ class MindService {
     }
 
     final dir = await modelsDirectory();
-    final speech = await _resolveModel(dir, speechModelFile);
-    final generation = await _resolveModel(dir, generationModelFile);
-    if (speech == null || generation == null) {
-      return MindStatus.unavailable(
-        MindUnavailable.modelsMissing,
-        'Expected models in ${dir.path}',
+
+    // `ADR-0018 §2`, Bundled: copy out of the app's own asset bundle. Not from
+    // the checkout -- that made a developer machine work and a device fail.
+    if (!await _installer.isInstalled(dir)) {
+      final failed = await _installer.install(
+        dir,
+        onProgress: onInstallProgress,
       );
+      if (failed.isNotEmpty) {
+        return MindStatus.unavailable(
+          MindUnavailable.modelsMissing,
+          'This build does not carry ${failed.join(', ')}.',
+        );
+      }
     }
 
     try {
+      // `ADR-0018 §1`: hand over a DIRECTORY and a budget. Which model serves
+      // which task is the Model Manager's decision, not this layer's.
       await rust.initialize(
         config: rust.MindConfig(
-          speechModelPath: speech,
-          generationModelPath: generation,
+          modelsDir: dir.path,
           storePath: p.join(dir.path, 'meetings.log'),
           // Admission ceiling, not an allocation. The Supervisor refuses a
           // model it cannot afford before anything is loaded.
@@ -136,36 +154,13 @@ class MindService {
     return dir;
   }
 
-  /// Finds a model, preferring the application directory.
-  ///
-  /// The second candidate is the checkout's own `models/` directory, so a
-  /// developer build runs without first copying half a gigabyte by hand. It is
-  /// a development affordance only: acquiring models on a real device is
-  /// `ADR-0018`'s Model Manager, which does not exist yet, and that gap is why
-  /// [MindUnavailable.modelsMissing] is a state the UI can explain rather than
-  /// a crash.
-  Future<String?> _resolveModel(Directory appDir, String fileName) async {
-    final candidates = [
-      p.join(appDir.path, fileName),
-      p.join(
-        Directory.current.path,
-        '..',
-        'rust',
-        'airo_mind_runtime',
-        'models',
-        fileName,
-      ),
-    ];
-    for (final candidate in candidates) {
-      final file = File(p.normalize(candidate));
-      if (file.existsSync()) return file.path;
-    }
-    return null;
-  }
+  /// Reports asset-copy progress on first launch. Half a gigabyte takes long
+  /// enough that a silent first launch reads as a hang.
+  void Function(String fileName, int copied, int total)? onInstallProgress;
 
-  static const String speechModelFile = 'ggml-tiny.en.bin';
-  static const String generationModelFile =
-      'qwen2.5-0.5b-instruct-q4_k_m.gguf';
+  /// Hashes every installed model against the digest pinned in Rust source.
+  Future<List<dynamic>> verifyModels() async =>
+      _installer.verify(await modelsDirectory());
 
   Future<bool> hasMicrophonePermission() => _recorder.hasPermission();
 
@@ -219,25 +214,28 @@ class MindService {
       await for (final event in stream) {
         progress = switch (event) {
           rust.ProcessingEvent_Transcribing(:final text) => progress.copyWith(
-              stage: MindStage.transcribing,
-              transcript: _append(progress.transcript, text),
-            ),
+            stage: MindStage.transcribing,
+            transcript: _append(progress.transcript, text),
+          ),
           // The joined transcript from Rust replaces what was accumulated, so a
           // dropped segment cannot leave the two out of step.
           rust.ProcessingEvent_TranscriptReady(:final text) =>
             progress.copyWith(stage: MindStage.generating, transcript: text),
           rust.ProcessingEvent_Generating(:final text) => progress.copyWith(
-              stage: MindStage.generating,
-              minutes: progress.minutes + text,
-            ),
-          rust.ProcessingEvent_MinutesReady(:final text) =>
-            progress.copyWith(stage: MindStage.saving, minutes: text),
+            stage: MindStage.generating,
+            minutes: progress.minutes + text,
+          ),
+          rust.ProcessingEvent_MinutesReady(:final text) => progress.copyWith(
+            stage: MindStage.saving,
+            minutes: text,
+          ),
           rust.ProcessingEvent_Saved(:final meetingId) => progress.copyWith(
-              stage: MindStage.done,
-              meetingId: meetingId,
-            ),
-          rust.ProcessingEvent_Cancelled() =>
-            progress.copyWith(stage: MindStage.idle),
+            stage: MindStage.done,
+            meetingId: meetingId,
+          ),
+          rust.ProcessingEvent_Cancelled() => progress.copyWith(
+            stage: MindStage.idle,
+          ),
         };
         yield progress;
       }

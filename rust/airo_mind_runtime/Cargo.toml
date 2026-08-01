@@ -20,7 +20,18 @@ flutter_rust_bridge = "=2.11.1"
 # that only needs the engine boundary -- CI, the web target, a capability test
 # -- does not compile whisper.cpp.
 whisper-rs = { version = "0.16", optional = true }
-llama-cpp-2 = { version = "0.1.153", optional = true }
+# `default-features = false` is a CORRECTNESS setting, not a size one.
+#
+# llama-cpp-2's default features include `common`, which compiles llama.cpp's
+# `download.cpp` and `hf-cache.cpp` -- a HuggingFace HTTP client -- into the
+# binary. `ADR-0018 §1` says the runtime never acquires models, and "cloud
+# optional, never cloud required" is not a claim a binary carrying a model
+# downloader can make. It also does not link: httplib is not in the archive,
+# so the offline product and the building product happen to be the same one.
+#
+# Dropping the default `openmp` costs nothing here: the Supervisor owns the CPU
+# budget (`C6`) and the engine is pinned to one thread.
+llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false }
 # Re-exported by llama-cpp-2 for token_to_piece; pinned to the version it uses.
 encoding_rs = { version = "0.8", optional = true }
 

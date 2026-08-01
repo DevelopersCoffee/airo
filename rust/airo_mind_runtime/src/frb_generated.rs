@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1570854843;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -425026298;
 
 // Section: executor
 
@@ -247,6 +247,38 @@ fn wire__crate__api__mind__process_recording_impl(
         },
     )
 }
+fn wire__crate__api__setup__required_models_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "required_models",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(crate::api::setup::required_models())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__mind__search_meetings_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -274,6 +306,41 @@ fn wire__crate__api__mind__search_meetings_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::mind::search_meetings(api_query)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__setup__verify_installed_models_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "verify_installed_models",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_models_dir = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::setup::verify_installed_models(api_models_dir),
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -316,6 +383,36 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for crate::api::setup::InstalledModel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_fileName = <String>::sse_decode(deserializer);
+        let mut var_present = <bool>::sse_decode(deserializer);
+        let mut var_verified = <bool>::sse_decode(deserializer);
+        let mut var_detail = <String>::sse_decode(deserializer);
+        return crate::api::setup::InstalledModel {
+            file_name: var_fileName,
+            present: var_present,
+            verified: var_verified,
+            detail: var_detail,
+        };
+    }
+}
+
+impl SseDecode for Vec<crate::api::setup::InstalledModel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::setup::InstalledModel>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::mind::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -335,6 +432,18 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::setup::RequiredModel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::setup::RequiredModel>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -375,13 +484,11 @@ impl SseDecode for crate::api::mind::MeetingRecord {
 impl SseDecode for crate::api::mind::MindConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_speechModelPath = <String>::sse_decode(deserializer);
-        let mut var_generationModelPath = <String>::sse_decode(deserializer);
+        let mut var_modelsDir = <String>::sse_decode(deserializer);
         let mut var_storePath = <String>::sse_decode(deserializer);
         let mut var_memoryBudgetMb = <u32>::sse_decode(deserializer);
         return crate::api::mind::MindConfig {
-            speech_model_path: var_speechModelPath,
-            generation_model_path: var_generationModelPath,
+            models_dir: var_modelsDir,
             store_path: var_storePath,
             memory_budget_mb: var_memoryBudgetMb,
         };
@@ -433,6 +540,20 @@ impl SseDecode for crate::api::mind::ProcessingEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseDecode for crate::api::setup::RequiredModel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_fileName = <String>::sse_decode(deserializer);
+        let mut var_sizeBytes = <u64>::sse_decode(deserializer);
+        let mut var_sha256 = <String>::sse_decode(deserializer);
+        return crate::api::setup::RequiredModel {
+            file_name: var_fileName,
+            size_bytes: var_sizeBytes,
+            sha256: var_sha256,
+        };
     }
 }
 
@@ -498,7 +619,11 @@ fn pde_ffi_dispatcher_primary_impl(
         3 => wire__crate__api__mind__initialize_impl(port, ptr, rust_vec_len, data_len),
         5 => wire__crate__api__mind__list_meetings_impl(port, ptr, rust_vec_len, data_len),
         6 => wire__crate__api__mind__process_recording_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__mind__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__mind__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        9 => {
+            wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
+        }
         _ => unreachable!(),
     }
 }
@@ -519,6 +644,29 @@ fn pde_ffi_dispatcher_sync_impl(
 
 // Section: rust2dart
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::setup::InstalledModel {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.file_name.into_into_dart().into_dart(),
+            self.present.into_into_dart().into_dart(),
+            self.verified.into_into_dart().into_dart(),
+            self.detail.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::setup::InstalledModel
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::setup::InstalledModel>
+    for crate::api::setup::InstalledModel
+{
+    fn into_into_dart(self) -> crate::api::setup::InstalledModel {
+        self
+    }
+}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::mind::MeetingRecord {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -548,8 +696,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::MeetingRecord>
 impl flutter_rust_bridge::IntoDart for crate::api::mind::MindConfig {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.speech_model_path.into_into_dart().into_dart(),
-            self.generation_model_path.into_into_dart().into_dart(),
+            self.models_dir.into_into_dart().into_dart(),
             self.store_path.into_into_dart().into_dart(),
             self.memory_budget_mb.into_into_dart().into_dart(),
         ]
@@ -598,6 +745,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::ProcessingEvent>
     for crate::api::mind::ProcessingEvent
 {
     fn into_into_dart(self) -> crate::api::mind::ProcessingEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::setup::RequiredModel {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.file_name.into_into_dart().into_dart(),
+            self.size_bytes.into_into_dart().into_dart(),
+            self.sha256.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::setup::RequiredModel
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::setup::RequiredModel>
+    for crate::api::setup::RequiredModel
+{
+    fn into_into_dart(self) -> crate::api::setup::RequiredModel {
         self
     }
 }
@@ -652,6 +821,26 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for crate::api::setup::InstalledModel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.file_name, serializer);
+        <bool>::sse_encode(self.present, serializer);
+        <bool>::sse_encode(self.verified, serializer);
+        <String>::sse_encode(self.detail, serializer);
+    }
+}
+
+impl SseEncode for Vec<crate::api::setup::InstalledModel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::setup::InstalledModel>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::mind::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -668,6 +857,16 @@ impl SseEncode for Vec<u8> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::setup::RequiredModel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::setup::RequiredModel>::sse_encode(item, serializer);
         }
     }
 }
@@ -697,8 +896,7 @@ impl SseEncode for crate::api::mind::MeetingRecord {
 impl SseEncode for crate::api::mind::MindConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.speech_model_path, serializer);
-        <String>::sse_encode(self.generation_model_path, serializer);
+        <String>::sse_encode(self.models_dir, serializer);
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
     }
@@ -745,6 +943,15 @@ impl SseEncode for crate::api::mind::ProcessingEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseEncode for crate::api::setup::RequiredModel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.file_name, serializer);
+        <u64>::sse_encode(self.size_bytes, serializer);
+        <String>::sse_encode(self.sha256, serializer);
     }
 }
 

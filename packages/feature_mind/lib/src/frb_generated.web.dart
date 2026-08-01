@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/mind.dart';
+import 'api/setup.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -41,10 +42,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig dco_decode_box_autoadd_mind_config(dynamic raw);
 
   @protected
+  InstalledModel dco_decode_installed_model(dynamic raw);
+
+  @protected
+  List<InstalledModel> dco_decode_list_installed_model(dynamic raw);
+
+  @protected
   List<MeetingRecord> dco_decode_list_meeting_record(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<RequiredModel> dco_decode_list_required_model(dynamic raw);
 
   @protected
   List<SearchHit> dco_decode_list_search_hit(dynamic raw);
@@ -60,6 +70,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessingEvent dco_decode_processing_event(dynamic raw);
+
+  @protected
+  RequiredModel dco_decode_required_model(dynamic raw);
 
   @protected
   SearchHit dco_decode_search_hit(dynamic raw);
@@ -99,12 +112,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig sse_decode_box_autoadd_mind_config(SseDeserializer deserializer);
 
   @protected
+  InstalledModel sse_decode_installed_model(SseDeserializer deserializer);
+
+  @protected
+  List<InstalledModel> sse_decode_list_installed_model(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<MeetingRecord> sse_decode_list_meeting_record(
     SseDeserializer deserializer,
   );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<RequiredModel> sse_decode_list_required_model(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<SearchHit> sse_decode_list_search_hit(SseDeserializer deserializer);
@@ -122,6 +148,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessingEvent sse_decode_processing_event(SseDeserializer deserializer);
+
+  @protected
+  RequiredModel sse_decode_required_model(SseDeserializer deserializer);
 
   @protected
   SearchHit sse_decode_search_hit(SseDeserializer deserializer);
@@ -172,6 +201,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_installed_model(
+    InstalledModel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_installed_model(
+    List<InstalledModel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_meeting_record(
     List<MeetingRecord> self,
     SseSerializer serializer,
@@ -180,6 +221,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_required_model(
+    List<RequiredModel> self,
     SseSerializer serializer,
   );
 
@@ -206,6 +253,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ProcessingEvent self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_required_model(RequiredModel self, SseSerializer serializer);
 
   @protected
   void sse_encode_search_hit(SearchHit self, SseSerializer serializer);

@@ -22,6 +22,31 @@ dependencies:
   # ProcessingEvent's variants.
   freezed_annotation: ^3.0.0
 
+# An FFI plugin. Declaring the platforms is what makes the Flutter tool run
+# cargokit's podspec/gradle/cmake hooks during a normal build -- without this
+# block the Rust is never compiled, which is precisely the state core_native
+# has been in.
+flutter:
+  # `ADR-0018 §2`, Bundled: the models ship inside the app. They are NOT in git
+  # -- half a gigabyte of weights is not source -- so `tool/fetch_models.sh`
+  # populates this directory before a build. A build without them still
+  # compiles; it reports `modelsMissing`, which is a state the UI explains.
+  assets:
+    - assets/models/
+
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      linux:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
