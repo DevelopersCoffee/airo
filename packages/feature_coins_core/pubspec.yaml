@@ -10,7 +10,7 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
-  equatable: ^2.0.8
+  equatable: ^2.1.0
 
 dev_dependencies:
   lints: ^6.0.0

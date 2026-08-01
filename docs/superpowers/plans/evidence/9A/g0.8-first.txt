@@ -1,0 +1,34 @@
+G0.8 external-consumer probe -- against /private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad/rev7
+
+Key material and signing must be unreachable:
+  FAIL  DENY   SEC-33   the 64-byte master seed is not readable
+        COMPILED from outside the crate; the façade is open
+  FAIL  DENY   RA-17    the root identity is not a signing oracle
+        COMPILED from outside the crate; the façade is open
+  PASS  DENY   RA-17b   device keys cannot be minted or used to sign
+
+AAD-covered header fields must not be publicly mutable:
+  FAIL  DENY   RA-23a   a package header cannot be rewritten by a consumer
+        COMPILED from outside the crate; the façade is open
+
+The Vault must be the only door to an envelope:
+  FAIL  DENY   SEC-43   an envelope cannot be deserialized outside the Vault
+        COMPILED from outside the crate; the façade is open
+
+Supported journeys must be reachable:
+  PASS  ALLOW  RA-18    the full restore path is callable
+  FAIL  ALLOW  SEC-39   a NON-blind restore is constructible
+        does NOT compile; a supported journey is unreachable
+          error[E0277]: the trait bound `airo_mind::vault::restore::LogHead: Default` is not satisfied
+          error: could not compile `consumer_probe` (bin "consumer_probe") due to 1 previous error
+  FAIL  ALLOW  SEC-38   the device-trust journey is callable
+        does NOT compile; a supported journey is unreachable
+          error[E0425]: cannot find type `DeviceCertificate` in this scope
+          error: could not compile `consumer_probe` (bin "consumer_probe") due to 1 previous error
+  PASS  ALLOW  RA-Q4    content can actually be sealed and opened
+
+G0.8: 3 passed, 6 FAILED
+
+A failed DENY means a claimed-private item is publicly reachable.
+A failed ALLOW means the façade hides a journey the product needs.
+Revision 8 shipped both kinds at once.

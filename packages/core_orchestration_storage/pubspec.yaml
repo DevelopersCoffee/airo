@@ -21,7 +21,7 @@ dependencies:
     path: ../core_sessions
   core_watch_progress:
     path: ../core_watch_progress
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
 

@@ -47,15 +47,33 @@ written against the implementation and is a unit test wearing the wrong label.
       10k-content vault. *Retained as a regression guard on the §4.1 redesign,
       which measurement confirms holds at −0.8%. It is no longer a growth test —
       the Vault has no content dimension to grow in.*
-- [ ] **Peak memory during export and restore is O(1) in the Vault's actual
-      growth dimension**, which per ADR-0017 is contexts + devices + revocations.
-      Measured: export peak RSS at 100k revocation entries within 20% of peak RSS
-      at 10k, and the same for contexts. *This is the test the previous one
-      stopped being. It currently fails at +849%, which is why ADR-0017 requires
-      framing.*
 - [ ] **Retention-class expiry adds no ledger entry** — running a `recoverable`
       object past its 30-day window, or an `ephemeral` object past its derived
       artifact, destroys the content and leaves `head_epoch` unchanged (ADR-0017)
+- [ ] **Export peak memory is `O(1)` in ledger size** — export *overhead* above
+      the resident vault, at 100k revocation entries, within 20% of overhead at
+      10k. *Stated over overhead rather than total process peak: total peak
+      necessarily includes the resident ledger at 137.6 B/entry, which is
+      `O(N)` by design. Measured −6% streaming, against +588% for the same
+      shape read as total peak.* (`ADR-0017`, `I7`)
+
+      *This is the test the vault-sizing entry above stopped being, restated
+      once rather than twice: an earlier draft carried both, one asserting the
+      property and one asserting an artifact that had ceased to track it.*
+- [ ] **Truncation is distinguishable from corruption** — a Recovery Package
+      missing frames reports how many survived; a package with a flipped byte
+      reports decryption failure. Before framing both failed AEAD identically,
+      and the user was told a truncated backup was corrupt (`ADR-0017`)
+- [ ] **The export path's production model does not change the wire format** —
+      streaming and materializing export produce byte-identical packages. This
+      is what makes streaming an execution-strategy change rather than a second
+      format freeze
+- [ ] **The Vault is the only door to an envelope** — an envelope cannot be
+      constructed, parsed, or forged outside it, including via `serde`. A
+      forged envelope is content with no revocation record, which can never be
+      shredded
+- [ ] **A content key is a capability, not bytes** — `seal`/`open` exist; no
+      accessor returns key material to a consumer (`C5`)
 - [ ] **Expiry is derived from logged time, never local wall clock** — two
       devices with clocks skewed by a week reach byte-identical state from the
       same log. *Without this, expiry is device-dependent, which makes it a

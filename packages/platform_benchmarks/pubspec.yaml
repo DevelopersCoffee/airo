@@ -11,7 +11,7 @@ dependencies:
   core_media_data:
     path: ../core_media_data
   crypto: ^3.0.7
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
   platform_channels:
