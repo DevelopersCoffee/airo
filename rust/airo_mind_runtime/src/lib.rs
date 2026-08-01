@@ -28,6 +28,9 @@ mod cancel;
 mod engine;
 mod supervisor;
 
+#[cfg(feature = "whisper")]
+mod whisper;
+
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
 pub use engine::{
@@ -35,3 +38,6 @@ pub use engine::{
     TranscriptSegment,
 };
 pub use supervisor::{RuntimeError, Supervisor};
+
+#[cfg(feature = "whisper")]
+pub use whisper::WhisperSpeechEngine;

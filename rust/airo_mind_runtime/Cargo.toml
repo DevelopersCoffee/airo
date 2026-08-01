@@ -12,6 +12,13 @@ name = "airo_mind_runtime"
 crate-type = ["rlib"]
 
 [dependencies]
-# Deliberately none. The Supervisor MVP schedules, cancels and budgets; it does
-# not need an async runtime to do that, and taking tokio here would be a
-# Constitution §6 dependency decision made for convenience rather than need.
+# The Supervisor itself takes nothing. Backends are feature-gated so a build
+# that only needs the engine boundary -- CI, the web target, a capability test
+# -- does not compile whisper.cpp.
+whisper-rs = { version = "0.16", optional = true }
+
+[features]
+default = []
+# Real offline transcription. Requires cmake and a C++ toolchain, and pulls in
+# whisper.cpp. Constitution §6 scorecard owed before this leaves a dev build.
+whisper = ["dep:whisper-rs"]
