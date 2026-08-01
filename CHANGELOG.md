@@ -4,6 +4,49 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## Unreleased — Airo TV v0.0.6 candidate
+
+### Added
+
+- Direct, permission-scoped USB/removable-media browsing on Android TV without
+  converting local files into playlists, including deterministic sidecar
+  subtitle association.
+- Runtime-backed Xtream live/EPG/VOD and Stalker live source loading, with an
+  explicit active-source selector and credential-safe failures.
+- Reproducible Play Store screenshot capture and RGB/size validation from the
+  live Flutter web runtime, plus an original text-free feature graphic.
+- Production Android signing setup, release provenance attestations, and
+  repository license/notices preflight coverage.
+
+### Changed
+
+- Release candidates remain dry-run / unpublished unless a maintainer
+  explicitly opts into publication. The version line stays `0.0.6-rc.1`;
+  promoting to `0.0.6` is a deliberate release cut, not a merge side-effect.
+- TV first-run setup offers URL, expiring phone QR, and USB only when the
+  corresponding platform capability is real.
+- TV rail traversal now has a deterministic leading-edge focus bridge from
+  Search, Name sort, and the first channel.
+
+### Fixed
+
+- Coins uses one launcher activity and validates the resolved component before
+  artifact smoke tests, preventing the Pixel 9 black-screen launch path.
+- Player error, loading, buffering, and controls overlays are mutually
+  exclusive; desktop/macOS hover and fullscreen mini-player transitions are
+  deterministic.
+- Fire TV playback log capture is process-scoped, bounded, classified, and
+  redacts stream URLs.
+- Generated Pigeon/build-runner outputs and model warmup/activation boundaries
+  compile and carry focused test coverage.
+
+### Qualification status
+
+- Automated source, player, TV navigation, legal, provenance, native-media,
+  screenshot, and artifact checks are prepared locally.
+- Pixel 9, Fire TV Stick, and iPad physical-device sign-off remains required
+  before publishing. No release has been created.
+
 ## [Airo v0.0.6-rc.1] - 2026-07-30
 
 Preview (release-candidate) cut for direct download / APKPure across the Android

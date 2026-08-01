@@ -60,14 +60,21 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
     await _disposeController();
 
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(request.sourceHandle.value),
-      httpHeaders: request.httpHeaders,
-      videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: request.mixWithOthers,
-        allowBackgroundPlayback: request.allowBackgroundPlayback,
-      ),
+    final sourceUri = Uri.parse(request.sourceHandle.value);
+    final options = VideoPlayerOptions(
+      mixWithOthers: request.mixWithOthers,
+      allowBackgroundPlayback: request.allowBackgroundPlayback,
     );
+    final controller = sourceUri.scheme == 'content'
+        ? VideoPlayerController.contentUri(
+            sourceUri,
+            videoPlayerOptions: options,
+          )
+        : VideoPlayerController.networkUrl(
+            sourceUri,
+            httpHeaders: request.httpHeaders,
+            videoPlayerOptions: options,
+          );
     _controller = controller;
 
     try {

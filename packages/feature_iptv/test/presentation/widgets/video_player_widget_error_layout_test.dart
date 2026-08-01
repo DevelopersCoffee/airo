@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,6 +108,162 @@ void main() {
     // center, leaving the whole bottom half clear for transport controls.
     expect(messageTop, lessThan(viewportHeight * 0.3));
   });
+
+  testWidgets(
+    'diagnostic error replaces a retained video view and all player chrome',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      const mapper = AiroPlaybackDiagnosticMapper();
+      final service = _RetainedVideoViewService();
+      addTearDown(service.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                currentChannel: const IPTVChannel(
+                  id: 'news-1',
+                  name: 'City News Live',
+                  streamUrl: 'https://example.com/news.m3u8',
+                ),
+                playbackState: PlaybackState.error,
+                diagnostic: mapper.map(
+                  const AiroPlaybackFailureEvent(
+                    overrideCode: AiroPlaybackDiagnosticCode.providerAuthDenied,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byKey(const ValueKey('retained-video-view')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('diagnostic-error-retry')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-lock-button')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('loading replaces a retained video view and player controls', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final service = _RetainedVideoViewService();
+    addTearDown(service.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        iptvStreamingServiceProvider.overrideWithValue(service),
+        streamingStateProvider.overrideWith(
+          (ref) => Stream.value(
+            StreamingState(playbackState: PlaybackState.loading),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('retained-video-view')), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+    'desktop controls stay visible while hovered and fade after pointer exit',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = _RetainedVideoViewService();
+      addTearDown(service.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(playbackState: PlaybackState.playing),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 960,
+                height: viewportHeight,
+                child: VideoPlayerWidget(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5));
+      AnimatedOpacity controls() => tester.widget(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      );
+      expect(controls().opacity, 0);
+
+      final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await pointer.addPointer(location: const Offset(1100, 700));
+      await pointer.moveTo(const Offset(480, 270));
+      await tester.pump();
+      expect(controls().opacity, 1);
+
+      await tester.pump(const Duration(seconds: 5));
+      expect(
+        controls().opacity,
+        1,
+        reason: 'hovered desktop controls must not disappear under the pointer',
+      );
+
+      await pointer.moveTo(const Offset(1100, 700));
+      await tester.pump(const Duration(milliseconds: 2900));
+      expect(controls().opacity, 1);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(controls().opacity, 0);
+      await pointer.removePointer();
+    },
+  );
 
   // issues/04-recovery-states.md acceptance criterion 1: three distinct
   // outcomes, all D-pad reachable (the old ElevatedButton had no
@@ -376,5 +533,15 @@ class _RecoveryRecordingService extends VideoPlayerStreamingService {
   @override
   Future<void> playChannel(IPTVChannel channel) async {
     playedChannels.add(channel);
+  }
+}
+
+class _RetainedVideoViewService extends _RecoveryRecordingService {
+  @override
+  Widget? buildVideoView() {
+    return const ColoredBox(
+      key: ValueKey('retained-video-view'),
+      color: Colors.green,
+    );
   }
 }

@@ -17,6 +17,14 @@ environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
 
+# Keep TV release builds offline-safe by loading the native library already
+# supplied by sqlite3_flutter_libs.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlite3
+
 dependencies:
   flutter:
     sdk: flutter

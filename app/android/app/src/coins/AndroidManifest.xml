@@ -1,8 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
     <application
         android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- The base manifest launches the full-app Dart entrypoint through
+             MainActivity. A Coins artifact must expose exactly one launcher,
+             otherwise Android/ADB can cold-start the wrong engine and leave a
+             black surface while the process remains alive. -->
+        <activity
+            android:name=".MainActivity"
+            tools:node="remove" />
         <activity
             android:name=".CoinsActivity"
             android:exported="true"

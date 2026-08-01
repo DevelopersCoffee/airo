@@ -567,6 +567,37 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('mini-player Watch opens the root fullscreen player', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      streamingState: StreamingState(
+        currentChannel: channels[2],
+        playbackState: PlaybackState.playing,
+        isLiveStream: true,
+      ),
+      surfaceSize: const Size(1440, 900),
+      settle: false,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('iptv-mini-player-watch')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-video-player')),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
   testWidgets(
     'TV fullscreen player disables touch gestures and swipe-channel buttons',
     (tester) async {

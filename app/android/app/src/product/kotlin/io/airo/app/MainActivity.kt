@@ -60,6 +60,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
     private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
     private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
+    private lateinit var localMediaPlugin: AiroLocalMediaPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -154,6 +155,9 @@ class MainActivity : AudioServiceFragmentActivity() {
 
         mediaAssetAnalyzerPlugin = AiroMediaAssetAnalyzerPlugin(this)
         mediaAssetAnalyzerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        localMediaPlugin = AiroLocalMediaPlugin(this)
+        localMediaPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
@@ -400,6 +404,12 @@ class MainActivity : AudioServiceFragmentActivity() {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (
+            ::localMediaPlugin.isInitialized &&
+            localMediaPlugin.onActivityResult(requestCode, resultCode, data)
+        ) {
+            return
+        }
         if (
             ::phoneMediaPickerPlugin.isInitialized &&
             phoneMediaPickerPlugin.onActivityResult(requestCode, resultCode, data)

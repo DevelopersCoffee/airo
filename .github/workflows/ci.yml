@@ -64,7 +64,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Configure firebase_options.dart
         env:
@@ -234,7 +234,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Configure firebase_options.dart
         env:
@@ -510,7 +510,7 @@ jobs:
         if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
         if: steps.android_scope.outputs.should_build == 'true'

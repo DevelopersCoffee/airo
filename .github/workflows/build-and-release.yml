@@ -189,7 +189,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build APK (arm64-v8a)
         run: |
@@ -346,7 +346,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build APK (armeabi-v7a)
         run: |
@@ -485,7 +485,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build APK (x86_64)
         run: |
@@ -549,7 +549,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build Web
         run: |
@@ -598,7 +598,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build Windows
         env:
@@ -660,7 +660,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build Linux
         run: |

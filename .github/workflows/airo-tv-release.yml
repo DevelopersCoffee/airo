@@ -18,7 +18,7 @@ on:
         required: true
         type: string
       build_name:
-        description: 'Android versionName, for example 0.0.5'
+        description: 'Android versionName, for example 0.0.6'
         required: true
         type: string
       build_number:
@@ -62,15 +62,15 @@ on:
       version:
         description: 'Airo TV artifact and release version label'
         required: true
-        default: 'airo-tv-v0.0.5'
+        default: 'airo-tv-v0.0.6'
       build_name:
-        description: 'Android versionName, for example 0.0.5'
+        description: 'Android versionName, for example 0.0.6'
         required: true
-        default: '0.0.5'
+        default: '0.0.6'
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '5'
+        default: '8'
       release_ref:
         description: 'Git ref to cut the release from; use main for the active Airo TV release line'
         required: true
@@ -78,11 +78,11 @@ on:
       release_branch:
         description: 'Release branch to create/update from release_ref before building'
         required: true
-        default: 'release/airo-tv-v0.0.5'
+        default: 'release/airo-tv-v0.0.6'
       publish_github_release:
         description: 'Create/update the GitHub release and attach artifacts'
         required: true
-        default: true
+        default: false
         type: boolean
       production_signing:
         description: 'Require production Android signing and Firebase secrets'
@@ -127,8 +127,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name }}
-  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.5' }}
-  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '5' }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.6' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '8' }}
 
 jobs:
   prepare-release-branch:
@@ -151,7 +151,7 @@ jobs:
         id: release_ref
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
         env:
-          RELEASE_BRANCH: ${{ inputs.release_branch || github.event.inputs.release_branch || 'release/airo-tv-v0.0.5' }}
+          RELEASE_BRANCH: ${{ inputs.release_branch || github.event.inputs.release_branch || 'release/airo-tv-v0.0.6' }}
           RELEASE_REF: ${{ inputs.release_ref || github.event.inputs.release_ref || 'main' }}
         run: |
           git fetch origin main
@@ -207,11 +207,59 @@ jobs:
       - name: Validate Android TV release metadata
         run: scripts/check-android-tv-release.sh
 
+  store-listing-evidence:
+    name: Capture live TV store listing evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare-release-branch, release-checks]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install capture dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check Pillow
+          cd e2e
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Capture and validate live store assets
+        run: scripts/capture-airo-tv-store-assets.sh
+
+      - name: Upload store listing evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-tv-store-listing-${{ env.RELEASE_VERSION }}
+          path: artifacts/store-listing/processed/
+          retention-days: 30
+
   build-tv:
     name: Build Airo TV APK and AAB
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [prepare-release-branch, release-checks]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     outputs:
       signing_cert: ${{ steps.android_signing.outputs.signing_cert }}
     steps:
@@ -434,6 +482,9 @@ jobs:
           cd ../packages/feature_iptv
           flutter analyze lib test --no-fatal-infos --no-fatal-warnings
           flutter test test/iptv/presentation/screens/iptv_screen_test.dart test/iptv/presentation/tv/iptv_tv_screen_test.dart test/iptv/iptv_cast_ui_test.dart test/iptv/iptv_cast_notifier_test.dart --reporter=compact
+          cd ../platform_media
+          flutter analyze lib/src/local_media_library.dart lib/src/video_player_airo_playback_engine.dart test/local_media_library_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/local_media_library_test.dart test/video_player_airo_playback_engine_test.dart --reporter=compact
           cd ../platform_player
           flutter analyze lib/src/services/flutter_chrome_cast_controller.dart test/flutter_chrome_cast_controller_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/flutter_chrome_cast_controller_test.dart --reporter=compact
@@ -532,6 +583,11 @@ jobs:
             echo ""
             echo "Policy: docs/release/V2_DISTRIBUTION_MATRIX.md"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate signed build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: release-artifacts/*
 
       - name: Upload Airo TV release artifacts
         uses: actions/upload-artifact@v7
@@ -767,7 +823,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-          RELEASE_BRANCH: ${{ needs.prepare-release-branch.outputs.release_ref || inputs.release_branch || github.event.inputs.release_branch || 'release/airo-tv-v0.0.5' }}
+          RELEASE_BRANCH: ${{ needs.prepare-release-branch.outputs.release_ref || inputs.release_branch || github.event.inputs.release_branch || 'release/airo-tv-v0.0.6' }}
           SIGNING_CERT: ${{ needs.build-tv.outputs.signing_cert }}
         run: |
           case "$SIGNING_CERT" in

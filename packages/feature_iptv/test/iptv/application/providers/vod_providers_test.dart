@@ -1,8 +1,16 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:core_data/core_data.dart';
+import 'package:dio/dio.dart';
+import 'package:feature_iptv/application/content_source_store.dart';
+import 'package:feature_iptv/application/providers/content_source_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/vod_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_playlist/platform_playlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -93,6 +101,60 @@ void main() {
       expect(items, isEmpty);
     },
   );
+
+  test('active Xtream source supplies VOD items', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((request) async {
+      request.response.headers.contentType = ContentType.json;
+      if (request.uri.queryParameters['action'] == 'get_vod_streams') {
+        request.response.write(
+          jsonEncode([
+            {
+              'stream_id': 42,
+              'name': 'Provider Movie',
+              'category_id': 'movies',
+              'container_extension': 'mp4',
+            },
+          ]),
+        );
+      } else {
+        request.response.statusCode = HttpStatus.badRequest;
+      }
+      await request.response.close();
+    });
+    final prefs = await SharedPreferences.getInstance();
+    const sourceId = 'xtream-home';
+    final store = ContentSourceStore(PreferencesStore(prefs));
+    await store.add(
+      ContentSourceConfig(
+        id: sourceId,
+        kind: ContentSourceKind.xtream,
+        label: 'Provider',
+        url: 'http://${server.address.host}:${server.port}',
+      ),
+    );
+    await store.setActiveSourceId(sourceId);
+    final secureStore = InMemorySecureStore();
+    await ContentSourceCredentialStore(secureStore).save(
+      const ContentSourceCredentialRef(sourceId),
+      const ContentSourceCredentials(username: 'user', password: 'pass'),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        secureStoreProvider.overrideWithValue(secureStore),
+        dioProvider.overrideWithValue(Dio()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final items = await container.read(rawVodItemsProvider.future);
+
+    expect(items.single.id, '$sourceId-vod-42');
+    expect(items.single.title, 'Provider Movie');
+    expect(items.single.streamUrl, contains('/movie/user/pass/42.mp4'));
+  });
 
   test(
     'filteredVodMoviesProvider filters standalone movies by search query',

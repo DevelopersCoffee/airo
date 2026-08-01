@@ -63,6 +63,7 @@ class _TvSourceManagementSectionState
   String? _urlError;
   String? _submitError;
   String? _removeError;
+  String? _selectError;
 
   @override
   void dispose() {
@@ -86,6 +87,7 @@ class _TvSourceManagementSectionState
     _urlError = null;
     _submitError = null;
     _removeError = null;
+    _selectError = null;
   }
 
   void _openAddForm() {
@@ -95,6 +97,7 @@ class _TvSourceManagementSectionState
       _urlError = null;
       _submitError = null;
       _removeError = null;
+      _selectError = null;
     });
   }
 
@@ -257,6 +260,20 @@ class _TvSourceManagementSectionState
     }
   }
 
+  Future<void> _selectSource(ContentSourceConfig config) async {
+    try {
+      await ref.read(selectContentSourceProvider(config.id).future);
+      if (!mounted) return;
+      setState(() => _selectError = null);
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+        () => _selectError =
+            'Could not select this source. Check its configuration and retry.',
+      );
+    }
+  }
+
   String _urlFieldLabel() {
     switch (_kind) {
       case ContentSourceKind.m3u:
@@ -287,6 +304,7 @@ class _TvSourceManagementSectionState
     ContentSourceCapabilities caps,
   ) {
     final flags = <String>[
+      'Live',
       if (caps.hasEpg) 'EPG',
       if (caps.hasVod) 'VOD',
       if (caps.hasCatchup) 'Catch-up',
@@ -375,6 +393,7 @@ class _TvSourceManagementSectionState
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
     ref.watch(providerHealthRevisionProvider);
     final healthTracker = ref.watch(providerHealthTrackerProvider);
+    final activeSourceId = ref.watch(activeContentSourceProvider).value?.id;
     final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
@@ -386,6 +405,13 @@ class _TvSourceManagementSectionState
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: colorScheme.onSurface),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Choose one active source for Live TV. M3U supports external '
+            'XMLTV; Xtream supports Live TV, EPG, and VOD; Stalker supports '
+            'Live TV. Raw .m3u8 links remain playback URLs, not channel lists.',
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
           sourcesAsync.when(
@@ -402,6 +428,14 @@ class _TvSourceManagementSectionState
                 children: [
                   for (final config in sources)
                     ListTile(
+                      leading: Icon(
+                        config.id == activeSourceId
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: config.id == activeSourceId
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
+                      ),
                       title: Text(
                         config.label,
                         style: TextStyle(color: colorScheme.onSurface),
@@ -441,6 +475,24 @@ class _TvSourceManagementSectionState
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (config.id != activeSourceId &&
+                              config.kind != ContentSourceKind.jellyfin)
+                            TvFocusable(
+                              onSelect: () => _selectSource(config),
+                              semanticLabel: 'Use ${config.label} for Live TV',
+                              semanticButton: true,
+                              child: TextButton(
+                                onPressed: () => _selectSource(config),
+                                child: const Text('Use'),
+                              ),
+                            )
+                          else if (config.id == activeSourceId)
+                            Text(
+                              'Active',
+                              style: TextStyle(color: colorScheme.primary),
+                            )
+                          else
+                            const Text('Saved only'),
                           ...?widget.sourceActionsBuilder?.call(
                             context,
                             ref,
@@ -469,6 +521,10 @@ class _TvSourceManagementSectionState
             const SizedBox(height: 8),
             Text(_removeError!, style: TextStyle(color: colorScheme.error)),
           ],
+          if (_selectError != null) ...[
+            const SizedBox(height: 8),
+            Text(_selectError!, style: TextStyle(color: colorScheme.error)),
+          ],
           const SizedBox(height: 16),
           if (!_showAddForm)
             TvFocusable(
@@ -494,7 +550,9 @@ class _TvSourceManagementSectionState
                     setState(() => _kind = kind);
                   },
                   items: [
-                    for (final kind in ContentSourceKind.values)
+                    for (final kind in ContentSourceKind.values.where(
+                      (kind) => kind != ContentSourceKind.jellyfin,
+                    ))
                       DropdownMenuItem(
                         value: kind,
                         child: Text(_kindLabel(kind)),

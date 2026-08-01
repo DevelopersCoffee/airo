@@ -109,9 +109,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _showControlsOverlay = true;
   bool _isFullscreen = false;
   bool _isCinemaMode = false;
+  bool _controlsHaveFocus = false;
   Timer? _hideControlsTimer;
   bool _suppressNextPlatformBack = false;
   static const _controlsHideDelay = Duration(seconds: 4);
+  static const _pointerExitHideDelay = Duration(seconds: 3);
 
   /// Default focus holder for the player surface. While it has focus the
   /// D-pad channel-surfs; revealing the controls moves focus onto them.
@@ -283,6 +285,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   void _startHideControlsTimer() {
     _cancelHideControlsTimer();
+    // A real remote can take longer than the visual timeout to traverse the
+    // full transport row. Never remove the subtree that currently owns
+    // primary focus; the timer resumes when focus returns to the player.
+    if (_controlsHaveFocus) return;
     _hideControlsTimer = Timer(_controlsHideDelay, () {
       if (mounted) {
         setState(() => _showControlsOverlay = false);
@@ -309,6 +315,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     if (_isLocked) return;
     setState(() => _showControlsOverlay = true);
     _startHideControlsTimer();
+  }
+
+  void _showControlsForPointer() {
+    if (_isLocked) return;
+    if (!_showControlsOverlay) {
+      setState(() => _showControlsOverlay = true);
+    }
+    // Desktop controls remain visible while the pointer is over the player.
+    // onExit starts the standard delayed fade.
+    _cancelHideControlsTimer();
+  }
+
+  void _hideControlsAfterPointerExit() {
+    _cancelHideControlsTimer();
+    if (_controlsHaveFocus) return;
+    _hideControlsTimer = Timer(_pointerExitHideDelay, () {
+      if (!mounted) return;
+      setState(() => _showControlsOverlay = false);
+      if (_playerFocusNode.canRequestFocus) {
+        _playerFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _onControlsFocusChange(bool hasFocus) {
+    if (_controlsHaveFocus == hasFocus) return;
+    _controlsHaveFocus = hasFocus;
+    if (hasFocus) {
+      _cancelHideControlsTimer();
+    } else if (_showControlsOverlay) {
+      _startHideControlsTimer();
+    }
   }
 
   void _toggleLocked() {
@@ -901,26 +939,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     final videoView = service.buildVideoView();
     final compactInlinePlayer = _usesCompactInlinePlayer(context);
+    final hasPlaybackError = state.hasError;
+    final blocksPlaybackChrome =
+        hasPlaybackError || state.isLoading || state.isBuffering;
 
-    // Shared player surface: video view + cinema-mode vignette + buffering indicator
-    // Built once and reused in both enableTouchGestures branches to reduce duplication.
+    // The state surface is deliberately exclusive. A retained engine view
+    // must never win over a newer loading/error state and leave stale video
+    // composited under recovery chrome.
     final playerSurface = Stack(
       alignment: Alignment.center,
       children: [
-        // Video display (engine-driven view surface).
-        if (videoView != null)
+        if (hasPlaybackError)
+          state.diagnostic != null
+              ? _buildDiagnosticError(state)
+              : _buildError(state.errorMessage ?? 'Playback could not start.')
+        else if (state.isLoading)
+          _buildLoading()
+        else if (videoView != null)
           SizedBox.expand(
             child: FittedBox(fit: _boxFitFor(aspectRatioFit), child: videoView),
           )
-        else if (state.playbackState == PlaybackState.loading)
-          _buildLoading()
-        else if (state.hasError && state.diagnostic != null)
-          _buildDiagnosticError(state)
         else
           _buildPlaceholder(state),
 
         // Cinema mode vignette overlay
-        if (_isCinemaMode)
+        if (_isCinemaMode && !blocksPlaybackChrome)
           Positioned.fill(
             child: IgnorePointer(
               child: Container(
@@ -940,7 +983,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
 
         // Buffering indicator
-        if (state.isBuffering)
+        if (state.isBuffering && !hasPlaybackError)
           Container(
             color: Colors.black45,
             child: const CircularProgressIndicator(color: Colors.white),
@@ -1010,8 +1053,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           autofocus: true,
           onKeyEvent: _detectSelectLongPress,
           child: MouseRegion(
-            onHover: (_) => _showControls(),
-            onEnter: (_) => _showControls(),
+            onHover: (_) => _showControlsForPointer(),
+            onEnter: (_) => _showControlsForPointer(),
+            onExit: (_) => _hideControlsAfterPointerExit(),
             child: GestureDetector(
               onTap: _showControls,
               child: Container(
@@ -1049,7 +1093,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // system below; keeping PlayerOverlay's old back/title layer
                     // mounted here caused a second set of controls to reappear
                     // after the floating controls faded.
-                    if (!_isLocked && !isPipActive && !compactInlinePlayer)
+                    //
+                    // A failover switch reports itself as loading, so the
+                    // exclusive-state rule would hide the one piece of chrome
+                    // that explains the wait. Since this layer is the toast and
+                    // nothing else, let it through while a switch is in flight.
+                    if (!_isLocked &&
+                        !isPipActive &&
+                        !compactInlinePlayer &&
+                        (!blocksPlaybackChrome || state.failover != null))
                       PlayerOverlay(
                         state: _toPlayerViewState(state),
                         onBack:
@@ -1073,10 +1125,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // video to control, and its own recovery buttons occupy
                     // the same vertical band the center play/pause button
                     // would otherwise sit in and silently swallow taps for).
-                    if (!_isLocked &&
-                        !isPipActive &&
-                        !(state.hasError && state.diagnostic != null))
+                    if (!_isLocked && !isPipActive && !blocksPlaybackChrome)
                       AnimatedOpacity(
+                        key: const ValueKey('iptv-player-controls-opacity'),
                         opacity: (widget.showControls && _showControlsOverlay)
                             ? 1.0
                             : 0.0,
@@ -1090,10 +1141,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           child: ExcludeFocus(
                             excluding:
                                 !widget.showControls || !_showControlsOverlay,
-                            child: _buildControlsOverlay(
-                              context,
-                              service,
-                              state,
+                            child: Focus(
+                              canRequestFocus: false,
+                              onFocusChange: _onControlsFocusChange,
+                              child: _buildControlsOverlay(
+                                context,
+                                service,
+                                state,
+                              ),
                             ),
                           ),
                         ),
@@ -1101,7 +1156,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
                     // Lock button: touch-only concept, hidden entirely when
                     // enableTouchGestures is false (e.g. TV/remote input).
-                    if (widget.enableTouchGestures && !isPipActive)
+                    if (widget.enableTouchGestures &&
+                        !isPipActive &&
+                        !blocksPlaybackChrome)
                       Positioned(
                         top: 8,
                         right: 56,

@@ -5,6 +5,7 @@ export "src/media_asset_profile_models.dart";
 export "src/media_asset_profile_codec.dart";
 export "src/media_error_taxonomy_models.dart";
 export "src/local_media_asset_analyzer.dart";
+export "src/local_media_library.dart";
 export "src/platform_media_logger.dart";
 export "src/streaming_error_diagnostic_mapping.dart";
 export "src/streaming_media_session_delegate.dart";

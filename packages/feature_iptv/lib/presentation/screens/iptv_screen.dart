@@ -12,6 +12,7 @@ import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import "package:platform_channels/platform_channels.dart";
+import "package:platform_media/platform_media.dart";
 import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
@@ -20,6 +21,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/offline_playback_banner.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/playlist_source_manager_sheet.dart';
+import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
@@ -674,6 +676,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showXmltvSourceSheet(context);
   }
 
+  Future<void> _showQrPlaylist() async {
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => const TvPlaylistQrDialog(),
+    );
+    if (!mounted || url == null) return;
+    await showPlaylistSourceSheet(context, ref, initialUrl: url);
+  }
+
   Future<void> _openGuide() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -873,6 +884,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onScanWithPhoneTap: _showQrPlaylist,
               onWaysToWatchTap: _showWaysToWatch,
               onShareVideoFrame: widget.onShareVideoFrame,
               playlistSourceInInfoBar: true,
@@ -938,6 +950,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onChannelTap: _playChannel,
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
+                  onScanWithPhoneTap: _showQrPlaylist,
                   onWaysToWatchTap: _showWaysToWatch,
                   onShareVideoFrame: widget.onShareVideoFrame,
                 ),
@@ -1182,6 +1195,15 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showQrPlaylist() async {
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => const TvPlaylistQrDialog(),
+    );
+    if (!mounted || url == null) return;
+    await showPlaylistSourceSheet(context, ref, initialUrl: url);
+  }
+
   Future<void> _showCastSheet() async {
     final channel = ref
         .read(iptvStreamingServiceProvider)
@@ -1297,6 +1319,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
+                      onScanWithPhoneTap: _showQrPlaylist,
                       onWaysToWatchTap: _showWaysToWatch,
                     ),
                   ),
@@ -1314,6 +1337,7 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    required this.onScanWithPhoneTap,
     required this.onWaysToWatchTap,
     this.onShareVideoFrame,
     this.playlistSourceInInfoBar = false,
@@ -1322,6 +1346,7 @@ class _StreamTabContent extends ConsumerWidget {
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback onScanWithPhoneTap;
   final VoidCallback onWaysToWatchTap;
   final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
 
@@ -1352,6 +1377,8 @@ class _StreamTabContent extends ConsumerWidget {
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
         onPlaylistSourceTap: onPlaylistSourceTap,
+        onScanWithPhoneTap: onScanWithPhoneTap,
+        onLocalMediaSelected: onChannelTap,
         tenFootMode: playlistSourceInInfoBar,
       );
     }
@@ -1441,18 +1468,26 @@ Future<void> showPlaylistSourceSheet(
   );
 }
 
-class _BringYourOwnPlaylistView extends StatelessWidget {
+class _BringYourOwnPlaylistView extends ConsumerWidget {
   const _BringYourOwnPlaylistView({
     required this.onPlaylistSourceTap,
+    required this.onScanWithPhoneTap,
+    required this.onLocalMediaSelected,
     required this.tenFootMode,
   });
 
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback onScanWithPhoneTap;
+  final ValueChanged<IPTVChannel> onLocalMediaSelected;
   final bool tenFootMode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final capabilities = ref
+        .watch(localMediaLibraryCapabilitiesProvider)
+        .asData
+        ?.value;
 
     final scrollView = SingleChildScrollView(
       padding: tenFootMode ? EdgeInsets.zero : const EdgeInsets.all(16),
@@ -1475,54 +1510,102 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerLeft,
-            child: Semantics(
-              button: true,
-              label: 'Add a playlist URL',
-              hint: 'Opens playlist source setup.',
-              child: tenFootMode
-                  ? TvFocusable(
-                      key: const ValueKey('iptv-empty-add-playlist'),
-                      autofocus: true,
-                      semanticLabel: 'Add a playlist URL',
-                      onSelect: onPlaylistSourceTap,
-                      borderRadius: 20,
-                      child: Material(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                        child: InkWell(
-                          onTap: onPlaylistSourceTap,
-                          canRequestFocus: false,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.link,
-                                  color: theme.colorScheme.onPrimary,
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                Semantics(
+                  button: true,
+                  label: 'Add a playlist URL',
+                  hint: 'Opens playlist source setup.',
+                  child: tenFootMode
+                      ? TvFocusable(
+                          key: const ValueKey('iptv-empty-add-playlist'),
+                          autofocus: true,
+                          semanticLabel: 'Add a playlist URL',
+                          onSelect: onPlaylistSourceTap,
+                          borderRadius: 20,
+                          child: Material(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              onTap: onPlaylistSourceTap,
+                              canRequestFocus: false,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Add playlist URL',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onPrimary,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.link,
+                                      color: theme.colorScheme.onPrimary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Add playlist URL',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onPrimary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
+                        )
+                      : FilledButton.icon(
+                          onPressed: onPlaylistSourceTap,
+                          icon: const Icon(Icons.link),
+                          label: const Text('Add playlist URL'),
                         ),
+                ),
+                if (tenFootMode)
+                  TvFocusable(
+                    key: const ValueKey('iptv-empty-scan-phone'),
+                    semanticLabel: 'Scan with phone',
+                    onSelect: onScanWithPhoneTap,
+                    borderRadius: 20,
+                    child: ExcludeFocus(
+                      child: OutlinedButton.icon(
+                        onPressed: onScanWithPhoneTap,
+                        icon: const Icon(Icons.qr_code_2),
+                        label: const Text('Scan with phone'),
                       ),
-                    )
-                  : FilledButton.icon(
-                      onPressed: onPlaylistSourceTap,
-                      icon: const Icon(Icons.link),
-                      label: const Text('Add playlist URL'),
                     ),
+                  ),
+                if (tenFootMode && capabilities?.removableStorage == true)
+                  TvFocusable(
+                    key: const ValueKey('iptv-empty-browse-usb'),
+                    semanticLabel: 'Browse USB',
+                    onSelect: () => _browseRemovableMedia(context, ref),
+                    borderRadius: 20,
+                    child: ExcludeFocus(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _browseRemovableMedia(context, ref),
+                        icon: const Icon(Icons.usb),
+                        label: const Text('Browse USB'),
+                      ),
+                    ),
+                  ),
+                if (tenFootMode && capabilities?.dlnaUpnp == true)
+                  TvFocusable(
+                    key: const ValueKey('iptv-empty-browse-network'),
+                    semanticLabel: 'Browse network media',
+                    onSelect: () => _browseDlnaMedia(context, ref),
+                    borderRadius: 20,
+                    child: ExcludeFocus(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _browseDlnaMedia(context, ref),
+                        icon: const Icon(Icons.devices_other),
+                        label: const Text('Browse network'),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -1535,6 +1618,220 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
       label: 'Playlist setup',
       hint: 'Add a playlist URL to browse your channels.',
       child: tenFootMode ? TvOverscanSafeArea(child: scrollView) : scrollView,
+    );
+  }
+
+  Future<void> _browseRemovableMedia(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final adapter = ref.read(localMediaLibraryAdapterProvider);
+    String? root;
+    try {
+      root = await adapter.requestRemovableStorageRoot();
+    } on LocalMediaAccessException {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The selected media folder could not be opened. '
+            'Choose the folder again and allow read access.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!context.mounted || root == null) return;
+    final selected = await _selectLocalMedia(
+      context,
+      initialRoot: root,
+      title: 'Choose USB media',
+      browse: adapter.browse,
+    );
+    if (!context.mounted || selected == null) return;
+    _playLocalMedia(ref, selected);
+  }
+
+  Future<void> _browseDlnaMedia(BuildContext context, WidgetRef ref) async {
+    final adapter = ref.read(dlnaUpnpLibraryAdapterProvider);
+    const discoveryRoot = 'dlna://discover';
+    final selected = await _selectLocalMedia(
+      context,
+      initialRoot: discoveryRoot,
+      title: 'Choose network media',
+      browse: (root) =>
+          root == discoveryRoot ? adapter.discover() : adapter.browse(root),
+    );
+    if (!context.mounted || selected == null) return;
+    _playLocalMedia(ref, selected);
+  }
+
+  Future<LocalMediaEntry?> _selectLocalMedia(
+    BuildContext context, {
+    required String initialRoot,
+    required String title,
+    required Future<List<LocalMediaEntry>> Function(String root) browse,
+  }) async {
+    var currentRoot = initialRoot;
+    while (context.mounted) {
+      final selected = await showDialog<LocalMediaEntry>(
+        context: context,
+        builder: (_) => _LocalMediaBrowserDialog(
+          title: title,
+          loadEntries: () => browse(currentRoot),
+          tenFootMode: tenFootMode,
+        ),
+      );
+      if (!context.mounted || selected == null) return null;
+      if (selected.kind == LocalMediaEntryKind.folder) {
+        final nextRoot = selected.childrenUri;
+        if (nextRoot == null) return null;
+        currentRoot = nextRoot;
+        continue;
+      }
+      return selected;
+    }
+    return null;
+  }
+
+  void _playLocalMedia(WidgetRef ref, LocalMediaEntry selected) {
+    final channelId = stableLocalMediaChannelId(selected.id);
+    final subtitleUri = selected.subtitleUri;
+    if (subtitleUri != null) {
+      ref
+          .read(iptvStreamingServiceProvider)
+          .attachExternalSubtitle(
+            channelId,
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.direct(subtitleUri),
+              label: 'Local sidecar subtitle',
+            ),
+          );
+    }
+    onLocalMediaSelected(
+      IPTVChannel(
+        id: channelId,
+        name: selected.name,
+        streamUrl: selected.accessUri,
+        group: 'Local media',
+        isAudioOnly: selected.kind == LocalMediaEntryKind.audio,
+      ),
+    );
+  }
+}
+
+class _LocalMediaBrowserDialog extends StatefulWidget {
+  const _LocalMediaBrowserDialog({
+    required this.title,
+    required this.loadEntries,
+    required this.tenFootMode,
+  });
+
+  final String title;
+  final Future<List<LocalMediaEntry>> Function() loadEntries;
+  final bool tenFootMode;
+
+  @override
+  State<_LocalMediaBrowserDialog> createState() =>
+      _LocalMediaBrowserDialogState();
+}
+
+class _LocalMediaBrowserDialogState extends State<_LocalMediaBrowserDialog> {
+  late Future<List<LocalMediaEntry>> _entries;
+
+  @override
+  void initState() {
+    super.initState();
+    _entries = widget.loadEntries();
+  }
+
+  void _retry() {
+    setState(() {
+      _entries = widget.loadEntries();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: (screenSize.width * 0.72).clamp(280.0, 720.0).toDouble(),
+        height: (screenSize.height * 0.64).clamp(240.0, 480.0).toDouble(),
+        child: FutureBuilder<List<LocalMediaEntry>>(
+          future: _entries,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              final retryButton = OutlinedButton.icon(
+                onPressed: _retry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              );
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'This media library could not be reached. Check the '
+                    'connection or permission, then try again.',
+                  ),
+                  const SizedBox(height: 16),
+                  if (widget.tenFootMode)
+                    TvFocusable(
+                      autofocus: true,
+                      semanticLabel: 'Try network media again',
+                      onSelect: _retry,
+                      child: ExcludeFocus(child: retryButton),
+                    )
+                  else
+                    retryButton,
+                ],
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final entries = snapshot.data!;
+            if (entries.isEmpty) {
+              return const Text('No supported media was found here.');
+            }
+            return ListView.builder(
+              itemCount: entries.length,
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                final tile = ListTile(
+                  leading: Icon(
+                    entry.kind == LocalMediaEntryKind.folder
+                        ? Icons.folder
+                        : entry.kind == LocalMediaEntryKind.audio
+                        ? Icons.audio_file
+                        : Icons.video_file,
+                  ),
+                  title: Text(entry.name),
+                  trailing: entry.kind == LocalMediaEntryKind.folder
+                      ? const Icon(Icons.chevron_right)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(entry),
+                );
+                if (!widget.tenFootMode) return tile;
+                return TvFocusable(
+                  key: ValueKey('local-media-entry-${entry.id}'),
+                  autofocus: index == 0,
+                  semanticLabel: entry.name,
+                  onSelect: () => Navigator.of(context).pop(entry),
+                  child: ExcludeFocus(child: tile),
+                );
+              },
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

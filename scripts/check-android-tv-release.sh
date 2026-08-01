@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
 TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
+TV_PUBSPEC="$ROOT_DIR/app/pubspec_tv.yaml"
 PLUGIN_REGISTRANT="${AIRO_TV_PLUGIN_REGISTRANT:-$ROOT_DIR/app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java}"
 MIN_TARGET_SDK="${AIRO_TV_MIN_TARGET_SDK:-34}"
 TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-io.airo.app.tv}"
@@ -33,6 +34,10 @@ grep -q 'android.hardware.touchscreen" android:required="false"' "$TV_MANIFEST" 
 grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$TV_MANIFEST" || fail "TV manifest missing LEANBACK_LAUNCHER"
 grep -q 'android:banner="@drawable/tv_banner"' "$TV_MANIFEST" || fail "TV manifest missing TV banner"
 grep -q "\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" || fail "TV applicationId must be $TV_PACKAGE_NAME"
+grep -A5 '^hooks:' "$TV_PUBSPEC" | grep -q 'source: system' ||
+  fail "TV pubspec must use packaged/system SQLite instead of a release-time download"
+grep -A6 '^hooks:' "$TV_PUBSPEC" | grep -q 'name: sqlite3' ||
+  fail "TV pubspec must resolve the packaged libsqlite3 library"
 
 # The registrant is generated per build and belongs to whichever flavour was
 # built last, so on a developer machine it is usually the phone one. Enforcing
