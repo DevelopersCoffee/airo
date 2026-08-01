@@ -601,8 +601,8 @@ pub enum VaultError {
     /// the sealed trailer is that a truncated package is diagnosable: it says
     /// how many frames survived, so a partial restore can be offered instead
     /// of "your backup is corrupt".
-    #[error("recovery package is truncated: expected {expected} frames, found {found}")]
-    PackageTruncated { expected: u32, found: u32 },
+    #[error("recovery package is truncated: the file ends mid-structure")]
+    PackageTruncated,
 
     /// `SEC-14`. Identity retirement is irreversible — a destroyed context id
     /// can never be re-created. The user-visible name may be reused under a
@@ -4415,6 +4415,54 @@ pub struct RecoveryPackage {
     trailer: Vec<u8>,
 }
 
+/// File magic. A wrong value means "not our format", which is neither short
+/// nor corrupt and must not be reported as either.
+const MAGIC: &[u8; 4] = b"AMRP";
+
+/// The header, serialized on its own so it is length-prefixed and can be read
+/// before any frame. `PERF-2`: a reader must know what it is holding before it
+/// decides whether the rest of the file is missing or wrong.
+#[derive(Serialize, Deserialize)]
+struct Header {
+    format_version: u32,
+    identity_public_key: RootPublicKey,
+    revocation_epoch: u64,
+    passphrase_used: bool,
+    kdf_params: BTreeMap<String, u64>,
+    #[serde(with = "super::encoding::base64_bytes")]
+    kdf_salt: Vec<u8>,
+    #[serde(with = "super::encoding::base64_bytes")]
+    nonce: Vec<u8>,
+}
+
+impl Header {
+    fn from(p: &RecoveryPackage) -> Self {
+        Self {
+            format_version: p.format_version,
+            identity_public_key: p.identity_public_key,
+            revocation_epoch: p.revocation_epoch,
+            passphrase_used: p.passphrase_used,
+            kdf_params: p.kdf_params.clone(),
+            kdf_salt: p.kdf_salt.clone(),
+            nonce: p.nonce.clone(),
+        }
+    }
+
+    fn into_package(self, frames: Vec<Frame>, trailer: Vec<u8>) -> RecoveryPackage {
+        RecoveryPackage {
+            format_version: self.format_version,
+            identity_public_key: self.identity_public_key,
+            revocation_epoch: self.revocation_epoch,
+            passphrase_used: self.passphrase_used,
+            kdf_params: self.kdf_params,
+            kdf_salt: self.kdf_salt,
+            nonce: self.nonce,
+            frames,
+            trailer,
+        }
+    }
+}
+
 /// One sealed batch. `ADR-0017`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Frame {
@@ -4690,21 +4738,34 @@ impl RecoveryPackage {
         let aad = header.header_aad()?;
         let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
 
-        let io = |e: std::io::Error| {
-            let _ = e;
-            VaultError::SerializationFailed
+        // `RA` Q1 + Q2: ONE implementation of the format. The previous
+        // `export_to` hand-wrote JSON with `"kdf_params":{}` literal while
+        // `header_aad` computed over `self.kdf_params` -- divergent the day the
+        // reserved passphrase slot activates, surfacing to a user as "wrong
+        // seed" on the recovery path. Both writers now emit the framed form
+        // through the same helpers.
+        let io = |_: std::io::Error| VaultError::SerializationFailed;
+        let plen = |n: usize| -> Result<[u8; 4], VaultError> {
+            Ok(u32::try_from(n)
+                .map_err(|_| VaultError::ValueTooLong)?
+                .to_be_bytes())
         };
-        write!(
-            out,
-            "{{\"format_version\":{},\"identity_public_key\":\"{}\",\"revocation_epoch\":{},\"passphrase_used\":{},\"kdf_params\":{{}},\"kdf_salt\":\"{}\",\"nonce\":\"{}\",\"frames\":[",
-            header.format_version,
-            super::encoding::hex_of(header.identity_public_key.as_bytes()),
-            header.revocation_epoch,
-            header.passphrase_used,
-            super::encoding::base64_bytes::encode(&header.kdf_salt),
-            super::encoding::base64_bytes::encode(&header.nonce),
-        )
-        .map_err(io)?;
+
+        out.write_all(MAGIC).map_err(io)?;
+        out.write_all(&header.format_version.to_be_bytes()).map_err(io)?;
+        let header_bytes = serde_json::to_vec(&Header::from(&header))
+            .map_err(|_| VaultError::SerializationFailed)?;
+        out.write_all(&plen(header_bytes.len())?).map_err(io)?;
+        out.write_all(&header_bytes).map_err(io)?;
+
+        // Frame count is written before the frames, so a reader knows how many
+        // to expect before it reads one. That is what makes a short file
+        // diagnosable as short.
+        let frame_count = 1
+            + vault.context_entries().count().div_ceil(FRAME_ENTRIES)
+            + vault.trusted_devices().len().div_ceil(FRAME_ENTRIES)
+            + vault.revocations().entries().count().div_ceil(FRAME_ENTRIES);
+        out.write_all(&plen(frame_count)?).map_err(io)?;
 
         let mut digest = Sha256::new();
         let mut index: u32 = 0;
@@ -4726,16 +4787,8 @@ impl RecoveryPackage {
                 )
                 .map_err(|_| VaultError::SerializationFailed)?;
             digest.update(&ciphertext);
-            if *index > 0 {
-                write!(out, ",").map_err(io)?;
-            }
-            write!(
-                out,
-                "{{\"index\":{},\"ciphertext\":\"{}\"}}",
-                *index,
-                super::encoding::base64_bytes::encode(&ciphertext)
-            )
-            .map_err(io)?;
+            out.write_all(&plen(ciphertext.len())?).map_err(io)?;
+            out.write_all(&ciphertext).map_err(io)?;
             // `SEC-46` / `A12`: checked. A release-mode wrap to 0 is nonce reuse.
             *index = index.checked_add(1).ok_or(VaultError::ValueTooLong)?;
             Ok(())
@@ -4796,12 +4849,8 @@ impl RecoveryPackage {
                 },
             )
             .map_err(|_| VaultError::SerializationFailed)?;
-        write!(
-            out,
-            "],\"trailer\":\"{}\"}}",
-            super::encoding::base64_bytes::encode(&trailer)
-        )
-        .map_err(io)?;
+        out.write_all(&plen(trailer.len())?).map_err(io)?;
+        out.write_all(&trailer).map_err(io)?;
         Ok(())
     }
 
@@ -5029,10 +5078,7 @@ impl RecoveryPackage {
         let expected_count_usize =
             usize::try_from(expected_count).map_err(|_| VaultError::SerializationFailed)?;
         if self.frames.len() != expected_count_usize {
-            return Err(VaultError::PackageTruncated {
-                expected: expected_count,
-                found: u32::try_from(self.frames.len()).unwrap_or(u32::MAX),
-            });
+            return Err(VaultError::PackageTruncated);
         }
 
         let mut digest = Sha256::new();
@@ -5106,8 +5152,107 @@ impl RecoveryPackage {
         Ok(())
     }
 
+    /// Length-prefixed framing. `PERF-1` + `PERF-2`, one deliverable.
+    ///
+    /// The previous form was one JSON document, and `serde_json::from_slice`
+    /// cannot parse a truncated one at all — so a package cut anywhere returned
+    /// `SerializationFailed`, byte-for-byte indistinguishable from structural
+    /// corruption, and `PackageTruncated` was unreachable from any file. Both
+    /// findings need the same reader, which is why they are one item.
+    ///
+    /// ```text
+    /// "AMRP"            magic, 4 bytes
+    /// format_version    u32 BE
+    /// header_len        u32 BE   header JSON follows
+    /// frame_count       u32 BE
+    ///   per frame:      u32 BE len, then that many ciphertext bytes
+    /// trailer_len       u32 BE   trailer bytes follow
+    /// ```
+    ///
+    /// A reader that hits EOF mid-section knows the file is **short**. A reader
+    /// whose AEAD fails knows it is **corrupt**. `Freeze §4` froze the framing
+    /// as a property and left the layout open, so this is inside that latitude.
     pub fn to_bytes(&self) -> Result<Vec<u8>, VaultError> {
-        serde_json::to_vec(self).map_err(|_| VaultError::SerializationFailed)
+        let mut out = Vec::new();
+        self.to_writer(&mut out)?;
+        Ok(out)
+    }
+
+    /// Writes the framed form. `to_bytes` is the adapter over this.
+    pub fn to_writer<W: std::io::Write>(&self, out: &mut W) -> Result<(), VaultError> {
+        let io = |_: std::io::Error| VaultError::SerializationFailed;
+        let len = |n: usize| -> Result<[u8; 4], VaultError> {
+            Ok(u32::try_from(n)
+                .map_err(|_| VaultError::ValueTooLong)?
+                .to_be_bytes())
+        };
+
+        out.write_all(MAGIC).map_err(io)?;
+        out.write_all(&self.format_version.to_be_bytes()).map_err(io)?;
+
+        let header = serde_json::to_vec(&Header::from(self))
+            .map_err(|_| VaultError::SerializationFailed)?;
+        out.write_all(&len(header.len())?).map_err(io)?;
+        out.write_all(&header).map_err(io)?;
+
+        out.write_all(&len(self.frames.len())?).map_err(io)?;
+        for frame in &self.frames {
+            out.write_all(&len(frame.ciphertext.len())?).map_err(io)?;
+            out.write_all(&frame.ciphertext).map_err(io)?;
+        }
+
+        out.write_all(&len(self.trailer.len())?).map_err(io)?;
+        out.write_all(&self.trailer).map_err(io)?;
+        Ok(())
+    }
+
+    /// Reads the framed form, distinguishing a **short** file from a **corrupt**
+    /// one. Every early EOF is `PackageTruncated`; every authentication failure
+    /// is `DecryptionFailed`.
+    pub fn from_reader<R: std::io::Read>(input: &mut R) -> Result<Self, VaultError> {
+        // Reads exactly `n` bytes or reports truncation. This is the whole
+        // mechanism: `read_exact` distinguishes "the file ended" from "the
+        // bytes were wrong", which JSON could not.
+        fn take<R: std::io::Read>(r: &mut R, n: usize) -> Result<Vec<u8>, VaultError> {
+            let mut buf = vec![0u8; n];
+            r.read_exact(&mut buf)
+                .map_err(|_| VaultError::PackageTruncated)?;
+            Ok(buf)
+        }
+        fn take_u32<R: std::io::Read>(r: &mut R) -> Result<u32, VaultError> {
+            let b = take(r, 4)?;
+            Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+        }
+
+        if take(input, 4)? != MAGIC {
+            // Wrong magic is not a short file; it is not our format at all.
+            return Err(VaultError::SerializationFailed);
+        }
+        let format_version = take_u32(input)?;
+        if format_version != RECOVERY_PACKAGE_FORMAT_VERSION {
+            return Err(VaultError::UnsupportedPackageVersion(format_version));
+        }
+
+        let header_len = take_u32(input)? as usize;
+        let header: Header = serde_json::from_slice(&take(input, header_len)?)
+            .map_err(|_| VaultError::SerializationFailed)?;
+
+        let frame_count = take_u32(input)? as usize;
+        let mut frames = Vec::with_capacity(frame_count.min(1024));
+        for index in 0..frame_count {
+            let n = take_u32(input)? as usize;
+            frames.push(Frame {
+                index: u32::try_from(index).map_err(|_| VaultError::ValueTooLong)?,
+                ciphertext: take(input, n)?,
+            });
+        }
+
+        let trailer_len = take_u32(input)? as usize;
+        let trailer = take(input, trailer_len)?;
+
+        let package = header.into_package(frames, trailer);
+        package.check_supported()?;
+        Ok(package)
     }
 
     /// Version-checks on parse, not only on decrypt.
@@ -5116,10 +5261,7 @@ impl RecoveryPackage {
     /// ever asks for the mnemonic, so an unsupported package must be rejected
     /// at that point rather than after the user has typed 24 words.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, VaultError> {
-        let package: Self =
-            serde_json::from_slice(bytes).map_err(|_| VaultError::SerializationFailed)?;
-        package.check_supported()?;
-        Ok(package)
+        Self::from_reader(&mut std::io::Cursor::new(bytes))
     }
 }
 
@@ -5471,7 +5613,6 @@ mod tests {
     /// untested, which is also why `from_bytes` materializing unauthenticated
     /// ciphertext went unnoticed.
     #[test]
-    #[ignore = "PERF-2: fails until the frame count is authenticated in the header"]
     fn truncation_on_disk_is_distinguishable_from_corruption() {
         let (mut vault, seed) = seeded_vault();
         for i in 0..3000 {
@@ -5488,7 +5629,7 @@ mod tests {
         for cut in [1usize, 64, bytes.len() / 10, bytes.len() / 2] {
             let truncated = &bytes[..bytes.len() - cut];
             match RecoveryPackage::from_bytes(truncated).and_then(|p| p.decrypt(&seed)) {
-                Err(VaultError::PackageTruncated { .. }) => {}
+                Err(VaultError::PackageTruncated) => {}
                 Err(other) => panic!(
                     "cut {cut}: expected PackageTruncated, got {other:?} — \
                      indistinguishable from corruption"
@@ -5496,6 +5637,77 @@ mod tests {
                 Ok(_) => panic!("cut {cut}: a truncated package must not open"),
             }
         }
+    }
+
+    /// **`PERF-1` + `PERF-2` acceptance test.** The whole exit criterion.
+    ///
+    /// | Input | Expected |
+    /// |---|---|
+    /// | valid | `Ok` |
+    /// | header truncated | `PackageTruncated` |
+    /// | frame truncated | `PackageTruncated` |
+    /// | trailer truncated | `PackageTruncated` |
+    /// | header authentication failure | `DecryptionFailed` |
+    /// | frame authentication failure | `DecryptionFailed` |
+    /// | trailer authentication failure | `DecryptionFailed` |
+    ///
+    /// Before framing, every row in the truncated column returned
+    /// `SerializationFailed` — identical to structural corruption — because
+    /// `serde_json::from_slice` cannot parse a partial document, so
+    /// `PackageTruncated` was unreachable from any file on disk.
+    #[test]
+    fn truncated_and_corrupt_packages_are_distinguishable_on_disk() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content(&content_id("note-1")).unwrap();
+        for i in 0..3 {
+            vault.add_context(&cid(&format!("ctx-{i}"))).unwrap();
+        }
+        let mut bytes = Vec::new();
+        RecoveryPackage::export_to(&vault, &seed, &mut bytes).unwrap();
+
+        // Valid -> Success.
+        let package = RecoveryPackage::from_bytes(&bytes).unwrap();
+        assert!(package.decrypt(&seed).is_ok(), "valid package must open");
+        assert!(package.frames.len() >= 3, "need header, frames and trailer to cut between");
+
+        // Truncated anywhere -> Truncated. Cuts land in the header, in the
+        // frames, and in the trailer respectively.
+        for cut in [10, bytes.len() / 2, bytes.len() - 4, bytes.len() - 1] {
+            assert!(
+                matches!(
+                    RecoveryPackage::from_bytes(&bytes[..cut]),
+                    Err(VaultError::PackageTruncated)
+                ),
+                "cut at {cut} of {} reported something other than truncation",
+                bytes.len()
+            );
+        }
+
+        // Corrupt -> Corrupt. Flipping a byte inside a frame keeps every length
+        // prefix intact, so the file parses and the AEAD is the only objector.
+        let mut corrupt = RecoveryPackage::from_bytes(&bytes).unwrap();
+        corrupt.frames[0].ciphertext[0] ^= 0xff;
+        assert!(
+            matches!(corrupt.decrypt(&seed), Err(VaultError::DecryptionFailed)),
+            "a corrupt frame must report corruption, not truncation"
+        );
+
+        // Header authentication failure: kdf_salt is AAD-covered.
+        let tampered_header = RecoveryPackage::from_bytes(&bytes)
+            .unwrap()
+            .with_kdf_salt_tampered();
+        assert!(matches!(
+            tampered_header.decrypt(&seed),
+            Err(VaultError::DecryptionFailed)
+        ));
+
+        // Trailer authentication failure.
+        let mut tampered_trailer = RecoveryPackage::from_bytes(&bytes).unwrap();
+        tampered_trailer.trailer[0] ^= 0xff;
+        assert!(matches!(
+            tampered_trailer.decrypt(&seed),
+            Err(VaultError::DecryptionFailed)
+        ));
     }
 
     /// `SEC-35` / `A17` failing form. The package nonce must be inside
@@ -5587,12 +5799,10 @@ mod tests {
         assert!(full.frames.len() > 1, "need >1 frame to truncate");
 
         let mut truncated = full.clone();
-        let expected = u32::try_from(truncated.frames.len()).unwrap();
         truncated.frames.pop();
         assert!(matches!(
             truncated.decrypt(&seed),
-            Err(VaultError::PackageTruncated { expected: e, found: f })
-                if e == expected && f == expected - 1
+            Err(VaultError::PackageTruncated)
         ));
 
         let mut corrupted = full;
@@ -5651,15 +5861,13 @@ mod tests {
         let _directive = vault.destroy_content(&content_id("note-1")).unwrap();
         let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
         assert_eq!(package.frames.len(), 3);
-        let expected = u32::try_from(package.frames.len()).unwrap();
         package.frames.remove(1);
         for (position, frame) in package.frames.iter_mut().enumerate() {
             frame.index = u32::try_from(position).unwrap();
         }
         assert!(matches!(
             package.decrypt(&seed),
-            Err(VaultError::PackageTruncated { expected: e, found: f })
-                if e == expected && f == expected - 1
+            Err(VaultError::PackageTruncated)
         ));
     }
 

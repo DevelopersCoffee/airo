@@ -70,9 +70,11 @@ vault/package.rs :: fn export_to
 vault/package.rs :: fn format_version
 vault/package.rs :: fn frame_count
 vault/package.rs :: fn from_bytes
+vault/package.rs :: fn from_reader
 vault/package.rs :: fn identity_public_key
 vault/package.rs :: fn revocation_epoch
 vault/package.rs :: fn to_bytes
+vault/package.rs :: fn to_writer
 vault/package.rs :: struct Frame
 vault/package.rs :: struct RecoveryPackage
 vault/restore.rs :: enum RevocationProvenance
