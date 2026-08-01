@@ -5,10 +5,11 @@
 library;
 
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:feature_iptv/feature_iptv.dart';
+import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 import '../platform/device_form_factor.dart';
@@ -145,7 +146,12 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
-      return IPTVScreen(onSettings: () => context.go(TvRouteNames.settings));
+      return IPTVScreen(
+        onSettings: () => context.go(TvRouteNames.settings),
+        onPickLocalMediaForTv: isGoogleCastSenderPlatform
+            ? pickPhoneLocalMediaForTv
+            : null,
+      );
     }
 
     // Wide layouts get the 10-foot AiroTvShell path with phone chrome

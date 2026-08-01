@@ -26,7 +26,7 @@ class _FakeStalkerClient implements StalkerClient {
 }
 
 void main() {
-  test('StalkerContentSource reports EPG-capable, no VOD', () {
+  test('StalkerContentSource reports live-only until an EPG client exists', () {
     const source = StalkerContentSource(
       id: 'stalker-1',
       label: 'My Stalker Portal',
@@ -35,7 +35,7 @@ void main() {
     );
 
     expect(source.kind, ContentSourceKind.stalker);
-    expect(source.capabilities.hasEpg, isTrue);
+    expect(source.capabilities.hasEpg, isFalse);
     expect(source.capabilities.hasVod, isFalse);
   });
 

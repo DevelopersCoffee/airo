@@ -22,6 +22,7 @@ import '../../domain/favorite_reimport_coordinator.dart';
 import '../../domain/channel_region_availability.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'content_source_providers.dart';
+import 'provider_health_providers.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
@@ -91,6 +92,23 @@ final contentSourceStoreProvider = Provider<ContentSourceStore>((ref) {
   );
 });
 
+/// Platform-local media stays behind a capability probe so unsupported TV
+/// targets never render a non-functional USB action.
+final localMediaLibraryAdapterProvider = Provider<LocalMediaLibraryAdapter>((
+  ref,
+) {
+  return const AndroidLocalMediaLibraryAdapter();
+});
+
+final dlnaUpnpLibraryAdapterProvider = Provider<DlnaUpnpLibraryAdapter>((ref) {
+  return const AndroidDlnaUpnpLibraryAdapter();
+});
+
+final localMediaLibraryCapabilitiesProvider =
+    FutureProvider<LocalMediaLibraryCapabilities>((ref) {
+      return ref.watch(localMediaLibraryAdapterProvider).capabilities();
+    });
+
 /// All configured content sources.
 ///
 /// The first read performs an additive migration of the legacy single M3U URL.
@@ -125,6 +143,26 @@ final configuredContentSourcesProvider =
       await store.add(config);
       return List.unmodifiable([...sources, config]);
     });
+
+/// The one configured source whose channels own the browse/runtime surface.
+///
+/// Existing installs are migrated deterministically to their first configured
+/// source. Once selected, no unrelated public catalog or legacy M3U state is
+/// merged into the active source's channels.
+final activeContentSourceProvider = FutureProvider<ContentSourceConfig?>((
+  ref,
+) async {
+  final sources = await ref.watch(configuredContentSourcesProvider.future);
+  if (sources.isEmpty) return null;
+  final store = ref.watch(contentSourceStoreProvider);
+  final storedId = await store.getActiveSourceId();
+  for (final source in sources) {
+    if (source.id == storedId) return source;
+  }
+  final migrated = sources.first;
+  await store.setActiveSourceId(migrated.id);
+  return migrated;
+});
 
 typedef M3uSourceParserFactory = M3UParserService Function(String sourceId);
 
@@ -196,35 +234,149 @@ final tvIptvIntegrationProvider = Provider<void>((ref) {
   ref.watch(iptvStreamingServiceProvider).mediaSessionDelegate = delegate;
 });
 
-/// All channels provider - fetches preprocessed channels from IPTV Sanity Agent
-/// Falls back to M3U parser if preprocessed data is unavailable
-final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
-  List<IPTVChannel> primaryChannels = const [];
-  final channelDataService = ref.watch(channelDataServiceProvider);
-  try {
-    final channels = await channelDataService.fetchChannels();
-    if (channels.isNotEmpty) {
-      primaryChannels = channels;
-    }
-  } catch (e) {
-    debugPrint('[Provider] ChannelDataService failed, falling back to M3U: $e');
-  }
+class ContentSourceRuntimeException implements Exception {
+  const ContentSourceRuntimeException(this.message);
 
-  final configuredM3uChannels = await ref.watch(
-    configuredM3uChannelsProvider.future,
-  );
-  if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
-    // Fallback to legacy M3U parser.
-    primaryChannels = await ref.watch(m3uParserProvider).fetchPlaylist();
-  }
+  final String message;
 
-  final byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
-  return _mergeChannelLibraries([
-    primaryChannels,
-    configuredM3uChannels,
-    byocChannels,
-  ]);
+  @override
+  String toString() => message;
+}
+
+typedef StalkerSourceLoader =
+    Future<List<IPTVChannel>> Function(ContentSourceConfig source);
+
+final stalkerSourceLoaderProvider = Provider<StalkerSourceLoader>((ref) {
+  final dio = ref.watch(dioProvider);
+  return (source) {
+    return StalkerContentSourceAdapter(
+      StalkerClient(
+        dio: dio,
+        serverUrl: source.url,
+        macAddress: source.macAddress ?? '',
+        sourceId: source.id,
+      ),
+      sourceId: source.id,
+    ).loadChannels();
+  };
 });
+
+/// Opts a channel-derived provider out of Riverpod's automatic retry.
+///
+/// Two reasons, both observed on the rig Pixel 9 with an unreachable source:
+///
+/// * A retrying provider stays in `AsyncLoading` with the error attached, so
+///   the screen shows its spinner forever and the error state with its Retry
+///   button never renders.
+/// * Every dependent that retries re-drives the failed ancestor, which
+///   re-contacts the dead source. With rails, vod, guide, and metadata
+///   enrichment all retrying, one unreachable playlist was refetched several
+///   times a second.
+///
+/// Channel loading is user-initiated and already has an explicit Retry, so a
+/// failure must settle as `AsyncError` and stay settled.
+Duration? surfaceChannelFailureInsteadOfRetrying(
+  int retryCount,
+  Object error,
+) => null;
+
+/// All runtime channels. A configured active source is exclusive; the public
+/// catalog/legacy fallback is used only when no source is configured.
+final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
+  return ref.watch(_runtimeChannelsProvider(false).future);
+}, retry: surfaceChannelFailureInsteadOfRetrying);
+
+final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
+  (ref, forceRefresh) async {
+    final active = await ref.watch(activeContentSourceProvider.future);
+    if (active != null) {
+      switch (active.kind) {
+        case ContentSourceKind.m3u:
+          return _loadConfiguredM3uChannels(
+            [active],
+            ref.read(m3uSourceParserFactoryProvider),
+            forceRefresh: forceRefresh,
+            failFast: true,
+          );
+        case ContentSourceKind.xtream:
+          return _loadConfiguredXtreamChannels(
+            [active],
+            credentials: ref.read(contentSourceCredentialStoreProvider),
+            dio: ref.read(dioProvider),
+            epgRepository: ref.read(compactEpgRepositoryProvider),
+            healthTracker: ref.read(providerHealthTrackerProvider),
+            failFast: true,
+          );
+        case ContentSourceKind.stalker:
+          try {
+            return await ref.read(stalkerSourceLoaderProvider)(active);
+          } catch (_) {
+            throw const ContentSourceRuntimeException(
+              'Could not refresh the Stalker Portal source. '
+              'Check the portal and MAC address, then retry.',
+            );
+          }
+        case ContentSourceKind.jellyfin:
+          throw const ContentSourceRuntimeException(
+            'Jellyfin is saved but is not available in Live TV yet. '
+            'Select an M3U, Xtream, or Stalker source.',
+          );
+      }
+    }
+
+    // No active source: every configured library contributes, and the public
+    // catalog / legacy parser fills in behind them.
+    List<IPTVChannel> primaryChannels = const [];
+    final channelDataService = ref.watch(channelDataServiceProvider);
+    try {
+      final channels = await channelDataService.fetchChannels(
+        forceRefresh: forceRefresh,
+      );
+      if (channels.isNotEmpty) {
+        primaryChannels = channels;
+      }
+    } catch (e) {
+      debugPrint(
+        '[Provider] ChannelDataService failed, falling back to M3U: $e',
+      );
+    }
+
+    // A total configured-source failure must not hide channels another library
+    // still has, so hold the error and only report it if nothing else loaded.
+    var configuredM3uChannels = const <IPTVChannel>[];
+    Object? configuredM3uFailure;
+    StackTrace? configuredM3uTrace;
+    try {
+      configuredM3uChannels = await ref.watch(
+        configuredM3uChannelsProvider.future,
+      );
+    } catch (error, stackTrace) {
+      configuredM3uFailure = error;
+      configuredM3uTrace = stackTrace;
+    }
+
+    if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
+      // Fallback to legacy M3U parser.
+      primaryChannels = await ref
+          .watch(m3uParserProvider)
+          .fetchPlaylist(forceRefresh: forceRefresh);
+    }
+
+    final byocChannels = await ref.watch(
+      configuredXtreamChannelsProvider.future,
+    );
+    final merged = _mergeChannelLibraries([
+      primaryChannels,
+      configuredM3uChannels,
+      byocChannels,
+    ]);
+    if (merged.isEmpty && configuredM3uFailure != null) {
+      Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);
+    }
+    return merged;
+  },
+  retry: surfaceChannelFailureInsteadOfRetrying,
+);
 
 /// Loads every configured M3U source with an independent cache namespace.
 ///
@@ -240,22 +392,13 @@ final configuredM3uChannelsProvider = FutureProvider<List<IPTVChannel>>((
     configs,
     ref.read(m3uSourceParserFactoryProvider),
   );
-});
-
-final _refreshConfiguredM3uChannelsProvider =
-    FutureProvider.family<List<IPTVChannel>, bool>((ref, forceRefresh) async {
-      final configs = await ref.watch(configuredContentSourcesProvider.future);
-      return _loadConfiguredM3uChannels(
-        configs,
-        ref.read(m3uSourceParserFactoryProvider),
-        forceRefresh: forceRefresh,
-      );
-    });
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
   List<ContentSourceConfig> configs,
   M3uSourceParserFactory parserFactory, {
   bool forceRefresh = false,
+  bool failFast = false,
 }) async {
   final m3uConfigs = configs
       .where((source) => source.kind == ContentSourceKind.m3u)
@@ -263,44 +406,123 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
   if (m3uConfigs.isEmpty) return const [];
 
   final channels = <IPTVChannel>[];
+  var failedSources = 0;
   for (final config in m3uConfigs) {
     final parser = parserFactory(config.id);
     try {
       if (parser.getPlaylistUrl() != config.url) {
         await parser.setPlaylistUrl(config.url);
       }
-      channels.addAll(await parser.fetchPlaylist(forceRefresh: forceRefresh));
+      final outcome = await parser.fetchPlaylistOutcome(
+        forceRefresh: forceRefresh,
+      );
+      channels.addAll(outcome.channels);
+      if (outcome.sourceUnavailable) {
+        // The parser reports an unreachable source rather than throwing, so
+        // count it here or a dead source reads as an empty one.
+        failedSources++;
+        debugPrint(
+          '[Provider] M3U source ${config.id} could not be refreshed.',
+        );
+      }
     } catch (_) {
+      if (failFast) {
+        throw const ContentSourceRuntimeException(
+          'Could not refresh the M3U playlist. Check the URL, then retry.',
+        );
+      }
       // Source URLs may contain private tokens. Keep diagnostics coarse and
       // continue loading the remaining configured sources.
+      failedSources++;
       debugPrint('[Provider] M3U source ${config.id} could not be refreshed.');
     }
   }
+  if (channels.isEmpty && failedSources == m3uConfigs.length) {
+    // Every configured source failed and none had a usable cache. Returning an
+    // empty list here renders the "Add your playlist" empty state, which tells
+    // a user who already added sources to add them again. Surface it so the
+    // screen shows its error state and Retry instead.
+    throw PlaylistSourcesUnavailableException(failedSources);
+  }
   return _mergeChannelLibraries([channels]);
+}
+
+/// Thrown when every configured playlist source failed to load and no cached
+/// copy was usable. Carries only a count: source URLs can embed private tokens
+/// and must not reach logs or the UI.
+class PlaylistSourcesUnavailableException implements Exception {
+  const PlaylistSourcesUnavailableException(this.sourceCount);
+
+  /// Number of configured sources that failed.
+  final int sourceCount;
+
+  @override
+  String toString() => sourceCount == 1
+      ? 'Your playlist source could not be loaded. Check your connection and '
+            'retry.'
+      : 'None of your $sourceCount playlist sources could be loaded. Check '
+            'your connection and retry.';
+}
+
+/// Re-runs the channel libraries after a load failure.
+///
+/// Invalidating only [iptvChannelsProvider] replays its dependency's cached
+/// error, so a retry that touches just the merged provider looks like it did
+/// nothing. The source loaders have to be invalidated with it.
+void invalidateChannelLibraries(WidgetRef ref) {
+  ref.invalidate(configuredM3uChannelsProvider);
+  ref.invalidate(configuredXtreamChannelsProvider);
+  // The runtime family caches the composed result, so leaving it alone would
+  // replay its stored error and Retry would never reach the source again.
+  ref.invalidate(_runtimeChannelsProvider);
+  ref.invalidate(iptvChannelsProvider);
 }
 
 final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   ref,
 ) async {
   final configs = await ref.watch(configuredContentSourcesProvider.future);
+  return _loadConfiguredXtreamChannels(
+    configs,
+    credentials: ref.read(contentSourceCredentialStoreProvider),
+    dio: ref.read(dioProvider),
+    epgRepository: ref.read(compactEpgRepositoryProvider),
+    healthTracker: ref.read(providerHealthTrackerProvider),
+  );
+});
+
+Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
+  List<ContentSourceConfig> configs, {
+  required ContentSourceCredentialStore credentials,
+  required Dio dio,
+  required CompactEpgRepository epgRepository,
+  required ProviderHealthTracker healthTracker,
+  bool failFast = false,
+}) async {
   final xtreamConfigs = configs
       .where((source) => source.kind == ContentSourceKind.xtream)
       .toList(growable: false);
   if (xtreamConfigs.isEmpty) return const [];
-  final credentials = ref.read(contentSourceCredentialStoreProvider);
-  final dio = ref.read(dioProvider);
   final channels = <IPTVChannel>[];
   for (final config in xtreamConfigs) {
     final secret = await credentials.read(
       ContentSourceCredentialRef(config.id),
     );
-    if (secret == null) continue;
+    if (secret == null) {
+      if (failFast) {
+        throw const ContentSourceRuntimeException(
+          'Xtream credentials are unavailable. Reconnect the source.',
+        );
+      }
+      continue;
+    }
     try {
       final client = XtreamClient(
         dio: dio,
         serverUrl: config.url,
         username: secret.username,
         password: secret.password,
+        healthTracker: healthTracker,
         sourceId: config.id,
       );
       channels.addAll(
@@ -309,7 +531,6 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
           sourceId: config.id,
         ).loadChannels(),
       );
-      final epgRepository = ref.read(compactEpgRepositoryProvider);
       if (epgRepository is MutableXmltvCompactEpgRepository) {
         final prefix = '${config.id}-';
         epgRepository.updateNamedSource(
@@ -324,6 +545,12 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
         );
       }
     } catch (_) {
+      if (failFast) {
+        throw const ContentSourceRuntimeException(
+          'Could not refresh the Xtream source. '
+          'Check the server and credentials, then retry.',
+        );
+      }
       // Dio errors may contain a credential-bearing query URL. Keep
       // diagnostics deliberately coarse and continue with other sources.
       debugPrint(
@@ -332,7 +559,7 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
     }
   }
   return channels;
-});
+}
 
 List<IPTVChannel> _mergeChannelLibraries(
   Iterable<List<IPTVChannel>> libraries,
@@ -399,34 +626,9 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   // first import, which applyFavoriteRemapOnReimport treats as a no-op.
   final oldChannels = ref.read(iptvChannelsProvider).value ?? const [];
 
-  List<IPTVChannel> newChannels;
-  List<IPTVChannel> primaryChannels = const [];
-  final channelDataService = ref.watch(channelDataServiceProvider);
-  try {
-    final channels = await channelDataService.fetchChannels(
-      forceRefresh: forceRefresh,
-    );
-    primaryChannels = channels;
-  } catch (e) {
-    debugPrint(
-      '[Provider] ChannelDataService refresh failed, falling back to M3U: $e',
-    );
-  }
-
-  final configuredM3uChannels = await ref.watch(
-    _refreshConfiguredM3uChannelsProvider(forceRefresh).future,
+  final newChannels = await ref.watch(
+    _runtimeChannelsProvider(forceRefresh).future,
   );
-  if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
-    primaryChannels = await ref
-        .watch(m3uParserProvider)
-        .fetchPlaylist(forceRefresh: forceRefresh);
-  }
-  final byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
-  newChannels = _mergeChannelLibraries([
-    primaryChannels,
-    configuredM3uChannels,
-    byocChannels,
-  ]);
 
   final needsReview = await applyFavoriteRemapOnReimport(
     favoriteStorage: ref.read(favoriteChannelsStorageProvider),
@@ -832,7 +1034,7 @@ final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   return allChannels
       .where((channel) => favoriteIds.contains(channel.id))
       .toList(growable: false);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 /// Toggles a channel's favorite state and returns the new state.
 ///

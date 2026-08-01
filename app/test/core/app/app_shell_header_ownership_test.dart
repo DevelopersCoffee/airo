@@ -28,6 +28,13 @@ void main() {
                   path: '/money',
                   builder: (context, state) =>
                       const _ShellBodyScreen(label: 'Money body'),
+                  routes: [
+                    GoRoute(
+                      path: 'dashboard',
+                      builder: (context, state) =>
+                          const _ShellBodyScreen(label: 'Money dashboard body'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -100,7 +107,26 @@ void main() {
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Mind'), findsOneWidget);
     expect(find.byKey(const ValueKey('app_shell_home_button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('app_shell_notifications_button')),
+      findsOneWidget,
+    );
     expect(find.text('Mind body'), findsOneWidget);
+  });
+
+  testWidgets('Coins dashboard alias delegates to one global shell header', (
+    tester,
+  ) async {
+    await pumpShellRoute(tester, initialLocation: '/money/dashboard');
+
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Coins'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('app_shell_notifications_button')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+    expect(find.text('Money dashboard body'), findsOneWidget);
   });
 
   testWidgets('hides shell chrome on route-owned root routes', (tester) async {

@@ -50,15 +50,15 @@ on:
       version:
         description: 'Artifact and release version label'
         required: true
-        default: airo-tv-v0.0.5
+        default: airo-tv-v0.0.6
       build_name:
-        description: 'Flutter build name, for example 0.0.5'
+        description: 'Flutter build name, for example 0.0.6'
         required: true
-        default: 0.0.5
+        default: 0.0.6
       build_number:
         description: 'Flutter build number'
         required: true
-        default: '5'
+        default: '8'
       release_ref:
         description: 'Git ref to release; must contain latest origin/main'
         required: true
@@ -66,7 +66,7 @@ on:
       release_branch:
         description: 'Release branch to create/update from release_ref before building'
         required: true
-        default: release/airo-tv-v0.0.5
+        default: release/airo-tv-v0.0.6
       require_notarization:
         description: 'Fail unless Developer ID signing and notarization succeed'
         required: true
@@ -82,9 +82,9 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.44.4'
-  RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name || 'airo-tv-v0.0.5' }}
-  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.5' }}
-  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '5' }}
+  RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name || 'airo-tv-v0.0.6' }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.6' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '8' }}
   PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'tv' }}
 
 jobs:
@@ -196,6 +196,7 @@ jobs:
             .github/workflows/airo-macos-release.yml
           python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
           scripts/check-build-profiles.py
+          scripts/test-build-macos-tv.sh
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
           cd packages/core_release && flutter test
@@ -238,6 +239,10 @@ jobs:
       - name: Build macOS app
         run: |
           cd app
+          # The checked-in lock reflects the full app profile. Resolve pods
+          # afresh after switching to the TV profile to avoid stale Firebase
+          # constraints blocking the macOS release build.
+          rm -f macos/Podfile.lock
           flutter build macos --release \
             --target="$TARGET_ENTRYPOINT" \
             --dart-define=APP_VARIANT="$APP_VARIANT" \

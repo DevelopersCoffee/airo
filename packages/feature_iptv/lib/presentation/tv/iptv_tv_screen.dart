@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
@@ -25,6 +24,18 @@ import '../widgets/tv_playlist_qr_dialog.dart';
 import '../widgets/video_player_widget.dart';
 
 enum _TvChannelViewMode { grid, list }
+
+void _openTvFullscreenPlayer(BuildContext context) {
+  // The TV screen sits inside TvShell's nested navigator. The root navigator
+  // is the only route that covers the permanent rail and the whole macOS
+  // window.
+  Navigator.of(context, rootNavigator: true).push<void>(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => const _TvFullscreenPlayerPage(),
+    ),
+  );
+}
 
 /// A 10-foot IPTV experience for Android TV and Fire TV.
 class IptvTvScreen extends ConsumerStatefulWidget {
@@ -537,7 +548,10 @@ class _TvBrowseLayout extends ConsumerWidget {
             ),
           ),
           SizedBox(height: compactTv ? 8 : 12),
-          const IPTVMiniPlayer(forceVisible: true),
+          IPTVMiniPlayer(
+            forceVisible: true,
+            onWatch: () => _openTvFullscreenPlayer(context),
+          ),
         ],
       ),
     );
@@ -1202,19 +1216,6 @@ class _TvPlayerPanel extends StatelessWidget {
   final IPTVChannel? currentChannel;
   final bool compact;
 
-  void _openFullscreenPlayer(BuildContext context) {
-    // Must use the root navigator: this screen sits inside TvShell's
-    // ShellRoute, whose nested navigator only covers the content area next
-    // to the sidebar. Pushing there leaves the sidebar visible; pushing on
-    // root escapes the shell entirely and covers the whole window.
-    Navigator.of(context, rootNavigator: true).push<void>(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const _TvFullscreenPlayerPage(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1240,8 +1241,12 @@ class _TvPlayerPanel extends StatelessWidget {
                       : VideoPlayerWidget(
                           showControls: true,
                           enableTouchGestures: false,
+                          // The fullscreen route owns the native macOS window
+                          // transition. Requesting it here as well races two
+                          // NSWindow toggles and can cancel fullscreen entry.
+                          handleNativeFullscreen: false,
                           onFullscreenToggle: () =>
-                              _openFullscreenPlayer(context),
+                              _openTvFullscreenPlayer(context),
                         ),
                   loading: () => const _TvPlayerPlaceholder(),
                   error: (_, _) => const _TvPlayerPlaceholder(),
@@ -1309,24 +1314,27 @@ class _TvFullscreenPlayerPage extends StatefulWidget {
 }
 
 class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
-  late final FocusNode _focusNode;
   bool _isClosing = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode(debugLabel: 'Airo TV fullscreen player');
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
-    // Entering this page only maximizes the video within the current
-    // window bounds; it never asked the OS to actually go fullscreen.
-    // dispose() below already pairs with an exit call, so request the
-    // matching enter here.
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
+    // Entering this page only maximizes the video within the current window
+    // bounds; it never asked the OS to actually go fullscreen. dispose()
+    // below already pairs with an exit call, so request the matching enter
+    // here -- but wait until the route has rendered, because requests made
+    // while the pointer-driven Navigator push is still building can be
+    // ignored by AppKit.
+    //
+    // The focus request that used to accompany this is gone: the page no
+    // longer owns a KeyboardListener node, since the player itself owns the
+    // raw BACK key and WillPopScope vetoes the duplicate platform pop.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _focusNode.requestFocus();
+        unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
       }
     });
   }
@@ -1334,7 +1342,6 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
   @override
   void dispose() {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
-    _focusNode.dispose();
     unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     super.dispose();
   }
@@ -1358,15 +1365,12 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          _close();
-        }
-      },
+    // Fire OS sends a platform pop request even when Flutter handled the raw
+    // BACK key. Veto that duplicate at the fullscreen route itself; the player
+    // owns the raw key and either dismisses its overlay or calls [_close].
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async => false,
       child: Scaffold(
         key: const ValueKey('airo-tv-fullscreen-player'),
         backgroundColor: Colors.black,
@@ -1377,6 +1381,13 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
             enableSwipeChannelChange: false,
             enableTouchGestures: false,
             initiallyFullscreen: true,
+            // This route pairs native entry/exit with its own lifecycle.
+            handleNativeFullscreen: false,
+            // Fire OS follows the raw BACK key with a platform pop request and
+            // repeats it on some devices. The player answers the raw key and
+            // absorbs those paired callbacks; the WillPopScope above vetoes
+            // whatever still reaches the route.
+            ownsPlatformBack: true,
             onFullscreenToggle: _close,
           ),
         ),
@@ -1556,29 +1567,32 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: GridView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: widget.compact ? 180 : 220,
-          childAspectRatio: widget.compact ? 1.2 : 1.03,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: GridView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: widget.compact ? 180 : 220,
+            childAspectRatio: widget.compact ? 1.2 : 1.03,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+          ),
+          itemCount: widget.channels.length,
+          itemBuilder: (context, index) {
+            final channel = widget.channels[index];
+            return _TvChannelCard(
+              channel: channel,
+              isPlaying: widget.currentChannel?.id == channel.id,
+              isFavorite: widget.favoriteChannelIds.contains(channel.id),
+              epgEntry: widget.compactEpgEntries[channel.id],
+              availability: widget.availabilityByChannelId[channel.id],
+              autofocus: index == 0,
+              onSelect: () => widget.onChannelSelect(channel),
+              onToggleFavorite: () => widget.onToggleFavorite(channel),
+            );
+          },
         ),
-        itemCount: widget.channels.length,
-        itemBuilder: (context, index) {
-          final channel = widget.channels[index];
-          return _TvChannelCard(
-            channel: channel,
-            isPlaying: widget.currentChannel?.id == channel.id,
-            isFavorite: widget.favoriteChannelIds.contains(channel.id),
-            epgEntry: widget.compactEpgEntries[channel.id],
-            availability: widget.availabilityByChannelId[channel.id],
-            autofocus: index == 0,
-            onSelect: () => widget.onChannelSelect(channel),
-            onToggleFavorite: () => widget.onToggleFavorite(channel),
-          );
-        },
       ),
     );
   }
@@ -1627,24 +1641,27 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
     return Scrollbar(
       controller: _scrollController,
       thumbVisibility: true,
-      child: ListView.separated(
-        controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-        itemCount: widget.channels.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final channel = widget.channels[index];
-          return _TvChannelRow(
-            channel: channel,
-            isPlaying: widget.currentChannel?.id == channel.id,
-            isFavorite: widget.favoriteChannelIds.contains(channel.id),
-            epgEntry: widget.compactEpgEntries[channel.id],
-            availability: widget.availabilityByChannelId[channel.id],
-            autofocus: index == 0,
-            onSelect: () => widget.onChannelSelect(channel),
-            onToggleFavorite: () => widget.onToggleFavorite(channel),
-          );
-        },
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: ListView.separated(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
+          itemCount: widget.channels.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final channel = widget.channels[index];
+            return _TvChannelRow(
+              channel: channel,
+              isPlaying: widget.currentChannel?.id == channel.id,
+              isFavorite: widget.favoriteChannelIds.contains(channel.id),
+              epgEntry: widget.compactEpgEntries[channel.id],
+              availability: widget.availabilityByChannelId[channel.id],
+              autofocus: index == 0,
+              onSelect: () => widget.onChannelSelect(channel),
+              onToggleFavorite: () => widget.onToggleFavorite(channel),
+            );
+          },
+        ),
       ),
     );
   }

@@ -20,6 +20,14 @@ analyzer:
     - "**/generated/**"
     - "**/*.g.dart"
     - "**/*.freezed.dart"
+    # Patrol suites resolve only under the patrol flavour. `patrol` is not a
+    # dependency of app/pubspec.yaml -- the flavour pubspecs are separate, so a
+    # dependency in one is invisible to the others -- which makes every symbol
+    # in these files unresolvable in the default analysis and produced 12 hard
+    # errors that failed `analyze` and `code-quality` on every PR. Analysing
+    # them here checks nothing; it only hides the errors that matter.
+    - "integration_test/patrol_test.dart"
+    - "patrol_test/**"
 
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail

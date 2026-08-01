@@ -64,7 +64,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Configure firebase_options.dart
         env:
@@ -93,6 +93,14 @@ jobs:
         run: |
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
+
+      # Scheduled notifications deserialize through Gson, so R8 renaming the
+      # plugin's model fields breaks them in release builds only. No test layer
+      # can see that, which is why it needs a gate here.
+      - name: Enforce Gson keep rules for scheduled notifications
+        run: |
+          chmod +x scripts/check-gson-keep-rules.sh
+          scripts/check-gson-keep-rules.sh
 
       - name: Validate platform build profiles
         run: |
@@ -226,7 +234,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Configure firebase_options.dart
         env:
@@ -293,7 +301,7 @@ jobs:
             app_platform: mobileFull
             use_stubs: false
             enforce_size: false
-            size_target_mb: 35
+            size_target_mb: 450
             description: "Full app with all features (size report only)"
           - name: tv
             target: lib/main_tv.dart
@@ -304,6 +312,15 @@ jobs:
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
+          - name: coins
+            target: lib/main_coins.dart
+            variant: coins
+            app_platform: mobileFull
+            use_stubs: true
+            enforce_size: true
+            pubspec: pubspec_coins.yaml
+            size_target_mb: 25
+            description: "Airo Coins (local-first vault only)"
     steps:
       - uses: actions/checkout@v7
 
@@ -381,6 +398,7 @@ jobs:
           case "${{ matrix.platform.variant }}" in
             full) package_name="io.airo.app" ;;
             tv) package_name="io.airo.app.tv" ;;
+            coins) package_name="io.airo.app.coins" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
               exit 1
@@ -492,7 +510,7 @@ jobs:
         if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
         run: |
           cd app
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
         if: steps.android_scope.outputs.should_build == 'true'
@@ -561,6 +579,13 @@ jobs:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
           APK_SIZE_REPORT_FILE: apk-size-${{ matrix.platform.name }}.md
+          # Growth past the recorded baseline blocks a pull request, where a
+          # human can attribute it. On main it is reported instead: a failing
+          # run there skips "Generate APK baseline update" below and the
+          # update-apk-size-baselines job that consumes it, so enforcing the
+          # delta on main deadlocks the gate against a baseline it can never
+          # refresh. The absolute per-component budget stays enforced on both.
+          APK_SIZE_BASELINE_DELTA_ENFORCED: ${{ github.event_name == 'pull_request' }}
         run: |
           scripts/check-apk-size.sh
 
@@ -737,14 +762,22 @@ jobs:
           git add .github/apk-size-baselines.tsv
           git commit -m "ci: update APK size baselines"
 
-          # main is a protected branch requiring status checks,
-          # which a direct push here never satisfies. Don't fail the run for
-          # this best-effort housekeeping step; log it and let a human land
-          # the baseline update via PR instead.
-          if ! git push; then
-            echo "::warning::Could not push updated APK size baselines directly to protected main. Update .github/apk-size-baselines.tsv manually via PR."
-            exit 0
+          # main is a protected branch requiring status checks, which a direct
+          # push from here can never satisfy -- it fails with GH006 on every
+          # run. The old code pushed straight at main and downgraded the
+          # rejection to a warning, so the measurement was computed, thrown
+          # away, and the committed baselines silently froze (issue #1364).
+          #
+          # Park the refresh on a branch instead. Pushing a branch needs only
+          # the contents:write this job already has, so the measured numbers
+          # survive the run and a human can open the PR from them.
+          refresh_branch="chore/apk-size-baselines"
+          if git push --force origin "HEAD:$refresh_branch"; then
+            echo "::warning::APK size baselines changed. Refresh pushed to '$refresh_branch' -- open a PR from it to land the update (see $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$refresh_branch?expand=1)."
+          else
+            echo "::warning::Could not push the APK size baseline refresh to '$refresh_branch'. Update .github/apk-size-baselines.tsv manually via PR."
           fi
+          exit 0
 
   # ============================================
   # Build Summary Job

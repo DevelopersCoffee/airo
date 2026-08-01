@@ -28,6 +28,9 @@ void main() {
             maxConnections: 2,
           ),
         ),
+        stalkerAuthenticatorProvider.overrideWithValue(
+          ({required String portalUrl, required String macAddress}) async {},
+        ),
       ],
     );
   }
@@ -193,6 +196,80 @@ void main() {
       expect(credential, isNull);
     },
   );
+
+  test(
+    'new source becomes active and explicit selection switches it',
+    () async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+
+      await container.read(
+        addM3uContentSourceProvider((
+          label: 'First',
+          url: 'https://example.com/first.m3u',
+        )).future,
+      );
+      await container.read(
+        addM3uContentSourceProvider((
+          label: 'Second',
+          url: 'https://example.com/second.m3u',
+        )).future,
+      );
+      final sources = await container.read(
+        configuredContentSourcesProvider.future,
+      );
+
+      expect(
+        (await container.read(activeContentSourceProvider.future))?.label,
+        'Second',
+      );
+      await container.read(
+        selectContentSourceProvider(sources.first.id).future,
+      );
+      expect(
+        (await container.read(activeContentSourceProvider.future))?.label,
+        'First',
+      );
+    },
+  );
+
+  test('failed Stalker verification persists no source or token', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        stalkerAuthenticatorProvider.overrideWithValue(({
+          required String portalUrl,
+          required String macAddress,
+        }) async {
+          throw StateError('credential-bearing provider failure');
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(
+        addStalkerContentSourceProvider((
+          label: 'Broken',
+          url: 'https://portal.example.com',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+        )).future,
+      ),
+      throwsA(
+        isA<ContentSourceRuntimeException>().having(
+          (error) => error.toString(),
+          'safe message',
+          isNot(contains('credential-bearing')),
+        ),
+      ),
+    );
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      isEmpty,
+    );
+  });
 
   test(
     'addJellyfinContentSourceProvider persists config + credential',

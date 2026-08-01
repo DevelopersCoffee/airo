@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:core_domain/core_domain.dart';
+import 'package:core_native/core_native.dart'
+    show ExecutionPlan, InferenceRequest;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +13,7 @@ import '../llm/llm_response.dart';
 import '../models/offline_model_info.dart';
 import '../runtime/local_inference_runtime_adapter.dart';
 import '../utils/token_counter.dart';
+import 'litert_lm_execution_adapter.dart';
 
 enum LiteRtLmModelKind {
   gemmaIt,
@@ -30,6 +35,7 @@ class LiteRtLmConfig {
   final LiteRtLmModelKind modelKind;
   final LiteRtLmBackend backend;
   final int maxTokens;
+  final Duration operationTimeout;
 
   const LiteRtLmConfig({
     this.modelPath = const String.fromEnvironment('LITERT_LM_MODEL_PATH'),
@@ -38,6 +44,7 @@ class LiteRtLmConfig {
     this.modelKind = LiteRtLmModelKind.gemmaIt,
     this.backend = LiteRtLmBackend.gpu,
     this.maxTokens = 2048,
+    this.operationTimeout = const Duration(minutes: 2),
   });
 
   bool get hasModelPath => modelPath.trim().isNotEmpty;
@@ -245,11 +252,36 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
     );
   }
 
+  /// Executes an already-planned v1 request through LiteRT.
+  ///
+  /// Callers obtain [plan] from the Rust planner. This method deliberately
+  /// performs no model or resource selection; it only delegates the immutable
+  /// plan to the thin backend adapter.
+  Future<String> generatePlanned({
+    required ExecutionPlan plan,
+    required InferenceRequest request,
+    required String modelPath,
+    String? systemPrompt,
+  }) {
+    return LiteRtLmExecutionAdapter(client: _client).generate(
+      plan: plan,
+      request: request,
+      modelPath: modelPath,
+      systemPrompt: systemPrompt,
+    );
+  }
+
   @override
   Future<bool> isAvailable() async {
     if (kIsWeb) return false;
-    if (await _client.activeModelExists()) return true;
-    return runtimeConfig.hasModelUrl;
+    // A download URL describes a possible install source, not a ready
+    // runtime. Provider discovery must not advertise LiteRT as usable until
+    // the native client confirms that an executable model is present.
+    return _client.activeModelExists(
+      modelPath: runtimeConfig.hasModelPath
+          ? runtimeConfig.modelPath.trim()
+          : null,
+    );
   }
 
   @override
@@ -357,13 +389,12 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
     OfflineModelInfo model,
   ) async {
     if (kIsWeb) return model;
-    if (model.filePath?.trim().isNotEmpty == true) {
-      return model;
-    }
-
     final modelPath = await downloadedModelPath(model.id, model: model);
     if (modelPath == null) {
-      return model;
+      // A persisted receipt can outlive the artifact it described. Clear the
+      // stale path so the catalog cannot present a non-existent LiteRT model
+      // as runnable on the next launch.
+      return model.copyWith(clearFilePath: true);
     }
     return model.copyWith(filePath: modelPath);
   }
@@ -505,14 +536,17 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
         : _activeModelPath;
     if (resolvedModelPath == null) return false;
     try {
-      final available = await _channel.invokeMethod<bool>('isAvailable', {
-        'modelPath': resolvedModelPath,
-      });
+      final available = await _channel
+          .invokeMethod<bool>('isAvailable', {'modelPath': resolvedModelPath})
+          .timeout(_config.operationTimeout);
       return available ?? false;
     } on PlatformException catch (e) {
       debugPrint('LiteRT-LM availability check failed: ${e.message}');
       return false;
     } on MissingPluginException {
+      return false;
+    } on TimeoutException {
+      debugPrint('LiteRT-LM availability check timed out.');
       return false;
     }
   }
@@ -524,12 +558,14 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
     required int maxTokens,
     String? systemPrompt,
   }) async {
-    final response = await _channel.invokeMethod<String>('generateContent', {
-      'prompt': prompt,
-      'systemPrompt': systemPrompt,
-      'backend': backend.name,
-      'maxTokens': maxTokens,
-    });
+    final response = await _channel
+        .invokeMethod<String>('generateContent', {
+          'prompt': prompt,
+          'systemPrompt': systemPrompt,
+          'backend': backend.name,
+          'maxTokens': maxTokens,
+        })
+        .timeout(_config.operationTimeout);
     return response ?? '';
   }
 
@@ -547,11 +583,13 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
       throw StateError('LiteRT-LM model path is not configured');
     }
 
-    await _channel.invokeMethod<bool>('initialize', {
-      'modelPath': resolvedModelPath,
-      'backend': (backend ?? _config.backend).name,
-      'maxTokens': maxTokens ?? _config.maxTokens,
-    });
+    await _channel
+        .invokeMethod<bool>('initialize', {
+          'modelPath': resolvedModelPath,
+          'backend': (backend ?? _config.backend).name,
+          'maxTokens': maxTokens ?? _config.maxTokens,
+        })
+        .timeout(_config.operationTimeout);
   }
 
   @override
@@ -560,10 +598,12 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
   }) async {
-    _installedModelPath = await _channel.invokeMethod<String>('installModel', {
-      'url': url,
-      'modelKind': modelKind.name,
-      'huggingFaceToken': huggingFaceToken,
-    });
+    _installedModelPath = await _channel
+        .invokeMethod<String>('installModel', {
+          'url': url,
+          'modelKind': modelKind.name,
+          'huggingFaceToken': huggingFaceToken,
+        })
+        .timeout(_config.operationTimeout);
   }
 }

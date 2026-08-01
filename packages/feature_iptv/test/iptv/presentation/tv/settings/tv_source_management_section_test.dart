@@ -37,6 +37,9 @@ void main() {
           }) async =>
               const XtreamAuthResult(isAuthenticated: true, status: 'Active'),
         ),
+        stalkerAuthenticatorProvider.overrideWithValue(
+          ({required String portalUrl, required String macAddress}) async {},
+        ),
       ],
     );
   }
@@ -216,6 +219,118 @@ void main() {
     // Xtream advertises EPG + VOD + catch-up capabilities.
     expect(find.text('EPG'), findsOneWidget);
     expect(find.text('VOD'), findsOneWidget);
+  });
+
+  testWidgets('source list shows a privacy-safe provider health hint', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addXtreamContentSourceProvider((
+        label: 'Xtream',
+        url: 'https://xtream.example.com',
+        username: 'u',
+        password: 'p',
+      )).future,
+    );
+    final source = (await container.read(
+      configuredContentSourcesProvider.future,
+    )).single;
+    container
+        .read(providerHealthTrackerProvider)
+        .record(
+          ProviderHealthSample.fetchFailure(
+            sourceId: source.id,
+            timestampUtc: DateTime.utc(2026, 7, 29),
+            failureCategory: ProviderHealthFailureCategory.auth,
+            httpStatus: 401,
+          ),
+        );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('Frequent recent issues'), findsOneWidget);
+    expect(find.textContaining('Credentials rejected'), findsOneWidget);
+    expect(find.textContaining('xtream.example.com'), findsNothing);
+  });
+
+  testWidgets('Use switches the exclusive active Live TV source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'First',
+        url: 'https://example.com/first.m3u',
+      )).future,
+    );
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'Second',
+        url: 'https://example.com/second.m3u',
+      )).future,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Active'), findsOneWidget);
+    expect(
+      (await container.read(activeContentSourceProvider.future))?.label,
+      'Second',
+    );
+
+    await tester.tap(find.text('Use'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      (await container.read(activeContentSourceProvider.future))?.label,
+      'First',
+    );
+  });
+
+  testWidgets('add picker omits unsupported Jellyfin runtime source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Add Source'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('source-kind-picker')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jellyfin'), findsNothing);
   });
 
   testWidgets('removing a source requires confirmation', (tester) async {

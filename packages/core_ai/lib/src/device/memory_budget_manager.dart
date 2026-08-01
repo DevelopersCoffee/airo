@@ -18,16 +18,17 @@ enum ModelType {
 
 /// Manages memory budget for LLM model loading.
 ///
-/// Implements the 60% RAM budget pattern from offline-mobile-llm-manager:
-/// - 60% of total RAM is the safe budget for model loading
-/// - Warning threshold at 50% usage of budget
-/// - Different overhead multipliers for text vs image models
+/// Uses the live transient-memory pool reported by the operating system.
+/// Total RAM is useful for device classification, but it is not a safe
+/// loading budget while other apps, caches, and the OS are resident.
+/// Warning and critical thresholds are applied to currently available RAM.
 ///
 /// Reference: https://github.com/alichherawalla/offline-mobile-llm-manager
 class MemoryBudgetManager {
   final DeviceCapabilityService _deviceCapability;
 
-  /// Maximum percentage of total RAM to use for models (60%).
+  /// Retained for compatibility with existing preference and telemetry APIs.
+  /// Runtime admission uses the live available-memory value instead.
   static const double memoryBudgetPercent = 0.60;
 
   /// Warning threshold as percentage of budget (50% of budget = 30% of total).
@@ -78,9 +79,12 @@ class MemoryBudgetManager {
     }
   }
 
-  /// Calculates the memory budget in bytes.
+  /// Calculates the current transient loading budget in bytes.
+  ///
+  /// This intentionally uses available RAM, not total RAM. Callers should
+  /// refresh memory immediately before a model warmup.
   int calculateBudget(MemoryInfo memoryInfo) {
-    return (memoryInfo.totalBytes * memoryBudgetPercent).round();
+    return memoryInfo.availableBytes;
   }
 
   /// Checks if a model can be loaded given current memory conditions.
@@ -101,14 +105,14 @@ class MemoryBudgetManager {
     final budget = calculateBudget(memoryInfo);
     final usagePercent = estimatedUsageBytes / budget;
 
-    if (usagePercent > 1.0) {
-      return MemorySeverity.blocked;
-    }
-
     // Low transient free RAM should warn, not hard-block, when the device
     // budget still fits the model.
     if (estimatedUsageBytes > memoryInfo.availableBytes) {
       return MemorySeverity.critical;
+    }
+
+    if (usagePercent > 1.0) {
+      return MemorySeverity.blocked;
     }
 
     if (usagePercent <= warningThresholdPercent) {

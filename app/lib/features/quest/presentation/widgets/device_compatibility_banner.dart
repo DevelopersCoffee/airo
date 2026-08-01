@@ -116,14 +116,17 @@ class _DeviceCompatibilityBannerState extends State<DeviceCompatibilityBanner> {
             color: Colors.orange.shade100,
             child: Row(
               children: [
-                Icon(Icons.cloud, color: Colors.orange.shade700),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange.shade700,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Cloud AI Mode',
+                        'On-device AI unavailable',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Colors.orange.shade700,
@@ -161,7 +164,7 @@ class _DeviceCompatibilityBannerState extends State<DeviceCompatibilityBanner> {
     }
 
     if (!supportsNano) {
-      return 'AICore module not installed';
+      return 'AICore module is not installed; install a supported local runtime';
     }
 
     return 'Device not compatible';

@@ -18,6 +18,26 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  testWidgets('delegates header actions to the Airo super-app shell', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => const DashboardData(),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byIcon(Icons.notifications_outlined), findsNothing);
+    expect(find.byIcon(Icons.settings_outlined), findsNothing);
+  });
+
   testWidgets('shows real safe-to-spend data in the user currency', (
     tester,
   ) async {

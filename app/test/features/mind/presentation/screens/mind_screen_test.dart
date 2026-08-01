@@ -62,5 +62,34 @@ void main() {
 
       expect(greeting, findsNothing);
     });
+
+    testWidgets('exposes action and progress semantics for screen readers', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      expect(
+        find.bySemanticsLabel(
+          'Daily Insight. Open your assistant for a short guided check-in.',
+        ),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
+        find.bySemanticsLabel('Mind Streak: 4 days. Daily check-ins'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.bySemanticsLabel('Mind Streak: 4 days. Daily check-ins'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          'Focus Momentum. Breathing goal 60 percent. Reflection goal 40 percent.',
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

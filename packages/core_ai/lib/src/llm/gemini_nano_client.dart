@@ -24,6 +24,7 @@ class GeminiNanoClient implements LLMClient {
     MemoryBudgetManager? memoryBudgetManager,
     MethodChannel? channel,
     EventChannel? eventChannel,
+    this.operationTimeout = const Duration(seconds: 30),
   }) : _config = config ?? LLMConfig.geminiNano,
        _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager(),
        _channel = channel ?? const MethodChannel('com.airo.gemini_nano'),
@@ -38,6 +39,7 @@ class GeminiNanoClient implements LLMClient {
   final MemoryBudgetManager _memoryBudgetManager;
   final MethodChannel _channel;
   final EventChannel _eventChannel;
+  final Duration operationTimeout;
   bool _isInitialized = false;
   MemoryCheckResult? _lastMemoryCheck;
 
@@ -89,7 +91,9 @@ class GeminiNanoClient implements LLMClient {
         }
       }
 
-      final warmed = await _channel.invokeMethod<bool>('warmup');
+      final warmed = await _channel
+          .invokeMethod<bool>('warmup')
+          .timeout(operationTimeout);
       return warmed ?? false;
     } catch (e) {
       developer.log(
@@ -151,11 +155,13 @@ class GeminiNanoClient implements LLMClient {
     }
 
     try {
-      final result = await _channel.invokeMethod<bool>('initialize', {
-        'temperature': _config.temperature,
-        'topK': _config.topK,
-        'maxOutputTokens': _config.maxOutputTokens,
-      });
+      final result = await _channel
+          .invokeMethod<bool>('initialize', {
+            'temperature': _config.temperature,
+            'topK': _config.topK,
+            'maxOutputTokens': _config.maxOutputTokens,
+          })
+          .timeout(operationTimeout);
       _isInitialized = result ?? false;
       return _isInitialized;
     } catch (e) {
@@ -171,7 +177,9 @@ class GeminiNanoClient implements LLMClient {
   @override
   Future<bool> isAvailable() async {
     try {
-      final result = await _channel.invokeMethod<bool>('isAvailable');
+      final result = await _channel
+          .invokeMethod<bool>('isAvailable')
+          .timeout(operationTimeout);
       return result ?? false;
     } catch (e) {
       return false;
@@ -191,9 +199,9 @@ class GeminiNanoClient implements LLMClient {
 
     try {
       final stopwatch = Stopwatch()..start();
-      final result = await _channel.invokeMethod<String>('generateContent', {
-        'prompt': prompt,
-      });
+      final result = await _channel
+          .invokeMethod<String>('generateContent', {'prompt': prompt})
+          .timeout(operationTimeout);
       stopwatch.stop();
 
       if (result == null) {
@@ -231,7 +239,9 @@ class GeminiNanoClient implements LLMClient {
 
     try {
       // Start streaming generation (method name matches Android plugin)
-      await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+      await _channel
+          .invokeMethod('generateContentStream', {'prompt': prompt})
+          .timeout(operationTimeout);
 
       // Listen to stream
       await for (final chunk in _eventChannel.receiveBroadcastStream()) {
@@ -250,7 +260,7 @@ class GeminiNanoClient implements LLMClient {
   @override
   Future<void> dispose() async {
     try {
-      await _channel.invokeMethod('dispose');
+      await _channel.invokeMethod('dispose').timeout(operationTimeout);
       _isInitialized = false;
     } catch (e) {
       // Ignore disposal errors

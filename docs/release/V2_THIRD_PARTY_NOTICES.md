@@ -72,6 +72,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   per open-source council review — a bump requires re-review of license,
   binary size, and per-arch native-lib impact.
 
+### barista-tuning / slm_edge_intelligence
+
+- Package: `slm_edge_intelligence` 0.2.2
+- Source: `https://github.com/DevelopersCoffee/barista-tuning`
+- Release lock pin: `83cd1b5f0b6d02fe2a940710f5cca11557fd0f11`
+- License: MIT
+- Used by: on-device IPTV search/ranking contracts in `feature_iptv`
+
+The source repository is public; it is not a private or commercial release
+dependency. Its MIT license is included by Flutter's generated application
+notices and remains subject to the pinned dependency's license file.
+
 ## Direct Release Dependency Surface
 
 The current v2 release-profile pubspecs include these direct dependency names.
@@ -132,6 +144,6 @@ wakelock_plus
 
 ## Release Gate
 
-Before public distribution, maintainers must confirm whether any private,
-commercial, gated, or restricted-license dependency is bundled in the final
-APK/AAB artifacts.
+The checked `full` and `tv` release profiles contain no active private,
+commercial, gated, or restricted-license dependency. Re-run this audit if a
+profile pubspec, lockfile, private overlay, or vendored component changes.

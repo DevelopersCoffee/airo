@@ -17,6 +17,16 @@ void main() {
     expect(await store.getAll(), isEmpty);
   });
 
+  test('active source id round-trips and can be cleared', () async {
+    expect(await store.getActiveSourceId(), isNull);
+
+    await store.setActiveSourceId('xtream-1');
+    expect(await store.getActiveSourceId(), 'xtream-1');
+
+    await store.setActiveSourceId(null);
+    expect(await store.getActiveSourceId(), isNull);
+  });
+
   test('add then getAll round-trips an M3U config', () async {
     const config = ContentSourceConfig(
       id: 'm3u-1',

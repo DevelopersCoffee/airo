@@ -6,8 +6,12 @@ import '../../agent_chat/application/assistant_model_preferences.dart';
 import '../../agent_chat/domain/models/assistant_model_selection.dart';
 import '../application/ai_model_management.dart';
 
-class _AiroModelWarmupGateway implements ModelWarmupGateway {
-  _AiroModelWarmupGateway(this._preloader);
+/// Bridges Airo's runtime preloader to the reusable model-manager contract.
+///
+/// This adapter is public so the release coverage gate can exercise every
+/// runtime outcome without loading a real model.
+class AiroModelWarmupGateway implements ModelWarmupGateway {
+  AiroModelWarmupGateway(this._preloader);
 
   final LocalRuntimePreloaderService _preloader;
 
@@ -35,8 +39,12 @@ class _AiroModelWarmupGateway implements ModelWarmupGateway {
   }
 }
 
-class _AiroModelActivationGateway implements ModelActivationGateway {
-  _AiroModelActivationGateway(this._ref);
+/// Keeps the offline-model and assistant-model selections in sync.
+///
+/// This adapter is public so its persistence behavior can be verified without
+/// driving the model-manager screen.
+class AiroModelActivationGateway implements ModelActivationGateway {
+  AiroModelActivationGateway(this._ref);
 
   final Ref _ref;
 
@@ -85,8 +93,8 @@ final intelligentModelManagerProvider = Provider<IntelligentModelManager>((
     registry,
     downloadService,
     preloadPreferences: preloadPreferences,
-    warmupGateway: _AiroModelWarmupGateway(preloader),
-    activationGateway: _AiroModelActivationGateway(ref),
+    warmupGateway: AiroModelWarmupGateway(preloader),
+    activationGateway: AiroModelActivationGateway(ref),
   );
 });
 

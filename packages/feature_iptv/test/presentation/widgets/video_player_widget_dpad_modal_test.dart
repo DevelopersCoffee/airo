@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -89,8 +90,22 @@ void main() {
     return service;
   }
 
+  // Resolve the TvFocusable's own Focus rather than calling Focus.of() from
+  // inside its child: TvFocusable wraps the child in ExcludeFocus so Material
+  // descendants cannot become a second invisible D-pad stop, which means
+  // Focus.of(childContext) now answers with that exclusion node.
+  Focus tvFocusOf(WidgetTester tester, String key) {
+    final wrapper = find.ancestor(
+      of: find.byKey(ValueKey(key)),
+      matching: find.byType(TvFocusable),
+    );
+    return tester.widget<Focus>(
+      find.descendant(of: wrapper, matching: find.byType(Focus)).first,
+    );
+  }
+
   bool ownsPrimaryFocus(WidgetTester tester, String key) {
-    return Focus.of(tester.element(find.byKey(ValueKey(key)))).hasPrimaryFocus;
+    return tvFocusOf(tester, key).focusNode?.hasPrimaryFocus ?? false;
   }
 
   void requestTvFocusable(WidgetTester tester, Finder wrapper) {
@@ -340,7 +355,7 @@ void main() {
           scrollable: find.byType(Scrollable).last,
         );
       }
-      Focus.of(tester.element(action)).requestFocus();
+      tvFocusOf(tester, key).focusNode!.requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pumpAndSettle();

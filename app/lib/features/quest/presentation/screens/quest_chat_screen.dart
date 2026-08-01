@@ -71,7 +71,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
                   Text(
                     _isDeviceSupported
                         ? 'Optimized for Your Device'
-                        : 'Cloud AI Mode',
+                        : 'Local AI unavailable',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -81,7 +81,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
                   Text(
                     _isDeviceSupported
                         ? 'On-device AI ready • Fast & Private'
-                        : 'On-device AI not available',
+                        : 'Install a supported local runtime before sending a quest',
                     style: const TextStyle(fontSize: 11, color: Colors.white70),
                   ),
                 ],
@@ -164,12 +164,6 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
         'title': 'Summarize',
         'prompt': 'Summarize the key points from this document',
         'color': Colors.blue,
-      },
-      {
-        'icon': Icons.image,
-        'title': 'Describe Image',
-        'prompt': 'Describe what you see in this image in detail',
-        'color': Colors.purple,
       },
       {
         'icon': Icons.edit_note,

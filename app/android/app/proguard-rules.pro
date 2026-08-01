@@ -15,6 +15,14 @@
 # Keep Flutter plugins
 -keep class io.flutter.plugins.** { *; }
 
+# llama.cpp GGUF adapter (Pigeon bridge, Kotlin callbacks, and JNI entrypoints)
+# must remain discoverable after release shrinking.
+-keep class com.write4me.llama_flutter_android.** { *; }
+-keep class kotlin.jvm.functions.Function1 { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # ============================================
 # Google ML Kit (Gemini Nano)
 # ============================================
@@ -128,3 +136,41 @@
     public static *** v(...);
     public static *** i(...);
 }
+
+# flutter_local_notifications persists every scheduled notification as JSON and
+# reads it back with Gson when the alarm fires:
+#
+#   ScheduledNotificationReceiver -> gson.fromJson(json, NotificationDetails)
+#   FlutterLocalNotificationsPlugin -> new TypeToken<ArrayList<NotificationDetails>>
+#
+# Gson maps JSON keys onto field *names*, so R8 renaming the fields of
+# NotificationDetails silently turns every persisted notification into null
+# fields. The plugin ships no consumer rules (checked 22.2.0), and only the
+# scheduled path is affected -- `show()` never touches Gson -- so this fails
+# exclusively in minified release builds, and only once a scheduled
+# notification actually fires. Debug builds and CI tests cannot see it.
+#
+# Airo schedules from three places:
+#   app/lib/features/iptv/epg_reminder_notification_gateway.dart  (EPG reminders)
+#   app/lib/features/quest/domain/services/reminder_service.dart  (quest reminders)
+#   app/lib/features/agent_chat/data/services/agent_notification_scheduler.dart
+#
+# RuntimeTypeAdapterFactory resolves the polymorphic style models
+# (BigTextStyleInformation and friends) by name, so those must survive too.
+# Scoped to what Gson actually reflects over. A blanket `-keep class
+# com.dexterous.** { *; }` plus `-keep class com.google.gson.** { *; }` also
+# works, but measured +2.09 MB on the phone APK (104,138,751 -> 106,334,207)
+# because blanket keeps block shrinking across the dependency graph. Only the
+# serialized models and the polymorphic factory need to survive; the receiver
+# and plugin classes are manifest-declared, so R8 keeps them as entry points.
+-keep class com.dexterous.flutterlocalnotifications.models.** { *; }
+-keepclassmembers class com.dexterous.flutterlocalnotifications.models.** { <fields>; }
+-keep class com.dexterous.flutterlocalnotifications.RuntimeTypeAdapterFactory { *; }
+
+# Gson resolves generic types through anonymous TypeToken subclasses, which R8
+# would otherwise strip. Signature and *Annotation* are already kept above and
+# TypeToken needs both. Scoped to the plugin: the only `new TypeToken<...>(){}`
+# sites are in ScheduledNotificationReceiver and FlutterLocalNotificationsPlugin.
+# A global `-keep class * extends ...TypeToken` works too but makes R8 reason
+# over every class in the app.
+-keep class com.dexterous.flutterlocalnotifications.** extends com.google.gson.reflect.TypeToken

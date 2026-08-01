@@ -1,7 +1,8 @@
 # Airo TV Store Assets
 
-Store-ready Android TV listing assets generated from deterministic Airo TV
-listing compositions.
+Store-ready Android TV listing assets. The checked-in images remain the
+reviewed baseline; release candidates are captured from the live Flutter TV
+runtime and uploaded as workflow evidence.
 
 ## Assets
 
@@ -13,18 +14,34 @@ listing compositions.
 | `04-tv-playlist-source.png` | 1920x1080 | Bring-your-own-playlist source sheet |
 | `feature-graphic-1024x500.png` | 1024x500 | Google Play feature graphic |
 
-The screenshots use realistic demo channel names and nonfunctional
-`https://demo.airo.app/...` URLs. They do not include private playlists,
-tokens, MAC addresses, device serial numbers, or personal account details.
+The checked-in screenshots use realistic demo channel names and nonfunctional
+`https://demo.airo.app/...` URLs. Automated captures use the repository-owned
+`e2e/fixtures/airo-tv-viewport.m3u` playlist and local video fixture. Neither
+path includes private playlists, tokens, MAC addresses, device serial numbers,
+or personal account details.
 
-## Regenerate
+## Capture a release candidate
 
 Run from the repository root:
 
 ```bash
-python3 packages/feature_iptv/tool/airo_tv_store_assets.py
+scripts/capture-airo-tv-store-assets.sh
 ```
 
-The generator writes PNG files into `docs/store-assets/airo-tv/`.
-It requires Pillow (`python3 -m pip install Pillow`) when the local Python
-environment does not already provide it.
+This builds `main_tv.dart`, drives Browse, Search, Player, and Guide through
+Playwright, then writes RGB/no-alpha PNGs and `store-assets.json` under
+`artifacts/store-listing/processed/`. The portrait capture is padded when
+needed to satisfy the Play Store 2:1 maximum aspect ratio. The feature graphic
+is always cropped to exactly 1024x500.
+
+The feature background in `source/feature-graphic-background.png` was generated
+for Airo from this text-only brief: “Abstract cinematic TV media library
+backdrop in deep navy, teal and warm amber, visual interest on the right,
+negative space on the left, no text, no logos, no people, no copyrighted
+characters, no claims.” It is an owned source asset, not a third-party poster.
+
+For the older deterministic composition generator, run:
+
+```bash
+python3 packages/feature_iptv/tool/airo_tv_store_assets.py
+```

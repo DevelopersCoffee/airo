@@ -17,8 +17,11 @@ flutter build web --profile --no-wasm-dry-run \
   --dart-define=DEBUG_IPTV_PLAYLIST_URL="$PLAYLIST_URL"
 
 mkdir -p "$APP_DIR/build/web/fixtures" "$ARTIFACT_DIR"
-cp "$E2E_DIR/fixtures/airo-tv-viewport.m3u" \
-  "$APP_DIR/build/web/fixtures/airo-tv-viewport.m3u"
+sed "s|__BASE_URL__|http://127.0.0.1:${WEB_PORT}|g" \
+  "$E2E_DIR/fixtures/airo-tv-viewport.m3u" \
+  > "$APP_DIR/build/web/fixtures/airo-tv-viewport.m3u"
+cp "$E2E_DIR/fixtures/airo-demo.mp4" \
+  "$APP_DIR/build/web/fixtures/airo-demo.mp4"
 
 echo "Running Airo TV browser viewport validation..."
 cd "$E2E_DIR"

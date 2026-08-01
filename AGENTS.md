@@ -52,8 +52,9 @@ the frozen pre-swap monolith, kept for reference and recovery — base on it onl
 when an issue names it.
 
 **GitHub Actions minutes are a costed shared resource.** Prove the touched
-contract with the narrowest local analyzer/test/format run, and mark iterative
-and sync commits `[skip ci]`. Full matrices and release workflows are opt-in.
+contract with the narrowest local analyzer/test/format run; full matrices and
+release workflows are opt-in. `[skip ci]` is for non-executable changes only —
+a `commit-msg` hook rejects the rest (`make install-hooks`).
 
 ## Load when relevant
 

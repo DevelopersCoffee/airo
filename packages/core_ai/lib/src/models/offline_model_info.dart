@@ -246,7 +246,7 @@ class OfflineModelInfo {
   final String? webAssetUrl;
 
   /// Whether the model is downloaded and available locally.
-  bool get isDownloaded => filePath != null;
+  bool get isDownloaded => filePath?.trim().isNotEmpty ?? false;
 
   /// Whether the model supports audio input.
   bool get supportsAudio => modalities.contains(ModelModality.audio);
@@ -313,6 +313,7 @@ class OfflineModelInfo {
     ModelFamily? family,
     int? fileSizeBytes,
     String? filePath,
+    bool clearFilePath = false,
     String? downloadUrl,
     ModelQuantization? quantization,
     int? parameterCount,
@@ -344,7 +345,7 @@ class OfflineModelInfo {
       name: name ?? this.name,
       family: family ?? this.family,
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
-      filePath: filePath ?? this.filePath,
+      filePath: clearFilePath ? null : filePath ?? this.filePath,
       downloadUrl: downloadUrl ?? this.downloadUrl,
       quantization: quantization ?? this.quantization,
       parameterCount: parameterCount ?? this.parameterCount,

@@ -24,3 +24,4 @@ export 'src/presentation/widgets/forms/secure_document_form.dart';
 export 'src/presentation/widgets/masked_vault_field.dart';
 export 'src/presentation/widgets/record_detail_sheet.dart';
 export 'src/presentation/widgets/vault_lifecycle_observer.dart';
+export 'src/presentation/coin_vault_module.dart';

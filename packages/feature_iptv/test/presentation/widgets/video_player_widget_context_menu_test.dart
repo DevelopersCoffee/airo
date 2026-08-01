@@ -87,7 +87,7 @@ void main() {
     expect(find.text('City News Live added to favorites'), findsOneWidget);
   });
 
-  testWidgets('BACK closes the context menu without navigating away', (
+  testWidgets('Fire OS BACK pair closes the context menu without navigating', (
     tester,
   ) async {
     await pumpPlayer(tester);
@@ -96,7 +96,12 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
+    expect(find.text('Actions for'), findsOneWidget);
 
+    final handled = await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(handled, isTrue);
     expect(find.text('Actions for'), findsNothing);
   });
 
@@ -176,6 +181,9 @@ void main() {
       expect(find.text('Recent channels'), findsNothing);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.text('Actions for'), findsOneWidget);
+      await tester.binding.handlePopRoute();
       await tester.pump();
       expect(find.text('Actions for'), findsNothing);
       expect(

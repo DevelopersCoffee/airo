@@ -61,15 +61,14 @@ void main() {
   });
 
   group('calculateBudget', () {
-    test('calculates 60% of total RAM', () {
+    test('uses currently available RAM as the transient budget', () {
       const memoryInfo = MemoryInfo(
         totalBytes: 8589934592, // 8GB
         availableBytes: 4294967296, // 4GB
       );
 
       final budget = manager.calculateBudget(memoryInfo);
-      // 8GB * 0.60 = 4.8GB = 5153960755 bytes (rounded)
-      expect(budget, closeTo(8589934592 * 0.60, 1));
+      expect(budget, 4294967296);
     });
   });
 
@@ -83,8 +82,8 @@ void main() {
         availableBytes: availableBytes,
       );
 
-      // Budget is 8GB * 0.60 = 4.8GB
-      // 50% of budget = 2.4GB
+      // Budget is the 6GB currently available.
+      // 50% of budget = 3GB.
       // Use 2GB = safe
       final severity = manager.checkMemoryForModel(
         2147483648, // 2GB
@@ -100,10 +99,9 @@ void main() {
         availableBytes: availableBytes,
       );
 
-      // Budget is 4.8GB
-      // 65% of budget = 3.12GB - should be warning
+      // 65% of the currently available 6GB is warning.
       final severity = manager.checkMemoryForModel(
-        (4.8 * 0.65 * 1024 * 1024 * 1024).round(), // 3.12GB
+        (6 * 0.65 * 1024 * 1024 * 1024).round(), // 3.9GB
         memoryInfo,
       );
 
@@ -116,9 +114,9 @@ void main() {
         availableBytes: availableBytes,
       );
 
-      // 90% of budget = 4.32GB - should be critical
+      // 90% of the currently available 6GB is critical.
       final severity = manager.checkMemoryForModel(
-        (4.8 * 0.90 * 1024 * 1024 * 1024).round(), // 4.32GB
+        (6 * 0.90 * 1024 * 1024 * 1024).round(), // 5.4GB
         memoryInfo,
       );
 
@@ -131,13 +129,14 @@ void main() {
         availableBytes: availableBytes,
       );
 
-      // 120% of budget = 5.76GB - should be blocked
+      // A model larger than available RAM remains recoverable so the planner
+      // can reduce context or choose another backend/model.
       final severity = manager.checkMemoryForModel(
-        (4.8 * 1.2 * 1024 * 1024 * 1024).round(), // 5.76GB
+        (8 * 1024 * 1024 * 1024).round(), // 8GB
         memoryInfo,
       );
 
-      expect(severity, equals(MemorySeverity.blocked));
+      expect(severity, equals(MemorySeverity.critical));
     });
 
     test(
@@ -148,7 +147,7 @@ void main() {
           availableBytes: 2147483648, // Only 2GB available
         );
 
-        // 3GB fits the 4.8GB device budget but exceeds current free memory.
+        // 3GB exceeds the current free memory and should remain recoverable.
         final severity = manager.checkMemoryForModel(
           3221225472, // 3GB
           memoryInfo,

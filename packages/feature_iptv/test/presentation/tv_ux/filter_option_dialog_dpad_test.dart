@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,24 +30,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    const order = [
-      'All',
-      'Alpha',
-      'Bravo',
-      'Charlie',
-      'Delta',
-      'Echo',
-    ];
+    const order = ['All', 'Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'];
 
-    // Which option row holds focus now? A row is "focused" when the focus
-    // ancestor of its Text widget has primary focus.
+    // Which option row holds focus now? A row is "focused" when its own
+    // TvFocusable node has primary focus. Resolve that node through the
+    // TvFocusable ancestor rather than Focus.maybeOf() from the Text: the
+    // child sits inside TvFocusable's ExcludeFocus, whose node never holds
+    // focus, so asking from there always answers "nothing is focused".
     String? currentFocused() {
       for (final option in order) {
         final finder = find.text(option);
         if (finder.evaluate().isEmpty) continue;
-        final element = finder.evaluate().first;
-        final focus = Focus.maybeOf(element, scopeOk: true);
-        if (focus != null && focus.hasPrimaryFocus) return option;
+        final wrapper = find.ancestor(
+          of: finder.first,
+          matching: find.byType(TvFocusable),
+        );
+        if (wrapper.evaluate().isEmpty) continue;
+        final focus = tester.widget<Focus>(
+          find.descendant(of: wrapper, matching: find.byType(Focus)).first,
+        );
+        if (focus.focusNode?.hasPrimaryFocus ?? false) return option;
       }
       return null;
     }

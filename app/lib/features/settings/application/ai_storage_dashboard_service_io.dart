@@ -16,6 +16,7 @@ class _AIStorageDashboardIoService {
 
   Future<AIStorageDashboardSummary> loadSummary() async {
     final documents = await getApplicationDocumentsDirectory();
+    final external = await _safeDirectory(getExternalStorageDirectory);
     final temporary = await _safeDirectory(getTemporaryDirectory);
     final databasePath = await AppDatabase.resolveDatabasePath();
     final availableSpace = await _availableDiskSpace();
@@ -24,9 +25,10 @@ class _AIStorageDashboardIoService {
       AIStorageDashboardCategory(
         kind: AIStorageCategoryKind.installedModels,
         label: 'Installed models',
-        bytes: await _directorySize(
+        bytes: await _sumSizes([
           Directory(path.join(documents.path, 'models')),
-        ),
+          if (external != null) Directory(path.join(external.path, 'models')),
+        ]),
       ),
       AIStorageDashboardCategory(
         kind: AIStorageCategoryKind.meetingStorage,
@@ -81,7 +83,7 @@ class _AIStorageDashboardIoService {
     }
   }
 
-  Future<Directory?> _safeDirectory(Future<Directory> Function() load) async {
+  Future<Directory?> _safeDirectory(Future<Directory?> Function() load) async {
     try {
       return await load();
     } catch (_) {

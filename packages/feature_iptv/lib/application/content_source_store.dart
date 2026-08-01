@@ -114,6 +114,7 @@ class ContentSourceStore {
   ContentSourceStore(this._store);
 
   static const String _storageKey = 'content_sources';
+  static const String _activeSourceIdKey = 'active_content_source_id';
 
   final KeyValueStore _store;
 
@@ -142,6 +143,19 @@ class ContentSourceStore {
 
   Future<void> replaceAll(Iterable<ContentSourceConfig> configs) {
     return _save(List.unmodifiable(configs));
+  }
+
+  Future<String?> getActiveSourceId() async {
+    final id = (await _store.getString(_activeSourceIdKey))?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
+
+  Future<void> setActiveSourceId(String? id) {
+    final normalized = id?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return _store.remove(_activeSourceIdKey);
+    }
+    return _store.setString(_activeSourceIdKey, normalized);
   }
 
   Future<void> _save(List<ContentSourceConfig> configs) async {

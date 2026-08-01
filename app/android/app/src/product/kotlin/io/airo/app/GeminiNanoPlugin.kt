@@ -107,7 +107,22 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             "getDeviceInfo" -> getDeviceInfo(result)
             "getMemoryInfo" -> getMemoryInfo(result)
             "getCapabilities" -> getCapabilities(result)
+            "dispose" -> dispose(result)
             else -> result.notImplemented()
+        }
+    }
+
+    /** Releases the native model and its caches so later sessions can reclaim memory. */
+    private fun dispose(result: MethodChannel.Result) {
+        try {
+            streamHandler.endStream()
+            generativeModel?.close()
+            generativeModel = null
+            isInitialized = false
+            result.success(null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disposing Gemini Nano: ${e.message}", e)
+            result.error("DISPOSE_FAILED", e.message, null)
         }
     }
 

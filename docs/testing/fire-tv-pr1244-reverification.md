@@ -113,3 +113,24 @@ After the checks above:
 3. On a fresh install, confirm the empty-playlist heading, copy, and Add
    playlist action clear the permanent rail at 1920×1080 and the focused
    action ring is not clipped.
+
+## Fire OS playback-log classification
+
+Issue [#1243](https://github.com/DevelopersCoffee/airo/issues/1243) records
+three `vendor.dpframework` property denials emitted at display-buffer cadence
+on the MediaTek-based AFTSSS. A repository-wide audit found no Airo source call
+that reads those properties. Do not disable hardware acceleration or hide
+logcat globally: that would trade a platform diagnostic quirk for playback
+regressions and could conceal real errors.
+
+With visible playback active, run:
+
+```bash
+scripts/check-fire-tv-playback-logs.sh \
+  --output artifacts/release-qualification/fire-tv-playback-log-report.md
+```
+
+The check launches the declared leanback activity, samples only the Airo TV
+PID for a bounded window, aggregates the three exact known signatures, and
+fails if any other error remains. It never publishes raw logcat, which may
+contain media URLs, LAN identifiers, or device identifiers.

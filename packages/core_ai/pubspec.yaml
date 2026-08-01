@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   core_domain:
     path: ../core_domain
+  core_native:
+    path: ../core_native
   dio: ^5.10.0
   meta: ^1.18.0
   path: 1.9.1

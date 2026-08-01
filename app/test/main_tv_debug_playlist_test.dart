@@ -12,6 +12,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+    'debug playlist override supplies browser validation channels',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      var requestedUrl = '';
+      final overrides = buildTvProviderOverrides(
+        prefs: prefs,
+        compactEpgRepository: const EmptyCompactEpgRepository(),
+        mutableXmltvRepository: MutableXmltvCompactEpgRepository(),
+        debugPlaylistUrl: 'https://example.com/store-fixture.m3u',
+        debugPlaylistLoader: (playlistUrl, dio, preferences) async {
+          requestedUrl = playlistUrl;
+          expect(preferences, same(prefs));
+          return const [];
+        },
+      );
+      final container = ProviderContainer(overrides: overrides);
+      addTearDown(container.dispose);
+
+      expect(await container.read(iptvChannelsProvider.future), isEmpty);
+      expect(requestedUrl, 'https://example.com/store-fixture.m3u');
+    },
+  );
+
   test('seeds DEBUG_IPTV_PLAYLIST_URL when no playlist exists', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

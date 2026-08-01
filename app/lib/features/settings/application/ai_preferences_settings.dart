@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'ai_model_management.dart';
+import '../../../core/ai/ai_router_service.dart';
 
 enum AIAccelerationPreference {
   auto('Auto'),
@@ -35,6 +36,10 @@ class AIPreferencesSettings {
     this.memoryBudgetPercent = 60,
     this.debugLogging = false,
     this.downloadLocation = AIDownloadLocationPreference.internal,
+    this.safetyProfile = SafetyProfile.strict,
+    this.remoteServerUrl = '',
+    this.remoteServerModel = '',
+    this.remoteServerApiKey = '',
   });
 
   final AIRoutingStrategy routingStrategy;
@@ -45,6 +50,10 @@ class AIPreferencesSettings {
   final int memoryBudgetPercent;
   final bool debugLogging;
   final AIDownloadLocationPreference downloadLocation;
+  final SafetyProfile safetyProfile;
+  final String remoteServerUrl;
+  final String remoteServerModel;
+  final String remoteServerApiKey;
 
   AIPreferencesSettings copyWith({
     AIRoutingStrategy? routingStrategy,
@@ -55,6 +64,10 @@ class AIPreferencesSettings {
     int? memoryBudgetPercent,
     bool? debugLogging,
     AIDownloadLocationPreference? downloadLocation,
+    SafetyProfile? safetyProfile,
+    String? remoteServerUrl,
+    String? remoteServerModel,
+    String? remoteServerApiKey,
   }) {
     return AIPreferencesSettings(
       routingStrategy: routingStrategy ?? this.routingStrategy,
@@ -66,6 +79,10 @@ class AIPreferencesSettings {
       memoryBudgetPercent: memoryBudgetPercent ?? this.memoryBudgetPercent,
       debugLogging: debugLogging ?? this.debugLogging,
       downloadLocation: downloadLocation ?? this.downloadLocation,
+      safetyProfile: safetyProfile ?? this.safetyProfile,
+      remoteServerUrl: remoteServerUrl ?? this.remoteServerUrl,
+      remoteServerModel: remoteServerModel ?? this.remoteServerModel,
+      remoteServerApiKey: remoteServerApiKey ?? this.remoteServerApiKey,
     );
   }
 }
@@ -97,6 +114,10 @@ class AIPreferencesSettingsNotifier
   static const memoryBudgetKey = 'ai_settings.memory_budget_percent';
   static const debugLoggingKey = 'ai_settings.debug_logging';
   static const downloadLocationKey = 'ai_settings.download_location';
+  static const safetyProfileKey = 'ai_settings.safety_profile';
+  static const remoteServerUrlKey = 'ai_settings.remote_server_url';
+  static const remoteServerModelKey = 'ai_settings.remote_server_model';
+  static const remoteServerApiKeyKey = 'ai_settings.remote_server_api_key';
 
   final Ref _ref;
 
@@ -117,7 +138,12 @@ class AIPreferencesSettingsNotifier
       downloadLocation: _downloadLocationFromName(
         prefs.getString(downloadLocationKey),
       ),
+      safetyProfile: SafetyProfile.fromName(prefs.getString(safetyProfileKey)),
+      remoteServerUrl: prefs.getString(remoteServerUrlKey) ?? '',
+      remoteServerModel: prefs.getString(remoteServerModelKey) ?? '',
+      remoteServerApiKey: prefs.getString(remoteServerApiKeyKey) ?? '',
     );
+    _syncRemoteServer(state);
   }
 
   Future<void> update(AIPreferencesSettings settings) async {
@@ -134,10 +160,29 @@ class AIPreferencesSettingsNotifier
     await prefs.setInt(memoryBudgetKey, settings.memoryBudgetPercent);
     await prefs.setBool(debugLoggingKey, settings.debugLogging);
     await prefs.setString(downloadLocationKey, settings.downloadLocation.name);
+    await prefs.setString(safetyProfileKey, settings.safetyProfile.name);
+    await prefs.setString(remoteServerUrlKey, settings.remoteServerUrl);
+    await prefs.setString(remoteServerModelKey, settings.remoteServerModel);
+    await prefs.setString(remoteServerApiKeyKey, settings.remoteServerApiKey);
+    _syncRemoteServer(settings);
+  }
+
+  void _syncRemoteServer(AIPreferencesSettings settings) {
+    _ref
+        .read(aiRouterServiceProvider)
+        .configureRemoteServer(
+          baseUrl: settings.remoteServerUrl,
+          model: settings.remoteServerModel,
+          apiKey: settings.remoteServerApiKey,
+        );
   }
 
   Future<int> clearModelCache() async {
-    final manager = ModelStorageManager();
+    final location =
+        state.downloadLocation == AIDownloadLocationPreference.appManaged
+        ? ModelStorageLocation.applicationExternal
+        : ModelStorageLocation.applicationDocuments;
+    final manager = ModelStorageManager(location: location);
     final deleted = await manager.cleanupOrphanedFiles(
       ModelCatalog.bundledModels,
     );
