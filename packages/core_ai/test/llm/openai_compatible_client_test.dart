@@ -76,4 +76,38 @@ void main() {
       expect(diagnostics.message, contains('API key'));
     },
   );
+
+  test(
+    'reports configured model missing from remote server model list',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      server.listen((request) async {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.json
+          ..write(
+            jsonEncode({
+              'data': [
+                {'id': 'llama3.2'},
+                {'id': 'qwen2.5:7b'},
+              ],
+            }),
+          );
+        await request.response.close();
+      });
+
+      final client = OpenAICompatibleClient(
+        baseUrl: 'http://127.0.0.1:${server.port}/v1',
+        model: 'missing-model',
+      );
+      final diagnostics = await client.diagnose();
+
+      expect(diagnostics.health, RemoteServerHealth.modelMissing);
+      expect(diagnostics.isReady, isFalse);
+      expect(diagnostics.modelIds, ['llama3.2', 'qwen2.5:7b']);
+      expect(diagnostics.message, contains('missing-model'));
+      expect(await client.isAvailable(), isFalse);
+    },
+  );
 }
