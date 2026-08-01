@@ -69,6 +69,21 @@ class ChatMessage {
   );
 }
 
+String formatChatTranscript(Iterable<ChatMessage> messages) {
+  final buffer = StringBuffer('Airo chat transcript');
+  for (final message in messages) {
+    final text = message.text.trimRight();
+    if (text.isEmpty) continue;
+    final speaker = message.isUser ? 'User' : 'Airo';
+    buffer
+      ..writeln()
+      ..writeln()
+      ..writeln('$speaker:')
+      ..write(text);
+  }
+  return buffer.toString();
+}
+
 /// Agent chat screen
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({
@@ -584,6 +599,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.swap_horiz, size: 20),
               ),
+              IconButton(
+                key: const Key('agent_chat_copy_transcript_button'),
+                tooltip: 'Copy transcript',
+                onPressed: _messages.isEmpty ? null : _copyTranscript,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.ios_share_outlined, size: 20),
+              ),
             ],
           ),
         );
@@ -764,6 +790,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Message copied')));
+  }
+
+  Future<void> _copyTranscript() async {
+    final transcript = formatChatTranscript(_messages);
+    await Clipboard.setData(ClipboardData(text: transcript));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Transcript copied')));
   }
 
   void _sendMessage() async {

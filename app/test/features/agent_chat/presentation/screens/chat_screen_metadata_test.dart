@@ -53,6 +53,26 @@ void main() {
     expect(metadata.executionMode, 'Local');
   });
 
+  test('formatChatTranscript exports visible non-empty turns', () {
+    final transcript = formatChatTranscript([
+      ChatMessage(text: 'Welcome', isUser: false),
+      ChatMessage(text: '  ', isUser: false),
+      ChatMessage(text: 'How many r?', isUser: true),
+      ChatMessage(text: 'Three.', isUser: false),
+    ]);
+
+    expect(
+      transcript,
+      'Airo chat transcript\n\n'
+      'Airo:\n'
+      'Welcome\n\n'
+      'User:\n'
+      'How many r?\n\n'
+      'Airo:\n'
+      'Three.',
+    );
+  });
+
   testWidgets('runtime responses expose timing metadata details', (
     tester,
   ) async {
@@ -255,6 +275,53 @@ void main() {
     expect(
       (await Clipboard.getData('text/plain'))?.text,
       equals('User prompt'),
+    );
+  });
+
+  testWidgets('copy transcript exports the visible chat session', (
+    tester,
+  ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_copy_transcript_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transcript copied'), findsOneWidget);
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals(
+        'Airo chat transcript\n\n'
+        'Airo:\n'
+        'Assistant answer\n\n'
+        'User:\n'
+        'User prompt',
+      ),
     );
   });
 
