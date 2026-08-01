@@ -23,8 +23,25 @@ import 'frb_generated.dart';
 /// than patch generated code — the next codegen run reverts it — the fallbacks
 /// live here.
 Future<ExternalLibrary?> resolveMindLibrary() async {
-  if (Platform.isIOS || Platform.isMacOS) {
+  // iOS links the runtime into the process. macOS does not: the static
+  // archive cannot be linked at all, because whisper.cpp and llama.cpp each
+  // vendor their own ggml and the symbol names collide. macOS ships the dylib
+  // inside feature_mind.framework instead.
+  if (Platform.isIOS) {
     return ExternalLibrary.process(iKnowHowToUseIt: true);
+  }
+
+  if (Platform.isMacOS) {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    for (final candidate in [
+      '$exeDir/../Frameworks/feature_mind.framework/Resources/libairo_mind_runtime.dylib',
+      '$exeDir/../Frameworks/feature_mind.framework/Versions/A/Resources/libairo_mind_runtime.dylib',
+      '$exeDir/../Frameworks/libairo_mind_runtime.dylib',
+    ]) {
+      final file = File(candidate);
+      if (file.existsSync()) return ExternalLibrary.open(file.path);
+    }
+    return null;
   }
 
   // Returning null hands over to the generated loader, which resolves an

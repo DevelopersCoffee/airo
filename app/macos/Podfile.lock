@@ -19,7 +19,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/record_macos/macos
 
 SPEC CHECKSUMS:
-  feature_mind: 2efe2fc91e854d8e12f0d8f0c2913297819e0d2c
+  feature_mind: e42d3f369a2064a7b53321b065ec96ee6d89d2e7
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   record_macos: 5d55909f9650314be6424ffd6b123ac75a08c3c1
 

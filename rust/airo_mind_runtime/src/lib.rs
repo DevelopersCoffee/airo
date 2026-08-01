@@ -54,15 +54,18 @@ mod frb_generated;
 /// SHA-256 for model verification. Private: the Model Manager is the only
 /// caller, and a hash function on the public surface invites reuse it was not
 /// reviewed for.
+#[cfg_attr(not(all(feature = "whisper", feature = "llama")), allow(dead_code))]
 mod digest;
 
 /// Re-exported for `api::setup`, which is the only caller outside `models`.
+#[cfg(all(feature = "whisper", feature = "llama"))]
 pub(crate) use digest::file_digest as digest_file;
 
 /// The Model Manager (`ADR-0018`). A platform service, not a Dart API: a
 /// capability asks it for a task and a budget, and Flutter never sees it. It
 /// sits outside `api` for the same reason `wav` does -- anything under `api` is
 /// generated into Dart.
+#[cfg_attr(not(all(feature = "whisper", feature = "llama")), allow(dead_code))]
 mod models;
 
 mod budget;

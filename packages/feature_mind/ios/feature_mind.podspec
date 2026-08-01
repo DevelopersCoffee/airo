@@ -32,7 +32,10 @@ Records a meeting, transcribes it and writes minutes entirely on the device.
     :name => 'Build airo_mind_runtime',
     # The runtime lives in the cargo WORKSPACE at <repo>/rust, not inside this
     # package, so the manifest path climbs out of packages/feature_mind.
-    :script => 'sh "$PODS_TARGET_SRCROOT/../cargokit/build_pod.sh" ../../../rust/airo_mind_runtime airo_mind_runtime',
+    # Wraps cargokit's build_pod.sh so the model downloader can be removed from
+    # the archive afterwards -- see the script for why that is a contract and
+    # not a workaround.
+    :script => 'sh "$PODS_TARGET_SRCROOT/../tool/build_runtime_pod.sh" ../../../rust/airo_mind_runtime airo_mind_runtime',
     :execution_position => :before_compile,
     # The phony INPUT keeps Xcode from caching the phase away; cargo does its
     # own up-to-date checking and is fast when nothing changed. The OUTPUT must
@@ -44,8 +47,28 @@ Records a meeting, transcribes it and writes minutes entirely on the device.
   }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    # Force-load: every symbol Dart reaches through dlopen/ffi is unreferenced
-    # from Objective-C, and the linker would otherwise strip the whole archive.
-    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/libairo_mind_runtime.a',
+    # NOT `-force_load`.
+    #
+    # Every symbol Dart reaches is unreferenced from Objective-C, so something
+    # must stop the linker dead-stripping the bridge. force_load does that by
+    # pulling EVERY object in the archive -- including llama.cpp's `common`,
+    # which Airo Mind does not use and which does not even link (its download
+    # objects need an httplib translation unit llama-cpp-sys-2 does not ship).
+    #
+    # `-Wl,-u,` names only the entry points. It has to go through -Wl: clang's
+    # own `-u` is a different flag, and a bare `-u _frb_x` makes clang treat
+    # the symbol as a FILE ("no such file or directory: '_frb_x'"). The linker keeps those and whatever
+    # they reference, and never touches `common`. The model downloader is
+    # therefore absent from the binary because NOTHING REFERENCES IT, which is
+    # a stronger statement than deleting it after the fact -- and it is exactly
+    # what `ADR-0018 §1` asks for.
+    #
+    # These fourteen come from the flutter_rust_bridge crate, not from codegen,
+    # so they do not change when the API does. tool/build_runtime_pod.sh
+    # asserts the archive still exports exactly this set.
+    # force_load used to be what linked the archive at all; with it gone the
+    # library has to be named explicitly.
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "${BUILT_PRODUCTS_DIR}"',
+    'OTHER_LDFLAGS' => '$(inherited) -lairo_mind_runtime -Wl,-u,_frb_create_shutdown_callback -Wl,-u,_frb_dart_fn_deliver_output -Wl,-u,_frb_dart_opaque_dart2rust_encode -Wl,-u,_frb_dart_opaque_drop_thread_box_persistent_handle -Wl,-u,_frb_dart_opaque_rust2dart_decode -Wl,-u,_frb_free_wire_sync_rust2dart_dco -Wl,-u,_frb_free_wire_sync_rust2dart_sse -Wl,-u,_frb_get_rust_content_hash -Wl,-u,_frb_init_frb_dart_api_dl -Wl,-u,_frb_pde_ffi_dispatcher_primary -Wl,-u,_frb_pde_ffi_dispatcher_sync -Wl,-u,_frb_rust_vec_u8_free -Wl,-u,_frb_rust_vec_u8_new -Wl,-u,_frb_rust_vec_u8_resize',
   }
 end
