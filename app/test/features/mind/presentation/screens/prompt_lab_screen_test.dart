@@ -110,4 +110,42 @@ void main() {
     expect(find.text('Revised prompt: quiet garden revised'), findsOneWidget);
     expect(find.textContaining('Image generation failed'), findsNothing);
   });
+
+  testWidgets('image mode handles empty generated image payloads safely', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PromptLabScreen(
+          initialImageMode: true,
+          generateImage: (_) async => const Success(
+            GeneratedImage(revisedPrompt: 'server accepted the prompt'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'http://127.0.0.1:8188/v1',
+    );
+    await tester.enterText(find.byType(TextField).at(1), 'quiet garden');
+    await tester.scrollUntilVisible(
+      find.text('Generate image'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Generate image'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('The image server returned no renderable image.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Revised prompt: server accepted the prompt'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
