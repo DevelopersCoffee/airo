@@ -290,14 +290,19 @@ class _GeneratedImageView extends StatelessWidget {
           child: Text('The image server returned malformed image data.'),
         );
       }
-    } else {
+    } else if (image.url?.trim().isNotEmpty == true) {
       child = Image.network(
-        image.url!,
+        image.url!.trim(),
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Padding(
           padding: EdgeInsets.all(16),
           child: Text('The image could not be loaded from the image server.'),
         ),
+      );
+    } else {
+      child = const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('The image server returned no renderable image.'),
       );
     }
     return Card(
