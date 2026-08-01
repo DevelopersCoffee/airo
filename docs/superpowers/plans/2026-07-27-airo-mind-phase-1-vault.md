@@ -2842,11 +2842,12 @@ impl ContentEnvelope {
         self.wrappings.iter().map(|w| w.context_id.as_str())
     }
 
-    /// First granting context, if any. Exists so `link_content` does not
-    /// allocate a `Vec` merely to take `.first()`.
-    pub(crate) fn first_context(&self) -> Option<&str> {
-        self.wrappings.first().map(|w| w.context_id.as_str())
-    }
+    // `RA-26`: `first_context` DELETED. It existed so `link_content` could
+    // avoid allocating a `Vec` to take `.first()` -- a micro-optimisation that
+    // changed the semantics, because the first wrapping is not necessarily one
+    // whose key the Vault still holds. `link_content` now searches
+    // `context_ids()` for a live one, and the compiler reported this method as
+    // never used, which is the fix confirming its only caller was the bug.
 
     /// True when no wrapping remains — the content is unrecoverable.
     ///
@@ -3741,10 +3742,25 @@ impl Vault {
         if self.revocations.is_content_revoked(&content_id) {
             return Err(VaultError::ContentRevoked(content_id));
         }
+        // `RA-26`: the first context whose key the Vault still HOLDS, not the
+        // first wrapping.
+        //
+        // `destroy_context` is `O(1)` by design -- it drops the key and leaves
+        // every wrapping in place -- so a dead wrapping is permanent, and
+        // `first_context()` returned it forever. The first context a user
+        // destroyed poisoned `link_content` for every content object that
+        // happened to list it first. `envelope.rs`'s own test says "closing a
+        // hospitalization must not destroy the receipt the tax capability
+        // depends on"; after the close the receipt was readable and
+        // un-linkable.
+        //
+        // `wrappings[0]` was never a stable choice either: `add_wrapping` does
+        // `retain` then `push`, so re-wrapping moves a context to the end.
         let existing = envelope
-            .first_context()
-            .ok_or_else(|| VaultError::ContentNotFound(content_id.clone()))?
-            .to_string();
+            .context_ids()
+            .find(|id| self.context_keys.contains_key(*id))
+            .map(str::to_string)
+            .ok_or_else(|| VaultError::ContentNotFound(content_id.clone()))?;
         let source_key = self
             .context_keys
             .get(&existing)
@@ -4030,6 +4046,30 @@ mod tests {
         assert_eq!(first, second);
     }
 
+    /// `RA-26` failing form. Content stays linkable while ANY wrapping is live.
+    ///
+    /// Reproduced by rust-architect from an external consumer: content wrapped
+    /// under `hospitalization` and `tax-2026`, destroy `hospitalization`, and
+    /// `link_content` fails forever with `NoWrappingForContext` naming the
+    /// destroyed context -- pointing a debugging caller at the wrong subject.
+    #[test]
+    fn mut_content_stays_linkable_after_its_first_context_is_destroyed() {
+        let mut vault = vault();
+        let (_key, mut envelope) = vault
+            .add_content(
+                &content_id("bill-001"),
+                &[&cid("hospitalization"), &cid("tax-2026")],
+            )
+            .unwrap();
+
+        let _directive = vault.destroy_context(&cid("hospitalization")).unwrap();
+
+        // `tax-2026` is still live, so the receipt must remain linkable.
+        vault
+            .link_content(&cid("audit-2027"), &mut envelope)
+            .expect("content with a live wrapping must stay linkable -- RA-26");
+    }
+
     /// `SEC-15` / `SEC-38` failing form. The LIVE path must refuse a revoked
     /// device.
     ///
@@ -4244,11 +4284,28 @@ impl VaultPayload {
     /// `aggregate.rs` never names a key byte. Narrowing `KeyBytes::as_bytes` to
     /// `pub(in crate::vault::package)` broke `Vault::from_payload`, which is
     /// the finding: the aggregate was reaching into key material.
-    pub(super) fn into_context_keys(self) -> std::collections::BTreeMap<String, ContextKey> {
-        self.context_keys
+    /// Consumes the payload into its four parts, converting key bytes here so
+    /// the aggregate never names one. `PERF` -- moves rather than clones.
+    #[allow(clippy::type_complexity)]
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        RootPublicKey,
+        std::collections::BTreeMap<String, ContextKey>,
+        Vec<DeviceCertificate>,
+        RevocationLedger,
+    ) {
+        let context_keys = self
+            .context_keys
             .into_iter()
             .map(|(id, k)| (id, ContextKey::from_bytes(*k.as_bytes())))
-            .collect()
+            .collect();
+        (
+            self.root_public_key,
+            context_keys,
+            self.device_certificates,
+            self.revocations,
+        )
     }
 
     pub(super) fn root_public_key(&self) -> &RootPublicKey {
@@ -6218,14 +6275,19 @@ impl Vault {
         payload: super::package::VaultPayload,
         _: super::restore::RevocationsApplied,
     ) -> Self {
-        let root_public_key = payload.root_public_key;
-        let revocations = payload.revocations.clone();
-        let device_certificates_in = payload.device_certificates.clone();
-        // `SEC-37` / `A20`: the aggregate never names a key byte. `package.rs`
-        // owns the conversion.
+        // `PERF`: MOVED, not cloned. Revision 9B cloned the ledger and the
+        // certificates to satisfy the borrow checker after `into_context_keys`
+        // consumed the payload, which put the entire revocation ledger resident
+        // twice at peak -- measured +21% to +38% restore peak, and `into_vault`
+        // from 0.0 ms to 85 ms at 1M entries.
+        //
+        // `into_parts` keeps the key conversion inside `package.rs`, so
+        // `SEC-37`/`A20` holds: the aggregate still never names a key byte.
+        let (root_public_key, context_keys, device_certificates_in, revocations) =
+            payload.into_parts();
         let mut vault = Self {
             root_public_key,
-            context_keys: payload.into_context_keys(),
+            context_keys,
             device_certificates: Vec::new(),
             revocations,
         };
