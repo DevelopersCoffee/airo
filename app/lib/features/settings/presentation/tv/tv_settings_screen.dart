@@ -29,6 +29,35 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
   static final _sections = iptvSettingsSections
       .where((section) => section.isVisibleFor(ShellId.tv))
       .toList(growable: false);
+  late final Map<IptvSettingsSectionId, FocusNode> _sectionFocusNodes = {
+    for (final section in _sections)
+      section.id: FocusNode(debugLabel: 'TV settings ${section.id.name}'),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _sectionFocusNodes[_selected]?.requestFocus();
+      // Fire TV may restore the rail item that launched this overlay after
+      // its first frame. Reassert the section target once that restoration
+      // has completed so selected styling and actual D-pad focus cannot
+      // diverge.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _sectionFocusNodes[_selected]?.requestFocus();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final node in _sectionFocusNodes.values) {
+      node.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +77,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: TvFocusable(
+                        focusNode: _sectionFocusNodes[section.id],
                         autofocus: section.id == IptvSettingsSectionId.theme,
                         onSelect: () => setState(() => _selected = section.id),
                         semanticLabel: section.labelFor(ShellId.tv),

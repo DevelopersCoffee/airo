@@ -167,6 +167,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   final FocusNode _genericRetryFocusNode = FocusNode(
     debugLabel: 'player recovery Try Again',
   );
+  Timer? _tvPlaybackFocusTimer;
+  String? _lastTvPlaybackFocusChannelId;
   FocusNode? _contextMenuRestoreFocusNode;
   bool _playerModalOpen = false;
   String? _lastRecoveryFocusToken;
@@ -244,6 +246,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
     _selectLongPressTimer?.cancel();
+    _tvPlaybackFocusTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
     _restartTransportFocusNode.dispose();
@@ -929,6 +932,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     required bool isPipActive,
   }) {
     _scheduleRecoveryFocus(state);
+    _scheduleTvPlaybackFocus(state);
     // Update wakelock based on current playback state
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1322,6 +1326,54 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       if (!mounted || _lastRecoveryFocusToken != token) return;
       if (target.canRequestFocus) target.requestFocus();
     });
+  }
+
+  void _scheduleTvPlaybackFocus(StreamingState state) {
+    if (!widget.useTvTransportBar) return;
+    final channelId = state.currentChannel?.id;
+    final readyForControls =
+        channelId != null &&
+        state.isPlaying &&
+        !state.hasError &&
+        !state.isLoading &&
+        !state.isBuffering;
+    if (!readyForControls) {
+      _lastTvPlaybackFocusChannelId = null;
+      _tvPlaybackFocusTimer?.cancel();
+      return;
+    }
+    if (_lastTvPlaybackFocusChannelId == channelId) return;
+    _lastTvPlaybackFocusChannelId = channelId;
+
+    void claimTransportFocus() {
+      if (!mounted || _lastTvPlaybackFocusChannelId != channelId) return;
+      // Never reset deliberate movement within the transport or steal from a
+      // player-owned modal. The delayed claim exists only to beat focus that
+      // escaped back to the retained channel grid.
+      if (_controlsHaveFocus || _playerModalOpen || _showContextMenu) return;
+      if (!_showControlsOverlay) {
+        setState(() => _showControlsOverlay = true);
+      }
+      if (_centerControlFocusNode.canRequestFocus) {
+        _centerControlFocusNode.requestFocus();
+      }
+    }
+
+    // The channel grid remains mounted behind fullscreen playback. Fire OS
+    // can restore its old card focus after Flutter's first frame, leaving the
+    // visible transport unable to receive CENTER. Reclaim once after layout,
+    // once after the following frame, and once after Fire's delayed restore.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      claimTransportFocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        claimTransportFocus();
+      });
+    });
+    _tvPlaybackFocusTimer?.cancel();
+    _tvPlaybackFocusTimer = Timer(
+      const Duration(milliseconds: 250),
+      claimTransportFocus,
+    );
   }
 
   void _scheduleGenericRecoveryFocus(String message) {

@@ -255,6 +255,47 @@ void main() {
         urlField.controller?.text,
         'https://iptv-org.github.io/iptv/index.m3u',
       );
+      final saveButton = find.byKey(
+        const ValueKey('playlist-source-save-button'),
+      );
+      final saveFocusable = tester.widget<TvFocusable>(
+        find.ancestor(of: saveButton, matching: find.byType(TvFocusable)),
+      );
+      expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
     },
   );
+
+  testWidgets('TV preset takes save focus back from a stale text field', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await pumpTvManagerDialog(tester, container);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    final labelField = tester.widget<TextField>(
+      find.byKey(const ValueKey('playlist-source-label-field')),
+    );
+    labelField.focusNode?.requestFocus();
+    await tester.pump();
+    expect(labelField.focusNode?.hasPrimaryFocus, isTrue);
+
+    await tester.tap(find.widgetWithText(ActionChip, 'All channels'));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Fire OS can restore the field after Flutter's immediate post-frame
+    // requests. The delayed preset reassertion must still win.
+    labelField.focusNode?.requestFocus();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+
+    final saveButton = find.byKey(
+      const ValueKey('playlist-source-save-button'),
+    );
+    final saveFocusable = tester.widget<TvFocusable>(
+      find.ancestor(of: saveButton, matching: find.byType(TvFocusable)),
+    );
+    expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
+  });
 }
