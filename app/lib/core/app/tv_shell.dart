@@ -77,7 +77,13 @@ class _TvShellState extends ConsumerState<TvShell> {
                 padding: EdgeInsets.only(
                   left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
                 ),
-                child: widget.child,
+                // Non-live destinations are painted over the retained live
+                // surface. Keep that surface mounted for playback, but never
+                // leave its controls in the focus graph behind an overlay.
+                child: ExcludeFocus(
+                  excluding: _overlay != null,
+                  child: widget.child,
+                ),
               ),
             ),
           ),
