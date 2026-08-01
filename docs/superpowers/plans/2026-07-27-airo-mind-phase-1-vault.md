@@ -4431,6 +4431,35 @@ impl RecoveryPackage {
     /// Tamper constructors. `#[cfg(test)]`, so the six `I3` tamper tests can
     /// still prove the AAD catches each field while no consumer can write one.
     /// Same shape as `RootPublicKey::from_bytes`.
+    /// Re-seals the trailer carrying a head that disagrees with the plaintext
+    /// `revocation_epoch`. Only a buggy writer produces this, so only a test
+    /// can construct it.
+    #[cfg(test)]
+    pub(crate) fn with_desynced_trailer_head(mut self, seed: &Seed, head: u64) -> Self {
+        use sha2::Digest as _;
+        let package_nonce: [u8; 24] = self.nonce.as_slice().try_into().unwrap();
+        let cipher = XChaCha20Poly1305::new(&package_key(seed).unwrap().into());
+        let aad = self.header_aad().unwrap();
+        let mut digest = Sha256::new();
+        for frame in &self.frames {
+            digest.update(&frame.ciphertext);
+        }
+        let mut plain = Vec::with_capacity(44);
+        plain.extend_from_slice(&u32::try_from(self.frames.len()).unwrap().to_be_bytes());
+        plain.extend_from_slice(&head.to_be_bytes());
+        plain.extend_from_slice(&digest.finalize());
+        self.trailer = cipher
+            .encrypt(
+                XNonce::from_slice(&frame_nonce(&package_nonce, u32::MAX)),
+                Payload {
+                    msg: &plain,
+                    aad: &aad,
+                },
+            )
+            .unwrap();
+        self
+    }
+
     #[cfg(test)]
     pub(crate) fn with_format_version_tampered(mut self, v: u32) -> Self {
         self.format_version = v;
@@ -5336,6 +5365,36 @@ mod tests {
         assert!(
             matches!(package.decrypt(&seed), Err(VaultError::DecryptionFailed)),
             "the nonce tail is unauthenticated -- SEC-35 has no failing form"
+        );
+    }
+
+    /// `SEC-36` cross-check failing form. The plaintext header epoch and the
+    /// sealed trailer head must agree.
+    ///
+    /// Both are authenticated — the header via `header_aad`, the trailer via
+    /// AEAD under that same AAD — so an attacker cannot desync them. This
+    /// guards a **buggy writer**: one that computes the header epoch from one
+    /// source and the trailer head from another. `SEC-36` is exactly that class
+    /// of defect one layer down, so the cross-check needs its own failing form.
+    ///
+    /// Requires a test-only constructor, because a correct writer cannot
+    /// produce this package. That is the point.
+    #[test]
+    fn mut_header_epoch_and_sealed_head_must_agree() {
+        let (mut vault, seed) = seeded_vault();
+        let _d = vault.destroy_content("note-1").unwrap();
+        let package = RecoveryPackage::export(&vault, &seed).unwrap();
+        assert!(package.decrypt(&seed).is_ok(), "control: consistent package opens");
+
+        // Through `open`, not `decrypt`: the cross-check lives on the route a
+        // consumer actually takes. `decrypt` returns the payload without it,
+        // which is safe only because it is private to `package.rs` -- worth
+        // knowing, since that is the kind of split SEC-1 was about.
+        let desynced = package.with_desynced_trailer_head(&seed, 999);
+        assert!(
+            crate::vault::restore::SealedRestore::load(&desynced, &seed).is_err(),
+            "a package whose header epoch disagrees with its sealed head opened \
+             -- the cross-check has no failing form"
         );
     }
 
