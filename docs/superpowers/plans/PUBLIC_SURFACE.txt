@@ -46,7 +46,9 @@ vault/envelope.rs :: struct SealedEnvelope
 vault/error.rs :: enum VaultError
 vault/identifier.rs :: fn as_str
 vault/identifier.rs :: fn new
+vault/identifier.rs :: struct ContentId
 vault/identifier.rs :: struct ContextId
+vault/identifier.rs :: struct DeviceId
 vault/identity.rs :: fn as_bytes
 vault/identity.rs :: fn from_seed
 vault/identity.rs :: fn identity_id

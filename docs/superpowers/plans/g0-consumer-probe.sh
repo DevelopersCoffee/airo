@@ -143,11 +143,11 @@ probe DENY SEC-43 'a forged envelope yields no content key' \
 echo
 echo "Supported journeys must be reachable:"
 probe ALLOW RA-18 'the full restore path is callable' \
-  'let (_k, _e) = vault.add_content("n", &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
+  'let (_k, _e) = vault.add_content(&airo_mind::ContentId::new("n").unwrap(), &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
    let p = RecoveryPackage::export(&vault, &seed).unwrap();
    let v = SealedRestore::load(&p, &seed).unwrap()
        .apply_revocations(&RevocationSource::package_only()).unwrap().into_vault();
-   println!("{}", v.is_content_destroyed("n"));'
+   println!("{}", v.is_content_destroyed(&airo_mind::ContentId::new("n").unwrap()));'
 # SEC-48 INVERTS SEC-39's probe. Revision 9B made a non-blind restore reachable
 # and, in the same change, made it FORGEABLE -- an empty ledger plus a free
 # string reports was_blind() == false, which is R1's original bypass. This probe
@@ -169,7 +169,7 @@ probe ALLOW SEC-38 'the device-trust journey is callable' \
   'let cert: DeviceCertificate = unimplemented!();
    vault.trust_device(cert).unwrap(); println!("{}", vault.trusted_devices().len());'
 probe ALLOW RA-Q4 'content can actually be sealed and opened' \
-  'let (k, e) = vault.add_content("n", &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
+  'let (k, e) = vault.add_content(&airo_mind::ContentId::new("n").unwrap(), &[&airo_mind::ContextId::new("inbox").unwrap()]).unwrap();
    let c = k.seal(b"plaintext").unwrap();
    assert_eq!(k.open(&c).unwrap().as_slice(), b"plaintext");
    let s = vault.seal_envelope(&e).unwrap();
