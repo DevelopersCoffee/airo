@@ -45,16 +45,14 @@ Future<T?> showAdaptiveIptvSheet<T>({
         // raw half, which leaves the paired pop to close the underlying TV
         // activity. Absorb only that raw half; the platform pop still
         // dismisses this route exactly once.
-        return Focus(
-          canRequestFocus: false,
-          onKeyEvent: (_, event) {
-            if (event is KeyDownEvent &&
-                (event.logicalKey == LogicalKeyboardKey.escape ||
-                    event.logicalKey == LogicalKeyboardKey.goBack ||
-                    event.logicalKey == LogicalKeyboardKey.browserBack)) {
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
+        return Shortcuts(
+          shortcuts: const {
+            SingleActivator(LogicalKeyboardKey.escape):
+                DoNothingAndStopPropagationIntent(),
+            SingleActivator(LogicalKeyboardKey.goBack):
+                DoNothingAndStopPropagationIntent(),
+            SingleActivator(LogicalKeyboardKey.browserBack):
+                DoNothingAndStopPropagationIntent(),
           },
           child: dialog,
         );
