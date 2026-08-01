@@ -79,7 +79,8 @@ class ModelHealthCenterScreen extends StatelessWidget {
         children: [
           Semantics(
             container: true,
-            label: '${report.modelName} runtime status: ${report.status.name}',
+            label:
+                '${report.modelName} runtime status: ${_statusLabel(report.status)}',
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(18),
@@ -168,14 +169,21 @@ class ModelHealthCenterScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (final entry in report.trace!.entries)
-                    ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        radius: 12,
-                        child: Text('${entry.sequence}'),
+                    Semantics(
+                      container: true,
+                      label:
+                          'Runtime trace step ${entry.sequence}: ${_traceLabel(entry.event)}, ${entry.elapsedMs} milliseconds.',
+                      child: ExcludeSemantics(
+                        child: ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            radius: 12,
+                            child: Text('${entry.sequence}'),
+                          ),
+                          title: Text(_traceLabel(entry.event)),
+                          trailing: Text('${entry.elapsedMs} ms'),
+                        ),
                       ),
-                      title: Text(_traceLabel(entry.event)),
-                      trailing: Text('${entry.elapsedMs} ms'),
                     ),
                 ],
               ),
@@ -291,19 +299,23 @@ class _StageTile extends StatelessWidget {
       ),
     };
     return Semantics(
-      label: '${result.stage.name}: ${result.status.name}. ${result.detail}',
-      child: ListTile(
-        leading: Column(
-          children: [
-            Icon(icon, color: color),
-            if (!isLast)
-              Expanded(
-                child: VerticalDivider(color: color.withValues(alpha: 0.35)),
-              ),
-          ],
+      container: true,
+      label:
+          '${_stageLabel(result.stage)}: ${_stageStatusLabel(result.status)}. ${result.detail}',
+      child: ExcludeSemantics(
+        child: ListTile(
+          leading: Column(
+            children: [
+              Icon(icon, color: color),
+              if (!isLast)
+                Expanded(
+                  child: VerticalDivider(color: color.withValues(alpha: 0.35)),
+                ),
+            ],
+          ),
+          title: Text(_stageLabel(result.stage)),
+          subtitle: Text(result.detail),
         ),
-        title: Text(_stageLabel(result.stage)),
-        subtitle: Text(result.detail),
       ),
     );
   }
@@ -316,4 +328,13 @@ class _StageTile extends StatelessWidget {
     ModelHealthStage.warmedUp => 'Warmed up',
     ModelHealthStage.running => 'Running',
   };
+
+  static String _stageStatusLabel(ModelHealthStageStatus status) =>
+      switch (status) {
+        ModelHealthStageStatus.passed => 'complete',
+        ModelHealthStageStatus.blocked => 'blocked',
+        ModelHealthStageStatus.failed => 'failed',
+        ModelHealthStageStatus.pending => 'in progress',
+        ModelHealthStageStatus.unknown => 'not checked yet',
+      };
 }
