@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 
+import '../../../application/channel_share.dart';
 import '../../../application/iptv_deep_link.dart';
 import '../../../application/providers/channel_filters_provider.dart';
 import '../../../application/providers/iptv_providers.dart';
@@ -155,17 +156,41 @@ class ChannelInfoBar extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final filters = ref.read(channelFiltersProvider);
+      final shareValidation = AiroPlaylistUrlPolicy.validateShareStreamUrl(
+        selectedChannel.streamUrl,
+      );
       final link = IptvDeepLinkIntent(
         channelId: selectedChannel.id,
         filters: filters,
+        channelName: shareValidation.isAllowed ? selectedChannel.name : null,
+        streamUrl: shareValidation.uri,
       ).toUri();
-      await Clipboard.setData(ClipboardData(text: link.toString()));
+      final message = ref
+          .read(channelShareMessageComposerProvider)
+          .compose(
+            channelName: selectedChannel.name,
+            link: link,
+            isPlayable: shareValidation.isAllowed,
+          );
+      final shared = await ref
+          .read(channelShareGatewayProvider)
+          .share(
+            subject: 'Watch ${selectedChannel.name} in Airo',
+            text: message,
+          );
+      if (!shared) {
+        await Clipboard.setData(ClipboardData(text: message));
+      }
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('${selectedChannel.name} copied to clipboard'),
+            content: Text(
+              shared
+                  ? '${selectedChannel.name} ready to share'
+                  : '${selectedChannel.name} share message copied',
+            ),
           ),
         );
     } catch (_) {

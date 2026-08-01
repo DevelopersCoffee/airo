@@ -20,7 +20,10 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
       );
     });
 
@@ -219,6 +222,21 @@ void main() {
           ]);
         },
       );
+    });
+
+    test('saved Personal channel joins the normal IPTV library', () async {
+      final repository = container.read(personalChannelRepositoryProvider);
+      final saved = await repository.upsert(
+        name: '9XM',
+        streamUrl: 'https://media.example.com/9xm/master.m3u8',
+      );
+      container.invalidate(personalChannelsProvider);
+      container.invalidate(iptvChannelsProvider);
+
+      final channels = await container.read(iptvChannelsProvider.future);
+
+      expect(channels, contains(saved));
+      expect(channels.single.group, 'Personal Channels');
     });
 
     group('compactEpgSliceForChannelsProvider', () {

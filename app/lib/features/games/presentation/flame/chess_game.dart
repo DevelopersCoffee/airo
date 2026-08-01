@@ -281,7 +281,12 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     final movedPiece = boardBefore.squares[move.from.index]!;
     final isCapture = boardBefore.squares[move.to.index] != null;
 
-    engine.makeMove(move);
+    // A refused move must not be recorded as played. Ignoring this result is
+    // what made a rejected move still highlight its from/to squares, dispatch a
+    // move event and play audio, while the position never changed.
+    if (!engine.makeMove(move)) {
+      return;
+    }
     lastMove = move;
 
     // Create and dispatch move event

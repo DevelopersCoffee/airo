@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +18,8 @@ void main() {
     required double width,
     Duration liveDelay = Duration.zero,
     VideoPlayerStreamingService? service,
+    Stream<StreamingState>? states,
+    FocusNode? retainedFocusNode,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -25,20 +29,22 @@ void main() {
         if (service != null)
           iptvStreamingServiceProvider.overrideWithValue(service),
         streamingStateProvider.overrideWith(
-          (ref) => Stream.value(
-            StreamingState(
-              playbackState: PlaybackState.playing,
-              isLiveStream: true,
-              liveDelay: liveDelay,
-              currentQuality: VideoQuality.high,
-              currentChannel: IPTVChannel(
-                id: 'news-1',
-                name: 'City News Live',
-                streamUrl: 'https://example.com/news.m3u8',
-                group: 'News',
+          (ref) =>
+              states ??
+              Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.playing,
+                  isLiveStream: true,
+                  liveDelay: liveDelay,
+                  currentQuality: VideoQuality.high,
+                  currentChannel: IPTVChannel(
+                    id: 'news-1',
+                    name: 'City News Live',
+                    streamUrl: 'https://example.com/news.m3u8',
+                    group: 'News',
+                  ),
+                ),
               ),
-            ),
-          ),
         ),
       ],
     );
@@ -49,13 +55,22 @@ void main() {
         container: container,
         child: MaterialApp(
           home: Scaffold(
-            body: SizedBox(
-              width: width,
-              height: 540,
-              child: const VideoPlayerWidget(
-                initiallyFullscreen: true,
-                useTvTransportBar: true,
-              ),
+            body: Stack(
+              children: [
+                SizedBox(
+                  width: width,
+                  height: 540,
+                  child: const VideoPlayerWidget(
+                    initiallyFullscreen: true,
+                    useTvTransportBar: true,
+                  ),
+                ),
+                if (retainedFocusNode != null)
+                  Focus(
+                    focusNode: retainedFocusNode,
+                    child: const SizedBox.shrink(),
+                  ),
+              ],
             ),
           ),
         ),
@@ -136,6 +151,49 @@ void main() {
 
     expect(find.text('Actions for'), findsOneWidget);
   });
+
+  testWidgets(
+    'playing channel reclaims transport focus after retained-grid restore',
+    (tester) async {
+      final states = StreamController<StreamingState>();
+      final retainedFocusNode = FocusNode(debugLabel: 'retained channel card');
+      addTearDown(states.close);
+      addTearDown(retainedFocusNode.dispose);
+      await pumpTransportBar(
+        tester,
+        width: 960,
+        states: states.stream,
+        retainedFocusNode: retainedFocusNode,
+      );
+      retainedFocusNode.requestFocus();
+      await tester.pump();
+
+      states.add(
+        StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          currentChannel: IPTVChannel(
+            id: 'news-1',
+            name: 'City News Live',
+            streamUrl: 'https://example.com/news.m3u8',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      retainedFocusNode.requestFocus();
+      await tester.pump();
+      expect(retainedFocusNode.hasPrimaryFocus, isTrue);
+
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player center control',
+      );
+    },
+  );
 
   testWidgets(
     'transport stays visible beyond auto-hide while a D-pad control is focused',

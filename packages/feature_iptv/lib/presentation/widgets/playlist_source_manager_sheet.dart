@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,6 +60,7 @@ class _PlaylistSourceManagerSheetState
   final _cancelFocusNode = FocusNode(debugLabel: 'playlist source cancel');
   final _saveFocusNode = FocusNode(debugLabel: 'playlist source save');
   late final List<FocusNode> _presetFocusNodes;
+  Timer? _presetSaveFocusTimer;
   bool _showAddForm = false;
   bool _isSaving = false;
   bool _initialTvFocusScheduled = false;
@@ -91,6 +94,7 @@ class _PlaylistSourceManagerSheetState
 
   @override
   void dispose() {
+    _presetSaveFocusTimer?.cancel();
     _labelController.dispose();
     _urlController.dispose();
     _addSourceFocusNode.dispose();
@@ -134,17 +138,20 @@ class _PlaylistSourceManagerSheetState
   bool get _textFieldOwnsFocus =>
       _labelFocusNode.hasFocus || _urlFocusNode.hasFocus;
 
-  void _requestTvFocus(FocusNode focusNode) {
+  void _requestTvFocus(
+    FocusNode focusNode, {
+    bool preserveTextFieldFocus = true,
+  }) {
     if (!_isTenFootMode) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !focusNode.canRequestFocus || _textFieldOwnsFocus) return;
+      if (!mounted || !focusNode.canRequestFocus) return;
+      if (preserveTextFieldFocus && _textFieldOwnsFocus) return;
       focusNode.requestFocus();
       // Fire TV restores the launching control after the modal's first frame.
       // Reassert the sheet's first target once that restoration has completed.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !focusNode.canRequestFocus || _textFieldOwnsFocus) {
-          return;
-        }
+        if (!mounted || !focusNode.canRequestFocus) return;
+        if (preserveTextFieldFocus && _textFieldOwnsFocus) return;
         focusNode.requestFocus();
       });
     });
@@ -178,6 +185,15 @@ class _PlaylistSourceManagerSheetState
       _labelError = null;
       _urlError = null;
       _submitError = null;
+    });
+    // A preset is already complete. On TV, move straight to the save action
+    // instead of making the viewer traverse two populated text fields and
+    // unnecessarily opening the platform keyboard.
+    _requestTvFocus(_saveFocusNode, preserveTextFieldFocus: false);
+    _presetSaveFocusTimer?.cancel();
+    _presetSaveFocusTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted || !_saveFocusNode.canRequestFocus) return;
+      _saveFocusNode.requestFocus();
     });
   }
 

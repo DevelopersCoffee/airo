@@ -57,7 +57,8 @@ class IptvFeatureModule extends AppModule {
       GoRoute(
         path: '/iptv',
         name: 'iptv',
-        builder: (context, state) => const IPTVScreen(),
+        builder: (context, state) =>
+            IPTVScreen(deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri)),
       ),
       GoRoute(
         path: '/iptv/player',
