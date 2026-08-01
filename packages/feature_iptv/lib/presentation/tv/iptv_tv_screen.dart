@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
@@ -1309,13 +1308,11 @@ class _TvFullscreenPlayerPage extends StatefulWidget {
 }
 
 class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
-  late final FocusNode _focusNode;
   bool _isClosing = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode(debugLabel: 'Airo TV fullscreen player');
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
@@ -1324,17 +1321,11 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
     // dispose() below already pairs with an exit call, so request the
     // matching enter here.
     unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _focusNode.requestFocus();
-      }
-    });
   }
 
   @override
   void dispose() {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
-    _focusNode.dispose();
     unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     super.dispose();
   }
@@ -1358,15 +1349,12 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          _close();
-        }
-      },
+    // Fire OS sends a platform pop request even when Flutter handled the raw
+    // BACK key. Veto that duplicate at the fullscreen route itself; the player
+    // owns the raw key and either dismisses its overlay or calls [_close].
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async => false,
       child: Scaffold(
         key: const ValueKey('airo-tv-fullscreen-player'),
         backgroundColor: Colors.black,

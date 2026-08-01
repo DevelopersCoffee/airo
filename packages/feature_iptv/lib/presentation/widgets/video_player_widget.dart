@@ -95,6 +95,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isFullscreen = false;
   bool _isCinemaMode = false;
   Timer? _hideControlsTimer;
+  bool _suppressNextPlatformBack = false;
   static const _controlsHideDelay = Duration(seconds: 4);
 
   /// Default focus holder for the player surface. While it has focus the
@@ -109,6 +110,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   final FocusNode _centerControlFocusNode = FocusNode(
     debugLabel: 'player center control',
   );
+  final FocusNode _restartTransportFocusNode = FocusNode(
+    debugLabel: 'player restart',
+  );
   final FocusNode _moreActionsFocusNode = FocusNode(
     debugLabel: 'player more actions',
   );
@@ -118,6 +122,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   );
   final FocusNode _subtitleTransportFocusNode = FocusNode(
     debugLabel: 'player subtitles',
+  );
+  final FocusNode _favoriteTransportFocusNode = FocusNode(
+    debugLabel: 'player favorite',
   );
   final FocusNode _playerActionsAudioFocusNode = FocusNode(
     debugLabel: 'player action Listen only',
@@ -222,10 +229,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _selectLongPressTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
+    _restartTransportFocusNode.dispose();
     _moreActionsFocusNode.dispose();
     _infoFocusNode.dispose();
     _audioTransportFocusNode.dispose();
     _subtitleTransportFocusNode.dispose();
+    _favoriteTransportFocusNode.dispose();
     _playerActionsAudioFocusNode.dispose();
     _playerActionsQualityFocusNode.dispose();
     _playerActionsSubtitleFocusNode.dispose();
@@ -509,12 +518,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         );
         return TvInputResult.handled;
       case TvInputKey.back:
-        if (_showContextMenu) {
-          _closeContextMenu();
+        if (_quickBrowse != null) {
+          // Fire OS follows this raw BACK event with a platform pop-route
+          // request. Some devices dispatch that paired route callback more
+          // than once, so keep suppressing it until the next raw BACK begins
+          // a new, intentional operation.
+          _suppressNextPlatformBack = true;
+          setState(() => _quickBrowse = null);
           return TvInputResult.handled;
         }
-        if (_quickBrowse != null) {
-          setState(() => _quickBrowse = null);
+        _suppressNextPlatformBack = false;
+        final closeFullscreen = widget.onBack ?? widget.onFullscreenToggle;
+        if (widget.initiallyFullscreen && closeFullscreen != null) {
+          closeFullscreen();
           return TvInputResult.handled;
         }
         return TvInputResult.notHandled;
@@ -923,14 +939,41 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // no route to pop). PopScope is what actually intercepts the platform
     // back button; block it exactly when an overlay needs BACK to close it
     // instead of leaving the app.
+    final ownsFullscreenBack =
+        widget.initiallyFullscreen &&
+        (widget.onBack != null || widget.onFullscreenToggle != null);
     return PopScope(
-      canPop: !_showContextMenu && _quickBrowse == null,
+      // A fullscreen player with an explicit close callback owns Android BACK
+      // for its entire lifetime. Fire TV can keep a platform back operation
+      // pending after the raw key-up; changing canPop from false to true on a
+      // timer lets that old operation pop the route later.
+      canPop:
+          !ownsFullscreenBack &&
+          !_showContextMenu &&
+          _quickBrowse == null &&
+          !_suppressNextPlatformBack,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+        // Dismiss a visible overlay first, whatever the suppression latch says.
+        // A latch left over from an earlier overlay must never strand the one
+        // on screen now: BACK is the only way to close these.
         if (_showContextMenu) {
           _closeContextMenu();
-        } else {
+          return;
+        }
+        if (_quickBrowse != null) {
           setState(() => _quickBrowse = null);
+          return;
+        }
+        if (_suppressNextPlatformBack) {
+          // Fire OS may deliver duplicate platform pop callbacks for the raw
+          // BACK that already dismissed an overlay. Only leaving fullscreen is
+          // at risk from those duplicates. Do not clear the latch here: the
+          // next raw BACK clears it before performing the next action.
+          return;
+        }
+        if (ownsFullscreenBack) {
+          (widget.onBack ?? widget.onFullscreenToggle)?.call();
         }
       },
       child: TvInputHandler(
@@ -1783,26 +1826,59 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               // the MENU hint don't reliably fit the safe-area width on
               // every real panel size, and overflowing here would crash
               // the frame rather than just clip.
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 10,
-                runSpacing: 8,
-                children: [
-                  ..._buildTvTransportButtons(context, service, state),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 6),
-                    child: Text(
-                      'MENU for more actions',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
+              Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: _handleTvTransportKey,
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    ..._buildTvTransportButtons(context, service, state),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 6),
+                      child: Text(
+                        'MENU for more actions',
+                        style: TextStyle(color: Colors.white38, fontSize: 12),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  KeyEventResult _handleTvTransportKey(FocusNode node, KeyEvent event) {
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key != TvInputKey.left && key != TvInputKey.right) {
+      return KeyEventResult.ignored;
+    }
+    // Consume the complete physical press so Fire OS cannot combine this
+    // explicit linear order with Flutter's geometric traversal.
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
+
+    final focusNodes = <FocusNode>[
+      _centerControlFocusNode,
+      _restartTransportFocusNode,
+      _audioTransportFocusNode,
+      _subtitleTransportFocusNode,
+      _favoriteTransportFocusNode,
+      _infoFocusNode,
+      _moreActionsFocusNode,
+    ];
+    final currentIndex = focusNodes.indexWhere(
+      (candidate) => candidate.hasFocus,
+    );
+    if (currentIndex < 0) return KeyEventResult.handled;
+    final offset = key == TvInputKey.right ? 1 : -1;
+    final targetIndex = (currentIndex + offset).clamp(0, focusNodes.length - 1);
+    focusNodes[targetIndex].requestFocus();
+    return KeyEventResult.handled;
   }
 
   List<Widget> _buildTvTransportButtons(
@@ -1823,10 +1899,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         key: const ValueKey('iptv-tv-transport-play-pause'),
         focusNode: _centerControlFocusNode,
         autofocus: true,
+        onFocus: _startHideControlsTimer,
         onSelect: () {
-          if (state.isLiveStream && state.isBehindLive && state.isPlaying) {
-            service.goLive();
-          } else if (state.isPlaying) {
+          if (state.isPlaying) {
             service.pause();
           } else {
             service.resume();
@@ -1842,6 +1917,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-restart'),
+        focusNode: _restartTransportFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: canRewind ? () => _seekBackward10(service, state) : null,
         borderRadius: 10,
         semanticLabel: state.isLiveStream
@@ -1852,6 +1929,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-audio'),
         focusNode: _audioTransportFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: () => unawaited(
           _showTrackSelectorFor(
             context,
@@ -1871,6 +1949,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-subtitles'),
         focusNode: _subtitleTransportFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: () => unawaited(
           _showTrackSelector(
             context,
@@ -1888,6 +1967,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-favourite'),
+        focusNode: _favoriteTransportFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: channel == null ? null : _toggleFavoriteForCurrentChannel,
         borderRadius: 10,
         semanticLabel: isFavorite
@@ -1903,6 +1984,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-info'),
         focusNode: _infoFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: channel == null
             ? null
             : () => _openContextMenu(restoreFocusNode: _infoFocusNode),
@@ -1916,6 +1998,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       TvFocusable(
         key: const ValueKey('iptv-player-more-button'),
         focusNode: _moreActionsFocusNode,
+        onFocus: _startHideControlsTimer,
         onSelect: () => _showPlayerActionsSheet(
           context,
           service,
@@ -3106,7 +3189,6 @@ class _ContextMenuOverlay extends ConsumerWidget {
       width: 280,
       child: _TvModalFocusScope(
         initialFocusNode: firstFocusNode,
-        onBack: onClose,
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
           decoration: BoxDecoration(
@@ -3316,12 +3398,10 @@ class _TvModalFocusScope extends StatefulWidget {
   const _TvModalFocusScope({
     required this.initialFocusNode,
     required this.child,
-    this.onBack,
   });
 
   final FocusNode initialFocusNode;
   final Widget child;
-  final VoidCallback? onBack;
 
   @override
   State<_TvModalFocusScope> createState() => _TvModalFocusScopeState();
@@ -3348,26 +3428,11 @@ class _TvModalFocusScopeState extends State<_TvModalFocusScope> {
     super.dispose();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent ||
-        TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey) !=
-            TvInputKey.back ||
-        widget.onBack == null) {
-      return KeyEventResult.ignored;
-    }
-    widget.onBack!.call();
-    return KeyEventResult.handled;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      canRequestFocus: false,
-      onKeyEvent: _handleKeyEvent,
-      child: FocusTraversalGroup(
-        policy: ReadingOrderTraversalPolicy(),
-        child: FocusScope(node: _scopeNode, child: widget.child),
-      ),
+    return FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: FocusScope(node: _scopeNode, child: widget.child),
     );
   }
 }

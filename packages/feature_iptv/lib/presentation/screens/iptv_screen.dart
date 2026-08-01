@@ -1124,7 +1124,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
           ? PopScope<void>(
               canPop: false,
               onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) _exitFullscreen();
+                // The fullscreen VideoPlayerWidget owns raw BACK: it either
+                // dismisses its active overlay or calls _toggleFullscreen.
+                // Android/Fire OS follows that raw event with a platform pop;
+                // this outer scope only absorbs the paired callback.
               },
               child: Focus(
                 focusNode: _fullscreenFocusNode,

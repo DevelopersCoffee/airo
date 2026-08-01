@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_playlist/platform_playlist.dart';
@@ -51,8 +52,15 @@ class _PlaylistSourceManagerSheetState
     extends ConsumerState<PlaylistSourceManagerSheet> {
   final _labelController = TextEditingController();
   final _urlController = TextEditingController();
+  final _addSourceFocusNode = FocusNode(debugLabel: 'playlist source add');
+  final _labelFocusNode = FocusNode(debugLabel: 'playlist source label');
+  final _urlFocusNode = FocusNode(debugLabel: 'playlist source URL');
+  final _cancelFocusNode = FocusNode(debugLabel: 'playlist source cancel');
+  final _saveFocusNode = FocusNode(debugLabel: 'playlist source save');
+  late final List<FocusNode> _presetFocusNodes;
   bool _showAddForm = false;
   bool _isSaving = false;
+  bool _initialTvFocusScheduled = false;
   String? _labelError;
   String? _urlError;
   String? _submitError;
@@ -60,6 +68,10 @@ class _PlaylistSourceManagerSheetState
   @override
   void initState() {
     super.initState();
+    _presetFocusNodes = [
+      for (final preset in iptvOrgPlaylistPresets)
+        FocusNode(debugLabel: 'playlist preset ${preset.label}'),
+    ];
     final initialUrl = widget.initialUrl?.trim();
     if (initialUrl != null && initialUrl.isNotEmpty) {
       _showAddForm = true;
@@ -68,9 +80,27 @@ class _PlaylistSourceManagerSheetState
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialTvFocusScheduled || !_isTenFootMode) return;
+    _initialTvFocusScheduled = true;
+    _requestTvFocus(
+      _showAddForm ? _presetFocusNodes.first : _addSourceFocusNode,
+    );
+  }
+
+  @override
   void dispose() {
     _labelController.dispose();
     _urlController.dispose();
+    _addSourceFocusNode.dispose();
+    _labelFocusNode.dispose();
+    _urlFocusNode.dispose();
+    _cancelFocusNode.dispose();
+    _saveFocusNode.dispose();
+    for (final focusNode in _presetFocusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -81,6 +111,7 @@ class _PlaylistSourceManagerSheetState
       _urlError = null;
       _submitError = null;
     });
+    _requestTvFocus(_presetFocusNodes.first);
   }
 
   void _closeAddForm() {
@@ -92,6 +123,42 @@ class _PlaylistSourceManagerSheetState
       _urlError = null;
       _submitError = null;
     });
+    _requestTvFocus(_addSourceFocusNode);
+  }
+
+  bool get _isTenFootMode => MediaQuery.sizeOf(context).width >= 720;
+
+  void _requestTvFocus(FocusNode focusNode) {
+    if (!_isTenFootMode) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !focusNode.canRequestFocus) return;
+      focusNode.requestFocus();
+      // Fire TV restores the launching control after the modal's first frame.
+      // Reassert the sheet's first target once that restoration has completed.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && focusNode.canRequestFocus) focusNode.requestFocus();
+      });
+    });
+  }
+
+  Widget _adaptiveAction({
+    required bool tenFootMode,
+    required VoidCallback? onSelect,
+    required Widget child,
+    FocusNode? focusNode,
+    bool autofocus = false,
+    String? semanticLabel,
+  }) {
+    if (!tenFootMode) return child;
+    return TvFocusable(
+      focusNode: focusNode,
+      autofocus: autofocus,
+      enabled: onSelect != null,
+      onSelect: onSelect,
+      semanticLabel: semanticLabel,
+      semanticButton: true,
+      child: ExcludeFocus(child: child),
+    );
   }
 
   void _selectPreset(IptvOrgPlaylistPreset preset) {
@@ -202,6 +269,7 @@ class _PlaylistSourceManagerSheetState
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final tenFootMode = _isTenFootMode;
 
     return SafeArea(
       child: LayoutBuilder(
@@ -220,10 +288,15 @@ class _PlaylistSourceManagerSheetState
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Close playlist sources',
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                    _adaptiveAction(
+                      tenFootMode: tenFootMode,
+                      onSelect: () => Navigator.of(context).pop(),
+                      semanticLabel: 'Close playlist sources',
+                      child: IconButton(
+                        tooltip: 'Close playlist sources',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
                     ),
                   ],
                 ),
@@ -283,16 +356,21 @@ class _PlaylistSourceManagerSheetState
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              trailing: SizedBox.square(
-                                dimension: 48,
-                                child: IconButton(
-                                  tooltip: 'Remove ${source.label}',
-                                  constraints: const BoxConstraints(
-                                    minWidth: 48,
-                                    minHeight: 48,
+                              trailing: _adaptiveAction(
+                                tenFootMode: tenFootMode,
+                                onSelect: () => _removeSource(source),
+                                semanticLabel: 'Remove ${source.label}',
+                                child: SizedBox.square(
+                                  dimension: 48,
+                                  child: IconButton(
+                                    tooltip: 'Remove ${source.label}',
+                                    constraints: const BoxConstraints(
+                                      minWidth: 48,
+                                      minHeight: 48,
+                                    ),
+                                    onPressed: () => _removeSource(source),
+                                    icon: const Icon(Icons.delete_outline),
                                   ),
-                                  onPressed: () => _removeSource(source),
-                                  icon: const Icon(Icons.delete_outline),
                                 ),
                               ),
                             ),
@@ -305,15 +383,22 @@ class _PlaylistSourceManagerSheetState
                 if (!_showAddForm)
                   SizedBox(
                     height: 48,
-                    child: FilledButton.icon(
-                      key: const ValueKey('playlist-source-add-button'),
-                      onPressed: _openAddForm,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add playlist source'),
+                    child: _adaptiveAction(
+                      tenFootMode: tenFootMode,
+                      focusNode: _addSourceFocusNode,
+                      autofocus: tenFootMode,
+                      onSelect: _openAddForm,
+                      semanticLabel: 'Add playlist source',
+                      child: FilledButton.icon(
+                        key: const ValueKey('playlist-source-add-button'),
+                        onPressed: _openAddForm,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add playlist source'),
+                      ),
                     ),
                   )
                 else
-                  _buildAddForm(context),
+                  _buildAddForm(context, tenFootMode: tenFootMode),
               ],
             ),
           );
@@ -322,7 +407,7 @@ class _PlaylistSourceManagerSheetState
     );
   }
 
-  Widget _buildAddForm(BuildContext context) {
+  Widget _buildAddForm(BuildContext context, {required bool tenFootMode}) {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -354,10 +439,28 @@ class _PlaylistSourceManagerSheetState
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final preset in iptvOrgPlaylistPresets)
-                  ActionChip(
-                    label: Text(preset.label),
-                    onPressed: _isSaving ? null : () => _selectPreset(preset),
+                for (
+                  var index = 0;
+                  index < iptvOrgPlaylistPresets.length;
+                  index++
+                )
+                  _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _presetFocusNodes[index],
+                    autofocus:
+                        tenFootMode &&
+                        index == 0 &&
+                        (widget.initialUrl?.trim().isEmpty ?? true),
+                    onSelect: _isSaving
+                        ? null
+                        : () => _selectPreset(iptvOrgPlaylistPresets[index]),
+                    semanticLabel: iptvOrgPlaylistPresets[index].label,
+                    child: ActionChip(
+                      label: Text(iptvOrgPlaylistPresets[index].label),
+                      onPressed: _isSaving
+                          ? null
+                          : () => _selectPreset(iptvOrgPlaylistPresets[index]),
+                    ),
                   ),
               ],
             ),
@@ -365,6 +468,10 @@ class _PlaylistSourceManagerSheetState
             TextField(
               key: const ValueKey('playlist-source-label-field'),
               controller: _labelController,
+              focusNode: _labelFocusNode,
+              autofocus:
+                  tenFootMode &&
+                  (widget.initialUrl?.trim().isNotEmpty ?? false),
               enabled: !_isSaving,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
@@ -378,6 +485,7 @@ class _PlaylistSourceManagerSheetState
             TextField(
               key: const ValueKey('playlist-source-url-field'),
               controller: _urlController,
+              focusNode: _urlFocusNode,
               enabled: !_isSaving,
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.done,
@@ -406,18 +514,30 @@ class _PlaylistSourceManagerSheetState
               children: [
                 SizedBox(
                   height: 48,
-                  child: TextButton(
-                    onPressed: _isSaving ? null : _closeAddForm,
-                    child: const Text('Cancel'),
+                  child: _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _cancelFocusNode,
+                    onSelect: _isSaving ? null : _closeAddForm,
+                    semanticLabel: 'Cancel adding playlist source',
+                    child: TextButton(
+                      onPressed: _isSaving ? null : _closeAddForm,
+                      child: const Text('Cancel'),
+                    ),
                   ),
                 ),
                 SizedBox(
                   height: 48,
-                  child: FilledButton.icon(
-                    key: const ValueKey('playlist-source-save-button'),
-                    onPressed: _isSaving ? null : _addSource,
-                    icon: const Icon(Icons.add),
-                    label: Text(_isSaving ? 'Adding…' : 'Add source'),
+                  child: _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _saveFocusNode,
+                    onSelect: _isSaving ? null : _addSource,
+                    semanticLabel: 'Add source',
+                    child: FilledButton.icon(
+                      key: const ValueKey('playlist-source-save-button'),
+                      onPressed: _isSaving ? null : _addSource,
+                      icon: const Icon(Icons.add),
+                      label: Text(_isSaving ? 'Adding…' : 'Add source'),
+                    ),
                   ),
                 ),
               ],
