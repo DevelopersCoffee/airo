@@ -197,6 +197,14 @@ class TvFocusable extends StatefulWidget {
   final bool? semanticButton;
   final bool announceFocus;
 
+  /// Whether descendants may hold focus of their own.
+  ///
+  /// Defaults to false so a Material child such as [IconButton] cannot add a
+  /// second, invisible D-pad stop inside one visual target. Set it true when
+  /// the child genuinely needs focus itself -- a [TextField] must be able to
+  /// take focus or it can never receive typed input.
+  final bool descendantsAreFocusable;
+
   const TvFocusable({
     super.key,
     required this.child,
@@ -216,6 +224,7 @@ class TvFocusable extends StatefulWidget {
     this.semanticHint,
     this.semanticButton,
     this.announceFocus = false,
+    this.descendantsAreFocusable = false,
   });
 
   @override
@@ -375,8 +384,12 @@ class _TvFocusableState extends State<TvFocusable>
           // TvFocusable is the single D-pad stop for this control. Material
           // children such as IconButton, ChoiceChip, and FilledButton own
           // their own Focus widgets; leaving those enabled creates a second
-          // invisible stop inside the same visual target.
-          child: ExcludeFocus(child: widget.child),
+          // invisible stop inside the same visual target. Children that must
+          // hold focus to work at all (text fields) opt out.
+          child: ExcludeFocus(
+            excluding: !widget.descendantsAreFocusable,
+            child: widget.child,
+          ),
           builder: (context, isFocused, child) {
             final decoration = isFocused && widget.showBorderEffect
                 ? BoxDecoration(

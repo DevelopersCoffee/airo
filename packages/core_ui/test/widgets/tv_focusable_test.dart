@@ -533,6 +533,64 @@ void main() {
       );
     },
   );
+
+  // Excluding descendant focus is right for a Material button, but a text
+  // field that cannot take focus can never receive typed input -- on a TV that
+  // reads as a search box that silently swallows everything you type.
+  testWidgets(
+    'descendantsAreFocusable lets a wrapped TextField accept typed input',
+    (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TvFocusable(
+              onSelect: () {},
+              descendantsAreFocusable: true,
+              child: TextField(
+                key: const ValueKey('field'),
+                controller: controller,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const ValueKey('field')), 'news');
+      await tester.pump();
+
+      expect(controller.text, 'news');
+    },
+  );
+
+  testWidgets('descendant focus is excluded by default', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TvFocusable(
+            onSelect: () {},
+            child: TextField(
+              key: const ValueKey('field'),
+              controller: controller,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ExcludeFocus>(find.byType(ExcludeFocus)).excluding,
+      isTrue,
+      reason: 'Material children must not add a second D-pad stop by default',
+    );
+  });
 }
 
 class _BuildCounter extends StatelessWidget {

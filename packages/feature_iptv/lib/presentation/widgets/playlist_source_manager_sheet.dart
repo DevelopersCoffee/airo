@@ -128,15 +128,24 @@ class _PlaylistSourceManagerSheetState
 
   bool get _isTenFootMode => MediaQuery.sizeOf(context).width >= 720;
 
+  /// True once the viewer has deliberately moved focus into one of the text
+  /// fields. Re-asserting a control's focus over a field being typed into
+  /// tears down its input connection and silently discards the text.
+  bool get _textFieldOwnsFocus =>
+      _labelFocusNode.hasFocus || _urlFocusNode.hasFocus;
+
   void _requestTvFocus(FocusNode focusNode) {
     if (!_isTenFootMode) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !focusNode.canRequestFocus) return;
+      if (!mounted || !focusNode.canRequestFocus || _textFieldOwnsFocus) return;
       focusNode.requestFocus();
       // Fire TV restores the launching control after the modal's first frame.
       // Reassert the sheet's first target once that restoration has completed.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && focusNode.canRequestFocus) focusNode.requestFocus();
+        if (!mounted || !focusNode.canRequestFocus || _textFieldOwnsFocus) {
+          return;
+        }
+        focusNode.requestFocus();
       });
     });
   }
