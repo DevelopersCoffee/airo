@@ -64,6 +64,7 @@ class _PlaylistSourceManagerSheetState
   bool _showAddForm = false;
   bool _isSaving = false;
   bool _initialTvFocusScheduled = false;
+  final Set<String> _removedSourceIds = {};
   String? _labelError;
   String? _urlError;
   String? _submitError;
@@ -272,10 +273,12 @@ class _PlaylistSourceManagerSheetState
     );
     if (confirmed != true) return;
 
+    setState(() => _removedSourceIds.add(source.id));
     try {
       await ref.read(removeContentSourceProvider(source.id).future);
     } catch (_) {
       if (!mounted) return;
+      setState(() => _removedSourceIds.remove(source.id));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not remove the playlist.')),
       );
@@ -344,7 +347,11 @@ class _PlaylistSourceManagerSheetState
                   ),
                   data: (allSources) {
                     final sources = allSources
-                        .where((source) => source.kind == ContentSourceKind.m3u)
+                        .where(
+                          (source) =>
+                              source.kind == ContentSourceKind.m3u &&
+                              !_removedSourceIds.contains(source.id),
+                        )
                         .toList(growable: false);
                     if (sources.isEmpty) {
                       return DecoratedBox(

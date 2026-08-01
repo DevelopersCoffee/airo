@@ -186,10 +186,11 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.widgetWithText(ListTile, 'News'), findsNothing);
     expect(find.widgetWithText(ListTile, 'Sports'), findsOneWidget);
+    await tester.pumpAndSettle();
     final sources = await container.read(
       configuredContentSourcesProvider.future,
     );
