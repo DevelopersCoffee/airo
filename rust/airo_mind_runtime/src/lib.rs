@@ -26,6 +26,7 @@
 mod budget;
 mod cancel;
 mod engine;
+mod search;
 mod store;
 mod supervisor;
 
@@ -40,6 +41,7 @@ pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
     TranscriptSegment,
 };
+pub use search::{Hit, SearchIndex};
 pub use store::{Meeting, MeetingStore, StoreError};
 pub use supervisor::{RuntimeError, Supervisor};
 
