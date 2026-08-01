@@ -59,6 +59,7 @@ name = "airo_mind_runtime"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",
+ "flutter_rust_bridge",
  "llama-cpp-2",
  "whisper-rs",
 ]

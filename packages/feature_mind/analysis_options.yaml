@@ -1,0 +1,9 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Written by flutter_rust_bridge_codegen and freezed. Lint findings here
+    # cannot be fixed -- the next codegen run overwrites the fix.
+    - lib/src/api/**
+    - lib/src/frb_generated*.dart
+    - "**/*.freezed.dart"

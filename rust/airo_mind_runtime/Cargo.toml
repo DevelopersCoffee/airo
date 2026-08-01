@@ -7,11 +7,15 @@ license = "MIT"
 
 [lib]
 name = "airo_mind_runtime"
-# rlib only. Nothing crosses FFI yet; declaring cdylib links an empty artifact
-# on every CI push.
-crate-type = ["rlib"]
+# cdylib for Flutter (#1401), staticlib for iOS, rlib so the tests and any
+# in-process consumer keep the real types rather than going through the FFI
+# boundary. Nothing below `api` knows the bridge exists.
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+# Pinned to the exact version core_native already uses. Two flutter_rust_bridge
+# versions in one Flutter app is a link-time conflict, not a warning.
+flutter_rust_bridge = "=2.11.1"
 # The Supervisor itself takes nothing. Backends are feature-gated so a build
 # that only needs the engine boundary -- CI, the web target, a capability test
 # -- does not compile whisper.cpp.
@@ -21,9 +25,20 @@ llama-cpp-2 = { version = "0.1.153", optional = true }
 encoding_rs = { version = "0.8", optional = true }
 
 [features]
+# The Flutter build turns both on -- the app has no reason to exist without
+# them. CI keeps the default so a boundary check does not compile whisper.cpp.
 default = []
+# Everything a shipped app needs. Named so the build wiring has one thing to
+# pass and cannot drift from what the UI assumes is present.
+app = ["whisper", "llama"]
 # Real offline transcription. Requires cmake and a C++ toolchain, and pulls in
 # whisper.cpp. Constitution §6 scorecard owed before this leaves a dev build.
 whisper = ["dep:whisper-rs"]
 # Real offline generation. Same toolchain requirement and the same §6 debt.
 llama = ["dep:llama-cpp-2", "dep:encoding_rs"]
+
+[lints.rust]
+# `#[frb(sync)]` expands to code guarded on `cfg(frb_expand)`, which the
+# generator sets and cargo does not. Declaring it keeps clippy at zero without
+# blanket-allowing unexpected cfgs.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

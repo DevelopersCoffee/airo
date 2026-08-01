@@ -1,0 +1,30 @@
+name: feature_mind
+description: "Airo Mind — record a meeting, get searchable minutes, entirely on device."
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Pinned to the same version as core_native and the Rust crate. Two
+  # flutter_rust_bridge versions in one app is a link-time conflict.
+  flutter_rust_bridge: 2.11.1
+  # Microphone capture. Step 1 of the journey; nothing else in the workspace
+  # records audio. Constitution §6 scorecard owed before release.
+  record: ^6.0.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  # Required by flutter_rust_bridge for the generated sealed classes that carry
+  # ProcessingEvent's variants.
+  freezed_annotation: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  freezed: ^3.0.0
+  build_runner: ^2.4.13
