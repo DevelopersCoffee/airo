@@ -927,7 +927,6 @@ pub use error::VaultError;
 pub use identifier::ContextId;
 pub use package::{RecoveryPackage, RECOVERY_PACKAGE_FORMAT_VERSION};
 pub use restore::{AppliedRestore, RevocationProvenance, RevocationSource, SealedRestore};
-pub(crate) use restore::LogHead;
 ```
 
 `mod.rs` carries declarations and re-exports and **nothing else** — no types,
@@ -3413,7 +3412,6 @@ Modify `rust/airo_mind/src/vault/mod.rs`:
 mod revocation;
 
 pub use revocation::RevocationSubject;
-pub(crate) use revocation::RevocationLedger;
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -5698,6 +5696,7 @@ pub enum RevocationProvenance {
 ///
 /// The field is private, so only this crate's log module can construct one.
 /// `pub(crate)` until Phase 2 provides that module — see #1260.
+#[cfg_attr(not(test), allow(dead_code))]
 pub struct LogHead(String);
 
 // `String`, genuinely private — not `pub(crate)`. Revision 6 documented the
@@ -5708,35 +5707,20 @@ pub struct LogHead(String);
 // original bypass, reopened (chief-security-officer S6).
 
 impl LogHead {
-    /// `SEC-48`. **`pub(crate)`, not `pub`.** Reverted from Revision 9B.
-    ///
-    /// Making this public to satisfy `SEC-39` reopened `R1`'s blind-restore
-    /// bypass, and `restore.rs`'s own doc comment already described it:
-    ///
-    /// > Revision 3 took a bare `RevocationLedger` and a free `String`, and the
-    /// > plan's own test then built one from an EMPTY ledger and asserted
-    /// > `!was_blind()` — reaching R1's original bypass through the constructor
-    /// > named "trustworthy". Provenance was a claim, not a proof.
-    ///
-    /// With `LogHead::new` and `RevocationLedger::new` both `pub`, a consumer
-    /// writes exactly that expression. Executed: destroyed content readable,
-    /// `was_blind() == false`, `source_missing_backup_revocations() == false`,
-    /// `purged()` empty. **Both warnings silent.**
-    ///
-    /// The resolution is not a tighter constructor. **Phase 1 has no operation
-    /// log, therefore Phase 1 has no honest `ReplayedFromLog`.** Shipping a
-    /// public way to assert it means shipping a way to forge it. The non-blind
-    /// path arrives with the log in #1260; until then the reachable journeys
-    /// are `package_only` and `acknowledged_blind_restore`, both of which
-    /// report `was_blind() == true` honestly.
-    pub(crate) fn new(operation_id: impl Into<String>) -> Self {
-        LogHead(operation_id.into())
-    }
+    // `SEC-48`: `LogHead::new` DELETED. Revision 9B made it `pub` to satisfy
+    // `SEC-39` and, in the same change, made R1's blind-restore bypass
+    // forgeable -- an empty ledger plus a free string reports
+    // `was_blind() == false`. `restore.rs` had already described that exact
+    // bypass in its own doc comment.
+    //
+    // The resolution is not a tighter constructor. Phase 1 has no operation
+    // log, therefore Phase 1 has no honest `ReplayedFromLog`, and shipping a
+    // way to assert it is shipping a way to forge it. `for_test` below is the
+    // only constructor; the real one arrives with the log in #1260.
 
 }
 
-/// Tests only. Production callers get a `LogHead` from the log or build one
-/// with `LogHead::new`.
+/// Tests only. Production callers get a `LogHead` from the log (#1260).
 #[cfg(test)]
 impl LogHead {
     pub(crate) fn for_test(id: &str) -> LogHead {
@@ -5759,9 +5743,10 @@ impl RevocationSource {
     /// `!was_blind()` — reaching R1's original bypass through the constructor
     /// named "trustworthy". Provenance was a claim, not a proof: the same
     /// shape as `RevocationSubject` before the tag.
-    /// `SEC-48`: `pub(crate)` until #1260 ships the operation log. A public
-    /// constructor here is a public way to assert provenance the caller does
-    /// not have.
+    /// `SEC-48`: `pub(crate)` and `#[cfg(test)]` until #1260 ships the
+    /// operation log. A public constructor here is a public way to assert
+    /// provenance the caller does not have.
+    #[cfg(test)]
     pub(crate) fn replayed_from_log(ledger: RevocationLedger, head: LogHead) -> Self {
         Self {
             ledger,
