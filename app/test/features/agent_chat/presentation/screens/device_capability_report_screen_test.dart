@@ -45,6 +45,11 @@ void main() {
   });
 
   testWidgets('surfaces model fit warnings in the report', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final report = DeviceCapabilityReport(
       device: DeviceInfo.unknown(),
       memory: MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 1024),
@@ -54,12 +59,14 @@ void main() {
           modelName: 'Gemma 4B',
           severity: MemorySeverity.critical,
           estimatedMemoryMb: 3600,
+          expectedTokensPerSecond: 8,
         ),
         DeviceModelRecommendation(
           modelId: 'vision-large',
           modelName: 'Vision Large',
           severity: MemorySeverity.blocked,
           estimatedMemoryMb: 7000,
+          expectedTokensPerSecond: 2,
         ),
       ],
       generatedAt: DateTime(2026, 7, 30),
@@ -78,6 +85,8 @@ void main() {
       find.textContaining('1 model(s) need a smaller plan or model'),
       findsOneWidget,
     );
+    expect(find.textContaining('Expected 8.0 tok/s'), findsOneWidget);
+    expect(find.textContaining('Expected 2.0 tok/s'), findsOneWidget);
   });
 
   testWidgets('shows a retry action when device analysis fails', (

@@ -84,7 +84,8 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
                   title: Text(recommendation.modelName),
                   subtitle: Text(
                     '${recommendation.severity.title} · '
-                    '${recommendation.estimatedMemoryMb.toStringAsFixed(0)} MB estimated runtime memory',
+                    '${recommendation.estimatedMemoryMb.toStringAsFixed(0)} MB estimated runtime memory'
+                    '${_expectedTokensLabel(recommendation)}',
                   ),
                 ),
               ),
@@ -113,6 +114,12 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
       MemorySeverity.critical ||
       MemorySeverity.blocked => theme.colorScheme.error,
     };
+  }
+
+  static String _expectedTokensLabel(DeviceModelRecommendation recommendation) {
+    final expected = recommendation.expectedTokensPerSecond;
+    if (expected == null || expected <= 0) return '';
+    return ' · Expected ${expected.toStringAsFixed(1)} tok/s';
   }
 }
 
