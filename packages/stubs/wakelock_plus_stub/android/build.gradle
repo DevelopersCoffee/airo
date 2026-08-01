@@ -1,0 +1,18 @@
+group 'dev.fluttercommunity.plus.wakelock'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'dev.fluttercommunity.plus.wakelock'
+    compileSdk = flutter.compileSdkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = flutter.minSdkVersion
+    }
+}

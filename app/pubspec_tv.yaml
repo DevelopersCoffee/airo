@@ -202,6 +202,8 @@ dependency_overrides:
     path: ../packages/stubs/pdfx_stub
   package_info_plus:
     path: ../packages/stubs/package_info_plus_stub
+  # KGP-free Android implementation used by the TV flavor. This must remain
+  # functional: live playback relies on it to suppress Fire OS screen sleep.
   wakelock_plus:
     path: ../packages/stubs/wakelock_plus_stub
 
