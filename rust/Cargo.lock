@@ -49,6 +49,8 @@ dependencies = [
  "memmap2",
  "quick-xml",
  "rusqlite",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

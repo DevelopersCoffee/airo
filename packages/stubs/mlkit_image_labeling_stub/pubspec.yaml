@@ -1,0 +1,8 @@
+name: google_mlkit_image_labeling
+description: Stub implementation of google_mlkit_image_labeling for lean builds
+version: 0.15.0
+publish_to: none
+
+environment:
+  sdk: '>=3.12.2 <4.0.0'
+  flutter: '>=3.44.4'

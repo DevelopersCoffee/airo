@@ -212,4 +212,58 @@ void main() {
     );
     verify(() => manager.snapshot(activeModelId: _model.id)).called(1);
   });
+
+  // Retained from main: these cover the plain provider wiring and the
+  // compatibility list projection, which the warmup-gateway suite above
+  // does not exercise.
+  test('wires the manager through app providers without platform policy', () {
+    final registry = ModelRegistry();
+    registry.registerModel(
+      const OfflineModelInfo(
+        id: 'provider-model',
+        name: 'Provider model',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [modelRegistryProvider.overrideWithValue(registry)],
+    );
+    addTearDown(container.dispose);
+    addTearDown(registry.dispose);
+
+    final manager = container.read(intelligentModelManagerProvider);
+
+    expect(manager, isA<IntelligentModelManager>());
+  });
+
+  test('projects manager snapshots into compatibility model lists', () async {
+    const entry = ModelEntry(
+      id: 'projected-model',
+      name: 'Projected model',
+      version: '1',
+      description: 'Projected through AsyncValue',
+      sizeBytes: 2048,
+      isDownloaded: true,
+      updateState: ModelUpdateState.upToDate,
+    );
+    const snapshot = ModelManagerSnapshot(
+      models: [entry],
+      downloadQueue: [],
+      storageUsedBytes: 2048,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        intelligentModelManagerSnapshotProvider.overrideWith(
+          (ref) async => snapshot,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(intelligentModelManagerSnapshotProvider.future);
+    final projected = container.read(intelligentModelsListProvider);
+
+    expect(projected.requireValue, [entry]);
+  });
 }

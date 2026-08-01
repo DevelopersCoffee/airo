@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:airo_app/core/coins/coin_vault_module.dart';
 import 'package:airo_app/main_coins.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';

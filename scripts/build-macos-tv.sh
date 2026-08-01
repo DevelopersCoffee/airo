@@ -11,6 +11,7 @@ MACOS_PODFILE_LOCK="$APP_DIR/macos/Podfile.lock"
 MACOS_PODFILE_LOCK_BACKUP="$APP_DIR/macos/Podfile.lock.airo-tv-backup"
 HAD_MACOS_PODFILE_LOCK=false
 GENERATED_FILES=(
+  "$APP_DIR/macos/Podfile.lock"
   "$APP_DIR/macos/Flutter/GeneratedPluginRegistrant.swift"
   "$APP_DIR/linux/flutter/generated_plugin_registrant.cc"
   "$APP_DIR/linux/flutter/generated_plugin_registrant.h"
@@ -62,9 +63,11 @@ for generated_file in "${GENERATED_FILES[@]}"; do
   fi
 done
 cp "$APP_DIR/pubspec_tv.yaml" "$APP_DIR/pubspec.yaml"
+rm -f "$APP_DIR/macos/Podfile.lock"
 
 cd "$APP_DIR"
 flutter pub get
+flutter analyze lib/main_tv.dart --no-fatal-infos --no-fatal-warnings
 flutter build macos --release \
   --target=lib/main_tv.dart \
   --dart-define=APP_VARIANT=tv \

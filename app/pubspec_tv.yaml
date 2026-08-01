@@ -11,7 +11,7 @@
 name: airo_app
 description: "Airo TV - IPTV streaming for Android TV"
 publish_to: 'none'
-version: 0.0.6+8
+version: 0.0.6-rc.1+6
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
@@ -108,6 +108,7 @@ dependencies:
   chess: 0.8.1
   flame: 1.35.0
   google_mlkit_text_recognition: 0.16.0
+  google_mlkit_image_labeling: 0.15.0
   just_audio: 0.10.5
   audioplayers: 6.5.1
   flutter_tts: 4.2.5
@@ -163,6 +164,8 @@ dependency_overrides:
     path: ../packages/stubs/flame_stub
   google_mlkit_text_recognition:
     path: ../packages/stubs/mlkit_stub
+  google_mlkit_image_labeling:
+    path: ../packages/stubs/mlkit_image_labeling_stub
 
   # Audio package stubs (not needed for TV)
   just_audio:

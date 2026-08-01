@@ -261,11 +261,30 @@ final stalkerSourceLoaderProvider = Provider<StalkerSourceLoader>((ref) {
   };
 });
 
+/// Opts a channel-derived provider out of Riverpod's automatic retry.
+///
+/// Two reasons, both observed on the rig Pixel 9 with an unreachable source:
+///
+/// * A retrying provider stays in `AsyncLoading` with the error attached, so
+///   the screen shows its spinner forever and the error state with its Retry
+///   button never renders.
+/// * Every dependent that retries re-drives the failed ancestor, which
+///   re-contacts the dead source. With rails, vod, guide, and metadata
+///   enrichment all retrying, one unreachable playlist was refetched several
+///   times a second.
+///
+/// Channel loading is user-initiated and already has an explicit Retry, so a
+/// failure must settle as `AsyncError` and stay settled.
+Duration? surfaceChannelFailureInsteadOfRetrying(
+  int retryCount,
+  Object error,
+) => null;
+
 /// All runtime channels. A configured active source is exclusive; the public
 /// catalog/legacy fallback is used only when no source is configured.
 final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   return ref.watch(_runtimeChannelsProvider(false).future);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
   (ref, forceRefresh) async {
@@ -305,6 +324,8 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
       }
     }
 
+    // No active source: every configured library contributes, and the public
+    // catalog / legacy parser fills in behind them.
     List<IPTVChannel> primaryChannels = const [];
     final channelDataService = ref.watch(channelDataServiceProvider);
     try {
@@ -320,14 +341,41 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
       );
     }
 
-    if (primaryChannels.isEmpty) {
+    // A total configured-source failure must not hide channels another library
+    // still has, so hold the error and only report it if nothing else loaded.
+    var configuredM3uChannels = const <IPTVChannel>[];
+    Object? configuredM3uFailure;
+    StackTrace? configuredM3uTrace;
+    try {
+      configuredM3uChannels = await ref.watch(
+        configuredM3uChannelsProvider.future,
+      );
+    } catch (error, stackTrace) {
+      configuredM3uFailure = error;
+      configuredM3uTrace = stackTrace;
+    }
+
+    if (primaryChannels.isEmpty && configuredM3uChannels.isEmpty) {
       // Fallback to legacy M3U parser.
       primaryChannels = await ref
           .watch(m3uParserProvider)
           .fetchPlaylist(forceRefresh: forceRefresh);
     }
-    return primaryChannels;
+
+    final byocChannels = await ref.watch(
+      configuredXtreamChannelsProvider.future,
+    );
+    final merged = _mergeChannelLibraries([
+      primaryChannels,
+      configuredM3uChannels,
+      byocChannels,
+    ]);
+    if (merged.isEmpty && configuredM3uFailure != null) {
+      Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);
+    }
+    return merged;
   },
+  retry: surfaceChannelFailureInsteadOfRetrying,
 );
 
 /// Loads every configured M3U source with an independent cache namespace.
@@ -344,7 +392,7 @@ final configuredM3uChannelsProvider = FutureProvider<List<IPTVChannel>>((
     configs,
     ref.read(m3uSourceParserFactoryProvider),
   );
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
   List<ContentSourceConfig> configs,
@@ -358,13 +406,25 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
   if (m3uConfigs.isEmpty) return const [];
 
   final channels = <IPTVChannel>[];
+  var failedSources = 0;
   for (final config in m3uConfigs) {
     final parser = parserFactory(config.id);
     try {
       if (parser.getPlaylistUrl() != config.url) {
         await parser.setPlaylistUrl(config.url);
       }
-      channels.addAll(await parser.fetchPlaylist(forceRefresh: forceRefresh));
+      final outcome = await parser.fetchPlaylistOutcome(
+        forceRefresh: forceRefresh,
+      );
+      channels.addAll(outcome.channels);
+      if (outcome.sourceUnavailable) {
+        // The parser reports an unreachable source rather than throwing, so
+        // count it here or a dead source reads as an empty one.
+        failedSources++;
+        debugPrint(
+          '[Provider] M3U source ${config.id} could not be refreshed.',
+        );
+      }
     } catch (_) {
       if (failFast) {
         throw const ContentSourceRuntimeException(
@@ -373,10 +433,49 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
       }
       // Source URLs may contain private tokens. Keep diagnostics coarse and
       // continue loading the remaining configured sources.
+      failedSources++;
       debugPrint('[Provider] M3U source ${config.id} could not be refreshed.');
     }
   }
+  if (channels.isEmpty && failedSources == m3uConfigs.length) {
+    // Every configured source failed and none had a usable cache. Returning an
+    // empty list here renders the "Add your playlist" empty state, which tells
+    // a user who already added sources to add them again. Surface it so the
+    // screen shows its error state and Retry instead.
+    throw PlaylistSourcesUnavailableException(failedSources);
+  }
   return _mergeChannelLibraries([channels]);
+}
+
+/// Thrown when every configured playlist source failed to load and no cached
+/// copy was usable. Carries only a count: source URLs can embed private tokens
+/// and must not reach logs or the UI.
+class PlaylistSourcesUnavailableException implements Exception {
+  const PlaylistSourcesUnavailableException(this.sourceCount);
+
+  /// Number of configured sources that failed.
+  final int sourceCount;
+
+  @override
+  String toString() => sourceCount == 1
+      ? 'Your playlist source could not be loaded. Check your connection and '
+            'retry.'
+      : 'None of your $sourceCount playlist sources could be loaded. Check '
+            'your connection and retry.';
+}
+
+/// Re-runs the channel libraries after a load failure.
+///
+/// Invalidating only [iptvChannelsProvider] replays its dependency's cached
+/// error, so a retry that touches just the merged provider looks like it did
+/// nothing. The source loaders have to be invalidated with it.
+void invalidateChannelLibraries(WidgetRef ref) {
+  ref.invalidate(configuredM3uChannelsProvider);
+  ref.invalidate(configuredXtreamChannelsProvider);
+  // The runtime family caches the composed result, so leaving it alone would
+  // replay its stored error and Retry would never reach the source again.
+  ref.invalidate(_runtimeChannelsProvider);
+  ref.invalidate(iptvChannelsProvider);
 }
 
 final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
@@ -935,7 +1034,7 @@ final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   return allChannels
       .where((channel) => favoriteIds.contains(channel.id))
       .toList(growable: false);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 /// Toggles a channel's favorite state and returns the new state.
 ///

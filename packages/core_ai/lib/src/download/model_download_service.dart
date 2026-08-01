@@ -9,22 +9,39 @@ import 'model_download_progress.dart';
 
 /// AI-model adapter over the product-neutral progressive download platform.
 class ModelDownloadService {
-  factory ModelDownloadService({
+  ModelDownloadService({
     BackgroundDownloads? downloads,
     ModelStorageManager? storageManager,
+    ModelStorageLocation storageLocation =
+        ModelStorageLocation.applicationDocuments,
+  }) : this._from(
+         _resolveDependencies(
+           downloads: downloads,
+           storageManager: storageManager,
+           storageLocation: storageLocation,
+         ),
+       );
+
+  ModelDownloadService._from(_ResolvedDependencies dependencies)
+    : _downloads = dependencies.downloads,
+      _storageManager = dependencies.storageManager;
+
+  static _ResolvedDependencies _resolveDependencies({
+    BackgroundDownloads? downloads,
+    ModelStorageManager? storageManager,
+    required ModelStorageLocation storageLocation,
   }) {
     final resolvedDownloads = downloads ?? MethodChannelBackgroundDownloads();
-    return ModelDownloadService._(
+    return _ResolvedDependencies(
       downloads: resolvedDownloads,
       storageManager:
-          storageManager ?? ModelStorageManager(downloads: resolvedDownloads),
+          storageManager ??
+          ModelStorageManager(
+            downloads: resolvedDownloads,
+            location: storageLocation,
+          ),
     );
   }
-
-  ModelDownloadService._({
-    required this._downloads,
-    required this._storageManager,
-  });
 
   final BackgroundDownloads _downloads;
   final ModelStorageManager _storageManager;
@@ -109,6 +126,34 @@ class ModelDownloadService {
     if (progress.status == DownloadStatus.completed) {
       final model = _scheduledModels[progress.artifactId];
       if (model != null) {
+        _emit(
+          ModelDownloadProgress(
+            modelId: progress.artifactId,
+            totalBytes: progress.totalBytes,
+            downloadedBytes: progress.downloadedBytes,
+            status: ModelDownloadStatus.verifying,
+            retryCount: progress.retryCount,
+            resumeSupported: progress.resumeSupported,
+          ),
+        );
+        final verified = await _storageManager.verifyModelIntegrity(model);
+        if (!verified) {
+          _emit(
+            ModelDownloadProgress(
+              modelId: progress.artifactId,
+              totalBytes: progress.totalBytes,
+              downloadedBytes: progress.downloadedBytes,
+              status: ModelDownloadStatus.failed,
+              error: 'The downloaded artifact failed integrity verification.',
+              failureCode: 'integrity_mismatch',
+              retryCount: progress.retryCount,
+              resumeSupported: progress.resumeSupported,
+            ),
+          );
+          _scheduledIds.remove(progress.artifactId);
+          _scheduledModels.remove(progress.artifactId);
+          return;
+        }
         await _tryWriteReceipt(model);
       }
     }
@@ -206,7 +251,14 @@ class ModelDownloadService {
   Future<String?> resolveExistingModelPath(
     String modelId, {
     OfflineModelInfo? model,
-  }) {
+  }) async {
+    final explicitPath = model?.filePath?.trim();
+    if (explicitPath != null && explicitPath.isNotEmpty) {
+      final explicitFile = File(explicitPath);
+      if (await explicitFile.exists() && await explicitFile.length() > 0) {
+        return explicitPath;
+      }
+    }
     return _storageManager.findExistingModelPath(modelId, model: model);
   }
 
@@ -217,7 +269,14 @@ class ModelDownloadService {
     final existingPath = await resolveExistingModelPath(modelId, model: model);
     if (existingPath == null) return false;
     final file = File(existingPath);
-    return await file.exists() && await file.length() > 0;
+    if (!await file.exists() || await file.length() == 0) return false;
+    if (model == null) return true;
+
+    // Installed state must mean the exact catalog artifact is usable, not
+    // merely that a stale or truncated file remains in the models directory.
+    return _storageManager.verifyModelIntegrity(
+      model.copyWith(filePath: existingPath),
+    );
   }
 
   Future<bool> deleteModel(String modelId) async {
@@ -240,6 +299,13 @@ class ModelDownloadService {
     }
     await _storageManager.deleteInstallReceipt(modelId);
     return deleted;
+  }
+
+  /// Removes a corrupt or incomplete artifact and starts a fresh verified
+  /// download using the current catalog metadata.
+  Future<void> repairModel(OfflineModelInfo model) async {
+    await deleteModel(model.id);
+    downloadModel(model);
   }
 
   Future<int> getStorageUsed() async {
@@ -286,4 +352,14 @@ class ModelDownloadService {
     _scheduledIds.clear();
     _scheduledModels.clear();
   }
+}
+
+class _ResolvedDependencies {
+  const _ResolvedDependencies({
+    required this.downloads,
+    required this.storageManager,
+  });
+
+  final BackgroundDownloads downloads;
+  final ModelStorageManager storageManager;
 }

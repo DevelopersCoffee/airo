@@ -1,5 +1,6 @@
 import 'package:core_domain/core_domain.dart';
 import '../client/llm_client.dart';
+import '../parsing/json_parser.dart';
 import 'prompt_template.dart';
 import 'prompt_logger.dart';
 
@@ -119,25 +120,10 @@ class PromptExecutor {
     );
 
     return result.flatMap((content) {
-      try {
-        // Try to extract JSON from the response
-        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
-        if (jsonMatch == null) {
-          return Err(
-            ParseError('No JSON found in response'),
-            StackTrace.current,
-          );
-        }
-
-        // Note: In a real implementation, you'd use dart:convert
-        // For now, return a placeholder indicating JSON parsing needed
-        return Err(
-          ParseError('JSON parsing not implemented in pure Dart package'),
-          StackTrace.current,
-        );
-      } catch (e, s) {
-        return Err(ParseError('Failed to parse JSON: $e'), s);
-      }
+      // Use the shared parser so prompt execution handles pure JSON,
+      // markdown code fences, and responses with surrounding prose
+      // consistently with the rest of core_ai.
+      return LLMJsonParser.parseObject(content);
     });
   }
 }

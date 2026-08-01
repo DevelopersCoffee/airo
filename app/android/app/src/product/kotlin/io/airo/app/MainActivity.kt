@@ -8,13 +8,21 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
+import android.os.Bundle
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.Settings
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.telephony.TelephonyManager
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -35,12 +43,18 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
+    private val VOICE_PERMISSION_REQUEST = 9003
+    private val FLASHLIGHT_PERMISSION_REQUEST = 9004
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
     private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var pendingVoiceResult: MethodChannel.Result? = null
+    private var pendingFlashlightResult: MethodChannel.Result? = null
+    private var pendingFlashlightEnabled: Boolean? = null
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
@@ -78,6 +92,22 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
                     }
                     "openWifiSettings" -> openWifiSettings(result)
+                    "setFlashlight" -> setFlashlight(call, result)
+                    "composeEmail" -> composeEmail(call, result)
+                    "createContact" -> createContact(call, result)
+                    "openMap" -> openMap(call, result)
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.airo.voice_search")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isAvailable" -> result.success(
+                        SpeechRecognizer.isRecognitionAvailable(this)
+                    )
+                    "startListening" -> startVoiceListening(result)
+                    "stopListening" -> stopVoiceListening(result)
                     else -> result.notImplemented()
                 }
             }
@@ -207,6 +237,169 @@ class MainActivity : AudioServiceFragmentActivity() {
                     ))
                 }
             }
+            VOICE_PERMISSION_REQUEST -> {
+                val result = pendingVoiceResult
+                pendingVoiceResult = null
+                if (result == null) return
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    beginVoiceListening(result)
+                } else {
+                    result.success(
+                        mapOf(
+                            "error" to "microphone_permission_denied",
+                            "message" to "Microphone permission is required for voice input."
+                        )
+                    )
+                }
+            }
+            FLASHLIGHT_PERMISSION_REQUEST -> {
+                val result = pendingFlashlightResult
+                val enabled = pendingFlashlightEnabled
+                pendingFlashlightResult = null
+                pendingFlashlightEnabled = null
+                if (result == null || enabled == null) return
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    applyFlashlight(enabled, result)
+                } else {
+                    result.success(mapOf("changed" to false, "reason" to "camera_permission_denied"))
+                }
+            }
+        }
+    }
+
+    private fun startVoiceListening(result: MethodChannel.Result) {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            result.success(
+                mapOf(
+                    "error" to "speech_unavailable",
+                    "message" to "Speech recognition is unavailable on this device."
+                )
+            )
+            return
+        }
+        if (pendingVoiceResult != null) {
+            result.success(
+                mapOf(
+                    "error" to "speech_busy",
+                    "message" to "A voice capture is already in progress."
+                )
+            )
+            return
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            pendingVoiceResult = result
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), VOICE_PERMISSION_REQUEST)
+            return
+        }
+        beginVoiceListening(result)
+    }
+
+    private fun beginVoiceListening(result: MethodChannel.Result) {
+        val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer?.destroy()
+        speechRecognizer = recognizer
+        pendingVoiceResult = result
+        recognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) = Unit
+            override fun onBeginningOfSpeech() = Unit
+            override fun onRmsChanged(rmsdB: Float) = Unit
+            override fun onBufferReceived(buffer: ByteArray?) = Unit
+            override fun onEndOfSpeech() = Unit
+            override fun onPartialResults(partialResults: Bundle?) = Unit
+            override fun onEvent(eventType: Int, params: Bundle?) = Unit
+
+            override fun onResults(results: Bundle?) {
+                val text = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                val confidence = results
+                    ?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+                    ?.firstOrNull()
+                completeVoice(
+                    if (text.isNullOrBlank()) {
+                        mapOf(
+                            "error" to "no_speech",
+                            "message" to "No speech was recognized."
+                        )
+                    } else {
+                        mapOf(
+                            "text" to text,
+                            "confidence" to (confidence ?: 1.0f)
+                        )
+                    }
+                )
+            }
+
+            override fun onError(error: Int) {
+                completeVoice(
+                    mapOf(
+                        "error" to "speech_error_$error",
+                        "message" to speechErrorMessage(error)
+                    )
+                )
+            }
+        })
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Prefer the device speech pack so Audio Scribe does not silently
+            // send microphone audio to a network recognizer when an offline
+            // language pack is installed. Android may still report an
+            // explicit unavailable/network error when no offline pack exists.
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        }
+        try {
+            recognizer.startListening(intent)
+        } catch (error: Exception) {
+            completeVoice(
+                mapOf(
+                    "error" to "speech_start_failed",
+                    "message" to (error.message ?: "Speech recognition could not start.")
+                )
+            )
+        }
+    }
+
+    private fun completeVoice(payload: Map<String, Any?>) {
+        val result = pendingVoiceResult
+        pendingVoiceResult = null
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        result?.success(payload)
+    }
+
+    private fun stopVoiceListening(result: MethodChannel.Result) {
+        pendingVoiceResult?.success(
+            mapOf(
+                "error" to "speech_cancelled",
+                "message" to "Voice capture was cancelled."
+            )
+        )
+        pendingVoiceResult = null
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        result.success(null)
+    }
+
+    private fun speechErrorMessage(error: Int): String {
+        return when (error) {
+            SpeechRecognizer.ERROR_AUDIO -> "Microphone audio could not be captured."
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission is required for voice input."
+            SpeechRecognizer.ERROR_NETWORK,
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Speech recognition network request timed out."
+            SpeechRecognizer.ERROR_NO_MATCH -> "No speech was recognized."
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Speech recognition is busy."
+            SpeechRecognizer.ERROR_SERVER -> "The speech recognition service failed."
+            else -> "Speech recognition failed."
         }
     }
 
@@ -224,6 +417,16 @@ class MainActivity : AudioServiceFragmentActivity() {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onDestroy() {
+        speechRecognizer?.cancel()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        pendingVoiceResult = null
+        pendingFlashlightResult = null
+        pendingFlashlightEnabled = null
+        super.onDestroy()
     }
 
     private fun readCalendarEvents(date: String, endDate: String?, result: MethodChannel.Result) {
@@ -360,6 +563,90 @@ class MainActivity : AudioServiceFragmentActivity() {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
             result.success(mapOf("opened" to true))
         } catch (error: android.content.ActivityNotFoundException) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun setFlashlight(call: MethodCall, result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            pendingFlashlightResult = result
+            pendingFlashlightEnabled = call.argument<Boolean>("enabled") ?: false
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), FLASHLIGHT_PERMISSION_REQUEST)
+            return
+        }
+        applyFlashlight(call.argument<Boolean>("enabled") ?: false, result)
+    }
+
+    private fun applyFlashlight(enabled: Boolean, result: MethodChannel.Result) {
+        try {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+            if (cameraId == null) {
+                result.success(mapOf("changed" to false, "reason" to "flash_unavailable"))
+                return
+            }
+            cameraManager.setTorchMode(cameraId, enabled)
+            result.success(mapOf("changed" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("changed" to false, "reason" to (error.message ?: "flashlight_failed")))
+        }
+    }
+
+    private fun composeEmail(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:")
+                call.argument<String>("to")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(it))
+                }
+                call.argument<String>("subject")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_SUBJECT, it)
+                }
+                call.argument<String>("body")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_TEXT, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose email app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun createContact(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
+                call.argument<String>("name")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.NAME, it)
+                }
+                call.argument<String>("phone")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.PHONE, it)
+                }
+                call.argument<String>("email")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.EMAIL, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose contacts app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun openMap(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val query = call.argument<String>("query")?.trim().orEmpty()
+            val uri = if (query.isEmpty()) {
+                Uri.parse("geo:0,0")
+            } else {
+                Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+            }
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, uri), "Choose map app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
             result.success(mapOf("opened" to false))
         }
     }

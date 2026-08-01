@@ -769,10 +769,14 @@ class _FakeSourceParser extends M3UParserService {
     _url = url;
   }
 
+  // Override the primitive: the base fetchPlaylist delegates to it, so both
+  // entry points see the fake's behaviour.
   @override
-  Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async {
     fetchCalls++;
     if (error case final error?) throw error;
-    return channels;
+    return PlaylistFetchOutcome.loaded(channels);
   }
 }

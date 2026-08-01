@@ -8,10 +8,15 @@ import 'package:platform_downloads/platform_downloads.dart';
 import '../models/offline_model_info.dart';
 import '../intelligent_model_manager/model_install_receipt.dart';
 
+/// Root used for model artifacts.
+enum ModelStorageLocation { applicationDocuments, applicationExternal }
+
 /// Manages storage, SHA-256 integrity check, and space validation.
 class ModelStorageManager {
-  ModelStorageManager({BackgroundDownloads? downloads})
-    : _downloads = downloads ?? MethodChannelBackgroundDownloads();
+  ModelStorageManager({
+    BackgroundDownloads? downloads,
+    this.location = ModelStorageLocation.applicationDocuments,
+  }) : _downloads = downloads ?? MethodChannelBackgroundDownloads();
 
   static const supportedArtifactExtensions = <String>[
     '.litertlm',
@@ -22,15 +27,33 @@ class ModelStorageManager {
   ];
 
   final BackgroundDownloads _downloads;
+  final ModelStorageLocation location;
 
   /// Gets the directory where models are stored.
   Future<Directory> getModelsDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
+    final appDir = await _storageRootDirectory();
     final modelsDir = Directory(path.join(appDir.path, 'models'));
     if (!await modelsDir.exists()) {
       await modelsDir.create(recursive: true);
     }
     return modelsDir;
+  }
+
+  Future<Directory> _storageRootDirectory() async {
+    if (location == ModelStorageLocation.applicationExternal) {
+      final external = await getExternalStorageDirectory();
+      if (external != null) return external;
+    }
+    return getApplicationDocumentsDirectory();
+  }
+
+  Future<List<Directory>> _candidateModelDirectories() async {
+    final primary = await getModelsDirectory();
+    if (location != ModelStorageLocation.applicationExternal) return [primary];
+    final documentsRoot = await getApplicationDocumentsDirectory();
+    final legacy = Directory(path.join(documentsRoot.path, 'models'));
+    if (path.equals(primary.path, legacy.path)) return [primary];
+    return [primary, legacy];
   }
 
   /// Gets the expected destination path for a given model.
@@ -44,13 +67,15 @@ class ModelStorageManager {
     String modelId, {
     OfflineModelInfo? model,
   }) async {
-    final dir = await getModelsDirectory();
+    final directories = await _candidateModelDirectories();
     final expectedExtension = _artifactExtensionFor(model);
     return [
-      path.join(dir.path, '$modelId$expectedExtension'),
-      for (final extension in supportedArtifactExtensions)
-        if (extension != expectedExtension)
-          path.join(dir.path, '$modelId$extension'),
+      for (final dir in directories) ...[
+        path.join(dir.path, '$modelId$expectedExtension'),
+        for (final extension in supportedArtifactExtensions)
+          if (extension != expectedExtension)
+            path.join(dir.path, '$modelId$extension'),
+      ],
     ];
   }
 

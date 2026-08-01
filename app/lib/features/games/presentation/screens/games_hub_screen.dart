@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'chess_game_screen_new.dart';
@@ -43,18 +44,9 @@ class GamesHubScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Arena',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Choose your game and start playing',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              const AiroPageHeader(
+                title: 'Arena',
+                subtitle: 'Choose your game and start playing',
               ),
               const SizedBox(height: 24),
 
@@ -110,10 +102,14 @@ class GamesHubScreen extends ConsumerWidget {
                               ),
                           itemCount: previewGames.length,
                           itemBuilder: (context, index) {
-                            return _buildGameTile(
-                              context,
-                              ref,
-                              previewGames[index],
+                            return AiroSurface(
+                              level: AiroSurfaceLevel.raised,
+                              padding: EdgeInsets.zero,
+                              child: _buildGameTile(
+                                context,
+                                ref,
+                                previewGames[index],
+                              ),
                             );
                           },
                         );
@@ -167,10 +163,7 @@ class GamesHubScreen extends ConsumerWidget {
           onTap: () => _playGame(context, ref, game),
           child: Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(alpha: 0.3),
-              border: Border.all(color: colorScheme.outlineVariant),
-            ),
+            decoration: const BoxDecoration(),
             child: Opacity(
               opacity: game.isAvailable ? 1.0 : 0.6,
               child: Column(
@@ -185,7 +178,9 @@ class GamesHubScreen extends ConsumerWidget {
                           color: game.isAvailable
                               ? game.difficulty.color.withValues(alpha: 0.1)
                               : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: AiroVisualTokens.of(
+                            context,
+                          ).smallRadius,
                         ),
                         child: Icon(
                           game.icon,
@@ -308,7 +303,10 @@ class GamesHubScreen extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

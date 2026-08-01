@@ -2,6 +2,7 @@ import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:go_router/go_router.dart';
 import 'audio_settings_screen.dart';
 import 'theme_settings_screen.dart';
 
@@ -55,6 +56,16 @@ class SettingsHubScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            ListTile(
+              leading: const Icon(Icons.import_export_outlined),
+              title: const Text('Airo Mind portability'),
+              subtitle: const Text(
+                'Encrypted export and import for local AI setup',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => context.push('/settings/airo-portability'),
+            ),
+
             ListTile(
               leading: Icon(
                 _section(IptvSettingsSectionId.theme).iconFor(ShellId.mobile),

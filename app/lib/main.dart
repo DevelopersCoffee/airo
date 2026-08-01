@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
-import 'core/coins/coin_vault_module.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/routing/app_router.dart';
@@ -18,6 +17,7 @@ import 'features/iptv/epg_reminder_notification_gateway.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
+import 'package:feature_coin/feature_coin.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

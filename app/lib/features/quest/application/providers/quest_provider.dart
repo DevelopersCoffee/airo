@@ -1,12 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/models/quest_models.dart';
 import '../../domain/services/quest_service.dart';
 import '../../domain/services/gemini_quest_service.dart';
 
-/// Quest service provider - uses Gemini Nano when available, falls back to Fake
+/// Quest service provider. Runtime availability is reported by the service;
+/// the provider never substitutes synthetic inference.
 final questServiceProvider = Provider<QuestService>((ref) {
-  // Try to use Gemini Nano service, fallback to Fake if not supported
   return GeminiQuestService();
 });
 
@@ -158,15 +160,4 @@ final createReminderProvider =
     });
 
 /// Helper to get File from path
-Future<dynamic> _getFileFromPath(String filePath) async {
-  // This is a placeholder - in real implementation, use file_picker
-  // For now, return a mock file object
-  return _MockFile(filePath);
-}
-
-class _MockFile {
-  final String path;
-  _MockFile(this.path);
-
-  Future<int> length() async => 1024 * 100; // 100KB mock size
-}
+Future<File> _getFileFromPath(String filePath) async => File(filePath);

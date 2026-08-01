@@ -5,13 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('AppThemeNotifier', () {
-    test('defaults to Airo Cyber when no preference exists', () async {
+    test('defaults to Airo Living Console when no preference exists', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final notifier = AppThemeNotifier.withPreferences(prefs);
 
       expect(notifier.state, AppThemeId.cyber);
-      expect(notifier.currentTheme.name, 'Airo Cyber');
+      expect(notifier.currentTheme.name, 'Airo Living Console');
     });
 
     test('restores a persisted theme', () async {
@@ -48,7 +48,7 @@ void main() {
       expect(prefs.getString(AppThemeNotifier.storageKey), 'bedtime');
     });
 
-    test('resetToDefault selects and persists Airo Cyber', () async {
+    test('resetToDefault selects and persists Living Console', () async {
       SharedPreferences.setMockInitialValues({
         AppThemeNotifier.storageKey: AppThemeId.bedtime.storageValue,
       });

@@ -83,5 +83,18 @@ void main() {
         );
       },
     );
+
+    test('times out a wedged native memory probe', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (_) async {
+            await Future<void>.delayed(const Duration(seconds: 4));
+            return <String, Object>{'totalBytes': 1, 'availableBytes': 1};
+          });
+
+      final memoryInfo = await service.getMemoryInfo(forceRefresh: true);
+
+      expect(memoryInfo.isAvailable, isFalse);
+      expect(debugLogs.single, contains('Error getting memory info'));
+    });
   });
 }

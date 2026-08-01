@@ -2,6 +2,7 @@ import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -213,6 +214,9 @@ void main() {
   testWidgets('uses compact IPTV layout on phone portrait viewports', (
     tester,
   ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
     await pumpTvRouter(
       tester,
       initialLocation: TvRouteNames.live,
@@ -223,11 +227,13 @@ void main() {
     expect(find.text('Live TV'), findsNothing);
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
+    expect(find.text('Play file on TV'), findsOneWidget);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('uses compact IPTV layout on short phone landscape viewports', (
@@ -250,6 +256,8 @@ void main() {
     'detected TV keeps the 10-foot layout even at phone-sized logical '
     'viewports (Fire TV Stick reports 960x540 logical at density 2.0)',
     (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
       addTearDown(DeviceFormFactorDetector.clearCache);
 
@@ -263,6 +271,11 @@ void main() {
       // no Cast entry point (the TV is the receiver, not a sender).
       expect(find.byIcon(Icons.menu), findsNothing);
       expect(find.byIcon(Icons.cast_connected), findsNothing);
+      expect(
+        find.byKey(const ValueKey('iptv-drawer-play-on-tv')),
+        findsNothing,
+      );
+      debugDefaultTargetPlatformOverride = null;
     },
   );
 

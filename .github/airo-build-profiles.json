@@ -31,7 +31,7 @@
       "android": {
         "apkArtifact": "app-arm64-v8a-release.apk",
         "abiStrategy": "single-arm64-apk",
-        "releaseBudgetMb": 450,
+        "releaseBudgetMb": 120,
         "debugBudgetMb": 650,
         "enforceReleaseBudget": false
       }
@@ -134,7 +134,7 @@
       "appVariant": "coins",
       "appPlatform": "mobileFull",
       "deviceClass": "phone",
-      "ciBuild": false,
+      "ciBuild": true,
       "edgeProfile": true,
       "requiredPackages": ["feature_coin"],
       "featureModules": ["feature_coin"],

@@ -39,6 +39,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool enableSwipeChannelChange;
   final bool initiallyFullscreen;
   final bool enableTouchGestures;
+  final bool handleNativeFullscreen;
   final PlayerBrightnessController? brightnessController;
 
   /// Whether to offer system Picture-in-Picture (the floating-window
@@ -78,6 +79,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.enableTouchGestures = true,
+    this.handleNativeFullscreen = true,
     this.showPictureInPicture = true,
     this.useTvTransportBar = false,
     this.brightnessController,
@@ -346,7 +348,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _toggleWebFullscreen();
     }
     setState(() => _isFullscreen = enteringFullscreen);
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    if (widget.handleNativeFullscreen) {
+      unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    }
     widget.onFullscreenToggle?.call();
   }
 
@@ -1029,10 +1033,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // system below; keeping PlayerOverlay's old back/title layer
                     // mounted here caused a second set of controls to reappear
                     // after the floating controls faded.
+                    //
+                    // A failover switch reports itself as loading, so the
+                    // exclusive-state rule would hide the one piece of chrome
+                    // that explains the wait. Since this layer is the toast and
+                    // nothing else, let it through while a switch is in flight.
                     if (!_isLocked &&
                         !isPipActive &&
                         !compactInlinePlayer &&
-                        !blocksPlaybackChrome)
+                        (!blocksPlaybackChrome || state.failover != null))
                       PlayerOverlay(
                         state: _toPlayerViewState(state),
                         onBack:

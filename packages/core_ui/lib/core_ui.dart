@@ -5,7 +5,10 @@ library;
 
 // Theme & Tokens
 export 'src/theme/airo_effects.dart';
+export 'src/theme/airo_domain.dart';
+export 'src/theme/airo_motion.dart';
 export 'src/theme/airo_theme_tokens.dart';
+export 'src/theme/airo_visual_tokens.dart';
 export 'src/theme/app_colors.dart';
 export 'src/theme/app_spacing.dart';
 export 'src/theme/app_typography.dart';
@@ -16,6 +19,7 @@ export 'src/theme/bedtime_theme.dart';
 
 // Widgets
 export 'src/widgets/airo_badge.dart';
+export 'src/widgets/airo_ambient.dart';
 export 'src/widgets/airo_channel_card.dart';
 export 'src/widgets/airo_rail.dart';
 export 'src/widgets/airo_rail_card.dart';

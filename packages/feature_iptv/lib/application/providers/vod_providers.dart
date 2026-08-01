@@ -46,7 +46,7 @@ final rawVodItemsProvider = FutureProvider<List<VodItem>>((ref) async {
   final channels = await ref.watch(iptvChannelsProvider.future);
   final adapter = ref.watch(_m3uVodAdapterProvider);
   return adapter.extractVodItems(channels);
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _vodSeriesGrouperProvider = Provider<VodSeriesGrouper>(
   (ref) => VodSeriesGrouper(),

@@ -29,6 +29,13 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
   @override
   AgentSkill? getById(String id) => _skills[id];
 
+  bool addSkill(AgentSkill skill) {
+    if (_skills.containsKey(skill.id)) return false;
+    _skills[skill.id] = skill;
+    _notifyEnabledStateChanged();
+    return true;
+  }
+
   @override
   List<AgentSkill> search(String query) {
     final normalized = query.trim().toLowerCase();
