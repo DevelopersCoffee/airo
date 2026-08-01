@@ -6,17 +6,26 @@ import 'package:core_data/core_data.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class _ThrowingDeleteSecureStore extends InMemorySecureStore {
+  @override
+  Future<void> delete({required String key}) {
+    throw StateError('Secure storage is unavailable.');
+  }
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<ProviderContainer> buildContainer() async {
+  Future<ProviderContainer> buildContainer({SecureStore? secureStore}) async {
     final prefs = await SharedPreferences.getInstance();
     return ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        secureStoreProvider.overrideWithValue(
+          secureStore ?? InMemorySecureStore(),
+        ),
         xtreamAuthenticatorProvider.overrideWithValue(
           ({
             required String serverUrl,
@@ -309,21 +318,16 @@ void main() {
       final container = await buildContainer();
       addTearDown(container.dispose);
       await container.read(
-        addM3uContentSourceProvider((
-          label: 'My Playlist',
-          url: 'https://example.com/playlist.m3u',
+        addJellyfinContentSourceProvider((
+          label: 'Home Jellyfin',
+          url: 'https://jellyfin.example.com',
+          username: 'u',
+          password: 'p',
         )).future,
       );
       final id = (await container.read(
         configuredContentSourcesProvider.future,
       )).single.id;
-      await container
-          .read(contentSourceCredentialStoreProvider)
-          .save(
-            ContentSourceCredentialRef(id),
-            const ContentSourceCredentials(username: 'u', password: 'p'),
-          );
-
       await container.read(removeContentSourceProvider(id).future);
 
       final sources = await container.read(
@@ -336,6 +340,29 @@ void main() {
       expect(credential, isNull);
     },
   );
+
+  test('M3U removal does not require secure storage', () async {
+    final container = await buildContainer(
+      secureStore: _ThrowingDeleteSecureStore(),
+    );
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'My Playlist',
+        url: 'https://example.com/playlist.m3u',
+      )).future,
+    );
+    final id = (await container.read(
+      configuredContentSourcesProvider.future,
+    )).single.id;
+
+    await container.read(removeContentSourceProvider(id).future);
+
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      isEmpty,
+    );
+  });
 
   test('removing a migrated legacy playlist prevents remigration', () async {
     const legacyUrl = 'https://iptv-org.github.io/iptv/index.m3u';
