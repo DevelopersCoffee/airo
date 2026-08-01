@@ -117,6 +117,9 @@ class ModelDownloadProgress {
   String get statusDisplay {
     switch (status) {
       case ModelDownloadStatus.pending:
+        if (queuePosition != null && queuePosition! >= 0) {
+          return 'Queued #${queuePosition! + 1}';
+        }
         return 'Queued';
       case ModelDownloadStatus.downloading:
         return 'Downloading';

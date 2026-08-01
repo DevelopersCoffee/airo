@@ -22,5 +22,18 @@ void main() {
       expect(pending.statusDisplay, 'Queued');
       expect(verifying.statusDisplay, 'Verifying');
     });
+
+    test('surfaces queued artifact position when available', () {
+      const progress = ModelDownloadProgress(
+        modelId: 'model-a',
+        totalBytes: 100,
+        downloadedBytes: 0,
+        status: ModelDownloadStatus.pending,
+        queuePosition: 2,
+      );
+
+      expect(progress.statusDisplay, 'Queued #3');
+      expect(progress.isActive, isTrue);
+    });
   });
 }
