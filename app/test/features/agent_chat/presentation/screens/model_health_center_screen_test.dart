@@ -50,7 +50,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Runtime Health Center'), findsOneWidget);
-    expect(find.text('Why?'), findsOneWidget);
+    expect(find.text('Why can’t this model load?'), findsOneWidget);
     expect(
       find.bySemanticsLabel(RegExp('Gemma 4B runtime status')),
       findsOneWidget,

@@ -124,7 +124,7 @@ class ModelHealthCenterScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Why?', style: theme.textTheme.titleMedium),
+                  Text(_whyTitle(report), style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(report.explanation),
                   if (report.availableMemoryMb != null &&
@@ -231,6 +231,14 @@ class ModelHealthCenterScreen extends StatelessWidget {
         ModelHealthReportStatus.preparing => 'Preparing model',
         ModelHealthReportStatus.unknown => 'Health information pending',
       };
+
+  static String _whyTitle(ModelHealthReport report) => switch (report.status) {
+    ModelHealthReportStatus.ready ||
+    ModelHealthReportStatus.running => 'Why this model can run',
+    ModelHealthReportStatus.preparing ||
+    ModelHealthReportStatus.recoverable ||
+    ModelHealthReportStatus.unknown => 'Why can’t this model load?',
+  };
 
   static IconData _actionIcon(ModelHealthAction action) => switch (action) {
     ModelHealthAction.retry => Icons.refresh,
