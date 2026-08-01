@@ -1,5 +1,9 @@
 import 'package:flutter/services.dart';
 
+final BigInt _fnv64OffsetBasis = BigInt.parse('cbf29ce484222325', radix: 16);
+final BigInt _fnv64Prime = BigInt.parse('100000001b3', radix: 16);
+final BigInt _fnv64Mask = BigInt.parse('ffffffffffffffff', radix: 16);
+
 /// Device capabilities for direct, user-authorized local media browsing.
 class LocalMediaLibraryCapabilities {
   const LocalMediaLibraryCapabilities({
@@ -230,10 +234,10 @@ LocalMediaEntry _decodeLocalMediaEntry(Map<Object?, Object?> row) {
 /// opaque platform identifier out of stored channel ids while producing the
 /// same value across launches and builds.
 String stableLocalMediaChannelId(String opaqueEntryId) {
-  var hash = 0xcbf29ce484222325;
+  var hash = _fnv64OffsetBasis;
   for (final codeUnit in opaqueEntryId.codeUnits) {
-    hash ^= codeUnit;
-    hash = (hash * 0x100000001b3) & 0xffffffffffffffff;
+    hash ^= BigInt.from(codeUnit);
+    hash = (hash * _fnv64Prime) & _fnv64Mask;
   }
   return 'local-${hash.toRadixString(16).padLeft(16, '0')}';
 }

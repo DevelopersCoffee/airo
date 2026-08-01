@@ -87,6 +87,15 @@ void main() {
     },
   );
 
+  test('local-media channel ids preserve the 64-bit FNV contract', () {
+    expect(stableLocalMediaChannelId(''), 'local-cbf29ce484222325');
+    expect(stableLocalMediaChannelId('opaque-movie'), 'local-bed3ddf1e8aa005b');
+    expect(
+      stableLocalMediaChannelId('content://tree/primary%3AMovies%2Fdemo.mp4'),
+      'local-78cc4430b3c8bbd8',
+    );
+  });
+
   test('USB permission failure becomes a stable redacted exception', () async {
     messenger.setMockMethodCallHandler(channel, (_) async {
       throw PlatformException(
