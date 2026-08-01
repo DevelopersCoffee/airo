@@ -17,11 +17,7 @@ class ImageLabelerOptions {
 }
 
 class ImageLabel {
-  ImageLabel({
-    required this.label,
-    required this.confidence,
-    required this.index,
-  });
+  ImageLabel({required this.label, required this.confidence, required this.index});
 
   final String label;
   final double confidence;
@@ -33,8 +29,7 @@ class ImageLabeler {
 
   final ImageLabelerOptions options;
 
-  Future<List<ImageLabel>> processImage(InputImage inputImage) async =>
-      const [];
+  Future<List<ImageLabel>> processImage(InputImage inputImage) async => const [];
 
   Future<void> close() async {}
 }

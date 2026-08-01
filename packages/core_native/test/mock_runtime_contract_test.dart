@@ -23,10 +23,7 @@ void main() {
     expect(config.failure, RuntimeErrorCode.outOfMemory);
     expect(injection.error, RuntimeErrorCode.timeout);
     expect(RuntimeHealthState.values, contains(RuntimeHealthState.recovering));
-    expect(
-      ExecutionTrace(entries: const []),
-      ExecutionTrace(entries: const []),
-    );
+    expect(ExecutionTrace(entries: const []), ExecutionTrace(entries: const []));
     expect(TelemetryStub(events: const []), TelemetryStub(events: const []));
   });
 }
