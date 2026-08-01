@@ -20,7 +20,7 @@ use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::{AddBos, LlamaModel, Special};
+use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 
 use crate::budget::ResourceRequest;
@@ -123,6 +123,10 @@ impl GenerationEngine for LlamaGenerationEngine {
         ctx.decode(&mut batch)
             .map_err(|e| EngineError::Backend(format!("decode: {e}")))?;
 
+        // The decoder carries UTF-8 continuation state across tokens: a
+        // multi-byte character can straddle a token boundary, and decoding each
+        // token independently would emit replacement characters mid-word.
+        let mut decoder = encoding_rs::UTF_8.new_decoder();
         let mut sampler = LlamaSampler::greedy();
         let mut position = batch.n_tokens();
         let mut produced = 0u32;
@@ -143,7 +147,7 @@ impl GenerationEngine for LlamaGenerationEngine {
 
             let text = self
                 .model
-                .token_to_str(token, Special::Tokenize)
+                .token_to_piece(token, &mut decoder, false, None)
                 .map_err(|e| EngineError::Backend(format!("detokenise: {e}")))?;
 
             // Streaming (`I7`): each token reaches the caller as produced. The
