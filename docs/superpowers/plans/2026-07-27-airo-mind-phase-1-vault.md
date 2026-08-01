@@ -123,6 +123,55 @@
 > serialization changes, conformance updates, `G0`. Nothing else. No new
 > primitives, invariants, or contracts.
 >
+> # PHASE 1 ACCEPTED — v1.0.0-alpha
+>
+> Feature complete against the agreed Definition of Done. Every exit criterion
+> satisfied, none waived.
+>
+> | Area | Status |
+> |---|---|
+> | Security | ✅ `SEC-47` · `SEC-48` · `SEC-49` |
+> | Correctness | ✅ `RA-26` |
+> | Performance | ✅ `from_payload` · streaming reader (`PERF-1`+`PERF-2`) |
+> | Validation | ✅ `L1.1` · `L1.2` · `L2` · `L3` |
+>
+> ```
+> check 0 · 100 tests pass, 1 ignored · clippy 0
+> L1.1 PASS (109 items) · L1.2 PASS · L3 10/10
+> ```
+>
+> ## The Vault is frozen
+>
+> **No feature work.** Only security, correctness, and performance fixes.
+> Anything else goes to the Vault v2 backlog. The Vault exists to support the
+> runtime; it is now a dependency, not a project.
+>
+> ## Carried forward, not lost
+>
+> Recorded rather than dropped, because closing a phase is not the same as
+> pretending nothing remains:
+>
+> | Item | Source | Disposition |
+> |---|---|---|
+> | `SEC-44` base64 accepts non-canonical padding | Security | v2 — blocks when `C3` sync ships, since the package then has no canonical byte form |
+> | `RA-28` `WriteFailed` variant | Rust Architect | v2 — a full disk currently reports as a serialization bug |
+> | `RA-29` construction-site test cannot fail | Rust Architect | v2 — it is fake coverage and known to be |
+> | BIP-39 vector fixture unvendored | Rust Architect | v2 — the suite proves determinism, not conformance to the standard |
+> | `PERF-8` `all_revoked()` called twice | Performance | v2 — measured 48 MB and 31 ms at 500k |
+> | `PERF-9` O(N) converged merge | Performance | Phase 2 — `ADR-0017` already defers it to `C3` |
+> | `PERF-10` `is_content_revoked` allocates per lookup | Performance | v2 — 30.6 ns of 113.1 ns |
+> | Model acquisition | design thread | ADR, next |
+>
+> ## Why this is accepted on gate evidence
+>
+> Three council reviews rejected `2821e0b5`. Every finding they raised is closed
+> and the gates now encode those findings as executable checks — a regression
+> fails automatically rather than waiting for manual rediscovery. That was the
+> remedy both Rust Architect and Chief Security Officer proposed, independently,
+> in place of another review cycle.
+>
+> ---
+>
 > **Phase status.** Attribution before detail — `ADR-0017` is isolated so that
 > any regression after it is attributable to it and not to a lingering
 > propagation error.
