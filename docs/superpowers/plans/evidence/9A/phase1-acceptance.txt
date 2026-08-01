@@ -1,0 +1,20 @@
+PHASE 1 ACCEPTANCE SNAPSHOT -- 2026-08-01T03:29:33Z
+commit: 9b79caa3
+
+== G0 ==
+check  0 errors
+test result: ok. 97 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 5.38s
+clippy 0 errors
+
+== L1.1 public surface ==
+G0.9: PASS -- public surface matches the reviewed allowlist (107 items)
+
+== L1.2 enumerable ==
+  FAIL  unchecked-arith no unchecked += / -= / * on integers
+  FAIL  raw-identifier no raw identifier at a public entry point
+  PASS  rng-sites      OsRng appears only in random.rs  (2 allowlisted)
+  PASS  per-byte-hex   no per-byte hex formatting  (1 allowlisted)
+L1.2: FAILED -- 5 site(s) not in an allowlist
+
+== L3 consumer journeys ==
+G0.8: 9 passed, 0 FAILED

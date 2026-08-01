@@ -4832,6 +4832,19 @@ impl RecoveryPackage {
 
     /// `SEC-1` — **private.** The payload never leaves this module.
     ///
+    /// # Invariant boundary: `decrypt` does not cross-check; `open` does
+    ///
+    /// `decrypt` returns the payload with the frames authenticated and nothing
+    /// else verified. The `revocation_epoch == head_epoch` cross-check
+    /// (`SEC-36`) and the identity check live in `open`, one level up.
+    ///
+    /// **That split is safe only while `decrypt` stays private with controlled
+    /// callers.** If it ever becomes `pub(crate)` or `pub`, the invariant
+    /// changes and every new caller inherits the obligation to cross-check.
+    /// Found by a mutation test that passed when pointed at `decrypt` and
+    /// failed when pointed at `open` — the same shape as `SEC-1` itself, where
+    /// a witness guarded one door and not the one handing out keys.
+    ///
     /// Revision 7 had this `pub(crate)` returning a `pub(crate)` payload whose
     /// key accessors were also `pub(crate)`, which is the route an in-crate
     /// probe used to read every context key without applying revocations. The
