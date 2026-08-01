@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
@@ -1313,23 +1312,27 @@ class _TvFullscreenPlayerPage extends StatefulWidget {
 }
 
 class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
-  late final FocusNode _focusNode;
   bool _isClosing = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode(debugLabel: 'Airo TV fullscreen player');
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
+    // Entering this page only maximizes the video within the current window
+    // bounds; it never asked the OS to actually go fullscreen. dispose()
+    // below already pairs with an exit call, so request the matching enter
+    // here -- but wait until the route has rendered, because requests made
+    // while the pointer-driven Navigator push is still building can be
+    // ignored by AppKit.
+    //
+    // The focus request that used to accompany this is gone: the page no
+    // longer owns a KeyboardListener node, since the player itself owns the
+    // raw BACK key and WillPopScope vetoes the duplicate platform pop.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Wait until the route has rendered before asking NSWindow to enter
-        // fullscreen. Requests made while the pointer-driven Navigator push
-        // is still building can be ignored by AppKit.
         unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
-        _focusNode.requestFocus();
       }
     });
   }
@@ -1337,7 +1340,6 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
   @override
   void dispose() {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
-    _focusNode.dispose();
     unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     super.dispose();
   }
@@ -1361,15 +1363,12 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          _close();
-        }
-      },
+    // Fire OS sends a platform pop request even when Flutter handled the raw
+    // BACK key. Veto that duplicate at the fullscreen route itself; the player
+    // owns the raw key and either dismisses its overlay or calls [_close].
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async => false,
       child: Scaffold(
         key: const ValueKey('airo-tv-fullscreen-player'),
         backgroundColor: Colors.black,
@@ -1382,6 +1381,11 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
             initiallyFullscreen: true,
             // This route pairs native entry/exit with its own lifecycle.
             handleNativeFullscreen: false,
+            // Fire OS follows the raw BACK key with a platform pop request and
+            // repeats it on some devices. The player answers the raw key and
+            // absorbs those paired callbacks; the WillPopScope above vetoes
+            // whatever still reaches the route.
+            ownsPlatformBack: true,
             onFullscreenToggle: _close,
           ),
         ),

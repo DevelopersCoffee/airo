@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -406,13 +407,20 @@ void main() {
       // (not the "Example Channel" label) before proceeding — this is what
       // makes the test actually exercise _ProgramBlock.onFocus ->
       // EpgTimelineGrid._scrollTimelineTo, the crash path this test guards.
-      // Focus.of walks up from the "Morning Show" Text's context to the
-      // nearest ancestor Focus widget, which is the _ProgramBlock's
-      // TvFocusable — so hasFocus is true only if focus actually landed
-      // there rather than on the channel label.
-      final programBlockContext = tester.element(find.text('Morning Show'));
+      // Resolve the block's own TvFocusable node rather than calling Focus.of
+      // from the Text's context: TvFocusable wraps its child in ExcludeFocus,
+      // so the nearest ancestor Focus of the Text is now that exclusion node,
+      // which never reports focus. The outermost Focus inside the TvFocusable
+      // is the one that actually holds it.
+      final programBlock = find.ancestor(
+        of: find.text('Morning Show'),
+        matching: find.byType(TvFocusable),
+      );
+      final programBlockFocus = tester.widget<Focus>(
+        find.descendant(of: programBlock, matching: find.byType(Focus)).first,
+      );
       expect(
-        Focus.of(programBlockContext, createDependency: false).hasFocus,
+        programBlockFocus.focusNode?.hasFocus ?? false,
         isTrue,
         reason:
             'expected the second arrowRight to move focus off the channel '

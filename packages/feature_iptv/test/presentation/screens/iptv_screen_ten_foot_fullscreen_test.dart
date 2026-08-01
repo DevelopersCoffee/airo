@@ -169,6 +169,16 @@ void main() {
       final handled = await tester.binding.handlePopRoute();
       await tester.pump(const Duration(milliseconds: 400));
       expect(handled, isTrue);
+      expect(
+        container.read(isFullscreenModeProvider),
+        isTrue,
+        reason:
+            'the platform half of Fire OS BACK must not independently exit '
+            'fullscreen after the player handled the raw half',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump(const Duration(milliseconds: 400));
       expect(container.read(isFullscreenModeProvider), isFalse);
       expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
 

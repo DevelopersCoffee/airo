@@ -229,6 +229,9 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                 semanticLabel: 'Search field',
                 borderRadius: 10,
                 onSelect: () {},
+                // The field itself must be able to take focus, otherwise it
+                // can never receive typed input.
+                descendantsAreFocusable: true,
                 child: TextField(
                   key: const ValueKey('search-overlay-field'),
                   controller: _controller,

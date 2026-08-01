@@ -5,6 +5,95 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'TvFocusable exposes ActivateIntent and SELECT fires exactly once',
+    (tester) async {
+      var selectCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TvFocusable(
+              autofocus: true,
+              onSelect: () => selectCount += 1,
+              child: const Text('Activate me'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final focusedContext = FocusManager.instance.primaryFocus!.context!;
+      expect(
+        Actions.maybeFind<ActivateIntent>(focusedContext),
+        isNotNull,
+        reason: 'Fire TV SELECT is dispatched through the app shortcut system',
+      );
+
+      Actions.invoke(focusedContext, const ActivateIntent());
+      await tester.pump();
+      expect(selectCount, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(
+        selectCount,
+        2,
+        reason: 'one SELECT down/up pair must invoke one action',
+      );
+    },
+  );
+
+  testWidgets(
+    'focusable Material children do not create duplicate D-pad stops',
+    (tester) async {
+      final firstNode = FocusNode();
+      final secondNode = FocusNode();
+      addTearDown(firstNode.dispose);
+      addTearDown(secondNode.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Row(
+              children: [
+                TvFocusable(
+                  focusNode: firstNode,
+                  autofocus: true,
+                  onSelect: () {},
+                  child: IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.share),
+                  ),
+                ),
+                TvFocusable(
+                  focusNode: secondNode,
+                  onSelect: () {},
+                  child: IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.monitor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(firstNode.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+
+      expect(firstNode.hasFocus, isFalse);
+      expect(
+        secondNode.hasPrimaryFocus,
+        isTrue,
+        reason: 'one RIGHT must move to the next visible TV action',
+      );
+    },
+  );
+
   testWidgets('TvFocusable supports cursor hover focus and mouse selection', (
     tester,
   ) async {
@@ -444,6 +533,64 @@ void main() {
       );
     },
   );
+
+  // Excluding descendant focus is right for a Material button, but a text
+  // field that cannot take focus can never receive typed input -- on a TV that
+  // reads as a search box that silently swallows everything you type.
+  testWidgets(
+    'descendantsAreFocusable lets a wrapped TextField accept typed input',
+    (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TvFocusable(
+              onSelect: () {},
+              descendantsAreFocusable: true,
+              child: TextField(
+                key: const ValueKey('field'),
+                controller: controller,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const ValueKey('field')), 'news');
+      await tester.pump();
+
+      expect(controller.text, 'news');
+    },
+  );
+
+  testWidgets('descendant focus is excluded by default', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TvFocusable(
+            onSelect: () {},
+            child: TextField(
+              key: const ValueKey('field'),
+              controller: controller,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ExcludeFocus>(find.byType(ExcludeFocus)).excluding,
+      isTrue,
+      reason: 'Material children must not add a second D-pad stop by default',
+    );
+  });
 }
 
 class _BuildCounter extends StatelessWidget {

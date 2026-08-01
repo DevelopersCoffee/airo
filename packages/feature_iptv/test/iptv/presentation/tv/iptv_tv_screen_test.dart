@@ -426,6 +426,80 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets(
+    'platform BACK closes fullscreen Mini Guide without popping TV player',
+    (tester) async {
+      await pumpScreen(
+        tester,
+        streamingState: StreamingState(
+          currentChannel: channels[2],
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+        ),
+        surfaceSize: const Size(1440, 900),
+        settle: false,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Mini guide'), findsOneWidget);
+
+      // Fire TV delivers raw BACK first and may finish the paired platform
+      // route operation several seconds later. The raw half closes the guide.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.text('Mini guide'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsOneWidget,
+      );
+
+      // The old timer guard reopened canPop while Fire OS still owned the
+      // original BACK operation, causing this route to pop around five
+      // seconds later.
+      await tester.pump(const Duration(seconds: 6));
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsOneWidget,
+      );
+
+      final pairedBackHandled = await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(pairedBackHandled, isTrue);
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsOneWidget,
+      );
+
+      final duplicatePlatformBackHandled = await tester.binding
+          .handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(duplicatePlatformBackHandled, isTrue);
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsOneWidget,
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsNothing,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
   testWidgets('mute button is present and toggles mute', (tester) async {
     await pumpScreen(
       tester,
