@@ -252,6 +252,7 @@ class AssistantRuntimeService {
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
+    int? contextLengthOverride,
     void Function(AssistantRuntimePreparationProgress progress)? onProgress,
     bool Function()? isCancelled,
   }) async {
@@ -441,9 +442,13 @@ class AssistantRuntimeService {
           );
           final loadCancel = cancelled();
           if (loadCancel != null) return loadCancel;
+          final contextSize = _effectiveContextLength(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
           final loaded = await _llamaGguf.loadModel(
             package,
-            contextSize: package.contextLength.clamp(512, 8192).toInt(),
+            contextSize: contextSize,
           );
           if (!loaded) {
             return AssistantRuntimePreparationResult.blocked(
@@ -529,9 +534,15 @@ class AssistantRuntimeService {
         }
 
         if (package != null) {
+          final compatibilityPackage = _packageWithContextOverride(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
           final compatibility =
-              await (_checkModelCompatibilityOverride?.call(package) ??
-                  _checkCompatibility(package));
+              await (_checkModelCompatibilityOverride?.call(
+                    compatibilityPackage,
+                  ) ??
+                  _checkCompatibility(compatibilityPackage));
           if (!compatibility.isCompatible) {
             return AssistantRuntimePreparationResult.blocked(
               AssistantRuntimeDiagnosticEnvelope(
@@ -565,12 +576,16 @@ class AssistantRuntimeService {
         );
         final loadCancel = cancelled();
         if (loadCancel != null) return loadCancel;
-        final warmed = downloadedPackage != null
-            ? await (_warmupLiteRtModelOverride?.call(downloadedPackage) ??
-                  _liteRtLm.warmupModel(downloadedPackage))
-            : package != null
-            ? await (_warmupLiteRtModelOverride?.call(package) ??
-                  _liteRtLm.warmupModel(package))
+        final selectedPackage = downloadedPackage ?? package;
+        final preparedPackage = selectedPackage == null
+            ? null
+            : _packageWithContextOverride(
+                selectedPackage,
+                contextLengthOverride: contextLengthOverride,
+              );
+        final warmed = preparedPackage != null
+            ? await (_warmupLiteRtModelOverride?.call(preparedPackage) ??
+                  _liteRtLm.warmupModel(preparedPackage))
             : await (_warmupLiteRtInstalledModelOverride?.call() ??
                   _liteRtLm.warmupInstalledModel());
         if (!warmed) {
@@ -879,6 +894,28 @@ class AssistantRuntimeService {
   ) async {
     final registry = ModelRegistry()..registerModel(package);
     return registry.checkCompatibility(package);
+  }
+
+  OfflineModelInfo _packageWithContextOverride(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final contextLength = _effectiveContextLength(
+      package,
+      contextLengthOverride: contextLengthOverride,
+    );
+    if (contextLength == package.contextLength) {
+      return package;
+    }
+    return package.copyWith(contextLength: contextLength);
+  }
+
+  int _effectiveContextLength(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final requested = contextLengthOverride ?? package.contextLength;
+    return requested.clamp(512, 8192).toInt();
   }
 
   Future<OfflineModelInfo?> _resolveDownloadedLiteRtPackage(
