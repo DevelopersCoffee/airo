@@ -34,6 +34,24 @@ void main() {
       expect(identical(testInstance, ActiveModelService.instance), false);
     });
 
+    test(
+      'production service never reports GGUF ready without a native loader',
+      () async {
+        final production = ActiveModelService.forTesting(simulateLoad: false);
+        addTearDown(production.dispose);
+
+        final result = await production.loadModel(testConfig);
+
+        expect(result, isA<Err<ActiveModelInfo>>());
+        expect(production.hasActiveModel, isFalse);
+        expect(production.activeModel, isNull);
+        expect(
+          (result as Err<ActiveModelInfo>).error.toString(),
+          contains('native llama.cpp backend is not installed'),
+        );
+      },
+    );
+
     test('initial state should have no active model', () {
       expect(service.activeModel, isNull);
       expect(service.hasActiveModel, false);

@@ -20,9 +20,17 @@ void main() {
     );
   }
 
+  /// Riverpod batches provider propagation onto the next frame, so a stream
+  /// event needs a frame to reach the notifier and another to rebuild the
+  /// widget that watches it.
+  Future<void> settleConnectivity(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump();
+  }
+
   testWidgets('renders nothing while online', (tester) async {
     await pumpBanner(tester, Stream.value([ConnectivityResult.wifi]));
-    await tester.pump();
+    await settleConnectivity(tester);
 
     expect(find.byKey(const ValueKey('iptv-offline-banner')), findsNothing);
   });
@@ -35,12 +43,12 @@ void main() {
 
     await pumpBanner(tester, controller.stream);
     controller.add([ConnectivityResult.wifi]);
-    await tester.pump();
+    await settleConnectivity(tester);
 
     expect(find.byKey(const ValueKey('iptv-offline-banner')), findsNothing);
 
     controller.add([ConnectivityResult.none]);
-    await tester.pump();
+    await settleConnectivity(tester);
 
     expect(find.byKey(const ValueKey('iptv-offline-banner')), findsOneWidget);
     expect(find.textContaining("You're offline"), findsOneWidget);
@@ -54,11 +62,11 @@ void main() {
 
     await pumpBanner(tester, controller.stream);
     controller.add([ConnectivityResult.none]);
-    await tester.pump();
+    await settleConnectivity(tester);
     expect(find.byKey(const ValueKey('iptv-offline-banner')), findsOneWidget);
 
     controller.add([ConnectivityResult.wifi]);
-    await tester.pump();
+    await settleConnectivity(tester);
 
     expect(find.byKey(const ValueKey('iptv-offline-banner')), findsNothing);
   });

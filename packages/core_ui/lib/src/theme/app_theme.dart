@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'airo_effects.dart';
+import 'airo_domain.dart';
+import 'airo_motion.dart';
 import 'airo_theme_tokens.dart';
+import 'airo_visual_tokens.dart';
 import 'app_colors.dart';
 import 'app_theme_definition.dart';
 import 'app_theme_id.dart';
@@ -42,8 +45,8 @@ abstract final class AppTheme {
 
   static AppThemeDefinition get _cyberDefinition => AppThemeDefinition(
     id: AppThemeId.cyber,
-    name: 'Airo Cyber',
-    description: 'Futuristic dark grid interface with warm amber actions.',
+    name: 'Airo Living Console',
+    description: 'Calm dark surfaces with precise type and ambient color.',
     lightTheme: _cyberDark,
     darkTheme: _cyberDark,
     themeMode: ThemeMode.dark,
@@ -128,6 +131,13 @@ abstract final class AppTheme {
         warning: AppColors.warning,
       ),
       AiroEffects.classic,
+      AiroVisualTokens.classicLight,
+      AiroDomainTokens(
+        domain: AiroDomain.airo,
+        accent: Color(0xFF6750A4),
+        accentSecondary: Color(0xFF7D5260),
+        onAccent: Color(0xFFFFFFFF),
+      ),
     ],
   );
 
@@ -168,267 +178,413 @@ abstract final class AppTheme {
         warning: AppColors.warning,
       ),
       AiroEffects.classic,
+      AiroVisualTokens.classicDark,
+      AiroDomainTokens(
+        domain: AiroDomain.airo,
+        accent: Color(0xFFD0BCFF),
+        accentSecondary: Color(0xFFEFB8C8),
+        onAccent: Color(0xFF21182F),
+      ),
     ],
   );
 
   static ThemeData get _cyberDark {
-    final editorialTextTheme = const TextTheme(
+    const shapeSmall = RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(10)),
+    );
+    const shapeMedium = RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(16)),
+    );
+    const shapeLarge = RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(24)),
+    );
+    final textTheme = const TextTheme(
       displayLarge: TextStyle(
         fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
         fontSize: 56,
-        height: 0.98,
-        letterSpacing: 0,
+        height: 1,
       ),
       displayMedium: TextStyle(
         fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
         fontSize: 44,
-        height: 1,
-        letterSpacing: 0,
+        height: 1.05,
       ),
       displaySmall: TextStyle(
         fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
-        fontSize: 32,
-        height: 1,
-        letterSpacing: 0,
+        fontSize: 34,
+        height: 1.08,
       ),
       headlineLarge: TextStyle(
-        fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
-        fontSize: 30,
-        height: 1.1,
-        letterSpacing: 0,
+        fontSize: 32,
+        height: 1.15,
+        letterSpacing: -0.4,
       ),
       headlineMedium: TextStyle(
-        fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
-        fontSize: 24,
-        height: 1.15,
-        letterSpacing: 0,
+        fontSize: 26,
+        height: 1.2,
+        letterSpacing: -0.2,
       ),
       headlineSmall: TextStyle(
-        fontFamily: 'AiroRulesExpanded',
         fontWeight: FontWeight.w700,
-        fontSize: 20,
+        fontSize: 22,
         height: 1.2,
-        letterSpacing: 0,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 21,
-        height: 1.2,
-        letterSpacing: 2.8,
+        fontWeight: FontWeight.w600,
+        fontSize: 20,
+        height: 1.25,
       ),
       titleMedium: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 17,
-        height: 1.25,
-        letterSpacing: 2.4,
+        fontWeight: FontWeight.w600,
+        fontSize: 16,
+        height: 1.35,
       ),
       titleSmall: TextStyle(
-        fontFamily: 'AiroMondwest',
+        fontWeight: FontWeight.w600,
         fontSize: 14,
-        height: 1.25,
-        letterSpacing: 2,
+        height: 1.35,
       ),
-      bodyLarge: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 18,
-        height: 1.6,
-        letterSpacing: 0,
-      ),
-      bodyMedium: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 16,
-        height: 1.55,
-        letterSpacing: 0,
-      ),
-      bodySmall: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 13,
-        height: 1.45,
-        letterSpacing: 0,
-      ),
+      bodyLarge: TextStyle(fontSize: 17, height: 1.5),
+      bodyMedium: TextStyle(fontSize: 15, height: 1.5),
+      bodySmall: TextStyle(fontSize: 13, height: 1.45),
       labelLarge: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
         height: 1.2,
-        letterSpacing: 2.6,
       ),
       labelMedium: TextStyle(
-        fontFamily: 'AiroMondwest',
+        fontWeight: FontWeight.w600,
         fontSize: 12,
         height: 1.2,
-        letterSpacing: 2.2,
       ),
       labelSmall: TextStyle(
-        fontFamily: 'AiroMondwest',
-        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        fontSize: 11,
         height: 1.2,
-        letterSpacing: 1.8,
       ),
     ).apply(bodyColor: AppColors.cyberText, displayColor: AppColors.cyberText);
-
+    final scheme = const ColorScheme.dark(
+      primary: AppColors.cyberPrimary,
+      onPrimary: AppColors.cyberOnPrimary,
+      primaryContainer: Color(0xFF12282D),
+      onPrimaryContainer: AppColors.cyberText,
+      secondary: AppColors.cyberSecondary,
+      onSecondary: Color(0xFF0C071C),
+      secondaryContainer: Color(0xFF211D38),
+      onSecondaryContainer: AppColors.cyberText,
+      tertiary: AppColors.cyberTertiary,
+      onTertiary: Color(0xFF03150E),
+      tertiaryContainer: Color(0xFF102820),
+      onTertiaryContainer: AppColors.cyberText,
+      error: AppColors.cyberError,
+      onError: Color(0xFF2A0000),
+      errorContainer: Color(0xFF4B1111),
+      onErrorContainer: Color(0xFFFFDAD6),
+      surface: AppColors.cyberSurface,
+      onSurface: AppColors.cyberText,
+      surfaceContainerLowest: AppColors.cyberBackground,
+      surfaceContainerLow: AppColors.cyberSurface,
+      surfaceContainer: AppColors.cyberSurfaceHigh,
+      surfaceContainerHigh: AppColors.cyberSurfaceRaised,
+      surfaceContainerHighest: Color(0xFF1D2A34),
+      onSurfaceVariant: AppColors.cyberMutedText,
+      outline: AppColors.cyberOutline,
+      outlineVariant: AppColors.cyberGridLine,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      fontFamily: 'AiroMondwest',
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.cyberPrimary,
-        onPrimary: AppColors.cyberOnPrimary,
-        primaryContainer: AppColors.cyberBackground,
-        onPrimaryContainer: AppColors.cyberText,
-        secondary: AppColors.cyberSecondary,
-        onSecondary: AppColors.cyberBackground,
-        secondaryContainer: AppColors.cyberSurfaceHigh,
-        onSecondaryContainer: AppColors.cyberText,
-        tertiary: AppColors.cyberTertiary,
-        onTertiary: AppColors.cyberBackground,
-        tertiaryContainer: AppColors.cyberSurfaceHigh,
-        onTertiaryContainer: AppColors.cyberText,
-        error: Color(0xFFFF6B6B),
-        onError: Color(0xFF2A0000),
-        errorContainer: Color(0xFF4B1111),
-        onErrorContainer: Color(0xFFFFDAD6),
-        surface: AppColors.cyberSurface,
-        onSurface: AppColors.cyberText,
-        surfaceContainerHighest: AppColors.cyberSurfaceHigh,
-        onSurfaceVariant: AppColors.cyberMutedText,
-        outline: AppColors.cyberOutline,
-        outlineVariant: AppColors.cyberGridLine,
-      ),
+      colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.cyberBackground,
-      textTheme: editorialTextTheme,
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
+      canvasColor: AppColors.cyberBackground,
+      textTheme: textTheme,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: VisualDensity.standard,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: AiroPageTransitionsBuilder(),
+          TargetPlatform.iOS: AiroPageTransitionsBuilder(),
+          TargetPlatform.macOS: AiroPageTransitionsBuilder(),
+          TargetPlatform.windows: AiroPageTransitionsBuilder(),
+          TargetPlatform.linux: AiroPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: AiroPageTransitionsBuilder(),
+        },
+      ),
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: AppColors.cyberChrome,
+        backgroundColor: AppColors.cyberChrome.withValues(alpha: 0.94),
         foregroundColor: AppColors.cyberText,
         surfaceTintColor: Colors.transparent,
+        titleTextStyle: textTheme.titleLarge?.copyWith(
+          color: AppColors.cyberText,
+        ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: AppColors.cyberSurface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-          side: const BorderSide(color: AppColors.cyberGridLine),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: AppColors.cyberGridLine),
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.cyberGridLine,
-        thickness: 1,
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.cyberSurfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: shapeLarge.copyWith(
+          side: const BorderSide(color: AppColors.cyberGridLine),
+        ),
+        titleTextStyle: textTheme.headlineSmall,
+        contentTextStyle: textTheme.bodyLarge?.copyWith(
+          color: AppColors.cyberMutedText,
+        ),
       ),
-      chipTheme: const ChipThemeData(
-        backgroundColor: AppColors.cyberSurfaceHigh,
-        selectedColor: AppColors.cyberPrimary,
-        disabledColor: Color(0xFF102323),
-        labelStyle: TextStyle(color: AppColors.cyberText),
-        secondaryLabelStyle: TextStyle(color: AppColors.cyberOnPrimary),
-        side: BorderSide(color: AppColors.cyberGridLine),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.cyberSurfaceRaised,
+        modalBackgroundColor: AppColors.cyberSurfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        modalElevation: 0,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          side: BorderSide(color: AppColors.cyberGridLine),
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.cyberChrome,
-        indicatorColor: AppColors.cyberPrimary.withValues(alpha: 0.12),
+        height: 72,
+        backgroundColor: AppColors.cyberChrome.withValues(alpha: 0.96),
+        indicatorColor: AppColors.cyberPrimary.withValues(alpha: 0.16),
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          final color = states.contains(WidgetState.selected)
-              ? AppColors.cyberPrimary
-              : AppColors.cyberMutedText;
-          return TextStyle(color: color, fontSize: 12);
+          return textTheme.labelSmall?.copyWith(
+            color: states.contains(WidgetState.selected)
+                ? AppColors.cyberPrimary
+                : AppColors.cyberMutedText,
+          );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.cyberOnPrimary);
-          }
-          return const IconThemeData(color: AppColors.cyberMutedText);
+          return IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? AppColors.cyberPrimary
+                : AppColors.cyberMutedText,
+          );
         }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.cyberChrome,
+        indicatorColor: AppColors.cyberPrimary.withValues(alpha: 0.16),
+        selectedIconTheme: const IconThemeData(color: AppColors.cyberPrimary),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.cyberMutedText,
+        ),
+        selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.cyberPrimary,
+        ),
+        unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.cyberMutedText,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.cyberPrimary,
           foregroundColor: AppColors.cyberOnPrimary,
+          disabledBackgroundColor: AppColors.cyberSurfaceHigh,
+          disabledForegroundColor: AppColors.cyberMutedText,
           elevation: 0,
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          textStyle: editorialTextTheme.labelLarge,
+          shape: shapeSmall,
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.cyberPrimary,
+          foregroundColor: AppColors.cyberOnPrimary,
+          elevation: 0,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: shapeSmall,
+          textStyle: textTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.cyberPrimary,
+          minimumSize: const Size(48, 48),
           side: const BorderSide(color: AppColors.cyberOutline),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          textStyle: editorialTextTheme.labelLarge,
+          shape: shapeSmall,
+          textStyle: textTheme.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.cyberPrimary,
-          textStyle: editorialTextTheme.labelLarge,
+          minimumSize: const Size(48, 48),
+          shape: shapeSmall,
+          textStyle: textTheme.labelLarge,
         ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.cyberPrimary,
+        foregroundColor: AppColors.cyberOnPrimary,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        shape: shapeMedium,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.cyberBackground.withValues(alpha: 0.4),
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+        fillColor: AppColors.cyberSurfaceHigh,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
           borderSide: BorderSide(color: AppColors.cyberGridLine),
         ),
-        enabledBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
           borderSide: BorderSide(color: AppColors.cyberGridLine),
         ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(color: AppColors.cyberPrimary),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppColors.cyberPrimary, width: 2),
         ),
-        labelStyle: const TextStyle(color: AppColors.cyberMutedText),
-        hintStyle: const TextStyle(color: AppColors.cyberMutedText),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: AppColors.cyberError),
         ),
+        labelStyle: TextStyle(color: AppColors.cyberMutedText),
+        hintStyle: TextStyle(color: AppColors.cyberMutedText),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.cyberSurfaceHigh,
+        selectedColor: AppColors.cyberPrimary.withValues(alpha: 0.18),
+        disabledColor: AppColors.cyberSurface,
+        labelStyle: textTheme.labelMedium?.copyWith(color: AppColors.cyberText),
+        secondaryLabelStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.cyberPrimary,
+        ),
+        side: const BorderSide(color: AppColors.cyberGridLine),
+        shape: shapeSmall,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: AppColors.cyberMutedText,
+        textColor: AppColors.cyberText,
+        selectedColor: AppColors.cyberPrimary,
+        selectedTileColor: AppColors.cyberPrimary.withValues(alpha: 0.1),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: shapeSmall,
+        titleTextStyle: textTheme.titleMedium,
+        subtitleTextStyle: textTheme.bodyMedium?.copyWith(
+          color: AppColors.cyberMutedText,
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.cyberGridLine,
+        thickness: 1,
+        space: 1,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.cyberSurfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: shapeMedium.copyWith(
+          side: const BorderSide(color: AppColors.cyberGridLine),
+        ),
+        textStyle: textTheme.bodyMedium,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.cyberSurfaceRaised,
+        contentTextStyle: textTheme.bodyMedium,
+        actionTextColor: AppColors.cyberPrimary,
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        shape: shapeSmall.copyWith(
+          side: const BorderSide(color: AppColors.cyberGridLine),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: ShapeDecoration(
+          color: AppColors.cyberSurfaceRaised,
+          shape: shapeSmall.copyWith(
+            side: const BorderSide(color: AppColors.cyberGridLine),
+          ),
+        ),
+        textStyle: textTheme.labelMedium,
+        waitDuration: const Duration(milliseconds: 500),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: AppColors.cyberPrimary,
+        linearTrackColor: AppColors.cyberSurfaceHigh,
+        circularTrackColor: AppColors.cyberSurfaceHigh,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return AppColors.cyberPrimary;
-          }
-          return AppColors.cyberMutedText;
+          return states.contains(WidgetState.selected)
+              ? AppColors.cyberOnPrimary
+              : AppColors.cyberMutedText;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return AppColors.cyberGlow;
-          }
-          return AppColors.cyberSurfaceHigh;
+          return states.contains(WidgetState.selected)
+              ? AppColors.cyberPrimary
+              : AppColors.cyberSurfaceHigh;
         }),
       ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? AppColors.cyberPrimary
+              : Colors.transparent;
+        }),
+        checkColor: const WidgetStatePropertyAll(AppColors.cyberOnPrimary),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+        ),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? AppColors.cyberPrimary
+              : AppColors.cyberMutedText;
+        }),
+      ),
+      iconTheme: const IconThemeData(color: AppColors.cyberMutedText),
       extensions: const [
         AiroThemeTokens(
           gridLine: AppColors.cyberGridLine,
           chromeSurface: AppColors.cyberChrome,
           glow: AppColors.cyberGlow,
           success: AppColors.cyberTertiary,
-          warning: AppColors.cyberPrimary,
+          warning: Color(0xFFFFC857),
         ),
         AiroEffects.cyber,
+        AiroVisualTokens.livingConsole,
+        AiroDomainTokens(
+          domain: AiroDomain.airo,
+          accent: Color(0xFF5CE1E6),
+          accentSecondary: Color(0xFF9B8CFF),
+          onAccent: Color(0xFF041014),
+        ),
       ],
     );
 
-    return base.copyWith(
-      listTileTheme: ListTileThemeData(
-        iconColor: AppColors.cyberSecondary,
-        textColor: AppColors.cyberText,
-        subtitleTextStyle: base.textTheme.bodyMedium?.copyWith(
-          color: AppColors.cyberMutedText,
-        ),
-      ),
-    );
+    return base;
   }
 
   static ThemeData get _airoTvDark {
@@ -585,6 +741,13 @@ abstract final class AppTheme {
           warning: AppColors.airoTvSecondary,
         ),
         AiroEffects.cyber,
+        AiroVisualTokens.airoTv,
+        AiroDomainTokens(
+          domain: AiroDomain.live,
+          accent: AppColors.airoTvPrimary,
+          accentSecondary: Color(0xFF5CE1E6),
+          onAccent: AppColors.airoTvOnPrimary,
+        ),
       ],
     );
   }

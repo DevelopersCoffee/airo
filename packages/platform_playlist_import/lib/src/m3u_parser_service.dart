@@ -26,6 +26,28 @@ String? _validatedSourceId(String? sourceId) {
   return normalized;
 }
 
+/// Result of a playlist fetch, keeping "source is down" distinguishable from
+/// "source is empty".
+///
+/// Channel lists alone cannot carry that difference, and collapsing the two
+/// makes a failed source render as an unconfigured one.
+class PlaylistFetchOutcome {
+  const PlaylistFetchOutcome.loaded(this.channels) : sourceUnavailable = false;
+
+  /// The source responded but carried no channels.
+  const PlaylistFetchOutcome.empty()
+    : channels = const [],
+      sourceUnavailable = false;
+
+  /// The source could not be fetched and no cached copy was usable.
+  const PlaylistFetchOutcome.unavailable()
+    : channels = const [],
+      sourceUnavailable = true;
+
+  final List<IPTVChannel> channels;
+  final bool sourceUnavailable;
+}
+
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
   static const String _playlistUrlKeyBase = 'iptv_user_playlist_url';
@@ -85,28 +107,47 @@ class M3UParserService {
       : '${_cacheFileNameBase}_$_sourceId.json';
 
   /// Fetch and parse the user-supplied playlist with caching.
+  ///
+  /// Returns an empty list both when the source is unreachable and when it
+  /// legitimately holds no channels. Callers that must tell those apart — to
+  /// show an error instead of an empty state — should use
+  /// [fetchPlaylistOutcome].
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
+    final outcome = await fetchPlaylistOutcome(forceRefresh: forceRefresh);
+    return outcome.channels;
+  }
+
+  /// Fetch and parse the playlist, reporting whether the source was reachable.
+  ///
+  /// [PlaylistFetchOutcome.sourceUnavailable] is true only when the fetch
+  /// failed and no cached copy could stand in for it, so a caller can
+  /// distinguish "this source is down" from "this source is empty".
+  Future<PlaylistFetchOutcome> fetchPlaylistOutcome({
+    bool forceRefresh = false,
+  }) async {
     final playlistUrl = getPlaylistUrl();
     if (playlistUrl == null) {
-      return const [];
+      return const PlaylistFetchOutcome.empty();
     }
 
     if (!forceRefresh) {
       final cached = await _loadFromCache();
       if (cached != null && cached.isNotEmpty) {
-        return cached;
+        return PlaylistFetchOutcome.loaded(cached);
       }
     }
 
+    var fetchFailed = false;
     try {
       final result = await _fetchAndParse(playlistUrl);
       if (result.channels.isNotEmpty) {
         if (!result.fromCache) {
           await _saveToCache(result.channels);
         }
-        return result.channels;
+        return PlaylistFetchOutcome.loaded(result.channels);
       }
     } catch (_) {
+      fetchFailed = true;
       developer.log(
         'Failed to fetch user playlist.',
         name: 'platform_playlist_import',
@@ -115,10 +156,12 @@ class M3UParserService {
 
     final cached = await _loadFromCache();
     if (cached != null && cached.isNotEmpty) {
-      return cached;
+      return PlaylistFetchOutcome.loaded(cached);
     }
 
-    return const [];
+    return fetchFailed
+        ? const PlaylistFetchOutcome.unavailable()
+        : const PlaylistFetchOutcome.empty();
   }
 
   /// Return the configured user playlist URL, if any.

@@ -16,6 +16,29 @@ fun dartDefine(name: String): String? {
         ?.substringAfter("=")
 }
 
+/// Every ABI an Android artifact in this project can carry.
+val ALL_ANDROID_ABIS = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+
+/// The one ABI this build targets, or null when it targets several.
+///
+/// Flutter passes its `--target-platform` values through the `target-platform`
+/// Gradle property; `--split-per-abi` passes all of them.
+val singleAbi: String? =
+    (providers.gradleProperty("target-platform").orNull ?: "")
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .singleOrNull()
+        ?.let { platform ->
+            when (platform) {
+                "android-arm64" -> "arm64-v8a"
+                "android-arm" -> "armeabi-v7a"
+                "android-x64" -> "x86_64"
+                "android-x86" -> "x86"
+                else -> null
+            }
+        }
+
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
@@ -186,6 +209,21 @@ android {
 
     packaging {
         jniLibs {
+            // Flutter's --target-platform filters only the libs Flutter itself
+            // contributes (libflutter.so, libapp.so). Native libs that arrive
+            // inside a plugin AAR keep every ABI they were published with, so a
+            // single-ABI build still ships the others as dead weight -- 2.9 MB
+            // of x86_64 and armeabi-v7a libsqlite3.so in the arm64-only TV APK.
+            //
+            // Drop them when the build declares exactly one ABI. A
+            // --split-per-abi build passes every platform, so singleAbi is null
+            // there and nothing is excluded; ABI splitting stays Flutter's job
+            // (see the splits.abi note above).
+            singleAbi?.let { abi ->
+                for (other in ALL_ANDROID_ABIS.filter { it != abi }) {
+                    excludes += "lib/$other/**"
+                }
+            }
             if (isLeanVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
@@ -230,12 +268,9 @@ dependencies {
         implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     }
 
-    // LiteRT-LM for local on-device LLM inference. Only wired when the
-    // root `build.gradle.kts` was able to authenticate against the
-    // private google/generative-ai-android package registry (i.e.
-    // GITHUB_TOKEN is set with `read:packages`). CI validation builds
-    // and unauthenticated clones fall back to the stub loader in
-    // `app/lib/core/services/litert_lm_service.dart`.
+    // LiteRT-LM for local on-device LLM inference. The artifact is published
+    // on Google's public Maven repository and is enabled by default; set
+    // AIRO_USE_LITERT_STUB=true for a dependency-free validation build.
     //
     // Pinned explicitly — do NOT use `latest.release`. Floating versions
     // caused issue #860 (silent CI break for ~10 days on a Backend/close API

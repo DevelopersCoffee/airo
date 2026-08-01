@@ -21,6 +21,7 @@ reviewers:
   - Chief QA Officer
 allowed_dependencies:
   - core_domain
+  - core_product_shell
   - core_ui
   - platform_coin_vault
 forbidden_dependencies:

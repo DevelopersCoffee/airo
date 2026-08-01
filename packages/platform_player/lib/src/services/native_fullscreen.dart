@@ -53,6 +53,23 @@ class AiroNativeFullscreen {
 
   static Future<void> exitMacosFullscreen() => setMacosFullscreen(false);
 
+  static Future<bool> isMacosFullscreen() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
+      return false;
+    }
+
+    try {
+      return await _macosWindowChannel.invokeMethod<bool>('isFullscreen') ??
+          false;
+    } on MissingPluginException {
+      debugPrint('macOS fullscreen channel is unavailable on this host');
+      return false;
+    } catch (error) {
+      debugPrint('macOS fullscreen state error: $error');
+      return false;
+    }
+  }
+
   static void _configureMacosMethodCallHandler() {
     if (_isHandlerConfigured) {
       return;

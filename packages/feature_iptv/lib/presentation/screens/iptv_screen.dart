@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
-import '../../application/providers/rails_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
@@ -93,6 +93,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     debugLabel: 'IPTV fullscreen back handler',
   );
   DateTime? _lastFullscreenBackAt;
+  Timer? _macosFullscreenSyncTimer;
 
   /// Guards the postFrameCallback below to fire once per fullscreen entry,
   /// not on every rebuild. Live playback rebuilds constantly (buffering,
@@ -140,6 +141,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     AiroNativePictureInPicture.setStateChangeHandler((isActive) {
       if (mounted) setState(() => _isPictureInPicture = isActive);
     });
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(
+      _handleNativeFullscreenExit,
+    );
+    AiroNativeFullscreen.setMacosFullscreenEnterHandler(
+      _handleNativeFullscreenEnter,
+    );
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_synchronizeMacosFullscreenState());
+      });
+      _macosFullscreenSyncTimer = Timer(
+        const Duration(milliseconds: 750),
+        () => unawaited(_synchronizeMacosFullscreenState()),
+      );
+    }
 
     final deepLinkId = widget.effectiveDeepLinkChannelId;
     if (deepLinkId != null) {
@@ -219,6 +235,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
     WidgetsBinding.instance.removeObserver(this);
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
+    AiroNativeFullscreen.setMacosFullscreenEnterHandler(null);
+    _macosFullscreenSyncTimer?.cancel();
+    unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     _fullscreenFocusNode.dispose();
     AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
@@ -264,12 +284,52 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     return KeyEventResult.ignored;
   }
 
-  void _toggleFullscreen() {
+  void _handleNativeFullscreenExit() {
+    _macosFullscreenSyncTimer?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ref.read(isFullscreenModeProvider)) {
+        _lastFullscreenBackAt = DateTime.now();
+        _toggleFullscreen(updateNativeWindow: false);
+      }
+    });
+  }
+
+  void _handleNativeFullscreenEnter() {
+    _macosFullscreenSyncTimer?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(isFullscreenModeProvider)) {
+        _toggleFullscreen(updateNativeWindow: false);
+      }
+    });
+  }
+
+  Future<void> _synchronizeMacosFullscreenState() async {
+    final nativeFullscreen = await AiroNativeFullscreen.isMacosFullscreen();
+    if (!mounted) return;
+    if (nativeFullscreen) {
+      _macosFullscreenSyncTimer?.cancel();
+    }
+    final appFullscreen = ref.read(isFullscreenModeProvider);
+    if (nativeFullscreen != appFullscreen) {
+      _toggleFullscreen(updateNativeWindow: false);
+    }
+  }
+
+  void _toggleFullscreen({bool updateNativeWindow = true}) {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
     if (isFullscreen) {
       // Leaving fullscreen -- let the next entry claim focus fresh.
       _fullscreenFocusClaimed = false;
+    }
+
+    if (updateNativeWindow) {
+      _macosFullscreenSyncTimer?.cancel();
+      if (!isFullscreen) {
+        unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
+      } else {
+        unawaited(AiroNativeFullscreen.exitMacosFullscreen());
+      }
     }
 
     // TV chrome is fixed: always landscape, always immersive (set once at
@@ -662,7 +722,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         canPop: !isFullscreen && !suppressDuplicateBack,
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
-          if (isFullscreen) {
+          // On a ten-foot host the full-screen player owns BACK outright and
+          // absorbs Fire OS's duplicate platform callbacks. Exiting here as
+          // well would undo the raw key the player just handled. Blocking the
+          // pop (canPop above) still keeps the callback from closing the app.
+          if (isFullscreen && !widget.tenFootMode) {
             _exitFullscreen();
           } else if (suppressDuplicateBack) {
             _lastFullscreenBackAt = null;
@@ -777,6 +841,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             body: VideoPlayerWidget(
               showControls: true,
               initiallyFullscreen: true,
+              handleNativeFullscreen: false,
+              // Only the ten-foot host hands BACK to the player, because only
+              // Fire OS duplicates the platform half. On touch, guardRouteBack
+              // below answers that pop; letting the player answer it too would
+              // exit fullscreen and immediately re-enter it.
+              ownsPlatformBack: widget.tenFootMode,
+              // The guarded exit, not the raw toggle: it is a no-op once
+              // fullscreen is already off, so a second handler does nothing.
+              onBack: _exitFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
               // PiP is a phone/tablet multitasking action. Keep it out of
@@ -940,6 +1013,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     debugLabel: 'IPTV body fullscreen back handler',
   );
   DateTime? _lastFullscreenBackAt;
+  Timer? _macosFullscreenSyncTimer;
 
   /// See _IPTVScreenState's identical field: guards the postFrameCallback
   /// below to fire once per fullscreen entry, not on every rebuild.
@@ -954,6 +1028,21 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     // scrolled out of the viewport or playback moving to the mini player.
     ref.read(wakelockPlaybackCoordinatorProvider);
     WidgetsBinding.instance.addObserver(this);
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(
+      _handleNativeFullscreenExit,
+    );
+    AiroNativeFullscreen.setMacosFullscreenEnterHandler(
+      _handleNativeFullscreenEnter,
+    );
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_synchronizeMacosFullscreenState());
+      });
+      _macosFullscreenSyncTimer = Timer(
+        const Duration(milliseconds: 750),
+        () => unawaited(_synchronizeMacosFullscreenState()),
+      );
+    }
   }
 
   @override
@@ -963,6 +1052,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
     WidgetsBinding.instance.removeObserver(this);
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
+    AiroNativeFullscreen.setMacosFullscreenEnterHandler(null);
+    _macosFullscreenSyncTimer?.cancel();
+    unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     _fullscreenFocusNode.dispose();
     super.dispose();
   }
@@ -996,12 +1089,47 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     return KeyEventResult.ignored;
   }
 
-  void _toggleFullscreen() {
+  void _handleNativeFullscreenExit() {
+    _macosFullscreenSyncTimer?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ref.read(isFullscreenModeProvider)) {
+        _lastFullscreenBackAt = DateTime.now();
+        _toggleFullscreen(updateNativeWindow: false);
+      }
+    });
+  }
+
+  void _handleNativeFullscreenEnter() {
+    _macosFullscreenSyncTimer?.cancel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(isFullscreenModeProvider)) {
+        _toggleFullscreen(updateNativeWindow: false);
+      }
+    });
+  }
+
+  Future<void> _synchronizeMacosFullscreenState() async {
+    final nativeFullscreen = await AiroNativeFullscreen.isMacosFullscreen();
+    if (!mounted) return;
+    if (nativeFullscreen) {
+      _macosFullscreenSyncTimer?.cancel();
+    }
+    final appFullscreen = ref.read(isFullscreenModeProvider);
+    if (nativeFullscreen != appFullscreen) {
+      _toggleFullscreen(updateNativeWindow: false);
+    }
+  }
+
+  void _toggleFullscreen({bool updateNativeWindow = true}) {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
     if (isFullscreen) {
       // Leaving fullscreen -- let the next entry claim focus fresh.
       _fullscreenFocusClaimed = false;
+    }
+
+    if (updateNativeWindow) {
+      _macosFullscreenSyncTimer?.cancel();
     }
 
     if (!isFullscreen) {
@@ -1011,12 +1139,18 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
+      if (updateNativeWindow) {
+        unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
+      }
     } else {
       // Exiting fullscreen -- restore system-default orientation instead of
       // forcing portrait, so tablets/foldables already using landscape as
       // their default layout aren't rotated out of it.
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([]);
+      if (updateNativeWindow) {
+        unawaited(AiroNativeFullscreen.exitMacosFullscreen());
+      }
     }
   }
 
@@ -1125,9 +1259,9 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
               canPop: false,
               onPopInvokedWithResult: (didPop, _) {
                 // The fullscreen VideoPlayerWidget owns raw BACK: it either
-                // dismisses its active overlay or calls _toggleFullscreen.
+                // dismisses its active overlay or leaves fullscreen.
                 // Android/Fire OS follows that raw event with a platform pop;
-                // this outer scope only absorbs the paired callback.
+                // this inner scope only absorbs the paired callback.
               },
               child: Focus(
                 focusNode: _fullscreenFocusNode,
@@ -1140,6 +1274,14 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                   body: VideoPlayerWidget(
                     showControls: true,
                     initiallyFullscreen: true,
+                    handleNativeFullscreen: false,
+                    // Deliberately the guarded exit rather than the raw
+                    // toggle. guardRouteBack() above also answers this same
+                    // pop, and two unguarded toggles would leave fullscreen
+                    // and immediately re-enter it. _exitFullscreen is a no-op
+                    // once fullscreen is already off, so whichever handler
+                    // runs second does nothing.
+                    onBack: _exitFullscreen,
                     onFullscreenToggle: _toggleFullscreen,
                     enableSwipeChannelChange: true,
                   ),
@@ -1191,7 +1333,6 @@ class _StreamTabContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
-    ref.watch(railsProvider);
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
@@ -1237,6 +1378,7 @@ class _StreamTabContent extends ConsumerWidget {
                   VideoPlayerWidget(
                     showControls: true,
                     enableSwipeChannelChange: true,
+                    handleNativeFullscreen: false,
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
                   ),
@@ -1277,7 +1419,7 @@ class _StreamTabContent extends ConsumerWidget {
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => ref.refresh(iptvChannelsProvider),
+            onPressed: () => invalidateChannelLibraries(ref),
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
           ),

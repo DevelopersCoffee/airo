@@ -39,6 +39,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool enableSwipeChannelChange;
   final bool initiallyFullscreen;
   final bool enableTouchGestures;
+  final bool handleNativeFullscreen;
   final PlayerBrightnessController? brightnessController;
 
   /// Whether to offer system Picture-in-Picture (the floating-window
@@ -60,6 +61,18 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// fullscreen."
   final VoidCallback? onBack;
 
+  /// Whether this player owns the platform BACK request while full-screen.
+  ///
+  /// Fire OS dispatches BACK twice — a raw key, then a paired platform
+  /// pop-route request — and repeats the second half on some devices. A
+  /// ten-foot host sets this so the player answers the raw key and absorbs
+  /// every paired callback itself.
+  ///
+  /// Touch hosts leave it false: they already answer the platform pop at the
+  /// screen level, and two owners would exit full-screen and immediately
+  /// re-enter it.
+  final bool ownsPlatformBack;
+
   /// Test seam for the manual audio-only toggle's platform call. Defaults to
   /// [AiroBackgroundAudioMode.setEnabled], which by design never throws (it
   /// swallows platform failures so local state always reflects user intent —
@@ -78,10 +91,12 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.enableTouchGestures = true,
+    this.handleNativeFullscreen = true,
     this.showPictureInPicture = true,
     this.useTvTransportBar = false,
     this.brightnessController,
     this.onBack,
+    this.ownsPlatformBack = false,
     this.setAudioOnlyMode,
     this.requestPictureInPicture,
   });
@@ -317,7 +332,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _toggleWebFullscreen();
     }
     setState(() => _isFullscreen = enteringFullscreen);
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    if (widget.handleNativeFullscreen) {
+      unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
+    }
     widget.onFullscreenToggle?.call();
   }
 
@@ -940,6 +957,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // back button; block it exactly when an overlay needs BACK to close it
     // instead of leaving the app.
     final ownsFullscreenBack =
+        widget.ownsPlatformBack &&
         widget.initiallyFullscreen &&
         (widget.onBack != null || widget.onFullscreenToggle != null);
     return PopScope(
@@ -967,14 +985,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         }
         if (_suppressNextPlatformBack) {
           // Fire OS may deliver duplicate platform pop callbacks for the raw
-          // BACK that already dismissed an overlay. Only leaving fullscreen is
-          // at risk from those duplicates. Do not clear the latch here: the
-          // next raw BACK clears it before performing the next action.
+          // BACK that already dismissed an overlay. Do not clear the latch
+          // here: the next raw BACK clears it before performing the next
+          // action.
           return;
         }
-        if (ownsFullscreenBack) {
-          (widget.onBack ?? widget.onFullscreenToggle)?.call();
-        }
+        // Nothing else to do when this player owns BACK. The raw key already
+        // decided what this press meant -- dismiss an overlay, or leave
+        // fullscreen via _handleTvInput. This callback is only the platform
+        // half of that same press, which Fire OS also repeats, so acting on
+        // it here would undo or double the action the raw key just took.
+        // Blocking the pop is the whole job.
       },
       child: TvInputHandler(
         enabled: !_playerModalOpen && !_showContextMenu,

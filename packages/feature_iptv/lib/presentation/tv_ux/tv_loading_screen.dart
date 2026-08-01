@@ -27,9 +27,9 @@ class TvLoadingScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white70,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
             ),
           ],
         ),

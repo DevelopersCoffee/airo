@@ -43,6 +43,19 @@ class LiteRtLmService {
   /// runtime instead of the native platform-channel runtime.
   bool get isUsingWebRuntime => _isWeb;
 
+  /// Whether the app has an explicit LiteRT model source configured.
+  ///
+  /// Native capability discovery is not sufficient to claim the runtime is
+  /// ready: a device can expose the LiteRT channel while no model path or
+  /// download URL has been supplied. Keeping this check next to the config
+  /// prevents UI and orchestration layers from treating that state as ready.
+  bool get hasConfiguredModel => config.hasModelPath || config.hasModelUrl;
+
+  /// Whether an explicit local artifact path is configured. A download URL is
+  /// a source, not a ready-to-run model, and must not make the chooser claim
+  /// that LiteRT is available.
+  bool get hasConfiguredModelPath => config.hasModelPath;
+
   Future<bool> isAvailable() =>
       _isWeb ? _webAdapter!.isAvailable() : _nativeAdapter!.isAvailable();
 

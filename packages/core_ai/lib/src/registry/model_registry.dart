@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+// ignore_for_file: prefer_initializing_formals
+
 import '../device/device_capability_service.dart';
 import '../device/memory_budget_manager.dart';
 import '../device/memory_severity.dart';
@@ -56,11 +58,13 @@ class ModelCompatibilityResult {
 /// - Check device compatibility
 /// - Track downloaded vs available models
 class ModelRegistry {
+  // Keep the public `loadMemoryInfo` parameter name stable for existing callers.
   ModelRegistry({
-    this._loadMemoryInfo,
+    Future<MemoryInfo> Function()? loadMemoryInfo,
     DeviceCapabilityService? deviceCapabilityService,
     MemoryBudgetManager? memoryBudgetManager,
-  }) : _deviceService = deviceCapabilityService ?? DeviceCapabilityService(),
+  }) : _loadMemoryInfo = loadMemoryInfo,
+       _deviceService = deviceCapabilityService ?? DeviceCapabilityService(),
        _memoryBudgetManager =
            memoryBudgetManager ??
            MemoryBudgetManager(
@@ -221,7 +225,7 @@ class ModelRegistry {
 
       final lowTransientMemory = memoryInfo.availableBytes < requiredBytes;
       final reason = lowTransientMemory
-          ? 'This package fits the device budget, but only '
+          ? 'This package may fit the device capacity, but only '
                 '${_formatMemory(memoryInfo.availableBytes)} is currently free. '
                 'It needs ${_formatMemory(requiredBytes)} available to warm up cleanly.'
           : null;
@@ -278,7 +282,7 @@ class ModelRegistry {
   void markAsRemoved(String modelId) {
     final model = _models[modelId];
     if (model != null) {
-      final updated = model.copyWith(filePath: null);
+      final updated = model.copyWith(clearFilePath: true);
       _models[modelId] = updated;
       _changeController.add(ModelRegistryEvent.updated(updated));
     }

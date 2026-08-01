@@ -9,6 +9,8 @@ import '../../agent_chat/application/assistant_model_preferences.dart';
 import '../../agent_chat/domain/models/assistant_model_selection.dart';
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 
+import 'ai_preferences_settings.dart';
+
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
@@ -30,6 +32,12 @@ Future<void> _hydrateDownloadedModels(
   ModelDownloadService service,
 ) async {
   for (final model in ModelCatalog.bundledModels) {
+    // A path alone is not proof of an installed model. Require the download
+    // service to validate size/checksum before the registry exposes it to the
+    // picker or runtime health center.
+    if (!await service.isModelDownloaded(model.id, model: model)) {
+      continue;
+    }
     final existingPath = await service.resolveExistingModelPath(
       model.id,
       model: model,
@@ -96,7 +104,19 @@ final selectedModelProvider = Provider<OfflineModelInfo?>((ref) {
 });
 
 final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
-  final service = ModelDownloadService();
+  // Rotate the storage adapter only when the location changes. The platform
+  // queue is durable and survives this Dart-side adapter rotation, while new
+  // downloads use the selected root immediately. Existing internal artifacts
+  // remain discoverable when the external root is selected.
+  final locationPreference = ref.watch(
+    aiPreferencesSettingsProvider.select(
+      (settings) => settings.downloadLocation,
+    ),
+  );
+  final location = locationPreference == AIDownloadLocationPreference.appManaged
+      ? ModelStorageLocation.applicationExternal
+      : ModelStorageLocation.applicationDocuments;
+  final service = ModelDownloadService(storageLocation: location);
   ref.onDispose(() => service.dispose());
   return service;
 });

@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,7 +44,6 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             title: 'Daily Insight',
             subtitle: 'Open your assistant for a short guided check-in.',
             icon: Icons.lightbulb_outline,
-            color: Colors.orange,
             onTap: () => context.push('/mind/chat'),
           ),
           const SizedBox(height: 12),
@@ -51,7 +51,6 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             title: 'Breathing Exercise',
             subtitle: 'A guided 60-second breathing reset.',
             icon: Icons.air,
-            color: Colors.teal,
             onTap: () => _showBreathingExercise(context),
           ),
           const SizedBox(height: 12),
@@ -59,7 +58,6 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             title: 'Reflection',
             subtitle: 'Capture a quick note about how today feels.',
             icon: Icons.edit_note,
-            color: Colors.indigo,
             onTap: () => _showReflectionPrompt(context),
           ),
           const SizedBox(height: 16),
@@ -73,7 +71,6 @@ class _MindScreenState extends ConsumerState<MindScreen> {
                   value: '4 days',
                   detail: 'Daily check-ins',
                   icon: Icons.local_fire_department,
-                  color: Colors.deepOrange,
                 ),
               ),
               SizedBox(width: 12),
@@ -83,13 +80,86 @@ class _MindScreenState extends ConsumerState<MindScreen> {
                   value: '2 this week',
                   detail: 'Journaling momentum',
                   icon: Icons.auto_stories,
-                  color: Colors.blue,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           const _MindProgressCard(),
+          const SizedBox(height: 24),
+          Text('Airo Mind AI Lab', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            'Explore private, on-device AI use cases. Downloaded local models keep prompts on this device.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          _MindActionCard(
+            title: 'AI Chat',
+            subtitle: 'Multi-turn chat with runtime and action traces.',
+            icon: Icons.chat_bubble_outline,
+            onTap: () => context.push('/mind/chat'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Agent Skills',
+            subtitle: 'Ground answers with tools, maps, and visual summaries.',
+            icon: Icons.extension_outlined,
+            onTap: () => context.push('/mind/skills'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Ask Image',
+            subtitle: 'Upload an image and ask Airo questions about it.',
+            icon: Icons.image_outlined,
+            onTap: () => context.push('/quest/new'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Audio Scribe',
+            subtitle:
+                'Capture speech, review the transcript, and translate with Airo.',
+            icon: Icons.mic_none,
+            onTap: () => context.push('/mind/audio-scribe'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Prompt Lab',
+            subtitle: 'Compare prompts with temperature and top-k controls.',
+            icon: Icons.tune,
+            onTap: () => context.push('/mind/prompt-lab'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Mobile Actions & Tiny Garden',
+            subtitle:
+                'Try safe device commands and a playful natural-language garden.',
+            icon: Icons.local_florist_outlined,
+            onTap: () => context.push('/mind/mobile-actions'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Model Management & Benchmark',
+            subtitle:
+                'Install models, check readiness, and understand performance.',
+            icon: Icons.analytics_outlined,
+            onTap: () => context.push('/mind/models'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Device Capability Report',
+            subtitle: 'See memory, on-device AI support, and model fit.',
+            icon: Icons.memory_outlined,
+            onTap: () => context.push('/mind/device-capabilities'),
+          ),
+          const SizedBox(height: 10),
+          _MindActionCard(
+            title: 'Model Advisor',
+            subtitle:
+                'Choose a capability and get a device-fit recommendation.',
+            icon: Icons.auto_awesome_outlined,
+            onTap: () => context.push('/mind/model-advisor'),
+          ),
         ],
       ),
     );
@@ -158,38 +228,37 @@ class _GreetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.wb_sunny_outlined),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    greeting,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+    return AiroSurface(
+      level: AiroSurfaceLevel.raised,
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.wb_sunny_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Welcome back. Take a moment to reset, reflect, and choose one small action for your mind today.',
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Welcome back. Take a moment to reset, reflect, and choose one small action for your mind today.',
+                ),
+              ],
             ),
-            IconButton(
-              onPressed: onDismiss,
-              tooltip: 'Dismiss greeting',
-              icon: const Icon(Icons.close),
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            onPressed: onDismiss,
+            tooltip: 'Dismiss greeting',
+            icon: const Icon(Icons.close),
+          ),
+        ],
       ),
     );
   }
@@ -200,54 +269,51 @@ class _MindActionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.color,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(subtitle),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
+    final domain = AiroDomainTokens.of(context);
+    final visual = AiroVisualTokens.of(context);
+
+    return AiroSurface(
+      level: AiroSurfaceLevel.raised,
+      onTap: onTap,
+      semanticLabel: '$title. $subtitle',
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: domain.accent.withValues(alpha: 0.12),
+              borderRadius: visual.smallRadius,
+            ),
+            child: Icon(icon, color: domain.accent),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(subtitle),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
       ),
     );
   }
@@ -259,39 +325,39 @@ class _MindStatCard extends StatelessWidget {
     required this.value,
     required this.detail,
     required this.icon,
-    required this.color,
   });
 
   final String label;
   final String value;
   final String detail;
   final IconData icon;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 10),
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(detail),
-        ],
+    final accent = AiroDomainTokens.of(context).accent;
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: '$label: $value. $detail',
+      child: AiroSurface(
+        level: AiroSurfaceLevel.raised,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: accent),
+            const SizedBox(height: 10),
+            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(detail),
+          ],
+        ),
       ),
     );
   }
@@ -302,9 +368,13 @@ class _MindProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label:
+          'Focus Momentum. Breathing goal 60 percent. Reflection goal 40 percent.',
+      child: AiroSurface(
+        level: AiroSurfaceLevel.raised,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

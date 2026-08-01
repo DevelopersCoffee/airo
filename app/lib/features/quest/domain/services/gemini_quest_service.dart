@@ -1,14 +1,72 @@
 import 'dart:io';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart'
+    as ml_label;
 import '../models/quest_models.dart';
 import 'quest_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+
+class QuestProcessingUnavailableException implements Exception {
+  const QuestProcessingUnavailableException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
 
 /// Quest service implementation using Gemini Nano for AI processing
 class GeminiQuestService implements QuestService {
   final Map<String, Quest> _quests = {};
   final GeminiNanoService _geminiNano = GeminiNanoService();
+  final Future<String> Function(File image)? _imageTextExtractor;
   static const uuid = Uuid();
+
+  GeminiQuestService({this._imageTextExtractor});
+
+  Future<String> _extractImageText(File image) async {
+    final extractor = _imageTextExtractor;
+    if (extractor != null) return extractor(image);
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      throw const QuestProcessingUnavailableException(
+        'On-device image understanding is available on Android and iOS only.',
+      );
+    }
+
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    final labeler = ml_label.ImageLabeler(
+      options: ml_label.ImageLabelerOptions(confidenceThreshold: 0.5),
+    );
+    try {
+      final result = await recognizer.processImage(InputImage.fromFile(image));
+      var labels = const <ml_label.ImageLabel>[];
+      try {
+        labels = await labeler.processImage(
+          ml_label.InputImage.fromFile(image),
+        );
+      } catch (error) {
+        debugPrint('Local image labeling failed: $error');
+      }
+      final labelText = labels
+          .map(
+            (label) =>
+                '${label.label} (${(label.confidence * 100).round()}% confidence)',
+          )
+          .join(', ');
+      return [
+        result.text.trim(),
+        if (labelText.isNotEmpty) 'Objects: $labelText',
+      ].where((part) => part.isNotEmpty).join('\n');
+    } catch (error) {
+      debugPrint('Local image text extraction failed: $error');
+      return '';
+    } finally {
+      await recognizer.close();
+      await labeler.close();
+    }
+  }
 
   @override
   Future<Quest> createQuest(String title, {String? description}) async {
@@ -47,14 +105,19 @@ class GeminiQuestService implements QuestService {
 
   @override
   Future<String> extractTextFromFile(QuestFile file) async {
-    try {
-      // For now, return file info
-      // In production, use pdf_text or similar for PDF extraction
-      return 'File: ${file.name}\nSize: ${file.sizeBytes} bytes\nType: ${file.mimeType}';
-    } catch (e) {
-      print('Error extracting text: $e');
-      return '';
+    final source = File(file.path);
+    if (!await source.exists()) {
+      throw const QuestProcessingUnavailableException(
+        'The selected file is no longer available. Re-select it and try again.',
+      );
     }
+    if (file.mimeType == 'text/plain') {
+      return source.readAsString();
+    }
+    throw QuestProcessingUnavailableException(
+      'Text extraction is not available for ${file.name} yet. '
+      'Use a supported text file or choose a runtime with document/vision support.',
+    );
   }
 
   @override
@@ -67,29 +130,60 @@ class GeminiQuestService implements QuestService {
     if (quest == null) throw Exception('Quest not found');
 
     try {
-      // Check if Gemini Nano is available
-      if (await _geminiNano.isSupported()) {
-        // Initialize if not already done
-        if (!_geminiNano.isInitialized) {
-          await _geminiNano.initialize();
+      final imageAttachments = quest.files
+          .where((file) => file.mimeType.startsWith('image/'))
+          .toList();
+      final recognizedImageText = <String>[];
+      for (final image in imageAttachments) {
+        final text = await _extractImageText(File(image.path));
+        if (text.isNotEmpty) {
+          recognizedImageText.add('${image.name}:\n$text');
         }
+      }
+      if (!await _geminiNano.isSupported()) {
+        throw const QuestProcessingUnavailableException(
+          'No on-device inference runtime is available for this request. '
+          'Enable Gemini Nano or install a compatible local model before asking Airo to analyze it.',
+        );
+      }
+      if (!_geminiNano.isInitialized && !await _geminiNano.initialize()) {
+        throw const QuestProcessingUnavailableException(
+          'Gemini Nano could not initialize. Retry the local runtime or choose another supported model.',
+        );
+      }
 
-        // Build context from uploaded files
-        String context = '';
-        if (quest.files.isNotEmpty) {
-          context = 'Files in this quest:\n';
-          for (final file in quest.files) {
-            context += '- ${file.name} (${file.mimeType})\n';
-          }
-          context += '\n';
+      // Build context from uploaded files.
+      String context = '';
+      if (quest.files.isNotEmpty) {
+        context = 'Files in this quest:\n';
+        for (final file in quest.files) {
+          context +=
+              '- ${file.name} (${file.mimeType}, ${file.sizeBytes} bytes)\n';
         }
+        context += '\n';
+      }
 
-        if (fileContext != null) {
-          context += 'File content:\n$fileContext\n\n';
+      if (fileContext != null) {
+        context += 'File content:\n$fileContext\n\n';
+      } else if (quest.files.length == 1 &&
+          quest.files.single.mimeType == 'text/plain') {
+        context +=
+            'File content:\n${await extractTextFromFile(quest.files.single)}\n\n';
+      }
+
+      if (imageAttachments.isNotEmpty) {
+        if (recognizedImageText.isEmpty) {
+          throw const QuestProcessingUnavailableException(
+            'No readable text was found in the image. Local object understanding '
+            'is not available in the selected runtime yet.',
+          );
         }
+        context +=
+            'Text recognized locally from the attached image(s):\n'
+            '${recognizedImageText.join('\n\n')}\n\n';
+      }
 
-        // Process with Gemini Nano
-        final systemPrompt = '''You are a helpful AI assistant. 
+      final systemPrompt = '''You are a helpful AI assistant.
 You help users with:
 - Creating personalized diet plans
 - Splitting bills fairly
@@ -98,21 +192,22 @@ You help users with:
 
 Be concise, practical, and actionable in your responses.''';
 
-        final response = await _geminiNano.processQuery(
-          query,
-          fileContext: context,
-          systemPrompt: systemPrompt,
+      final response = await _geminiNano.processQuery(
+        query,
+        fileContext: context,
+        systemPrompt: systemPrompt,
+      );
+      if (response == null || response.trim().isEmpty) {
+        throw const QuestProcessingUnavailableException(
+          'The selected local runtime returned no answer. Retry or choose another supported model.',
         );
-
-        return response ?? _generateMockResponse(query, fileContext);
-      } else {
-        // Fallback to mock response if Gemini Nano not available
-        return _generateMockResponse(query, fileContext);
       }
+      return response;
     } catch (e) {
-      print('Error processing query with Gemini Nano: $e');
-      // Fallback to mock response on error
-      return _generateMockResponse(query, fileContext);
+      if (e is QuestProcessingUnavailableException) rethrow;
+      throw QuestProcessingUnavailableException(
+        'Local inference failed without producing an answer. Retry the runtime and try again. ($e)',
+      );
     }
   }
 
@@ -179,34 +274,6 @@ Be concise, practical, and actionable in your responses.''';
       default:
         return 'application/octet-stream';
     }
-  }
-
-  String _generateMockResponse(String query, String? fileContext) {
-    String response = 'Based on your query: "$query"\n\n';
-
-    if (query.toLowerCase().contains('diet')) {
-      response += '''**7-Day Anti-Inflammatory Diet Plan**
-
-**Monday:**
-- Breakfast: Oatmeal with berries and almonds
-- Lunch: Grilled salmon with quinoa and vegetables
-- Dinner: Vegetable stir-fry with tofu
-
-**Tuesday:**
-- Breakfast: Greek yogurt with honey and walnuts
-- Lunch: Chicken breast with sweet potato
-- Dinner: Lentil soup with whole grain bread
-
-**Reminders:**
-- Drink 8 glasses of water daily
-- Take omega-3 supplements
-- Avoid processed foods
-- Exercise 30 minutes daily''';
-    } else {
-      response += 'I\'ve processed your request. How can I help you further?';
-    }
-
-    return response;
   }
 
   /// Dispose Gemini Nano resources

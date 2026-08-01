@@ -1239,6 +1239,10 @@ class _TvPlayerPanel extends StatelessWidget {
                       : VideoPlayerWidget(
                           showControls: true,
                           enableTouchGestures: false,
+                          // The fullscreen route owns the native macOS window
+                          // transition. Requesting it here as well races two
+                          // NSWindow toggles and can cancel fullscreen entry.
+                          handleNativeFullscreen: false,
                           onFullscreenToggle: () =>
                               _openFullscreenPlayer(context),
                         ),
@@ -1316,11 +1320,21 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
-    // Entering this page only maximizes the video within the current
-    // window bounds; it never asked the OS to actually go fullscreen.
-    // dispose() below already pairs with an exit call, so request the
-    // matching enter here.
-    unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
+    // Entering this page only maximizes the video within the current window
+    // bounds; it never asked the OS to actually go fullscreen. dispose()
+    // below already pairs with an exit call, so request the matching enter
+    // here -- but wait until the route has rendered, because requests made
+    // while the pointer-driven Navigator push is still building can be
+    // ignored by AppKit.
+    //
+    // The focus request that used to accompany this is gone: the page no
+    // longer owns a KeyboardListener node, since the player itself owns the
+    // raw BACK key and WillPopScope vetoes the duplicate platform pop.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
+      }
+    });
   }
 
   @override
@@ -1365,6 +1379,13 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
             enableSwipeChannelChange: false,
             enableTouchGestures: false,
             initiallyFullscreen: true,
+            // This route pairs native entry/exit with its own lifecycle.
+            handleNativeFullscreen: false,
+            // Fire OS follows the raw BACK key with a platform pop request and
+            // repeats it on some devices. The player answers the raw key and
+            // absorbs those paired callbacks; the WillPopScope above vetoes
+            // whatever still reaches the route.
+            ownsPlatformBack: true,
             onFullscreenToggle: _close,
           ),
         ),

@@ -1,9 +1,19 @@
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../routing/route_names.dart';
+import '../../feature_coin.dart';
+
+/// Route names for the vault bundle.
+///
+/// Owned by the feature rather than the host app so every shell that mounts
+/// [CoinVaultModule] refers to the same names. `app/lib/core/routing`
+/// re-exposes these for the super app's existing call sites.
+abstract final class CoinVaultRouteNames {
+  static const String vault = 'coin_vault';
+  static const String add = 'coin_vault_add';
+  static const String edit = 'coin_vault_edit';
+}
 
 /// The Airo Coin vault as a shell-registrable [AppModule].
 ///
@@ -44,12 +54,12 @@ class CoinVaultModule extends AppModule {
       // The super-app mounts the vault inside its existing /money shell
       // branch. Focused products mount the same bundle at an absolute path.
       path: shell == ShellId.mobile ? 'vault' : basePath,
-      name: RouteNames.coinVault,
+      name: CoinVaultRouteNames.vault,
       builder: (context, state) => const VaultGateScreen(),
       routes: [
         GoRoute(
           path: 'add/:type',
-          name: RouteNames.coinVaultAdd,
+          name: CoinVaultRouteNames.add,
           builder: (context, state) => VaultRecordFormScreen(
             recordType: VaultRecordType.values.byName(
               state.pathParameters['type']!,
@@ -58,7 +68,7 @@ class CoinVaultModule extends AppModule {
         ),
         GoRoute(
           path: 'edit/:type/:key',
-          name: RouteNames.coinVaultEdit,
+          name: CoinVaultRouteNames.edit,
           builder: (context, state) => VaultRecordFormScreen(
             recordType: VaultRecordType.values.byName(
               state.pathParameters['type']!,
