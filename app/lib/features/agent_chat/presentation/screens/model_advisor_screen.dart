@@ -167,8 +167,9 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
                                     : 'Open model setup',
                               ),
                             ),
-                            OutlinedButton.icon(
-                              onPressed: () {
+                            Semantics(
+                              button: true,
+                              onTap: () {
                                 Clipboard.setData(
                                   ClipboardData(
                                     text: _recommendationMarkdown(
@@ -183,8 +184,30 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.copy),
-                              label: const Text('Copy recommendation'),
+                              excludeSemantics: true,
+                              label:
+                                  'Copy recommendation for ${candidate.name}',
+                              hint:
+                                  'Copies a support-safe model advisor report for ${_taskLabel(state.task)}.',
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(
+                                      text: _recommendationMarkdown(
+                                        state: state,
+                                        candidate: candidate,
+                                      ),
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Recommendation copied.'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy),
+                                label: const Text('Copy recommendation'),
+                              ),
                             ),
                           ],
                         ),

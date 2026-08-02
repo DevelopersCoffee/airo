@@ -44,8 +44,9 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
+                    child: Semantics(
+                      button: true,
+                      onTap: () {
                         Clipboard.setData(
                           ClipboardData(text: report.toMarkdown()),
                         );
@@ -55,8 +56,25 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy report'),
+                      excludeSemantics: true,
+                      label:
+                          'Copy device capability report for ${report.device.displayName}',
+                      hint:
+                          'Copies support-safe hardware and model fit diagnostics.',
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: report.toMarkdown()),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Device report copied.'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy report'),
+                      ),
                     ),
                   ),
                 ],

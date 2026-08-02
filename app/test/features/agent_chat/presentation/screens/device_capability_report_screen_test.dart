@@ -67,6 +67,12 @@ void main() {
     expect(find.text('Pixel runtime profile'), findsOneWidget);
     expect(find.text('Final runtime preflight'), findsOneWidget);
     expect(find.text('Copy report'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        RegExp('Copy device capability report for Google Pixel 9'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Copy report'));
     await tester.pump();
     expect(find.text('Device report copied.'), findsOneWidget);

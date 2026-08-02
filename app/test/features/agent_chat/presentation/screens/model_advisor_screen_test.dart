@@ -104,6 +104,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Copy recommendation'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        RegExp('Copy recommendation for Mock Chat Project'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Copy recommendation'));
     await tester.pump();
 

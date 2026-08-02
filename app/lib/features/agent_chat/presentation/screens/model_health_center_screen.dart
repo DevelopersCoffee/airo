@@ -147,8 +147,9 @@ class ModelHealthCenterScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
+                    child: Semantics(
+                      button: true,
+                      onTap: () {
                         Clipboard.setData(
                           ClipboardData(text: report.toMarkdown()),
                         );
@@ -158,8 +159,24 @@ class ModelHealthCenterScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy diagnostics'),
+                      excludeSemantics: true,
+                      label: 'Copy runtime diagnostics for ${report.modelName}',
+                      hint:
+                          'Copies a support-safe model health report without local file paths.',
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: report.toMarkdown()),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Runtime diagnostics copied.'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy diagnostics'),
+                      ),
                     ),
                   ),
                 ],
