@@ -36,10 +36,12 @@ has_failures=false
 
 direct_worker_matches="$(
   rg_dart \
-    -e '(^|[^A-Za-z0-9_])compute\s*\(' \
+    -e '(^|[^A-Za-z0-9_.])compute\s*\(' \
     -e 'Isolate\.run\s*(<|\()' |
     grep -Ev \
-      '(^|/)packages/(core_workers/lib/src/run_off_main|platform_worker_jobs/lib/src/worker_executor)\.dart:' || true
+      '(^|/)packages/(core_workers/lib/src/run_off_main|platform_worker_jobs/lib/src/worker_executor)\.dart:' |
+    grep -Ev \
+      ':[[:space:]]*(static[[:space:]]+)?[A-Za-z_][A-Za-z0-9_<>,?[:space:]]*[[:space:]]+compute[[:space:]]*\(' || true
 )"
 
 if [[ -n "$direct_worker_matches" ]]; then
