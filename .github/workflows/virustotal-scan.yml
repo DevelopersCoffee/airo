@@ -22,7 +22,6 @@ jobs:
     name: Scan release APK
     runs-on: ubuntu-latest
     env:
-      APK_NAME: Airo-TV-0.0.5.apk
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
     steps:
       - name: Check out release automation
@@ -32,6 +31,22 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+
+      - name: Test release APK resolver
+        run: python3 scripts/test_resolve_release_tv_apk.py
+
+      - name: Resolve canonical TV APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK_NAME="$(
+            gh release view "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json assets | \
+              python3 scripts/resolve_release_tv_apk.py
+          )"
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+          echo "Resolved canonical TV APK: $APK_NAME"
 
       - name: Download release APK
         env:

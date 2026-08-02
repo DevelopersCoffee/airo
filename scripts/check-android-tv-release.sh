@@ -34,6 +34,10 @@ grep -q 'android.software.leanback' "$TV_MANIFEST" || fail "TV manifest missing 
 grep -q 'android.hardware.touchscreen" android:required="false"' "$TV_MANIFEST" || fail "TV manifest must mark touchscreen optional"
 grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$TV_MANIFEST" || fail "TV manifest missing LEANBACK_LAUNCHER"
 grep -q 'android:banner="@drawable/tv_banner"' "$TV_MANIFEST" || fail "TV manifest missing TV banner"
+grep -q 'android.intent.action.OPEN_DOCUMENT' "$TV_MANIFEST" ||
+  fail "TV manifest must expose the touch-sender video picker to Android package visibility"
+grep -q 'android:mimeType="video/\*"' "$TV_MANIFEST" ||
+  fail "TV manifest local-file picker query must be restricted to video"
 grep -q "\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" || fail "TV applicationId must be $TV_PACKAGE_NAME"
 grep -A5 '^hooks:' "$TV_PUBSPEC" | grep -q 'source: system' ||
   fail "TV pubspec must use packaged/system SQLite instead of a release-time download"

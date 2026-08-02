@@ -96,6 +96,15 @@
             tools:node="merge" />
     </application>
     <queries>
+        <!-- Android 11+ package visibility otherwise makes
+             Intent.resolveActivity(ACTION_OPEN_DOCUMENT) return null even
+             when DocumentsUI is installed. The compact touch layout uses
+             this picker to lease a local video for Cast streaming. -->
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT"/>
+            <category android:name="android.intent.category.OPENABLE"/>
+            <data android:mimeType="video/*"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
