@@ -8,6 +8,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/accessibility/airo_speech_service.dart';
+import '../../../../core/platform/platform_config.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
@@ -66,6 +67,21 @@ class ChatMessage {
     isUser: entry.isUser,
     timestamp: entry.timestamp,
   );
+}
+
+String formatChatTranscript(Iterable<ChatMessage> messages) {
+  final buffer = StringBuffer('Airo chat transcript');
+  for (final message in messages) {
+    final text = message.text.trimRight();
+    if (text.isEmpty) continue;
+    final speaker = message.isUser ? 'User' : 'Airo';
+    buffer
+      ..writeln()
+      ..writeln()
+      ..writeln('$speaker:')
+      ..write(text);
+  }
+  return buffer.toString();
 }
 
 /// Agent chat screen
@@ -201,6 +217,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _initializeAI() async {
     try {
+      // Gemini Nano is an Android/AICore capability. Avoid probing the native
+      // channel on desktop and web hosts (including Flutter widget tests),
+      // where there is no platform implementation to answer the request.
+      // Besides avoiding needless work, this prevents an orphaned timeout
+      // timer when a test/widget is torn down before an unsupported channel
+      // call completes.
+      if (!PlatformConfig.isAndroid) {
+        if (mounted) {
+          setState(() {
+            _isDeviceSupported = false;
+          });
+        }
+        unawaited(_preloadLocalRuntimes());
+        return;
+      }
+
       // Check device support
       final isSupported = await _geminiNano.isSupported();
 
@@ -567,6 +599,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.swap_horiz, size: 20),
               ),
+              IconButton(
+                key: const Key('agent_chat_copy_transcript_button'),
+                tooltip: 'Copy transcript',
+                onPressed: _messages.isEmpty ? null : _copyTranscript,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.ios_share_outlined, size: 20),
+              ),
+              IconButton(
+                key: const Key('agent_chat_clear_conversation_button'),
+                tooltip: 'Clear chat',
+                onPressed: _messages.isEmpty || _isGenerating
+                    ? null
+                    : _confirmClearConversation,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+              ),
             ],
           ),
         );
@@ -700,8 +756,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     if (!message.isUser)
                       IconButton(
                         tooltip: 'Read message aloud',
-                        onPressed: () =>
-                            AiroSpeechService.instance.speak(message.text),
+                        onPressed: () => _readMessageAloud(message.text),
                         icon: const Icon(Icons.volume_up_outlined, size: 18),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints.tightFor(
@@ -747,6 +802,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Message copied')));
+  }
+
+  Future<void> _copyTranscript() async {
+    final transcript = formatChatTranscript(_messages);
+    await Clipboard.setData(ClipboardData(text: transcript));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Transcript copied')));
+  }
+
+  Future<void> _readMessageAloud(String text) async {
+    final started = await AiroSpeechService.instance.speak(text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          started
+              ? 'Reading message aloud'
+              : 'Read aloud is unavailable on this device.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmClearConversation() async {
+    final shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear conversation?'),
+        content: const Text(
+          'This removes the visible chat from this device. It will not delete downloaded models or settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear chat'),
+          ),
+        ],
+      ),
+    );
+    if (shouldClear != true || !mounted) return;
+    setState(_messages.clear);
+    await _chatHistoryStore.clear();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Conversation cleared')));
   }
 
   void _sendMessage() async {

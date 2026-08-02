@@ -32,6 +32,12 @@ Future<void> _hydrateDownloadedModels(
   ModelDownloadService service,
 ) async {
   for (final model in ModelCatalog.bundledModels) {
+    // A path alone is not proof of an installed model. Require the download
+    // service to validate size/checksum before the registry exposes it to the
+    // picker or runtime health center.
+    if (!await service.isModelDownloaded(model.id, model: model)) {
+      continue;
+    }
     final existingPath = await service.resolveExistingModelPath(
       model.id,
       model: model,
@@ -98,12 +104,16 @@ final selectedModelProvider = Provider<OfflineModelInfo?>((ref) {
 });
 
 final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
-  // Capture the root when the queue is created so changing preferences cannot
-  // interrupt an active platform download. Existing internal artifacts remain
-  // discoverable when the external root is selected.
-  final settings = ref.read(aiPreferencesSettingsProvider);
-  final location =
-      settings.downloadLocation == AIDownloadLocationPreference.appManaged
+  // Rotate the storage adapter only when the location changes. The platform
+  // queue is durable and survives this Dart-side adapter rotation, while new
+  // downloads use the selected root immediately. Existing internal artifacts
+  // remain discoverable when the external root is selected.
+  final locationPreference = ref.watch(
+    aiPreferencesSettingsProvider.select(
+      (settings) => settings.downloadLocation,
+    ),
+  );
+  final location = locationPreference == AIDownloadLocationPreference.appManaged
       ? ModelStorageLocation.applicationExternal
       : ModelStorageLocation.applicationDocuments;
   final service = ModelDownloadService(storageLocation: location);

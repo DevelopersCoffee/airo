@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'dart:io';
 
 import 'package:core_data/core_data.dart';
@@ -5,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +47,43 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpTvManagerDialog(
+    WidgetTester tester,
+    ProviderContainer container,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Consumer(
+            builder: (context, ref, _) {
+              return Scaffold(
+                body: Center(
+                  child: TvFocusable(
+                    autofocus: true,
+                    onSelect: () {
+                      showPlaylistSourceSheet(context, ref);
+                    },
+                    child: const SizedBox(
+                      width: 240,
+                      height: 64,
+                      child: Center(child: Text('Open playlist sources')),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pumpAndSettle();
   }
 
@@ -147,10 +186,11 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.widgetWithText(ListTile, 'News'), findsNothing);
     expect(find.widgetWithText(ListTile, 'Sports'), findsOneWidget);
+    await tester.pumpAndSettle();
     final sources = await container.read(
       configuredContentSourcesProvider.future,
     );
@@ -176,4 +216,117 @@ void main() {
     expect(removeTarget.width, greaterThanOrEqualTo(48));
     expect(removeTarget.height, greaterThanOrEqualTo(48));
   });
+
+  testWidgets(
+    'TV dialog owns focus and CENTER opens the form and selects a preset',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+      await pumpTvManagerDialog(tester, container);
+
+      final addButton = find.byKey(
+        const ValueKey('playlist-source-add-button'),
+      );
+      final addFocusable = tester.widget<TvFocusable>(
+        find.ancestor(of: addButton, matching: find.byType(TvFocusable)),
+      );
+      expect(addFocusable.focusNode?.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add playlist'), findsOneWidget);
+      final allChannelsChip = find.widgetWithText(ActionChip, 'All channels');
+      final presetFocusable = tester.widget<TvFocusable>(
+        find.ancestor(of: allChannelsChip, matching: find.byType(TvFocusable)),
+      );
+      expect(presetFocusable.focusNode?.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      final labelField = tester.widget<TextField>(
+        find.byKey(const ValueKey('playlist-source-label-field')),
+      );
+      final urlField = tester.widget<TextField>(
+        find.byKey(const ValueKey('playlist-source-url-field')),
+      );
+      expect(labelField.controller?.text, 'IPTV.org · All channels');
+      expect(
+        urlField.controller?.text,
+        'https://iptv-org.github.io/iptv/index.m3u',
+      );
+      final saveButton = find.byKey(
+        const ValueKey('playlist-source-save-button'),
+      );
+      final saveFocusable = tester.widget<TvFocusable>(
+        find.ancestor(of: saveButton, matching: find.byType(TvFocusable)),
+      );
+      expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
+    },
+  );
+  testWidgets('TV preset takes save focus back from a stale text field', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await pumpTvManagerDialog(tester, container);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    final labelField = tester.widget<TextField>(
+      find.byKey(const ValueKey('playlist-source-label-field')),
+    );
+    labelField.focusNode?.requestFocus();
+    await tester.pump();
+    expect(labelField.focusNode?.hasPrimaryFocus, isTrue);
+
+    await tester.tap(find.widgetWithText(ActionChip, 'All channels'));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Fire OS can restore the field after Flutter's immediate post-frame
+    // requests. The delayed preset reassertion must still win.
+    labelField.focusNode?.requestFocus();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+
+    final saveButton = find.byKey(
+      const ValueKey('playlist-source-save-button'),
+    );
+    final saveFocusable = tester.widget<TvFocusable>(
+      find.ancestor(of: saveButton, matching: find.byType(TvFocusable)),
+    );
+    expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
+  });
+
+  testWidgets(
+    'Fire TV BACK leaves the playlist form after dismissing its keyboard',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+      await pumpTvManagerDialog(tester, container);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      final labelField = tester.widget<TextField>(
+        find.byKey(const ValueKey('playlist-source-label-field')),
+      );
+      labelField.focusNode!.requestFocus();
+      await tester.pump();
+      expect(labelField.focusNode!.hasPrimaryFocus, isTrue);
+
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Playlist sources'), findsOneWidget);
+      expect(labelField.focusNode!.hasFocus, isFalse);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Playlist sources'), findsNothing);
+      expect(find.text('Open playlist sources'), findsOneWidget);
+    },
+  );
 }

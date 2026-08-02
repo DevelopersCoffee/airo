@@ -109,6 +109,23 @@ void main() {
         expect(warmed, isFalse);
       },
     );
+
+    test('returns false when native warmup stalls past its timeout', () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        return switch (call.method) {
+          'isAvailable' => true,
+          'warmup' => Future<void>.delayed(const Duration(milliseconds: 100)),
+          _ => fail('Unexpected method call: ${call.method}'),
+        };
+      });
+
+      final client = GeminiNanoClient(
+        operationTimeout: const Duration(milliseconds: 10),
+        memoryBudgetManager: _FakeMemoryBudgetManager(_safeMemoryCheck),
+      );
+
+      expect(await client.warmup(), isFalse);
+    });
   });
 }
 

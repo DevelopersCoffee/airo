@@ -169,17 +169,38 @@ void main() {
       final handled = await tester.binding.handlePopRoute();
       await tester.pump(const Duration(milliseconds: 400));
       expect(handled, isTrue);
+      expect(
+        container.read(isFullscreenModeProvider),
+        isTrue,
+        reason:
+            'the platform half of Fire OS BACK must not independently exit '
+            'fullscreen after the player handled the raw half',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump(const Duration(milliseconds: 400));
       expect(container.read(isFullscreenModeProvider), isFalse);
       expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
 
-      final duplicateHandled = await tester.binding.handlePopRoute();
+      final immediateDuplicateHandled = await tester.binding.handlePopRoute();
       await tester.pump();
-      expect(duplicateHandled, isTrue);
-      expect(
-        find.byKey(const ValueKey('iptv-browse-grid')),
-        findsOneWidget,
-        reason: 'a duplicate Fire OS BACK callback must not close the app',
-      );
+      expect(immediateDuplicateHandled, isTrue);
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+
+      // AFTSSS can repeat the platform half after the old one-second guard
+      // elapsed, and can dispatch it more than once. Keep the browse route
+      // guarded until the next deliberate raw BACK begins a new operation.
+      await tester.pump(const Duration(seconds: 6));
+      for (var duplicate = 0; duplicate < 2; duplicate++) {
+        final duplicateHandled = await tester.binding.handlePopRoute();
+        await tester.pump();
+        expect(duplicateHandled, isTrue);
+        expect(
+          find.byKey(const ValueKey('iptv-browse-grid')),
+          findsOneWidget,
+          reason: 'a delayed duplicate Fire OS BACK must not close the app',
+        );
+      }
     },
   );
 

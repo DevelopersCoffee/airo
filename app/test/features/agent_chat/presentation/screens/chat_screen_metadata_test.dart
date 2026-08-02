@@ -3,11 +3,13 @@ import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/domain/models/chat_response_metadata.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../support/gemini_nano_channel.dart';
 
 void main() {
   test('buildRuntimeChatResponseMetadata records tokens and timings', () {
@@ -51,6 +53,26 @@ void main() {
     expect(metadata.executionMode, 'Local');
   });
 
+  test('formatChatTranscript exports visible non-empty turns', () {
+    final transcript = formatChatTranscript([
+      ChatMessage(text: 'Welcome', isUser: false),
+      ChatMessage(text: '  ', isUser: false),
+      ChatMessage(text: 'How many r?', isUser: true),
+      ChatMessage(text: 'Three.', isUser: false),
+    ]);
+
+    expect(
+      transcript,
+      'Airo chat transcript\n\n'
+      'Airo:\n'
+      'Welcome\n\n'
+      'User:\n'
+      'How many r?\n\n'
+      'Airo:\n'
+      'Three.',
+    );
+  });
+
   testWidgets('runtime responses expose timing metadata details', (
     tester,
   ) async {
@@ -81,7 +103,7 @@ void main() {
 
     expect(find.text('Hello from Airo'), findsOneWidget);
     expect(find.byKey(const Key('agent_chat_metadata_button')), findsOneWidget);
-    expect(find.textContaining('Gemini Nano'), findsOneWidget);
+    expect(find.textContaining('Gemini Nano'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('agent_chat_metadata_button')));
     await tester.pumpAndSettle();
@@ -90,7 +112,7 @@ void main() {
     expect(find.text('Model'), findsOneWidget);
     expect(find.text('Gemini Nano'), findsWidgets);
     expect(find.text('Runtime'), findsOneWidget);
-    expect(find.text('AICore on-device'), findsOneWidget);
+    expect(find.text('AICore on-device'), findsWidgets);
     expect(find.text('Execution'), findsOneWidget);
     expect(find.text('Local'), findsOneWidget);
     expect(find.text('Time to first token'), findsOneWidget);
@@ -179,6 +201,24 @@ void main() {
     expect(input.controller?.text, 'Follow up on my reminder');
   });
 
+  testWidgets('prompt suggestion fills the composer without sending', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: 'Welcome', isUser: false)],
+    );
+
+    expect(find.text('Try a prompt'), findsOneWidget);
+    await tester.tap(find.text('AI Chat'));
+    await tester.pumpAndSettle();
+
+    final input = tester.widget<TextField>(
+      find.byKey(const Key('agent_chat_input')),
+    );
+    expect(input.controller?.text, 'Help me think through a task');
+  });
+
   testWidgets('message actions copy assistant and user messages', (
     tester,
   ) async {
@@ -238,6 +278,119 @@ void main() {
     );
   });
 
+  testWidgets('read aloud reports unavailable TTS engines', (tester) async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const ttsChannel = MethodChannel('flutter_tts');
+    messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+      throw PlatformException(code: 'tts_unavailable');
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(ttsChannel, null);
+    });
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: 'Assistant answer', isUser: false)],
+    );
+
+    await tester.tap(find.byTooltip('Read message aloud'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Read aloud is unavailable on this device.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('copy transcript exports the visible chat session', (
+    tester,
+  ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_copy_transcript_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transcript copied'), findsOneWidget);
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals(
+        'Airo chat transcript\n\n'
+        'Airo:\n'
+        'Assistant answer\n\n'
+        'User:\n'
+        'User prompt',
+      ),
+    );
+  });
+
+  testWidgets('clear chat confirms before removing visible messages', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Clear conversation?'), findsOneWidget);
+    expect(find.text('Assistant answer'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Assistant answer'), findsOneWidget);
+    expect(find.text('User prompt'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Clear chat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Assistant answer'), findsNothing);
+    expect(find.text('User prompt'), findsNothing);
+    expect(find.text('Conversation cleared'), findsOneWidget);
+    final clearButton = tester.widget<IconButton>(
+      find.byKey(const Key('agent_chat_clear_conversation_button')),
+    );
+    expect(clearButton.onPressed, isNull);
+  });
+
   testWidgets('empty streaming placeholder hides copy action', (tester) async {
     await _pumpChatScreen(
       tester,
@@ -253,6 +406,24 @@ void main() {
   testWidgets('renders fenced code with language label and copy action', (
     tester,
   ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
     await _pumpChatScreen(
       tester,
       initialMessages: [
@@ -269,6 +440,14 @@ void main() {
     );
     expect(code.textSpan?.toPlainText(), contains('final answer = true;'));
     expect(find.byTooltip('Copy code'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Copy code'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('final answer = true;\n'),
+    );
   });
 }
 
@@ -284,6 +463,8 @@ Future<void> _pumpChatScreen(
     tester.view.resetPhysicalSize();
   });
 
+  stubGeminiNanoChannel();
+
   SharedPreferences.setMockInitialValues({
     'selected_assistant_model_id': geminiNanoAssistantModelId,
   });
@@ -291,6 +472,9 @@ Future<void> _pumpChatScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        assistantModelLibraryProvider.overrideWith(
+          (ref) async => _chatLibraryState,
+        ),
         selectedAssistantModelIdProvider.overrideWith(
           (ref) => _SelectedAssistantModelNotifier(),
         ),
@@ -312,3 +496,26 @@ class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
     state = geminiNanoAssistantModelId;
   }
 }
+
+const _chatCandidate = AssistantModelCandidate(
+  id: geminiNanoAssistantModelId,
+  name: 'Gemini Nano',
+  runtime: 'AICore on-device',
+  description: 'System runtime',
+  bestFor: [AssistantTask.chat],
+  tags: ['Local'],
+  privacyLabel: 'Prompt stays on device',
+  sizeLabel: 'System managed',
+  available: true,
+  actionLabel: 'Start',
+  local: true,
+);
+
+const _chatLibraryState = AssistantModelLibraryState(
+  task: AssistantTask.chat,
+  deviceLabel: 'Google Pixel 9',
+  platformLabel: 'ANDROID',
+  candidates: [_chatCandidate],
+  recommended: _chatCandidate,
+  defaultPackages: {},
+);

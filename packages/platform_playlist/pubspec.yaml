@@ -8,13 +8,14 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  crypto: ^3.0.7
   flutter:
     sdk: flutter
   core_data:
     path: ../core_data
   dio: ^5.10.0
   drift: ^2.23.1
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   path: ^1.9.0
   path_provider: ^2.1.5
   platform_channels:

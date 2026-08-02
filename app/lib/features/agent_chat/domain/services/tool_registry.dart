@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/services/device_actions_service.dart';
 import 'intent_parser.dart';
 
 /// Gallery-style card describing an agent skill/use case.
@@ -118,6 +119,70 @@ class MusicTool implements Tool {
         return null;
     }
   }
+}
+
+/// Safe platform actions exposed through the Mobile Actions skill.
+class DeviceActionsTool implements Tool {
+  DeviceActionsTool({DeviceActionsService? service})
+    : _service = service ?? DeviceActionsService();
+
+  final DeviceActionsService _service;
+
+  @override
+  String get key => 'mobile_actions';
+
+  @override
+  String get name => 'Mobile Actions';
+
+  @override
+  bool canHandle(Intent intent) => {
+    IntentType.openWifiSettings,
+    IntentType.setFlashlight,
+    IntentType.composeEmail,
+    IntentType.createContact,
+    IntentType.openMap,
+  }.contains(intent.type);
+
+  @override
+  Future<AgentToolResult?> handle(Intent intent) async {
+    if (!canHandle(intent)) return null;
+    final opened = switch (intent.type) {
+      IntentType.openWifiSettings => await _service.openWifiSettings(),
+      IntentType.setFlashlight => await _service.setFlashlight(
+        enabled: intent.parameters['enabled'] != false,
+      ),
+      IntentType.composeEmail => await _service.composeEmail(),
+      IntentType.createContact => await _service.createContact(),
+      IntentType.openMap => await _service.openMap(),
+      _ => false,
+    };
+    return AgentToolResult(
+      message: opened ? _successMessage(intent) : _failureMessage(intent),
+      isError: !opened,
+    );
+  }
+
+  String _successMessage(Intent intent) => switch (intent.type) {
+    IntentType.openWifiSettings => 'Opened Wi-Fi settings.',
+    IntentType.setFlashlight =>
+      intent.parameters['enabled'] == false
+          ? 'Turned the flashlight off.'
+          : 'Turned the flashlight on.',
+    IntentType.composeEmail => 'Opened the email composer.',
+    IntentType.createContact => 'Opened the contact form.',
+    IntentType.openMap => 'Opened the map.',
+    _ => 'Completed the device action.',
+  };
+
+  String _failureMessage(Intent intent) => switch (intent.type) {
+    IntentType.openWifiSettings =>
+      'Airo could not open Wi-Fi settings on this device.',
+    IntentType.setFlashlight => 'Airo could not change the flashlight.',
+    IntentType.composeEmail => 'Airo could not open an email composer.',
+    IntentType.createContact => 'Airo could not open the contact form.',
+    IntentType.openMap => 'Airo could not open a map on this device.',
+    _ => 'Airo could not complete the device action.',
+  };
 }
 
 /// Money and model-management routing tool.
@@ -368,13 +433,14 @@ class SocialTool implements Tool {
         );
       case IntentType.audioScribe:
         return const AgentToolResult(
+          route: '/mind/audio-scribe',
           message:
-              'Audio Scribe is mapped to Airo voice workflows. Use voice input now; full offline transcription can plug into the meeting-minutes pipeline.',
+              'Opening Audio Scribe for on-device capture, transcript review, and translation.',
         );
       case IntentType.mobileActions:
         return const AgentToolResult(
           message:
-              'Mobile Actions ready: try commands like "open WiFi settings", "show budget", "play chess", or "split this bill". Sensitive device actions should ask for confirmation before execution.',
+              'Mobile Actions ready: try "open WiFi settings", "turn the flashlight on", "create contact", "send email", or "show location on map". Sensitive device actions should ask for confirmation before execution.',
         );
       case IntentType.openChat:
         return const AgentToolResult(route: '/agent', message: 'Opening Chat');
@@ -397,6 +463,7 @@ class ToolRegistry {
     'Arena': GamesTool(),
     'Loot': OffersTool(),
     'Tales': ReaderTool(),
+    'mobile_actions': DeviceActionsTool(),
     'social': SocialTool(),
   };
 
@@ -475,12 +542,21 @@ class ToolRegistry {
         title: 'Audio Scribe',
         description: 'Prepare offline transcription workflows',
         iconKey: 'mic',
+        route: '/mind/audio-scribe',
       ),
       AgentSkillCard(
         key: 'mobile_actions',
         title: 'Mobile Actions',
         description: 'Control Airo features with commands',
         iconKey: 'bolt',
+        route: '/mind/mobile-actions',
+      ),
+      AgentSkillCard(
+        key: 'tiny_garden',
+        title: 'Tiny Garden',
+        description: 'Play the local language garden experiment',
+        iconKey: 'local_florist',
+        route: '/mind/mobile-actions',
       ),
       AgentSkillCard(
         key: 'model_management',

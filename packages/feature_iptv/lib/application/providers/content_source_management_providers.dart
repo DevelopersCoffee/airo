@@ -43,6 +43,28 @@ final xtreamAuthenticatorProvider = Provider<XtreamAuthenticator>((ref) {
   };
 });
 
+typedef StalkerAuthenticator =
+    Future<void> Function({
+      required String portalUrl,
+      required String macAddress,
+    });
+
+final stalkerAuthenticatorProvider = Provider<StalkerAuthenticator>((ref) {
+  return ({required String portalUrl, required String macAddress}) async {
+    await StalkerClient(
+      dio: ref.read(dioProvider),
+      serverUrl: portalUrl,
+      macAddress: macAddress,
+    ).handshake();
+  };
+});
+
+Future<void> _activateSource(Ref ref, String id) async {
+  await ref.read(contentSourceStoreProvider).setActiveSourceId(id);
+  ref.invalidate(activeContentSourceProvider);
+  ref.invalidate(iptvChannelsProvider);
+}
+
 /// Adds a new M3U [ContentSourceConfig] and invalidates
 /// [configuredContentSourcesProvider].
 final addM3uContentSourceProvider = FutureProvider.autoDispose
@@ -78,6 +100,7 @@ final addM3uContentSourceProvider = FutureProvider.autoDispose
                 url: url,
               ),
             );
+        await _activateSource(ref, id);
         ref.invalidate(iptvChannelsProvider);
         ref.invalidate(configuredM3uChannelsProvider);
         ref.invalidate(configuredXtreamChannelsProvider);
@@ -137,36 +160,64 @@ final addXtreamContentSourceProvider =
               maxConnections: auth.maxConnections,
             ),
           );
+      await _activateSource(ref, id);
       ref.invalidate(iptvChannelsProvider);
       ref.invalidate(configuredXtreamChannelsProvider);
       ref.invalidate(configuredContentSourcesProvider);
       keepAlive.close();
     }, retry: (_, _) => null);
 
-/// Adds a new Stalker Portal [ContentSourceConfig]. Stalker auth uses the
-/// device MAC address (persisted in the config itself, not a secret), so
-/// no credential store write is needed.
-final addStalkerContentSourceProvider = FutureProvider.autoDispose
-    .family<void, ({String label, String url, String macAddress})>((
-      ref,
-      args,
-    ) async {
+/// Adds a new Stalker Portal [ContentSourceConfig]. The portal MAC is required
+/// by the provider protocol and remains local; session tokens stay in memory.
+final addStalkerContentSourceProvider =
+    FutureProvider.family<
+      void,
+      ({String label, String url, String macAddress})
+    >((ref, args) async {
       final keepAlive = ref.keepAlive();
       final id = 'stalker-${DateTime.now().microsecondsSinceEpoch}';
-      await ref
-          .watch(contentSourceStoreProvider)
-          .add(
-            ContentSourceConfig(
-              id: id,
-              kind: ContentSourceKind.stalker,
-              label: args.label,
-              url: args.url,
-              macAddress: args.macAddress,
-            ),
+      try {
+        final label = args.label.trim();
+        final url = _validatedHttpUrl(args.url, fieldName: 'portal URL');
+        final macAddress = args.macAddress.trim().toUpperCase();
+        if (label.isEmpty) {
+          throw ArgumentError.value(args.label, 'label', 'Enter a label.');
+        }
+        if (!RegExp(r'^[0-9A-F]{2}(?::[0-9A-F]{2}){5}$').hasMatch(macAddress)) {
+          throw ArgumentError.value(
+            args.macAddress,
+            'macAddress',
+            'Enter a MAC address such as AA:BB:CC:DD:EE:FF.',
           );
-      ref.invalidate(configuredContentSourcesProvider);
-      keepAlive.close();
-    });
+        }
+        try {
+          await ref.read(stalkerAuthenticatorProvider)(
+            portalUrl: url,
+            macAddress: macAddress,
+          );
+        } catch (_) {
+          throw const ContentSourceRuntimeException(
+            'Could not verify the Stalker Portal. '
+            'Check the portal and MAC address.',
+          );
+        }
+        await ref
+            .watch(contentSourceStoreProvider)
+            .add(
+              ContentSourceConfig(
+                id: id,
+                kind: ContentSourceKind.stalker,
+                label: label,
+                url: url,
+                macAddress: macAddress,
+              ),
+            );
+        await _activateSource(ref, id);
+        ref.invalidate(configuredContentSourcesProvider);
+      } finally {
+        keepAlive.close();
+      }
+    }, retry: (_, _) => null);
 
 /// Adds a new Jellyfin [ContentSourceConfig] and stores its credentials
 /// (username + password/api-key) via [contentSourceCredentialStoreProvider].
@@ -200,10 +251,10 @@ final addJellyfinContentSourceProvider = FutureProvider.autoDispose
       keepAlive.close();
     });
 
-/// Removes a content source by id and deletes any credential stored for it
-/// via [contentSourceCredentialStoreProvider] — otherwise a removed source
-/// leaves an orphaned secret behind with no owner. Invalidates
-/// [configuredContentSourcesProvider] afterwards.
+/// Removes a content source by id and deletes credentials for source kinds
+/// that own them. Credential cleanup happens before the source record is
+/// removed so a secure-store failure cannot report failure after deletion.
+/// Invalidates [configuredContentSourcesProvider] afterwards.
 final removeContentSourceProvider = FutureProvider.autoDispose
     .family<void, String>((ref, id) async {
       final keepAlive = ref.keepAlive();
@@ -224,10 +275,17 @@ final removeContentSourceProvider = FutureProvider.autoDispose
           }
           await ref.read(m3uSourceParserFactoryProvider)(id).clearPlaylist();
         }
-        await ref.watch(contentSourceStoreProvider).remove(id);
-        await ref
-            .watch(contentSourceCredentialStoreProvider)
-            .delete(ContentSourceCredentialRef(id));
+        if (removed?.kind == ContentSourceKind.xtream ||
+            removed?.kind == ContentSourceKind.jellyfin) {
+          await ref
+              .watch(contentSourceCredentialStoreProvider)
+              .delete(ContentSourceCredentialRef(id));
+        }
+        final store = ref.watch(contentSourceStoreProvider);
+        await store.remove(id);
+        if (await store.getActiveSourceId() == id) {
+          await store.setActiveSourceId(null);
+        }
         ref.read(providerHealthTrackerProvider).clearFor(id);
         final epgRepository = ref.read(compactEpgRepositoryProvider);
         if (epgRepository is MutableXmltvCompactEpgRepository) {
@@ -237,6 +295,31 @@ final removeContentSourceProvider = FutureProvider.autoDispose
         ref.invalidate(configuredM3uChannelsProvider);
         ref.invalidate(configuredXtreamChannelsProvider);
         ref.invalidate(configuredContentSourcesProvider);
+        ref.invalidate(activeContentSourceProvider);
+      } finally {
+        keepAlive.close();
+      }
+    });
+
+/// Selects the exclusive runtime source. Unsupported saved source kinds stay
+/// visible for removal/migration but cannot become Live TV's active source.
+final selectContentSourceProvider = FutureProvider.autoDispose
+    .family<void, String>((ref, id) async {
+      final keepAlive = ref.keepAlive();
+      try {
+        final sources = await ref.read(configuredContentSourcesProvider.future);
+        final matches = sources.where((source) => source.id == id);
+        if (matches.isEmpty) {
+          throw const ContentSourceRuntimeException(
+            'That content source is no longer available.',
+          );
+        }
+        if (matches.single.kind == ContentSourceKind.jellyfin) {
+          throw const ContentSourceRuntimeException(
+            'Jellyfin is not available in Live TV yet.',
+          );
+        }
+        await _activateSource(ref, id);
       } finally {
         keepAlive.close();
       }

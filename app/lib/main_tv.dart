@@ -45,6 +45,12 @@ import 'firebase_options.dart';
 /// Global flag to track if Firebase is available
 bool isFirebaseInitialized = false;
 typedef TvFirebaseInitializer = Future<void> Function();
+typedef TvDebugPlaylistLoader =
+    Future<List<IPTVChannel>> Function(
+      String playlistUrl,
+      Dio dio,
+      SharedPreferences prefs,
+    );
 
 const _debugDefaultPlaylistUrl = String.fromEnvironment(
   'DEBUG_IPTV_PLAYLIST_URL',
@@ -163,6 +169,8 @@ List<Override> buildTvProviderOverrides({
   TvAudioHandler? tvAudioHandler,
   ModuleRegistry? moduleRegistry,
   List<Override>? proProviderOverrides,
+  String debugPlaylistUrl = _debugDefaultPlaylistUrl,
+  TvDebugPlaylistLoader? debugPlaylistLoader,
 }) {
   final registry = moduleRegistry ?? buildTvModuleRegistry();
   final handler = tvAudioHandler;
@@ -182,6 +190,14 @@ List<Override> buildTvProviderOverrides({
     // (tv_router.dart compact layout), whose cast UI needs the real
     // controller — without this override casting silently no-ops.
     realIptvCastControllerOverride(),
+    if (debugPlaylistUrl.isNotEmpty)
+      iptvChannelsProvider.overrideWith((ref) {
+        return (debugPlaylistLoader ?? loadTvDebugPlaylistForWeb)(
+          debugPlaylistUrl,
+          ref.watch(dioProvider),
+          prefs,
+        );
+      }),
     // #980: publish playback state to the OS media session and route
     // notification buttons back into the streaming service. The delegate
     // reporting direction flows through tvIptvIntegrationProvider; the
@@ -199,6 +215,60 @@ List<Override> buildTvProviderOverrides({
     ...registry.allProviderOverrides,
     ...(proProviderOverrides ?? pro_bootstrap.createProviderOverrides()),
   ];
+}
+
+/// Loads the controlled browser-validation playlist without native file I/O.
+///
+/// Production builds never set [DEBUG_IPTV_PLAYLIST_URL], so this override is
+/// absent there. The checked-in fixture is capped below the repository's
+/// 50-KB worker threshold, so the deterministic synchronous test helper is
+/// valid here; larger content is rejected instead of reaching the main
+/// isolate.
+@visibleForTesting
+Future<List<IPTVChannel>> loadTvDebugPlaylistForWeb(
+  String playlistUrl,
+  Dio dio,
+  SharedPreferences prefs,
+) async {
+  final response = await dio.get<String>(
+    playlistUrl,
+    options: Options(responseType: ResponseType.plain),
+  );
+  final content = response.data;
+  if (content == null || content.trim().isEmpty) return const [];
+  if (content.length > 50 * 1024) {
+    throw StateError('TV browser validation playlist exceeds 50 KB.');
+  }
+  final playlistUri = Uri.parse(playlistUrl);
+  final localOrigin = '${playlistUri.origin}/';
+  const parserSafeOrigin = 'https://store-fixture.example/';
+  final usesLocalFixture =
+      playlistUri.host == '127.0.0.1' ||
+      playlistUri.host == '::1' ||
+      playlistUri.host == 'localhost';
+  final parserInput = usesLocalFixture
+      ? content.replaceAll(localOrigin, parserSafeOrigin)
+      : content;
+  var channels = M3UParserService(dio: dio, prefs: prefs).parseM3U(parserInput);
+  if (usesLocalFixture) {
+    channels = channels
+        .map((channel) {
+          final streamUrl = channel.streamUrl.replaceFirst(
+            parserSafeOrigin,
+            localOrigin,
+          );
+          return channel.copyWith(
+            streamUrl: streamUrl,
+            sources: [streamUrl],
+            streamSources: [ChannelStreamSource(url: streamUrl)],
+          );
+        })
+        .toList(growable: false);
+  }
+  debugPrint(
+    '📺 Loaded ${channels.length} controlled browser-validation channels',
+  );
+  return channels;
 }
 
 @visibleForTesting

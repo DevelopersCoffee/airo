@@ -1,14 +1,19 @@
 import 'dart:io';
 
 import 'package:platform_benchmarks/src/airo_tv_playback_soak_runner.dart';
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile_host.dart';
 
 Future<void> main(List<String> args) async {
   final options = _CliOptions.parse(args);
-  final runner = AiroTvPlaybackSoakRunner();
+  final runner = AiroTvPlaybackSoakRunner(
+    onSample: (completed, total, rssMb) {
+      stdout.writeln('Soak sample $completed/$total: RSS $rssMb MB');
+    },
+  );
   final report = await runner.write(
     AiroTvPlaybackSoakConfig(
       adbPath: options.adbPath,
+      deviceSerial: options.deviceSerial,
       packageName: options.packageName,
       reportId: options.reportId,
       scenarioId: options.scenarioId,
@@ -35,6 +40,7 @@ class _CliOptions {
   const _CliOptions({
     required this.packageName,
     required this.adbPath,
+    required this.deviceSerial,
     required this.reportId,
     required this.scenarioId,
     required this.durationSeconds,
@@ -52,6 +58,7 @@ class _CliOptions {
 
   final String packageName;
   final String adbPath;
+  final String? deviceSerial;
   final String reportId;
   final String scenarioId;
   final int durationSeconds;
@@ -84,6 +91,7 @@ class _CliOptions {
     return _CliOptions(
       packageName: values['package'] ?? _usage('Missing --package'),
       adbPath: values['adb'] ?? 'adb',
+      deviceSerial: values['device'],
       reportId: values['report-id'] ?? 'airo-tv-playback-soak',
       scenarioId: values['scenario-id'] ?? 'manual-tv-playback-soak',
       durationSeconds: _durationSeconds(values),
@@ -162,6 +170,7 @@ class _CliOptions {
 Usage:
   dart run tool/run_airo_tv_playback_soak.dart \\
     --package io.airo.app.tv \\
+    --device <adb-serial> \\
     --duration-minutes 30 \\
     --interval-seconds 30 \\
     --budget constrained \\
@@ -171,7 +180,7 @@ Usage:
     --output-markdown artifacts/performance/airo-tv-playback-soak-report.md
 
 Budgets: constrained|1gb, standard|2gb, expanded|3gb.
-Optional fields: --adb, --report-id, --scenario-id, --duration-seconds,
+Optional fields: --adb, --device, --report-id, --scenario-id, --duration-seconds,
 --image-cache-mb, --retained-channel-list-copies, --launch true|false,
 --key-events DPAD_DOWN,DPAD_CENTER,MEDIA_PLAY_PAUSE.
 

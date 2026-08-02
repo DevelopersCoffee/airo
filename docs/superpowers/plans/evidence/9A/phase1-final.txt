@@ -1,0 +1,7 @@
+PHASE 1 FINAL -- 2026-08-01T09:16:06Z
+check  0 errors
+test result: ok. 100 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.58s
+clippy 0 errors
+G0.9: PASS -- public surface matches the reviewed allowlist (109 items)
+L1.2: PASS -- every enumerated site is allowlisted
+G0.8: 10 passed, 0 FAILED

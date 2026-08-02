@@ -3,6 +3,8 @@ package io.airo.app
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.os.PowerManager
+import android.os.StatFs
 import android.util.Log
 import androidx.annotation.NonNull
 import com.google.mlkit.genai.common.DownloadCallback
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 /**
  * Gemini Nano Plugin for Flutter
@@ -107,7 +110,22 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             "getDeviceInfo" -> getDeviceInfo(result)
             "getMemoryInfo" -> getMemoryInfo(result)
             "getCapabilities" -> getCapabilities(result)
+            "dispose" -> dispose(result)
             else -> result.notImplemented()
+        }
+    }
+
+    /** Releases the native model and its caches so later sessions can reclaim memory. */
+    private fun dispose(result: MethodChannel.Result) {
+        try {
+            streamHandler.endStream()
+            generativeModel?.close()
+            generativeModel = null
+            isInitialized = false
+            result.success(null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disposing Gemini Nano: ${e.message}", e)
+            result.error("DISPOSE_FAILED", e.message, null)
         }
     }
 
@@ -434,7 +452,12 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             "release" to Build.VERSION.RELEASE,
             "sdkVersion" to Build.VERSION.SDK_INT,
             "isPixel" to isPixel9Device(),
-            "supportsGeminiNano" to (isPixel9Device() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            "supportsGeminiNano" to (isPixel9Device() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE),
+            "cpuSummary" to getCpuSummary(),
+            "gpuSummary" to "Not reported by platform adapter",
+            "npuSummary" to getNpuSummary(),
+            "storageSummary" to getStorageSummary(),
+            "thermalSummary" to getThermalSummary()
         )
         result.success(deviceInfo)
     }
@@ -478,6 +501,66 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
     }
 
     // Helper methods
+
+    private fun getCpuSummary(): String {
+        val cores = Runtime.getRuntime().availableProcessors()
+        val soc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            listOf(Build.SOC_MANUFACTURER, Build.SOC_MODEL)
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
+        } else {
+            Build.HARDWARE
+        }.ifBlank {
+            Build.HARDWARE.ifBlank { "Android CPU" }
+        }
+        return "$soc · $cores cores"
+    }
+
+    private fun getNpuSummary(): String {
+        if (isPixel9Device() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return "On-device AI service reported"
+        }
+        return if (context.packageManager.hasSystemFeature("android.hardware.neuralnetworks")) {
+            "NNAPI feature reported"
+        } else {
+            "Not reported by platform adapter"
+        }
+    }
+
+    private fun getStorageSummary(): String {
+        return try {
+            val stat = StatFs(context.filesDir.absolutePath)
+            val freeBytes = stat.availableBytes
+            val totalBytes = stat.totalBytes
+            "${formatGb(freeBytes)} free of ${formatGb(totalBytes)}"
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to read app storage state: ${e.message}", e)
+            "Not reported by platform adapter"
+        }
+    }
+
+    private fun getThermalSummary(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return "Not reported by platform adapter"
+        }
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            ?: return "Not reported by platform adapter"
+        return when (powerManager.currentThermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE -> "Nominal"
+            PowerManager.THERMAL_STATUS_LIGHT -> "Light pressure"
+            PowerManager.THERMAL_STATUS_MODERATE -> "Moderate pressure"
+            PowerManager.THERMAL_STATUS_SEVERE -> "Severe pressure"
+            PowerManager.THERMAL_STATUS_CRITICAL -> "Critical pressure"
+            PowerManager.THERMAL_STATUS_EMERGENCY -> "Emergency pressure"
+            PowerManager.THERMAL_STATUS_SHUTDOWN -> "Shutdown risk"
+            else -> "Not reported by platform adapter"
+        }
+    }
+
+    private fun formatGb(bytes: Long): String {
+        val gb = bytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+        return String.format(Locale.US, "%.1f GB", gb)
+    }
 
     private fun isPixel9Device(): Boolean {
         val model = Build.MODEL.lowercase()

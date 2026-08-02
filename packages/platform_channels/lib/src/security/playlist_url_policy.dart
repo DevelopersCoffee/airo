@@ -2,6 +2,35 @@
 class AiroPlaylistUrlPolicy {
   const AiroPlaylistUrlPolicy._();
 
+  static const int maxShareStreamUrlLength = 2048;
+
+  static const Set<String> _sensitiveShareQueryKeys = {
+    'accesstoken',
+    'apikey',
+    'auth',
+    'authorization',
+    'bearer',
+    'credential',
+    'expires',
+    'hdnea',
+    'hdnts',
+    'hmac',
+    'jwt',
+    'key',
+    'keypairid',
+    'password',
+    'policy',
+    'session',
+    'sessionid',
+    'signature',
+    'sig',
+    'token',
+    'xamzcredential',
+    'xamzexpires',
+    'xamzsecuritytoken',
+    'xamzsignature',
+  };
+
   /// Normalize a playlist-derived media stream URL.
   ///
   /// HTTP and HTTPS streams are valid IPTV sources, but local/private hosts are
@@ -17,6 +46,47 @@ class AiroPlaylistUrlPolicy {
       allowHttp: allowHttp,
       allowPrivateHosts: allowPrivateHosts,
     );
+  }
+
+  /// Validates a stream URL before it is embedded in a portable share link.
+  ///
+  /// A playable share leaves the sender's device and may be retained in chat
+  /// history, browser history, or previews. Credential-like query parameters
+  /// are therefore rejected even when the URL would otherwise be a valid
+  /// playback target.
+  static AiroShareStreamUrlValidation validateShareStreamUrl(String? value) {
+    final raw = value?.trim();
+    if (raw == null || raw.isEmpty) {
+      return const AiroShareStreamUrlValidation.rejected(
+        AiroShareStreamUrlRejection.empty,
+      );
+    }
+    if (raw.length > maxShareStreamUrlLength) {
+      return const AiroShareStreamUrlValidation.rejected(
+        AiroShareStreamUrlRejection.tooLong,
+      );
+    }
+
+    final normalized = normalizeStreamUrl(raw);
+    if (normalized == null) {
+      return const AiroShareStreamUrlValidation.rejected(
+        AiroShareStreamUrlRejection.unsafeTarget,
+      );
+    }
+
+    for (final key in normalized.queryParametersAll.keys) {
+      final canonicalKey = key.toLowerCase().replaceAll(
+        RegExp('[^a-z0-9]'),
+        '',
+      );
+      if (_sensitiveShareQueryKeys.contains(canonicalKey)) {
+        return const AiroShareStreamUrlValidation.rejected(
+          AiroShareStreamUrlRejection.sensitiveQuery,
+        );
+      }
+    }
+
+    return AiroShareStreamUrlValidation.allowed(normalized);
   }
 
   /// Normalize a playlist-derived artwork/logo URL.
@@ -138,4 +208,22 @@ class AiroPlaylistUrlPolicy {
     }
     return octets;
   }
+}
+
+enum AiroShareStreamUrlRejection {
+  empty,
+  tooLong,
+  unsafeTarget,
+  sensitiveQuery,
+}
+
+final class AiroShareStreamUrlValidation {
+  const AiroShareStreamUrlValidation.allowed(Uri this.uri) : rejection = null;
+
+  const AiroShareStreamUrlValidation.rejected(this.rejection) : uri = null;
+
+  final Uri? uri;
+  final AiroShareStreamUrlRejection? rejection;
+
+  bool get isAllowed => uri != null;
 }

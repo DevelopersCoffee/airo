@@ -3,6 +3,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/widgets/player_brightness_controller.dart';
 import 'package:feature_iptv/presentation/widgets/player_gesture_overlay.dart';
 import 'package:feature_iptv/presentation/widgets/player_lock_button.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,8 @@ void main() {
     bool enableTouchGestures = true,
     bool initiallyFullscreen = false,
     bool showPictureInPicture = true,
+    bool handleNativeFullscreen = true,
+    VoidCallback? onFullscreenToggle,
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
     List<IPTVChannel>? channels,
@@ -63,6 +66,8 @@ void main() {
             enableTouchGestures: enableTouchGestures,
             initiallyFullscreen: initiallyFullscreen,
             showPictureInPicture: showPictureInPicture,
+            handleNativeFullscreen: handleNativeFullscreen,
+            onFullscreenToggle: onFullscreenToggle,
             brightnessController: brightnessController,
           ),
         ),
@@ -71,6 +76,45 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   }
+
+  testWidgets(
+    'delegated fullscreen does not race the owning macOS route transition',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      const fullscreenChannel = MethodChannel(
+        'com.developerscoffee.airo.window/fullscreen',
+      );
+      final nativeCalls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        fullscreenChannel,
+        (call) async {
+          nativeCalls.add(call);
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          fullscreenChannel,
+          null,
+        ),
+      );
+      var routeToggleCount = 0;
+
+      await pumpPlayer(
+        tester,
+        handleNativeFullscreen: false,
+        onFullscreenToggle: () => routeToggleCount++,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      );
+      await tester.pump();
+      debugDefaultTargetPlatformOverride = null;
+
+      expect(routeToggleCount, 1);
+      expect(nativeCalls, isEmpty);
+    },
+  );
 
   testWidgets(
     'D-pad up opens the Mini Guide, and selecting a channel there switches '

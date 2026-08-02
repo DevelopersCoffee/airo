@@ -100,8 +100,22 @@ class RealChessEngine with ChessEngineAsync implements ChessEngine {
 
   @override
   bool makeMove(ChessMove move) {
-    final moveStr = _toAlgebraic(move);
-    final result = _chess.move(moveStr);
+    // chess.dart's `move(String)` matches its argument against SAN ("e4",
+    // "Nf3"), never UCI. Passing `_toAlgebraic` here -- which builds "e2e4" --
+    // meant every move was rejected and the board never changed, while the
+    // caller recorded it as played. Use the map form, which matches on the
+    // from/to squares we actually have.
+    final result = _chess.move({
+      'from': _indexToSquare(move.from.index),
+      'to': _indexToSquare(move.to.index),
+      if (move.promotion != null)
+        'promotion': _pieceTypeToChar(move.promotion!),
+    });
+    if (!result) {
+      print(
+        '[CHESS] Rejected move ${_toAlgebraic(move)} -- not legal in this position',
+      );
+    }
     return result;
   }
 

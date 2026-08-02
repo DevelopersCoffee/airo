@@ -1,0 +1,61 @@
+G0.7 claim assertions -- /private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad/rev7/src
+
+  FAIL  A01  SEC-33   Seed::as_bytes deleted (64-byte master seed)
+        claimed ABSENT, found:
+          src/vault/seed.rs:29:    pub fn as_bytes(&self) -> &[u8; 64] {
+  FAIL  A02  RA-17    RootIdentity::sign not pub (signing oracle)
+        claimed ABSENT, found:
+          src/vault/identity.rs:77:    pub fn sign(&self, msg: &[u8]) -> [u8; 64] {
+  FAIL  A03  RA-17b   DeviceKey::sign deleted (zero callers)
+        claimed ABSENT, found:
+          src/vault/device.rs:45:    pub fn sign(&self, msg: &[u8]) -> [u8; 64] {
+  FAIL  A04  SEC-32   subject ids NFC-normalized, control chars rejected  (claimed PRESENT, absent)
+  FAIL  A05  RA-23a   RecoveryPackage::revocation_epoch private
+        claimed ABSENT, found:
+          src/vault/package.rs:147:    pub revocation_epoch: u64,
+  FAIL  A06  RA-23a   RecoveryPackage::identity_public_key private
+        claimed ABSENT, found:
+          src/vault/package.rs:143:    pub identity_public_key: RootPublicKey,
+  FAIL  A07  RA-23a   DeviceCertificate::device_id private
+        claimed ABSENT, found:
+          src/vault/device.rs:53:    pub device_id: String,
+  FAIL  A08  RA-23a   DeviceCertificate::signature private
+        claimed ABSENT, found:
+          src/vault/device.rs:58:    pub signature: [u8; 64],
+  PASS  A09  RA-23a   cfg(test) tamper constructors exist
+  FAIL  A10  RA-24    no per-byte format! (350.82ms vs 16.55ms)
+        claimed ABSENT, found:
+          src/vault/device.rs:42:        self.public_key().iter().map(|b| format!("{b:02x}")).collect()
+          src/vault/device.rs:96:    bytes.iter().map(|b| format!("{b:02x}")).collect()
+          src/vault/encoding.rs:21://! **Never `format!("{b:02x}")` per byte.** That allocates one `String` per
+          src/vault/identity.rs:74:        self.public_key().as_bytes().iter().map(|b| format!("{b:02x}")).collect()
+          src/vault/seed.rs:380:        bytes.iter().map(|b| format!("{b:02x}")).collect()
+  FAIL  A11  RA-19    no unchecked length cast on a signing payload
+        claimed ABSENT, found:
+          src/vault/device.rs:80:        payload.extend_from_slice(&(self.device_id.len() as u32).to_be_bytes());
+  FAIL  A12  SEC-46   no unchecked increment on the nonce path
+        claimed ABSENT, found:
+          src/vault/package.rs:420:            *index += 1;
+          src/vault/package.rs:540:            *index += 1;
+  PASS  A13  RA-3     seed.rs does not call OsRng
+  PASS  A14  RA-3     device.rs does not call OsRng
+  PASS  A15  RA-3     package.rs does not call OsRng
+  FAIL  A16  SEC-38   restore does not re-implement admission
+        claimed ABSENT, found:
+          src/vault/aggregate.rs:319:        if !certificate.verify_against(&self.root_public_key) {
+          src/vault/aggregate.rs:383:                .filter(|c| c.verify_against(&payload.root_public_key))
+  FAIL  A17  SEC-35   the package nonce is authenticated  (claimed PRESENT, absent)
+  FAIL  A18  SEC-36   head_epoch is carried, not re-derived  (claimed PRESENT, absent)
+  FAIL  A19  RA-25    no stale allow(dead_code) on content_id
+        claimed ABSENT, found:
+          src/vault/envelope.rs:262:    #[allow(dead_code)] // consumed by link_content once S2's fix lands
+  FAIL  A20  SEC-37   KeyBytes::as_bytes is package-scoped, not crate-wide
+        claimed ABSENT, found:
+          src/vault/package.rs:129:    pub(super) fn as_bytes(&self) -> &[u8; 32] {
+  FAIL  A21  SEC-40   a caller-supplied ledger is validated  (claimed PRESENT, absent)
+  PASS  A22  SEC-32   no 32-byte seed accessor either
+
+G0.7: 5 passed, 17 FAILED  (of 22 assertions)
+
+A FAIL means the plan records a change its own code does not contain.
+Making that impossible to report as done is the purpose of this gate.

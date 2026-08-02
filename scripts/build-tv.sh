@@ -12,6 +12,7 @@ FULL_BUILD=false
 SKIP_RESTORE=false
 BUILD_AAB=true
 BUILD_APK=true
+SPLIT_PER_ABI=false
 SIGNING_CREATED=false
 
 resolve_keytool() {
@@ -50,9 +51,15 @@ while [[ $# -gt 0 ]]; do
         --skip-restore) SKIP_RESTORE=true; shift ;;
         --apk-only) BUILD_AAB=false; shift ;;
         --aab-only) BUILD_APK=false; shift ;;
+        --split-per-abi) SPLIT_PER_ABI=true; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
+
+APK_PLATFORM_ARGS=(--target-platform=android-arm64)
+if [[ "$SPLIT_PER_ABI" == true ]]; then
+    APK_PLATFORM_ARGS=(--split-per-abi)
+fi
 
 echo -e "\033[0;34mBuilding Android TV APK...\033[0m"
 
@@ -92,6 +99,10 @@ cleanup() {
         cp pubspec_backup.yaml pubspec.yaml
         rm -f pubspec_backup.yaml
         flutter pub get > /dev/null 2>&1
+        if [[ -f "pubspec_backup.lock" ]]; then
+            cp pubspec_backup.lock pubspec.lock
+            rm -f pubspec_backup.lock
+        fi
         echo "  Restored pubspec.yaml"
     fi
     if [[ "$SIGNING_CREATED" == true ]]; then
@@ -108,7 +119,7 @@ if [[ "$FULL_BUILD" == true ]]; then
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
-            --target-platform=android-arm64 \
+            "${APK_PLATFORM_ARGS[@]}" \
             --tree-shake-icons
     fi
     if [[ "$BUILD_AAB" == true ]]; then
@@ -129,6 +140,10 @@ echo -e "\033[0;33mSwapping to TV-specific pubspec (excludes stockfish, flame, m
 if [[ -f "pubspec.yaml" ]]; then
     cp pubspec.yaml pubspec_backup.yaml
     echo "  Backed up pubspec.yaml"
+fi
+if [[ -f "pubspec.lock" ]]; then
+    cp pubspec.lock pubspec_backup.lock
+    echo "  Backed up pubspec.lock"
 fi
 
 # Swap to TV pubspec
@@ -156,7 +171,7 @@ if [[ "$BUILD_APK" == true ]]; then
         --target=lib/main_tv.dart \
         --dart-define=APP_VARIANT=tv \
         --dart-define=APP_PLATFORM=androidTv \
-        --target-platform=android-arm64 \
+        "${APK_PLATFORM_ARGS[@]}" \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
         --obfuscate
@@ -179,7 +194,20 @@ echo -e "\033[0;32m✓ TV artifacts created successfully!\033[0m"
 release_apk=""
 release_aab=""
 if [[ "$BUILD_APK" == true ]]; then
-    release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
+    if [[ "$SPLIT_PER_ABI" == true ]]; then
+        # Prefer the 32-bit split: --split-per-abi exists for the Fire TV rig,
+        # and the Fire TV Stick 3rd Gen (AFTSSS, API 28) is an armeabi-v7a
+        # target. Qualifying the arm64 split instead would pass here and then
+        # fail on the device with libflutter.so missing for its ABI, which is
+        # the rejection recorded in AIRO_TV_V0.0.6_QUALIFICATION.md. Fall back
+        # to arm64 so a 64-bit-only split build is still checked.
+        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk"
+        if [[ ! -s "$release_apk" ]]; then
+            release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+        fi
+    else
+        release_apk="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
+    fi
 fi
 if [[ "$BUILD_AAB" == true ]]; then
     release_aab="$APP_DIR/build/app/outputs/bundle/release/app-release.aab"

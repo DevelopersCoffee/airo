@@ -35,12 +35,21 @@ class GenerationResult {
 class GeminiNanoService {
   static final GeminiNanoService _instance = GeminiNanoService._internal();
   factory GeminiNanoService() => _instance;
-  GeminiNanoService._internal();
+  GeminiNanoService._internal({
+    this.operationTimeout = const Duration(seconds: 30),
+  });
+
+  @visibleForTesting
+  GeminiNanoService.forTesting({
+    Duration operationTimeout = const Duration(seconds: 30),
+  }) : this._internal(operationTimeout: operationTimeout);
 
   static const MethodChannel _channel = MethodChannel('com.airo.gemini_nano');
   static const EventChannel _eventChannel = EventChannel(
     'com.airo.gemini_nano/stream',
   );
+
+  final Duration operationTimeout;
 
   bool _isInitialized = false;
   bool _isSupported = false;
@@ -59,7 +68,9 @@ class GeminiNanoService {
 
     try {
       // Call native Android method to check availability
-      final bool available = await _channel.invokeMethod('isAvailable');
+      final bool available = await _channel
+          .invokeMethod('isAvailable')
+          .timeout(operationTimeout);
       _isSupported = available;
       return _isSupported;
     } catch (e) {
@@ -83,9 +94,9 @@ class GeminiNanoService {
     }
 
     try {
-      final Map<dynamic, dynamic> info = await _channel.invokeMethod(
-        'getDeviceInfo',
-      );
+      final Map<dynamic, dynamic> info = await _channel
+          .invokeMethod('getDeviceInfo')
+          .timeout(operationTimeout);
       return Map<String, dynamic>.from(info);
     } catch (e) {
       debugPrint('Error getting device info: $e');
@@ -117,11 +128,13 @@ class GeminiNanoService {
       }
 
       // Call native initialization
-      final bool initialized = await _channel.invokeMethod('initialize', {
-        'temperature': temperature,
-        'topK': topK,
-        'maxOutputTokens': maxOutputTokens,
-      });
+      final bool initialized = await _channel
+          .invokeMethod('initialize', {
+            'temperature': temperature,
+            'topK': topK,
+            'maxOutputTokens': maxOutputTokens,
+          })
+          .timeout(operationTimeout);
 
       _isInitialized = initialized;
       return _isInitialized;
@@ -140,7 +153,9 @@ class GeminiNanoService {
     if (kIsWeb) return false;
 
     try {
-      final bool warmed = await _channel.invokeMethod('warmup');
+      final bool warmed = await _channel
+          .invokeMethod('warmup')
+          .timeout(operationTimeout);
       return warmed;
     } catch (e) {
       debugPrint('Gemini Nano warmup skipped: $e');
@@ -162,9 +177,9 @@ class GeminiNanoService {
     }
 
     try {
-      final String? response = await _channel.invokeMethod('generateContent', {
-        'prompt': prompt,
-      });
+      final String? response = await _channel
+          .invokeMethod('generateContent', {'prompt': prompt})
+          .timeout(operationTimeout);
       return response ?? '';
     } catch (e) {
       debugPrint('Error generating content: $e');
@@ -185,9 +200,9 @@ class GeminiNanoService {
       throw StateError('Gemini Nano is not initialized.');
     }
 
-    final String? response = await _channel.invokeMethod('generateContent', {
-      'prompt': prompt,
-    });
+    final String? response = await _channel
+        .invokeMethod('generateContent', {'prompt': prompt})
+        .timeout(operationTimeout);
     return response ?? '';
   }
 
@@ -209,7 +224,9 @@ class GeminiNanoService {
 
     try {
       // Start streaming generation
-      await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+      await _channel
+          .invokeMethod('generateContentStream', {'prompt': prompt})
+          .timeout(operationTimeout);
 
       // Listen to event channel for chunks
       await for (final chunk in _eventChannel.receiveBroadcastStream()) {
@@ -231,7 +248,9 @@ class GeminiNanoService {
       throw StateError('Gemini Nano is not initialized.');
     }
 
-    await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+    await _channel
+        .invokeMethod('generateContentStream', {'prompt': prompt})
+        .timeout(operationTimeout);
     await for (final chunk in _eventChannel.receiveBroadcastStream()) {
       yield chunk.toString();
     }
@@ -296,7 +315,9 @@ class GeminiNanoService {
   /// Dispose resources
   Future<void> dispose() async {
     try {
-      // Mock dispose
+      if (!kIsWeb) {
+        await _channel.invokeMethod('dispose').timeout(operationTimeout);
+      }
       _isInitialized = false;
     } catch (e) {
       debugPrint('Error disposing Gemini Nano: $e');

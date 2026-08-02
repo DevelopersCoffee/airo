@@ -44,5 +44,32 @@ void main() {
         ),
       );
     });
+
+    test('excludes the in-flight user prompt from recent context', () {
+      final prompt = builder.buildSystemPrompt(
+        currentUserPrompt: 'What can Airo do for reminders?',
+        history: const [
+          AssistantChatContextMessage(text: 'What does Airo do?', isUser: true),
+          AssistantChatContextMessage(
+            text: 'Airo helps with planning and app workflows.',
+            isUser: false,
+          ),
+          AssistantChatContextMessage(
+            text: '  what   can airo do for reminders?  ',
+            isUser: true,
+          ),
+        ],
+      );
+
+      expect(prompt, contains('User: What does Airo do?'));
+      expect(
+        prompt,
+        contains('Airo: Airo helps with planning and app workflows.'),
+      );
+      expect(
+        prompt,
+        isNot(contains('User: what   can airo do for reminders?')),
+      );
+    });
   });
 }

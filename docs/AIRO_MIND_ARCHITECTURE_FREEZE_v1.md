@@ -566,14 +566,428 @@ were applied at some of the sites their invariant covered.
 
 **Gate zero, ahead of everything else.**
 
-| Required evidence | |
-|---|---|
-| `cargo check` | green |
-| `cargo test` | green |
-| `cargo clippy --all-targets -- -D warnings` | green |
+| Step | Required evidence | Proves |
+|---|---|---|
+| `G0.1` | extraction fidelity | the compiler is judging the specification, not the extractor |
+| `G0.3` | `cargo check --all-targets` green | it builds |
+| `G0.4` | `cargo test` green | it behaves |
+| `G0.5` | `cargo clippy --all-targets -- -D warnings` green | it is idiomatic |
+| **`G0.7`** | **claim assertions green** | **a documented deletion or visibility reduction actually happened** |
+| **`G0.8`** | **external-consumer probe green** | **the façade is real from outside the crate** |
 
 Only then does an artifact become **Revision N**. Anything before that is a
 **working draft** and is not circulated for review.
+
+### `G0.7` and `G0.8` — why compilation is not enough
+
+`G0.3`–`G0.5` prove the code compiles, behaves, and lints. **They cannot prove
+a negative claim.** Code that never had a feature compiles perfectly, so
+"deleted", "narrowed to `pub(crate)`", "made private", and "unreachable from
+outside" are all unfalsifiable by a build.
+
+Revision 8 of the Phase 1 Vault plan shipped **seven** such claims false with
+`G0.3`–`G0.5` fully green — including `Seed::as_bytes` recorded as deleted while
+remaining `pub`, which publishes the 64-byte master seed from which every other
+key in the system derives. Five of the seven were findable by `grep` in under a
+minute. Two council reviewers proposed this gate independently in the same round
+and **neither proposed an architectural change**, which is the evidence that the
+architecture was stable and the validation system was one executable layer
+short.
+
+- `docs/superpowers/plans/g0-claim-assertions.sh` — each assertion names the
+  finding that motivated it. **A claim with no assertion here is a claim nothing
+  checks.**
+- `docs/superpowers/plans/g0-consumer-probe.sh` — `DENY` probes must fail to
+  compile; `ALLOW` probes must compile. Revision 8 failed both directions at
+  once: the master seed was reachable, and the device-trust journey was not,
+  because `trust_device` is `pub` and takes a type `lib.rs` does not export.
+
+This is the mechanical backstop for the Evidence Rule, which this document
+already marks *"human discipline — no mechanical backstop."* That row has failed
+in every revision it has been tested against.
+
+### Three validation failure modes, and they need different remedies
+
+Conflating these is why the same-looking failure kept recurring with different
+fixes applied to it.
+
+| Mode | The failure | Caught by |
+|---|---|---|
+| **Claim drift** | The claim is false. The code never had the feature | `G0.7` assertions, `G0.8` probes |
+| **Property drift** | The property exists; the test exercises a path no user takes | Entering through the user's door — for a format, bytes |
+| **Assertion drift** | The assertion faithfully checks something, and it is the **wrong architectural obligation** | Invariant anchoring, below |
+
+The third is the one with no mechanical remedy, and it was found before `G0.7`
+ever ran. `A04` asserts that `aggregate.rs` normalizes identifiers. That is a
+faithful, executable, greppable check — and satisfying it would **violate `I6`**,
+because `I6` forbids canonicalizing twice and Phase 1's Vault sits below the
+boundary where canonicalization belongs. The assertion is not lying, and the
+implementation has not been tested; the executable specification is attached to
+the wrong invariant.
+
+> **`G0.7` makes claims checkable. It does not make them correct.**
+
+So `G0.7` is not "22 assertions". It is **22 executable interpretations of the
+architecture** — implementations, which deserve the same review as any other.
+
+### Falsification comes from outside the mechanism that produced the claim
+
+Self-consistency is necessary and never sufficient. A mechanism cannot establish
+its own evidentiary value, because the reasoning that built it is the reasoning
+that would have to find it wrong.
+
+Observed, four times in one revision:
+
+| Claim | Who falsified it, and how |
+|---|---|
+| "every pre-existing tamper test passes against the new format" | Security did not dispute it. They built mutants showing it was **true and not evidence** — removing three of four controls left the suite green |
+| "the façade hides key material" | Rust Architecture did not read the code. They compiled an **external consumer** and reached the master seed |
+| "`A04` is a valid check" | The assertion-vs-invariant review asked what it *proves*, not whether it runs |
+| "the frame-AAD mutant is sound" | Critiqued **before its result was accepted** — asymmetric, so it tested nothing |
+
+In every case the producing mechanism reported success and an independent one
+did not.
+
+**Therefore validation infrastructure is subject to council review like any
+other change.** The rule covers **every artifact that produces evidence about
+the implementation** — `G0.7` assertions, `G0.8` probes, mutation regressions,
+and property or path-correct tests. The shared characteristic is what makes them
+vulnerable: each generates evidence, so a self-contained review of one inherits
+the same self-consistency failure it exists to detect. They are implementations
+of the architecture and carry the same obligation as the code they judge —
+reviewed by a role that did not write them, against the invariant rather than
+the finding.
+
+Path-correct tests are not an afterthought in that list. The one written this
+revision used `.expect_err()`, which requires `Debug` on the `Ok` variant, and
+rustc's suggested remedy was to derive `Debug` on `VaultPayload` — printing key
+bytes into panic messages, in direct violation of a Global Constraint. A test
+can breach the architecture it was written to defend.
+
+The gap this closes is specific and was demonstrated: the author reviewed his own
+22 assertions and passed eleven that could not prove their obligations. Nothing
+in the Decision Matrix required otherwise, because the matrix covers code and
+contracts and did not contemplate the gates.
+
+### Validation soundness — PASS must mean the property was checked
+
+A gate makes one promise: **PASS means this property was actually examined.**
+Everything else it reports is downstream of that. Three defects found in one
+pass of Revision 9B's own gates each break it, and none is a coverage gap:
+
+| Defect | What PASS actually meant | Found by |
+|---|---|---|
+| **Name-pinning** | a *spelling* is absent, not the property | Rust Architect: renaming `as_bytes` to `material` left `G0.7` 23/23 while an external consumer printed the 64-byte master seed |
+| **Missing source passes** | **nothing was examined** | `G0.7` against `/nonexistent` reported **18 of 23 passing** — every `absent` assertion passes trivially when `grep` has no tree to search |
+| **Empty enumeration passes** | an *empty universe* satisfies every rule | `G0.9` recorded **0 public items** against a cleaned scratch tree and passed a crate that publishes the master seed |
+
+The second and third are the same failure: **vacuous success.** They are worse
+than name-pinning, because a name-pinned gate at least examined code.
+
+> Soundness is not completeness. A gate can be incomplete and honest. A gate
+> that reports PASS without examining anything is neither.
+
+**Every gate declares and enforces its preconditions**, aborting with a distinct
+exit code rather than reporting PASS or FAIL. Currently: the source tree exists,
+and it holds at least the expected number of files. An abort is not a failure —
+it says the question could not be asked.
+
+### Soundness, then calibration, then evidence
+
+Two independent properties, and a gate needs both:
+
+| | Asks | Without it |
+|---|---|---|
+| **Soundness** | did the validator examine the intended universe, and does it discriminate the intended property? | a PASS is illegitimate — it cannot produce evidence at all |
+| **Calibration** | is there a *recorded* mutation proving it fails when the property is violated? | a PASS is unverified evidence |
+
+```
+L0 preconditions → soundness → calibration → evidence
+```
+
+The order is not decorative. A gate that is calibrated but unsound has a
+recorded failing form for the wrong property. A gate that is sound but
+uncalibrated may be correct and nobody has checked.
+
+**Status at the time of writing** — this table is the maturity metric, and it
+replaces "how many gates are green":
+
+| Gate | Sound | Calibrated | Failing form on record |
+|---|---|---|---|
+| **L1.1** public surface | ✅ complete enumeration + L0 | ✅ | `pub fn material` → `+ vault/seed.rs :: fn material` |
+| **L2** claim assertions | ⚠️ name-pinned, locality-bound | ⚠️ 1 of 7 tested | `A18` alone fails its own defect |
+| **L3** consumer probes | ✅ discriminates visibility codes | ✅ | typo in a `DENY` body → `STALE`, was `PASS` |
+
+### Which level does an obligation belong to?
+
+One question, and it decides the mechanism:
+
+> **Can I enumerate the complete universe of things this obligation applies to?**
+
+**Yes → L1.** Public API surface, every `pub` item, every identifier-bearing
+entry point, every unchecked increment, every `OsRng` call site, every
+visibility boundary. Finite, enumerable sets; an allowlist over a complete
+enumeration is the natural mechanism, and it catches additions *without a rule
+for them*.
+
+**No → L2.** Cryptographic invariants, state-transition correctness, ledger
+semantics, restore authenticity, AAD construction. These need reasoning about
+behaviour, so the mechanism is a test or a mutation regression.
+
+**The review heuristic that follows:** *if an architectural obligation is
+enforced by a validator that names a file, a function, or an implementation
+location, ask whether the obligation actually belongs to an enumerable universe
+instead.* `SEC-47` and `SEC-49` are both what a "no" to that question costs.
+
+### Every validator has a demonstrated failing form
+
+**A gate that has never been observed failing is provisional.** Each one must
+answer, with a recorded mutation:
+
+> What change to the code proved this gate can fail?
+
+Not "is it mutation-covered" — *recorded*, in `evidence/`, naming the mutation
+and the observed output. A gate whose answer is "none" has not earned the right
+to be cited as evidence, however sound its logic reads.
+
+This is `I5` applied to the validators themselves: *an invariant is not complete
+until something fails when it is violated.* The validators are implementations
+of the architecture, so they inherit the rule they enforce.
+
+It would have caught `SEC-50` far earlier. Eight named controls have no failing
+form and five of them guard Revision 9B's own fixes — deleting
+`push_len_prefixed(&mut aad, &self.nonce)`, `source.ledger.validate()?`, the
+revocation check in `admit_device`, `set_head_epoch`'s guard, or `add_context`'s
+retired-id refusal each leaves the suite at **92 passed, 0 failed**.
+
+### Assertions attach to obligations, not locations
+
+`SEC-49` is `A12`'s exact subject — an unchecked increment — at a second site.
+`SEC-47` is `A04`'s exact subject — a raw identifier — on a second identifier
+kind. Neither is a new defect class; both are the same obligation, unguarded
+where the assertion did not happen to look.
+
+The shape recurs:
+
+```
+invariant enforced at site A
+        ↓
+assertion written for site A
+        ↓
+invariant later appears at site B
+        ↓
+assertion never generalized
+```
+
+That is a **locality** problem, not a pattern-quality problem. An assertion
+pinned to a file and a spelling is pinned to where the obligation was *first
+observed*, not to the obligation. Tightening the regex does not move it.
+
+The remedy is the level hierarchy: an obligation that holds *everywhere* is a
+Level 1 check over a complete enumeration, not a Level 2 grep at the sites
+someone remembered.
+
+### Gate levels, and why order matters
+
+| Level | Contract | On violation | Examples |
+|---|---|---|---|
+| **L0 — Preconditions** | the validator has a valid universe to inspect | **abort** | tree exists, enumeration non-empty |
+| **L1 — Mechanical soundness** | the observed surface matches the approved surface | fail | public-surface allowlist, forbidden dependencies |
+| **L2 — Property validation** | required invariants hold | fail | security invariants, mutation regressions |
+| **L3 — Consumer behaviour** | consumers observe the intended semantics | fail | compile probes, `DENY`/`ALLOW` |
+
+**Gates are named by level, not by sequence.** `G0.9` is the first **L1** gate,
+not the ninth gate; `G0.7` is **L2**, `G0.8` is **L3**. A flat number says when
+a gate was written, which is the least useful thing about it, and it invites the
+next concept to become `G0.10` rather than to be placed. New gates take an
+`L{level}.{n}` identity and the existing `G0.*` names are retained as aliases
+because they are cited in committed evidence.
+
+**L0 aborts rather than failing**, and the distinction is load-bearing: a
+failure says the property does not hold, an abort says *the question could not
+be asked*. Reporting the second as either PASS or FAIL is the soundness
+violation itself.
+
+Level 1 runs **before** Level 2, and that ordering is the lesson of `G0.9` vs
+`G0.7`. Level 1 enumerates *approved surface* and fails on anything else, so it
+catches additions **without a rule for them**. Level 2 enumerates *known
+defects*, so it catches only what someone already thought of. A Level 2 gate
+cannot substitute for a missing Level 1 gate, which is exactly what `G0.7` was
+asked to do and could not.
+
+Same mutant, both gates, one run:
+
+```
+G0.7:  23 passed, 0 FAILED           (name-pinned, blind)
+G0.9:  FAILED -- 1 unapproved public item
+       + vault/seed.rs :: fn material
+```
+
+### Match the mechanism to the proof obligation
+
+Not a list of tools — a mapping from what must be proved to what can prove it.
+Reaching for the cheapest mechanism regardless of the obligation's class is a
+single mistake that reproduces once per assertion; the `G0.7` review found it
+eight times.
+
+| Obligation class | Form | Strongest enforcement |
+|---|---|---|
+| **Syntactic** | this spelling appears nowhere | `G0.7` grep |
+| **Reachability** | unreachable from outside the crate | `G0.8` `DENY` probe |
+| **Required journey** | reachable from outside the crate | `G0.8` `ALLOW` probe |
+| **Observational** | holds over inputs, on the real path | test entering the user's door |
+| **Necessity** | this control matters | mutation regression |
+| **Representational** | the invalid state cannot be written | **the type system** |
+
+**A grep proves a local syntactic fact.** Most architectural invariants are not
+local syntactic facts — they are existential, universal, reachability,
+observational, or representational. Pushing grep at any of those exceeds its
+proof strength while looking green.
+
+Two rules follow:
+
+1. **No weaker mechanism may be the sole enforcement of an invariant whose class
+   it cannot prove.** The composition is a cheap syntactic precondition *plus* a
+   stronger semantic enforcement — not one replacing the other, and not the grep
+   strengthened until it pretends to be the other.
+2. **Prefer the last row.** It differs in kind from the rest: every other row
+   *validates* a property, while the type system *removes the invalid state*.
+   That eliminates a defect class before any test or runtime exists. `I6` already
+   demands it — *"the type must distinguish them, or the raw form must be
+   unreachable past the boundary"* — and `ContextId` and `SigningPayload` are
+   what it looks like in practice.
+
+### Executed and reviewed are separate statuses
+
+An assertion that has run is not an assertion that is right. Track both, because
+"the gate ran" otherwise becomes shorthand for "the assertion is architecturally
+correct":
+
+| | Means | Established by |
+|---|---|---|
+| **Executed** | its behaviour has been observed | a capture in the evidence directory |
+| **Invariant reviewed** | it enforces the invariant, not merely the finding | the assertion-vs-invariant review |
+
+`A04` is the worked example: executed, failing correctly, and **not** invariant
+reviewed — it greps a method body where `I6` demands a type boundary. Green on
+`A04` would be wrong evidence, and only the second column can say so.
+
+**Reviewed is not a permanent status.** A gate keeps executing after the
+architecture moves, and it goes on reporting green while proving something that
+no longer matters — the same defect as a conformance test measuring a deleted
+dimension, one layer up. So an assertion reviewed against `v1` of an invariant is
+not reviewed against `v2`.
+
+Therefore the `Contract Impact` table's *"which conformance tests become
+invalid?"* row covers **assertions, consumer probes, and mutation regressions
+too.** Any ADR that changes an invariant re-opens the review for every mechanism
+enforcing it.
+
+The failure mode this guards against is specifically maturity: a validation stack
+with committed evidence, a first-execution record, and a review reads as
+authoritative, and that is exactly the condition under which `A09` acquired
+undeserved authority by being green while the fields it guarded were still `pub`.
+**The framework's rules apply to the framework.**
+
+### A mutant must be a plausible defective implementation
+
+Not an arbitrarily broken program. Otherwise a mutation suite rewards itself for
+detecting states that could never exist.
+
+> **An asymmetric mutant tests nothing.**
+
+Demonstrated: removing the header AAD from `decrypt` only failed 14 tests —
+trivially caught, and an implementation nobody would write, since the crate
+would fail its own round trip immediately. Removing it from **both** sides stays
+self-consistent, fails exactly one test, and is the state Revision 8 actually
+shipped.
+
+The rule: a mutant must be something a competent implementer could plausibly
+have written, or shipped, or introduced by refactoring. The mutation suite is
+exercising the threat model, not the code.
+
+### Provenance and correctness are independent
+
+An executable check has two qualities, and neither implies the other:
+
+| | Question | Established by |
+|---|---|---|
+| **Provenance** | Was the check created independently of the implementation? | Committing the gate before its first execution |
+| **Correctness** | Does the check encode the right architectural obligation? | Architectural review of the assertion against its invariant |
+
+Commit `1445efa7` fixes the gates in history before their behaviour was known,
+so no implementation change can have shaped them. That is strong provenance and
+it says nothing about correctness — `A04` was committed in exactly that state and
+is attached to the wrong layer.
+
+> **Clean provenance on a wrong check produces confident wrong evidence**, which
+> is worse than no evidence, because it survives review by being green.
+
+Automation strengthens the first quality and cannot supply the second.
+
+### Assertions anchor to invariants, not to findings
+
+Every assertion traces to the **architectural invariant** it enforces, not merely
+to the finding that motivated it:
+
+```
+I6  Canonicalize exactly once, at the boundary
+ └── context-identifier canonicalization
+      ├── A04            (executable interpretation)
+      ├── conformance    (S1)
+      └── implementation (ContextId newtype)
+```
+
+rather than `SEC-32 → A04`. **Findings disappear once fixed; invariants
+persist.** An assertion anchored only to a finding loses its justification the
+moment the finding closes, and then nobody can say what would have to change for
+it to be wrong.
+
+This is what makes assertion drift visible: `A04` traced to `SEC-32` looks
+correct, because it does detect `SEC-32`. Traced to `I6` it is obviously
+misplaced, because `I6`'s own text — *"a function that accepts a raw value and a
+canonical one at the same type is a defect"* — demands a type boundary, and no
+grep of a method body can express one.
+
+**A required review, after the first execution and before Revision 9B.** One
+question, distinct from "did the gate catch the defect?":
+
+> Does each assertion enforce the architectural invariant, or only the finding
+> that motivated it?
+
+The assertions have not earned trust yet. The architecture has been reviewed and
+the implementation has been reviewed; the assertions have only been *designed*.
+
+### Property tests enter through the user's door
+
+A test must reach the code the way a user or an attacker does. Revision 8's
+truncation test removed `Frame` structs from an already-parsed package — a state
+**no file can produce** — so `PackageTruncated` was asserted while being
+unreachable from any real package. Measured on disk, every truncation returns
+`SerializationFailed`, identical to corruption, which is the precise property
+`ADR-0017` exists to remove.
+
+Distinct from claim drift and needing a different remedy: nothing was
+mis-stated, and no assertion or probe would have caught it. **For a format, the
+door is bytes.**
+
+### Each control has a test that only it can fail
+
+A passing suite is not evidence that each control matters. The required property
+is narrower:
+
+> **Every security control has at least one test whose only failing cause is the
+> removal of that control.**
+
+Established by mutation: with all 85 Revision 8 tests, removing frame AAD,
+trailer AAD, frame-nonce index pinning, or `frame.index == position` each left
+the suite **entirely green**. Collapsing the frame nonce to a constant — one
+`(key, nonce)` pair for every frame, so ChaCha20 keystream reuse and Poly1305
+key recovery — was unobserved. Two tests existed for those controls and each
+passed via the *other* control, so one mechanism silently masked another.
+
+Stronger than coverage, and it is why mutation regressions are kept permanently
+rather than run once.
 
 ### "Revision" redefined
 

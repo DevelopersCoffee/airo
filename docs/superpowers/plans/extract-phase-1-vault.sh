@@ -33,9 +33,9 @@ s=re.sub(r'^(mod [a-z_]+;|pub use [^\n]+)\n', lambda m: decls.append(m.group(0))
 seen=set(); ordered=[d for d in decls if not (d in seen or seen.add(d))]
 L=s.split("\n"); docs=[l for l in L if l.startswith("//!")]; rest=[l for l in L if not l.startswith("//!")]
 open(p,"w").write("\n".join(docs)+"\n\n"+"".join(ordered)+"\n"+"\n".join(rest))
-# artifact 3: mod.rs is 9 blocks in document order, so Task 7's `mod tests`
-# precedes Task 8/9's impl blocks. In the real file the test module is last.
-p=SP+"/src/vault/mod.rs"; s=open(p).read()
+# artifact 3: aggregate.rs is many blocks in document order, so Task 7's
+# `mod tests` precedes Task 8/9's impl blocks. In the real file it is last.
+p=SP+"/src/vault/aggregate.rs"; s=open(p).read()
 i=s.find("#[cfg(test)]\nmod tests {")
 if i!=-1:
     depth=0; j=s.index("{", i)

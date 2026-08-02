@@ -13,7 +13,7 @@ dependencies:
     path: ../core_media_routing
   core_pairing:
     path: ../core_pairing
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
 

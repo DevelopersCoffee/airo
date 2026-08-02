@@ -8,9 +8,12 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -19,6 +22,7 @@ import android.telephony.TelephonyManager
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -40,6 +44,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
     private val VOICE_PERMISSION_REQUEST = 9003
+    private val FLASHLIGHT_PERMISSION_REQUEST = 9004
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
@@ -48,11 +53,14 @@ class MainActivity : AudioServiceFragmentActivity() {
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var pendingVoiceResult: MethodChannel.Result? = null
+    private var pendingFlashlightResult: MethodChannel.Result? = null
+    private var pendingFlashlightEnabled: Boolean? = null
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
     private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
     private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
+    private lateinit var localMediaPlugin: AiroLocalMediaPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -84,6 +92,10 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.success(telephony?.simCountryIso?.takeIf { it.isNotBlank() }?.uppercase(Locale.US))
                     }
                     "openWifiSettings" -> openWifiSettings(result)
+                    "setFlashlight" -> setFlashlight(call, result)
+                    "composeEmail" -> composeEmail(call, result)
+                    "createContact" -> createContact(call, result)
+                    "openMap" -> openMap(call, result)
                     else -> result.notImplemented()
                 }
             }
@@ -143,6 +155,9 @@ class MainActivity : AudioServiceFragmentActivity() {
 
         mediaAssetAnalyzerPlugin = AiroMediaAssetAnalyzerPlugin(this)
         mediaAssetAnalyzerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        localMediaPlugin = AiroLocalMediaPlugin(this)
+        localMediaPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
@@ -239,6 +254,20 @@ class MainActivity : AudioServiceFragmentActivity() {
                     )
                 }
             }
+            FLASHLIGHT_PERMISSION_REQUEST -> {
+                val result = pendingFlashlightResult
+                val enabled = pendingFlashlightEnabled
+                pendingFlashlightResult = null
+                pendingFlashlightEnabled = null
+                if (result == null || enabled == null) return
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    applyFlashlight(enabled, result)
+                } else {
+                    result.success(mapOf("changed" to false, "reason" to "camera_permission_denied"))
+                }
+            }
         }
     }
 
@@ -321,6 +350,11 @@ class MainActivity : AudioServiceFragmentActivity() {
             )
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Prefer the device speech pack so Audio Scribe does not silently
+            // send microphone audio to a network recognizer when an offline
+            // language pack is installed. Android may still report an
+            // explicit unavailable/network error when no offline pack exists.
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         try {
             recognizer.startListening(intent)
@@ -371,6 +405,12 @@ class MainActivity : AudioServiceFragmentActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (
+            ::localMediaPlugin.isInitialized &&
+            localMediaPlugin.onActivityResult(requestCode, resultCode, data)
+        ) {
+            return
+        }
+        if (
             ::phoneMediaPickerPlugin.isInitialized &&
             phoneMediaPickerPlugin.onActivityResult(requestCode, resultCode, data)
         ) {
@@ -384,6 +424,8 @@ class MainActivity : AudioServiceFragmentActivity() {
         speechRecognizer?.destroy()
         speechRecognizer = null
         pendingVoiceResult = null
+        pendingFlashlightResult = null
+        pendingFlashlightEnabled = null
         super.onDestroy()
     }
 
@@ -521,6 +563,90 @@ class MainActivity : AudioServiceFragmentActivity() {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
             result.success(mapOf("opened" to true))
         } catch (error: android.content.ActivityNotFoundException) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun setFlashlight(call: MethodCall, result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            pendingFlashlightResult = result
+            pendingFlashlightEnabled = call.argument<Boolean>("enabled") ?: false
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), FLASHLIGHT_PERMISSION_REQUEST)
+            return
+        }
+        applyFlashlight(call.argument<Boolean>("enabled") ?: false, result)
+    }
+
+    private fun applyFlashlight(enabled: Boolean, result: MethodChannel.Result) {
+        try {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            }
+            if (cameraId == null) {
+                result.success(mapOf("changed" to false, "reason" to "flash_unavailable"))
+                return
+            }
+            cameraManager.setTorchMode(cameraId, enabled)
+            result.success(mapOf("changed" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("changed" to false, "reason" to (error.message ?: "flashlight_failed")))
+        }
+    }
+
+    private fun composeEmail(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("mailto:")
+                call.argument<String>("to")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(it))
+                }
+                call.argument<String>("subject")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_SUBJECT, it)
+                }
+                call.argument<String>("body")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(Intent.EXTRA_TEXT, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose email app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun createContact(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val intent = Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
+                call.argument<String>("name")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.NAME, it)
+                }
+                call.argument<String>("phone")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.PHONE, it)
+                }
+                call.argument<String>("email")?.takeIf { it.isNotBlank() }?.let {
+                    putExtra(ContactsContract.Intents.Insert.EMAIL, it)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Choose contacts app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
+            result.success(mapOf("opened" to false))
+        }
+    }
+
+    private fun openMap(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val query = call.argument<String>("query")?.trim().orEmpty()
+            val uri = if (query.isEmpty()) {
+                Uri.parse("geo:0,0")
+            } else {
+                Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+            }
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, uri), "Choose map app"))
+            result.success(mapOf("opened" to true))
+        } catch (error: Exception) {
             result.success(mapOf("opened" to false))
         }
     }

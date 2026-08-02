@@ -11,7 +11,7 @@ environment:
 dependencies:
   core_analytics:
     path: ../core_analytics
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
   platform_channels:

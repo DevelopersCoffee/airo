@@ -103,10 +103,17 @@ class IntelligentModelManager {
         model.id,
         model: model,
       );
-      final receipt = existingPath == null
+      final verifiedPath =
+          existingPath == null ||
+              !await _storageManager.verifyModelIntegrity(
+                model.copyWith(filePath: existingPath),
+              )
+          ? null
+          : existingPath;
+      final receipt = verifiedPath == null
           ? null
           : await _storageManager.readInstallReceipt(model.id);
-      final updateState = existingPath == null
+      final updateState = verifiedPath == null
           ? ModelUpdateState.notInstalled
           : receipt == null
           ? ModelUpdateState.unknown
@@ -123,7 +130,7 @@ class IntelligentModelManager {
           installedVersion: receipt?.version,
           description: model.description ?? '',
           sizeBytes: model.fileSizeBytes,
-          isDownloaded: existingPath != null,
+          isDownloaded: verifiedPath != null,
           isActive: model.id == activeModelId,
           isRecommended: recommendedModelIds.contains(model.id),
           preloadFrequentlyUsed: preloadModelIds.contains(model.id),
@@ -153,6 +160,12 @@ class IntelligentModelManager {
   Future<void> retryDownload(String modelId) {
     final model = _requireModel(modelId);
     return _downloadService.retryDownload(modelId, model: model);
+  }
+
+  /// Clears stale/partial files before starting a clean verified download.
+  Future<void> repairModel(String modelId) {
+    final model = _requireModel(modelId);
+    return _downloadService.repairModel(model);
   }
 
   Future<void> cancelDownload(String modelId) =>
@@ -201,6 +214,20 @@ class IntelligentModelManager {
       );
     }
     return gateway.warm(model.copyWith(filePath: installed));
+  }
+
+  /// Checks the live artifact location instead of trusting persisted model
+  /// metadata. Diagnostics use this before showing a model as downloaded.
+  Future<bool> isModelInstalled(String modelId) async {
+    final model = _requireModel(modelId);
+    final existingPath = await _storageManager.findExistingModelPath(
+      model.id,
+      model: model,
+    );
+    return existingPath != null &&
+        await _storageManager.verifyModelIntegrity(
+          model.copyWith(filePath: existingPath),
+        );
   }
 
   Future<void> deleteModel(String modelId) async {

@@ -20,7 +20,7 @@ class StalkerContentSource extends ContentSource {
     required this.macAddress,
   }) : super(
          capabilities: const ContentSourceCapabilities(
-           hasEpg: true,
+           hasEpg: false,
            hasVod: false,
            hasCatchup: false,
          ),
@@ -40,16 +40,16 @@ class StalkerContentSource extends ContentSource {
 /// `cmd` field from the channel list is a middleware-internal command, not
 /// a directly playable stream URL.
 ///
-/// `loadChannels` resolves every channel's `create_link` eagerly and
-/// sequentially, which does not scale to portals with hundreds of channels
-/// and can produce stale URLs if a resolved link's session token expires
-/// before playback. Fine for this issue's scope (no UI consumes this yet),
-/// but whoever wires this into CV-022 should resolve `create_link` lazily
-/// at play time instead of up front here.
+/// `loadChannels` currently resolves each link sequentially because
+/// [IPTVChannel] requires a playable URL. This bounded v1 path preserves
+/// provider ordering and avoids request bursts; a future platform-playlist
+/// contract can add opaque lazy resolvers without leaking Stalker behavior
+/// into the player package.
 class StalkerContentSourceAdapter {
-  StalkerContentSourceAdapter(this._client);
+  StalkerContentSourceAdapter(this._client, {this.sourceId = 'stalker'});
 
   final StalkerClient _client;
+  final String sourceId;
 
   Future<List<IPTVChannel>> loadChannels() async {
     final token = await _client.handshake();
@@ -60,7 +60,7 @@ class StalkerContentSourceAdapter {
       final url = await _client.createLink(token: token, cmd: channel.cmd);
       result.add(
         IPTVChannel(
-          id: 'stalker-${channel.id}',
+          id: '$sourceId-${channel.id}',
           name: channel.name,
           streamUrl: url,
           logoUrl: channel.logo,

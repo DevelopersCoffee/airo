@@ -18,6 +18,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   String _targetLanguage = 'English';
   bool _capturing = false;
   String? _error;
+  int _captureEpoch = 0;
 
   @override
   void dispose() {
@@ -27,12 +28,13 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
 
   Future<void> _capture() async {
     final service = ref.read(voiceSearchServiceProvider);
+    final captureEpoch = ++_captureEpoch;
     setState(() {
       _capturing = true;
       _error = null;
     });
     final result = await service.startListening();
-    if (!mounted) return;
+    if (!mounted || captureEpoch != _captureEpoch) return;
     setState(() {
       _capturing = false;
       if (result.isSuccess && result.text != null) {
@@ -50,6 +52,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   }
 
   Future<void> _stop() async {
+    _captureEpoch++;
     await ref.read(voiceSearchServiceProvider).stopListening();
     if (mounted) setState(() => _capturing = false);
   }
@@ -67,6 +70,8 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   Widget build(BuildContext context) {
     final available = ref.watch(voiceSearchAvailableProvider);
     final hasTranscript = _transcriptController.text.trim().isNotEmpty;
+    final speechReady = available.value == true;
+    final canCapture = speechReady || _capturing;
     return Scaffold(
       appBar: AppBar(title: const Text('Audio Scribe')),
       body: ListView(
@@ -76,12 +81,27 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
             'Capture speech, review the transcript, then send it to an installed model for translation or summarisation.',
           ),
           const SizedBox(height: 12),
-          available.when(
-            data: (isAvailable) =>
-                _AvailabilityBanner(isAvailable: isAvailable),
-            loading: () => const LinearProgressIndicator(),
-            error: (_, error) => const _AvailabilityBanner(isAvailable: false),
+          _VoiceHealthPanel(
+            availability: available,
+            capturing: _capturing,
+            hasTranscript: hasTranscript,
+            lastError: _error,
+            onRetry: () => ref.invalidate(voiceSearchAvailableProvider),
           ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const Key('audio_scribe_capture_button'),
+            onPressed: canCapture ? (_capturing ? _stop : _capture) : null,
+            icon: Icon(_capturing ? Icons.stop : Icons.mic),
+            label: Text(_capturing ? 'Stop capture' : 'Start capture'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 16),
           TextField(
             controller: _transcriptController,
@@ -94,20 +114,6 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
               border: OutlineInputBorder(),
               alignLabelWithHint: true,
             ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            key: const Key('audio_scribe_capture_button'),
-            onPressed: _capturing ? _stop : _capture,
-            icon: Icon(_capturing ? Icons.stop : Icons.mic),
-            label: Text(_capturing ? 'Stop capture' : 'Start capture'),
           ),
           const SizedBox(height: 12),
           Row(
@@ -162,35 +168,153 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   }
 }
 
-class _AvailabilityBanner extends StatelessWidget {
-  const _AvailabilityBanner({required this.isAvailable});
+class _VoiceHealthPanel extends StatelessWidget {
+  const _VoiceHealthPanel({
+    required this.availability,
+    required this.capturing,
+    required this.hasTranscript,
+    required this.lastError,
+    required this.onRetry,
+  });
 
-  final bool isAvailable;
+  final AsyncValue<bool> availability;
+  final bool capturing;
+  final bool hasTranscript;
+  final String? lastError;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final color = isAvailable
+    final serviceReady = availability.value == true;
+    final serviceLoading = availability.isLoading;
+    final availabilityError = availability.hasError
+        ? _voiceAvailabilityError(availability.error)
+        : null;
+    final summary = serviceLoading
+        ? 'Checking speech recognition…'
+        : serviceReady
+        ? 'Speech recognition is ready on this device.'
+        : 'Speech recognition is unavailable. Install or enable a speech service to capture audio.';
+    final reason = availabilityError ?? lastError;
+    final color = serviceReady
         ? Theme.of(context).colorScheme.primaryContainer
+        : serviceLoading
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
         : Theme.of(context).colorScheme.errorContainer;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+    final status = serviceLoading
+        ? 'checking'
+        : serviceReady
+        ? 'ready'
+        : 'unavailable';
+    return Semantics(
+      container: true,
+      label:
+          'Audio Scribe voice health. Speech service $status. '
+          'Capture ${capturing ? 'listening' : 'idle'}. '
+          'Transcript ${hasTranscript ? 'ready' : 'empty'}. '
+          'Model handoff ${hasTranscript ? 'ready' : 'waiting for transcript'}.'
+          '${reason == null ? '' : ' Reason: $reason'}',
+      child: Card(
+        key: const Key('audio_scribe_voice_health'),
         color: color,
-        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: serviceLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(serviceReady ? Icons.mic : Icons.mic_off),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(summary)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _VoiceHealthRow(
+                label: 'Speech service',
+                value: serviceLoading
+                    ? 'Checking'
+                    : serviceReady
+                    ? 'Ready'
+                    : 'Unavailable',
+              ),
+              _VoiceHealthRow(
+                label: 'Capture',
+                value: capturing ? 'Listening' : 'Idle',
+              ),
+              _VoiceHealthRow(
+                label: 'Transcript',
+                value: hasTranscript ? 'Ready' : 'Empty',
+              ),
+              _VoiceHealthRow(
+                label: 'Model handoff',
+                value: hasTranscript ? 'Ready' : 'Waiting for transcript',
+              ),
+              if (reason != null) ...[
+                const SizedBox(height: 8),
+                Text('Reason: $reason'),
+              ],
+              if (!serviceReady && !serviceLoading) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    key: const Key('audio_scribe_retry_voice_check'),
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry voice check'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _VoiceHealthRow extends StatelessWidget {
+  const _VoiceHealthRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Icon(isAvailable ? Icons.mic : Icons.mic_off),
-          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              isAvailable
-                  ? 'Speech recognition is ready on this device.'
-                  : 'Speech recognition is unavailable. Install or enable a speech service to capture audio.',
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
+          Text(value),
         ],
       ),
     );
   }
+}
+
+String _voiceAvailabilityError(Object? error) {
+  if (error == null) return 'The speech service did not provide details.';
+  final message = error.toString().trim();
+  return message.isEmpty
+      ? 'The speech service did not provide details.'
+      : message;
 }

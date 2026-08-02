@@ -12,9 +12,12 @@ import '../../application/assistant_model_preferences.dart';
 import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
+import '../../../../core/platform/platform_config.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/llama_gguf_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'model_health_center_screen.dart';
 
@@ -174,21 +177,26 @@ class AssistantModelLibraryState {
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
 
   /// A native LiteRT channel is not proof that a model can be loaded. The
-  /// runtime must either have an installed package or an explicit local model
-  /// path configured. A URL alone is only a download source, not a runnable
-  /// model.
+  /// runtime must have an installed and verified package. A configured path is
+  /// intentionally not enough for the model picker: the path may be stale,
+  /// point at an artifact with no catalog metadata, or be a developer-only
+  /// setting. The runtime itself still validates explicit paths when it is
+  /// initialized.
   static bool isLiteRtReady({
     required bool runtimeAvailable,
     required bool hasDownloadedPackage,
     required bool hasConfiguredModelPath,
   }) {
-    return hasDownloadedPackage || (runtimeAvailable && hasConfiguredModelPath);
+    // A file is only a candidate after the download/storage layer has verified
+    // it. Do not let a configured path (or a native channel alone) make the
+    // picker show LiteRT as ready when the artifact is missing on disk.
+    return runtimeAvailable && hasDownloadedPackage;
   }
 
   /// A downloaded file is not automatically an executable local runtime.
   /// `.litertlm`/`.task` artifacts (or an explicit LiteRT catalog tag) are
   /// handled by the LiteRT adapter; plain `.gguf` files require the native
-  /// llama.cpp backend, which is not bundled in the public app yet.
+  /// llama.cpp backend and are only runnable when that backend is available.
   static bool isLiteRtPackage(OfflineModelInfo model) {
     final source =
         '${model.id} ${model.filePath ?? ''} ${model.downloadUrl ?? ''}'
@@ -201,31 +209,72 @@ class AssistantModelLibraryState {
 
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
+    Future<bool> Function()? isNanoSupported,
+    Future<Map<String, dynamic>> Function()? loadDeviceInfo,
+    Future<bool> Function()? isLiteRtAvailable,
+    bool? hasConfiguredModelPath,
+    Future<bool> Function()? isGgufAvailable,
+    Future<void> Function()? initializeCloud,
+    bool Function()? isCloudAvailable,
+    Future<Map<AssistantTask, OfflineModelInfo>> Function()?
+    loadDefaultPackages,
+    Future<Map<String, ModelCompatibilityResult>> Function(
+      Map<AssistantTask, OfflineModelInfo> packages,
+    )?
+    loadCompatibilityByModelId,
+    Future<OfflineModelInfo> Function(OfflineModelInfo model)?
+    hydrateDownloadedModel,
+    Iterable<OfflineModelInfo>? mobileRecommended,
+    String? platformLabelOverride,
   }) async {
     final nanoService = GeminiNanoService();
-    final nanoSupported = await nanoService.isSupported();
-    final deviceInfo = await nanoService.getDeviceInfo();
+    // Gemini Nano is only exposed by Android's AICore. Do not probe the
+    // native channel on desktop/web (including widget tests), where an
+    // unsupported channel can leave the service timeout pending during
+    // teardown.
+    final nanoSupported = isNanoSupported != null
+        ? await isNanoSupported()
+        : PlatformConfig.isAndroid
+        ? await nanoService.isSupported()
+        : false;
+    final deviceInfo = loadDeviceInfo != null
+        ? await loadDeviceInfo()
+        : PlatformConfig.isAndroid
+        ? await nanoService.getDeviceInfo()
+        : const <String, dynamic>{};
     final liteRtService = LiteRtLmService();
-    final liteRtAvailable = await liteRtService.isAvailable();
+    final liteRtAvailable = isLiteRtAvailable != null
+        ? await isLiteRtAvailable()
+        : await liteRtService.isAvailable();
+    final ggufAvailable = isGgufAvailable != null
+        ? await isGgufAvailable()
+        : await LlamaGgufService().isAvailable();
 
-    await geminiApiService.initialize();
-    final cloudAvailable = geminiApiService.isAvailable;
-    final defaultPackages = await _defaultPackages(liteRtService);
+    if (initializeCloud != null) {
+      await initializeCloud();
+    } else {
+      await geminiApiService.initialize();
+    }
+    final cloudAvailable =
+        isCloudAvailable?.call() ?? geminiApiService.isAvailable;
+    final defaultPackages = loadDefaultPackages == null
+        ? await _defaultPackages(liteRtService)
+        : await loadDefaultPackages();
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
     final liteRtReady = isLiteRtReady(
       runtimeAvailable: liteRtAvailable,
       hasDownloadedPackage: hasDownloadedBalancedPackage,
-      hasConfiguredModelPath: liteRtService.hasConfiguredModelPath,
+      hasConfiguredModelPath:
+          hasConfiguredModelPath ?? liteRtService.hasConfiguredModelPath,
     );
-    final compatibilityByModelId = await _loadCompatibilityByModelId(
-      liteRtService,
-      defaultPackages,
-    );
+    final compatibilityByModelId = loadCompatibilityByModelId == null
+        ? await _loadCompatibilityByModelId(liteRtService, defaultPackages)
+        : await loadCompatibilityByModelId(defaultPackages);
 
-    final platformLabel = kIsWeb
-        ? 'Web'
-        : defaultTargetPlatform.name.toUpperCase();
+    final platformLabel =
+        platformLabelOverride ??
+        (kIsWeb ? 'Web' : defaultTargetPlatform.name.toUpperCase());
     final manufacturer = (deviceInfo['manufacturer'] as String?)?.trim();
     final model = (deviceInfo['model'] as String?)?.trim();
     final deviceLabel = [
@@ -315,13 +364,17 @@ class AssistantModelLibraryState {
         local: false,
       ),
     );
-    for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      final hydrated = await liteRtService.hydrateDownloadedModel(model);
+    for (final model
+        in (mobileRecommended ?? ModelCatalog.mobileRecommended).take(3)) {
+      final hydrated = hydrateDownloadedModel == null
+          ? await liteRtService.hydrateDownloadedModel(model)
+          : await hydrateDownloadedModel(model);
       if (hydrated.isDownloaded) {
         addCandidate(
           AssistantModelCandidate.fromOfflineModel(
             hydrated,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -339,6 +392,7 @@ class AssistantModelLibraryState {
           AssistantModelCandidate.fromOfflineModel(
             model,
             compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
           ),
         );
       }
@@ -519,9 +573,10 @@ class AssistantModelCandidate {
   factory AssistantModelCandidate.fromOfflineModel(
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
+    bool nativeGgufAvailable = false,
   }) {
     final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
-    final isRunnable = model.isDownloaded && isLiteRt;
+    final isRunnable = model.isDownloaded && (isLiteRt || nativeGgufAvailable);
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -543,13 +598,15 @@ class AssistantModelCandidate {
           : model.isDownloaded
           ? 'Native backend unavailable'
           : 'Download package',
-      unavailableReason: model.isDownloaded && !isLiteRt
+      unavailableReason: model.isDownloaded && !isLiteRt && !nativeGgufAvailable
           ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
           : model.isDownloaded
           ? null
           : 'Download this package from Profile settings before using it in chat.',
       local: true,
-      opensModelManager: !model.isDownloaded,
+      // A downloaded artifact without a matching local backend still needs a
+      // setup action. It must never look like a runnable chat target.
+      opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
     );
@@ -749,6 +806,14 @@ class _ModelLibraryContent extends ConsumerWidget {
       }
       return;
     }
+    if (!candidate.available && hasDownloadedPackage) {
+      await _showUnavailablePackage(
+        context,
+        template: template,
+        candidate: candidate,
+      );
+      return;
+    }
     if (!candidate.available && !hasDownloadedPackage) {
       await _showUnavailablePackage(
         context,
@@ -762,6 +827,9 @@ class _ModelLibraryContent extends ConsumerWidget {
         context,
         candidate: candidate,
         template: template,
+        contextLengthOverride: ref
+            .read(aiPreferencesSettingsProvider)
+            .contextLength,
       );
       if (!result.isReady) {
         return;
@@ -775,6 +843,7 @@ class _ModelLibraryContent extends ConsumerWidget {
     BuildContext context, {
     required AssistantModelCandidate candidate,
     required AssistantProjectTemplate template,
+    required int contextLengthOverride,
   }) async {
     final progress = ValueNotifier(
       const AssistantRuntimePreparationProgress(
@@ -846,6 +915,7 @@ class _ModelLibraryContent extends ConsumerWidget {
 
     final result = await runtimeService.prepareRuntime(
       candidate: candidate,
+      contextLengthOverride: contextLengthOverride,
       onProgress: (value) => progress.value = value,
       isCancelled: () => cancelRequested,
     );
@@ -860,8 +930,9 @@ class _ModelLibraryContent extends ConsumerWidget {
       return result;
     }
     if (result.diagnostic != null) {
+      if (!context.mounted) return result;
       await _showPreparationFailure(
-        navigator.context,
+        context,
         diagnostic: result.diagnostic!,
         candidate: candidate,
       );
@@ -1105,13 +1176,21 @@ class _RuntimeHealthButton extends ConsumerWidget {
                     ModelHealthAction.resumeDownload =>
                       'Resume the model download from Model Management.',
                     ModelHealthAction.repair =>
-                      'Repair or re-download the model from Model Management.',
+                      'Repairing the model download now.',
                     ModelHealthAction.chooseAlternative =>
                       'Choose another installed model from Model Management.',
                   };
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text(message)));
+                  if (action == ModelHealthAction.repair &&
+                      candidate.package != null) {
+                    unawaited(
+                      ref
+                          .read(intelligentModelManagerProvider)
+                          .repairModel(candidate.package!.id),
+                    );
+                  }
                   onOpenModelManager();
                 },
               ),
@@ -1184,6 +1263,9 @@ class _ProjectTemplateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasDownloadedPackage =
+        package?.isDownloaded == true ||
+        candidate.package?.isDownloaded == true;
     final outline = selected
         ? theme.colorScheme.primary
         : theme.colorScheme.outlineVariant;
@@ -1333,7 +1415,9 @@ class _ProjectTemplateCard extends StatelessWidget {
                       ),
                       label: Text(
                         candidate.opensModelManager
-                            ? 'Download package'
+                            ? (hasDownloadedPackage
+                                  ? 'Configure runtime'
+                                  : 'Download package')
                             : template.primaryAction,
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -147,7 +148,49 @@ void main() {
     },
   );
 
+  test(
+    'download progress records last byte movement for stall recovery',
+    () async {
+      final progressValues = <ModelDownloadProgress>[];
+      final subscription = downloadService
+          .downloadModel(model)
+          .listen(progressValues.add);
+      await Future<void>.delayed(Duration.zero);
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.downloading,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+          speedBytesPerSecond: 0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final firstMovement = progressValues.last.lastProgressAt;
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.downloading,
+          downloadedBytes: 400,
+          totalBytes: 1000,
+          speedBytesPerSecond: 0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(progressValues.last.startTime, isNotNull);
+      expect(progressValues.last.lastProgressAt, firstMovement);
+      await subscription.cancel();
+    },
+  );
+
   test('completed platform transfer records an install receipt', () async {
+    var verificationCalls = 0;
+    when(
+      () => storage.verifyModelIntegrity(model),
+    ).thenAnswer((_) async => ++verificationCalls >= 2);
     final progressValues = <ModelDownloadProgress>[];
     final subscription = downloadService
         .downloadModel(model)
@@ -168,6 +211,34 @@ void main() {
     expect(progressValues.last.status, ModelDownloadStatus.completed);
     await subscription.cancel();
   });
+
+  test(
+    'completed platform transfer is rejected when integrity fails',
+    () async {
+      final progressValues = <ModelDownloadProgress>[];
+      final subscription = downloadService
+          .downloadModel(model)
+          .listen(progressValues.add);
+      await Future<void>.delayed(Duration.zero);
+
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.completed,
+          downloadedBytes: 1000,
+          totalBytes: 1000,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(progressValues, hasLength(3));
+      expect(progressValues[1].status, ModelDownloadStatus.verifying);
+      expect(progressValues.last.status, ModelDownloadStatus.failed);
+      expect(progressValues.last.failureCode, 'integrity_mismatch');
+      verifyNever(() => storage.writeInstallReceipt(model));
+      await subscription.cancel();
+    },
+  );
 
   test(
     'pause resume retry and cancel delegate to the shared controller',
@@ -200,6 +271,54 @@ void main() {
 
       expect(progress.status, ModelDownloadStatus.completed);
       expect(downloads.requests, isEmpty);
+    },
+  );
+
+  test('installed state requires verified catalog integrity', () async {
+    final directory = await Directory.systemTemp.createTemp('airo-model-');
+    addTearDown(() => directory.delete(recursive: true));
+    final artifactPath = '${directory.path}/model-a.gguf';
+    await File(artifactPath).writeAsBytes(const <int>[1]);
+    when(
+      () => storage.findExistingModelPath(model.id, model: model),
+    ).thenAnswer((_) async => artifactPath);
+    when(
+      () => storage.verifyModelIntegrity(any()),
+    ).thenAnswer((_) async => false);
+
+    expect(
+      await downloadService.isModelDownloaded(model.id, model: model),
+      isFalse,
+    );
+    verify(() => storage.verifyModelIntegrity(any())).called(1);
+  });
+
+  test(
+    'explicit model paths are only resolved when the file still exists',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('airo-explicit-');
+      addTearDown(() => directory.delete(recursive: true));
+      final artifactPath = '${directory.path}/model-a.gguf';
+      await File(artifactPath).writeAsBytes(const <int>[1]);
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => null);
+
+      final hydrated = model.copyWith(filePath: artifactPath);
+      expect(
+        await downloadService.resolveExistingModelPath(
+          model.id,
+          model: hydrated,
+        ),
+        artifactPath,
+      );
+      expect(
+        await downloadService.resolveExistingModelPath(
+          model.id,
+          model: model.copyWith(filePath: '${directory.path}/missing.gguf'),
+        ),
+        isNull,
+      );
     },
   );
 
@@ -256,6 +375,19 @@ void main() {
       expect(downloads.requests.last.expectedBytes, model.fileSizeBytes);
     },
   );
+
+  test('repair clears stale files before starting a fresh request', () async {
+    when(
+      () => storage.getCandidateModelPaths(model.id),
+    ).thenAnswer((_) async => const ['/sandbox/model-a.gguf']);
+
+    await downloadService.repairModel(model);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(downloads.actions, contains('cancel:model-a'));
+    expect(downloads.requests, hasLength(1));
+    verify(() => storage.deleteInstallReceipt(model.id)).called(1);
+  });
 
   test(
     'restoreQueue maps persisted platform state after engine restart',

@@ -131,10 +131,15 @@ class MockVoiceSearchService implements VoiceSearchService {
 /// for capture/transcription; generated answers still follow Airo's normal
 /// local/cloud runtime policy.
 class AndroidVoiceSearchService implements VoiceSearchService {
-  AndroidVoiceSearchService({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.airo.voice_search');
+  AndroidVoiceSearchService({
+    MethodChannel? channel,
+    this.operationTimeout = const Duration(seconds: 45),
+    this.stopTimeout = const Duration(seconds: 2),
+  }) : _channel = channel ?? const MethodChannel('com.airo.voice_search');
 
   final MethodChannel _channel;
+  final Duration operationTimeout;
+  final Duration stopTimeout;
   VoiceSearchState _state = VoiceSearchState.idle;
   final _stateController = StreamController<VoiceSearchState>.broadcast();
   bool _disposed = false;
@@ -172,9 +177,9 @@ class AndroidVoiceSearchService implements VoiceSearchService {
 
     _setState(VoiceSearchState.listening);
     try {
-      final response = await _channel.invokeMethod<Map<Object?, Object?>>(
-        'startListening',
-      );
+      final response = await _channel
+          .invokeMethod<Map<Object?, Object?>>('startListening')
+          .timeout(operationTimeout);
       _setState(VoiceSearchState.processing);
       final result = response == null
           ? const <Object?, Object?>{}
@@ -203,19 +208,34 @@ class AndroidVoiceSearchService implements VoiceSearchService {
       return VoiceSearchResult.error(
         'Speech recognition is not installed in this build.',
       );
+    } on TimeoutException {
+      // A recognizer can lose its terminal callback when the activity pauses
+      // or the system speech service is reclaimed. Always cancel the native
+      // request and restore a terminal state instead of leaving the UI stuck.
+      unawaited(_stopNativeListening());
+      _setState(VoiceSearchState.error);
+      return VoiceSearchResult.error(
+        'Speech recognition timed out. Please try again.',
+      );
     }
   }
 
   @override
   Future<void> stopListening() async {
+    await _stopNativeListening();
+    _setState(VoiceSearchState.idle);
+  }
+
+  Future<void> _stopNativeListening() async {
     try {
-      await _channel.invokeMethod<void>('stopListening');
+      await _channel.invokeMethod<void>('stopListening').timeout(stopTimeout);
     } on PlatformException catch (_) {
       // Stopping is best effort; always restore the public state.
     } on MissingPluginException {
       // Unsupported platform/build: keep the state contract consistent.
+    } on TimeoutException {
+      // The native stop call must not block disposal or a retry.
     }
-    _setState(VoiceSearchState.idle);
   }
 
   @override

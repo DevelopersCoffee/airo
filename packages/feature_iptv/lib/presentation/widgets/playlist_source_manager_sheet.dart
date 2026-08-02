@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_playlist/platform_playlist.dart';
@@ -51,8 +54,17 @@ class _PlaylistSourceManagerSheetState
     extends ConsumerState<PlaylistSourceManagerSheet> {
   final _labelController = TextEditingController();
   final _urlController = TextEditingController();
+  final _addSourceFocusNode = FocusNode(debugLabel: 'playlist source add');
+  final _labelFocusNode = FocusNode(debugLabel: 'playlist source label');
+  final _urlFocusNode = FocusNode(debugLabel: 'playlist source URL');
+  final _cancelFocusNode = FocusNode(debugLabel: 'playlist source cancel');
+  final _saveFocusNode = FocusNode(debugLabel: 'playlist source save');
+  late final List<FocusNode> _presetFocusNodes;
+  Timer? _presetSaveFocusTimer;
   bool _showAddForm = false;
   bool _isSaving = false;
+  bool _initialTvFocusScheduled = false;
+  final Set<String> _removedSourceIds = {};
   String? _labelError;
   String? _urlError;
   String? _submitError;
@@ -60,6 +72,12 @@ class _PlaylistSourceManagerSheetState
   @override
   void initState() {
     super.initState();
+    _labelFocusNode.addListener(_handleTextFieldFocusChanged);
+    _urlFocusNode.addListener(_handleTextFieldFocusChanged);
+    _presetFocusNodes = [
+      for (final preset in iptvOrgPlaylistPresets)
+        FocusNode(debugLabel: 'playlist preset ${preset.label}'),
+    ];
     final initialUrl = widget.initialUrl?.trim();
     if (initialUrl != null && initialUrl.isNotEmpty) {
       _showAddForm = true;
@@ -68,9 +86,30 @@ class _PlaylistSourceManagerSheetState
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialTvFocusScheduled || !_isTenFootMode) return;
+    _initialTvFocusScheduled = true;
+    _requestTvFocus(
+      _showAddForm ? _presetFocusNodes.first : _addSourceFocusNode,
+    );
+  }
+
+  @override
   void dispose() {
+    _presetSaveFocusTimer?.cancel();
+    _labelFocusNode.removeListener(_handleTextFieldFocusChanged);
+    _urlFocusNode.removeListener(_handleTextFieldFocusChanged);
     _labelController.dispose();
     _urlController.dispose();
+    _addSourceFocusNode.dispose();
+    _labelFocusNode.dispose();
+    _urlFocusNode.dispose();
+    _cancelFocusNode.dispose();
+    _saveFocusNode.dispose();
+    for (final focusNode in _presetFocusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -81,6 +120,7 @@ class _PlaylistSourceManagerSheetState
       _urlError = null;
       _submitError = null;
     });
+    _requestTvFocus(_presetFocusNodes.first);
   }
 
   void _closeAddForm() {
@@ -92,6 +132,58 @@ class _PlaylistSourceManagerSheetState
       _urlError = null;
       _submitError = null;
     });
+    _requestTvFocus(_addSourceFocusNode);
+  }
+
+  bool get _isTenFootMode => MediaQuery.sizeOf(context).width >= 720;
+
+  /// True once the viewer has deliberately moved focus into one of the text
+  /// fields. Re-asserting a control's focus over a field being typed into
+  /// tears down its input connection and silently discards the text.
+  bool get _textFieldOwnsFocus =>
+      _labelFocusNode.hasFocus || _urlFocusNode.hasFocus;
+
+  void _handleTextFieldFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _requestTvFocus(
+    FocusNode focusNode, {
+    bool preserveTextFieldFocus = true,
+  }) {
+    if (!_isTenFootMode) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !focusNode.canRequestFocus) return;
+      if (preserveTextFieldFocus && _textFieldOwnsFocus) return;
+      focusNode.requestFocus();
+      // Fire TV restores the launching control after the modal's first frame.
+      // Reassert the sheet's first target once that restoration has completed.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !focusNode.canRequestFocus) return;
+        if (preserveTextFieldFocus && _textFieldOwnsFocus) return;
+        focusNode.requestFocus();
+      });
+    });
+  }
+
+  Widget _adaptiveAction({
+    required bool tenFootMode,
+    required VoidCallback? onSelect,
+    required Widget child,
+    FocusNode? focusNode,
+    bool autofocus = false,
+    String? semanticLabel,
+  }) {
+    if (!tenFootMode) return child;
+    return TvFocusable(
+      focusNode: focusNode,
+      autofocus: autofocus,
+      enabled: onSelect != null,
+      onSelect: onSelect,
+      semanticLabel: semanticLabel,
+      semanticButton: true,
+      child: ExcludeFocus(child: child),
+    );
   }
 
   void _selectPreset(IptvOrgPlaylistPreset preset) {
@@ -102,6 +194,15 @@ class _PlaylistSourceManagerSheetState
       _labelError = null;
       _urlError = null;
       _submitError = null;
+    });
+    // A preset is already complete. On TV, move straight to the save action
+    // instead of making the viewer traverse two populated text fields and
+    // unnecessarily opening the platform keyboard.
+    _requestTvFocus(_saveFocusNode, preserveTextFieldFocus: false);
+    _presetSaveFocusTimer?.cancel();
+    _presetSaveFocusTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted || !_saveFocusNode.canRequestFocus) return;
+      _saveFocusNode.requestFocus();
     });
   }
 
@@ -180,10 +281,12 @@ class _PlaylistSourceManagerSheetState
     );
     if (confirmed != true) return;
 
+    setState(() => _removedSourceIds.add(source.id));
     try {
       await ref.read(removeContentSourceProvider(source.id).future);
     } catch (_) {
       if (!mounted) return;
+      setState(() => _removedSourceIds.remove(source.id));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not remove the playlist.')),
       );
@@ -202,127 +305,161 @@ class _PlaylistSourceManagerSheetState
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final tenFootMode = _isTenFootMode;
 
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + viewInsets.bottom),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Playlist sources',
-                        style: Theme.of(context).textTheme.titleLarge,
+    return PopScope<void>(
+      canPop: !tenFootMode || !_textFieldOwnsFocus,
+      // Fire OS forwards BACK to Flutter after dismissing its on-screen
+      // keyboard. Keep that first pop inside the form; clearing the input
+      // focus makes a subsequent BACK eligible to dismiss the sheet.
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && tenFootMode) {
+          _labelFocusNode.unfocus();
+          _urlFocusNode.unfocus();
+        }
+      },
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + viewInsets.bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Playlist sources',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      _adaptiveAction(
+                        tenFootMode: tenFootMode,
+                        onSelect: () => Navigator.of(context).pop(),
+                        semanticLabel: 'Close playlist sources',
+                        child: IconButton(
+                          tooltip: 'Close playlist sources',
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Combine multiple authorized M3U playlists. Duplicate '
+                    'channels are merged automatically.',
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 16),
+                  sourcesAsync.when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Close playlist sources',
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                    error: (_, _) => const Text(
+                      'Could not load playlist sources. Try reopening this panel.',
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Combine multiple authorized M3U playlists. Duplicate '
-                  'channels are merged automatically.',
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
-                sourcesAsync.when(
-                  loading: () => const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  error: (_, _) => const Text(
-                    'Could not load playlist sources. Try reopening this panel.',
-                  ),
-                  data: (allSources) {
-                    final sources = allSources
-                        .where((source) => source.kind == ContentSourceKind.m3u)
-                        .toList(growable: false);
-                    if (sources.isEmpty) {
-                      return DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text(
-                            'No playlists yet. Add a URL to start watching.',
+                    data: (allSources) {
+                      final sources = allSources
+                          .where(
+                            (source) =>
+                                source.kind == ContentSourceKind.m3u &&
+                                !_removedSourceIds.contains(source.id),
+                          )
+                          .toList(growable: false);
+                      if (sources.isEmpty) {
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                      );
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '${sources.length} playlist '
-                          'source${sources.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.labelLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        for (final source in sources)
-                          Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              minTileHeight: 64,
-                              leading: const Icon(Icons.playlist_play),
-                              title: Text(source.label),
-                              subtitle: Text(
-                                _safeLocation(source.url),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: SizedBox.square(
-                                dimension: 48,
-                                child: IconButton(
-                                  tooltip: 'Remove ${source.label}',
-                                  constraints: const BoxConstraints(
-                                    minWidth: 48,
-                                    minHeight: 48,
+                          child: const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'No playlists yet. Add a URL to start watching.',
+                            ),
+                          ),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '${sources.length} playlist '
+                            'source${sources.length == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          for (final source in sources)
+                            Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                minTileHeight: 64,
+                                leading: const Icon(Icons.playlist_play),
+                                title: Text(source.label),
+                                subtitle: Text(
+                                  _safeLocation(source.url),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: _adaptiveAction(
+                                  tenFootMode: tenFootMode,
+                                  onSelect: () => _removeSource(source),
+                                  semanticLabel: 'Remove ${source.label}',
+                                  child: SizedBox.square(
+                                    dimension: 48,
+                                    child: IconButton(
+                                      tooltip: 'Remove ${source.label}',
+                                      constraints: const BoxConstraints(
+                                        minWidth: 48,
+                                        minHeight: 48,
+                                      ),
+                                      onPressed: () => _removeSource(source),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
                                   ),
-                                  onPressed: () => _removeSource(source),
-                                  icon: const Icon(Icons.delete_outline),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                if (!_showAddForm)
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton.icon(
-                      key: const ValueKey('playlist-source-add-button'),
-                      onPressed: _openAddForm,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add playlist source'),
-                    ),
-                  )
-                else
-                  _buildAddForm(context),
-              ],
-            ),
-          );
-        },
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  if (!_showAddForm)
+                    SizedBox(
+                      height: 48,
+                      child: _adaptiveAction(
+                        tenFootMode: tenFootMode,
+                        focusNode: _addSourceFocusNode,
+                        autofocus: tenFootMode,
+                        onSelect: _openAddForm,
+                        semanticLabel: 'Add playlist source',
+                        child: FilledButton.icon(
+                          key: const ValueKey('playlist-source-add-button'),
+                          onPressed: _openAddForm,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add playlist source'),
+                        ),
+                      ),
+                    )
+                  else
+                    _buildAddForm(context, tenFootMode: tenFootMode),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildAddForm(BuildContext context) {
+  Widget _buildAddForm(BuildContext context, {required bool tenFootMode}) {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -354,10 +491,28 @@ class _PlaylistSourceManagerSheetState
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final preset in iptvOrgPlaylistPresets)
-                  ActionChip(
-                    label: Text(preset.label),
-                    onPressed: _isSaving ? null : () => _selectPreset(preset),
+                for (
+                  var index = 0;
+                  index < iptvOrgPlaylistPresets.length;
+                  index++
+                )
+                  _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _presetFocusNodes[index],
+                    autofocus:
+                        tenFootMode &&
+                        index == 0 &&
+                        (widget.initialUrl?.trim().isEmpty ?? true),
+                    onSelect: _isSaving
+                        ? null
+                        : () => _selectPreset(iptvOrgPlaylistPresets[index]),
+                    semanticLabel: iptvOrgPlaylistPresets[index].label,
+                    child: ActionChip(
+                      label: Text(iptvOrgPlaylistPresets[index].label),
+                      onPressed: _isSaving
+                          ? null
+                          : () => _selectPreset(iptvOrgPlaylistPresets[index]),
+                    ),
                   ),
               ],
             ),
@@ -365,6 +520,10 @@ class _PlaylistSourceManagerSheetState
             TextField(
               key: const ValueKey('playlist-source-label-field'),
               controller: _labelController,
+              focusNode: _labelFocusNode,
+              autofocus:
+                  tenFootMode &&
+                  (widget.initialUrl?.trim().isNotEmpty ?? false),
               enabled: !_isSaving,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
@@ -378,6 +537,7 @@ class _PlaylistSourceManagerSheetState
             TextField(
               key: const ValueKey('playlist-source-url-field'),
               controller: _urlController,
+              focusNode: _urlFocusNode,
               enabled: !_isSaving,
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.done,
@@ -406,18 +566,30 @@ class _PlaylistSourceManagerSheetState
               children: [
                 SizedBox(
                   height: 48,
-                  child: TextButton(
-                    onPressed: _isSaving ? null : _closeAddForm,
-                    child: const Text('Cancel'),
+                  child: _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _cancelFocusNode,
+                    onSelect: _isSaving ? null : _closeAddForm,
+                    semanticLabel: 'Cancel adding playlist source',
+                    child: TextButton(
+                      onPressed: _isSaving ? null : _closeAddForm,
+                      child: const Text('Cancel'),
+                    ),
                   ),
                 ),
                 SizedBox(
                   height: 48,
-                  child: FilledButton.icon(
-                    key: const ValueKey('playlist-source-save-button'),
-                    onPressed: _isSaving ? null : _addSource,
-                    icon: const Icon(Icons.add),
-                    label: Text(_isSaving ? 'Adding…' : 'Add source'),
+                  child: _adaptiveAction(
+                    tenFootMode: tenFootMode,
+                    focusNode: _saveFocusNode,
+                    onSelect: _isSaving ? null : _addSource,
+                    semanticLabel: 'Add source',
+                    child: FilledButton.icon(
+                      key: const ValueKey('playlist-source-save-button'),
+                      onPressed: _isSaving ? null : _addSource,
+                      icon: const Icon(Icons.add),
+                      label: Text(_isSaving ? 'Adding…' : 'Add source'),
+                    ),
                   ),
                 ),
               ],

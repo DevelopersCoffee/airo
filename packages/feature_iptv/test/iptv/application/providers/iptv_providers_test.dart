@@ -20,7 +20,10 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
 
       container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
       );
     });
 
@@ -219,6 +222,21 @@ void main() {
           ]);
         },
       );
+    });
+
+    test('saved Personal channel joins the normal IPTV library', () async {
+      final repository = container.read(personalChannelRepositoryProvider);
+      final saved = await repository.upsert(
+        name: '9XM',
+        streamUrl: 'https://media.example.com/9xm/master.m3u8',
+      );
+      container.invalidate(personalChannelsProvider);
+      container.invalidate(iptvChannelsProvider);
+
+      final channels = await container.read(iptvChannelsProvider.future);
+
+      expect(channels, contains(saved));
+      expect(channels.single.group, 'Personal Channels');
     });
 
     group('compactEpgSliceForChannelsProvider', () {
@@ -477,6 +495,75 @@ void main() {
         expect(firstRead.single.url, legacyUrl);
         expect(secondRead, hasLength(1));
         expect(prefs.getString('iptv_user_playlist_url'), legacyUrl);
+      },
+    );
+
+    test(
+      'active source selection is exclusive across Stalker and M3U',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final store = ContentSourceStore(PreferencesStore(prefs));
+        await store.replaceAll(const [
+          ContentSourceConfig(
+            id: 'm3u-news',
+            kind: ContentSourceKind.m3u,
+            label: 'M3U News',
+            url: 'https://example.com/news.m3u',
+          ),
+          ContentSourceConfig(
+            id: 'stalker-home',
+            kind: ContentSourceKind.stalker,
+            label: 'Home Portal',
+            url: 'https://portal.example.com',
+            macAddress: 'AA:BB:CC:DD:EE:FF',
+          ),
+        ]);
+        await store.setActiveSourceId('stalker-home');
+        final m3uParser = _FakeSourceParser(
+          prefs: prefs,
+          sourceId: 'm3u-news',
+          channels: const [
+            IPTVChannel(
+              id: 'm3u-only',
+              name: 'M3U Only',
+              streamUrl: 'https://example.com/m3u.m3u8',
+            ),
+          ],
+        );
+        final sourceContainer = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            m3uSourceParserFactoryProvider.overrideWithValue((_) => m3uParser),
+            stalkerSourceLoaderProvider.overrideWithValue(
+              (_) async => const [
+                IPTVChannel(
+                  id: 'stalker-home-7',
+                  name: 'Portal Only',
+                  streamUrl: 'https://example.com/portal.m3u8',
+                ),
+              ],
+            ),
+          ],
+        );
+        addTearDown(sourceContainer.dispose);
+
+        expect(
+          (await sourceContainer.read(
+            iptvChannelsProvider.future,
+          )).map((channel) => channel.id),
+          ['stalker-home-7'],
+        );
+
+        await sourceContainer.read(
+          selectContentSourceProvider('m3u-news').future,
+        );
+        expect(
+          (await sourceContainer.read(
+            iptvChannelsProvider.future,
+          )).map((channel) => channel.id),
+          ['m3u-only'],
+        );
       },
     );
 

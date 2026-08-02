@@ -6,17 +6,26 @@ import 'package:core_data/core_data.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class _ThrowingDeleteSecureStore extends InMemorySecureStore {
+  @override
+  Future<void> delete({required String key}) {
+    throw StateError('Secure storage is unavailable.');
+  }
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<ProviderContainer> buildContainer() async {
+  Future<ProviderContainer> buildContainer({SecureStore? secureStore}) async {
     final prefs = await SharedPreferences.getInstance();
     return ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        secureStoreProvider.overrideWithValue(
+          secureStore ?? InMemorySecureStore(),
+        ),
         xtreamAuthenticatorProvider.overrideWithValue(
           ({
             required String serverUrl,
@@ -27,6 +36,9 @@ void main() {
             status: 'Active',
             maxConnections: 2,
           ),
+        ),
+        stalkerAuthenticatorProvider.overrideWithValue(
+          ({required String portalUrl, required String macAddress}) async {},
         ),
       ],
     );
@@ -195,6 +207,80 @@ void main() {
   );
 
   test(
+    'new source becomes active and explicit selection switches it',
+    () async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+
+      await container.read(
+        addM3uContentSourceProvider((
+          label: 'First',
+          url: 'https://example.com/first.m3u',
+        )).future,
+      );
+      await container.read(
+        addM3uContentSourceProvider((
+          label: 'Second',
+          url: 'https://example.com/second.m3u',
+        )).future,
+      );
+      final sources = await container.read(
+        configuredContentSourcesProvider.future,
+      );
+
+      expect(
+        (await container.read(activeContentSourceProvider.future))?.label,
+        'Second',
+      );
+      await container.read(
+        selectContentSourceProvider(sources.first.id).future,
+      );
+      expect(
+        (await container.read(activeContentSourceProvider.future))?.label,
+        'First',
+      );
+    },
+  );
+
+  test('failed Stalker verification persists no source or token', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        stalkerAuthenticatorProvider.overrideWithValue(({
+          required String portalUrl,
+          required String macAddress,
+        }) async {
+          throw StateError('credential-bearing provider failure');
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(
+        addStalkerContentSourceProvider((
+          label: 'Broken',
+          url: 'https://portal.example.com',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+        )).future,
+      ),
+      throwsA(
+        isA<ContentSourceRuntimeException>().having(
+          (error) => error.toString(),
+          'safe message',
+          isNot(contains('credential-bearing')),
+        ),
+      ),
+    );
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      isEmpty,
+    );
+  });
+
+  test(
     'addJellyfinContentSourceProvider persists config + credential',
     () async {
       final container = await buildContainer();
@@ -232,21 +318,16 @@ void main() {
       final container = await buildContainer();
       addTearDown(container.dispose);
       await container.read(
-        addM3uContentSourceProvider((
-          label: 'My Playlist',
-          url: 'https://example.com/playlist.m3u',
+        addJellyfinContentSourceProvider((
+          label: 'Home Jellyfin',
+          url: 'https://jellyfin.example.com',
+          username: 'u',
+          password: 'p',
         )).future,
       );
       final id = (await container.read(
         configuredContentSourcesProvider.future,
       )).single.id;
-      await container
-          .read(contentSourceCredentialStoreProvider)
-          .save(
-            ContentSourceCredentialRef(id),
-            const ContentSourceCredentials(username: 'u', password: 'p'),
-          );
-
       await container.read(removeContentSourceProvider(id).future);
 
       final sources = await container.read(
@@ -259,6 +340,29 @@ void main() {
       expect(credential, isNull);
     },
   );
+
+  test('M3U removal does not require secure storage', () async {
+    final container = await buildContainer(
+      secureStore: _ThrowingDeleteSecureStore(),
+    );
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'My Playlist',
+        url: 'https://example.com/playlist.m3u',
+      )).future,
+    );
+    final id = (await container.read(
+      configuredContentSourcesProvider.future,
+    )).single.id;
+
+    await container.read(removeContentSourceProvider(id).future);
+
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      isEmpty,
+    );
+  });
 
   test('removing a migrated legacy playlist prevents remigration', () async {
     const legacyUrl = 'https://iptv-org.github.io/iptv/index.m3u';

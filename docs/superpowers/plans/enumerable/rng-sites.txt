@@ -1,0 +1,2 @@
+vault/random.rs :: //! One module so the guarantee is greppable: `rg 'OsRng' src/ | grep -v
+vault/random.rs :: rand_core::OsRng

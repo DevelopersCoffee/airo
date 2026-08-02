@@ -192,6 +192,7 @@ class _LibrarySortRow extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(right: 8),
         child: TvFocusable(
+          key: ValueKey('channel-sort-${column.name}'),
           semanticLabel: 'Sort by $label',
           onSelect: onSort == null ? null : () => onSort!(column),
           borderRadius: 8,

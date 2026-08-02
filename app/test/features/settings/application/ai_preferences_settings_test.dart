@@ -4,6 +4,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:airo_app/core/ai/ai_router_service.dart';
 
 void main() {
   test('persists AI preferences updates', () async {
@@ -28,6 +29,9 @@ void main() {
         debugLogging: true,
         downloadLocation: AIDownloadLocationPreference.appManaged,
         safetyProfile: SafetyProfile.balanced,
+        remoteServerUrl: 'http://127.0.0.1:11434/v1',
+        remoteServerModel: 'qwen2.5:7b',
+        remoteServerApiKey: 'secret',
       ),
     );
 
@@ -40,6 +44,9 @@ void main() {
     expect(state.memoryBudgetPercent, 70);
     expect(state.debugLogging, isTrue);
     expect(state.downloadLocation, AIDownloadLocationPreference.appManaged);
+    expect(state.remoteServerUrl, 'http://127.0.0.1:11434/v1');
+    expect(state.remoteServerModel, 'qwen2.5:7b');
+    expect(state.remoteServerApiKey, 'secret');
 
     expect(
       prefs.getString(AIPreferencesSettingsNotifier.routingStrategyKey),
@@ -68,5 +75,37 @@ void main() {
       prefs.getString(AIPreferencesSettingsNotifier.safetyProfileKey),
       SafetyProfile.balanced.name,
     );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerUrlKey),
+      'http://127.0.0.1:11434/v1',
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerModelKey),
+      'qwen2.5:7b',
+    );
+    expect(
+      prefs.getString(AIPreferencesSettingsNotifier.remoteServerApiKeyKey),
+      'secret',
+    );
+    expect(container.read(aiRouterServiceProvider).hasRemoteServer, isTrue);
+  });
+
+  test('rehydrates the persisted remote server into the router', () async {
+    SharedPreferences.setMockInitialValues({
+      AIPreferencesSettingsNotifier.remoteServerUrlKey:
+          'http://127.0.0.1:11434/v1',
+      AIPreferencesSettingsNotifier.remoteServerModelKey: 'qwen2.5:7b',
+      AIPreferencesSettingsNotifier.remoteServerApiKeyKey: 'secret',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    container.read(aiPreferencesSettingsProvider);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(container.read(aiRouterServiceProvider).hasRemoteServer, isTrue);
   });
 }

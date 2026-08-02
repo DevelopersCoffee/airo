@@ -20,6 +20,16 @@ class AiroLanShare {
 
 class AiroLanSyncService {
   static const maxPayloadBytes = 10 * 1024 * 1024;
+  static const defaultConnectionTimeout = Duration(seconds: 8);
+  static const defaultTransferTimeout = Duration(seconds: 30);
+
+  const AiroLanSyncService({
+    this.connectionTimeout = defaultConnectionTimeout,
+    this.transferTimeout = defaultTransferTimeout,
+  });
+
+  final Duration connectionTimeout;
+  final Duration transferTimeout;
 
   Future<AiroLanShare> createShare(
     String encryptedBackup, {
@@ -64,20 +74,19 @@ class AiroLanSyncService {
     if (uri.scheme != 'http' && uri.scheme != 'https') {
       throw const FormatException('LAN share must use HTTP or HTTPS');
     }
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    final client = HttpClient()..connectionTimeout = connectionTimeout;
     try {
-      final request = await client.getUrl(uri);
-      final response = await request.close();
+      final request = await client.getUrl(uri).timeout(transferTimeout);
+      final response = await request.close().timeout(transferTimeout);
       if (response.statusCode != HttpStatus.ok) {
         throw FormatException('LAN share returned HTTP ${response.statusCode}');
       }
       if (response.contentLength > maxPayloadBytes) {
         throw const FormatException('LAN share is too large');
       }
-      final bytes = await response.fold<List<int>>(
-        <int>[],
-        (buffer, chunk) => buffer..addAll(chunk),
-      );
+      final bytes = await response
+          .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk))
+          .timeout(transferTimeout);
       if (bytes.length > maxPayloadBytes) {
         throw const FormatException('LAN share is too large');
       }

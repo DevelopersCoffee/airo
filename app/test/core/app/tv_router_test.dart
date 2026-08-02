@@ -5,6 +5,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,6 +55,29 @@ void main() {
 
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Welcome to Airo'), findsNothing);
+  });
+
+  testWidgets('shared channel app link opens the confirmation screen', (
+    tester,
+  ) async {
+    final uri = IptvDeepLinkIntent(
+      channelId: 'shared-9xm',
+      channelName: '9XM',
+      streamUrl: Uri.parse('https://9xjio.wiseplayout.com/9XM/master.m3u8'),
+    ).toUri();
+
+    await pumpTvRouter(
+      tester,
+      initialLocation: Uri(
+        path: uri.path,
+        queryParameters: uri.queryParameters,
+      ).toString(),
+      surfaceSize: const Size(1280, 720),
+    );
+
+    expect(find.text('A friend shared 9XM'), findsOneWidget);
+    expect(find.text('Save & play'), findsOneWidget);
+    expect(find.text('Play once'), findsOneWidget);
   });
 
   testWidgets(
@@ -150,6 +174,63 @@ void main() {
       );
       expect(find.text('Select a channel to start watching'), findsNothing);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'LEFT from Search, Name, and the first channel enters the TV rail',
+    (tester) async {
+      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+      addTearDown(DeviceFormFactorDetector.clearCache);
+
+      await pumpTvRouter(
+        tester,
+        initialLocation: TvRouteNames.live,
+        surfaceSize: const Size(960, 540),
+        channels: const [
+          IPTVChannel(
+            id: 'news',
+            name: 'News',
+            streamUrl: 'https://example.com/news.m3u8',
+          ),
+        ],
+      );
+
+      final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
+      final leadingControls = <String, Finder>{
+        'Search': find.byKey(const ValueKey('filter-chip-search')),
+        'Name': find.byKey(const ValueKey('channel-sort-name')),
+        'first channel': find.byKey(const ValueKey('channel-tile-news')),
+      };
+
+      for (final entry in leadingControls.entries) {
+        final focus = tester
+            .widgetList<Focus>(
+              find.descendant(of: entry.value, matching: find.byType(Focus)),
+            )
+            .firstWhere((candidate) => candidate.focusNode != null);
+        focus.focusNode!.requestFocus();
+        await tester.pump();
+        expect(
+          focus.focusNode!.hasPrimaryFocus,
+          isTrue,
+          reason: '${entry.key} must own focus before pressing LEFT',
+        );
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+
+        final primary = FocusManager.instance.primaryFocus;
+        expect(primary, isNotNull);
+        final renderObject = primary!.context!.findRenderObject()! as RenderBox;
+        final primaryRect =
+            renderObject.localToGlobal(Offset.zero) & renderObject.size;
+        expect(
+          primaryRect.center.dx,
+          lessThan(railRect.right),
+          reason: 'LEFT from ${entry.key} must enter the rail',
+        );
+      }
     },
   );
 

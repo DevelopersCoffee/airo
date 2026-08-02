@@ -16,11 +16,21 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.0.5+7
+version: 0.0.6-rc.1+8
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
+
+# platform_playlist already brings sqlite3_flutter_libs, which packages the
+# pinned native library. Use it instead of downloading another binary during
+# the sqlite3 build hook.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlite3
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -114,6 +124,9 @@ dependencies:
   audioplayers: ^6.7.1
   cached_network_image: 3.4.1
   flutter_tts: 4.2.5
+  # Android/iOS GGUF execution adapter. The app-facing wrapper keeps this
+  # platform plugin behind the core_ai runtime boundary.
+  llama_flutter_android: ^0.2.6
   chess: 0.8.1
   stockfish: 1.8.1
   flutter_contacts: ^2.1.0
@@ -142,6 +155,7 @@ dependencies:
     path: ../packages/platform_history
   platform_streams:
     path: ../packages/platform_streams
+  google_mlkit_image_labeling: ^0.15.0
 
 dev_dependencies:
   flutter_test:
@@ -155,7 +169,6 @@ dev_dependencies:
   riverpod_generator: 4.0.4
   mocktail: ^1.0.5
   alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
-  patrol: ^4.7.0  # E2E testing for iOS/Android devices
   shared_preferences_platform_interface: ^2.4.1
   flutter_lints: 6.0.0
   custom_lint: ^0.8.1

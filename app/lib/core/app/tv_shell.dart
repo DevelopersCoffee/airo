@@ -10,6 +10,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
@@ -40,6 +41,19 @@ class TvShell extends ConsumerStatefulWidget {
 
 class _TvShellState extends ConsumerState<TvShell> {
   _TvOverlayScreen? _overlay;
+  late final List<FocusNode> _railFocusNodes = List.generate(
+    _tvNavDestinations.length,
+    (index) =>
+        FocusNode(debugLabel: 'TV rail ${_tvNavDestinations[index].label}'),
+  );
+
+  @override
+  void dispose() {
+    for (final node in _railFocusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +70,21 @@ class _TvShellState extends ConsumerState<TvShell> {
           // Never removed from the tree by a sidebar tap — only a direct
           // deep link to a different route replaces it.
           Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
+            child: Focus(
+              canRequestFocus: false,
+              onKeyEvent: _handleContentKeyEvent,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
+                ),
+                // Non-live destinations are painted over the retained live
+                // surface. Keep that surface mounted for playback, but never
+                // leave its controls in the focus graph behind an overlay.
+                child: ExcludeFocus(
+                  excluding: _overlay != null,
+                  child: widget.child,
+                ),
               ),
-              child: widget.child,
             ),
           ),
           if (!isPlayerFullscreen) ...[
@@ -71,9 +95,15 @@ class _TvShellState extends ConsumerState<TvShell> {
                 // reserves space of its own — give overlay screens the same
                 // left inset the old Row gave them, so their content doesn't
                 // render underneath the now-floating rail.
-                child: Padding(
-                  padding: const EdgeInsets.only(left: _tvNavigationRailWidth),
-                  child: _buildOverlay(_overlay!),
+                child: Focus(
+                  canRequestFocus: false,
+                  onKeyEvent: _handleContentKeyEvent,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: _tvNavigationRailWidth,
+                    ),
+                    child: _buildOverlay(_overlay!),
+                  ),
                 ),
               ),
             // The rail is painted on top instead of docked in a Row, so it
@@ -84,6 +114,7 @@ class _TvShellState extends ConsumerState<TvShell> {
               bottom: 0,
               child: _TvNavigationRail(
                 currentIndex: currentIndex,
+                focusNodes: _railFocusNodes,
                 onDestinationSelected: (index) =>
                     _selectDestination(context, index),
               ),
@@ -92,6 +123,58 @@ class _TvShellState extends ConsumerState<TvShell> {
         ],
       ),
     );
+  }
+
+  KeyEventResult _handleContentKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.arrowLeft ||
+        ref.read(isFullscreenModeProvider)) {
+      return KeyEventResult.ignored;
+    }
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null || !_isLeadingEdgeFocus(primary)) {
+      return KeyEventResult.ignored;
+    }
+    final currentIndex = ref.read(tvNavigationIndexProvider);
+    final target =
+        _railFocusNodes[currentIndex.clamp(0, _railFocusNodes.length - 1)];
+    if (!target.canRequestFocus) return KeyEventResult.ignored;
+    target.requestFocus();
+    return KeyEventResult.handled;
+  }
+
+  /// Flutter's spatial traversal does not cross reliably from a focus scope
+  /// painted in the shell body into a sibling rail painted later in a Stack
+  /// on Fire OS. Detect the visual leading edge and provide that one explicit
+  /// bridge, while preserving LEFT traversal between controls within a row.
+  bool _isLeadingEdgeFocus(FocusNode primary) {
+    final primaryRect = _focusRect(primary);
+    if (primaryRect == null) return false;
+    for (final candidate in FocusManager.instance.rootScope.descendants) {
+      if (identical(candidate, primary) || !candidate.canRequestFocus) continue;
+      final candidateRect = _focusRect(candidate);
+      if (candidateRect == null ||
+          candidateRect.center.dx < _tvNavigationRailWidth ||
+          candidateRect.center.dx >= primaryRect.center.dx - 1) {
+        continue;
+      }
+      final overlapsVerticalBeam =
+          candidateRect.bottom > primaryRect.top &&
+          candidateRect.top < primaryRect.bottom;
+      if (overlapsVerticalBeam) return false;
+    }
+    return true;
+  }
+
+  Rect? _focusRect(FocusNode node) {
+    final renderObject = node.context?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize ||
+        renderObject.size.isEmpty) {
+      return null;
+    }
+    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
   }
 
   void _selectDestination(BuildContext context, int index) {
@@ -143,10 +226,12 @@ final _tvNavDestinations = iptvNavigationDestinations;
 /// stacks with a left accent bar on the active destination.
 class _TvNavigationRail extends StatelessWidget {
   final int currentIndex;
+  final List<FocusNode> focusNodes;
   final ValueChanged<int> onDestinationSelected;
 
   const _TvNavigationRail({
     required this.currentIndex,
+    required this.focusNodes,
     required this.onDestinationSelected,
   });
 
@@ -172,6 +257,7 @@ class _TvNavigationRail extends StatelessWidget {
           for (var i = 0; i < _tvNavDestinations.length; i++)
             _TvNavItem(
               destination: _tvNavDestinations[i],
+              focusNode: focusNodes[i],
               selected: currentIndex == i,
               onSelect: () => onDestinationSelected(i),
             ),
@@ -238,11 +324,13 @@ class _TvSidebarLogo extends StatelessWidget {
 class _TvNavItem extends StatefulWidget {
   const _TvNavItem({
     required this.destination,
+    required this.focusNode,
     required this.selected,
     required this.onSelect,
   });
 
   final IptvNavigationDestination destination;
+  final FocusNode focusNode;
   final bool selected;
   final VoidCallback onSelect;
 
@@ -264,6 +352,7 @@ class _TvNavItemState extends State<_TvNavItem> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 7),
       child: TvFocusable(
+        focusNode: widget.focusNode,
         onSelect: widget.onSelect,
         onFocus: () => setState(() => _focused = true),
         onUnfocus: () => setState(() => _focused = false),

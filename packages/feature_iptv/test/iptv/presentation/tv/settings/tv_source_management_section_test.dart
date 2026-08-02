@@ -37,6 +37,9 @@ void main() {
           }) async =>
               const XtreamAuthResult(isAuthenticated: true, status: 'Active'),
         ),
+        stalkerAuthenticatorProvider.overrideWithValue(
+          ({required String portalUrl, required String macAddress}) async {},
+        ),
       ],
     );
   }
@@ -259,6 +262,75 @@ void main() {
     expect(find.textContaining('Frequent recent issues'), findsOneWidget);
     expect(find.textContaining('Credentials rejected'), findsOneWidget);
     expect(find.textContaining('xtream.example.com'), findsNothing);
+  });
+
+  testWidgets('Use switches the exclusive active Live TV source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'First',
+        url: 'https://example.com/first.m3u',
+      )).future,
+    );
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'Second',
+        url: 'https://example.com/second.m3u',
+      )).future,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Active'), findsOneWidget);
+    expect(
+      (await container.read(activeContentSourceProvider.future))?.label,
+      'Second',
+    );
+
+    await tester.tap(find.text('Use'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      (await container.read(activeContentSourceProvider.future))?.label,
+      'First',
+    );
+  });
+
+  testWidgets('add picker omits unsupported Jellyfin runtime source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Add Source'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('source-kind-picker')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jellyfin'), findsNothing);
   });
 
   testWidgets('removing a source requires confirmation', (tester) async {

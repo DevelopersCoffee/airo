@@ -1,9 +1,9 @@
+import 'package:feature_iptv/application/channel_share.dart';
 import 'package:feature_iptv/application/iptv_deep_link.dart';
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -70,33 +70,21 @@ void main() {
   });
 
   testWidgets(
-    'share copies channel details and no placeholder actions remain',
+    'share sends a playable friend message and no placeholder actions remain',
     (tester) async {
-      final binding = TestDefaultBinaryMessengerBinding.instance;
-      String? clipboardText;
-      binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        (call) async {
-          if (call.method == 'Clipboard.setData') {
-            final data = Map<String, Object?>.from(call.arguments as Map);
-            clipboardText = data['text'] as String?;
-          }
-          return null;
-        },
-      );
-      addTearDown(
-        () => binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          null,
-        ),
-      );
-
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
+      final gateway = _RecordingShareGateway();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(preferences),
+            channelShareGatewayProvider.overrideWithValue(gateway),
+            channelShareMessageComposerProvider.overrideWithValue(
+              ChannelShareMessageComposer(selectTemplate: (_) => 0),
+            ),
+          ],
           child: const MaterialApp(
             home: Scaffold(body: ChannelInfoBar(channel: channel)),
           ),
@@ -110,42 +98,34 @@ void main() {
       await tester.tap(find.byTooltip('Share'));
       await tester.pump();
 
-      expect(
-        clipboardText,
-        'https://developerscoffee.github.io/airo/iptv?v=1&channel=channel-1',
-      );
-      expect(find.text('Example Channel copied to clipboard'), findsOneWidget);
+      expect(gateway.subject, 'Watch Example Channel in Airo');
+      expect(gateway.text, contains('You bring the snacks'));
+      expect(gateway.text, contains('Example Channel'));
+      final link = _linkFrom(gateway.text!);
+      final parsed = IptvDeepLinkIntent.tryParse(link);
+      expect(parsed?.canImport, isTrue);
+      expect(parsed?.streamUrl.toString(), channel.streamUrl);
+      expect(find.text('Example Channel ready to share'), findsOneWidget);
     },
   );
 
   testWidgets('share includes the active filter combination', (tester) async {
-    final binding = TestDefaultBinaryMessengerBinding.instance;
-    String? clipboardText;
-    binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'Clipboard.setData') {
-          final data = Map<String, Object?>.from(call.arguments as Map);
-          clipboardText = data['text'] as String?;
-        }
-        return null;
-      },
-    );
-    addTearDown(
-      () => binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        null,
-      ),
-    );
     SharedPreferences.setMockInitialValues({
       channelFilterSearchStorageKey: 'local news',
       channelFilterCountryStorageKey: 'in',
     });
     final preferences = await SharedPreferences.getInstance();
+    final gateway = _RecordingShareGateway();
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(preferences),
+          channelShareGatewayProvider.overrideWithValue(gateway),
+          channelShareMessageComposerProvider.overrideWithValue(
+            ChannelShareMessageComposer(selectTemplate: (_) => 0),
+          ),
+        ],
         child: const MaterialApp(
           home: Scaffold(body: ChannelInfoBar(channel: channel)),
         ),
@@ -155,9 +135,26 @@ void main() {
     await tester.tap(find.byTooltip('Share'));
     await tester.pump();
 
-    final parsed = IptvDeepLinkIntent.tryParse(Uri.parse(clipboardText!));
+    final parsed = IptvDeepLinkIntent.tryParse(_linkFrom(gateway.text!));
     expect(parsed?.channelId, channel.id);
     expect(parsed?.filters.search, 'local news');
     expect(parsed?.filters.country, 'in');
   });
+}
+
+Uri _linkFrom(String message) {
+  final match = RegExp(r'https://\S+').firstMatch(message);
+  return Uri.parse(match!.group(0)!);
+}
+
+final class _RecordingShareGateway implements ChannelShareGateway {
+  String? subject;
+  String? text;
+
+  @override
+  Future<bool> share({required String subject, required String text}) async {
+    this.subject = subject;
+    this.text = text;
+    return true;
+  }
 }

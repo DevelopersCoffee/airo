@@ -14,6 +14,7 @@ import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/intelligent_model_manager_screen.dart';
+import '../../../../core/ai/ai_router_service.dart';
 
 /// User profile screen
 class ProfileScreen extends ConsumerWidget {
@@ -544,6 +545,17 @@ class _AIPreferencesSection extends ConsumerWidget {
                 ],
               ),
               ExpansionTile(
+                key: const Key('ai-remote-server-section'),
+                leading: const Icon(Icons.router_outlined),
+                title: const Text('Remote model server'),
+                subtitle: Text(
+                  settings.remoteServerUrl.isEmpty
+                      ? 'Optional Ollama, LM Studio, or llama.cpp endpoint'
+                      : settings.remoteServerUrl,
+                ),
+                children: const [_RemoteServerEditor()],
+              ),
+              ExpansionTile(
                 key: const Key('ai-safety-profile-section'),
                 leading: const Icon(Icons.health_and_safety_outlined),
                 title: const Text('Safety Profile'),
@@ -626,6 +638,242 @@ class _SettingDropdownRow<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RemoteServerEditor extends ConsumerStatefulWidget {
+  const _RemoteServerEditor();
+
+  @override
+  ConsumerState<_RemoteServerEditor> createState() =>
+      _RemoteServerEditorState();
+}
+
+class _RemoteServerEditorState extends ConsumerState<_RemoteServerEditor> {
+  late final TextEditingController _urlController;
+  late final TextEditingController _modelController;
+  late final TextEditingController _keyController;
+  bool _testing = false;
+  RemoteServerDiagnostics? _lastDiagnostics;
+  String? _lastDiagnosticModel;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = ref.read(aiPreferencesSettingsProvider);
+    _urlController = TextEditingController(text: settings.remoteServerUrl);
+    _modelController = TextEditingController(text: settings.remoteServerModel);
+    _keyController = TextEditingController(text: settings.remoteServerApiKey);
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _modelController.dispose();
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final settings = ref.read(aiPreferencesSettingsProvider);
+    final url = _urlController.text.trim();
+    final model = _modelController.text.trim();
+    final apiKey = _keyController.text.trim();
+    await ref
+        .read(aiPreferencesSettingsProvider.notifier)
+        .update(
+          settings.copyWith(
+            remoteServerUrl: url,
+            remoteServerModel: model,
+            remoteServerApiKey: apiKey,
+          ),
+        );
+    ref
+        .read(aiRouterServiceProvider)
+        .configureRemoteServer(baseUrl: url, model: model, apiKey: apiKey);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          url.isEmpty || model.isEmpty
+              ? 'Remote model server disabled.'
+              : 'Remote model server saved.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _testConnection() async {
+    final url = _urlController.text.trim();
+    final model = _modelController.text.trim();
+    final apiKey = _keyController.text.trim();
+    if (url.isEmpty || model.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a server URL and model id first.')),
+      );
+      return;
+    }
+    setState(() => _testing = true);
+    final router = ref.read(aiRouterServiceProvider);
+    router.configureRemoteServer(baseUrl: url, model: model, apiKey: apiKey);
+    final diagnostics = await router.diagnoseRemoteServer();
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      _lastDiagnostics = diagnostics;
+      _lastDiagnosticModel = model;
+    });
+    final message = diagnostics == null
+        ? 'Remote server diagnostics are unavailable.'
+        : diagnostics.isReady
+        ? 'Connected. ${diagnostics.modelIds.length} model(s) reported.'
+        : diagnostics.message ?? 'The remote server is not ready.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        children: [
+          TextField(
+            key: const Key('ai-remote-server-url'),
+            controller: _urlController,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Server URL',
+              hintText: 'http://127.0.0.1:11434/v1',
+            ),
+          ),
+          TextField(
+            key: const Key('ai-remote-server-model'),
+            controller: _modelController,
+            decoration: const InputDecoration(labelText: 'Model id'),
+          ),
+          TextField(
+            key: const Key('ai-remote-server-key'),
+            controller: _keyController,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'API key (optional)'),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                key: const Key('ai-remote-server-test'),
+                onPressed: _testing ? null : _testConnection,
+                icon: _testing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.network_check_outlined),
+                label: Text(_testing ? 'Testing…' : 'Test connection'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save server'),
+              ),
+            ],
+          ),
+          if (_lastDiagnostics case final diagnostics?) ...[
+            const SizedBox(height: 12),
+            _RemoteServerDiagnosticsCard(
+              diagnostics: diagnostics,
+              modelId: _lastDiagnosticModel ?? _modelController.text.trim(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RemoteServerDiagnosticsCard extends StatelessWidget {
+  const _RemoteServerDiagnosticsCard({
+    required this.diagnostics,
+    required this.modelId,
+  });
+
+  final RemoteServerDiagnostics diagnostics;
+  final String modelId;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = diagnostics.isReady ? 'Ready' : 'Needs attention';
+    final reason = diagnostics.message ?? 'The server reported models.';
+    final modelCount = diagnostics.modelIds.length;
+    final action = _remoteServerRecommendation(diagnostics);
+    return Semantics(
+      container: true,
+      label:
+          'Remote server diagnostics: $status. Endpoint ${diagnostics.baseUrl}. '
+          'Requested model $modelId. $reason $action',
+      child: Card(
+        key: const Key('ai-remote-server-diagnostics'),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    diagnostics.isReady
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
+                    color: diagnostics.isReady
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Remote diagnostics: $status',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Endpoint: ${diagnostics.baseUrl}'),
+              Text('Requested model: $modelId'),
+              if (diagnostics.statusCode case final statusCode?)
+                Text('HTTP status: $statusCode'),
+              Text('Models reported: $modelCount'),
+              if (diagnostics.modelIds.isNotEmpty)
+                Text('Available: ${diagnostics.modelIds.take(3).join(', ')}'),
+              const SizedBox(height: 8),
+              Text('Reason: $reason'),
+              Text('Next step: $action'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _remoteServerRecommendation(RemoteServerDiagnostics diagnostics) {
+  return switch (diagnostics.health) {
+    RemoteServerHealth.ready =>
+      'Save this server, then choose the same model id when chatting.',
+    RemoteServerHealth.unauthorized =>
+      'Check the API key or disable authentication on your local server.',
+    RemoteServerHealth.notFound =>
+      'Use the OpenAI-compatible base URL, usually ending in /v1.',
+    RemoteServerHealth.invalidResponse =>
+      'Check that Ollama, LM Studio, or llama.cpp is exposing a /models response.',
+    RemoteServerHealth.modelMissing =>
+      'Choose one of the reported model ids or load the requested model in the remote server.',
+    RemoteServerHealth.unavailable =>
+      'Confirm the server is running and reachable from this device.',
+  };
 }
 
 String _routingStrategyLabel(AIRoutingStrategy strategy) {

@@ -1,0 +1,21 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running unittests src/lib.rs (target/debug/deps/airo_mind-c2fdca593de26a27)
+
+running 1 test
+test vault::package::tests::truncation_on_disk_is_distinguishable_from_corruption ... FAILED
+
+failures:
+
+---- vault::package::tests::truncation_on_disk_is_distinguishable_from_corruption stdout ----
+
+thread 'vault::package::tests::truncation_on_disk_is_distinguishable_from_corruption' (19922412) panicked at src/vault/package.rs:1121:31:
+cut 1: expected PackageTruncated, got SerializationFailed — indistinguishable from corruption
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    vault::package::tests::truncation_on_disk_is_distinguishable_from_corruption
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 90 filtered out; finished in 0.23s
+
+error: test failed, to rerun pass `--lib`

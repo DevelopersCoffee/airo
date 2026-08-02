@@ -11,11 +11,19 @@
 name: airo_app
 description: "Airo TV - IPTV streaming for Android TV"
 publish_to: 'none'
-version: 0.0.5+5
+version: 0.0.6-rc.1+6
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
+
+# Keep TV release builds offline-safe by loading the native library already
+# supplied by sqlite3_flutter_libs.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlite3
 
 dependencies:
   flutter:
@@ -100,6 +108,7 @@ dependencies:
   chess: 0.8.1
   flame: 1.35.0
   google_mlkit_text_recognition: 0.16.0
+  google_mlkit_image_labeling: 0.15.0
   just_audio: 0.10.5
   audioplayers: 6.5.1
   flutter_tts: 4.2.5
@@ -155,6 +164,8 @@ dependency_overrides:
     path: ../packages/stubs/flame_stub
   google_mlkit_text_recognition:
     path: ../packages/stubs/mlkit_stub
+  google_mlkit_image_labeling:
+    path: ../packages/stubs/mlkit_image_labeling_stub
 
   # Audio package stubs (not needed for TV)
   just_audio:
@@ -191,6 +202,8 @@ dependency_overrides:
     path: ../packages/stubs/pdfx_stub
   package_info_plus:
     path: ../packages/stubs/package_info_plus_stub
+  # KGP-free Android implementation used by the TV flavor. This must remain
+  # functional: live playback relies on it to suppress Fire OS screen sleep.
   wakelock_plus:
     path: ../packages/stubs/wakelock_plus_stub
 

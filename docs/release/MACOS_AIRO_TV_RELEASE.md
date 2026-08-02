@@ -18,6 +18,15 @@ Setapp, MacPorts, and sandbox submission are out of scope.
 existing IPTV-only TV feature gate. Firebase initialization remains skipped on
 macOS unless real macOS Firebase options are supplied.
 
+## Release Scope
+
+The macOS release contains only the `tv` profile. Do not build or qualify the
+`full` or `coins` profiles for macOS as part of this release.
+
+Airo Coin remains a focused Android phone validation profile. Its macOS runner,
+vault unlock flow, signing, packaging, and distribution are deferred until a
+separate desktop product decision and release profile are approved.
+
 ## Cut And Build
 
 Use the `Airo TV macOS Release` workflow for macOS-only validation or the `V2
@@ -113,6 +122,7 @@ https://github.com/DevelopersCoffee/airo/releases/download/<release_tag>/Airo-TV
 - `flutter test` in `packages/core_release`
 - `flutter analyze lib/main_tv.dart` under `app/pubspec_tv.yaml`
 - `flutter build macos --release --target=lib/main_tv.dart`
+- No `main_coins.dart` macOS build or runtime smoke test is required.
 - App launches without Firebase macOS options.
 - IPTV import/playback/navigation smoke paths work with pointer input.
 - The macOS `Update` action reports no update when the latest GitHub Release

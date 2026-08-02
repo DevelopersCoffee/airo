@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,26 +16,35 @@ void main() {
   Future<ProviderContainer> pumpTransportBar(
     WidgetTester tester, {
     required double width,
+    Duration liveDelay = Duration.zero,
+    VideoPlayerStreamingService? service,
+    Stream<StreamingState>? states,
+    FocusNode? retainedFocusNode,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        if (service != null)
+          iptvStreamingServiceProvider.overrideWithValue(service),
         streamingStateProvider.overrideWith(
-          (ref) => Stream.value(
-            StreamingState(
-              playbackState: PlaybackState.playing,
-              isLiveStream: true,
-              currentQuality: VideoQuality.high,
-              currentChannel: IPTVChannel(
-                id: 'news-1',
-                name: 'City News Live',
-                streamUrl: 'https://example.com/news.m3u8',
-                group: 'News',
+          (ref) =>
+              states ??
+              Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.playing,
+                  isLiveStream: true,
+                  liveDelay: liveDelay,
+                  currentQuality: VideoQuality.high,
+                  currentChannel: IPTVChannel(
+                    id: 'news-1',
+                    name: 'City News Live',
+                    streamUrl: 'https://example.com/news.m3u8',
+                    group: 'News',
+                  ),
+                ),
               ),
-            ),
-          ),
         ),
       ],
     );
@@ -44,13 +55,22 @@ void main() {
         container: container,
         child: MaterialApp(
           home: Scaffold(
-            body: SizedBox(
-              width: width,
-              height: 540,
-              child: const VideoPlayerWidget(
-                initiallyFullscreen: true,
-                useTvTransportBar: true,
-              ),
+            body: Stack(
+              children: [
+                SizedBox(
+                  width: width,
+                  height: 540,
+                  child: const VideoPlayerWidget(
+                    initiallyFullscreen: true,
+                    useTvTransportBar: true,
+                  ),
+                ),
+                if (retainedFocusNode != null)
+                  Focus(
+                    focusNode: retainedFocusNode,
+                    child: const SizedBox.shrink(),
+                  ),
+              ],
             ),
           ),
         ),
@@ -132,6 +152,130 @@ void main() {
     expect(find.text('Actions for'), findsOneWidget);
   });
 
+  testWidgets(
+    'playing channel reclaims transport focus after retained-grid restore',
+    (tester) async {
+      final states = StreamController<StreamingState>();
+      final retainedFocusNode = FocusNode(debugLabel: 'retained channel card');
+      addTearDown(states.close);
+      addTearDown(retainedFocusNode.dispose);
+      await pumpTransportBar(
+        tester,
+        width: 960,
+        states: states.stream,
+        retainedFocusNode: retainedFocusNode,
+      );
+      retainedFocusNode.requestFocus();
+      await tester.pump();
+
+      states.add(
+        StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          currentChannel: IPTVChannel(
+            id: 'news-1',
+            name: 'City News Live',
+            streamUrl: 'https://example.com/news.m3u8',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      retainedFocusNode.requestFocus();
+      await tester.pump();
+      expect(retainedFocusNode.hasPrimaryFocus, isTrue);
+
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player center control',
+      );
+    },
+  );
+
+  testWidgets(
+    'transport stays visible beyond auto-hide while a D-pad control is focused',
+    (tester) async {
+      await pumpTransportBar(tester, width: 960);
+
+      final more = find.byKey(const ValueKey('iptv-player-more-button'));
+      final moreFocus = tester.widget<Focus>(
+        find.descendant(of: more, matching: find.byType(Focus)).first,
+      );
+      moreFocus.focusNode!.requestFocus();
+      await tester.pump();
+
+      await tester.pump(const Duration(seconds: 5));
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.byKey(const ValueKey('iptv-player-controls-opacity')),
+      );
+      expect(opacity.opacity, 1);
+      expect(moreFocus.focusNode!.hasPrimaryFocus, isTrue);
+    },
+  );
+
+  testWidgets(
+    'Pause transport action pauses instead of seeking live when behind',
+    (tester) async {
+      final service = _TransportRecordingService();
+      addTearDown(service.dispose);
+      await pumpTransportBar(
+        tester,
+        width: 960,
+        liveDelay: const Duration(seconds: 10),
+        service: service,
+      );
+
+      final wrapper = find.byKey(
+        const ValueKey('iptv-tv-transport-play-pause'),
+      );
+      final focus = tester.widget<Focus>(
+        find.descendant(of: wrapper, matching: find.byType(Focus)).first,
+      );
+      focus.focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(service.pauseCalls, 1);
+      expect(service.goLiveCalls, 0);
+    },
+  );
+
+  testWidgets('transport focus movement refreshes the controls hide timer', (
+    tester,
+  ) async {
+    await pumpTransportBar(tester, width: 960);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(
+      find.byKey(const ValueKey('iptv-tv-transport-restart')),
+      findsOneWidget,
+    );
+    expect(
+      FocusManager.instance.primaryFocus?.hasFocus,
+      isTrue,
+      reason:
+          'focus movement must keep the controls visible beyond the '
+          'original four-second deadline',
+    );
+    expect(
+      FocusManager.instance.primaryFocus,
+      isNot(
+        predicate<FocusNode>(
+          (node) => node.debugLabel == 'IPTV player surface',
+        ),
+      ),
+    );
+  });
+
   testWidgets('MENU opens player actions and visibly focuses Listen only', (
     tester,
   ) async {
@@ -143,12 +287,62 @@ void main() {
     expect(find.text('Player actions'), findsOneWidget);
     expect(find.text('Actions for'), findsNothing);
     expect(
-      Focus.of(
-        tester.element(
-          find.byKey(const ValueKey('iptv-player-audio-only-menu-action')),
-        ),
-      ).hasPrimaryFocus,
-      isTrue,
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player action Listen only',
     );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
   });
+
+  testWidgets('six RIGHT presses and CENTER open Player actions from Pause', (
+    tester,
+  ) async {
+    await pumpTransportBar(tester, width: 960);
+
+    final pauseWrapper = find.byKey(
+      const ValueKey('iptv-tv-transport-play-pause'),
+    );
+    final pauseFocus = tester.widget<Focus>(
+      find.descendant(of: pauseWrapper, matching: find.byType(Focus)).first,
+    );
+    pauseFocus.focusNode!.requestFocus();
+    await tester.pump();
+
+    for (var index = 0; index < 6; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player more actions',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Player actions'), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player action Listen only',
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+  });
+}
+
+class _TransportRecordingService extends VideoPlayerStreamingService {
+  _TransportRecordingService() : super(engine: FakeAiroPlaybackEngine());
+
+  int pauseCalls = 0;
+  int goLiveCalls = 0;
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+  }
+
+  @override
+  Future<void> goLive() async {
+    goLiveCalls++;
+  }
 }

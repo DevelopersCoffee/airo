@@ -1,0 +1,1 @@
+vault/encoding.rs :: //! **Never `format!("{b:02x}")` per byte.** That allocates one `String` per

@@ -52,13 +52,15 @@ void main() {
       ),
       isFalse,
     );
+    // A path setting alone is not enough for the picker to advertise a
+    // runnable Gemma card; the artifact must be verified as installed.
     expect(
       AssistantModelLibraryState.isLiteRtReady(
         runtimeAvailable: true,
         hasDownloadedPackage: false,
         hasConfiguredModelPath: true,
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       AssistantModelLibraryState.isLiteRtReady(
@@ -66,7 +68,7 @@ void main() {
         hasDownloadedPackage: true,
         hasConfiguredModelPath: false,
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       AssistantModelLibraryState.isLiteRtReady(
@@ -115,6 +117,152 @@ void main() {
       litertGemmaAssistantModelId,
     );
   });
+
+  test('loads deterministic local, cloud, and downloaded candidates', () async {
+    final gemmaPackage = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+      backendPreference: ModelBackendPreference.gpu,
+    );
+    final actionPackage = OfflineModelInfo(
+      id: 'mobile-actions-270m-litertlm',
+      name: 'MobileActions-270M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 276 * 1024 * 1024,
+      filePath: '/models/mobile-actions-270m.litertlm',
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.mobileActions],
+      backendPreference: ModelBackendPreference.npu,
+    );
+    final downloadedGguf = OfflineModelInfo(
+      id: 'qwen2-1.5b-q4',
+      name: 'Qwen2 1.5B Q4',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1_100_000_000,
+      filePath: '/models/qwen2-1.5b-q4.gguf',
+      provider: AIProvider.gguf,
+      capabilities: const [ModelCapability.chat],
+    );
+
+    final state = await AssistantModelLibraryState.load(
+      task: AssistantTask.reasoning,
+      isNanoSupported: () async => true,
+      loadDeviceInfo: () async => {
+        'manufacturer': 'Google',
+        'model': 'Pixel 9',
+      },
+      isLiteRtAvailable: () async => true,
+      hasConfiguredModelPath: false,
+      isGgufAvailable: () async => true,
+      initializeCloud: () async {},
+      isCloudAvailable: () => true,
+      loadDefaultPackages: () async => {
+        AssistantTask.chat: gemmaPackage,
+        AssistantTask.reasoning: gemmaPackage,
+        AssistantTask.documents: gemmaPackage,
+        AssistantTask.skills: gemmaPackage,
+        AssistantTask.actions: actionPackage,
+      },
+      loadCompatibilityByModelId: (packages) async => {
+        gemmaPackage.id: ModelCompatibilityResult.compatible(
+          MemorySeverity.safe,
+        ),
+        actionPackage.id: ModelCompatibilityResult.compatible(
+          MemorySeverity.warning,
+        ),
+        downloadedGguf.id: ModelCompatibilityResult.compatible(
+          MemorySeverity.safe,
+        ),
+      },
+      hydrateDownloadedModel: (model) async => downloadedGguf,
+      mobileRecommended: [downloadedGguf],
+      platformLabelOverride: 'ANDROID',
+    );
+
+    expect(state.deviceLabel, 'Google Pixel 9');
+    expect(state.platformLabel, 'ANDROID');
+    expect(state.recommended.id, litertGemmaAssistantModelId);
+    expect(state.candidateById(geminiNanoAssistantModelId)?.available, isTrue);
+    expect(state.candidateById(geminiCloudAssistantModelId)?.available, isTrue);
+    expect(state.candidateById(litertGemmaAssistantModelId)?.available, isTrue);
+    expect(
+      state
+          .candidateById(assistantModelIdForOfflineModel(actionPackage.id))
+          ?.available,
+      isTrue,
+    );
+    expect(
+      state
+          .candidateById(assistantModelIdForOfflineModel(downloadedGguf.id))
+          ?.available,
+      isTrue,
+    );
+    expect(
+      state.candidateById(litertGemmaAssistantModelId)?.compatibility,
+      isNotNull,
+    );
+  });
+
+  test(
+    'load hides LiteRT card when no verified package is downloaded',
+    () async {
+      final catalogOnlyPackage = OfflineModelInfo(
+        id: 'gemma-4-e2b-it-litertlm',
+        name: 'Gemma 4 E2B',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 2 * 1024 * 1024 * 1024,
+        provider: AIProvider.gemma,
+        capabilities: const [ModelCapability.chat],
+        downloadUrl: 'https://example.test/gemma-4-e2b-it.litertlm',
+      );
+
+      final state = await AssistantModelLibraryState.load(
+        task: AssistantTask.chat,
+        isNanoSupported: () async => false,
+        loadDeviceInfo: () async => {
+          'manufacturer': 'Google',
+          'model': 'Pixel 9',
+        },
+        isLiteRtAvailable: () async => true,
+        hasConfiguredModelPath: true,
+        isGgufAvailable: () async => false,
+        initializeCloud: () async {},
+        isCloudAvailable: () => false,
+        loadDefaultPackages: () async => {
+          AssistantTask.chat: catalogOnlyPackage,
+          AssistantTask.reasoning: catalogOnlyPackage,
+        },
+        loadCompatibilityByModelId: (packages) async => {
+          catalogOnlyPackage.id: ModelCompatibilityResult.compatible(
+            MemorySeverity.safe,
+          ),
+        },
+        hydrateDownloadedModel: (model) async => model,
+        mobileRecommended: const [],
+        platformLabelOverride: 'ANDROID',
+      );
+
+      expect(state.candidateById(litertGemmaAssistantModelId), isNull);
+      expect(
+        state.candidates.map((candidate) => candidate.id),
+        contains(geminiNanoAssistantModelId),
+      );
+      expect(
+        state.candidateById(geminiNanoAssistantModelId)?.available,
+        isFalse,
+      );
+      expect(
+        state.candidateById(geminiCloudAssistantModelId)?.available,
+        isFalse,
+      );
+      expect(state.recommended.id, geminiNanoAssistantModelId);
+    },
+  );
 
   testWidgets(
     'shows diagnostics instead of launching unsupported local runtime',
@@ -469,6 +617,142 @@ void main() {
     await tester.pumpAndSettle();
     expect(selected?.id, litertGemmaAssistantModelId);
     expect(find.text('General Chat setup'), findsNothing);
+  });
+
+  testWidgets('download setup dialog opens model management when confirmed', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final package = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.gpu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+      learnMoreUrl: 'https://example.test/gemma',
+    );
+    final candidate = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Local package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: package.fileSizeDisplay,
+      available: false,
+      actionLabel: 'Download package',
+      unavailableReason: 'Install the local package first.',
+      local: true,
+      opensModelManager: true,
+      package: package,
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Pixel 9',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+    var openedManager = false;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            onModelSelected: (_) {},
+            onOpenModelManager: () => openedManager = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Download package').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Download General Chat package?'), findsOneWidget);
+    expect(find.text('Package'), findsOneWidget);
+    expect(find.text('Backend'), findsOneWidget);
+    expect(find.text('License'), findsOneWidget);
+
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Download package').last,
+    );
+    await tester.pumpAndSettle();
+
+    expect(openedManager, isTrue);
+  });
+
+  testWidgets('unavailable package dialog can route to profile settings', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    const candidate = AssistantModelCandidate(
+      id: 'cloud-fallback',
+      name: 'Cloud fallback',
+      runtime: 'Remote opt-in',
+      description: 'Remote runtime',
+      bestFor: [AssistantTask.chat],
+      tags: ['Remote'],
+      privacyLabel: 'Requires opt-in',
+      sizeLabel: 'No local package',
+      available: false,
+      actionLabel: 'Configure',
+      unavailableReason: 'No local runtime can satisfy this request yet.',
+      local: false,
+      opensModelManager: false,
+    );
+    const state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Desktop',
+      platformLabel: 'MACOS',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {},
+    );
+    var openedManager = false;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            onModelSelected: (_) {},
+            onOpenModelManager: () => openedManager = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Start chat').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('General Chat setup needed'), findsOneWidget);
+    expect(
+      find.text('No local runtime can satisfy this request yet.'),
+      findsWidgets,
+    );
+
+    await tester.tap(find.text('Open Profile settings'));
+    await tester.pumpAndSettle();
+
+    expect(openedManager, isTrue);
   });
 }
 

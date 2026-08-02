@@ -4,7 +4,10 @@ import 'model_library_screen.dart';
 
 /// Helps users choose a model by capability instead of model names.
 class ModelAdvisorScreen extends StatefulWidget {
-  const ModelAdvisorScreen({super.key});
+  const ModelAdvisorScreen({super.key, this.loadRecommendation});
+
+  final Future<AssistantModelLibraryState> Function(AssistantTask task)?
+  loadRecommendation;
 
   @override
   State<ModelAdvisorScreen> createState() => _ModelAdvisorScreenState();
@@ -17,14 +20,19 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
   @override
   void initState() {
     super.initState();
-    _recommendation = AssistantModelLibraryState.load(task: _task);
+    _recommendation = _load(_task);
   }
 
   void _choose(AssistantTask task) {
     setState(() {
       _task = task;
-      _recommendation = AssistantModelLibraryState.load(task: task);
+      _recommendation = _load(task);
     });
+  }
+
+  Future<AssistantModelLibraryState> _load(AssistantTask task) {
+    return widget.loadRecommendation?.call(task) ??
+        AssistantModelLibraryState.load(task: task);
   }
 
   @override
@@ -62,11 +70,21 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
                         AssistantTask.skills,
                         AssistantTask.actions,
                       ])
-                        ChoiceChip(
-                          label: Text(task.label.replaceAll(' Project', '')),
-                          avatar: Icon(task.icon, size: 18),
+                        Semantics(
+                          container: true,
+                          button: true,
                           selected: _task == task,
-                          onSelected: (_) => _choose(task),
+                          label:
+                              'Capability: ${_taskLabel(task)}. '
+                              '${_task == task ? "Selected" : "Not selected"}.',
+                          child: ExcludeSemantics(
+                            child: ChoiceChip(
+                              label: Text(_taskLabel(task)),
+                              avatar: Icon(task.icon, size: 18),
+                              selected: _task == task,
+                              onSelected: (_) => _choose(task),
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -92,55 +110,59 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               final candidate = state.recommended;
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Recommended for ${_task.label.replaceAll(' Project', '')}',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 10),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          candidate.local
-                              ? Icons.phone_android
-                              : Icons.cloud_outlined,
+              return Semantics(
+                container: true,
+                label: _recommendationSemantics(candidate),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Recommended for ${_taskLabel(_task)}',
+                          style: theme.textTheme.titleMedium,
                         ),
-                        title: Text(candidate.name),
-                        subtitle: Text(candidate.description),
-                        trailing: candidate.available
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                              )
-                            : const Icon(Icons.info_outline),
-                      ),
-                      const Divider(),
-                      Text(
-                        'Why this choice',
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        candidate.available
-                            ? '${candidate.runtime} is ready for this capability. ${candidate.privacyLabel}. ${candidate.sizeLabel}.'
-                            : '${candidate.actionLabel}. ${candidate.unavailableReason ?? 'Airo will guide you through setup.'}',
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton.icon(
-                        onPressed: () => Navigator.of(context).pop(candidate),
-                        icon: const Icon(Icons.open_in_new),
-                        label: Text(
+                        const SizedBox(height: 10),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            candidate.local
+                                ? Icons.phone_android
+                                : Icons.cloud_outlined,
+                          ),
+                          title: Text(candidate.name),
+                          subtitle: Text(candidate.description),
+                          trailing: candidate.available
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                )
+                              : const Icon(Icons.info_outline),
+                        ),
+                        const Divider(),
+                        Text(
+                          'Why this choice',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
                           candidate.available
-                              ? 'Use this model'
-                              : 'Open model setup',
+                              ? '${candidate.runtime} is ready for this capability. ${candidate.privacyLabel}. ${candidate.sizeLabel}.'
+                              : '${candidate.actionLabel}. ${candidate.unavailableReason ?? 'Airo will guide you through setup.'}',
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.of(context).pop(candidate),
+                          icon: const Icon(Icons.open_in_new),
+                          label: Text(
+                            candidate.available
+                                ? 'Use this model'
+                                : 'Open model setup',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -149,5 +171,16 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
         ],
       ),
     );
+  }
+
+  String _taskLabel(AssistantTask task) =>
+      task.label.replaceAll(' Project', '');
+
+  String _recommendationSemantics(AssistantModelCandidate candidate) {
+    return 'Recommended model ${candidate.name}. '
+        'Runtime ${candidate.runtime}. '
+        '${candidate.privacyLabel}. '
+        '${candidate.sizeLabel}. '
+        '${candidate.available ? "Ready" : "Requires setup"}.';
   }
 }

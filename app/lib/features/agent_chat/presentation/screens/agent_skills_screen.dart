@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/repositories/remote_agent_skill_store.dart';
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_skill_registry.dart';
+import '../../domain/services/remote_agent_skill_installer.dart';
 
 /// User-facing catalogue for enabling the tools that the Airo agent may use.
 class AgentSkillsScreen extends StatefulWidget {
@@ -15,6 +18,9 @@ class AgentSkillsScreen extends StatefulWidget {
 }
 
 class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
+  final _remoteUrlController = TextEditingController();
+  bool _isInstalling = false;
+  String? _installError;
   late final Future<AgentSkillRegistry> _registryFuture;
 
   @override
@@ -22,6 +28,38 @@ class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
     super.initState();
     _registryFuture =
         widget.registryFuture ?? AgentSkillRegistry.loadPersisted();
+  }
+
+  @override
+  void dispose() {
+    _remoteUrlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _installRemoteSkill(AgentSkillRegistry registry) async {
+    final url = _remoteUrlController.text.trim();
+    if (url.isEmpty) return;
+    setState(() {
+      _isInstalling = true;
+      _installError = null;
+    });
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final skill = await RemoteAgentSkillInstaller(
+        store: RemoteAgentSkillStore(preferences),
+      ).install(url);
+      if (!registry.addSkill(skill)) {
+        throw const FormatException(
+          'A skill with this id is already installed.',
+        );
+      }
+      _remoteUrlController.clear();
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) setState(() => _installError = error.toString());
+    } finally {
+      if (mounted) setState(() => _isInstalling = false);
+    }
   }
 
   @override
@@ -67,6 +105,52 @@ class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
                         icon: const Icon(Icons.chat_outlined),
                         label: const Text('Try skills in AI Chat'),
                       ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Import a community SKILL.md',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Only HTTPS documents are accepted. Imported skills stay disabled until you review and enable them.',
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _remoteUrlController,
+                        keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(
+                          labelText: 'SKILL.md URL',
+                          hintText: 'https://example.com/SKILL.md',
+                          border: OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => _installRemoteSkill(registry),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: _isInstalling
+                              ? null
+                              : () => _installRemoteSkill(registry),
+                          icon: _isInstalling
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.download_outlined),
+                          label: const Text('Import skill'),
+                        ),
+                      ),
+                      if (_installError != null)
+                        Text(
+                          _installError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
                     ],
                   ),
                 ),

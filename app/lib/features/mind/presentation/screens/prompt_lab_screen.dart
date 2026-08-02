@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:core_ai/core_ai.dart';
+import 'package:core_domain/core_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,9 +9,15 @@ import 'package:image_picker/image_picker.dart';
 /// Controlled prompt workspace for text runtimes and OpenAI-compatible image
 /// servers (including local/private endpoints such as a LAN ComfyUI bridge).
 class PromptLabScreen extends StatefulWidget {
-  const PromptLabScreen({super.key, this.initialImageMode = false});
+  const PromptLabScreen({
+    super.key,
+    this.initialImageMode = false,
+    this.generateImage,
+  });
 
   final bool initialImageMode;
+  final Future<Result<GeneratedImage>> Function(ImageGenerationRequest request)?
+  generateImage;
 
   @override
   State<PromptLabScreen> createState() => _PromptLabScreenState();
@@ -83,17 +90,17 @@ class _PromptLabScreenState extends State<PromptLabScreen> {
       final sourceBase64 = _sourceImage == null
           ? null
           : base64Encode(await _sourceImage!.readAsBytes());
-      final result = await OpenAICompatibleImageClient(baseUrl: baseUrl)
-          .generate(
-            ImageGenerationRequest(
-              prompt: prompt,
-              negativePrompt: _negativeController.text.trim().isEmpty
-                  ? null
-                  : _negativeController.text.trim(),
-              sourceImageBase64: sourceBase64,
-              steps: _imageSteps,
-            ),
-          );
+      final request = ImageGenerationRequest(
+        prompt: prompt,
+        negativePrompt: _negativeController.text.trim().isEmpty
+            ? null
+            : _negativeController.text.trim(),
+        sourceImageBase64: sourceBase64,
+        steps: _imageSteps,
+      );
+      final result =
+          await widget.generateImage?.call(request) ??
+          await OpenAICompatibleImageClient(baseUrl: baseUrl).generate(request);
       if (!mounted) return;
       if (result.isSuccess) {
         setState(() => _generatedImage = result.valueOrNull);
@@ -277,14 +284,26 @@ class _GeneratedImageView extends StatelessWidget {
     if (rawBase64 != null) {
       try {
         child = Image.memory(base64Decode(rawBase64), fit: BoxFit.contain);
-      } on FormatException {
+      } on Object {
         child = const Padding(
           padding: EdgeInsets.all(16),
           child: Text('The image server returned malformed image data.'),
         );
       }
+    } else if (image.url?.trim().isNotEmpty == true) {
+      child = Image.network(
+        image.url!.trim(),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('The image could not be loaded from the image server.'),
+        ),
+      );
     } else {
-      child = Image.network(image.url!, fit: BoxFit.contain);
+      child = const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('The image server returned no renderable image.'),
+      );
     }
     return Card(
       clipBehavior: Clip.antiAlias,

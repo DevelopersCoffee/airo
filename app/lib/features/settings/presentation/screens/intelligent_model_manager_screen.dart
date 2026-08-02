@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
+import '../../application/ai_preferences_settings.dart';
 import '../intelligent_model_manager_provider.dart';
 import '../../../agent_chat/presentation/screens/model_health_center_screen.dart';
 
@@ -342,6 +344,13 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildModelMetrics(context, modelInfo),
                 const SizedBox(height: 16),
+                _buildDownloadStatusPanel(
+                  context,
+                  model,
+                  modelInfo,
+                  downloadProgress,
+                ),
+                const SizedBox(height: 16),
                 if (isDownloading && downloadProgress != null)
                   _buildDownloadProgress(
                     context,
@@ -357,6 +366,129 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildDownloadStatusPanel(
+    BuildContext context,
+    ModelEntry model,
+    OfflineModelInfo modelInfo,
+    ModelDownloadProgress? progress,
+  ) {
+    final theme = Theme.of(context);
+    final details = _downloadStatusDetails(model, modelInfo, progress);
+    return Semantics(
+      container: true,
+      label: 'Download Manager status for ${model.name}',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.45,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.downloading_outlined,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Download Manager',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final detail in details)
+                  Chip(
+                    label: Text(detail),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _downloadStatusDetails(
+    ModelEntry model,
+    OfflineModelInfo modelInfo,
+    ModelDownloadProgress? progress,
+  ) {
+    if (progress != null) {
+      return [
+        'Status: ${progress.statusDisplay.toLowerCase()}',
+        'Downloaded: ${_formatBytes(progress.downloadedBytes)} of '
+            '${_formatBytes(progress.totalBytes)}',
+        _integrityLabelForProgress(progress),
+        if (progress.resumeSupported) 'Resume supported',
+        if (progress.retryCount > 0) 'Retries: ${progress.retryCount}',
+        if ((progress.error ?? '').trim().isNotEmpty)
+          'Failure: ${progress.error!.trim()}',
+      ];
+    }
+
+    if (model.isDownloaded) {
+      return [
+        'Status: downloaded',
+        _integrityLabelForInstalledModel(model),
+        'Local storage: ${_formatBytes(model.sizeBytes)}',
+        if (model.installedVersion != null)
+          'Installed version: ${model.installedVersion}',
+        if (model.hasUpdate) 'Catalog: update available',
+      ];
+    }
+
+    return [
+      'Status: not downloaded',
+      'Integrity: verifies after download',
+      'Required storage: ${_formatBytes(modelInfo.fileSizeBytes)}',
+    ];
+  }
+
+  String _integrityLabelForProgress(ModelDownloadProgress progress) {
+    return switch (progress.status) {
+      ModelDownloadStatus.completed => 'Integrity: verified',
+      ModelDownloadStatus.verifying => 'Integrity: verifying',
+      ModelDownloadStatus.failed when _isIntegrityFailure(progress) =>
+        'Integrity: repair required',
+      ModelDownloadStatus.failed => 'Integrity: not verified',
+      _ => 'Integrity: pending verification',
+    };
+  }
+
+  String _integrityLabelForInstalledModel(ModelEntry model) {
+    return switch (model.updateState) {
+      ModelUpdateState.upToDate ||
+      ModelUpdateState.updateAvailable => 'Integrity: verified',
+      ModelUpdateState.unknown => 'Integrity: verified, receipt unknown',
+      ModelUpdateState.notInstalled => 'Integrity: verifies after download',
+    };
+  }
+
+  bool _isIntegrityFailure(ModelDownloadProgress progress) {
+    final code = progress.failureCode?.toLowerCase();
+    return code == 'integritymismatch' ||
+        code == 'integrity_mismatch' ||
+        code == 'integrity-mismatch';
   }
 
   Widget _buildVersionBadge(BuildContext context, String version) {
@@ -712,6 +844,15 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     WidgetRef ref,
     OfflineModelInfo model,
   ) {
+    final manager = ref.read(intelligentModelManagerProvider);
+    late final Future<bool> artifactPresentFuture;
+    try {
+      artifactPresentFuture = manager.isModelInstalled(model.id);
+    } on Object {
+      // Test and legacy gateways may not expose artifact inspection yet; the
+      // health center remains usable with the model snapshot as a fallback.
+      artifactPresentFuture = Future<bool>.value(model.isDownloaded);
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ModelHealthCenterLoaderScreen(
@@ -724,27 +865,84 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 onTimeout: () =>
                     ModelCompatibilityResult.compatible(MemorySeverity.warning),
               ),
+          artifactPresentFuture: artifactPresentFuture,
           onAction: (action) {
             Navigator.of(context).pop();
-            final message = switch (action) {
-              ModelHealthAction.retry =>
-                'Retry the model warm-up from Model Management.',
-              ModelHealthAction.resumeDownload =>
-                'Resume the download from Model Management.',
-              ModelHealthAction.repair =>
-                'Repair or re-download this model from Model Management.',
-              ModelHealthAction.reduceContext =>
-                'Reduce context in AI preferences, then warm the model again.',
-              ModelHealthAction.chooseAlternative =>
-                'Choose another installed model from Model Management.',
-            };
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(message)));
+            unawaited(_runHealthAction(context, ref, model, action));
           },
         ),
       ),
     );
+  }
+
+  Future<void> _runHealthAction(
+    BuildContext context,
+    WidgetRef ref,
+    OfflineModelInfo model,
+    ModelHealthAction action,
+  ) async {
+    try {
+      final manager = ref.read(intelligentModelManagerProvider);
+      final message = switch (action) {
+        ModelHealthAction.retry => await _retryWarmup(manager, model.id),
+        ModelHealthAction.resumeDownload => await _resumeDownload(
+          manager,
+          model.id,
+        ),
+        ModelHealthAction.repair => await _repairDownload(manager, model.id),
+        ModelHealthAction.reduceContext => await _reduceContext(ref),
+        ModelHealthAction.chooseAlternative =>
+          'Choose another installed model from Model Management.',
+      };
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Recovery failed: $error')));
+    }
+  }
+
+  Future<String> _retryWarmup(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    final result = await manager.warmModel(modelId);
+    return switch (result.status) {
+      ModelWarmupStatus.warmed ||
+      ModelWarmupStatus.alreadyResident => 'Model warm-up succeeded.',
+      ModelWarmupStatus.unavailable =>
+        'Retry unavailable: ${result.detail ?? 'runtime unavailable'}.',
+      ModelWarmupStatus.failed =>
+        'Warm-up failed: ${result.detail ?? 'runtime failure'}.',
+    };
+  }
+
+  Future<String> _resumeDownload(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    await manager.resumeDownload(modelId);
+    return 'Model download resumed.';
+  }
+
+  Future<String> _repairDownload(
+    IntelligentModelManager manager,
+    String modelId,
+  ) async {
+    await manager.repairModel(modelId);
+    return 'Repair started with a fresh verified download.';
+  }
+
+  Future<String> _reduceContext(WidgetRef ref) async {
+    final notifier = ref.read(aiPreferencesSettingsProvider.notifier);
+    final settings = ref.read(aiPreferencesSettingsProvider);
+    final nextContext = settings.contextLength <= 1024 ? 512 : 1024;
+    await notifier.update(settings.copyWith(contextLength: nextContext));
+    return 'Context reduced to $nextContext tokens. Retry the model now.';
   }
 
   void _showDeleteConfirmation(
@@ -788,12 +986,17 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
 
   String _formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';
+    if (bytes < 1024) return '$bytes B';
     var doubleBytes = bytes / (1024 * 1024 * 1024);
     if (doubleBytes >= 0.1) {
       return '${doubleBytes.toStringAsFixed(1)} GB';
     }
     doubleBytes = bytes / (1024 * 1024);
-    return '${doubleBytes.toStringAsFixed(0)} MB';
+    if (doubleBytes >= 0.1) {
+      return '${doubleBytes.toStringAsFixed(1)} MB';
+    }
+    doubleBytes = bytes / 1024;
+    return '${doubleBytes.toStringAsFixed(1)} KB';
   }
 
   String _formatParams(int params) {

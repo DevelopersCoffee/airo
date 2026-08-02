@@ -62,18 +62,19 @@ on:
         type: choice
         options:
           - full
+          - coins
       version:
         description: 'Artifact and release version label'
         required: true
-        default: v0.0.5
+        default: v0.0.6
       build_name:
-        description: 'Android versionName, for example 0.0.5'
+        description: 'Android versionName, for example 0.0.6'
         required: true
-        default: 0.0.5
+        default: 0.0.6
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '7'
+        default: '8'
       release_ref:
         description: 'Git ref to release; must contain latest origin/main'
         required: true
@@ -121,8 +122,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name }}
-  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.5' }}
-  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '7' }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.6' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '8' }}
   PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'full' }}
 
 jobs:
@@ -193,6 +194,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [prepare-release-ref]
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     outputs:
       signing_cert: ${{ steps.android_signing.outputs.signing_cert }}
     steps:
@@ -213,6 +219,14 @@ jobs:
               echo "APP_PLATFORM=mobileFull" >> "$GITHUB_ENV"
               echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
               echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
+              ;;
+            coins)
+              echo "TARGET_ENTRYPOINT=lib/main_coins.dart" >> "$GITHUB_ENV"
+              echo "PROFILE_PUBSPEC=pubspec_coins.yaml" >> "$GITHUB_ENV"
+              echo "APP_VARIANT=coins" >> "$GITHUB_ENV"
+              echo "APP_PLATFORM=mobileFull" >> "$GITHUB_ENV"
+              echo "PACKAGE_ID=io.airo.app.coins" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=AiroCoins" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile: $PROFILE"
@@ -409,8 +423,13 @@ jobs:
 
       - name: Apply mobile/tablet pubspec
         run: |
-          cp app/pubspec.yaml app/pubspec.yaml.backup
-          cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+          # The full profile builds from pubspec.yaml itself; copying it onto
+          # itself errors under `set -e` ("same file"). Only swap when the
+          # profile uses a distinct pubspec (e.g. pubspec_coins.yaml).
+          if [ "$PROFILE_PUBSPEC" != "pubspec.yaml" ]; then
+            cp app/pubspec.yaml app/pubspec.yaml.backup
+            cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+          fi
 
       - name: Get dependencies
         run: |
@@ -524,6 +543,11 @@ jobs:
             echo "| airo-mobile-tablet-debug-info-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | Obfuscation symbol lookup |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Generate signed build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: release-artifacts/*
+
       - name: Upload mobile/tablet release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -560,6 +584,10 @@ jobs:
             full)
               echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
               echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
+              ;;
+            coins)
+              echo "PACKAGE_ID=io.airo.app.coins" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=AiroCoins" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for Play upload: $PROFILE"
@@ -651,6 +679,10 @@ jobs:
             full)
               echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
               echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
+              ;;
+            coins)
+              echo "PACKAGE_ID=io.airo.app.coins" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=AiroCoins" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for Firebase distribution: $PROFILE"

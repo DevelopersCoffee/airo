@@ -30,4 +30,25 @@ void main() {
     );
     expect(await store.load(), isEmpty);
   });
+
+  test(
+    'chat history serializes rapid saves so the newest snapshot wins',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final store = ChatHistoryStore(preferences: preferences);
+      final timestamp = DateTime.utc(2026, 7, 30, 2, 30);
+
+      final first = store.save([
+        ChatHistoryEntry(text: 'older', isUser: true, timestamp: timestamp),
+      ]);
+      final second = store.save([
+        ChatHistoryEntry(text: 'newer', isUser: true, timestamp: timestamp),
+      ]);
+      await Future.wait([first, second]);
+
+      final loaded = await store.load();
+      expect(loaded.single.text, 'newer');
+    },
+  );
 }

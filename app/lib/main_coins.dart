@@ -27,8 +27,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'core/coins/coin_vault_module.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
+import 'package:feature_coin/feature_coin.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

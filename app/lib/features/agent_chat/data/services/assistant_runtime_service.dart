@@ -1,5 +1,6 @@
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/llama_gguf_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import 'package:flutter/foundation.dart';
 import '../../presentation/screens/model_library_screen.dart';
@@ -186,6 +187,7 @@ class AssistantRuntimeService {
   AssistantRuntimeService({
     GeminiNanoService? geminiNano,
     LiteRtLmService? liteRtLm,
+    LlamaGgufService? llamaGguf,
     GeminiApiService? geminiCloud,
     GeminiNanoSupportCheck? isGeminiNanoSupported,
     GeminiNanoInitializer? initializeGeminiNano,
@@ -206,6 +208,7 @@ class AssistantRuntimeService {
     this._debugTraceEmitter,
   }) : _geminiNano = geminiNano ?? GeminiNanoService(),
        _liteRtLm = liteRtLm ?? LiteRtLmService(),
+       _llamaGguf = llamaGguf ?? LlamaGgufService(),
        _geminiCloud = geminiCloud ?? geminiApiService,
        _isGeminiNanoSupportedOverride = isGeminiNanoSupported,
        _initializeGeminiNanoOverride = initializeGeminiNano,
@@ -226,6 +229,7 @@ class AssistantRuntimeService {
 
   final GeminiNanoService _geminiNano;
   final LiteRtLmService _liteRtLm;
+  final LlamaGgufService _llamaGguf;
   final GeminiApiService _geminiCloud;
   final GeminiNanoSupportCheck? _isGeminiNanoSupportedOverride;
   final GeminiNanoInitializer? _initializeGeminiNanoOverride;
@@ -248,6 +252,7 @@ class AssistantRuntimeService {
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
+    int? contextLengthOverride,
     void Function(AssistantRuntimePreparationProgress progress)? onProgress,
     bool Function()? isCancelled,
   }) async {
@@ -386,6 +391,94 @@ class AssistantRuntimeService {
 
       case litertGemmaAssistantModelId:
       default:
+        final offlineModelId = offlineModelIdFromAssistantModelId(candidate.id);
+        if (offlineModelId != null &&
+            candidate.id != litertGemmaAssistantModelId) {
+          final package =
+              candidate.package ??
+              await _resolveOfflinePackageOrNull(candidate.id);
+          if (package == null || !package.isDownloaded) {
+            return AssistantRuntimePreparationResult.blocked(
+              AssistantRuntimeDiagnosticEnvelope(
+                runtimeId: candidate.id,
+                runtimeName: candidate.name,
+                summary: 'The selected GGUF model is not installed.',
+                detail: 'A valid local model path is required before loading.',
+                deviceLabel: resolvedDeviceLabel,
+                platformLabel: platformLabel,
+                reasonCode: 'model_missing',
+                repairActions: const [
+                  'Download the model from Profile > AI Models.',
+                  'Verify the model file before trying again.',
+                  'Choose another installed local model.',
+                ],
+              ),
+            );
+          }
+          if (!await _llamaGguf.isAvailable()) {
+            return AssistantRuntimePreparationResult.blocked(
+              AssistantRuntimeDiagnosticEnvelope(
+                runtimeId: candidate.id,
+                runtimeName: candidate.name,
+                summary: 'The native GGUF backend is unavailable.',
+                detail:
+                    'The llama.cpp backend is unavailable, so this device cannot load the selected GGUF model locally.',
+                deviceLabel: resolvedDeviceLabel,
+                platformLabel: platformLabel,
+                reasonCode: 'native_backend_unavailable',
+                repairActions: const [
+                  'Choose a LiteRT-LM package.',
+                  'Configure a compatible remote llama.cpp server.',
+                  'Retry after restarting the app.',
+                ],
+              ),
+            );
+          }
+          emit(
+            AssistantRuntimePreparationPhase.allocate,
+            0.4,
+            'Load local model',
+            'Mapping the verified GGUF artifact into the native runtime.',
+          );
+          final loadCancel = cancelled();
+          if (loadCancel != null) return loadCancel;
+          final contextSize = _effectiveContextLength(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
+          final loaded = await _llamaGguf.loadModel(
+            package,
+            contextSize: contextSize,
+          );
+          if (!loaded) {
+            return AssistantRuntimePreparationResult.blocked(
+              AssistantRuntimeDiagnosticEnvelope(
+                runtimeId: candidate.id,
+                runtimeName: candidate.name,
+                summary: 'The GGUF model could not be initialized.',
+                detail:
+                    'The native loader rejected the verified model artifact.',
+                deviceLabel: resolvedDeviceLabel,
+                platformLabel: platformLabel,
+                reasonCode: 'init_failed',
+                repairActions: const [
+                  'Repair or re-download the model artifact.',
+                  'Reduce the context size and retry.',
+                  'Choose another installed model.',
+                ],
+              ),
+            );
+          }
+          final readyCancel = cancelled();
+          if (readyCancel != null) return readyCancel;
+          emit(
+            AssistantRuntimePreparationPhase.ready,
+            1,
+            'Runtime ready',
+            '${candidate.name} finished its local preflight and is ready to launch.',
+          );
+          return AssistantRuntimePreparationResult.ready();
+        }
         final downloadedPackage = await _resolveDownloadedLiteRtPackage(
           candidate.id,
           preferredPackage: candidate.package,
@@ -413,14 +506,15 @@ class AssistantRuntimeService {
         final runtimeReportedAvailable =
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
-        // A native channel may be present on the device even when no model
-        // source was configured. Treat that as unavailable in production;
-        // test overrides remain explicit and can model a ready backend.
+        // A native channel or configured download URL is not a runnable model.
+        // Default LiteRT startup requires either a verified package path or an
+        // explicit local artifact path. Test overrides remain explicit and can
+        // model a ready backend without depending on device storage.
         final available =
-            downloadedPackage != null ||
+            (downloadedPackage?.filePath?.trim().isNotEmpty ?? false) ||
             (runtimeReportedAvailable &&
                 (_isLiteRtAvailableOverride != null ||
-                    _liteRtLm.hasConfiguredModel));
+                    _liteRtLm.hasConfiguredModelPath));
         if (!available) {
           return AssistantRuntimePreparationResult.blocked(
             AssistantRuntimeDiagnosticEnvelope(
@@ -434,16 +528,22 @@ class AssistantRuntimeService {
               reasonCode: 'runtime_unavailable',
               repairActions: const [
                 'Open Profile > AI Models and install a compatible package.',
-                'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL when launching locally.',
+                'Set LITERT_LM_MODEL_PATH to a verified local artifact when launching locally.',
               ],
             ),
           );
         }
 
         if (package != null) {
+          final compatibilityPackage = _packageWithContextOverride(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
           final compatibility =
-              await (_checkModelCompatibilityOverride?.call(package) ??
-                  _checkCompatibility(package));
+              await (_checkModelCompatibilityOverride?.call(
+                    compatibilityPackage,
+                  ) ??
+                  _checkCompatibility(compatibilityPackage));
           if (!compatibility.isCompatible) {
             return AssistantRuntimePreparationResult.blocked(
               AssistantRuntimeDiagnosticEnvelope(
@@ -477,12 +577,16 @@ class AssistantRuntimeService {
         );
         final loadCancel = cancelled();
         if (loadCancel != null) return loadCancel;
-        final warmed = downloadedPackage != null
-            ? await (_warmupLiteRtModelOverride?.call(downloadedPackage) ??
-                  _liteRtLm.warmupModel(downloadedPackage))
-            : package != null
-            ? await (_warmupLiteRtModelOverride?.call(package) ??
-                  _liteRtLm.warmupModel(package))
+        final selectedPackage = downloadedPackage ?? package;
+        final preparedPackage = selectedPackage == null
+            ? null
+            : _packageWithContextOverride(
+                selectedPackage,
+                contextLengthOverride: contextLengthOverride,
+              );
+        final warmed = preparedPackage != null
+            ? await (_warmupLiteRtModelOverride?.call(preparedPackage) ??
+                  _liteRtLm.warmupModel(preparedPackage))
             : await (_warmupLiteRtInstalledModelOverride?.call() ??
                   _liteRtLm.warmupInstalledModel());
         if (!warmed) {
@@ -628,10 +732,26 @@ class AssistantRuntimeService {
         }
         final package = await _resolveOfflinePackage(runtimeId);
         if (!AssistantModelLibraryState.isLiteRtPackage(package)) {
-          throw AssistantRuntimeUnavailableException(
+          if (!await _llamaGguf.isAvailable()) {
+            throw AssistantRuntimeUnavailableException(
+              runtimeId,
+              'This GGUF package is installed, but the native llama.cpp backend is unavailable on this device.',
+            );
+          }
+          final responseBuffer = StringBuffer();
+          await for (final chunk in _llamaGguf.generate(
+            prompt: fullPrompt,
+            maxTokens: 512,
+          )) {
+            responseBuffer.write(chunk);
+          }
+          final response = _nonEmptyOrUnavailable(
             runtimeId,
-            'This downloaded GGUF package cannot run locally because the native llama.cpp backend is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.',
+            responseBuffer.toString(),
+            offlinePackageUnavailableMessage,
           );
+          _emitResponseTrace(runtimeId, response, detail: package.id);
+          return response;
         }
         final response = _nonEmptyOrUnavailable(
           runtimeId,
@@ -775,6 +895,28 @@ class AssistantRuntimeService {
   ) async {
     final registry = ModelRegistry()..registerModel(package);
     return registry.checkCompatibility(package);
+  }
+
+  OfflineModelInfo _packageWithContextOverride(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final contextLength = _effectiveContextLength(
+      package,
+      contextLengthOverride: contextLengthOverride,
+    );
+    if (contextLength == package.contextLength) {
+      return package;
+    }
+    return package.copyWith(contextLength: contextLength);
+  }
+
+  int _effectiveContextLength(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final requested = contextLengthOverride ?? package.contextLength;
+    return requested.clamp(512, 8192).toInt();
   }
 
   Future<OfflineModelInfo?> _resolveDownloadedLiteRtPackage(

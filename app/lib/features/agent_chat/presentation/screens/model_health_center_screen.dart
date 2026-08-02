@@ -8,23 +8,30 @@ class ModelHealthCenterLoaderScreen extends StatelessWidget {
     super.key,
     required this.model,
     required this.compatibilityFuture,
+    this.artifactPresentFuture,
     this.onAction,
   });
 
   final OfflineModelInfo model;
   final Future<ModelCompatibilityResult> compatibilityFuture;
+  final Future<bool>? artifactPresentFuture;
   final ValueChanged<ModelHealthAction>? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ModelCompatibilityResult>(
-      future: compatibilityFuture,
+    return FutureBuilder<List<Object?>>(
+      future: Future.wait<Object?>([
+        compatibilityFuture,
+        artifactPresentFuture ?? Future<bool>.value(model.isDownloaded),
+      ]),
       builder: (context, snapshot) {
-        final compatibility = snapshot.data;
-        if (compatibility != null) {
+        final compatibility = snapshot.data?[0] as ModelCompatibilityResult?;
+        final artifactPresent = snapshot.data?[1] as bool?;
+        if (compatibility != null && artifactPresent != null) {
           return ModelHealthCenterScreen(
             report: ModelHealthReport.fromFacts(
               model: model,
+              artifactPresent: artifactPresent,
               compatibility: compatibility,
             ),
             onAction: onAction,
@@ -72,7 +79,8 @@ class ModelHealthCenterScreen extends StatelessWidget {
         children: [
           Semantics(
             container: true,
-            label: '${report.modelName} runtime status: ${report.status.name}',
+            label:
+                '${report.modelName} runtime status: ${_statusLabel(report.status)}',
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(18),
@@ -117,7 +125,7 @@ class ModelHealthCenterScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Why?', style: theme.textTheme.titleMedium),
+                  Text(_whyTitle(report), style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(report.explanation),
                   if (report.availableMemoryMb != null &&
@@ -161,14 +169,21 @@ class ModelHealthCenterScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (final entry in report.trace!.entries)
-                    ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        radius: 12,
-                        child: Text('${entry.sequence}'),
+                    Semantics(
+                      container: true,
+                      label:
+                          'Runtime trace step ${entry.sequence}: ${_traceLabel(entry.event)}, ${entry.elapsedMs} milliseconds.',
+                      child: ExcludeSemantics(
+                        child: ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            radius: 12,
+                            child: Text('${entry.sequence}'),
+                          ),
+                          title: Text(_traceLabel(entry.event)),
+                          trailing: Text('${entry.elapsedMs} ms'),
+                        ),
                       ),
-                      title: Text(_traceLabel(entry.event)),
-                      trailing: Text('${entry.elapsedMs} ms'),
                     ),
                 ],
               ),
@@ -225,6 +240,14 @@ class ModelHealthCenterScreen extends StatelessWidget {
         ModelHealthReportStatus.unknown => 'Health information pending',
       };
 
+  static String _whyTitle(ModelHealthReport report) => switch (report.status) {
+    ModelHealthReportStatus.ready ||
+    ModelHealthReportStatus.running => 'Why this model can run',
+    ModelHealthReportStatus.preparing ||
+    ModelHealthReportStatus.recoverable ||
+    ModelHealthReportStatus.unknown => 'Why can’t this model load?',
+  };
+
   static IconData _actionIcon(ModelHealthAction action) => switch (action) {
     ModelHealthAction.retry => Icons.refresh,
     ModelHealthAction.resumeDownload => Icons.download,
@@ -276,19 +299,23 @@ class _StageTile extends StatelessWidget {
       ),
     };
     return Semantics(
-      label: '${result.stage.name}: ${result.status.name}. ${result.detail}',
-      child: ListTile(
-        leading: Column(
-          children: [
-            Icon(icon, color: color),
-            if (!isLast)
-              Expanded(
-                child: VerticalDivider(color: color.withValues(alpha: 0.35)),
-              ),
-          ],
+      container: true,
+      label:
+          '${_stageLabel(result.stage)}: ${_stageStatusLabel(result.status)}. ${result.detail}',
+      child: ExcludeSemantics(
+        child: ListTile(
+          leading: Column(
+            children: [
+              Icon(icon, color: color),
+              if (!isLast)
+                Expanded(
+                  child: VerticalDivider(color: color.withValues(alpha: 0.35)),
+                ),
+            ],
+          ),
+          title: Text(_stageLabel(result.stage)),
+          subtitle: Text(result.detail),
         ),
-        title: Text(_stageLabel(result.stage)),
-        subtitle: Text(result.detail),
       ),
     );
   }
@@ -301,4 +328,13 @@ class _StageTile extends StatelessWidget {
     ModelHealthStage.warmedUp => 'Warmed up',
     ModelHealthStage.running => 'Running',
   };
+
+  static String _stageStatusLabel(ModelHealthStageStatus status) =>
+      switch (status) {
+        ModelHealthStageStatus.passed => 'complete',
+        ModelHealthStageStatus.blocked => 'blocked',
+        ModelHealthStageStatus.failed => 'failed',
+        ModelHealthStageStatus.pending => 'in progress',
+        ModelHealthStageStatus.unknown => 'not checked yet',
+      };
 }

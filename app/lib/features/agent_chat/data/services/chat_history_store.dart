@@ -48,8 +48,13 @@ class ChatHistoryStore {
   static const maxEntryCharacters = 20000;
 
   final SharedPreferences? preferences;
+  Future<void> _writeTail = Future<void>.value();
 
   Future<List<ChatHistoryEntry>> load() async {
+    // Do not read a partially updated snapshot while a queued write is still
+    // committing. This keeps restore deterministic after rapid chat turns or
+    // during route disposal.
+    await _writeTail;
     final store = preferences ?? await SharedPreferences.getInstance();
     final raw = store.getString(storageKey);
     if (raw == null) return const [];
@@ -70,22 +75,32 @@ class ChatHistoryStore {
   }
 
   Future<void> save(Iterable<ChatHistoryEntry> entries) async {
-    final store = preferences ?? await SharedPreferences.getInstance();
     final bounded = entries
         .where((entry) => entry.text.length <= maxEntryCharacters)
         .toList(growable: false);
     final start = bounded.length > maxEntries ? bounded.length - maxEntries : 0;
-    await store.setString(
-      storageKey,
-      jsonEncode({
-        'schemaVersion': schemaVersion,
-        'entries': bounded.skip(start).map((entry) => entry.toJson()).toList(),
-      }),
-    );
+    final payload = jsonEncode({
+      'schemaVersion': schemaVersion,
+      'entries': bounded.skip(start).map((entry) => entry.toJson()).toList(),
+    });
+    return _enqueueWrite(() async {
+      final store = preferences ?? await SharedPreferences.getInstance();
+      await store.setString(storageKey, payload);
+    });
   }
 
-  Future<void> clear() async {
-    final store = preferences ?? await SharedPreferences.getInstance();
-    await store.remove(storageKey);
+  Future<void> clear() {
+    return _enqueueWrite(() async {
+      final store = preferences ?? await SharedPreferences.getInstance();
+      await store.remove(storageKey);
+    });
+  }
+
+  Future<void> _enqueueWrite(Future<void> Function() operation) {
+    final result = _writeTail.then<void>((_) => operation());
+    // Keep the queue usable after a failed write, while still returning the
+    // original error to the caller that requested this operation.
+    _writeTail = result.then<void>((_) {}, onError: (_, _) {});
+    return result;
   }
 }
