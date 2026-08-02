@@ -25,3 +25,14 @@ export 'src/runtime/models/model_models.dart';
 export 'src/runtime/models/portability_models.dart';
 export 'src/runtime/models/projection_models.dart';
 export 'src/runtime/models/vault_models.dart';
+
+// Runtime — the port milestone 19 implements against.
+export 'src/runtime/mind_runtime.dart';
+export 'src/runtime/ports/capability_port.dart';
+export 'src/runtime/ports/context_port.dart';
+export 'src/runtime/ports/mesh_port.dart';
+export 'src/runtime/ports/model_port.dart';
+export 'src/runtime/ports/operation_log_port.dart';
+export 'src/runtime/ports/portability_port.dart';
+export 'src/runtime/ports/projection_port.dart';
+export 'src/runtime/ports/vault_port.dart';
