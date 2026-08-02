@@ -73,6 +73,53 @@ void main() {
       when(() => mockWarmup.residentModelIds).thenReturn(<String>{});
     });
 
+    test('snapshot renders support-safe download diagnostics markdown', () {
+      final snapshot = ModelManagerSnapshot(
+        models: const [
+          ModelEntry(
+            id: 'gemma-4b',
+            name: 'Gemma 4B',
+            version: '1.0.0',
+            installedVersion: '1.0.0',
+            description: 'Local model.',
+            sizeBytes: 4 * 1024 * 1024 * 1024,
+            isDownloaded: true,
+            isActive: true,
+            isRecommended: true,
+            isResident: true,
+            updateState: ModelUpdateState.upToDate,
+          ),
+        ],
+        downloadQueue: const [
+          ModelDownloadProgress(
+            modelId: 'vision-pack',
+            totalBytes: 2048,
+            downloadedBytes: 1024,
+            status: ModelDownloadStatus.failed,
+            failureCode: 'integrity_mismatch',
+            retryCount: 2,
+            resumeSupported: true,
+          ),
+        ],
+        storageUsedBytes: 4 * 1024 * 1024 * 1024,
+      );
+
+      final markdown = snapshot.toMarkdown(
+        generatedAt: DateTime.utc(2026, 8, 2),
+      );
+
+      expect(markdown, contains('# Airo Model Manager Diagnostics'));
+      expect(markdown, contains('| Installed | `1` |'));
+      expect(markdown, contains('| Download queue | `1` |'));
+      expect(markdown, contains('- `vision-pack`'));
+      expect(markdown, contains('  - Integrity: `repair_required`'));
+      expect(markdown, contains('  - Failure code: `integrity_mismatch`'));
+      expect(markdown, contains('- `gemma-4b` Gemma 4B'));
+      expect(markdown, contains('  - Resident: `true`'));
+      expect(markdown, isNot(contains('/Users/')));
+      expect(markdown, isNot(contains('/storage/')));
+    });
+
     test(
       'listModels maps OfflineModelInfo to ModelEntry correctly when downloaded',
       () async {
