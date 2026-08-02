@@ -31,6 +31,23 @@ void main() {
     expect(await store.load(), isEmpty);
   });
 
+  test('chat history does not persist empty streaming placeholders', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final store = ChatHistoryStore(preferences: preferences);
+    final timestamp = DateTime.utc(2026, 7, 30, 2, 30);
+
+    await store.save([
+      ChatHistoryEntry(text: 'question', isUser: true, timestamp: timestamp),
+      ChatHistoryEntry(text: '', isUser: false, timestamp: timestamp),
+      ChatHistoryEntry(text: '   ', isUser: false, timestamp: timestamp),
+      ChatHistoryEntry(text: 'answer', isUser: false, timestamp: timestamp),
+    ]);
+
+    final loaded = await store.load();
+    expect(loaded.map((entry) => entry.text), ['question', 'answer']);
+  });
+
   test(
     'chat history serializes rapid saves so the newest snapshot wins',
     () async {
