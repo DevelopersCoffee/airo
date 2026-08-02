@@ -400,6 +400,63 @@ void main() {
     expect(downloadService.retriedModelIds, contains('gemma-progress'));
   });
 
+  testWidgets('stalled downloads expose retry instead of pause', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final downloadService = _FakeModelDownloadService();
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'gemma-stalled': ModelCompatibilityResult.compatible(
+              MemorySeverity.safe,
+            ),
+          },
+        )..registerModel(
+          const OfflineModelInfo(
+            id: 'gemma-stalled',
+            name: 'Gemma Stalled',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 2048,
+            provider: AIProvider.gemma,
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelDownloadServiceProvider.overrideWithValue(downloadService),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)
+              ..state = {
+                'gemma-stalled': ModelDownloadProgress(
+                  modelId: 'gemma-stalled',
+                  totalBytes: 100,
+                  downloadedBytes: 50,
+                  status: ModelDownloadStatus.downloading,
+                  speedBytesPerSecond: 0,
+                  lastProgressAt: DateTime.now().subtract(
+                    const Duration(minutes: 5),
+                  ),
+                ),
+              },
+          ),
+        ],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Stalled'), findsOneWidget);
+    expect(find.textContaining('No throughput'), findsOneWidget);
+    expect(find.byTooltip('Pause download'), findsNothing);
+    await tester.tap(find.byTooltip('Retry download'));
+    await tester.pump();
+    expect(downloadService.retriedModelIds, contains('gemma-stalled'));
+  });
+
   testWidgets('downloaded models can be activated and deleted', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final downloadService = _FakeModelDownloadService(deleteResult: true);
