@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
                   'Continue where you left off or move between Airo spaces.',
               actions: [
                 FilledButton.tonalIcon(
-                  onPressed: () => context.go('/mind/chat'),
+                  onPressed: () => context.go('/assistant/chat'),
                   icon: const Icon(Icons.auto_awesome),
                   label: const Text('Ask Airo'),
                 ),
@@ -44,10 +44,10 @@ class HomeScreen extends StatelessWidget {
             child: _AdaptiveDestinationGrid(
               destinations: [
                 _HomeDestination(
-                  title: 'Mind',
+                  title: 'Assistant',
                   description: 'Think, write, and work with your local AI.',
                   icon: Icons.psychology_outlined,
-                  route: '/mind',
+                  route: '/assistant',
                 ),
                 _HomeDestination(
                   title: 'Coins',

@@ -3,7 +3,7 @@ import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:airo_app/features/mind/presentation/screens/prompt_lab_screen.dart';
+import 'package:airo_app/features/assistant/presentation/screens/prompt_lab_screen.dart';
 
 void main() {
   testWidgets('Prompt Lab exposes negative prompt and runtime controls', (
@@ -45,7 +45,7 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (_, _) => const PromptLabScreen()),
         GoRoute(
-          path: '/mind/chat',
+          path: '/assistant/chat',
           builder: (_, state) {
             prefill = state.uri.queryParameters['prefill'];
             return const Scaffold(body: Text('Chat route'));

@@ -2,32 +2,38 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../shared/widgets/airo_action_card.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 
-/// Mind hub for wellbeing, reflection, and light motivation.
-class MindScreen extends ConsumerStatefulWidget {
-  const MindScreen({super.key});
+/// Reflection, breathing, and light motivation.
+///
+/// Not Airo Mind — that is `packages/feature_mind`, the local-first runtime.
+/// This screen and the assistant hub were one screen called "Mind" until
+/// milestone 22 needed the name back, and neither half was wellbeing alone.
+class WellbeingScreen extends ConsumerStatefulWidget {
+  const WellbeingScreen({super.key});
 
   @override
-  ConsumerState<MindScreen> createState() => _MindScreenState();
+  ConsumerState<WellbeingScreen> createState() => _WellbeingScreenState();
 }
 
-class _MindScreenState extends ConsumerState<MindScreen> {
+class _WellbeingScreenState extends ConsumerState<WellbeingScreen> {
   bool _showGreeting = true;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final greeting = _timeGreeting();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: AppBar(title: const Text('Wellbeing')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
           if (_showGreeting) ...[
             _GreetingCard(
-              greeting: greeting,
+              greeting: _timeGreeting(),
               onDismiss: () => setState(() => _showGreeting = false),
             ),
             const SizedBox(height: 16),
@@ -38,23 +44,23 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             elevation: 0,
           ),
           const SizedBox(height: 16),
-          Text('Mind Actions', style: theme.textTheme.titleLarge),
+          Text('Wellbeing Actions', style: theme.textTheme.titleLarge),
           const SizedBox(height: 12),
-          _MindActionCard(
+          AiroActionCard(
             title: 'Daily Insight',
             subtitle: 'Open your assistant for a short guided check-in.',
             icon: Icons.lightbulb_outline,
-            onTap: () => context.push('/mind/chat'),
+            onTap: () => context.push('/assistant/chat'),
           ),
           const SizedBox(height: 12),
-          _MindActionCard(
+          AiroActionCard(
             title: 'Breathing Exercise',
             subtitle: 'A guided 60-second breathing reset.',
             icon: Icons.air,
             onTap: () => _showBreathingExercise(context),
           ),
           const SizedBox(height: 12),
-          _MindActionCard(
+          AiroActionCard(
             title: 'Reflection',
             subtitle: 'Capture a quick note about how today feels.',
             icon: Icons.edit_note,
@@ -66,8 +72,8 @@ class _MindScreenState extends ConsumerState<MindScreen> {
           Row(
             children: const [
               Expanded(
-                child: _MindStatCard(
-                  label: 'Mind Streak',
+                child: _WellbeingStatCard(
+                  label: 'Wellbeing Streak',
                   value: '4 days',
                   detail: 'Daily check-ins',
                   icon: Icons.local_fire_department,
@@ -75,7 +81,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
               ),
               SizedBox(width: 12),
               Expanded(
-                child: _MindStatCard(
+                child: _WellbeingStatCard(
                   label: 'Reflections',
                   value: '2 this week',
                   detail: 'Journaling momentum',
@@ -85,81 +91,7 @@ class _MindScreenState extends ConsumerState<MindScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const _MindProgressCard(),
-          const SizedBox(height: 24),
-          Text('Airo Mind AI Lab', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 6),
-          Text(
-            'Explore private, on-device AI use cases. Downloaded local models keep prompts on this device.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          _MindActionCard(
-            title: 'AI Chat',
-            subtitle: 'Multi-turn chat with runtime and action traces.',
-            icon: Icons.chat_bubble_outline,
-            onTap: () => context.push('/mind/chat'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Agent Skills',
-            subtitle: 'Ground answers with tools, maps, and visual summaries.',
-            icon: Icons.extension_outlined,
-            onTap: () => context.push('/mind/skills'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Ask Image',
-            subtitle: 'Upload an image and ask Airo questions about it.',
-            icon: Icons.image_outlined,
-            onTap: () => context.push('/quest/new'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Audio Scribe',
-            subtitle:
-                'Capture speech, review the transcript, and translate with Airo.',
-            icon: Icons.mic_none,
-            onTap: () => context.push('/mind/audio-scribe'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Prompt Lab',
-            subtitle: 'Compare prompts with temperature and top-k controls.',
-            icon: Icons.tune,
-            onTap: () => context.push('/mind/prompt-lab'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Mobile Actions & Tiny Garden',
-            subtitle:
-                'Try safe device commands and a playful natural-language garden.',
-            icon: Icons.local_florist_outlined,
-            onTap: () => context.push('/mind/mobile-actions'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Model Management & Benchmark',
-            subtitle:
-                'Install models, check readiness, and understand performance.',
-            icon: Icons.analytics_outlined,
-            onTap: () => context.push('/mind/models'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Device Capability Report',
-            subtitle: 'See memory, on-device AI support, and model fit.',
-            icon: Icons.memory_outlined,
-            onTap: () => context.push('/mind/device-capabilities'),
-          ),
-          const SizedBox(height: 10),
-          _MindActionCard(
-            title: 'Model Advisor',
-            subtitle:
-                'Choose a capability and get a device-fit recommendation.',
-            icon: Icons.auto_awesome_outlined,
-            onTap: () => context.push('/mind/model-advisor'),
-          ),
+          const _WellbeingProgressCard(),
         ],
       ),
     );
@@ -264,63 +196,8 @@ class _GreetingCard extends StatelessWidget {
   }
 }
 
-class _MindActionCard extends StatelessWidget {
-  const _MindActionCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final domain = AiroDomainTokens.of(context);
-    final visual = AiroVisualTokens.of(context);
-
-    return AiroSurface(
-      level: AiroSurfaceLevel.raised,
-      onTap: onTap,
-      semanticLabel: '$title. $subtitle',
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: domain.accent.withValues(alpha: 0.12),
-              borderRadius: visual.smallRadius,
-            ),
-            child: Icon(icon, color: domain.accent),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(subtitle),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
-    );
-  }
-}
-
-class _MindStatCard extends StatelessWidget {
-  const _MindStatCard({
+class _WellbeingStatCard extends StatelessWidget {
+  const _WellbeingStatCard({
     required this.label,
     required this.value,
     required this.detail,
@@ -363,8 +240,8 @@ class _MindStatCard extends StatelessWidget {
   }
 }
 
-class _MindProgressCard extends StatelessWidget {
-  const _MindProgressCard();
+class _WellbeingProgressCard extends StatelessWidget {
+  const _WellbeingProgressCard();
 
   @override
   Widget build(BuildContext context) {

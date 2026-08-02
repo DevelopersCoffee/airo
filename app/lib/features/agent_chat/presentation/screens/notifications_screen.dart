@@ -158,7 +158,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _openNotificationInChat(ScheduledAgentNotification notification) {
     final prompt = buildNotificationChatPrefill(notification);
     final uri = Uri(
-      path: '/mind/chat',
+      path: '/assistant/chat',
       queryParameters: prompt.isEmpty ? null : {'prefill': prompt},
     );
     context.push(uri.toString());

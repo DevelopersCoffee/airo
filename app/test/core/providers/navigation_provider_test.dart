@@ -7,7 +7,7 @@ void main() {
     test('uses the seven-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
         'Coins',
-        'Mind',
+        'Assistant',
         'Beats',
         'Live',
         'Arena',
@@ -29,7 +29,7 @@ void main() {
     test('uses stable root paths for each tab', () {
       expect(AppNavigationTab.values.map((tab) => tab.path), [
         '/money',
-        '/mind',
+        '/assistant',
         '/music',
         '/iptv',
         '/games',
@@ -113,7 +113,7 @@ void main() {
 
       expect(phoneTabs.map((t) => t.label).toList(), [
         'Coins',
-        'Mind',
+        'Assistant',
         'Beats',
         'Live',
       ]);
@@ -139,7 +139,7 @@ void main() {
       expect(policy.compactWidthBreakpoint, 600);
       expect(wideLayout.persistentTabs.map((t) => t.label).toList(), [
         'Coins',
-        'Mind',
+        'Assistant',
         'Beats',
         'Live',
         'Arena',
@@ -154,13 +154,16 @@ void main() {
 
     test('keeps shell-owned headers only on routes without local app bars', () {
       expect(appShellHeaderModeForLocation('/money'), AppShellHeaderMode.shell);
-      expect(appShellHeaderModeForLocation('/mind'), AppShellHeaderMode.shell);
       expect(
-        appShellHeaderModeForLocation('/mind/chat'),
+        appShellHeaderModeForLocation('/assistant'),
         AppShellHeaderMode.shell,
       );
       expect(
-        appShellHeaderModeForLocation('/mind/models'),
+        appShellHeaderModeForLocation('/assistant/chat'),
+        AppShellHeaderMode.shell,
+      );
+      expect(
+        appShellHeaderModeForLocation('/assistant/models'),
         AppShellHeaderMode.shell,
       );
       expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
@@ -189,11 +192,11 @@ void main() {
         AppShellHeaderMode.route,
       );
       expect(
-        appShellHeaderModeForLocation('/mind/profile'),
+        appShellHeaderModeForLocation('/assistant/profile'),
         AppShellHeaderMode.route,
       );
       expect(
-        appShellHeaderModeForLocation('/mind/notifications'),
+        appShellHeaderModeForLocation('/assistant/notifications'),
         AppShellHeaderMode.route,
       );
       // SettingsHubScreen owns its own Scaffold + AppBar (see

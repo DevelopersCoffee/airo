@@ -63,7 +63,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
     final prompt =
         'Translate the following transcript into $_targetLanguage. '
         'Preserve names, numbers, and speaker intent.\n\n$transcript';
-    context.push('/mind/chat?prefill=${Uri.encodeComponent(prompt)}');
+    context.push('/assistant/chat?prefill=${Uri.encodeComponent(prompt)}');
   }
 
   @override
@@ -158,7 +158,7 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
           ),
           const SizedBox(height: 8),
           TextButton.icon(
-            onPressed: () => context.push('/mind/models'),
+            onPressed: () => context.push('/assistant/models'),
             icon: const Icon(Icons.download_outlined),
             label: const Text('Manage local models'),
           ),

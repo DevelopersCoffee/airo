@@ -26,9 +26,9 @@ enum AppNavigationTab {
     icon: Icons.monetization_on_outlined,
     selectedIcon: Icons.monetization_on,
   ),
-  mind(
-    label: 'Mind',
-    path: '/mind',
+  assistant(
+    label: 'Assistant',
+    path: '/assistant',
     icon: Icons.psychology_outlined,
     selectedIcon: Icons.psychology,
   ),
@@ -163,13 +163,13 @@ class AppNavigationPolicy {
 const appNavigationPolicy = AppNavigationPolicy(
   compactPrimaryTabs: [
     AppNavigationTab.coins,
-    AppNavigationTab.mind,
+    AppNavigationTab.assistant,
     AppNavigationTab.beats,
     AppNavigationTab.live,
   ],
   widePrimaryTabs: [
     AppNavigationTab.coins,
-    AppNavigationTab.mind,
+    AppNavigationTab.assistant,
     AppNavigationTab.beats,
     AppNavigationTab.live,
     AppNavigationTab.arena,
@@ -215,9 +215,9 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     // both entry points under the super-app header so Coins gets the single
     // global notification action instead of owning duplicate local chrome.
     '/money/dashboard',
-    '/mind',
-    '/mind/chat',
-    '/mind/models',
+    '/assistant',
+    '/assistant/chat',
+    '/assistant/models',
     '/games',
     '/home',
   };
@@ -227,7 +227,7 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
 
   const routeOwnedPrefixes = [
     '/money/',
-    '/mind/',
+    '/assistant/',
     '/music',
     '/iptv',
     '/games/',

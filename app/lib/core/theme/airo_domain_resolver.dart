@@ -11,7 +11,7 @@ AiroDomain airoDomainForLocation(String location) {
   if (path.startsWith('/money') || path.startsWith('/vault')) {
     return AiroDomain.money;
   }
-  if (path.startsWith('/mind') || path.startsWith('/agent')) {
+  if (path.startsWith('/assistant') || path.startsWith('/agent')) {
     return AiroDomain.mind;
   }
   if (path.startsWith('/music') || path.startsWith('/beats')) {

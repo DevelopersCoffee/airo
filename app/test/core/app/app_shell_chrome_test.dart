@@ -29,7 +29,7 @@ void main() {
           data: MediaQueryData(size: Size(width, 800)),
           child: Scaffold(
             appBar: AppShellChrome(
-              title: const Text('Mind'),
+              title: const Text('Assistant'),
               user: user,
               config: config,
               onHomeTap: () {},

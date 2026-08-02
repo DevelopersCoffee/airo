@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:airo_app/core/services/voice_search_service.dart';
-import 'package:airo_app/features/mind/presentation/screens/audio_scribe_screen.dart';
+import 'package:airo_app/features/assistant/presentation/screens/audio_scribe_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -184,14 +184,14 @@ void main() {
           builder: (context, state) => const AudioScribeScreen(),
         ),
         GoRoute(
-          path: '/mind/chat',
+          path: '/assistant/chat',
           builder: (context, state) => Text(
             state.uri.queryParameters['prefill'] ?? '',
             key: const Key('prefill_text'),
           ),
         ),
         GoRoute(
-          path: '/mind/models',
+          path: '/assistant/models',
           builder: (context, state) => const Text('Models route'),
         ),
       ],

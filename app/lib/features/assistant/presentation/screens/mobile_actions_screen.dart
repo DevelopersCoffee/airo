@@ -13,7 +13,7 @@ class _MobileActionsScreenState extends State<MobileActionsScreen> {
   final Set<int> _plantedPlots = <int>{};
 
   void _openCommand(String command) {
-    context.push('/mind/chat?prefill=${Uri.encodeComponent(command)}');
+    context.push('/assistant/chat?prefill=${Uri.encodeComponent(command)}');
   }
 
   void _plant(int plot) => setState(() => _plantedPlots.add(plot));

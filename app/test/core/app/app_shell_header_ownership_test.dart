@@ -41,7 +41,7 @@ void main() {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/mind',
+                  path: '/assistant',
                   builder: (context, state) =>
                       const _ShellBodyScreen(label: 'Mind body'),
                   routes: [
@@ -102,10 +102,10 @@ void main() {
   }
 
   testWidgets('shows shell chrome on shell-owned root routes', (tester) async {
-    await pumpShellRoute(tester, initialLocation: '/mind');
+    await pumpShellRoute(tester, initialLocation: '/assistant');
 
     expect(find.byType(AppBar), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Mind'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Assistant'), findsOneWidget);
     expect(find.byKey(const ValueKey('app_shell_home_button')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('app_shell_notifications_button')),
@@ -140,7 +140,7 @@ void main() {
   testWidgets('hides shell chrome on nested route-owned screens', (
     tester,
   ) async {
-    await pumpShellRoute(tester, initialLocation: '/mind/profile');
+    await pumpShellRoute(tester, initialLocation: '/assistant/profile');
 
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Profile'), findsOneWidget);

@@ -34,11 +34,11 @@ void main() {
       );
       expect(
         cards.singleWhere((card) => card.title == 'Audio Scribe').route,
-        '/mind/audio-scribe',
+        '/assistant/audio-scribe',
       );
       expect(
         cards.singleWhere((card) => card.title == 'Tiny Garden').route,
-        '/mind/mobile-actions',
+        '/assistant/mobile-actions',
       );
     });
 
@@ -76,7 +76,7 @@ void main() {
         IntentParser.parse('transcribe audio'),
       );
 
-      expect(result.route, '/mind/audio-scribe');
+      expect(result.route, '/assistant/audio-scribe');
       expect(result.message, contains('on-device capture'));
     });
 

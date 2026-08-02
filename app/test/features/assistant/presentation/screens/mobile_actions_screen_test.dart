@@ -1,4 +1,4 @@
-import 'package:airo_app/features/mind/presentation/screens/mobile_actions_screen.dart';
+import 'package:airo_app/features/assistant/presentation/screens/mobile_actions_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

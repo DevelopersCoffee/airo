@@ -38,10 +38,10 @@ void main() {
     });
 
     final router = GoRouter(
-      initialLocation: '/mind/notifications',
+      initialLocation: '/assistant/notifications',
       routes: [
         GoRoute(
-          path: '/mind/notifications',
+          path: '/assistant/notifications',
           builder: (context, state) => NotificationsScreen(
             scheduler: _FakeNotificationScheduler([
               ScheduledAgentNotification(
@@ -59,7 +59,7 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/mind/chat',
+          path: '/assistant/chat',
           builder: (context, state) => ChatScreen(
             enableAiInitialization: false,
             initialDraft: state.uri.queryParameters['prefill'],

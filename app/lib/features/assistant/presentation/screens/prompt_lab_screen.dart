@@ -66,7 +66,7 @@ class _PromptLabScreenState extends State<PromptLabScreen> {
       if (negative.isNotEmpty) 'Negative prompt: $negative',
       'Runtime controls: temperature=${_temperature.toStringAsFixed(2)}, top-k=${_topK.round()}, max output tokens=$_maxTokens.',
     ].join('\n');
-    context.push('/mind/chat?prefill=${Uri.encodeComponent(composed)}');
+    context.push('/assistant/chat?prefill=${Uri.encodeComponent(composed)}');
   }
 
   Future<void> _runImage(String prompt) async {
