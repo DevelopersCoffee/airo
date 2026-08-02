@@ -76,6 +76,11 @@ class ChatHistoryStore {
 
   Future<void> save(Iterable<ChatHistoryEntry> entries) async {
     final bounded = entries
+        // Do not persist transient streaming placeholders. A generation can add
+        // an empty assistant bubble before the first token arrives; if the app
+        // is paused or killed at that point, restoring that placeholder creates
+        // a blank chat row on the next launch.
+        .where((entry) => entry.text.trim().isNotEmpty)
         .where((entry) => entry.text.length <= maxEntryCharacters)
         .toList(growable: false);
     final start = bounded.length > maxEntries ? bounded.length - maxEntries : 0;
