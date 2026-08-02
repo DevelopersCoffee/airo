@@ -7,10 +7,10 @@ import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:platform_streams/platform_streams.dart';
@@ -131,6 +131,26 @@ void main() {
     expect(
       find.byKey(const ValueKey('airo-tv-channel-library')),
       findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('airo-tv-shell-help-action')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('airo-tv-shell-help-action')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-shell-help-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('Airo TV Help'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('airo-tv-shell-help-dialog')),
+      findsNothing,
     );
   });
 

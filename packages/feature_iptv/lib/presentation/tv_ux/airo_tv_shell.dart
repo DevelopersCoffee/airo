@@ -148,6 +148,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
+      onHelpTap: widget.showVideoStage
+          ? null
+          : () => showAiroTvShellHelpDialog(context),
       onPlaylistSourceTap: widget.onPlaylistSourceTap,
       onWaysToWatchTap: widget.onWaysToWatchTap,
       onScreenshotTap: widget.onShareVideoFrame == null

@@ -14,12 +14,17 @@ class ChannelInfoBar extends ConsumerWidget {
   const ChannelInfoBar({
     super.key,
     this.channel,
+    this.onHelpTap,
     this.onPlaylistSourceTap,
     this.onWaysToWatchTap,
     this.onScreenshotTap,
   });
 
   final IPTVChannel? channel;
+
+  /// Opens Airo TV help when the video stage (and its overlay actions) is
+  /// hidden by a grid-first TV layout. Null hides the button.
+  final VoidCallback? onHelpTap;
 
   /// Opens the playlist-source sheet. Wired on TV where the phone app bar
   /// (the usual home of this action) is suppressed; null hides the button.
@@ -51,6 +56,17 @@ class ChannelInfoBar extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
           const Chip(label: Text('LIVE')),
+          if (onHelpTap != null)
+            TvFocusable(
+              key: const ValueKey('airo-tv-shell-help-action'),
+              semanticLabel: 'Airo TV Help',
+              onSelect: onHelpTap,
+              child: IconButton(
+                onPressed: onHelpTap,
+                tooltip: 'Airo TV Help',
+                icon: const Icon(Icons.help_outline),
+              ),
+            ),
           if (onPlaylistSourceTap != null)
             TvFocusable(
               semanticLabel: 'Playlist source',
