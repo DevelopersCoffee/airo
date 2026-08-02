@@ -93,11 +93,17 @@ class _AspectRatioOption extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Text(
-                label,
-                style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+              // Flexible rather than Text + Spacer: the row has to survive a
+              // narrower viewport (the TV shell reserves a title-safe margin)
+              // and long localised labels, either of which overflowed a
+              // fixed-width label.
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+                ),
               ),
-              const Spacer(),
               if (isSelected) Icon(Icons.check, color: colorScheme.primary),
             ],
           ),
