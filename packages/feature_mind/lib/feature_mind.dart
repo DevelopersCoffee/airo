@@ -41,3 +41,8 @@ export 'src/runtime/ports/vault_port.dart';
 export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
+
+// Widgets that carry the design rules. Every Mind surface uses these rather
+// than re-implementing a pip or a number strip that drifts from the rule.
+export 'src/widgets/mind_number_strip.dart';
+export 'src/widgets/mind_presence_pip.dart';
