@@ -193,4 +193,65 @@ void main() {
     expect(report.failureCode, ModelHealthFailureCode.unknown);
     expect(report.explanation, contains('unknown failure'));
   });
+
+  test('maps low-memory runtime state to reduced-context recovery', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.lowMemory,
+        detail: 'Runtime paused because memory is low.',
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.insufficientMemory);
+    expect(report.explanation, contains('transient memory'));
+    expect(report.actions, contains(ModelHealthAction.reduceContext));
+    expect(report.actions, contains(ModelHealthAction.chooseAlternative));
+    expect(
+      report.stage(ModelHealthStage.runtimeReady).status,
+      ModelHealthStageStatus.blocked,
+    );
+  });
+
+  test('maps thermal runtime state to retry recovery', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.thermallyLimited,
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.thermalLimit);
+    expect(report.explanation, contains('thermally limited'));
+    expect(report.actions, contains(ModelHealthAction.retry));
+  });
+
+  test('maps unavailable runtime state without an error code', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(state: RuntimeHealthState.unavailable),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.runtimeUnavailable);
+    expect(report.explanation, contains('No installed runtime'));
+    expect(report.actions, contains(ModelHealthAction.chooseAlternative));
+  });
+
+  test('maps failed runtime state without an error code', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.failed,
+        detail: 'LiteRT init failed before reporting a typed error.',
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.initializationFailed);
+    expect(report.explanation, contains('LiteRT init failed'));
+    expect(report.actions, contains(ModelHealthAction.retry));
+  });
 }

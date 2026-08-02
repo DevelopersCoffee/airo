@@ -135,9 +135,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('app_nav_overflow')));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('app_nav_overflow_entry_home')),
-    );
+    await tester.tap(find.byKey(const ValueKey('app_nav_overflow_entry_home')));
     await tester.pumpAndSettle();
 
     expect(find.text('Home body'), findsOneWidget);

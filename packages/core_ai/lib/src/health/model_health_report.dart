@@ -302,7 +302,7 @@ class ModelHealthReport {
         compatibility?.memorySeverity == MemorySeverity.critical) {
       return ModelHealthFailureCode.insufficientMemory;
     }
-    return switch (runtimeHealth?.error) {
+    final errorCode = switch (runtimeHealth?.error) {
       RuntimeErrorCode.outOfMemory => ModelHealthFailureCode.insufficientMemory,
       RuntimeErrorCode.runtimeUnavailable =>
         ModelHealthFailureCode.runtimeUnavailable,
@@ -323,6 +323,20 @@ class ModelHealthReport {
         ModelHealthFailureCode.contextTooLarge,
       RuntimeErrorCode.storageFailure => ModelHealthFailureCode.storageFailure,
       RuntimeErrorCode.unknown => ModelHealthFailureCode.unknown,
+      _ => ModelHealthFailureCode.none,
+    };
+    if (errorCode != ModelHealthFailureCode.none) return errorCode;
+
+    // Some native runtimes expose pressure as lifecycle state only. Treat those
+    // states as recoverable facts instead of leaving the Health Center stuck at
+    // "unknown" with a blocked timeline row.
+    return switch (runtimeHealth?.state) {
+      RuntimeHealthState.lowMemory => ModelHealthFailureCode.insufficientMemory,
+      RuntimeHealthState.thermallyLimited =>
+        ModelHealthFailureCode.thermalLimit,
+      RuntimeHealthState.unavailable =>
+        ModelHealthFailureCode.runtimeUnavailable,
+      RuntimeHealthState.failed => ModelHealthFailureCode.initializationFailed,
       _ => ModelHealthFailureCode.none,
     };
   }
