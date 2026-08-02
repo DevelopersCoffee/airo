@@ -118,6 +118,55 @@ class DeviceCapabilityReport {
     return List.unmodifiable(diagnostics);
   }
 
+  /// Stable support-safe report for model advisor and device analysis issues.
+  ///
+  /// The report only includes normalized hardware/planner facts. It deliberately
+  /// avoids local paths, raw platform handles, and exception strings.
+  String toMarkdown() {
+    final buffer = StringBuffer()
+      ..writeln('# Airo Device Capability Report')
+      ..writeln()
+      ..writeln('| Field | Value |')
+      ..writeln('| --- | --- |')
+      ..writeln('| Device | `${device.displayName}` |')
+      ..writeln('| OS | `${device.osVersion}` |')
+      ..writeln('| SDK | `${device.sdkVersion}` |')
+      ..writeln('| Pixel profile | `${device.isPixelDevice}` |')
+      ..writeln('| On-device AI | `${device.supportsOnDeviceAI}` |')
+      ..writeln('| CPU | `${device.cpuDisplay}` |')
+      ..writeln('| GPU | `${device.gpuDisplay}` |')
+      ..writeln('| NPU | `${device.npuDisplay}` |')
+      ..writeln('| Memory | `$summary` |')
+      ..writeln('| Storage | `${device.storageDisplay}` |')
+      ..writeln('| Thermals | `${device.thermalDisplay}` |')
+      ..writeln('| Generated | `${generatedAt.toUtc().toIso8601String()}` |')
+      ..writeln()
+      ..writeln('## Runtime diagnostics')
+      ..writeln();
+    for (final diagnostic in diagnostics) {
+      buffer.writeln(
+        '- `${diagnostic.severity.name}` ${diagnostic.title}: ${diagnostic.detail}',
+      );
+    }
+    buffer
+      ..writeln()
+      ..writeln('## Recommended models')
+      ..writeln();
+    if (recommendedModels.isEmpty) {
+      buffer.writeln('- No model metadata loaded yet.');
+    } else {
+      for (final model in recommendedModels) {
+        final expected = model.expectedTokensPerSecond;
+        buffer.writeln(
+          '- `${model.modelId}` ${model.modelName}: `${model.severity.name}`, '
+          '${model.estimatedMemoryMb.toStringAsFixed(0)} MB estimated memory'
+          '${expected == null || expected <= 0 ? '' : ', ${expected.toStringAsFixed(1)} tok/s expected'}',
+        );
+      }
+    }
+    return buffer.toString().trimRight();
+  }
+
   static Future<DeviceCapabilityReport> collect({
     Iterable<OfflineModelInfo> models = const <OfflineModelInfo>[],
     DeviceCapabilityService? service,
