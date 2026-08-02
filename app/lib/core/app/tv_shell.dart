@@ -30,25 +30,9 @@ const _tvNavigationRailWidth = 88.0;
 @visibleForTesting
 const tvTitleSafeFraction = 0.05;
 
-/// The inset the shell actually reserves.
-///
-/// Horizontal only, deliberately. The left band holds the navigation rail —
-/// the only way to move around the app — so cropping it is severe. The top and
-/// bottom bands hold a section label and a scrollable card row, where cropping
-/// costs far less.
-///
-/// Reserving the vertical band as well overflows several TV settings columns,
-/// which are laid out to the full panel height and do not scroll. Fixing those
-/// is a larger change than this defect warrants and is tracked separately;
-/// taking the horizontal half now fixes the case that actually strands a user.
+/// The inset the shell reserves on every edge.
 @visibleForTesting
-EdgeInsets tvTitleSafeInsets(Size size) =>
-    EdgeInsets.symmetric(horizontal: size.width * tvTitleSafeFraction);
-
-/// The full title-safe band, for reference and for tests that assert what the
-/// convention asks for as opposed to what the shell currently reserves.
-@visibleForTesting
-EdgeInsets tvFullTitleSafeInsets(Size size) => EdgeInsets.symmetric(
+EdgeInsets tvTitleSafeInsets(Size size) => EdgeInsets.symmetric(
   horizontal: size.width * tvTitleSafeFraction,
   vertical: size.height * tvTitleSafeFraction,
 );
@@ -295,18 +279,24 @@ class _TvNavigationRail extends StatelessWidget {
         color: chromeSurface,
         border: Border(right: BorderSide(color: colors.outlineVariant)),
       ),
-      child: Column(
-        children: [
-          _TvSidebarLogo(onSelect: () => onDestinationSelected(0)),
-          const SizedBox(height: 28),
-          for (var i = 0; i < _tvNavDestinations.length; i++)
-            _TvNavItem(
-              destination: _tvNavDestinations[i],
-              focusNode: focusNodes[i],
-              selected: currentIndex == i,
-              onSelect: () => onDestinationSelected(i),
-            ),
-        ],
+      // Scrollable so the rail survives a shorter viewport -- the title-safe
+      // band takes 10% of the height, and a sixth destination would overflow a
+      // fixed column just as readily. Flutter scrolls the focused item into
+      // view, so D-pad traversal is unaffected.
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _TvSidebarLogo(onSelect: () => onDestinationSelected(0)),
+            const SizedBox(height: 28),
+            for (var i = 0; i < _tvNavDestinations.length; i++)
+              _TvNavItem(
+                destination: _tvNavDestinations[i],
+                focusNode: focusNodes[i],
+                selected: currentIndex == i,
+                onSelect: () => onDestinationSelected(i),
+              ),
+          ],
+        ),
       ),
     );
   }
