@@ -28,6 +28,20 @@ analyzer:
     # them here checks nothing; it only hides the errors that matter.
     - "integration_test/patrol_test.dart"
     - "patrol_test/**"
+    # Same reason, same shape: `main_mind.dart` resolves only under
+    # pubspec_mind.yaml, and `feature_mind` is not a dependency of
+    # app/pubspec.yaml. Analysing it against the phone flavour checks it
+    # against a dependency set it was never meant to have.
+    #
+    # Adding feature_mind to app/pubspec.yaml the way feature_coin is there
+    # would fix the analysis and break the product: feature_mind declares
+    # cargokit hooks, so every phone build would cross-compile whisper.cpp and
+    # llama.cpp through the NDK and carry the native code for a feature this
+    # flavour does not ship.
+    #
+    # The entrypoint is still covered -- the macOS build compiles it, which is
+    # stronger than analysis.
+    - "lib/main_mind.dart"
 
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail

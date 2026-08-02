@@ -7,6 +7,11 @@ void main() {
   testWidgets('renders a completed device report from the retained future', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final report = DeviceCapabilityReport(
       device: const DeviceInfo(
         manufacturer: 'Google',
@@ -16,6 +21,11 @@ void main() {
         sdkVersion: 35,
         isPixelDevice: true,
         supportsOnDeviceAI: true,
+        cpuSummary: 'Tensor G4 · 8 cores',
+        gpuSummary: 'Not reported by platform adapter',
+        npuSummary: 'On-device AI service reported',
+        storageSummary: '42.0 GB free of 128.0 GB',
+        thermalSummary: 'Nominal',
       ),
       memory: MemoryInfo.fromMegabytes(totalMB: 16384, availableMB: 8192),
       recommendedModels: const [],
@@ -38,6 +48,21 @@ void main() {
     expect(find.text('8192 MB available of 16384 MB total.'), findsOneWidget);
     expect(find.text('Runtime diagnostics'), findsOneWidget);
     expect(find.text('Transient memory'), findsOneWidget);
+    expect(find.text('Hardware facts'), findsOneWidget);
+    expect(find.textContaining('CPU: Tensor G4 · 8 cores'), findsOneWidget);
+    expect(
+      find.textContaining('GPU: Not reported by platform adapter'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('NPU: On-device AI service reported'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Storage: 42.0 GB free of 128.0 GB'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Thermals: Nominal'), findsOneWidget);
     expect(find.text('On-device AI service'), findsOneWidget);
     expect(find.text('Pixel runtime profile'), findsOneWidget);
     expect(find.text('Final runtime preflight'), findsOneWidget);
@@ -45,6 +70,11 @@ void main() {
   });
 
   testWidgets('surfaces model fit warnings in the report', (tester) async {
+    tester.view.physicalSize = const Size(1200, 1500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final report = DeviceCapabilityReport(
       device: DeviceInfo.unknown(),
       memory: MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 1024),
@@ -54,12 +84,14 @@ void main() {
           modelName: 'Gemma 4B',
           severity: MemorySeverity.critical,
           estimatedMemoryMb: 3600,
+          expectedTokensPerSecond: 8,
         ),
         DeviceModelRecommendation(
           modelId: 'vision-large',
           modelName: 'Vision Large',
           severity: MemorySeverity.blocked,
           estimatedMemoryMb: 7000,
+          expectedTokensPerSecond: 2,
         ),
       ],
       generatedAt: DateTime(2026, 7, 30),
@@ -78,6 +110,8 @@ void main() {
       find.textContaining('1 model(s) need a smaller plan or model'),
       findsOneWidget,
     );
+    expect(find.textContaining('Expected 8.0 tok/s'), findsOneWidget);
+    expect(find.textContaining('Expected 2.0 tok/s'), findsOneWidget);
   });
 
   testWidgets('shows a retry action when device analysis fails', (

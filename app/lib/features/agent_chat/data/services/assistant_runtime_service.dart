@@ -252,6 +252,7 @@ class AssistantRuntimeService {
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
+    int? contextLengthOverride,
     void Function(AssistantRuntimePreparationProgress progress)? onProgress,
     bool Function()? isCancelled,
   }) async {
@@ -441,9 +442,13 @@ class AssistantRuntimeService {
           );
           final loadCancel = cancelled();
           if (loadCancel != null) return loadCancel;
+          final contextSize = _effectiveContextLength(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
           final loaded = await _llamaGguf.loadModel(
             package,
-            contextSize: package.contextLength.clamp(512, 8192).toInt(),
+            contextSize: contextSize,
           );
           if (!loaded) {
             return AssistantRuntimePreparationResult.blocked(
@@ -501,14 +506,15 @@ class AssistantRuntimeService {
         final runtimeReportedAvailable =
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
-        // A native channel may be present on the device even when no model
-        // source was configured. Treat that as unavailable in production;
-        // test overrides remain explicit and can model a ready backend.
+        // A native channel or configured download URL is not a runnable model.
+        // Default LiteRT startup requires either a verified package path or an
+        // explicit local artifact path. Test overrides remain explicit and can
+        // model a ready backend without depending on device storage.
         final available =
             (downloadedPackage?.filePath?.trim().isNotEmpty ?? false) ||
             (runtimeReportedAvailable &&
                 (_isLiteRtAvailableOverride != null ||
-                    _liteRtLm.hasConfiguredModel));
+                    _liteRtLm.hasConfiguredModelPath));
         if (!available) {
           return AssistantRuntimePreparationResult.blocked(
             AssistantRuntimeDiagnosticEnvelope(
@@ -522,16 +528,22 @@ class AssistantRuntimeService {
               reasonCode: 'runtime_unavailable',
               repairActions: const [
                 'Open Profile > AI Models and install a compatible package.',
-                'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL when launching locally.',
+                'Set LITERT_LM_MODEL_PATH to a verified local artifact when launching locally.',
               ],
             ),
           );
         }
 
         if (package != null) {
+          final compatibilityPackage = _packageWithContextOverride(
+            package,
+            contextLengthOverride: contextLengthOverride,
+          );
           final compatibility =
-              await (_checkModelCompatibilityOverride?.call(package) ??
-                  _checkCompatibility(package));
+              await (_checkModelCompatibilityOverride?.call(
+                    compatibilityPackage,
+                  ) ??
+                  _checkCompatibility(compatibilityPackage));
           if (!compatibility.isCompatible) {
             return AssistantRuntimePreparationResult.blocked(
               AssistantRuntimeDiagnosticEnvelope(
@@ -565,12 +577,16 @@ class AssistantRuntimeService {
         );
         final loadCancel = cancelled();
         if (loadCancel != null) return loadCancel;
-        final warmed = downloadedPackage != null
-            ? await (_warmupLiteRtModelOverride?.call(downloadedPackage) ??
-                  _liteRtLm.warmupModel(downloadedPackage))
-            : package != null
-            ? await (_warmupLiteRtModelOverride?.call(package) ??
-                  _liteRtLm.warmupModel(package))
+        final selectedPackage = downloadedPackage ?? package;
+        final preparedPackage = selectedPackage == null
+            ? null
+            : _packageWithContextOverride(
+                selectedPackage,
+                contextLengthOverride: contextLengthOverride,
+              );
+        final warmed = preparedPackage != null
+            ? await (_warmupLiteRtModelOverride?.call(preparedPackage) ??
+                  _liteRtLm.warmupModel(preparedPackage))
             : await (_warmupLiteRtInstalledModelOverride?.call() ??
                   _liteRtLm.warmupInstalledModel());
         if (!warmed) {
@@ -879,6 +895,28 @@ class AssistantRuntimeService {
   ) async {
     final registry = ModelRegistry()..registerModel(package);
     return registry.checkCompatibility(package);
+  }
+
+  OfflineModelInfo _packageWithContextOverride(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final contextLength = _effectiveContextLength(
+      package,
+      contextLengthOverride: contextLengthOverride,
+    );
+    if (contextLength == package.contextLength) {
+      return package;
+    }
+    return package.copyWith(contextLength: contextLength);
+  }
+
+  int _effectiveContextLength(
+    OfflineModelInfo package, {
+    int? contextLengthOverride,
+  }) {
+    final requested = contextLengthOverride ?? package.contextLength;
+    return requested.clamp(512, 8192).toInt();
   }
 
   Future<OfflineModelInfo?> _resolveDownloadedLiteRtPackage(

@@ -186,10 +186,11 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.widgetWithText(ListTile, 'News'), findsNothing);
     expect(find.widgetWithText(ListTile, 'Sports'), findsOneWidget);
+    await tester.pumpAndSettle();
     final sources = await container.read(
       configuredContentSourcesProvider.future,
     );
@@ -264,7 +265,6 @@ void main() {
       expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
     },
   );
-
   testWidgets('TV preset takes save focus back from a stale text field', (
     tester,
   ) async {
@@ -298,4 +298,35 @@ void main() {
     );
     expect(saveFocusable.focusNode?.hasPrimaryFocus, isTrue);
   });
+
+  testWidgets(
+    'Fire TV BACK leaves the playlist form after dismissing its keyboard',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+      await pumpTvManagerDialog(tester, container);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      final labelField = tester.widget<TextField>(
+        find.byKey(const ValueKey('playlist-source-label-field')),
+      );
+      labelField.focusNode!.requestFocus();
+      await tester.pump();
+      expect(labelField.focusNode!.hasPrimaryFocus, isTrue);
+
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Playlist sources'), findsOneWidget);
+      expect(labelField.focusNode!.hasFocus, isFalse);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Playlist sources'), findsNothing);
+      expect(find.text('Open playlist sources'), findsOneWidget);
+    },
+  );
 }

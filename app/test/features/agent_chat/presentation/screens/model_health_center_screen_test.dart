@@ -50,9 +50,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Runtime Health Center'), findsOneWidget);
-    expect(find.text('Why?'), findsOneWidget);
+    expect(find.text('Why can’t this model load?'), findsOneWidget);
     expect(
-      find.bySemanticsLabel(RegExp('Gemma 4B runtime status')),
+      find.bySemanticsLabel('Gemma 4B runtime status: Needs attention'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Downloaded: complete. Model artifact is present on this device.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Compatible: blocked. Not enough transient memory.',
+      ),
       findsOneWidget,
     );
     expect(
@@ -69,5 +81,11 @@ void main() {
     expect(find.text('Runtime trace'), findsOneWidget);
     expect(find.text('Initializing runtime'), findsOneWidget);
     expect(find.text('Runtime ready'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        'Runtime trace step 1: Initializing runtime, 0 milliseconds.',
+      ),
+      findsOneWidget,
+    );
   });
 }

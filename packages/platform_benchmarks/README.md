@@ -29,6 +29,7 @@ profile is connected:
 
 ```bash
 AIRO_TV_PACKAGE=io.airo.app \
+AIRO_TV_DEVICE=<adb-serial> \
 AIRO_TV_MEMORY_SAMPLES=60 \
 AIRO_TV_MEMORY_INTERVAL_SECONDS=30 \
 AIRO_TV_MEMORY_BUDGET=constrained \
@@ -58,6 +59,7 @@ is connected and the app is installed:
 
 ```bash
 AIRO_TV_PACKAGE=io.airo.app.tv \
+AIRO_TV_DEVICE=<adb-serial> \
 AIRO_TV_SOAK_DART_HEAP_START_MB=42 \
 AIRO_TV_SOAK_DART_HEAP_END_MB=42 \
 melos run bench:tv-playback-soak

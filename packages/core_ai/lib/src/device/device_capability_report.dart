@@ -129,21 +129,23 @@ class DeviceCapabilityReport {
     final budget = MemoryBudgetManager(deviceCapability: probe);
     final recommendations = <DeviceModelRecommendation>[];
     for (final model in models) {
-      final result = budget.checkMemoryForModel(
-        budget.estimateMemoryUsage(model.fileSizeBytes, _modelType(model)),
-        memory,
+      final estimatedMemoryBytes = budget.estimateMemoryUsage(
+        model.fileSizeBytes,
+        _modelType(model),
       );
+      final result = budget.checkMemoryForModel(estimatedMemoryBytes, memory);
+      final estimatedMemoryMb = estimatedMemoryBytes / (1024 * 1024);
       recommendations.add(
         DeviceModelRecommendation(
           modelId: model.id,
           modelName: model.name,
           severity: result,
-          estimatedMemoryMb:
-              budget.estimateMemoryUsage(
-                model.fileSizeBytes,
-                _modelType(model),
-              ) /
-              (1024 * 1024),
+          estimatedMemoryMb: estimatedMemoryMb,
+          expectedTokensPerSecond: _estimateTokensPerSecond(
+            model: model,
+            device: device,
+            severity: result,
+          ),
         ),
       );
     }
@@ -167,6 +169,33 @@ class DeviceCapabilityReport {
     if (model.modalities.contains(ModelModality.audio)) return ModelType.audio;
     return ModelType.text;
   }
+
+  static double _estimateTokensPerSecond({
+    required OfflineModelInfo model,
+    required DeviceInfo device,
+    required MemorySeverity severity,
+  }) {
+    final sizeGb = model.fileSizeBytes / (1024 * 1024 * 1024);
+    final normalizedSize = sizeGb.clamp(0.5, 8.0).toDouble();
+    final deviceBase = device.isPixelDevice
+        ? 24.0
+        : device.supportsOnDeviceAI
+        ? 18.0
+        : 10.0;
+    final severityMultiplier = switch (severity) {
+      MemorySeverity.safe => 1.0,
+      MemorySeverity.warning => 0.75,
+      MemorySeverity.critical => 0.45,
+      MemorySeverity.blocked => 0.20,
+    };
+    final modalityMultiplier =
+        model.modalities.contains(ModelModality.image) ||
+            model.modalities.contains(ModelModality.audio)
+        ? 0.65
+        : 1.0;
+    final estimate = deviceBase * severityMultiplier * modalityMultiplier;
+    return estimate / normalizedSize;
+  }
 }
 
 @immutable
@@ -176,12 +205,14 @@ class DeviceModelRecommendation {
     required this.modelName,
     required this.severity,
     required this.estimatedMemoryMb,
+    this.expectedTokensPerSecond,
   });
 
   final String modelId;
   final String modelName;
   final MemorySeverity severity;
   final double estimatedMemoryMb;
+  final double? expectedTokensPerSecond;
 
   bool get recommended => severity.canLoad;
 }

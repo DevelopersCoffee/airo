@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:platform_benchmarks/src/airo_tv_adb_memory_timeline_capture.dart';
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile_host.dart';
 
 Future<void> main(List<String> args) async {
   final options = _CliOptions.parse(args);
@@ -9,6 +9,7 @@ Future<void> main(List<String> args) async {
   final report = await capture.write(
     AiroTvAdbMemoryTimelineConfig(
       adbPath: options.adbPath,
+      deviceSerial: options.deviceSerial,
       packageName: options.packageName,
       reportId: options.reportId,
       scenarioId: options.scenarioId,
@@ -29,6 +30,7 @@ class _CliOptions {
   const _CliOptions({
     required this.packageName,
     required this.adbPath,
+    required this.deviceSerial,
     required this.reportId,
     required this.scenarioId,
     required this.sampleCount,
@@ -43,6 +45,7 @@ class _CliOptions {
 
   final String packageName;
   final String adbPath;
+  final String? deviceSerial;
   final String reportId;
   final String scenarioId;
   final int sampleCount;
@@ -72,6 +75,7 @@ class _CliOptions {
     return _CliOptions(
       packageName: values['package'] ?? _usage('Missing --package'),
       adbPath: values['adb'] ?? 'adb',
+      deviceSerial: values['device'],
       reportId: values['report-id'] ?? 'airo-tv-adb-memory-timeline',
       scenarioId: values['scenario-id'] ?? 'manual-tv-memory-capture',
       sampleCount: _parseInt(values['samples'], fallback: 60),
@@ -115,6 +119,7 @@ class _CliOptions {
 Usage:
   dart run tool/capture_airo_tv_memory_timeline.dart \\
     --package io.airo.app \\
+    --device <adb-serial> \\
     --samples 60 \\
     --interval-seconds 30 \\
     --budget constrained \\
@@ -122,6 +127,7 @@ Usage:
     --output-markdown artifacts/performance/airo-tv-memory.md
 
 Budgets: constrained|1gb, standard|2gb, expanded|3gb.
+Optional targeting: --adb, --device.
 Optional aggregate fields: --dart-heap-mb, --image-cache-mb,
 --retained-channel-list-copies.
 ''');

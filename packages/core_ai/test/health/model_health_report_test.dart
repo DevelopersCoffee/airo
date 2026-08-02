@@ -94,6 +94,33 @@ void main() {
     expect(report.actions, [ModelHealthAction.resumeDownload]);
   });
 
+  test('reports a stalled download as recoverable retry work', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      download: ModelDownloadProgress(
+        modelId: 'gemma-4b',
+        totalBytes: 2_000,
+        downloadedBytes: 700,
+        status: ModelDownloadStatus.downloading,
+        speedBytesPerSecond: 0,
+        lastProgressAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.recoverable);
+    expect(report.failureCode, ModelHealthFailureCode.downloadIncomplete);
+    expect(
+      report.stage(ModelHealthStage.downloaded).status,
+      ModelHealthStageStatus.blocked,
+    );
+    expect(
+      report.stage(ModelHealthStage.downloaded).detail,
+      'Download is stalled.',
+    );
+    expect(report.actions.first, ModelHealthAction.retry);
+    expect(report.actions, contains(ModelHealthAction.resumeDownload));
+  });
+
   test('does not trust a stale persisted path as a downloaded artifact', () {
     final report = ModelHealthReport.fromFacts(
       model: const OfflineModelInfo(

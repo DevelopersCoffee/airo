@@ -12,6 +12,7 @@ class _FakeVoiceService implements VoiceSearchService {
     List<VoiceSearchResult>? results,
     this.availabilityError,
     this.pendingResult,
+    this.available = true,
   }) : _results = List<VoiceSearchResult>.from(
          results ??
              <VoiceSearchResult>[
@@ -22,7 +23,9 @@ class _FakeVoiceService implements VoiceSearchService {
   final List<VoiceSearchResult> _results;
   final Object? availabilityError;
   final Completer<VoiceSearchResult>? pendingResult;
+  final bool available;
   var stopCount = 0;
+  var availabilityChecks = 0;
 
   @override
   VoiceSearchState state = VoiceSearchState.idle;
@@ -32,9 +35,10 @@ class _FakeVoiceService implements VoiceSearchService {
 
   @override
   Future<bool> isAvailable() async {
+    availabilityChecks += 1;
     final error = availabilityError;
     if (error != null) throw error;
-    return true;
+    return available;
   }
 
   @override
@@ -59,6 +63,7 @@ void main() {
   testWidgets('captures speech and exposes translation handoff', (
     tester,
   ) async {
+    await _usePhoneSurface(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -74,21 +79,22 @@ void main() {
       find.text('Speech recognition is ready on this device.'),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('audio_scribe_voice_health')), findsOneWidget);
+    expect(find.text('Speech service'), findsOneWidget);
+    expect(find.text('Ready'), findsWidgets);
+    expect(find.text('Transcript'), findsWidgets);
+    expect(find.text('Empty'), findsOneWidget);
     await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
     await tester.pumpAndSettle();
 
     expect(find.text('A test transcript.'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Translate with Airo'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Translate with Airo'), findsOneWidget);
+    expect(find.text('Model handoff'), findsOneWidget);
   });
 
   testWidgets('appends follow-up captures and reports speech errors', (
     tester,
   ) async {
+    await _usePhoneSurface(tester);
     final service = _FakeVoiceService(
       results: <VoiceSearchResult>[
         VoiceSearchResult.success('First note.'),
@@ -117,6 +123,7 @@ void main() {
   });
 
   testWidgets('stop capture cancels the active voice request', (tester) async {
+    await _usePhoneSurface(tester);
     final pending = Completer<VoiceSearchResult>();
     final service = _FakeVoiceService(pendingResult: pending);
     await tester.pumpWidget(
@@ -139,9 +146,37 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('late speech result after stop does not update transcript', (
+    tester,
+  ) async {
+    await _usePhoneSurface(tester);
+    final pending = Completer<VoiceSearchResult>();
+    final service = _FakeVoiceService(pendingResult: pending);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+        child: const MaterialApp(home: AudioScribeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
+    await tester.pump();
+    pending.complete(VoiceSearchResult.success('Late transcript.'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, isEmpty);
+    expect(find.text('Late transcript.'), findsNothing);
+    expect(find.text('No speech was recognized.'), findsNothing);
+  });
+
   testWidgets('translation and model management use typed Mind routes', (
     tester,
   ) async {
+    await _usePhoneSurface(tester);
     final router = GoRouter(
       routes: [
         GoRoute(
@@ -172,6 +207,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Bonjour Airo');
     await tester.pump();
+    await _scrollTo(tester, find.text('English'));
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('French').last);
@@ -207,6 +243,7 @@ void main() {
   testWidgets('availability failures show the unavailable banner', (
     tester,
   ) async {
+    await _usePhoneSurface(tester);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -225,5 +262,56 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('audio_scribe_voice_health')), findsOneWidget);
+    expect(find.text('Speech service'), findsOneWidget);
+    expect(find.text('Unavailable'), findsOneWidget);
+    expect(find.text('Reason: Bad state: no recognizer'), findsOneWidget);
+    expect(find.byKey(const Key('audio_scribe_retry_voice_check')), findsOne);
+    final capture = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_capture_button')),
+    );
+    expect(capture.onPressed, isNull);
   });
+
+  testWidgets(
+    'unavailable speech service disables capture with retry guidance',
+    (tester) async {
+      await _usePhoneSurface(tester);
+      final service = _FakeVoiceService(available: false);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+          child: const MaterialApp(home: AudioScribeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Speech service'), findsOneWidget);
+      expect(find.text('Unavailable'), findsOneWidget);
+      expect(find.text('Model handoff'), findsOneWidget);
+      expect(find.text('Waiting for transcript'), findsOneWidget);
+      final capture = tester.widget<FilledButton>(
+        find.byKey(const Key('audio_scribe_capture_button')),
+      );
+      expect(capture.onPressed, isNull);
+
+      await tester.tap(find.byKey(const Key('audio_scribe_retry_voice_check')));
+      await tester.pumpAndSettle();
+
+      expect(service.availabilityChecks, greaterThanOrEqualTo(2));
+    },
+  );
+}
+
+Future<void> _usePhoneSurface(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(1080, 1800));
+  addTearDown(() async => tester.binding.setSurfaceSize(null));
+}
+
+Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
 }

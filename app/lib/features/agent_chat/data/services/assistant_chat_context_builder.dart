@@ -34,8 +34,14 @@ class AssistantChatContextBuilder {
     List<AssistantChatContextMessage> history,
     String currentUserPrompt,
   ) {
+    final normalizedCurrentPrompt = _normalizeForComparison(currentUserPrompt);
     final filtered = history
         .where((message) => message.text.trim().isNotEmpty)
+        .where(
+          (message) =>
+              !message.isUser ||
+              _normalizeForComparison(message.text) != normalizedCurrentPrompt,
+        )
         .toList();
     if (filtered.isEmpty) {
       return const [];
@@ -52,7 +58,6 @@ class AssistantChatContextBuilder {
               '${_preview(message.text.trim())}',
         )
         .where((entry) => entry.trim().isNotEmpty)
-        .where((entry) => entry != 'User: $currentUserPrompt')
         .toList(growable: false);
   }
 
@@ -62,6 +67,9 @@ class AssistantChatContextBuilder {
     }
     return '${value.substring(0, maxMessageChars)}...';
   }
+
+  String _normalizeForComparison(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
 
 const String _airoBaseContext =

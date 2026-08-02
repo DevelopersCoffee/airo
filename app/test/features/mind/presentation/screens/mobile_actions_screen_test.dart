@@ -27,4 +27,27 @@ void main() {
     await tester.pump();
     expect(find.text('🌱'), findsOneWidget);
   });
+
+  testWidgets('Tiny Garden plots expose accessible planted state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: MobileActionsScreen()));
+
+    expect(_plotSemantics('Tiny Garden plot 1, empty'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('1'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1'));
+    await tester.pump();
+
+    expect(_plotSemantics('Tiny Garden plot 1, planted'), findsOneWidget);
+  });
 }
+
+Finder _plotSemantics(String label) => find.byWidgetPredicate(
+  (widget) => widget is Semantics && widget.properties.label == label,
+);

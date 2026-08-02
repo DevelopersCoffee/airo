@@ -76,7 +76,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
   }
 
   Future<void> _showPlaylistSheet() async {
-    await showPlaylistSourceSheet(context, ref);
+    await showPlaylistSourceSheet(context, ref, absorbAndroidTvRawBack: true);
   }
 
   Future<void> _showQrPairingDialog() async {
@@ -85,7 +85,12 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
       builder: (_) => const TvPlaylistQrDialog(),
     );
     if (submittedUrl == null || !mounted) return;
-    await showPlaylistSourceSheet(context, ref, initialUrl: submittedUrl);
+    await showPlaylistSourceSheet(
+      context,
+      ref,
+      initialUrl: submittedUrl,
+      absorbAndroidTvRawBack: true,
+    );
   }
 
   Future<void> _showPlaylistGuideDialog() async {

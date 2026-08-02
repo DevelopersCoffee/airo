@@ -45,6 +45,31 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
+          Text('Hardware facts', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _HardwareFact(label: 'CPU', value: report.device.cpuDisplay),
+                  _HardwareFact(label: 'GPU', value: report.device.gpuDisplay),
+                  _HardwareFact(label: 'NPU', value: report.device.npuDisplay),
+                  _HardwareFact(label: 'Memory', value: report.summary),
+                  _HardwareFact(
+                    label: 'Storage',
+                    value: report.device.storageDisplay,
+                  ),
+                  _HardwareFact(
+                    label: 'Thermals',
+                    value: report.device.thermalDisplay,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           Text('Runtime diagnostics', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           for (final diagnostic in report.diagnostics)
@@ -84,7 +109,8 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
                   title: Text(recommendation.modelName),
                   subtitle: Text(
                     '${recommendation.severity.title} · '
-                    '${recommendation.estimatedMemoryMb.toStringAsFixed(0)} MB estimated runtime memory',
+                    '${recommendation.estimatedMemoryMb.toStringAsFixed(0)} MB estimated runtime memory'
+                    '${_expectedTokensLabel(recommendation)}',
                   ),
                 ),
               ),
@@ -113,6 +139,28 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
       MemorySeverity.critical ||
       MemorySeverity.blocked => theme.colorScheme.error,
     };
+  }
+
+  static String _expectedTokensLabel(DeviceModelRecommendation recommendation) {
+    final expected = recommendation.expectedTokensPerSecond;
+    if (expected == null || expected <= 0) return '';
+    return ' · Expected ${expected.toStringAsFixed(1)} tok/s';
+  }
+}
+
+class _HardwareFact extends StatelessWidget {
+  const _HardwareFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text('$label: $value', style: style),
+    );
   }
 }
 

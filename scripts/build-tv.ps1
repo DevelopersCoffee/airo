@@ -39,6 +39,10 @@ try {
         Copy-Item "pubspec.yaml" "pubspec_backup.yaml" -Force
         Write-Host "  Backed up pubspec.yaml" -ForegroundColor Gray
     }
+    if (Test-Path "pubspec.lock") {
+        Copy-Item "pubspec.lock" "pubspec_backup.lock" -Force
+        Write-Host "  Backed up pubspec.lock" -ForegroundColor Gray
+    }
 
     # Swap to TV pubspec
     if (Test-Path "pubspec_tv.yaml") {
@@ -83,6 +87,10 @@ try {
             Remove-Item "pubspec_backup.yaml" -Force
             Write-Host "  Restored pubspec.yaml" -ForegroundColor Gray
             flutter pub get | Out-Null
+            if (Test-Path "pubspec_backup.lock") {
+                Copy-Item "pubspec_backup.lock" "pubspec.lock" -Force
+                Remove-Item "pubspec_backup.lock" -Force
+            }
             Write-Host "  Dependencies restored" -ForegroundColor Gray
         }
     }
@@ -90,4 +98,3 @@ try {
 }
 
 Write-Host "`nDone!" -ForegroundColor Green
-

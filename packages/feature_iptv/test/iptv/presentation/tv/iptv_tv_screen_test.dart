@@ -373,6 +373,37 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
   });
 
+  testWidgets(
+    'Fire TV BACK dismisses the playlist dialog without popping browse',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        await pumpScreen(tester, settle: false);
+
+        await tester.tap(find.text('Playlist'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Playlist sources'), findsOneWidget);
+
+        // Fire OS sends the raw key first. The dialog must remain mounted so
+        // the paired Android pop cannot escape into the underlying route.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(find.text('Playlist sources'), findsOneWidget);
+
+        final handled = await tester.binding.handlePopRoute();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(handled, isTrue);
+        expect(find.text('Playlist sources'), findsNothing);
+        expect(find.text('Live channels'), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
+
   testWidgets('opens fullscreen player from embedded TV controls', (
     tester,
   ) async {
