@@ -1,0 +1,40 @@
+// Cargokit cross-compiles airo_mind_runtime for each Android ABI using the NDK
+// as part of the ordinary Gradle build.
+group = "com.developerscoffee.airo.mind"
+version = "0.1.0"
+
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath("com.android.tools.build:gradle:8.7.3") }
+}
+
+rootProject.allprojects {
+    repositories { google(); mavenCentral() }
+}
+
+apply plugin: "com.android.library"
+apply from: "../cargokit/gradle/plugin.gradle"
+
+cargokit {
+    // Relative to this file. The runtime is in the cargo workspace at
+    // <repo>/rust, not inside the package.
+    manifestDir = "../../../rust/airo_mind_runtime"
+    libname = "airo_mind_runtime"
+}
+
+android {
+    namespace = "com.developerscoffee.airo.mind"
+    compileSdk = 35
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        // whisper.cpp and llama.cpp both need 64-bit atomics and a NEON path
+        // that older ABIs do not carry.
+        minSdk = 24
+    }
+}

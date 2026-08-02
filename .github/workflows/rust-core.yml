@@ -41,7 +41,11 @@ jobs:
 
       - run: cargo test --manifest-path rust/Cargo.toml --all
       - run: cargo clippy --manifest-path rust/Cargo.toml --all -- -D warnings
-      - run: cargo fmt --manifest-path rust/Cargo.toml --check
+      # `--all` is required now that the workspace has more than one member.
+      # Without it, cargo fmt looks for a package in the working directory,
+      # finds a virtual manifest, and exits with "Failed to find targets" --
+      # which reads like a broken checkout rather than a missing flag.
+      - run: cargo fmt --manifest-path rust/Cargo.toml --all --check
 
   # ── Android cross-compile ──────────────────────────────────────────────────
   build-android:

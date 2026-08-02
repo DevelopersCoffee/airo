@@ -1,0 +1,25 @@
+name: airo_app
+description: "Airo Mind - record a meeting, get searchable minutes, entirely on device"
+publish_to: none
+version: 0.0.1+1
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
+
+# Deliberately minimal. Airo Mind's milestone is one journey -- record,
+# transcribe, summarise, search -- and every package not on that path is
+# weight the journey has to carry while it is being proven.
+dependencies:
+  flutter:
+    sdk: flutter
+  feature_mind:
+    path: ../packages/feature_mind
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+
+flutter:
+  uses-material-design: true
