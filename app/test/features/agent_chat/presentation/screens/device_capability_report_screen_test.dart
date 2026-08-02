@@ -66,6 +66,10 @@ void main() {
     expect(find.text('On-device AI service'), findsOneWidget);
     expect(find.text('Pixel runtime profile'), findsOneWidget);
     expect(find.text('Final runtime preflight'), findsOneWidget);
+    expect(find.text('Copy report'), findsOneWidget);
+    await tester.tap(find.text('Copy report'));
+    await tester.pump();
+    expect(find.text('Device report copied.'), findsOneWidget);
     expect(find.text('Retry analysis'), findsNothing);
   });
 
@@ -112,6 +116,55 @@ void main() {
     );
     expect(find.textContaining('Expected 8.0 tok/s'), findsOneWidget);
     expect(find.textContaining('Expected 2.0 tok/s'), findsOneWidget);
+  });
+
+  test('renders support-safe device report markdown', () {
+    final report = DeviceCapabilityReport(
+      device: const DeviceInfo(
+        manufacturer: 'Google',
+        model: 'Pixel 9',
+        brand: 'Google',
+        osVersion: '15',
+        sdkVersion: 35,
+        isPixelDevice: true,
+        supportsOnDeviceAI: true,
+        cpuSummary: 'Tensor G4 · 8 cores',
+        gpuSummary: 'Vulkan capable',
+        npuSummary: 'On-device AI service reported',
+        storageSummary: '42.0 GB free of 128.0 GB',
+        thermalSummary: 'Nominal',
+      ),
+      memory: MemoryInfo.fromMegabytes(totalMB: 16384, availableMB: 8192),
+      recommendedModels: const [
+        DeviceModelRecommendation(
+          modelId: 'gemma-4b',
+          modelName: 'Gemma 4B',
+          severity: MemorySeverity.safe,
+          estimatedMemoryMb: 3338,
+          expectedTokensPerSecond: 12.4,
+        ),
+      ],
+      generatedAt: DateTime.utc(2026, 8, 2),
+    );
+
+    final markdown = report.toMarkdown();
+
+    expect(markdown, contains('# Airo Device Capability Report'));
+    expect(markdown, contains('| Device | `Google Pixel 9` |'));
+    expect(markdown, contains('| On-device AI | `true` |'));
+    expect(
+      markdown,
+      contains('| Memory | `8192 MB available of 16384 MB total.` |'),
+    );
+    expect(markdown, contains('- `safe` Pixel runtime profile:'));
+    expect(
+      markdown,
+      contains(
+        '- `gemma-4b` Gemma 4B: `safe`, 3338 MB estimated memory, 12.4 tok/s expected',
+      ),
+    );
+    expect(markdown, isNot(contains('/Users/')));
+    expect(markdown, isNot(contains('/storage/')));
   });
 
   testWidgets('shows a retry action when device analysis fails', (
