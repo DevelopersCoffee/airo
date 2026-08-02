@@ -14,6 +14,13 @@ melos:
     - app
     - packages/**
 
+  ignore:
+    # Named feature_mind so pubspec_overrides.yaml can swap it in on shared
+    # surfaces (rule R05). It must not also be a workspace member -- two
+    # packages resolving under one name is ambiguous. It is reached by path
+    # from an override, never by name from the workspace.
+    - packages/stubs/feature_mind_stub
+
   ide:
     intellij:
       enabled: true

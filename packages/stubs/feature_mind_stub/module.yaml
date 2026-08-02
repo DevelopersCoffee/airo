@@ -1,0 +1,10 @@
+name: feature_mind_stub
+owner: Chief Security Officer
+reviewers:
+  - Chief Architect
+  - Chief Release DevOps Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - feature_mind
+quality_gates: {}
