@@ -47,5 +47,6 @@ export 'src/runtime/rust/rust_mind_runtime.dart';
 export 'src/widgets/mind_context_chip.dart';
 export 'src/widgets/mind_number_strip.dart';
 export 'src/widgets/mind_op_row.dart';
+export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
 export 'src/widgets/mind_projection_switcher.dart';

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'mind_palette.dart';
+
 /// Rule R01. A pip on every Mind screen saying where the work ran.
 ///
 /// Teal means this device. Anything else means it ran somewhere the person
@@ -15,8 +17,8 @@ class MindPresencePip extends StatelessWidget {
   /// than implying locality when the caller does not know.
   final String? remoteLabel;
 
-  static const Color localColour = Color(0xFF7FE8DE);
-  static const Color remoteColour = Color(0xFFFFFF89);
+  static const Color localColour = MindPalette.local;
+  static const Color remoteColour = MindPalette.remote;
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../runtime/models/projection_models.dart';
+import 'mind_palette.dart';
 
 /// Rule R03. One control for three views of one log.
 ///
@@ -29,8 +30,8 @@ class MindProjectionSwitcher extends StatelessWidget {
     ProjectionKind.search: 'SEARCH',
   };
 
-  static const Color _ink = Color(0xFFFFE6CB);
-  static const Color _onSelected = Color(0xFF041C1C);
+  static const Color _ink = MindPalette.ink;
+  static const Color _onSelected = MindPalette.onFilled;
 
   @override
   Widget build(BuildContext context) {

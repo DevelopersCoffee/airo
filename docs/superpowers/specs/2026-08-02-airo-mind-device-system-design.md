@@ -1,7 +1,7 @@
 # Airo Mind Device System — Milestone 22 design
 
 Date: 2026-08-02
-Status: approved, pre-implementation
+Status: P0 implemented; P1–P4 pending
 Source design: Claude Design project `16cfaf17-5f73-426a-bede-40ba67659ed9`,
 file `Airo Mind Device System.dc.html` (14 surfaces, 5 device classes, 0 servers)
 Related: milestone 19 (runtime), milestone 20 (capability platform), epic #1192
@@ -93,8 +93,10 @@ Two implementations:
   #AiroArchitecture 9), three LAN peers, one revoked device, Gemma 3n E4B at 24 tok/s
   and 1.9 GB, a 3.1-second projection rebuild.
 - `RustMindRuntime` — delegates to `rust/airo_mind_runtime` over FRB. Ships partial:
-  each port method throws `MindUnavailable` until the corresponding M19 issue lands,
-  and every surface already renders that state.
+  each port method reports `MindPortUnavailable` — naming the port and the M19 issue
+  that fills it in — until that issue lands, and every surface already renders that
+  state. Streaming methods fail on the stream rather than at call time, so a surface
+  subscribes and renders an error rather than crashing before the subscription forms.
 
 Surfaces bind to ports only. No screen imports the generated bridge. This is the
 existing rule in `packages/feature_mind/lib/feature_mind.dart` — "a consumer that
@@ -111,13 +113,19 @@ method, that is an architecture finding, recorded as an ADR, not a silent port e
 Per the framework/application boundary in `CLAUDE.md`:
 
 **Framework** (`packages/`): the eight ports, `FixtureMindRuntime`, the FRB binding,
-and five shared widgets that carry the rules —
+`MindPalette`, and five shared widgets that carry the rules —
 
 - `MindPresencePip` (R01)
 - `MindContextChip` (R02)
 - `MindProjectionSwitcher` (R03)
 - `MindNumberStrip` (R04)
 - `MindOpRow` — the op-provenance row: op number, signature state, originating device
+
+`MindPalette` holds the handoff's colours. It is **not** `AppColors.cyber*` in
+`core_ui`: that is the Living Console palette (#5CE1E6 on #F4F1EA) and this is the
+Mind device system's (#7FE8DE on #FFE6CB). Two visual languages, not one with drift.
+The three Airo faces — `AiroRulesExpanded`, `AiroMondwest`, `AiroCollapse` — did
+already land in `app/pubspec.yaml`; the palette did not.
 
 **Application**: the 14 screens, their copy, and their layout classes.
 
@@ -137,9 +145,12 @@ One widget set, five layout classes, resolved through the breakpoints in
 - `app/lib/main_mind.dart` with `pubspec_mind.yaml` — Mind is the whole app.
 - Main Airo — Mind registers through `core_product_shell` as an `AppModule` (#1233),
   gaining a nav destination. Same widgets, same ports, no forked UI.
-- Web and TV flavors — a no-op swap package, `feature_mind_absent`, selected through
-  `pubspec_overrides.yaml`. Same mechanism as `packages/airo_pro_bootstrap` and
-  `packages/stubs`. The Mind module is absent from the binary, not disabled in it.
+- Web and TV flavors — a no-op swap package, `packages/stubs/feature_mind_stub`,
+  selected through `pubspec_overrides.yaml`. Same mechanism as
+  `packages/airo_pro_bootstrap` and the rest of `packages/stubs`. The Mind module is
+  absent from the binary, not disabled in it. It is the first stub to shadow a *local*
+  package name, so melos ignores its path — it is reached by an override, never by
+  name from the workspace.
 
 ### Data flow
 
@@ -168,6 +179,11 @@ a spinner:
 - One build test for R05: web and TV flavors must not link `feature_mind`.
 - `FixtureMindRuntime` is the test double everywhere. No screen test constructs
   ad-hoc fake data.
+- The rule harness lives at `packages/feature_mind/test/support/mind_rule_harness.dart`,
+  not in `lib/`. Every Mind surface lives in this package so every surface test reaches
+  it by relative import, and shipping it from `lib/` would drag `flutter_test` into a
+  production package's dependency graph. Promote it to its own package the day
+  something outside this package needs it.
 - One integration test per entrypoint: standalone Mind boots to Mind Home; main Airo
   boots and reaches Mind through the shell.
 - Mutation property, per the governance stack already in force on Mind: each of R01–R05
@@ -176,9 +192,19 @@ a spinner:
 ## Phases
 
 **P0 — Contract.** `MindRuntime` and its eight sub-ports. `FixtureMindRuntime`. The
-five shared widgets. The conformance harness for R01–R05. Rename
-`app/lib/features/mind` to `features/wellbeing` (#1203) — two things called "mind" in
-one app will churn every subsequent phase. Blocks everything.
+five shared widgets. The conformance harness for R01–R04, plus repo gates for R03 and
+R05. Free the Mind name (#1203) — two things called "mind" in one app churn every
+subsequent phase.
+
+That last item was larger than #1203 describes. `app/lib/features/mind` was not the
+wellbeing hub: it was the AI hub — three wellbeing cards and eight AI ones on one
+screen called Mind, holding `/mind`, `AppNavigationTab.mind` and the tab label, across
+15 files and ten sub-routes. Renaming it wholesale to "wellbeing" would have put Prompt
+Lab and Model Benchmark under a tab called Wellbeing, so it was **split**: `/assistant`
+keeps the AI lab and the nav tab, `/wellbeing` is a pushed destination for reflection
+and breathing. Notification deep links written before the split are migrated in
+`NotificationNavigationService` rather than by a router redirect, so the old path stays
+out of the route table and `/mind` is genuinely free for P4.
 
 **P1 — Phone.** Surfaces 01–08.
 
@@ -218,7 +244,7 @@ Gaps in the design that no existing issue covers. Each becomes an issue in M22.
     projections touched, replay-from-log action.
 11. **`.airobackup` destination picker and size breakdown** — LAN peer, this device,
     USB drive; content-class size split. Extends #1211.
-12. **Private-device gating** — the `feature_mind_absent` swap package and the R05
+12. **Private-device gating** — the `packages/stubs/feature_mind_stub` swap package and the R05
     build test.
 
 ## Council review

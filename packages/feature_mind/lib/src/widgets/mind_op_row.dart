@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../runtime/models/log_models.dart';
 import 'grouped_number.dart';
+import 'mind_palette.dart';
 
 /// One row of the log, wherever the log is shown.
 ///
@@ -20,13 +21,16 @@ class MindOpRow extends StatelessWidget {
     SignatureState.unsigned: 'UNSIGNED',
   };
 
+  /// Secondary text: the writing device, and the op number itself.
+  static final Color _muted = MindPalette.ink.withValues(alpha: 0.55);
+
   /// Unverified is loud on purpose. It is the one state a person must not
   /// scroll past, and rendering it in the same grey as "verified" would make
   /// the column decorative.
-  static const Map<SignatureState, Color> _signatureColours = {
-    SignatureState.verified: Color(0x99FFE6CB),
-    SignatureState.unverified: Color(0xFFFF6B6B),
-    SignatureState.unsigned: Color(0xFFFFFF89),
+  static final Map<SignatureState, Color> _signatureColours = {
+    SignatureState.verified: MindPalette.ink.withValues(alpha: 0.6),
+    SignatureState.unverified: MindPalette.alarm,
+    SignatureState.unsigned: MindPalette.remote,
   };
 
   @override
@@ -53,10 +57,7 @@ class MindOpRow extends StatelessWidget {
                     children: [
                       Text(
                         op.deviceName,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0x8CFFE6CB),
-                        ),
+                        style: TextStyle(fontSize: 11, color: _muted),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -75,11 +76,7 @@ class MindOpRow extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               'op ${groupedNumber(op.sequence)}',
-              style: const TextStyle(
-                fontSize: 11,
-                letterSpacing: 1,
-                color: Color(0x73FFE6CB),
-              ),
+              style: TextStyle(fontSize: 11, letterSpacing: 1, color: _muted),
             ),
           ],
         ),

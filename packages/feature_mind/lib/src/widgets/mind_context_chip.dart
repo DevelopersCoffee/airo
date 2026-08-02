@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../runtime/models/context_models.dart';
+import 'mind_palette.dart';
 
 /// Rule R02. A hypergraph tag, everywhere it appears, always tappable.
 ///
@@ -22,8 +23,8 @@ class MindContextChip extends StatelessWidget {
   /// The phone surface's stated floor. A 24 px chip is one a person misses.
   static const double minimumTarget = 48;
 
-  static const Color _selected = Color(0xFF7FE8DE);
-  static const Color _unselected = Color(0xFFFFE6CB);
+  static const Color _selected = MindPalette.local;
+  static const Color _unselected = MindPalette.ink;
 
   @override
   Widget build(BuildContext buildContext) {

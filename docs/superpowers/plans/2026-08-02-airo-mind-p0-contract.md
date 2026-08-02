@@ -8,6 +8,29 @@
 
 **Tech Stack:** Dart 3.12 / Flutter, `flutter_test`, melos workspace, `flutter_rust_bridge` 2.11.1 (already pinned), bash + ripgrep for policy gates.
 
+> **As built (2026-08-03).** P0 is implemented. Four things diverged from this
+> plan and the reasons are worth keeping:
+>
+> 1. **Task 1 was much larger than #1203 describes.** `app/lib/features/mind` was
+>    the AI hub, not the wellbeing hub — eight AI actions to three wellbeing ones,
+>    across 15 files and ten sub-routes. It was **split** into `/assistant` (the
+>    nav tab) and `/wellbeing` (a pushed destination) rather than renamed, because
+>    renaming would have put Prompt Lab under a tab called Wellbeing.
+> 2. **The swap package is `packages/stubs/feature_mind_stub`**, not
+>    `packages/feature_mind_absent` — it follows the existing stub convention, and
+>    melos ignores its path because it is the first stub to shadow a *local*
+>    package name.
+> 3. **The rule harness lives in `test/support/`, not `lib/testing.dart`.**
+>    Shipping it from `lib/` would have put `flutter_test` in a production
+>    package's dependency graph, which no package in the workspace does.
+> 4. **`core_ui` was never added.** The widgets needed a palette, not a
+>    dependency: `core_ui`'s `cyber*` tokens are the Living Console palette
+>    (#5CE1E6 on #F4F1EA), not the handoff's (#7FE8DE on #FFE6CB). `MindPalette`
+>    holds the latter. `module.yaml` is therefore unchanged.
+>
+> The spec, `docs/superpowers/specs/2026-08-02-airo-mind-device-system-design.md`,
+> has been corrected to match. Paths below are as-planned, not as-built.
+
 **Issue:** [#1449](https://github.com/DevelopersCoffee/airo/issues/1449) · **Spec:** `docs/superpowers/specs/2026-08-02-airo-mind-device-system-design.md` · **Epic:** #1448
 
 ## Global Constraints
