@@ -147,8 +147,9 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
               'Downloads continue in the background and restore after restart.',
               style: theme.textTheme.bodySmall,
             ),
-            OutlinedButton.icon(
-              onPressed: () {
+            Semantics(
+              button: true,
+              onTap: () {
                 Clipboard.setData(
                   ClipboardData(
                     text: snapshot.toMarkdown(
@@ -162,8 +163,28 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.copy, size: 18),
-              label: const Text('Copy diagnostics'),
+              excludeSemantics: true,
+              label: 'Copy model manager diagnostics',
+              hint:
+                  'Copies support-safe download queue, storage, and model lifecycle diagnostics.',
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(
+                    ClipboardData(
+                      text: snapshot.toMarkdown(
+                        downloadQueueOverride: visibleQueue,
+                      ),
+                    ),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Model manager diagnostics copied.'),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copy diagnostics'),
+              ),
             ),
           ],
         ),

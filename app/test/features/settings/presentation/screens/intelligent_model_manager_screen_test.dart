@@ -218,6 +218,10 @@ void main() {
     expect(find.textContaining('#1 queued-before'), findsOneWidget);
     expect(find.textContaining('#2 downloading'), findsOneWidget);
     expect(find.text('Copy diagnostics'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp('Copy model manager diagnostics')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Copy diagnostics'));
     await tester.pump();
 
