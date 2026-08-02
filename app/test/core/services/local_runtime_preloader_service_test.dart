@@ -72,6 +72,21 @@ void main() {
       contains(frequentModel.id),
     );
   });
+
+  test(
+    'does not warm default LiteRT when no model source is configured',
+    () async {
+      final preloader = _RecordingPreloader();
+      final service = LocalRuntimePreloaderService(preloader: preloader);
+
+      await service.preloadSelectedModels();
+
+      expect(
+        preloader.lastAdapters.map((adapter) => adapter.residentSpec.id),
+        isNot(contains(litertGemmaAssistantModelId)),
+      );
+    },
+  );
 }
 
 class _FixedPreloadPreferences implements ModelPreloadPreferences {

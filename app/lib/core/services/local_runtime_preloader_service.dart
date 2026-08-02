@@ -94,7 +94,7 @@ class LocalRuntimePreloaderService {
       if (selectedPackage != null &&
           selectedCandidate?.id != geminiNanoAssistantModelId)
         _LiteRtPackageWarmupAdapter(_liteRtLm, selectedPackage)
-      else if (frequentPackages.isEmpty)
+      else if (frequentPackages.isEmpty && _liteRtLm.hasConfiguredModel)
         _LiteRtInstalledWarmupAdapter(_liteRtLm),
       for (final model in frequentPackages)
         _LiteRtPackageWarmupAdapter(_liteRtLm, model),
