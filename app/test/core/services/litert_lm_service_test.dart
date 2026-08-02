@@ -58,7 +58,9 @@ void main() {
       expect(client.generatedSystemPrompts.single, 'Return JSON only.');
       expect(client.backends.single, LiteRtLmBackend.gpu);
       expect(client.maxTokens.single, 512);
-      expect(client.initializeModelPaths, [null]);
+      expect(client.initializeModelPaths, [
+        '/app/files/litert_lm_models/gemma3-1b.task',
+      ]);
     });
 
     test(
@@ -187,13 +189,14 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
   }) async {
     installCalls.add(url);
     hasActiveModel = true;
+    return '/app/files/litert_lm_models/${Uri.parse(url).pathSegments.last}';
   }
 }
 
