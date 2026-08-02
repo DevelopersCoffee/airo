@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import '../routing/route_names.dart';
 
 /// NOTE (CV unified-browse Task 5): the first six members below (`coins`
 /// through `quest`) are the pre-existing super-app domains and are
@@ -10,9 +9,11 @@ import '../routing/route_names.dart';
 /// every index-based reference (`AppNavigationTab.beats.index`, etc.) keeps
 /// working exactly as before.
 ///
-/// `home`, `guide`, `favorites`, and `settings` are new: they back the
-/// 5-destination phone bottom nav that mirrors the TV sidebar
+/// `home` is new: it backs the phone bottom nav that mirrors the TV sidebar
 /// (`tv_shell.dart`) — see `appNavigationPolicy.compactPrimaryTabs` below.
+/// Guide, Favorites, and Settings are IPTV-internal / profile-reachable only
+/// (see `IptvNavigationDrawer` and `ProfileScreen`'s Settings entry) — they
+/// are not top-level nav destinations.
 /// `home` renders the same IPTVScreen as `live` (unified-browse Task 6):
 /// the source design's sidebar calls the identical `goToBrowse` handler for
 /// its Home and Live TV items, so they're the same destination here too;
@@ -60,24 +61,6 @@ enum AppNavigationTab {
     path: '/home',
     icon: Icons.home_outlined,
     selectedIcon: Icons.home,
-  ),
-  guide(
-    label: 'Guide',
-    path: '/guide',
-    icon: Icons.grid_view_outlined,
-    selectedIcon: Icons.grid_view,
-  ),
-  favorites(
-    label: 'Favorites',
-    path: '/favorites',
-    icon: Icons.favorite_border,
-    selectedIcon: Icons.favorite,
-  ),
-  settings(
-    label: 'Settings',
-    path: RouteNames.settings,
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings,
   );
 
   const AppNavigationTab({
@@ -96,7 +79,7 @@ enum AppNavigationTab {
 /// Current navigation tab index.
 ///
 /// Declaration/branch order: Coins | Mind | Beats | Live | Arena | Quest |
-/// Home | Guide | Favorites | Settings
+/// Home
 final currentNavigationTabProvider = StateProvider<int>(
   (ref) => AppNavigationTab.coins.index,
 );
@@ -168,16 +151,15 @@ class AppNavigationPolicy {
 /// Airo TV owns its separate navigation policy in `tv_shell.dart`.
 ///
 /// Wide (tablet/desktop) layouts get a *different* curated set, not the
-/// full ten-tab list: the original six super-app domains (Coins, Mind,
-/// Beats, Live, Arena, Quest) plus the two new IPTV-adjacent destinations
-/// worth persistent nav real estate on larger screens (Guide, Favorites).
-/// `home` is deliberately left out here — it's a phone-only placeholder for
-/// the unified browse entry point (see the enum doc above), and `mind`
-/// already covers that ground on wide layouts, so including both reads as
-/// a confusing duplicate. `settings` is left out too, matching the
-/// pre-unified-browse convention: it has never had a persistent nav slot
-/// and stays reachable via the profile menu (`AppShell.onProfileTap` ->
-/// `ProfileScreen`'s "Settings" entry) regardless of screen width.
+/// full seven-tab list: just the six super-app domains (Coins, Mind, Beats,
+/// Live, Arena, Quest). `home` is deliberately left out here — it's a
+/// phone-only placeholder for the unified browse entry point (see the enum
+/// doc above), and `mind` already covers that ground on wide layouts, so
+/// including both reads as a confusing duplicate. Guide, Favorites, and
+/// Settings are never top-level tabs on any width: Guide/Favorites live
+/// inside the IPTV section's own drawer (`IptvNavigationDrawer`), and
+/// Settings stays reachable via the profile menu (`AppShell.onProfileTap`
+/// -> `ProfileScreen`'s "Settings" entry).
 const appNavigationPolicy = AppNavigationPolicy(
   compactPrimaryTabs: [
     AppNavigationTab.coins,
@@ -192,16 +174,11 @@ const appNavigationPolicy = AppNavigationPolicy(
     AppNavigationTab.live,
     AppNavigationTab.arena,
     AppNavigationTab.quest,
-    AppNavigationTab.guide,
-    AppNavigationTab.favorites,
   ],
   overflowTabs: [
     AppNavigationTab.arena,
     AppNavigationTab.quest,
     AppNavigationTab.home,
-    AppNavigationTab.guide,
-    AppNavigationTab.favorites,
-    AppNavigationTab.settings,
   ],
 );
 
