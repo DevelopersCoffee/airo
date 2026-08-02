@@ -52,6 +52,31 @@ void main() {
       },
     );
 
+    test(
+      'records the resolved local path after installing from a URL',
+      () async {
+        final client = _FakeLiteRtLmClient(hasActiveModel: false);
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: client,
+          activeModelService: activeModelService,
+          runtimeConfig: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
+
+        await adapter.prepareModel();
+
+        expect(client.installCalls, ['https://example.com/gemma.task']);
+        expect(client.initializeModelPaths, [
+          '/app/files/litert_lm_models/gemma.task',
+        ]);
+        expect(
+          activeModelService.activeRuntime?.modelPath,
+          '/app/files/litert_lm_models/gemma.task',
+        );
+      },
+    );
+
     test('bounds a wedged native availability operation', () async {
       TestWidgetsFlutterBinding.ensureInitialized();
       const channel = MethodChannel('test.litert_lm.timeout');
@@ -178,6 +203,8 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   _FakeLiteRtLmClient({required this.hasActiveModel});
 
   bool hasActiveModel;
+  final installCalls = <String>[];
+  final initializeModelPaths = <String?>[];
 
   @override
   Future<bool> activeModelExists({String? modelPath}) async => hasActiveModel;
@@ -196,15 +223,19 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     String? modelPath,
     LiteRtLmBackend? backend,
     int? maxTokens,
-  }) async {}
+  }) async {
+    initializeModelPaths.add(modelPath);
+  }
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
   }) async {
+    installCalls.add(url);
     hasActiveModel = true;
+    return '/app/files/litert_lm_models/${Uri.parse(url).pathSegments.last}';
   }
 }
 

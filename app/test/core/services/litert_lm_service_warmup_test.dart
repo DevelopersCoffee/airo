@@ -73,12 +73,13 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
   }) async {
     installCalls += 1;
+    return '/app/files/litert_lm_models/${Uri.parse(url).pathSegments.last}';
   }
 
   @override
