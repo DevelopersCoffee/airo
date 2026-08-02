@@ -66,6 +66,15 @@ class SettingsHubScreen extends ConsumerWidget {
               onTap: () => context.push('/settings/airo-portability'),
             ),
 
+            const SizedBox(height: 24),
+
+            // Every tile below comes from the shared iptvSettingsSections
+            // manifest (SSOT with TvSettingsScreen) — grouped under one
+            // header so IPTV configuration reads as a single section instead
+            // of appearing inter-mixed with app-wide settings.
+            Text('IPTV', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+
             ListTile(
               leading: Icon(
                 _section(IptvSettingsSectionId.theme).iconFor(ShellId.mobile),

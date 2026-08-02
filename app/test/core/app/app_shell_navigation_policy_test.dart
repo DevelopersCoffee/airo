@@ -19,7 +19,7 @@ void main() {
 
     // Branch order must mirror AppNavigationTab.values in
     // navigation_provider.dart: Coins | Mind | Beats | Live | Arena | Quest |
-    // Home | Guide | Favorites | Settings.
+    // Home.
     final router = GoRouter(
       initialLocation: initialLocation,
       routes: [
@@ -96,33 +96,6 @@ void main() {
                 ),
               ],
             ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/guide',
-                  builder: (context, state) =>
-                      const _ShellBodyScreen(label: 'Guide body'),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/favorites',
-                  builder: (context, state) =>
-                      const _ShellBodyScreen(label: 'Favorites body'),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/settings',
-                  builder: (context, state) =>
-                      const _RouteOwnedScreen(title: 'Settings'),
-                ),
-              ],
-            ),
           ],
         ),
       ],
@@ -150,9 +123,6 @@ void main() {
     expect(find.byKey(const ValueKey('app_nav_arena')), findsNothing);
     expect(find.byKey(const ValueKey('app_nav_quest')), findsNothing);
     expect(find.byKey(const ValueKey('app_nav_home')), findsNothing);
-    expect(find.byKey(const ValueKey('app_nav_guide')), findsNothing);
-    expect(find.byKey(const ValueKey('app_nav_favorites')), findsNothing);
-    expect(find.byKey(const ValueKey('app_nav_settings')), findsNothing);
 
     expect(find.text('Coins body'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -165,17 +135,16 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('app_nav_overflow')));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('app_nav_overflow_entry_guide')),
-    );
+    await tester.tap(find.byKey(const ValueKey('app_nav_overflow_entry_home')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Guide body'), findsOneWidget);
+    expect(find.text('Home body'), findsOneWidget);
   });
 
   testWidgets(
-    'wider layouts show a curated 8-tab set, excluding the placeholder '
-    'Home tab and Settings (reachable via the profile menu instead)',
+    'wider layouts show a curated 6-tab set, excluding the placeholder '
+    'Home tab (Guide/Favorites live inside IPTV, Settings via the profile '
+    'menu)',
     (tester) async {
       // Wide layouts don't have a /home branch in their nav bar, so start
       // from a destination that is actually part of the wide tab set.
@@ -187,15 +156,12 @@ void main() {
       expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_arena')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_quest')), findsOneWidget);
-      expect(find.byKey(const ValueKey('app_nav_guide')), findsOneWidget);
-      expect(find.byKey(const ValueKey('app_nav_favorites')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_overflow')), findsNothing);
 
       // Home is a phone-only placeholder (Mind already covers this ground
-      // on wide layouts) and Settings stays reachable via the profile
-      // menu, so neither gets a persistent destination on wide layouts.
+      // on wide layouts), so it gets no persistent destination on wide
+      // layouts either.
       expect(find.byKey(const ValueKey('app_nav_home')), findsNothing);
-      expect(find.byKey(const ValueKey('app_nav_settings')), findsNothing);
     },
   );
 }
