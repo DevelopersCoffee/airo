@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppNavigationTab', () {
-    test('uses the ten-tab information architecture order', () {
+    test('uses the seven-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
         'Coins',
         'Mind',
@@ -13,9 +13,6 @@ void main() {
         'Arena',
         'Quest',
         'Home',
-        'Guide',
-        'Favorites',
-        'Settings',
       ]);
     });
 
@@ -38,9 +35,6 @@ void main() {
         '/games',
         '/quest',
         '/home',
-        '/guide',
-        '/favorites',
-        '/settings',
       ]);
     });
 
@@ -48,7 +42,7 @@ void main() {
       final rootLabels = AppNavigationTab.values.map((tab) => tab.label);
       final rootPaths = AppNavigationTab.values.map((tab) => tab.path);
 
-      expect(AppNavigationTab.values.length, 10);
+      expect(AppNavigationTab.values.length, 7);
       expect(rootLabels, containsAll(['Beats', 'Live']));
       expect(rootPaths, containsAll(['/music', '/iptv']));
     });
@@ -127,9 +121,6 @@ void main() {
         'Arena',
         'Quest',
         'Home',
-        'Guide',
-        'Favorites',
-        'Settings',
       ]);
       expect(phoneLayout.usesOverflow, isTrue);
       expect({
@@ -138,7 +129,7 @@ void main() {
       }, containsAll(AppNavigationTab.values));
     });
 
-    test('wide layouts show the six core domains plus Guide and Favorites', () {
+    test('wide layouts show only the six core super-app domains', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -153,18 +144,10 @@ void main() {
         'Live',
         'Arena',
         'Quest',
-        'Guide',
-        'Favorites',
       ]);
       // Home remains reachable from the persistent shell identity, so wide
-      // navigation can prioritize the eight daily-use destinations.
+      // navigation can prioritize the six daily-use destinations.
       expect(wideLayout.persistentTabs, isNot(contains(AppNavigationTab.home)));
-      // Settings has never had a persistent nav slot; it stays reachable
-      // via the profile menu regardless of screen width.
-      expect(
-        wideLayout.persistentTabs,
-        isNot(contains(AppNavigationTab.settings)),
-      );
       expect(wideLayout.overflowTabs, isEmpty);
       expect(wideLayout.usesOverflow, isFalse);
     });

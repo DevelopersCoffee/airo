@@ -29,7 +29,7 @@ void main() {
 
   Future<GoRouter> pumpApp(
     WidgetTester tester, {
-    String initialLocation = '/guide',
+    String initialLocation = '/iptv',
   }) async {
     SharedPreferences.setMockInitialValues({'is_logged_in': true});
     final prefs = await SharedPreferences.getInstance();
@@ -82,58 +82,44 @@ void main() {
     return router;
   }
 
-  testWidgets('guide tab renders the guide screen', (tester) async {
-    final router = await pumpApp(tester);
-
-    expect(_currentPath(router), '/guide');
-    expect(find.text('Search the guide'), findsOneWidget);
-  });
-
-  testWidgets('system back on the guide root tab keeps the shell sane', (
-    tester,
-  ) async {
-    final router = await pumpApp(tester);
-
-    expect(_currentPath(router), '/guide');
-    expect(find.text('Search the guide'), findsOneWidget);
-
-    final didPop = await tester.binding.handlePopRoute();
-    await tester.pump();
-    await tester.pump();
-
-    expect(tester.takeException(), isNull);
-    expect(didPop, isFalse);
-    expect(_currentPath(router), '/guide');
-    expect(find.text('Search the guide'), findsOneWidget);
-    expect(find.byType(Scaffold), findsAtLeastNWidgets(1));
-  });
-
-  testWidgets('back from a route pushed on top of guide returns to guide', (
-    tester,
-  ) async {
-    final router = await pumpApp(tester);
-    router.go('/guide');
-    await tester.pump();
-    await tester.pump();
-
-    expect(_currentPath(router), '/guide');
-    expect(router.canPop(), isFalse);
-
-    router.push('/mind/notifications');
+  // Guide is no longer a top-level GoRouter tab: it lives only inside the
+  // IPTV section's own drawer (IptvNavigationDrawer -> IPTVScreen._openGuide),
+  // pushed with a plain Navigator.push on the IPTV screen's own Navigator.
+  // The GoRouter location therefore stays at '/iptv' throughout.
+  Future<void> openGuideFromIptvDrawer(WidgetTester tester) async {
+    await tester.tap(find.byIcon(Icons.menu).first);
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Guide'));
+    await tester.pumpAndSettle();
+  }
 
-    expect(router.canPop(), isTrue);
-    expect(find.text('Notifications (0)'), findsOneWidget);
+  testWidgets('opening Guide from the IPTV drawer renders the guide screen', (
+    tester,
+  ) async {
+    final router = await pumpApp(tester);
+
+    await openGuideFromIptvDrawer(tester);
+
+    expect(_currentPath(router), '/iptv');
+    expect(find.text('Search the guide'), findsOneWidget);
+  });
+
+  testWidgets('system back on a pushed guide screen returns to IPTV', (
+    tester,
+  ) async {
+    final router = await pumpApp(tester);
+
+    await openGuideFromIptvDrawer(tester);
+    expect(find.text('Search the guide'), findsOneWidget);
 
     final didPop = await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(didPop, isTrue);
-    expect(_currentPath(router), '/guide');
-    expect(router.canPop(), isFalse);
-    expect(find.text('Notifications (0)'), findsNothing);
-    expect(find.text('Search the guide'), findsOneWidget);
+    expect(_currentPath(router), '/iptv');
+    expect(find.text('Search the guide'), findsNothing);
+    expect(find.byType(Scaffold), findsAtLeastNWidgets(1));
   });
 }
 

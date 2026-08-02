@@ -55,6 +55,7 @@ void main() {
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text('IPTV'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Choose your visual theme'), findsOneWidget);
     expect(find.text('Airo Cyber'), findsNothing);
