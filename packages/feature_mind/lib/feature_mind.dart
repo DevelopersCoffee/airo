@@ -40,3 +40,4 @@ export 'src/runtime/ports/vault_port.dart';
 // Runtime — the deterministic fixture every surface is built against.
 export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
+export 'src/runtime/rust/rust_mind_runtime.dart';
