@@ -6,6 +6,7 @@ import 'package:airo_app/features/settings/presentation/screens/intelligent_mode
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -124,6 +125,23 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    String? copiedText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          final data = Map<String, dynamic>.from(call.arguments as Map);
+          copiedText = data['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
 
     const modelInfo = OfflineModelInfo(
       id: 'downloading',
@@ -199,6 +217,22 @@ void main() {
     expect(find.text('Download queue'), findsOneWidget);
     expect(find.textContaining('#1 queued-before'), findsOneWidget);
     expect(find.textContaining('#2 downloading'), findsOneWidget);
+    expect(find.text('Copy diagnostics'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostics'));
+    await tester.pump();
+
+    expect(find.text('Model manager diagnostics copied.'), findsOneWidget);
+    expect(copiedText, contains('# Airo Model Manager Diagnostics'));
+    expect(copiedText, contains('| Download queue | `2` |'));
+    expect(copiedText, contains('- `queued-before`'));
+    expect(copiedText, contains('- `downloading`'));
+    expect(copiedText, contains('  - Downloaded: `2.0 KB / 4.0 KB`'));
+    expect(copiedText, isNot(contains('/Users/')));
+    expect(copiedText, isNot(contains('/storage/')));
+    ScaffoldMessenger.of(
+      tester.element(find.text('Intelligent Model Manager')),
+    ).hideCurrentSnackBar();
+    await tester.pumpAndSettle();
     expect(find.byType(LinearProgressIndicator), findsWidgets);
     await tester.ensureVisible(find.byTooltip('Pause'));
     await tester.tap(find.byTooltip('Pause'));

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
@@ -63,7 +64,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               children: [
-                _buildManagerSummary(context, snapshot),
+                _buildManagerSummary(context, snapshot, visibleQueue),
                 if (visibleQueue.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _buildQueueSummary(context, visibleQueue),
@@ -114,6 +115,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
   Widget _buildManagerSummary(
     BuildContext context,
     ModelManagerSnapshot snapshot,
+    List<ModelDownloadProgress> visibleQueue,
   ) {
     final theme = Theme.of(context);
     return Card(
@@ -144,6 +146,24 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             Text(
               'Downloads continue in the background and restore after restart.',
               style: theme.textTheme.bodySmall,
+            ),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text: snapshot.toMarkdown(
+                      downloadQueueOverride: visibleQueue,
+                    ),
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Model manager diagnostics copied.'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('Copy diagnostics'),
             ),
           ],
         ),
