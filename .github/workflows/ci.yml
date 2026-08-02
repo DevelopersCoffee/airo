@@ -84,10 +84,16 @@ jobs:
           cd app
           flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # Covers `lib test`, matching the code-quality job. When this checked only
+      # `lib`, test-file drift passed here and failed one job later -- and,
+      # because a pull request's CI builds a merge commit, it failed on whatever
+      # PR came next rather than the one that introduced it. That misattribution
+      # cost real time twice on 2026-08-01/02 (#1381, #1441) before the cause
+      # was clear. Catch it in the job that owns formatting.
       - name: Check formatting
         run: |
           cd app
-          find lib -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
+          find lib test -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
 
       - name: Enforce bundled model artifact guardrail
         run: |
