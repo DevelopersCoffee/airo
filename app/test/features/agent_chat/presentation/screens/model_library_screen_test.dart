@@ -619,6 +619,93 @@ void main() {
     expect(find.text('General Chat setup'), findsNothing);
   });
 
+  testWidgets('setup failure dialog shows memory diagnostics', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final package = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.gpu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+    );
+    final candidate = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Local package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: package.fileSizeDisplay,
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: package,
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Pixel 9',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+    final runtimeService = AssistantRuntimeService(
+      loadDeviceInfo: () async => {
+        'manufacturer': 'Google',
+        'model': 'Pixel 9',
+        'platform': 'android',
+      },
+      isLiteRtAvailable: () async => true,
+      checkModelCompatibility: (_) async => const ModelCompatibilityResult(
+        isCompatible: false,
+        memorySeverity: MemorySeverity.blocked,
+        reason: 'Not enough transient memory for warmup.',
+        availableMemoryMB: 1536,
+        requiredMemoryMB: 3072,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            runtimeService: runtimeService,
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start chat'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('This local package exceeds the current device budget.'),
+      findsOneWidget,
+    );
+    expect(find.text('Runtime: Gemma mobile package'), findsOneWidget);
+    expect(find.text('Reason code: compatibility_blocked'), findsOneWidget);
+    expect(
+      find.text('Memory: 1536 MB available · 3072 MB estimated peak'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Not enough transient memory for warmup.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('download setup dialog opens model management when confirmed', (
     tester,
   ) async {

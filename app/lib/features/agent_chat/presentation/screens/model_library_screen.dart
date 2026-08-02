@@ -1065,6 +1065,22 @@ class _ModelLibraryContent extends ConsumerWidget {
                 'Platform: ${diagnostic.platformLabel}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+              Text(
+                'Runtime: ${diagnostic.runtimeName}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (diagnostic.reasonCode != null)
+                Text(
+                  'Reason code: ${diagnostic.reasonCode}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              if (diagnostic.availableMemoryMB != null ||
+                  diagnostic.requiredMemoryMB != null)
+                Text(
+                  'Memory: ${diagnostic.availableMemoryMB?.toStringAsFixed(0) ?? 'n/a'} MB available · '
+                  '${diagnostic.requiredMemoryMB?.toStringAsFixed(0) ?? 'n/a'} MB estimated peak',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               if (diagnostic.repairActions.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
