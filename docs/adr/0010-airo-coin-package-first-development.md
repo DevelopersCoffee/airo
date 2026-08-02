@@ -76,6 +76,30 @@ The public entitlement contract now reserves
 - Adding more pro IDs without matching overlay work can create product
   confusion. Future pro IDs need a linked roadmap item and owner review.
 
+## Standalone shell interim exception
+
+The standalone Airo Coins shell (`app/lib/main_coins.dart`) opens on a lean,
+content-first money summary (`CoinsStandaloneHome`: recent transactions plus a
+Secure Vault entry) so it feels like the super-app's Coins tab instead of
+dropping onto the vault gate. This is a deliberate, time-boxed exception to the
+rule above that the legacy tree is a migration source only: the home reuses the
+legacy read path (`recentExpensesProvider` and the display card) until the money
+dashboard is migrated package-first into `feature_coin` (Airo Coin phased epic
+#938–#942), at which point the shell mounts the package screen and this
+exception is removed.
+
+Constraints while the exception stands:
+
+- The exception is limited to a read-only summary. The heavy add/split/group/
+  budget flows — and their OCR, share, and uuid dependencies — stay out of the
+  standalone, keeping the coins edge profile small.
+- The new code lives in the shell composition layer
+  (`app/lib/core/coins/coins_standalone_home.dart`); no new code is added to the
+  legacy tree.
+- The read path self-wires from `appDatabaseProvider` (Drift, native only); the
+  shell adds no extra bootstrap.
+- The vault stays package-first in `feature_coin`, mounted at `/money/vault`.
+
 ## Related Decisions
 
 - ADR-0001: Modular Package Structure
