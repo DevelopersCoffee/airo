@@ -19,6 +19,40 @@ import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 final tvNavigationIndexProvider = StateProvider<int>((ref) => 0);
 const _tvNavigationRailWidth = 88.0;
 
+/// Fraction of each edge a TV may crop. Televisions with overscan enabled
+/// discard roughly the outer 5%, which is why the Android TV guidance puts a
+/// 5% title-safe margin around anything the user has to see or reach.
+///
+/// Measured on the rig Fire TV Stick at 1920x1080 before this existed: the
+/// sidebar's leftmost pixel sat at x=32 against a 96px safe inset, so the whole
+/// navigation rail — and the cast/favourite actions on the right — were inside
+/// the croppable band (#1429).
+@visibleForTesting
+const tvTitleSafeFraction = 0.05;
+
+/// The inset the shell actually reserves.
+///
+/// Horizontal only, deliberately. The left band holds the navigation rail —
+/// the only way to move around the app — so cropping it is severe. The top and
+/// bottom bands hold a section label and a scrollable card row, where cropping
+/// costs far less.
+///
+/// Reserving the vertical band as well overflows several TV settings columns,
+/// which are laid out to the full panel height and do not scroll. Fixing those
+/// is a larger change than this defect warrants and is tracked separately;
+/// taking the horizontal half now fixes the case that actually strands a user.
+@visibleForTesting
+EdgeInsets tvTitleSafeInsets(Size size) =>
+    EdgeInsets.symmetric(horizontal: size.width * tvTitleSafeFraction);
+
+/// The full title-safe band, for reference and for tests that assert what the
+/// convention asks for as opposed to what the shell currently reserves.
+@visibleForTesting
+EdgeInsets tvFullTitleSafeInsets(Size size) => EdgeInsets.symmetric(
+  horizontal: size.width * tvTitleSafeFraction,
+  vertical: size.height * tvTitleSafeFraction,
+);
+
 /// Non-live destinations the sidebar can show. Rendered as an overlay on
 /// top of [TvShell.child] instead of being routed to — routing away would
 /// unmount whatever live playback [child] holds (AiroTV D-pad design:
@@ -63,65 +97,76 @@ class _TvShellState extends ConsumerState<TvShell> {
     // focus that should land on the player's own transport controls.
     final isPlayerFullscreen = ref.watch(isFullscreenModeProvider);
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // The routed content (the live TV screen on the common path).
-          // Never removed from the tree by a sidebar tap — only a direct
-          // deep link to a different route replaces it.
-          Positioned.fill(
-            child: Focus(
-              canRequestFocus: false,
-              onKeyEvent: _handleContentKeyEvent,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
-                ),
-                // Non-live destinations are painted over the retained live
-                // surface. Keep that surface mounted for playback, but never
-                // leave its controls in the focus graph behind an overlay.
-                child: ExcludeFocus(
-                  excluding: _overlay != null,
-                  child: widget.child,
-                ),
+    // Hold the chrome inside the title-safe band so an overscanning TV cannot
+    // crop the navigation rail or the top-right actions. Fullscreen playback is
+    // deliberately exempt: video should fill the panel edge to edge, and losing
+    // a few pixels of picture to overscan is normal, whereas losing the only
+    // way to navigate is not.
+    final body = Stack(
+      children: [
+        // The routed content (the live TV screen on the common path).
+        // Never removed from the tree by a sidebar tap — only a direct
+        // deep link to a different route replaces it.
+        Positioned.fill(
+          child: Focus(
+            canRequestFocus: false,
+            onKeyEvent: _handleContentKeyEvent,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: isPlayerFullscreen ? 0 : _tvNavigationRailWidth,
+              ),
+              // Non-live destinations are painted over the retained live
+              // surface. Keep that surface mounted for playback, but never
+              // leave its controls in the focus graph behind an overlay.
+              child: ExcludeFocus(
+                excluding: _overlay != null,
+                child: widget.child,
               ),
             ),
           ),
-          if (!isPlayerFullscreen) ...[
-            if (_overlay != null)
-              Positioned.fill(
-                // The rail stays visible (painted after this, so on top) and
-                // isn't docked in a layout row anymore, so it no longer
-                // reserves space of its own — give overlay screens the same
-                // left inset the old Row gave them, so their content doesn't
-                // render underneath the now-floating rail.
-                child: Focus(
-                  canRequestFocus: false,
-                  onKeyEvent: _handleContentKeyEvent,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: _tvNavigationRailWidth,
-                    ),
-                    child: _buildOverlay(_overlay!),
-                  ),
+        ),
+        if (!isPlayerFullscreen) ...[
+          if (_overlay != null)
+            Positioned.fill(
+              // The rail stays visible (painted after this, so on top) and
+              // isn't docked in a layout row anymore, so it no longer
+              // reserves space of its own — give overlay screens the same
+              // left inset the old Row gave them, so their content doesn't
+              // render underneath the now-floating rail.
+              child: Focus(
+                canRequestFocus: false,
+                onKeyEvent: _handleContentKeyEvent,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: _tvNavigationRailWidth),
+                  child: _buildOverlay(_overlay!),
                 ),
               ),
-            // The rail is painted on top instead of docked in a Row, so it
-            // never claims layout width from the content beneath it.
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: _TvNavigationRail(
-                currentIndex: currentIndex,
-                focusNodes: _railFocusNodes,
-                onDestinationSelected: (index) =>
-                    _selectDestination(context, index),
-              ),
             ),
-          ],
+          // The rail is painted on top instead of docked in a Row, so it
+          // never claims layout width from the content beneath it.
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: _TvNavigationRail(
+              currentIndex: currentIndex,
+              focusNodes: _railFocusNodes,
+              onDestinationSelected: (index) =>
+                  _selectDestination(context, index),
+            ),
+          ),
         ],
-      ),
+      ],
+    );
+
+    return Scaffold(
+      body: isPlayerFullscreen
+          ? body
+          : Padding(
+              key: const Key('tv-title-safe-inset'),
+              padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
+              child: body,
+            ),
     );
   }
 

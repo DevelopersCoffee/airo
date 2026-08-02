@@ -97,9 +97,9 @@ class _FakeClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
-  }) async {}
+  }) async => null;
 }

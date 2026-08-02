@@ -38,14 +38,20 @@ class TvThemeSection extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Text(
-                    definition.name,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 16,
+                  // Flexible rather than Text + Spacer: the row has to survive
+                  // a narrower viewport (the shell now reserves a title-safe
+                  // margin) and long localised theme names, either of which
+                  // overflowed a fixed-width label.
+                  Expanded(
+                    child: Text(
+                      definition.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   if (isSelected) Icon(Icons.check, color: colorScheme.primary),
                 ],
               ),

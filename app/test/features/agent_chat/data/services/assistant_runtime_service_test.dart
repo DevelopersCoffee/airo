@@ -1377,9 +1377,9 @@ class _UrlOnlyLiteRtClient implements LiteRtLmClient {
   }) async {}
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
-  }) async {}
+  }) async => null;
 }
