@@ -55,6 +55,27 @@ All modules live in one monorepo with strict package boundaries — see the
 |---|---|
 | ![Airo TV on macOS — browsing categories with live playback](docs/assets/images/airo-tv-macos-demo.gif) | ![Airo TV on Pixel 9 — channel switch and live playback](docs/assets/images/airo-tv-pixel-demo.gif) |
 
+### Touch playlist management — Under qualification
+
+<p align="center">
+  <a href="https://developerscoffee.github.io/airo/tv/#touch-playlists">
+    <img
+      src="docs/store-assets/airo-tv/05-mobile-multiple-playlist-sources-1080x1920.png"
+      width="360"
+      alt="Sanitized Airo Pixel 9 preview showing two authorized M3U playlist sources"
+    />
+  </a>
+</p>
+
+Physical Pixel 9 evidence confirms the add, persist, and remove journey for
+multiple authorized playlist sources on current mainline builds. This remains
+**under qualification** and is not included in the latest published preview.
+The image uses public IPTV.org examples and owned Airo artwork; it contains no
+private provider data or bundled content.
+
+[View the product story](https://developerscoffee.github.io/airo/tv/#touch-playlists)
+· [Download the 1080×1920 store PNG](https://developerscoffee.github.io/airo/store-assets/airo-tv/05-mobile-multiple-playlist-sources-1080x1920.png)
+
 Airo TV is the focused Android TV build of Airo's media module
 (`io.airo.app.tv`). TV-first channel grid, search, and playback for your own
 M3U/M3U8 playlists.
