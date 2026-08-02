@@ -1,5 +1,6 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Loads live compatibility facts without blocking navigation to the health
 /// center. Platform probes can be slow or unavailable after an OS update.
@@ -143,6 +144,24 @@ class ModelHealthCenterScreen extends StatelessWidget {
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: report.toMarkdown()),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Runtime diagnostics copied.'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copy diagnostics'),
+                    ),
+                  ),
                 ],
               ),
             ),

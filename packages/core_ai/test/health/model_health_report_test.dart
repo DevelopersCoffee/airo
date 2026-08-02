@@ -254,4 +254,59 @@ void main() {
     expect(report.explanation, contains('LiteRT init failed'));
     expect(report.actions, contains(ModelHealthAction.retry));
   });
+
+  test('renders copy-safe markdown diagnostics for support', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      compatibility: const ModelCompatibilityResult(
+        isCompatible: false,
+        memorySeverity: MemorySeverity.blocked,
+        reason: 'Budget exceeded',
+        availableMemoryMB: 2_100,
+        requiredMemoryMB: 3_338,
+      ),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.lowMemory,
+        detail: 'Runtime paused because memory is low.',
+      ),
+      plan: const ExecutionPlan(
+        ir: InferenceIr(
+          runtime: RuntimeId.liteRt,
+          accelerator: ComputeAccelerator.vulkan,
+          modelId: 'gemma-4b',
+          contextTokens: 4096,
+          outputTokens: 256,
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          priority: ExecutionPriority.interactive,
+        ),
+        batchSize: 1,
+        thermalLimited: false,
+        batterySaver: false,
+      ),
+      trace: ExecutionTrace(
+        entries: [
+          ExecutionTraceEntry(
+            sequence: 1,
+            event: ExecutionTraceEvent.initializing,
+            elapsedMs: BigInt.zero,
+          ),
+        ],
+      ),
+    );
+
+    final markdown = report.toMarkdown();
+
+    expect(markdown, contains('# Airo Runtime Health Diagnostics'));
+    expect(markdown, contains('| Model | `Gemma 4B` (`gemma-4b`) |'));
+    expect(markdown, contains('| Failure code | `insufficientMemory` |'));
+    expect(markdown, contains('| Runtime | `liteRt` |'));
+    expect(markdown, contains('| Accelerator | `vulkan` |'));
+    expect(markdown, contains('| Available memory | `2100 MB` |'));
+    expect(markdown, contains('- `compatible`: `blocked` — Budget exceeded'));
+    expect(markdown, contains('- `reduceContext`'));
+    expect(markdown, contains('- `1` `initializing` `0 ms`'));
+    expect(markdown, isNot(contains('/models/')));
+  });
 }
