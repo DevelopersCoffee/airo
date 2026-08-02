@@ -809,6 +809,16 @@ button,
   object-fit: cover;
 }
 
+.screen-shot-touch img {
+  object-fit: contain;
+}
+
+.screen-copy-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .screen-copy .step-number {
   color: var(--gold);
   font-size: 13px;
@@ -830,64 +840,6 @@ button,
 .screen-copy p {
   margin: 0;
   color: var(--muted);
-}
-
-.touch-store-band {
-  background:
-    linear-gradient(
-      115deg,
-      color-mix(in oklch, var(--gold), transparent 96%),
-      transparent 48%
-    ),
-    var(--surface);
-}
-
-.touch-store-feature {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.72fr) minmax(360px, 1.28fr);
-  gap: 72px;
-  align-items: center;
-}
-
-.touch-store-shot {
-  width: min(100%, 430px);
-  margin: 0;
-  justify-self: center;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: #121212;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
-}
-
-.touch-store-shot img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 9 / 16;
-  object-fit: cover;
-}
-
-.touch-store-copy h2 {
-  max-width: 13ch;
-  margin: 18px 0;
-  font-size: clamp(38px, 5vw, 64px);
-  line-height: 1.02;
-}
-
-.touch-store-copy > p:not(.eyebrow) {
-  max-width: 62ch;
-  color: var(--muted);
-}
-
-.touch-store-copy .status {
-  margin-top: 12px;
-}
-
-.touch-store-note {
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-  color: var(--quiet) !important;
-  font-size: 14px;
 }
 
 .live-sample-video {
@@ -1861,7 +1813,6 @@ button,
   .proof-grid,
   .section-intro,
   .screen-step,
-  .touch-store-feature,
   .community-grid,
   .pro-shell,
   .roadmap,
