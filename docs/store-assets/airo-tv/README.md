@@ -12,6 +12,7 @@ runtime and uploaded as workflow evidence.
 | `02-tv-now-playing.png` | 1920x1080 | TV now-playing state with highlighted current channel |
 | `03-tv-search-dialog.png` | 1920x1080 | Channel search dialog |
 | `04-tv-playlist-source.png` | 1920x1080 | Bring-your-own-playlist source sheet |
+| `05-mobile-multiple-playlist-sources-1080x1920.png` | 1080x1920 | Phone listing candidate for touch multi-playlist management |
 | `feature-graphic-1024x500.png` | 1024x500 | Google Play feature graphic |
 
 The checked-in screenshots use realistic demo channel names and nonfunctional
@@ -19,6 +20,12 @@ The checked-in screenshots use realistic demo channel names and nonfunctional
 `e2e/fixtures/airo-tv-viewport.m3u` playlist and local video fixture. Neither
 path includes private playlists, tokens, MAC addresses, device serial numbers,
 or personal account details.
+
+`05-mobile-multiple-playlist-sources-1080x1920.png` is a sanitized Pixel 9
+qualification capture. Third-party playback imagery, channel branding, and
+personal notification icons were replaced with owned Airo demo artwork. It is
+a candidate for the next qualified mobile listing; the published
+`v0.0.6-rc.1` release does not include multiple-playlist merge.
 
 ## Capture a release candidate
 
@@ -33,6 +40,11 @@ Playwright, then writes RGB/no-alpha PNGs and `store-assets.json` under
 `artifacts/store-listing/processed/`. The portrait capture is padded when
 needed to satisfy the Play Store 2:1 maximum aspect ratio. The feature graphic
 is always cropped to exactly 1024x500.
+
+The mobile screenshot is maintained separately from the automated TV capture
+set because it records physical Pixel 9 qualification evidence. Keep it at
+1080x1920, re-sanitize every replacement capture, and re-run the public page
+audit before publication.
 
 The feature background in `source/feature-graphic-background.png` was generated
 for Airo from this text-only brief: “Abstract cinematic TV media library
