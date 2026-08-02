@@ -29,8 +29,8 @@ Status: all 4 items executed and verified 2026-08-01/02. v0.0.6-rc.1 already pub
 - User decision: ship ad-hoc, unnotarized macOS alongside the proven Android dogfood build.
 - Verified this is already exactly what's live: GitHub release `v0.0.6-rc.1` (published 2026-08-01T10:24:56Z, prerelease) ships `Airo-TV-0.0.6-rc.1-macOS.dmg`/`.zip` ad-hoc dogfood-signed alongside `AiroCoins-0.0.6-rc.1-8-*` and `Airo-TV-0.0.6-rc.1-*.apk`. Release notes explicitly scope out store submission, Play upload, and macOS notarization for this cut. No new tag was needed.
 
-## Follow-ups not yet actioned
-- File Fire TV Back-key-swallowed bug as a GitHub issue (owner: tv-experience-architect / core_remote_control).
-- Realign `app/pubspec_coins.yaml` version (currently 0.0.1+1) with the actual shipped Coins version (0.0.6+8) so `scripts/build-coins.sh` stops producing downgrade-blocked artifacts.
+## Follow-ups
+- Fire TV Back-key-swallowed bug filed: https://github.com/DevelopersCoffee/airo/issues/1430 (owner: tv-experience-architect / core_remote_control).
+- `app/pubspec_coins.yaml` version drift (0.0.1+1 vs shipped 0.0.6+8) fixed: https://github.com/DevelopersCoffee/airo/pull/1431.
 - Chess AI broken in release builds — stockfish stub override bug, issue #1407. Not release-blocking for TV/Coins qual above but flag if scope expands to phone release.
 - Two latent orchestrator bugs noted in release-cut playbook — still unverified, not exercised by this qual round.
