@@ -118,6 +118,7 @@ class ModelHealthReport {
     final downloaded =
         downloadStatus == ModelDownloadStatus.completed ||
         (download == null && (artifactPresent ?? model.isDownloaded));
+    final stalled = download?.isStalled ?? false;
     final downloading =
         downloadStatus == ModelDownloadStatus.downloading ||
         downloadStatus == ModelDownloadStatus.pending ||
@@ -129,11 +130,15 @@ class ModelHealthReport {
         stage: ModelHealthStage.downloaded,
         status: downloaded
             ? ModelHealthStageStatus.passed
+            : stalled
+            ? ModelHealthStageStatus.blocked
             : downloading
             ? ModelHealthStageStatus.pending
             : ModelHealthStageStatus.blocked,
         detail: downloaded
             ? 'Model artifact is present on this device.'
+            : stalled
+            ? 'Download is stalled.'
             : downloading
             ? 'Download is ${download!.statusDisplay.toLowerCase()}.'
             : 'Model artifact is not downloaded.',
@@ -205,6 +210,8 @@ class ModelHealthReport {
         ? ModelHealthReportStatus.recoverable
         : stages.every((entry) => entry.isPassed)
         ? ModelHealthReportStatus.ready
+        : stalled
+        ? ModelHealthReportStatus.recoverable
         : downloading
         ? ModelHealthReportStatus.preparing
         : ModelHealthReportStatus.unknown;
@@ -221,7 +228,11 @@ class ModelHealthReport {
         runtimeHealth: runtimeHealth,
       ),
       failureCode: failureCode,
-      actions: _actions(failureCode: failureCode, downloading: downloading),
+      actions: _actions(
+        failureCode: failureCode,
+        downloading: downloading,
+        stalled: stalled,
+      ),
       availableMemoryMb: compatibility?.availableMemoryMB,
       requiredMemoryMb: compatibility?.requiredMemoryMB,
       runtime: plan?.ir.runtime,
@@ -271,6 +282,9 @@ class ModelHealthReport {
     // the file itself, so surface that state as recoverable instead of leaving
     // the Health Center stuck at "unknown".
     if (download == null && artifactPresent == false) {
+      return ModelHealthFailureCode.downloadIncomplete;
+    }
+    if (download?.isStalled ?? false) {
       return ModelHealthFailureCode.downloadIncomplete;
     }
     if (download?.status == ModelDownloadStatus.failed) {
@@ -369,7 +383,11 @@ class ModelHealthReport {
   static List<ModelHealthAction> _actions({
     required ModelHealthFailureCode failureCode,
     required bool downloading,
+    required bool stalled,
   }) {
+    if (stalled) {
+      return const [ModelHealthAction.retry, ModelHealthAction.resumeDownload];
+    }
     if (downloading) return const [ModelHealthAction.resumeDownload];
     return switch (failureCode) {
       ModelHealthFailureCode.insufficientMemory ||

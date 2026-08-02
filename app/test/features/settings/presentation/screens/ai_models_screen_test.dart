@@ -197,6 +197,59 @@ void main() {
     expect(find.textContaining('remaining'), findsOneWidget);
   });
 
+  testWidgets('queued downloads show their queue position', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'gemma-queued': ModelCompatibilityResult.compatible(
+              MemorySeverity.safe,
+            ),
+          },
+        )..registerModel(
+          const OfflineModelInfo(
+            id: 'gemma-queued',
+            name: 'Gemma Queued',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 2048,
+            provider: AIProvider.gemma,
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)
+              ..state = {
+                'gemma-queued': const ModelDownloadProgress(
+                  modelId: 'gemma-queued',
+                  totalBytes: 100,
+                  downloadedBytes: 0,
+                  status: ModelDownloadStatus.pending,
+                  queuePosition: 1,
+                ),
+              },
+          ),
+        ],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Queued #2'), findsOneWidget);
+    expect(find.text('0%'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        RegExp(r'Download progress: Queued #2 0 percent\.'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'model card actions route through download manager and registry',
     (tester) async {

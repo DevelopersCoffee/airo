@@ -39,6 +39,7 @@ class ModelDownloadProgress {
     required this.status,
     this.speedBytesPerSecond = 0,
     this.startTime,
+    this.lastProgressAt,
     this.error,
     this.failureCode,
     this.retryCount = 0,
@@ -63,6 +64,9 @@ class ModelDownloadProgress {
 
   /// Time when download started.
   final DateTime? startTime;
+
+  /// Last time downloaded bytes increased.
+  final DateTime? lastProgressAt;
 
   /// Error message if download failed.
   final String? error;
@@ -94,6 +98,22 @@ class ModelDownloadProgress {
   /// Whether the download is in progress.
   bool get isInProgress => status == ModelDownloadStatus.downloading;
 
+  /// Whether the platform still reports downloading but no bytes have moved
+  /// for long enough that the user should see retry/repair guidance.
+  bool get isStalled => isStalledAt(DateTime.now());
+
+  bool isStalledAt(
+    DateTime now, {
+    Duration threshold = const Duration(seconds: 90),
+  }) {
+    if (status != ModelDownloadStatus.downloading) return false;
+    if (isComplete || downloadedBytes >= totalBytes) return false;
+    if (speedBytesPerSecond > 0) return false;
+    final lastProgress = lastProgressAt ?? startTime;
+    if (lastProgress == null) return false;
+    return now.difference(lastProgress) >= threshold;
+  }
+
   /// Whether the download is still actively occupying the progress UI.
   bool get isActive =>
       status == ModelDownloadStatus.pending ||
@@ -101,13 +121,13 @@ class ModelDownloadProgress {
       status == ModelDownloadStatus.paused ||
       status == ModelDownloadStatus.verifying;
 
-  bool get canPause => status == ModelDownloadStatus.downloading;
+  bool get canPause => status == ModelDownloadStatus.downloading && !isStalled;
 
   bool get canResume =>
       status == ModelDownloadStatus.paused ||
       (status == ModelDownloadStatus.failed && resumeSupported);
 
-  bool get canRetry => status == ModelDownloadStatus.failed;
+  bool get canRetry => status == ModelDownloadStatus.failed || isStalled;
 
   bool get canCancel =>
       status != ModelDownloadStatus.completed &&
@@ -117,8 +137,12 @@ class ModelDownloadProgress {
   String get statusDisplay {
     switch (status) {
       case ModelDownloadStatus.pending:
+        if (queuePosition != null && queuePosition! >= 0) {
+          return 'Queued #${queuePosition! + 1}';
+        }
         return 'Queued';
       case ModelDownloadStatus.downloading:
+        if (isStalled) return 'Stalled';
         return 'Downloading';
       case ModelDownloadStatus.paused:
         return 'Paused';
@@ -142,6 +166,7 @@ class ModelDownloadProgress {
 
   /// Formatted download speed (e.g., "2.5 MB/s").
   String get speedDisplay {
+    if (isStalled) return 'No throughput';
     if (speedBytesPerSecond < 1024) {
       return '${speedBytesPerSecond.round()} B/s';
     } else if (speedBytesPerSecond < 1024 * 1024) {
@@ -208,6 +233,7 @@ class ModelDownloadProgress {
     ModelDownloadStatus? status,
     double? speedBytesPerSecond,
     DateTime? startTime,
+    DateTime? lastProgressAt,
     String? error,
     String? failureCode,
     int? retryCount,
@@ -221,6 +247,7 @@ class ModelDownloadProgress {
       status: status ?? this.status,
       speedBytesPerSecond: speedBytesPerSecond ?? this.speedBytesPerSecond,
       startTime: startTime ?? this.startTime,
+      lastProgressAt: lastProgressAt ?? this.lastProgressAt,
       error: error ?? this.error,
       failureCode: failureCode ?? this.failureCode,
       retryCount: retryCount ?? this.retryCount,

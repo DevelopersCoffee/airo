@@ -146,6 +146,33 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('late speech result after stop does not update transcript', (
+    tester,
+  ) async {
+    await _usePhoneSurface(tester);
+    final pending = Completer<VoiceSearchResult>();
+    final service = _FakeVoiceService(pendingResult: pending);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+        child: const MaterialApp(home: AudioScribeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
+    await tester.pump();
+    pending.complete(VoiceSearchResult.success('Late transcript.'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, isEmpty);
+    expect(find.text('Late transcript.'), findsNothing);
+    expect(find.text('No speech was recognized.'), findsNothing);
+  });
+
   testWidgets('translation and model management use typed Mind routes', (
     tester,
   ) async {
