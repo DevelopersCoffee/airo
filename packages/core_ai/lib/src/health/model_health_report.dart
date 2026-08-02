@@ -102,6 +102,67 @@ class ModelHealthReport {
   ModelHealthStageResult stage(ModelHealthStage value) =>
       stages.firstWhere((entry) => entry.stage == value);
 
+  /// Stable, support-safe diagnostics for the Health Center "Why?" panel.
+  ///
+  /// This intentionally contains typed runtime facts and user-visible
+  /// recommendations, not exception strings, stack traces, or local file paths.
+  String toMarkdown() {
+    final buffer = StringBuffer()
+      ..writeln('# Airo Runtime Health Diagnostics')
+      ..writeln()
+      ..writeln('| Field | Value |')
+      ..writeln('| --- | --- |')
+      ..writeln('| Model | `$modelName` (`$modelId`) |')
+      ..writeln('| Status | `${status.name}` |')
+      ..writeln('| Failure code | `${failureCode.name}` |')
+      ..writeln('| Runtime | `${runtime?.name ?? 'not_selected'}` |')
+      ..writeln('| Accelerator | `${accelerator?.name ?? 'automatic'}` |')
+      ..writeln('| Context | `${contextTokens ?? 'not_selected'}` |');
+    if (availableMemoryMb != null || requiredMemoryMb != null) {
+      buffer
+        ..writeln(
+          '| Available memory | `${availableMemoryMb?.toStringAsFixed(0) ?? 'unknown'} MB` |',
+        )
+        ..writeln(
+          '| Estimated peak memory | `${requiredMemoryMb?.toStringAsFixed(0) ?? 'unknown'} MB` |',
+        );
+    }
+    buffer
+      ..writeln()
+      ..writeln('## Why')
+      ..writeln()
+      ..writeln(explanation)
+      ..writeln()
+      ..writeln('## Readiness timeline')
+      ..writeln();
+    for (final entry in stages) {
+      buffer.writeln(
+        '- `${entry.stage.name}`: `${entry.status.name}` — ${entry.detail}',
+      );
+    }
+    if (actions.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('## Recommended actions')
+        ..writeln();
+      for (final action in actions) {
+        buffer.writeln('- `${action.name}`');
+      }
+    }
+    if (trace != null && trace!.entries.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('## Runtime trace')
+        ..writeln();
+      for (final entry in trace!.entries) {
+        buffer.writeln(
+          '- `${entry.sequence}` `${entry.event.name}` `${entry.elapsedMs} ms`',
+        );
+      }
+    }
+    return buffer.toString().trimRight();
+  }
+
   /// Composes a report exclusively from observed facts. It performs no I/O,
   /// platform calls, or runtime calls, so identical facts produce identical
   /// diagnostics in Airo and Airo Mind.
