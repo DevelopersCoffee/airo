@@ -1,8 +1,23 @@
 name: wakelock_plus
-description: Stub implementation of wakelock_plus for TV builds
+description: KGP-free wakelock_plus compatibility implementation for TV builds
 version: 1.6.1
 publish_to: none
 
 environment:
   sdk: '>=3.12.2 <4.0.0'
   flutter: '>=3.44.4'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.fluttercommunity.plus.wakelock
+        pluginClass: WakelockPlusPlugin

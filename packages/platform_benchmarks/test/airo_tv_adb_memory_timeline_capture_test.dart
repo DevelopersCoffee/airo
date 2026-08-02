@@ -40,6 +40,14 @@ App Summary
       expect(AiroTvMeminfoParser.parseTotalRssMb(output), 128);
     });
 
+    test('parses Android 17 combined TOTAL PSS and TOTAL RSS line', () {
+      const output = '''
+           TOTAL PSS:   302203            TOTAL RSS:   424516       TOTAL SWAP PSS:       76
+''';
+
+      expect(AiroTvMeminfoParser.parseTotalRssMb(output), 415);
+    });
+
     test('rejects output without total RSS', () {
       expect(
         () => AiroTvMeminfoParser.parseTotalRssMb('No process found.'),
@@ -55,7 +63,14 @@ App Summary
       clock: () => base.add(Duration(seconds: calls++ * 30)),
       delay: (_) async {},
       processRunner: (_, args) async {
-        expect(args, ['shell', 'dumpsys', 'meminfo', 'io.airo.tv']);
+        expect(args, [
+          '-s',
+          'pixel-9',
+          'shell',
+          'dumpsys',
+          'meminfo',
+          'io.airo.tv',
+        ]);
         final rssKb = calls == 0 ? 120 * 1024 : 124 * 1024;
         return ProcessResult(42, 0, 'TOTAL RSS: ${rssKb}K\n', '');
       },
@@ -64,6 +79,7 @@ App Summary
     final report = await capture.capture(
       const AiroTvAdbMemoryTimelineConfig(
         packageName: 'io.airo.tv',
+        deviceSerial: 'pixel-9',
         sampleCount: 2,
         sampleInterval: Duration(seconds: 30),
         dartHeapMb: 40,

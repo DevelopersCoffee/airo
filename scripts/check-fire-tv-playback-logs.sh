@@ -79,13 +79,17 @@ grep -vE '^--------- (beginning of|switch to) ' \
 log_enable_count="$(grep -cF 'vendor.dpframework.log.enable' "$normalized_sample" || true)"
 checksum_count="$(grep -cF 'vendor.dpframework.dumpbuffer.checksum' "$normalized_sample" || true)"
 dumpbuffer_count="$(grep -cF 'vendor.dpframework.dumpbuffer.enable' "$normalized_sample" || true)"
-known_count=$((log_enable_count + checksum_count + dumpbuffer_count))
+jdwp_agent_count="$(grep -cF 'Not starting debugger since process cannot load the jdwp agent.' "$normalized_sample" || true)"
+ion_ioctl_count="$(grep -cF 'ioctl c0044901 failed with code -1: Invalid argument' "$normalized_sample" || true)"
+known_count=$((log_enable_count + checksum_count + dumpbuffer_count + jdwp_agent_count + ion_ioctl_count))
 total_count="$(grep -c . "$normalized_sample" || true)"
 
 grep -vF \
   -e 'vendor.dpframework.log.enable' \
   -e 'vendor.dpframework.dumpbuffer.checksum' \
   -e 'vendor.dpframework.dumpbuffer.enable' \
+  -e 'Not starting debugger since process cannot load the jdwp agent.' \
+  -e 'ioctl c0044901 failed with code -1: Invalid argument' \
   "$normalized_sample" > "$tmp_dir/actionable.log" || true
 actionable_count="$(grep -c . "$tmp_dir/actionable.log" || true)"
 fatal_count="$(grep -Ec 'FATAL EXCEPTION|AndroidRuntime|Process: io\.airo\.app\.tv' "$tmp_dir/actionable.log" || true)"
@@ -105,7 +109,7 @@ cat > "$OUTPUT_FILE" <<EOF
 - Sample window: ${DURATION_SECONDS}s
 - Package: \`$PACKAGE_NAME\`
 - Total app-scoped error lines: $total_count
-- Known Fire OS/MediaTek property denials: $known_count
+- Known Fire OS/MediaTek runtime noise: $known_count
 - Other actionable error lines: $actionable_count
 - Fatal signatures among actionable lines: $fatal_count
 
@@ -114,9 +118,11 @@ cat > "$OUTPUT_FILE" <<EOF
 | \`vendor.dpframework.log.enable\` | $log_enable_count |
 | \`vendor.dpframework.dumpbuffer.checksum\` | $checksum_count |
 | \`vendor.dpframework.dumpbuffer.enable\` | $dumpbuffer_count |
+| Fire OS JDWP agent unavailable | $jdwp_agent_count |
+| Fire OS ION unsupported ioctl | $ion_ioctl_count |
 
 Raw logcat is intentionally excluded because it can contain stream URLs,
-network identifiers, or device identifiers. Known property denials are
+network identifiers, or device identifiers. Known Fire OS runtime noise is
 aggregated only; every other error remains an actionable qualification failure.
 EOF
 
