@@ -869,6 +869,8 @@ String _remoteServerRecommendation(RemoteServerDiagnostics diagnostics) {
       'Use the OpenAI-compatible base URL, usually ending in /v1.',
     RemoteServerHealth.invalidResponse =>
       'Check that Ollama, LM Studio, or llama.cpp is exposing a /models response.',
+    RemoteServerHealth.modelMissing =>
+      'Choose one of the reported model ids or load the requested model in the remote server.',
     RemoteServerHealth.unavailable =>
       'Confirm the server is running and reachable from this device.',
   };

@@ -756,8 +756,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     if (!message.isUser)
                       IconButton(
                         tooltip: 'Read message aloud',
-                        onPressed: () =>
-                            AiroSpeechService.instance.speak(message.text),
+                        onPressed: () => _readMessageAloud(message.text),
                         icon: const Icon(Icons.volume_up_outlined, size: 18),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints.tightFor(
@@ -812,6 +811,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Transcript copied')));
+  }
+
+  Future<void> _readMessageAloud(String text) async {
+    final started = await AiroSpeechService.instance.speak(text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          started
+              ? 'Reading message aloud'
+              : 'Read aloud is unavailable on this device.',
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmClearConversation() async {

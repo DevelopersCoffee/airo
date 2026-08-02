@@ -278,6 +278,31 @@ void main() {
     );
   });
 
+  testWidgets('read aloud reports unavailable TTS engines', (tester) async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const ttsChannel = MethodChannel('flutter_tts');
+    messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+      throw PlatformException(code: 'tts_unavailable');
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(ttsChannel, null);
+    });
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: 'Assistant answer', isUser: false)],
+    );
+
+    await tester.tap(find.byTooltip('Read message aloud'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Read aloud is unavailable on this device.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('copy transcript exports the visible chat session', (
     tester,
   ) async {

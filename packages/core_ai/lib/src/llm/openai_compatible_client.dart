@@ -30,6 +30,7 @@ enum RemoteServerHealth {
   notFound,
   unavailable,
   invalidResponse,
+  modelMissing,
 }
 
 /// Structured diagnostics for a remote runtime connection.
@@ -129,6 +130,19 @@ class OpenAICompatibleClient implements LLMClient {
         );
       }
       final modelIds = _extractModelIds(response.data);
+      final configuredModel = _model.trim();
+      if (modelIds.isNotEmpty &&
+          configuredModel.isNotEmpty &&
+          !modelIds.contains(configuredModel)) {
+        return RemoteServerDiagnostics(
+          health: RemoteServerHealth.modelMissing,
+          baseUrl: _baseUrl,
+          statusCode: statusCode,
+          modelIds: modelIds,
+          message:
+              'The server is reachable, but it did not report the configured model "$configuredModel".',
+        );
+      }
       return RemoteServerDiagnostics(
         health: modelIds.isEmpty
             ? RemoteServerHealth.invalidResponse

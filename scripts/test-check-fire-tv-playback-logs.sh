@@ -10,6 +10,8 @@ cat > "$tmp_dir/known.log" <<'EOF'
 E/libc: Access denied finding property "vendor.dpframework.log.enable"
 E/libc: Access denied finding property "vendor.dpframework.dumpbuffer.checksum"
 E/libc: Access denied finding property "vendor.dpframework.dumpbuffer.enable"
+E/io.airo.app.tv: Not starting debugger since process cannot load the jdwp agent.
+E/ion: ioctl c0044901 failed with code -1: Invalid argument
 --------- switch to system
 EOF
 
@@ -17,9 +19,11 @@ EOF
   --input "$tmp_dir/known.log" \
   --output "$tmp_dir/known-report.md"
 grep -q 'PASS_WITH_KNOWN_PLATFORM_NOISE' "$tmp_dir/known-report.md"
-grep -q 'Total app-scoped error lines: 3' "$tmp_dir/known-report.md"
-grep -q 'Known Fire OS/MediaTek property denials: 3' "$tmp_dir/known-report.md"
+grep -q 'Total app-scoped error lines: 5' "$tmp_dir/known-report.md"
+grep -q 'Known Fire OS/MediaTek runtime noise: 5' "$tmp_dir/known-report.md"
 grep -q 'Other actionable error lines: 0' "$tmp_dir/known-report.md"
+grep -q 'Fire OS JDWP agent unavailable.*| 1 |' "$tmp_dir/known-report.md"
+grep -q 'Fire OS ION unsupported ioctl.*| 1 |' "$tmp_dir/known-report.md"
 
 cat > "$tmp_dir/actionable.log" <<'EOF'
 E/libc: Access denied finding property "vendor.dpframework.log.enable"

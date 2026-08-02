@@ -244,8 +244,7 @@ class ModelCard extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
-                if ((downloadStatus ?? '').toLowerCase() == 'paused' &&
-                    onResumeDownload != null)
+                if (onResumeDownload != null)
                   IconButton(
                     onPressed: onResumeDownload,
                     icon: const Icon(Icons.play_arrow, size: 18),
@@ -254,8 +253,7 @@ class ModelCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   )
-                else if ((downloadStatus ?? '').toLowerCase() == 'failed' &&
-                    onRetryDownload != null)
+                else if (onRetryDownload != null)
                   IconButton(
                     onPressed: onRetryDownload,
                     icon: const Icon(Icons.refresh, size: 18),

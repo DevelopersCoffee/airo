@@ -1,4 +1,5 @@
 import 'package:airo_app/core/services/llama_gguf_service.dart';
+import 'package:airo_app/core/services/litert_lm_service.dart';
 import 'package:airo_app/features/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
@@ -150,6 +151,50 @@ void main() {
 
         expect(result.status, AssistantRuntimePreparationStatus.blocked);
         expect(result.diagnostic?.reasonCode, 'native_backend_unavailable');
+      },
+    );
+
+    test(
+      'blocks default LiteRT when only a download URL is configured',
+      () async {
+        final service = AssistantRuntimeService(
+          liteRtLm: LiteRtLmService(
+            client: _UrlOnlyLiteRtClient(),
+            config: const LiteRtLmConfig(
+              modelUrl: 'https://example.com/gemma.task',
+            ),
+          ),
+          loadDeviceInfo: () async => const {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: const AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: [AssistantTask.chat],
+            tags: ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: '2 GB',
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.blocked);
+        expect(result.diagnostic?.reasonCode, 'runtime_unavailable');
+        expect(
+          result.diagnostic?.repairActions,
+          contains(
+            'Set LITERT_LM_MODEL_PATH to a verified local artifact when launching locally.',
+          ),
+        );
       },
     );
 
@@ -1309,4 +1354,32 @@ class _FakeLlamaGgufService extends LlamaGgufService {
   }) {
     return Stream<String>.fromIterable(generatedChunks);
   }
+}
+
+class _UrlOnlyLiteRtClient implements LiteRtLmClient {
+  @override
+  Future<bool> activeModelExists({String? modelPath}) async => true;
+
+  @override
+  Future<String> generate({
+    required String prompt,
+    required LiteRtLmBackend backend,
+    required int maxTokens,
+    String? systemPrompt,
+  }) async => 'should-not-run';
+
+  @override
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  }) async {}
+
+  @override
+  Future<void> installModel({
+    required String url,
+    required LiteRtLmModelKind modelKind,
+    String? huggingFaceToken,
+  }) async {}
 }

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_device_profile/platform_device_profile_host.dart';
 
+import 'adb_target.dart';
 import 'airo_tv_adb_memory_timeline_capture.dart';
 
 const String kAiroTvPlaybackSoakSchemaVersion = '1.0.0';
@@ -16,10 +17,14 @@ const List<String> kDefaultAiroTvPlaybackSoakKeyEvents = [
   'DPAD_CENTER',
 ];
 
+typedef AiroTvPlaybackSoakSampleCallback =
+    void Function(int completedSamples, int totalSamples, int rssMb);
+
 class AiroTvPlaybackSoakConfig {
   const AiroTvPlaybackSoakConfig({
     required this.packageName,
     this.adbPath = 'adb',
+    this.deviceSerial,
     this.reportId = 'airo-tv-playback-soak',
     this.scenarioId = 'manual-tv-playback-soak',
     this.duration = const Duration(minutes: 30),
@@ -38,6 +43,7 @@ class AiroTvPlaybackSoakConfig {
   });
 
   final String adbPath;
+  final String? deviceSerial;
   final String packageName;
   final String reportId;
   final String scenarioId;
@@ -87,6 +93,7 @@ class AiroTvPlaybackSoakConfig {
     }
     return AiroTvPlaybackSoakConfig(
       adbPath: adbPath.trim().isEmpty ? 'adb' : adbPath.trim(),
+      deviceSerial: deviceSerial?.trim(),
       packageName: normalizedPackage,
       reportId: reportId.trim().isEmpty
           ? 'airo-tv-playback-soak'
@@ -116,6 +123,7 @@ class AiroTvPlaybackSoakRunner {
     AiroProcessRunner? processRunner,
     AiroDelay? delay,
     DateTime Function()? clock,
+    this.onSample,
   }) : _processRunner = processRunner ?? Process.run,
        _delay = delay ?? Future<void>.delayed,
        _clock = clock ?? DateTime.now;
@@ -123,6 +131,7 @@ class AiroTvPlaybackSoakRunner {
   final AiroProcessRunner _processRunner;
   final AiroDelay _delay;
   final DateTime Function() _clock;
+  final AiroTvPlaybackSoakSampleCallback? onSample;
 
   Future<AiroRuntimeMemoryTimelineReport> run(
     AiroTvPlaybackSoakConfig rawConfig,
@@ -183,6 +192,7 @@ class AiroTvPlaybackSoakRunner {
           retainedChannelListCopies: config.retainedChannelListCopies,
         ),
       );
+      onSample?.call(index + 1, config.sampleCount, rssMb);
     }
 
     return AiroRuntimeMemoryTimelineReport(
@@ -215,7 +225,10 @@ class AiroTvPlaybackSoakRunner {
     List<String> arguments, {
     required String context,
   }) async {
-    final result = await _processRunner(config.adbPath, arguments);
+    final result = await _processRunner(
+      config.adbPath,
+      airoAdbArguments(config.deviceSerial, arguments),
+    );
     if (result.exitCode != 0) {
       throw StateError('adb $context failed: ${result.stderr}'.trim());
     }

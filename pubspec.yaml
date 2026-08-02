@@ -106,6 +106,7 @@ melos:
         flutter pub get
         dart run tool/capture_airo_tv_memory_timeline.dart \
           --package "${AIRO_TV_PACKAGE:-io.airo.app}" \
+          --device "${AIRO_TV_DEVICE:-}" \
           --samples "${AIRO_TV_MEMORY_SAMPLES:-60}" \
           --interval-seconds "${AIRO_TV_MEMORY_INTERVAL_SECONDS:-30}" \
           --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
@@ -119,6 +120,7 @@ melos:
         flutter pub get
         dart run tool/run_airo_tv_playback_soak.dart \
           --package "${AIRO_TV_PACKAGE:-io.airo.app.tv}" \
+          --device "${AIRO_TV_DEVICE:-}" \
           --duration-seconds "${AIRO_TV_SOAK_DURATION_SECONDS:-1800}" \
           --interval-seconds "${AIRO_TV_SOAK_INTERVAL_SECONDS:-30}" \
           --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
