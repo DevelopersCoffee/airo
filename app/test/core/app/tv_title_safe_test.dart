@@ -12,28 +12,20 @@ import 'package:flutter_test/flutter_test.dart';
 /// that removes the only way to navigate the app.
 void main() {
   group('title-safe geometry', () {
-    test('reserves the horizontal 5% band at 1080p', () {
+    test('reserves 5% of every edge at 1080p', () {
       final insets = tvTitleSafeInsets(const Size(1920, 1080));
 
       expect(insets.left, 96);
       expect(insets.right, 96);
-      // Vertical is deliberately not reserved yet -- see tvTitleSafeInsets.
-      expect(insets.top, 0);
-      expect(insets.bottom, 0);
-    });
-
-    test('the full convention is still expressed for reference', () {
-      final full = tvFullTitleSafeInsets(const Size(1920, 1080));
-
-      expect(full.left, 96);
-      expect(full.top, 54);
+      expect(insets.top, 54);
+      expect(insets.bottom, 54);
     });
 
     test('scales with the viewport rather than assuming 1080p', () {
       final insets = tvTitleSafeInsets(const Size(3840, 2160));
 
       expect(insets.left, 192);
-      expect(tvFullTitleSafeInsets(const Size(3840, 2160)).top, 108);
+      expect(insets.top, 108);
     });
 
     test('keeps the measured sidebar edge inside the safe band', () {
@@ -87,7 +79,7 @@ void main() {
 
       expect(
         padding.padding,
-        const EdgeInsets.symmetric(horizontal: 96),
+        const EdgeInsets.symmetric(horizontal: 96, vertical: 54),
         reason: 'the rail must start inside the croppable band',
       );
     });
