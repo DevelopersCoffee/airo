@@ -36,3 +36,7 @@ export 'src/runtime/ports/operation_log_port.dart';
 export 'src/runtime/ports/portability_port.dart';
 export 'src/runtime/ports/projection_port.dart';
 export 'src/runtime/ports/vault_port.dart';
+
+// Runtime — the deterministic fixture every surface is built against.
+export 'src/runtime/fixture/fixture_data.dart';
+export 'src/runtime/fixture/fixture_mind_runtime.dart';
