@@ -12,14 +12,28 @@ dependencies:
     sdk: flutter
   flutter_riverpod: 3.3.2
   go_router: ^17.3.0
+  # The standalone shell's lean home reuses the legacy read path (ADR-0010
+  # interim exception): recent transactions + display card. That pulls the
+  # Drift-backed finance store and currency formatting — but not the heavy
+  # add/split/group/budget flows, so no OCR/share/uuid deps are needed.
+  drift: ^2.32.1
+  path: 1.9.1
+  path_provider: ^2.1.6
+  sqlite3_flutter_libs: ^0.5.42
+  shared_preferences: ^2.5.5
+  intl: ^0.20.3
   airo_pro_bootstrap:
     path: ../packages/airo_pro_bootstrap
+  core_app_shell:
+    path: ../packages/core_app_shell
   core_entitlements:
     path: ../packages/core_entitlements
   core_product_shell:
     path: ../packages/core_product_shell
   feature_coin:
     path: ../packages/feature_coin
+  feature_coins_core:
+    path: ../packages/feature_coins_core
 
 dev_dependencies:
   flutter_test:

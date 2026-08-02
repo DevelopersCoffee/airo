@@ -63,7 +63,7 @@ abstract class LiteRtLmClient {
 
   Future<bool> activeModelExists({String? modelPath});
 
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
@@ -436,12 +436,17 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       if (resolvedInstallUrl == null || resolvedInstallUrl.isEmpty) {
         return false;
       }
-      await _client.installModel(
+      final installedModelPath = await _client.installModel(
         url: resolvedInstallUrl,
         modelKind: modelKind ?? runtimeConfig.modelKind,
         huggingFaceToken: runtimeConfig.optionalHuggingFaceToken,
       );
-      resolvedModelPath = null;
+      final trimmedInstalledModelPath = installedModelPath?.trim();
+      resolvedModelPath =
+          trimmedInstalledModelPath != null &&
+              trimmedInstalledModelPath.isNotEmpty
+          ? trimmedInstalledModelPath
+          : null;
     }
 
     await _client.initialize(
@@ -453,7 +458,6 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
 
     _initializedModelPath =
         resolvedModelPath ??
-        installUrl?.trim() ??
         (runtimeConfig.hasModelPath ? runtimeConfig.modelPath.trim() : null);
     return true;
   }
@@ -593,7 +597,7 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> installModel({
+  Future<String?> installModel({
     required String url,
     required LiteRtLmModelKind modelKind,
     String? huggingFaceToken,
@@ -605,5 +609,6 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
           'huggingFaceToken': huggingFaceToken,
         })
         .timeout(_config.operationTimeout);
+    return _installedModelPath;
   }
 }

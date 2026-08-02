@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:airo_app/core/coins/coins_standalone_home.dart';
+import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
+import 'package:airo_app/features/coins/domain/entities/transaction.dart';
 import 'package:airo_app/main_coins.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -40,7 +43,7 @@ void main() {
     expect(registry.shell, ShellId.coins);
     expect(registry.moduleIds, ['coin_vault']);
     final paths = registry.allRoutes.whereType<GoRoute>().map((r) => r.path);
-    expect(paths, contains('/vault'));
+    expect(paths, contains('/money/vault'));
   });
 
   test('vault module mounts routes and route-prefix override at basePath', () {
@@ -80,19 +83,24 @@ void main() {
     expect(module.isEnabledForShell(const ShellId('watch')), isFalse);
   });
 
-  testWidgets('coins shell boots into the vault gate from registry routes', (
+  testWidgets('coins shell boots into the lean money summary home', (
     tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           screenSecurityProvider.overrideWithValue(_FakeScreenSecurity()),
+          // Resolve the read path with an empty list so the boot test never
+          // touches the native Drift database.
+          recentExpensesProvider.overrideWith(
+            (ref) => Future<List<Transaction>>.value(const []),
+          ),
         ],
         child: AiroCoinsApp(registry: buildCoinsModuleRegistry()),
       ),
     );
     await tester.pump();
 
-    expect(find.byType(VaultGateScreen), findsOneWidget);
+    expect(find.byType(CoinsStandaloneHome), findsOneWidget);
   });
 }
