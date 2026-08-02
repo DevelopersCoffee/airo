@@ -1,7 +1,7 @@
 name: airo_app
 description: "Airo Coins - focused local-first finance vault"
 publish_to: none
-version: 0.0.1+1
+version: 0.0.6+8
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
