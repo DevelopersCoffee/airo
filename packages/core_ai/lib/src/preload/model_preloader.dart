@@ -136,12 +136,15 @@ class ModelPreloader {
 
       final available = await adapter.isAvailable();
       if (!available) {
+        final reason = resident.sidecar
+            ? 'sidecar_unconfigured'
+            : 'runtime_unavailable';
         entries.add(
           ModelPreloadReportEntry(
             runtimeId: resident.id,
             residentType: resident.residentType,
             status: ModelPreloadEntryStatus.skipped,
-            reason: 'runtime_unavailable',
+            reason: reason,
             duration: DateTime.now().difference(stepStartedAt),
           ),
         );

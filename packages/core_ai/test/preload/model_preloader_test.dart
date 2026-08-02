@@ -72,6 +72,26 @@ void main() {
       expect(report.entries.single.reason, 'image_models_preload_disabled');
     });
 
+    test('reports unavailable sidecars as unconfigured placeholders', () async {
+      final preloader = ModelPreloader(residencyManager: residencyManager);
+
+      final report = await preloader.preloadSelectedModels(
+        adapters: [
+          NoOpWarmupAdapter(
+            const ModelResidentSpec(
+              id: 'assistant-tts-hook',
+              residentType: ResidentRuntimeType.tts,
+              estimatedMemoryBytes: 128,
+              sidecar: true,
+            ),
+          ),
+        ],
+      );
+
+      expect(report.entries.single.status, ModelPreloadEntryStatus.skipped);
+      expect(report.entries.single.reason, 'sidecar_unconfigured');
+    });
+
     test('aborts remaining warmups after abortPreload is requested', () async {
       late ModelPreloader preloader;
       final warmed = <String>[];
