@@ -53,6 +53,7 @@ export 'src/widgets/relative_time.dart';
 export 'src/widgets/mind_projection_switcher.dart';
 
 // Surfaces — the phone screens of the device system.
+export 'src/surfaces/capabilities_surface.dart';
 export 'src/surfaces/devices_surface.dart';
 export 'src/surfaces/memory_surface.dart';
 export 'src/surfaces/mind_home_surface.dart';
