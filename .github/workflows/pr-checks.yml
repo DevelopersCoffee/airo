@@ -201,6 +201,24 @@ jobs:
           wait
           echo "All core package tests completed!"
 
+      # feature_mind carries the M22 runtime port and the R01-R04 rule tests.
+      # Its *.freezed.dart is gitignored, so codegen must run before the tests
+      # can compile at all -- without this step the package fails with a
+      # misleading "Couldn't find constructor ProcessingEvent_*".
+      - name: Run Airo Mind package tests
+        run: |
+          cd packages/feature_mind
+          flutter pub get
+          dart run build_runner build
+          flutter test --reporter=compact
+
+      # Rules R03 and R05 are repo gates, not package tests. A gate CI never
+      # invokes is not a gate.
+      - name: Check Airo Mind design rules (R03, R05)
+        run: |
+          scripts/check-mind-projection-routes.sh
+          scripts/check-mind-private-devices.sh
+
   # ============================================
   # PR Summary Comment
   # ============================================

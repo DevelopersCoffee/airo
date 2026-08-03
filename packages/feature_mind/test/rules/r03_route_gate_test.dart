@@ -59,4 +59,41 @@ const route = GoRoute(path: 'timeline', name: 'timeline');
       if (offender.existsSync()) offender.deleteSync();
     }
   });
+
+  test('the gate refuses to run without ripgrep rather than passing', () {
+    // Both gates find violations with rg inside `|| true`. Without rg that
+    // returns no matches and the gate would report OK having checked nothing —
+    // the exact failure these gates exist to prevent.
+    //
+    // A PATH holding only the tools the script needs to reach its own guard,
+    // and provably not rg. Pointing PATH at a nonexistent directory would hide
+    // bash too and the shebang would fail before the guard ran, which proves
+    // nothing; naming real bin directories would still find rg on Linux.
+    final bin = Directory.systemTemp.createTempSync('mind_no_rg');
+    for (final tool in ['bash', 'env', 'dirname', 'pwd']) {
+      final resolved = Process.runSync('which', [
+        tool,
+      ]).stdout.toString().trim();
+      if (resolved.isEmpty) continue;
+      Link('${bin.path}/$tool').createSync(resolved);
+    }
+
+    try {
+      final result = Process.runSync(
+        gate,
+        const [],
+        environment: {'PATH': bin.path},
+        includeParentEnvironment: false,
+      );
+
+      expect(
+        result.exitCode,
+        127,
+        reason: 'stdout: ${result.stdout}\nstderr: ${result.stderr}',
+      );
+      expect(result.stderr.toString(), contains('ripgrep'));
+    } finally {
+      bin.deleteSync(recursive: true);
+    }
+  });
 }
