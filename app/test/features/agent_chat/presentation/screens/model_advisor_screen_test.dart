@@ -1,6 +1,7 @@
 import 'package:airo_app/features/agent_chat/presentation/screens/model_advisor_screen.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,23 @@ void main() {
 
   testWidgets('recommends a model by task capability', (tester) async {
     final semantics = tester.ensureSemantics();
+    String? copiedText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          final data = Map<String, dynamic>.from(call.arguments as Map);
+          copiedText = data['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
     String selected = 'none';
     Future<AssistantModelLibraryState> load(AssistantTask task) async {
       final candidate = AssistantModelCandidate(
@@ -85,6 +103,29 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('Copy recommendation'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        RegExp('Copy recommendation for Mock Chat Project'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Copy recommendation'));
+    await tester.pump();
+
+    expect(find.text('Recommendation copied.'), findsOneWidget);
+    expect(copiedText, contains('# Airo Model Advisor Recommendation'));
+    expect(copiedText, contains('| Capability | `Chat` |'));
+    expect(copiedText, contains('| Device | `Pixel 9` |'));
+    expect(copiedText, contains('| Platform | `Android` |'));
+    expect(copiedText, contains('| Runtime | `MockRuntime` |'));
+    expect(copiedText, contains('- MockRuntime is ready for this capability.'));
+    expect(copiedText, isNot(contains('/Users/')));
+    expect(copiedText, isNot(contains('/storage/')));
+    ScaffoldMessenger.of(
+      tester.element(find.text('Model Advisor')),
+    ).hideCurrentSnackBar();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Image'));
     await tester.pump();
@@ -95,7 +136,7 @@ void main() {
       find.bySemanticsLabel('Capability: Image. Selected.'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Use this model'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Use this model'));
     await tester.pumpAndSettle();
 
     expect(find.text('Selected: mock-image'), findsOneWidget);

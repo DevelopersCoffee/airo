@@ -71,6 +71,14 @@ void main() {
       find.text('Retry with a smaller context to free memory.'),
       findsOneWidget,
     );
+    expect(find.text('Copy diagnostics'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp('Copy runtime diagnostics for Gemma 4B')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Copy diagnostics'));
+    await tester.pump();
+    expect(find.text('Runtime diagnostics copied.'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Recommended next steps'),
       300,

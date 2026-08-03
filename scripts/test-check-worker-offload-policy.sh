@@ -46,6 +46,15 @@ import 'dart:convert';
 Object decodeSmallPreference(String raw) => jsonDecode(raw);
 DART
 
+mkdir -p "$clean_dir/packages/feature_mind/cargokit/build_tool/lib/src"
+cat >"$clean_dir/packages/feature_mind/cargokit/build_tool/lib/src/artifacts_provider.dart" <<'DART'
+class CrateHash {
+  static String compute(String manifestDir) => manifestDir;
+}
+
+String crateCacheKey(String manifestDir) => CrateHash.compute(manifestDir);
+DART
+
 mkdir -p "$clean_dir/packages/feature_iptv/lib/presentation/widgets"
 cat >"$clean_dir/packages/feature_iptv/lib/presentation/widgets/changelog.dart" <<'DART'
 List<String> changelogLines(String changelog) => changelog.split('\n');

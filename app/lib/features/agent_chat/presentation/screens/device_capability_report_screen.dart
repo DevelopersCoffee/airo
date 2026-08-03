@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Shows the normalized device facts consumed by the runtime planner.
 class DeviceCapabilityReportScreen extends StatelessWidget {
@@ -39,6 +40,42 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
                   Text(
                     'On-device AI: ${report.device.supportsOnDeviceAI ? 'available' : 'not reported'}',
                     style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Semantics(
+                      button: true,
+                      onTap: () {
+                        Clipboard.setData(
+                          ClipboardData(text: report.toMarkdown()),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Device report copied.'),
+                          ),
+                        );
+                      },
+                      excludeSemantics: true,
+                      label:
+                          'Copy device capability report for ${report.device.displayName}',
+                      hint:
+                          'Copies support-safe hardware and model fit diagnostics.',
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: report.toMarkdown()),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Device report copied.'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy report'),
+                      ),
+                    ),
                   ),
                 ],
               ),

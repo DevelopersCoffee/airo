@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'model_library_screen.dart';
 
@@ -152,13 +153,69 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
                               : '${candidate.actionLabel}. ${candidate.unavailableReason ?? 'Airo will guide you through setup.'}',
                         ),
                         const SizedBox(height: 14),
-                        FilledButton.icon(
-                          onPressed: () => Navigator.of(context).pop(candidate),
-                          icon: const Icon(Icons.open_in_new),
-                          label: Text(
-                            candidate.available
-                                ? 'Use this model'
-                                : 'Open model setup',
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(candidate),
+                              icon: const Icon(Icons.open_in_new),
+                              label: Text(
+                                candidate.available
+                                    ? 'Use this model'
+                                    : 'Open model setup',
+                              ),
+                            ),
+                            Semantics(
+                              button: true,
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(
+                                    text: _recommendationMarkdown(
+                                      state: state,
+                                      candidate: candidate,
+                                    ),
+                                  ),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Recommendation copied.'),
+                                  ),
+                                );
+                              },
+                              excludeSemantics: true,
+                              label:
+                                  'Copy recommendation for ${candidate.name}',
+                              hint:
+                                  'Copies a support-safe model advisor report for ${_taskLabel(state.task)}.',
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(
+                                      text: _recommendationMarkdown(
+                                        state: state,
+                                        candidate: candidate,
+                                      ),
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Recommendation copied.'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy),
+                                label: const Text('Copy recommendation'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Copy recommendation creates a support-safe summary without file paths or logs.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -182,5 +239,79 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
         '${candidate.privacyLabel}. '
         '${candidate.sizeLabel}. '
         '${candidate.available ? "Ready" : "Requires setup"}.';
+  }
+
+  String _recommendationMarkdown({
+    required AssistantModelLibraryState state,
+    required AssistantModelCandidate candidate,
+  }) {
+    final buffer = StringBuffer()
+      ..writeln('# Airo Model Advisor Recommendation')
+      ..writeln()
+      ..writeln('| Field | Value |')
+      ..writeln('| --- | --- |')
+      ..writeln('| Capability | `${_taskLabel(state.task)}` |')
+      ..writeln('| Device | `${state.deviceLabel}` |')
+      ..writeln('| Platform | `${state.platformLabel}` |')
+      ..writeln('| Recommended model | `${candidate.name}` |')
+      ..writeln('| Runtime | `${candidate.runtime}` |')
+      ..writeln(
+        '| Availability | `${candidate.available ? 'ready' : 'setup_required'}` |',
+      )
+      ..writeln('| Privacy | `${candidate.privacyLabel}` |')
+      ..writeln('| Size | `${candidate.sizeLabel}` |')
+      ..writeln('| Action | `${candidate.actionLabel}` |')
+      ..writeln()
+      ..writeln('## Why this choice')
+      ..writeln()
+      ..writeln(
+        candidate.available
+            ? '- ${candidate.runtime} is ready for this capability.'
+            : '- ${candidate.actionLabel}. ${candidate.unavailableReason ?? 'Airo will guide the setup flow.'}',
+      )
+      ..writeln('- ${candidate.privacyLabel}.')
+      ..writeln('- ${candidate.sizeLabel}.')
+      ..writeln()
+      ..writeln('## Candidate tags')
+      ..writeln();
+    for (final tag in candidate.tags) {
+      buffer.writeln('- `$tag`');
+    }
+    if (candidate.bestFor.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('## Best for')
+        ..writeln();
+      for (final task in candidate.bestFor) {
+        buffer.writeln('- `${_taskLabel(task)}`');
+      }
+    }
+    final compatibility = candidate.compatibility;
+    if (compatibility != null) {
+      buffer
+        ..writeln()
+        ..writeln('## Compatibility')
+        ..writeln()
+        ..writeln('- Compatible: `${compatibility.isCompatible}`')
+        ..writeln('- Memory severity: `${compatibility.memorySeverity.name}`')
+        ..writeln(
+          '- Available memory: `${compatibility.availableMemoryMB.toStringAsFixed(0)} MB`',
+        )
+        ..writeln(
+          '- Required memory: `${compatibility.requiredMemoryMB.toStringAsFixed(0)} MB`',
+        );
+      final reason = compatibility.reason;
+      if (reason != null && reason.trim().isNotEmpty) {
+        buffer.writeln('- Reason: $reason');
+      }
+    }
+    if (!candidate.available && candidate.unavailableReason != null) {
+      buffer
+        ..writeln()
+        ..writeln('## Setup reason')
+        ..writeln()
+        ..writeln('- ${candidate.unavailableReason}');
+    }
+    return buffer.toString().trimRight();
   }
 }
