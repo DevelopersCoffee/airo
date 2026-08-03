@@ -46,6 +46,7 @@ export 'src/runtime/rust/rust_mind_runtime.dart';
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
 export 'src/widgets/mind_number_strip.dart';
+export 'src/widgets/format_bytes.dart';
 export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
@@ -57,4 +58,5 @@ export 'src/surfaces/capabilities_surface.dart';
 export 'src/surfaces/devices_surface.dart';
 export 'src/surfaces/memory_surface.dart';
 export 'src/surfaces/mind_home_surface.dart';
+export 'src/surfaces/portability_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
