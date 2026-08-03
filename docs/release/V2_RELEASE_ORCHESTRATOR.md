@@ -20,8 +20,8 @@ artifacts without creating public GitHub Releases or uploading to Google Play.
 The orchestrator currently validates the release contract, calls the existing
 Airo TV release workflow through `workflow_call`, optionally calls the
 mobile/tablet release workflow when a mobile profile is selected, optionally
-calls the same mobile/tablet workflow again for Airo Coins when
-`coins_profile` is selected, optionally
+calls the same mobile/tablet workflow again for Airo Coins when the selection
+includes coins, optionally
 calls the macOS release workflow when `macos_profile` is selected, downloads
 the selected profile artifacts, generates the top-level evidence bundle,
 optionally publishes a single aggregate GitHub Release, and writes the release
@@ -41,15 +41,27 @@ selected Play track, and contribute mobile/tablet qualification evidence. Real
 store or Firebase publication still depends on the credential and destination
 setup tracked in #681 and #682.
 
-When `coins_profile` is `coins`, the orchestrator calls the same
+`mobile_profile` selects both Android application legs, because
+`workflow_dispatch` caps how many inputs a workflow may declare and the
+orchestrator is at that cap:
+
+| `mobile_profile` | Full app leg | Airo Coins leg |
+| --- | --- | --- |
+| `none` | — | — |
+| `full` | `io.airo.app` | — |
+| `coins` | — | `io.airo.app.coins` |
+| `full-and-coins` | `io.airo.app` | `io.airo.app.coins` |
+
+The `prepare` job splits that selection into the internal `mobile_profile` and
+`coins_profile` outputs the two jobs consume. The Airo Coins leg calls the same
 `.github/workflows/airo-mobile-tablet-release.yml` on the `coins` profile
-(`io.airo.app.coins`, `pubspec_coins.yaml`, `lib/main_coins.dart`) to build the
-`AiroCoins-*` APK and Play Store AAB alongside the mobile/tablet leg. The two
-legs are independent: `mobile_profile` and `coins_profile` are selected
-separately, and the reusable workflow's concurrency group is keyed by profile so
-they do not cancel each other. Airo Coins has no Play or Firebase destination in
-the orchestrator; the leg always runs with `play_track: none` and
-`firebase_distribution: none`.
+(`pubspec_coins.yaml`, `lib/main_coins.dart`) to build the `AiroCoins-*` APK and
+Play Store AAB. The reusable workflow's concurrency group is keyed by profile,
+so the two legs run side by side without cancelling each other. Airo Coins has
+no Play or Firebase destination in the orchestrator; the leg always runs with
+`play_track: none` and `firebase_distribution: none`. `mobile_play_track`
+applies to the full app leg only and still requires a selection that includes
+`full`.
 
 When `firebase_distribution` is `upload`, the reusable TV and mobile/tablet
 release workflows upload the final named APK artifacts to Firebase App
@@ -74,7 +86,7 @@ Successful orchestrator runs upload:
 - `airo-mobile-tablet-<profile>-<version>` from the mobile/tablet workflow when
   `mobile_profile` is not `none`;
 - `airo-mobile-tablet-coins-<version>` from the mobile/tablet workflow when
-  `coins_profile` is not `none`;
+  `mobile_profile` includes coins;
 - `airo-macos-<profile>-<version>` from the macOS workflow when
   `macos_profile` is not `none`;
 - `v2-release-evidence-<version>` from the orchestrator.
