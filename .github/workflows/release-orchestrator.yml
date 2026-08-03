@@ -97,21 +97,15 @@ on:
         required: false
         default: ''
       mobile_profile:
-        description: 'Optional mobile/tablet profile to build'
+        description: 'Optional mobile/tablet profiles to build'
         required: true
         default: none
         type: choice
         options:
           - none
           - full
-      coins_profile:
-        description: 'Optional Airo Coins profile to build'
-        required: true
-        default: none
-        type: choice
-        options:
-          - none
           - coins
+          - full-and-coins
       macos_profile:
         description: 'Optional macOS profile to build'
         required: true
@@ -198,7 +192,6 @@ jobs:
           INPUT_TV_FIREBASE_APP_ID: ${{ inputs.tv_firebase_app_id }}
           INPUT_TV_FIREBASE_TESTER_GROUPS: ${{ inputs.tv_firebase_tester_groups }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
-          INPUT_COINS_PROFILE: ${{ inputs.coins_profile }}
           INPUT_MACOS_PROFILE: ${{ inputs.macos_profile }}
           INPUT_MACOS_REQUIRE_NOTARIZATION: ${{ inputs.macos_require_notarization }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
@@ -221,8 +214,32 @@ jobs:
           mobile_firebase_tester_groups="${INPUT_MOBILE_FIREBASE_TESTER_GROUPS:-}"
           tv_firebase_app_id="${INPUT_TV_FIREBASE_APP_ID:-}"
           tv_firebase_tester_groups="${INPUT_TV_FIREBASE_TESTER_GROUPS:-}"
-          mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
-          coins_profile="${INPUT_COINS_PROFILE:-none}"
+          # workflow_dispatch caps the number of inputs, so the Android
+          # application profiles share one selector instead of taking a field
+          # each. Split it back into the per-leg profiles the jobs consume.
+          mobile_selection="${INPUT_MOBILE_PROFILE:-none}"
+          case "$mobile_selection" in
+            none)
+              mobile_profile=none
+              coins_profile=none
+              ;;
+            full)
+              mobile_profile=full
+              coins_profile=none
+              ;;
+            coins)
+              mobile_profile=none
+              coins_profile=coins
+              ;;
+            full-and-coins)
+              mobile_profile=full
+              coins_profile=coins
+              ;;
+            *)
+              echo "::error::Unsupported mobile/tablet profile selection: $mobile_selection"
+              exit 1
+              ;;
+          esac
           macos_profile="${INPUT_MACOS_PROFILE:-none}"
           macos_require_notarization="${INPUT_MACOS_REQUIRE_NOTARIZATION:-false}"
           qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
@@ -273,14 +290,6 @@ jobs:
               exit 1
             fi
           fi
-
-          case "$coins_profile" in
-            none|coins) ;;
-            *)
-              echo "::error::Unsupported Airo Coins profile: $coins_profile"
-              exit 1
-              ;;
-          esac
 
           case "$macos_profile" in
             none|tv) ;;
