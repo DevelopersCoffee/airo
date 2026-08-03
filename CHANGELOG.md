@@ -4,9 +4,40 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
-## Unreleased — Airo TV v0.0.6 candidate
+## v0.0.6 — 2026-08-04
+
+Stable cut of the `0.0.6` line across Airo TV, the full app, Airo Coins, and
+macOS TV. Full notes: [docs/release/AIRO_v0.0.6.md](docs/release/AIRO_v0.0.6.md).
 
 ### Added
+
+- Airo Coins is a first-class release-orchestrator leg (`coins_profile`), so the
+  TV, full, Coins, and macOS artifacts all ship from one reproducible wave
+  instead of a hand-published Coins upload.
+- Offline Meeting Intelligence MVP — record, transcribe, summarise, search.
+- Airo Mind Vault phase 1 and the `MindRuntime` port frozen into eight sub-ports.
+- Copyable device-capability, runtime-health, and model-advisor diagnostics, plus
+  chat transcript export.
+- Portable shared channel imports for Airo TV.
+
+### Fixed
+
+- Fire TV D-pad focus and BACK paths restored after the #1244 regression.
+- TV shell held inside both horizontal and vertical title-safe bands.
+- Chess moves are applied instead of silently rejected.
+- Playlist source removal is consistent; local media IDs are web-safe.
+- Model download queue position, stalled-download recovery, and setup-failure
+  detail.
+
+### Known issues
+
+- #1240 Airo Coins can open to a persistent black screen on Pixel 9 / Android 17.
+- #1430 Airo TV BACK intermittently swallowed on the channel-browse grid.
+- #1243 Fire TV live playback emits repeated vendor property-denial log errors.
+
+### Also in this line, since v0.0.6-rc.1
+
+#### Added
 
 - Direct, permission-scoped USB/removable-media browsing on Android TV without
   converting local files into playlists, including deterministic sidecar
@@ -18,17 +49,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Production Android signing setup, release provenance attestations, and
   repository license/notices preflight coverage.
 
-### Changed
+#### Changed
 
-- Release candidates remain dry-run / unpublished unless a maintainer
-  explicitly opts into publication. The version line stays `0.0.6-rc.1`;
-  promoting to `0.0.6` is a deliberate release cut, not a merge side-effect.
+- The version line is promoted from `0.0.6-rc.1` to `0.0.6` across
+  `pubspec.yaml`, `pubspec_tv.yaml`, and `pubspec_coins.yaml`, all at build
+  `+10`.
 - TV first-run setup offers URL, expiring phone QR, and USB only when the
   corresponding platform capability is real.
 - TV rail traversal now has a deterministic leading-edge focus bridge from
   Search, Name sort, and the first channel.
 
-### Fixed
+#### Fixed
 
 - Coins uses one launcher activity and validates the resolved component before
   artifact smoke tests, preventing the Pixel 9 black-screen launch path.
@@ -40,12 +71,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Generated Pigeon/build-runner outputs and model warmup/activation boundaries
   compile and carry focused test coverage.
 
-### Qualification status
+#### Qualification status
 
 - Automated source, player, TV navigation, legal, provenance, native-media,
-  screenshot, and artifact checks are prepared locally.
-- Pixel 9, Fire TV Stick, and iPad physical-device sign-off remains required
-  before publishing. No release has been created.
+  screenshot, and artifact checks run in CI on every release wave.
+- Pixel 9, Fire TV Stick, and iPad physical-device sign-off was not repeated for
+  this cut; the known issues above are the outstanding device-verified defects.
 
 ## [Airo v0.0.6-rc.1] - 2026-07-30
 
