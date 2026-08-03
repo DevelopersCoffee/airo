@@ -53,14 +53,29 @@ def resolve_under_root(path: Path, description: str) -> Path:
 
 
 def infer_profile_id(filename: str, profiles: dict[str, dict]) -> str | None:
+    """Resolve the build profile that produced an artifact, from its filename.
+
+    Artifact names share a prefix -- `Airo-TV-*`, `AiroCoins-*`, `Airo-*` -- so
+    matching must be longest-prefix-first. A plain substring scan in profile
+    order resolves every one of them to `full`, because "airo" is a prefix of
+    the others. That was harmless while each release wave published a single
+    profile, and wrong the moment the orchestrator started publishing TV, full,
+    and Coins into one directory.
+    """
     normalized = filename.lower().replace("_", "-")
     aliases = {
         "tv": ["airo-tv"],
-        "full": ["airo", "airo-full", "full"],
+        "coins": ["airocoins", "airo-coins"],
+        "full": ["airo"],
     }
+    candidates: list[tuple[str, str]] = []
     for profile_id in profiles:
-        candidates = aliases.get(profile_id, [profile_id])
-        if any(candidate in normalized for candidate in candidates):
+        for alias in aliases.get(profile_id, [profile_id]):
+            candidates.append((alias, profile_id))
+
+    # Longest alias wins, so `airo-tv-0.0.6.apk` cannot resolve to `full`.
+    for alias, profile_id in sorted(candidates, key=lambda item: -len(item[0])):
+        if normalized.startswith(alias):
             return profile_id
     return None
 
@@ -93,8 +108,17 @@ def infer_abi(path: Path, profile: dict) -> str:
         if "x64" in filename or "x86_64" in filename:
             return "macos-x64"
         return "macos-universal"
-    if "arm64" in filename or "arm64-v8a" in filename:
-        return "android-arm64"
+    # Explicit ABI in the filename always wins over the profile's default
+    # strategy. Checked longest-token-first so `x86_64` is not read as `x86`.
+    for token, abi in (
+        ("armeabi-v7a", "android-armeabi-v7a"),
+        ("arm64-v8a", "android-arm64"),
+        ("x86_64", "android-x86_64"),
+        ("arm64", "android-arm64"),
+        ("x86", "android-x86"),
+    ):
+        if token in filename:
+            return abi
     android = profile.get("android") or {}
     if android.get("abiStrategy") == "single-arm64-apk":
         return "android-arm64"
