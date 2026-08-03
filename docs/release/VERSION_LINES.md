@@ -88,11 +88,17 @@ device class, or store listing.
 **Market position:** Active modular platform line.
 
 **Versioning:**
-- Use semantic product release tags for the current product line. Airo TV tags
-  use `airo-tv-v0.0.x`; full Airo tags use `v0.0.x` unless a release issue
-  explicitly defines a product-specific prefix.
-- The current Airo TV release train advances from `airo-tv-v0.0.4` to
-  `airo-tv-v0.0.5`.
+- Use semantic product release tags for the current product line. Historic
+  per-product tags use `airo-tv-v0.0.x` for Airo TV and `v0.0.x` for the full
+  app.
+- Since `v0.0.6-rc.1`, the release orchestrator publishes **one aggregate
+  release per wave** under a single `v0.0.x` tag carrying every profile it
+  built — Airo TV, the full app, Airo Coins, and macOS TV. `airo-tv-v*` tags
+  are retained for history and are no longer minted per wave. Anything that
+  resolves "the current Airo TV release" must therefore match on the published
+  `Airo-TV-*` assets, not on the tag prefix.
+- The current release train advances from `airo-tv-v0.0.5` to the aggregate
+  `v0.0.6`.
 - Treat package contracts, feature registry APIs, and build target manifests as
   V2 compatibility surfaces.
 
@@ -106,12 +112,14 @@ device class, or store listing.
   `v0.0.5`.
 
 **Artifact naming:**
-- `Airo-0.0.5-7-arm64.apk`
-- `Airo-0.0.5-7-Play-Store.aab`
-- `Airo-TV-0.0.5.apk`
-- `Airo-TV-0.0.5-Play-Store.aab`
-- `Airo-TV-0.0.5-macOS.zip`
-- `Airo-TV-0.0.5-macOS.dmg`
+- `Airo-0.0.6-10-arm64.apk`
+- `Airo-0.0.6-10-Play-Store.aab`
+- `AiroCoins-0.0.6-10-arm64.apk`
+- `AiroCoins-0.0.6-10-Play-Store.aab`
+- `Airo-TV-0.0.6.apk`
+- `Airo-TV-0.0.6-Play-Store.aab`
+- `Airo-TV-0.0.6-macOS.zip`
+- `Airo-TV-0.0.6-macOS.dmg`
 
 **Allowed changes:**
 - Feature registry and module manifest work.
