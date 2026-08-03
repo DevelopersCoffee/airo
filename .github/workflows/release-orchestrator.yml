@@ -402,6 +402,9 @@ jobs:
     needs: [prepare, release-contracts]
     permissions:
       contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     uses: ./.github/workflows/airo-mobile-tablet-release.yml
     with:
       profile: ${{ needs.prepare.outputs.mobile_profile }}
@@ -422,6 +425,9 @@ jobs:
     needs: [prepare, release-contracts]
     permissions:
       contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     uses: ./.github/workflows/airo-mobile-tablet-release.yml
     with:
       profile: ${{ needs.prepare.outputs.coins_profile }}
@@ -457,6 +463,9 @@ jobs:
     permissions:
       actions: read
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     uses: ./.github/workflows/airo-tv-release.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
