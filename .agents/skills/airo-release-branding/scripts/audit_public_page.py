@@ -44,6 +44,32 @@ class Inventory(HTMLParser):
                 self.preloading_live_demo_videos += 1
 
 
+def ships_tv_artifacts(repository: str, tag: str) -> bool:
+    """True when a release carries Airo TV artifacts.
+
+    The orchestrator publishes one aggregate release per wave, so an Airo TV
+    build now arrives under a shared `v*` tag alongside the full app, Airo
+    Coins, and macOS. Membership is decided by the assets, not the tag name --
+    the historic `v1.x` monolith tags must not qualify.
+    """
+    command = [
+        "gh",
+        "release",
+        "view",
+        tag,
+        "--repo",
+        repository,
+        "--json",
+        "assets",
+    ]
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return False
+    assets = json.loads(result.stdout).get("assets", [])
+    return any(asset.get("name", "").startswith("Airo-TV-") for asset in assets)
+
+
 def latest_public_tv_release(repository: str) -> str:
     command = [
         "gh",
@@ -63,12 +89,11 @@ def latest_public_tv_release(repository: str) -> str:
         raise RuntimeError(f"GitHub release lookup failed: {detail.strip()}") from error
     for release in json.loads(result.stdout):
         tag = release.get("tagName", "")
-        if (
-            tag.startswith("airo-tv-v")
-            and "-rc." not in tag
-            and not release.get("isDraft")
-            and not release.get("isPrerelease")
-        ):
+        if "-rc." in tag or release.get("isDraft") or release.get("isPrerelease"):
+            continue
+        if tag.startswith("airo-tv-v"):
+            return tag
+        if tag.startswith("v") and ships_tv_artifacts(repository, tag):
             return tag
     raise RuntimeError("No published, non-release-candidate Airo TV release found")
 
