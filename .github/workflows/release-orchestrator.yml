@@ -104,6 +104,14 @@ on:
         options:
           - none
           - full
+      coins_profile:
+        description: 'Optional Airo Coins profile to build'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - coins
       macos_profile:
         description: 'Optional macOS profile to build'
         required: true
@@ -160,6 +168,7 @@ jobs:
       tv_firebase_app_id: ${{ steps.release.outputs.tv_firebase_app_id }}
       tv_firebase_tester_groups: ${{ steps.release.outputs.tv_firebase_tester_groups }}
       mobile_profile: ${{ steps.release.outputs.mobile_profile }}
+      coins_profile: ${{ steps.release.outputs.coins_profile }}
       macos_profile: ${{ steps.release.outputs.macos_profile }}
       macos_require_notarization: ${{ steps.release.outputs.macos_require_notarization }}
       qualification_mode: ${{ steps.release.outputs.qualification_mode }}
@@ -189,6 +198,7 @@ jobs:
           INPUT_TV_FIREBASE_APP_ID: ${{ inputs.tv_firebase_app_id }}
           INPUT_TV_FIREBASE_TESTER_GROUPS: ${{ inputs.tv_firebase_tester_groups }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
+          INPUT_COINS_PROFILE: ${{ inputs.coins_profile }}
           INPUT_MACOS_PROFILE: ${{ inputs.macos_profile }}
           INPUT_MACOS_REQUIRE_NOTARIZATION: ${{ inputs.macos_require_notarization }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
@@ -212,6 +222,7 @@ jobs:
           tv_firebase_app_id="${INPUT_TV_FIREBASE_APP_ID:-}"
           tv_firebase_tester_groups="${INPUT_TV_FIREBASE_TESTER_GROUPS:-}"
           mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
+          coins_profile="${INPUT_COINS_PROFILE:-none}"
           macos_profile="${INPUT_MACOS_PROFILE:-none}"
           macos_require_notarization="${INPUT_MACOS_REQUIRE_NOTARIZATION:-false}"
           qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
@@ -263,6 +274,14 @@ jobs:
             fi
           fi
 
+          case "$coins_profile" in
+            none|coins) ;;
+            *)
+              echo "::error::Unsupported Airo Coins profile: $coins_profile"
+              exit 1
+              ;;
+          esac
+
           case "$macos_profile" in
             none|tv) ;;
             *)
@@ -312,6 +331,7 @@ jobs:
             echo "tv_firebase_app_id=$tv_firebase_app_id"
             echo "tv_firebase_tester_groups=$tv_firebase_tester_groups"
             echo "mobile_profile=$mobile_profile"
+            echo "coins_profile=$coins_profile"
             echo "macos_profile=$macos_profile"
             echo "macos_require_notarization=$macos_require_notarization"
             echo "qualification_mode=$qualification_mode"
@@ -335,6 +355,7 @@ jobs:
             echo "| Mobile/tablet Play track | $mobile_play_track |"
             echo "| Firebase distribution | $firebase_distribution |"
             echo "| Mobile/tablet profile | $mobile_profile |"
+            echo "| Airo Coins profile | $coins_profile |"
             echo "| macOS profile | $macos_profile |"
             echo "| macOS notarization required | $macos_require_notarization |"
             echo "| Qualification mode | $qualification_mode |"
@@ -386,6 +407,24 @@ jobs:
       firebase_tester_groups: ${{ needs.prepare.outputs.mobile_firebase_tester_groups }}
     secrets: inherit
 
+  coins-release:
+    name: Airo Coins release leg
+    if: needs.prepare.outputs.coins_profile != 'none'
+    needs: [prepare, release-contracts]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/airo-mobile-tablet-release.yml
+    with:
+      profile: ${{ needs.prepare.outputs.coins_profile }}
+      version: ${{ needs.prepare.outputs.version }}
+      build_name: ${{ needs.prepare.outputs.build_name }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
+      release_ref: ${{ needs.prepare.outputs.release_ref }}
+      production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
+      play_track: none
+      firebase_distribution: none
+    secrets: inherit
+
   macos-release:
     name: macOS release leg
     if: needs.prepare.outputs.macos_profile != 'none'
@@ -427,7 +466,7 @@ jobs:
   release-summary:
     name: V2 release summary
     runs-on: ubuntu-latest
-    needs: [prepare, release-contracts, mobile-tablet-release, macos-release, tv-release]
+    needs: [prepare, release-contracts, mobile-tablet-release, coins-release, macos-release, tv-release]
     if: always()
     permissions:
       actions: read
@@ -450,6 +489,13 @@ jobs:
         with:
           name: airo-mobile-tablet-${{ needs.prepare.outputs.mobile_profile }}-${{ needs.prepare.outputs.version }}
           path: release-artifacts/mobile-tablet
+
+      - name: Download Airo Coins release artifacts
+        if: needs.coins-release.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-mobile-tablet-${{ needs.prepare.outputs.coins_profile }}-${{ needs.prepare.outputs.version }}
+          path: release-artifacts/coins
 
       - name: Download macOS release artifacts
         if: needs.macos-release.result == 'success'
@@ -486,6 +532,20 @@ jobs:
             --manifest "$manifest" \
             --mode "$QUALIFICATION_MODE"
 
+      - name: Generate Airo Coins qualification report
+        if: needs.coins-release.result == 'success'
+        env:
+          QUALIFICATION_MODE: ${{ needs.prepare.outputs.qualification_mode }}
+        run: |
+          manifest="$(find release-artifacts/coins -maxdepth 1 -name '*Release-Manifest.json' | head -n 1)"
+          if [ -z "$manifest" ]; then
+            echo "::error::Airo Coins release manifest was not found in downloaded artifacts."
+            exit 1
+          fi
+          scripts/generate-release-qualification-report.py \
+            --manifest "$manifest" \
+            --mode "$QUALIFICATION_MODE"
+
       - name: Upload top-level release evidence
         if: needs.tv-release.result == 'success'
         uses: actions/upload-artifact@v7
@@ -503,9 +563,11 @@ jobs:
           RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
           RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          COINS_PROFILE: ${{ needs.prepare.outputs.coins_profile }}
           MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
           TV_SIGNING_CERT: ${{ needs.tv-release.outputs.signing_cert }}
           MOBILE_SIGNING_CERT: ${{ needs.mobile-tablet-release.outputs.signing_cert }}
+          COINS_SIGNING_CERT: ${{ needs.coins-release.outputs.signing_cert }}
         run: |
           rm -rf github-release-assets
           mkdir -p github-release-assets
@@ -533,6 +595,19 @@ jobs:
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for release assets: $MOBILE_PROFILE"
+              exit 1
+              ;;
+          esac
+
+          case "$COINS_PROFILE" in
+            none)
+              ;;
+            coins)
+              require_asset "release-artifacts/coins/AiroCoins-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
+              require_asset "release-artifacts/coins/AiroCoins-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+              ;;
+            *)
+              echo "::error::Unsupported Airo Coins profile for release assets: $COINS_PROFILE"
               exit 1
               ;;
           esac
@@ -591,6 +666,9 @@ jobs:
             fi
             if [ "$MOBILE_PROFILE" != "none" ]; then
               echo "- Mobile/tablet APK/AAB: $(describe_cert "$MOBILE_SIGNING_CERT")"
+            fi
+            if [ "$COINS_PROFILE" != "none" ]; then
+              echo "- Airo Coins APK/AAB: $(describe_cert "$COINS_SIGNING_CERT")"
             fi
             echo ""
             echo "## Verification"
@@ -667,6 +745,8 @@ jobs:
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          COINS_RESULT: ${{ needs.coins-release.result }}
+          COINS_PROFILE: ${{ needs.prepare.outputs.coins_profile }}
           MACOS_RESULT: ${{ needs.macos-release.result }}
           MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
           MACOS_SIGNING_STATUS: ${{ needs.macos-release.outputs.signing_status }}
@@ -698,6 +778,8 @@ jobs:
             echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
             echo "| Mobile/tablet Play track | $MOBILE_PLAY_TRACK |"
+            echo "| Airo Coins profile | $COINS_PROFILE |"
+            echo "| Airo Coins leg | $COINS_RESULT |"
             echo "| macOS profile | $MACOS_PROFILE |"
             echo "| macOS leg | $MACOS_RESULT |"
             echo "| macOS signing | ${MACOS_SIGNING_STATUS:-none} |"
@@ -744,6 +826,21 @@ jobs:
             echo "Mobile/tablet artifacts were not available because the mobile/tablet leg result was $MOBILE_RESULT." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          if [ -d release-artifacts/coins ]; then
+            {
+              echo ""
+              echo "### Airo Coins"
+              echo ""
+              find release-artifacts/coins -maxdepth 1 -type f -printf '- %f\n' | sort
+              echo ""
+              echo "Airo Coins artifacts include APK/AAB files, SHA256SUMS, release manifest, and an internal qualification report when generated by this orchestrator."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$COINS_PROFILE" = "none" ]; then
+            echo "Airo Coins artifacts were not requested for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Airo Coins artifacts were not available because the Airo Coins leg result was $COINS_RESULT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
           if [ -d release-artifacts/macos ]; then
             {
               echo ""
@@ -775,6 +872,8 @@ jobs:
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          COINS_RESULT: ${{ needs.coins-release.result }}
+          COINS_PROFILE: ${{ needs.prepare.outputs.coins_profile }}
           MACOS_RESULT: ${{ needs.macos-release.result }}
           MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
@@ -789,6 +888,10 @@ jobs:
           fi
           if [ "$MOBILE_PROFILE" != "none" ] && [ "$MOBILE_RESULT" != "success" ]; then
             echo "::error::Mobile/tablet release leg did not pass: $MOBILE_RESULT"
+            exit 1
+          fi
+          if [ "$COINS_PROFILE" != "none" ] && [ "$COINS_RESULT" != "success" ]; then
+            echo "::error::Airo Coins release leg did not pass: $COINS_RESULT"
             exit 1
           fi
           if [ "$MACOS_PROFILE" != "none" ] && [ "$MACOS_RESULT" != "success" ]; then
