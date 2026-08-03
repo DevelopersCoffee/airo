@@ -16,10 +16,11 @@ import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/screens/airo_portability_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/home/screens/home_screen.dart';
-import '../../features/mind/presentation/screens/mind_screen.dart';
-import '../../features/mind/presentation/screens/prompt_lab_screen.dart';
-import '../../features/mind/presentation/screens/audio_scribe_screen.dart';
-import '../../features/mind/presentation/screens/mobile_actions_screen.dart';
+import '../../features/assistant/presentation/screens/assistant_screen.dart';
+import '../../features/wellbeing/presentation/screens/wellbeing_screen.dart';
+import '../../features/assistant/presentation/screens/prompt_lab_screen.dart';
+import '../../features/assistant/presentation/screens/audio_scribe_screen.dart';
+import '../../features/assistant/presentation/screens/mobile_actions_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -81,18 +82,26 @@ class AppRouter {
       routes: [
         // Redirect root to finance dashboard.
         GoRoute(path: '/', redirect: (context, state) => '/money'),
-        GoRoute(path: '/agent', redirect: (context, state) => '/mind'),
+        GoRoute(path: '/agent', redirect: (context, state) => '/assistant'),
         GoRoute(
           path: '/agent/notifications',
-          redirect: (context, state) => '/mind/notifications',
+          redirect: (context, state) => '/assistant/notifications',
         ),
         GoRoute(
           path: '/agent/profile',
-          redirect: (context, state) => '/mind/profile',
+          redirect: (context, state) => '/assistant/profile',
         ),
         GoRoute(
           path: '/agent/models',
-          redirect: (context, state) => '/mind/models',
+          redirect: (context, state) => '/assistant/models',
+        ),
+        // Wellbeing split off the old Mind hub in milestone 22. It is a
+        // destination rather than a tab: three cards and a streak do not earn
+        // a slot in the bottom nav, and the assistant hub links to it.
+        GoRoute(
+          path: '/wellbeing',
+          name: 'Wellbeing',
+          builder: (context, state) => const WellbeingScreen(),
         ),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
@@ -222,13 +231,13 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/mind',
-                  name: 'Mind',
-                  builder: (context, state) => const MindScreen(),
+                  path: '/assistant',
+                  name: 'Assistant',
+                  builder: (context, state) => const AssistantScreen(),
                   routes: [
                     GoRoute(
                       path: 'chat',
-                      name: 'mind_chat',
+                      name: 'assistant_chat',
                       builder: (context, state) => ChatScreen(
                         initialDraft: state.uri.queryParameters['prefill'],
                       ),
@@ -250,16 +259,16 @@ class AppRouter {
                       name: 'assistant_models',
                       builder: (context, state) => ModelLibraryScreen(
                         onModelSelected: (candidate) {
-                          context.go('/mind');
+                          context.go('/assistant');
                         },
                         onOpenModelManager: () {
-                          context.push('/mind/profile');
+                          context.push('/assistant/profile');
                         },
                       ),
                     ),
                     GoRoute(
                       path: 'device-capabilities',
-                      name: 'mind_device_capabilities',
+                      name: 'assistant_device_capabilities',
                       builder: (context, state) =>
                           DeviceCapabilityReportLoaderScreen(
                             models: ModelCatalog.bundledModels,
@@ -267,12 +276,12 @@ class AppRouter {
                     ),
                     GoRoute(
                       path: 'model-advisor',
-                      name: 'mind_model_advisor',
+                      name: 'assistant_model_advisor',
                       builder: (context, state) => const ModelAdvisorScreen(),
                     ),
                     GoRoute(
                       path: 'prompt-lab',
-                      name: 'mind_prompt_lab',
+                      name: 'assistant_prompt_lab',
                       builder: (context, state) => PromptLabScreen(
                         initialImageMode:
                             state.uri.queryParameters['mode'] == 'image',
@@ -280,17 +289,17 @@ class AppRouter {
                     ),
                     GoRoute(
                       path: 'audio-scribe',
-                      name: 'mind_audio_scribe',
+                      name: 'assistant_audio_scribe',
                       builder: (context, state) => const AudioScribeScreen(),
                     ),
                     GoRoute(
                       path: 'skills',
-                      name: 'mind_agent_skills',
+                      name: 'assistant_agent_skills',
                       builder: (context, state) => const AgentSkillsScreen(),
                     ),
                     GoRoute(
                       path: 'mobile-actions',
-                      name: 'mind_mobile_actions',
+                      name: 'assistant_mobile_actions',
                       builder: (context, state) => const MobileActionsScreen(),
                     ),
                   ],

@@ -101,7 +101,7 @@ class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
                       Text('$enabledCount of ${skills.length} skills enabled'),
                       const SizedBox(height: 12),
                       FilledButton.icon(
-                        onPressed: () => context.push('/mind/chat'),
+                        onPressed: () => context.push('/assistant/chat'),
                         icon: const Icon(Icons.chat_outlined),
                         label: const Text('Try skills in AI Chat'),
                       ),

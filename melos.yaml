@@ -18,6 +18,17 @@ command:
     usePubspecOverrides: true
 
 scripts:
+
+  # Airo Mind rules R03 and R05. R03: graph, timeline and search are one
+  # switcher, never three routes. R05: no shared-surface flavor links
+  # feature_mind. Both carry mutation tests in
+  # packages/feature_mind/test/rules -- a gate that has never failed proves
+  # nothing.
+  check:mind-rules:
+    run: |
+      scripts/check-mind-projection-routes.sh && \
+      scripts/check-mind-private-devices.sh
+    description: Airo Mind design rules R03 and R05
   # Bootstrap all packages
   bootstrap_workspace:
     run: melos bootstrap

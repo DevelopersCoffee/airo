@@ -118,8 +118,14 @@ class ModelInstaller {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     for (final root in [
       // macOS
-      p.join(exeDir, '..', 'Frameworks', 'App.framework', 'Resources',
-          'flutter_assets'),
+      p.join(
+        exeDir,
+        '..',
+        'Frameworks',
+        'App.framework',
+        'Resources',
+        'flutter_assets',
+      ),
       // Linux and Windows
       p.join(exeDir, 'data', 'flutter_assets'),
     ]) {

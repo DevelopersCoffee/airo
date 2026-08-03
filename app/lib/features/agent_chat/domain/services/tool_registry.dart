@@ -433,7 +433,7 @@ class SocialTool implements Tool {
         );
       case IntentType.audioScribe:
         return const AgentToolResult(
-          route: '/mind/audio-scribe',
+          route: '/assistant/audio-scribe',
           message:
               'Opening Audio Scribe for on-device capture, transcript review, and translation.',
         );
@@ -542,21 +542,21 @@ class ToolRegistry {
         title: 'Audio Scribe',
         description: 'Prepare offline transcription workflows',
         iconKey: 'mic',
-        route: '/mind/audio-scribe',
+        route: '/assistant/audio-scribe',
       ),
       AgentSkillCard(
         key: 'mobile_actions',
         title: 'Mobile Actions',
         description: 'Control Airo features with commands',
         iconKey: 'bolt',
-        route: '/mind/mobile-actions',
+        route: '/assistant/mobile-actions',
       ),
       AgentSkillCard(
         key: 'tiny_garden',
         title: 'Tiny Garden',
         description: 'Play the local language garden experiment',
         iconKey: 'local_florist',
-        route: '/mind/mobile-actions',
+        route: '/assistant/mobile-actions',
       ),
       AgentSkillCard(
         key: 'model_management',

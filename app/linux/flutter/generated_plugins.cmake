@@ -3,12 +3,17 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  record_linux
+  audioplayers_linux
+  file_selector_linux
+  flutter_secure_storage_linux
+  media_kit_libs_linux
+  sqlite3_flutter_libs
+  url_launcher_linux
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  feature_mind
   jni
+  media_kit_native_event_loop
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

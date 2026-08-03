@@ -45,7 +45,7 @@ void main() {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/mind',
+                  path: '/assistant',
                   builder: (context, state) =>
                       const _ShellBodyScreen(label: 'Mind body'),
                 ),
@@ -113,7 +113,7 @@ void main() {
     await pumpShell(tester, initialLocation: '/money', width: 420);
 
     expect(find.byKey(const ValueKey('app_nav_coins')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_mind')), findsOneWidget);
+    expect(find.byKey(const ValueKey('app_nav_assistant')), findsOneWidget);
     expect(find.byKey(const ValueKey('app_nav_beats')), findsOneWidget);
     expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
     expect(find.byKey(const ValueKey('app_nav_overflow')), findsOneWidget);
@@ -148,10 +148,10 @@ void main() {
     (tester) async {
       // Wide layouts don't have a /home branch in their nav bar, so start
       // from a destination that is actually part of the wide tab set.
-      await pumpShell(tester, initialLocation: '/mind', width: 900);
+      await pumpShell(tester, initialLocation: '/assistant', width: 900);
 
       expect(find.byKey(const ValueKey('app_nav_coins')), findsOneWidget);
-      expect(find.byKey(const ValueKey('app_nav_mind')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_assistant')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_beats')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
       expect(find.byKey(const ValueKey('app_nav_arena')), findsOneWidget);

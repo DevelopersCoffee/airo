@@ -7,7 +7,7 @@ void main() {
     test('maps product routes to their visual domain', () {
       expect(airoDomainForLocation('/home'), AiroDomain.airo);
       expect(airoDomainForLocation('/money/budget'), AiroDomain.money);
-      expect(airoDomainForLocation('/mind/chat'), AiroDomain.mind);
+      expect(airoDomainForLocation('/assistant/chat'), AiroDomain.mind);
       expect(airoDomainForLocation('/music/player'), AiroDomain.beats);
       expect(airoDomainForLocation('/iptv/guide'), AiroDomain.live);
       expect(airoDomainForLocation('/games/chess'), AiroDomain.arena);
