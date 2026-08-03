@@ -100,7 +100,7 @@ void main() {
         category: 'downloads',
         scheduleType: 'progress',
         metadata: {
-          'deep_link': '/mind/notifications?tab=downloads',
+          'deep_link': '/assistant/notifications?tab=downloads',
           'download_id': 'gemma-3n-e4b-it',
         },
       );
@@ -123,7 +123,7 @@ void main() {
       expect(payload['notification_id'], first.id);
       expect(payload['category'], 'downloads');
       expect(payload['schedule_type'], 'progress');
-      expect(payload['deep_link'], '/mind/notifications?tab=downloads');
+      expect(payload['deep_link'], '/assistant/notifications?tab=downloads');
       expect(
         payload['metadata'],
         containsPair('download_id', 'gemma-3n-e4b-it'),
@@ -143,7 +143,7 @@ void main() {
         scheduleType: 'follow_up',
         requiresCompletion: true,
         followUpPolicy: 'daily_until_done',
-        metadata: {'deep_link': '/mind/recordings'},
+        metadata: {'deep_link': '/assistant/recordings'},
       ),
     );
 

@@ -3,12 +3,27 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  record_windows
+  audioplayers_windows
+  connectivity_plus
+  file_selector_windows
+  firebase_auth
+  firebase_core
+  flutter_secure_storage_windows
+  flutter_tts
+  local_auth_windows
+  media_kit_libs_windows_video
+  pdfx
+  permission_handler_windows
+  screen_brightness_windows
+  share_plus
+  sqlite3_flutter_libs
+  url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  feature_mind
+  flutter_local_notifications_windows
   jni
+  media_kit_native_event_loop
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

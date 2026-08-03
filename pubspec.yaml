@@ -14,6 +14,13 @@ melos:
     - app
     - packages/**
 
+  ignore:
+    # Named feature_mind so pubspec_overrides.yaml can swap it in on shared
+    # surfaces (rule R05). It must not also be a workspace member -- two
+    # packages resolving under one name is ambiguous. It is reached by path
+    # from an override, never by name from the workspace.
+    - packages/stubs/feature_mind_stub
+
   ide:
     intellij:
       enabled: true
@@ -27,6 +34,17 @@ melos:
       usePubspecOverrides: true
 
   scripts:
+
+    # Airo Mind rules R03 and R05. R03: graph, timeline and search are one
+    # switcher, never three routes. R05: no shared-surface flavor links
+    # feature_mind. Both carry mutation tests in
+    # packages/feature_mind/test/rules -- a gate that has never failed proves
+    # nothing.
+    check:mind-rules:
+      run: |
+        scripts/check-mind-projection-routes.sh && \
+        scripts/check-mind-private-devices.sh
+      description: Airo Mind design rules R03 and R05
     bootstrap_workspace:
       run: melos bootstrap
       description: Bootstrap all packages in the workspace

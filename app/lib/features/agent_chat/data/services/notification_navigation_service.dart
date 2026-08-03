@@ -37,7 +37,7 @@ class NotificationNavigationService {
 
 String? routeFromNotificationPayload(
   String? payload, {
-  String fallbackRoute = '/mind/notifications',
+  String fallbackRoute = '/assistant/notifications',
 }) {
   if (payload == null || payload.trim().isEmpty) {
     return null;
@@ -45,7 +45,7 @@ String? routeFromNotificationPayload(
 
   final trimmed = payload.trim();
   if (trimmed.startsWith('/')) {
-    return trimmed;
+    return _migrateLegacyMindRoute(trimmed);
   }
 
   try {
@@ -56,7 +56,7 @@ String? routeFromNotificationPayload(
 
     final deepLink = decoded['deep_link'];
     if (deepLink is String && deepLink.trim().startsWith('/')) {
-      return deepLink.trim();
+      return _migrateLegacyMindRoute(deepLink.trim());
     }
 
     final metadata = decoded['metadata'];
@@ -64,7 +64,7 @@ String? routeFromNotificationPayload(
       final metadataDeepLink = metadata['deep_link'];
       if (metadataDeepLink is String &&
           metadataDeepLink.trim().startsWith('/')) {
-        return metadataDeepLink.trim();
+        return _migrateLegacyMindRoute(metadataDeepLink.trim());
       }
     }
 
@@ -77,4 +77,21 @@ String? routeFromNotificationPayload(
   } catch (_) {
     return fallbackRoute;
   }
+}
+
+/// Rewrites a deep link written before the assistant hub left `/mind`.
+///
+/// Notifications live in the OS, not in this process: one scheduled by an
+/// older build fires against this one and would otherwise open a route that no
+/// longer exists. Migrating here rather than with a router redirect keeps the
+/// old path out of the route table, so milestone 22's Mind can claim it.
+///
+/// Delete once no device can still be holding a pre-split notification.
+String _migrateLegacyMindRoute(String route) {
+  const legacy = '/mind'; // mind-name-exempt: migration, not a live route.
+  if (route == legacy) return '/assistant';
+  if (route.startsWith('$legacy/')) {
+    return '/assistant${route.substring(legacy.length)}';
+  }
+  return route;
 }

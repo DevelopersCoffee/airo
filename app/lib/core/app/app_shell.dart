@@ -80,8 +80,9 @@ class AppShell extends ConsumerWidget {
                       AppNavigationTab.home.index;
                   navigationShell.goBranch(AppNavigationTab.home.index);
                 },
-                onNotificationsTap: () => context.push('/mind/notifications'),
-                onProfileTap: () => context.push('/mind/profile'),
+                onNotificationsTap: () =>
+                    context.push('/assistant/notifications'),
+                onProfileTap: () => context.push('/assistant/profile'),
                 onLogoutTap: () async {
                   if (user?.isGoogleUser == true) {
                     await GoogleAuthService.instance.signOut();

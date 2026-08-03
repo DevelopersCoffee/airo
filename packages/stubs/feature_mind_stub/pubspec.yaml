@@ -1,0 +1,24 @@
+# Deliberately named feature_mind. This package exists to be swapped in via
+# pubspec_overrides.yaml on shared-surface flavors -- web and TV -- so that the
+# Mind module is absent from those binaries rather than disabled inside them.
+#
+# Rule R05. A personal vault must not render on a screen other people use, and
+# a runtime flag can be flipped. Same mechanism as packages/airo_pro_bootstrap
+# and the rest of packages/stubs.
+name: feature_mind
+description: Stub implementation of feature_mind for shared-surface builds
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.12.2 <4.0.0'
+  flutter: '>=3.44.4'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

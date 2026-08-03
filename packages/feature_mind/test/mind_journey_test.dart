@@ -49,8 +49,7 @@ class _FakeMind extends MindService {
   Stream<MindProgress> process({
     required String wavPath,
     required String title,
-  }) =>
-      _stream ?? const Stream.empty();
+  }) => _stream ?? const Stream.empty();
 
   @override
   Future<void> dispose() async {}
@@ -80,13 +79,16 @@ void main() {
       await tester.pumpWidget(_app(MindHomeScreen(service: _FakeMind())));
       await tester.pumpAndSettle();
 
-      expect(find.text('No meetings yet. Press Record to start one.'),
-          findsOneWidget);
+      expect(
+        find.text('No meetings yet. Press Record to start one.'),
+        findsOneWidget,
+      );
       expect(find.text('Record'), findsOneWidget);
     });
 
-    testWidgets('meetings are listed with a preview of their minutes',
-        (tester) async {
+    testWidgets('meetings are listed with a preview of their minutes', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _app(MindHomeScreen(service: _FakeMind(library: [_meeting()]))),
       );
@@ -98,8 +100,9 @@ void main() {
 
     /// The first-run state. It must be distinguishable from a broken build,
     /// because the fix is entirely different.
-    testWidgets('missing models are named, not hidden behind a generic error',
-        (tester) async {
+    testWidgets('missing models are named, not hidden behind a generic error', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _app(
           MindHomeScreen(
@@ -120,25 +123,29 @@ void main() {
       expect(find.text('Record'), findsNothing);
     });
 
-    testWidgets('a missing native library reads differently from missing models',
-        (tester) async {
-      await tester.pumpWidget(
-        _app(
-          MindHomeScreen(
-            service: _FakeMind(
-              status: const MindStatus.unavailable(
-                MindUnavailable.bridgeMissing,
-                'dlopen failed',
+    testWidgets(
+      'a missing native library reads differently from missing models',
+      (tester) async {
+        await tester.pumpWidget(
+          _app(
+            MindHomeScreen(
+              service: _FakeMind(
+                status: const MindStatus.unavailable(
+                  MindUnavailable.bridgeMissing,
+                  'dlopen failed',
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Airo Mind is not available on this platform'),
-          findsOneWidget);
-    });
+        expect(
+          find.text('Airo Mind is not available on this platform'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('search — step 7 of the journey', () {
@@ -164,8 +171,9 @@ void main() {
       expect(find.textContaining('Kafka consumer lag'), findsOneWidget);
     });
 
-    testWidgets('no match says so rather than showing everything',
-        (tester) async {
+    testWidgets('no match says so rather than showing everything', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _app(MindHomeScreen(service: _FakeMind(library: [_meeting()]))),
       );
@@ -206,7 +214,8 @@ void main() {
                   meetingId: 'm1',
                   title: 'Platform standup',
                   recordedAt: BigInt.from(1700000000),
-                  snippet: 'Priya said the Kafka consumer lag is the bottleneck.',
+                  snippet:
+                      'Priya said the Kafka consumer lag is the bottleneck.',
                 ),
               ],
             ),
@@ -226,12 +235,11 @@ void main() {
   });
 
   group('reading a meeting', () {
-    testWidgets('shows minutes, transcript, and which model wrote them',
-        (tester) async {
+    testWidgets('shows minutes, transcript, and which model wrote them', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        _app(
-          MeetingScreen.stored(service: _FakeMind(), meeting: _meeting()),
-        ),
+        _app(MeetingScreen.stored(service: _FakeMind(), meeting: _meeting())),
       );
       await tester.pump();
 
@@ -250,8 +258,9 @@ void main() {
   });
 
   group('watching processing — step 3 of the journey', () {
-    testWidgets('transcript then minutes appear as the models produce them',
-        (tester) async {
+    testWidgets('transcript then minutes appear as the models produce them', (
+      tester,
+    ) async {
       final controller = StreamController<MindProgress>();
       final service = _FakeMind(progress: controller.stream);
 
@@ -274,7 +283,10 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Priya said the lag is the bottleneck.'), findsOneWidget);
+      expect(
+        find.text('Priya said the lag is the bottleneck.'),
+        findsOneWidget,
+      );
       // Still running: the user can stop it.
       expect(find.text('Stop'), findsOneWidget);
 
@@ -306,8 +318,9 @@ void main() {
 
     /// A failure that ends the stream silently looks exactly like a hang. The
     /// user must be told, on the screen they are already looking at.
-    testWidgets('a failure is shown rather than ending the stream quietly',
-        (tester) async {
+    testWidgets('a failure is shown rather than ending the stream quietly', (
+      tester,
+    ) async {
       final controller = StreamController<MindProgress>();
       await tester.pumpWidget(
         _app(
@@ -337,8 +350,9 @@ void main() {
       await controller.close();
     });
 
-    testWidgets('Stop cancels the job rather than only leaving the screen',
-        (tester) async {
+    testWidgets('Stop cancels the job rather than only leaving the screen', (
+      tester,
+    ) async {
       final controller = StreamController<MindProgress>();
       final service = _FakeMind();
 
@@ -363,7 +377,8 @@ void main() {
       expect(
         service.cancelled,
         isTrue,
-        reason: 'leaving the screen without cancelling leaves inference running',
+        reason:
+            'leaving the screen without cancelling leaves inference running',
       );
       await controller.close();
     });
