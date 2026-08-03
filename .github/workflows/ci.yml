@@ -886,7 +886,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.4
         with:
           sarif_file: 'trivy-results.sarif'
         # Private forks without GitHub Advanced Security reject SARIF uploads.
@@ -966,7 +966,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.4
         if: always() && hashFiles('snyk.sarif') != ''
         with:
           sarif_file: snyk.sarif
