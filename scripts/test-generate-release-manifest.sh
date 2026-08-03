@@ -99,6 +99,69 @@ assert artifact["macos"]["signingStatus"] == "signed"
 assert artifact["macos"]["notarizationStatus"] == "notarized"
 PY
 
+# The orchestrator's aggregate step runs without --profile-id over a directory
+# holding every profile at once, so profile, package, and ABI must be resolved
+# per artifact. Every other test here passes --profile-id and therefore never
+# exercises inference at all.
+mkdir -p "$TMP_DIR/mixed"
+for f in \
+  "Airo-TV-0.0.6.apk" \
+  "Airo-TV-0.0.6-arm64-v8a.apk" \
+  "Airo-TV-0.0.6-armeabi-v7a.apk" \
+  "Airo-TV-0.0.6-x86_64.apk" \
+  "Airo-TV-0.0.6-Play-Store.aab" \
+  "Airo-0.0.6-10-arm64.apk" \
+  "Airo-0.0.6-10-Play-Store.aab" \
+  "AiroCoins-0.0.6-10-arm64.apk" \
+  "AiroCoins-0.0.6-10-Play-Store.aab" \
+  "Airo-TV-0.0.6-macOS.dmg" ; do
+  printf 'content-%s' "$f" > "$TMP_DIR/mixed/$f"
+done
+
+python3 "$SCRIPT" \
+  --artifacts-dir "$TMP_DIR/mixed" \
+  --version 0.0.6 \
+  --build-number 10 \
+  > "$TMP_DIR/mixed.out"
+
+python3 - "$TMP_DIR/mixed/Release-Manifest.json" <<'PY'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+byname = {a["filename"]: a for a in manifest["artifacts"]}
+
+expected_profile = {
+    "Airo-TV-0.0.6.apk": ("tv", "io.airo.app.tv"),
+    "Airo-TV-0.0.6-arm64-v8a.apk": ("tv", "io.airo.app.tv"),
+    "Airo-TV-0.0.6-armeabi-v7a.apk": ("tv", "io.airo.app.tv"),
+    "Airo-TV-0.0.6-x86_64.apk": ("tv", "io.airo.app.tv"),
+    "Airo-TV-0.0.6-Play-Store.aab": ("tv", "io.airo.app.tv"),
+    "Airo-0.0.6-10-arm64.apk": ("full", "io.airo.app"),
+    "Airo-0.0.6-10-Play-Store.aab": ("full", "io.airo.app"),
+    "AiroCoins-0.0.6-10-arm64.apk": ("coins", "io.airo.app.coins"),
+    "AiroCoins-0.0.6-10-Play-Store.aab": ("coins", "io.airo.app.coins"),
+}
+for name, (profile_id, package_id) in expected_profile.items():
+    got = byname[name]
+    assert got["profileId"] == profile_id, (name, got["profileId"], profile_id)
+    assert got["packageId"] == package_id, (name, got["packageId"], package_id)
+
+expected_abi = {
+    "Airo-TV-0.0.6-arm64-v8a.apk": "android-arm64",
+    "Airo-TV-0.0.6-armeabi-v7a.apk": "android-armeabi-v7a",
+    "Airo-TV-0.0.6-x86_64.apk": "android-x86_64",
+    "Airo-0.0.6-10-arm64.apk": "android-arm64",
+    "AiroCoins-0.0.6-10-arm64.apk": "android-arm64",
+}
+for name, abi in expected_abi.items():
+    assert byname[name]["abi"] == abi, (name, byname[name]["abi"], abi)
+
+macos = byname["Airo-TV-0.0.6-macOS.dmg"]
+assert macos["profileId"] == "tv", macos["profileId"]
+assert macos["packageId"] == "com.developerscoffee.airo.tv", macos["packageId"]
+PY
+
 mkdir -p "$TMP_DIR/empty"
 if python3 "$SCRIPT" \
   --artifacts-dir "$TMP_DIR/empty" \
