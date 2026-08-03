@@ -8,14 +8,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Both gates locate violations with ripgrep inside `|| true`, so a missing rg
-# would return no matches and the gate would pass having checked nothing. That
-# is the exact failure this file exists to prevent, so refuse to run instead.
-if ! command -v rg >/dev/null 2>&1; then
-  echo "FATAL: ripgrep (rg) is not installed. This gate cannot verify anything" >&2
-  echo "without it, and passing silently would be worse than failing." >&2
-  exit 127
-fi
+# Portable POSIX grep, not ripgrep. GitHub's ubuntu-latest runner does not ship
+# rg, and a gate that only runs on a developer laptop is not a gate.
+scan() {
+  grep -rnE \
+    --include='*.dart' \
+    --exclude-dir=test \
+    --exclude-dir=cargokit \
+    --exclude-dir=build \
+    -e "$1" \
+    "${scan_paths[@]}" 2>/dev/null || true
+}
 
 scan_paths=()
 for path in "app/lib" "packages"; do
@@ -23,18 +26,26 @@ for path in "app/lib" "packages"; do
 done
 
 if [[ ${#scan_paths[@]} -eq 0 ]]; then
-  echo "No Dart sources to scan."
-  exit 0
+  echo "No Dart sources to scan." >&2
+  exit 1
+fi
+
+# Positive control. A `|| true` search that silently finds nothing -- missing
+# tool, wrong flags, wrong paths -- would report OK having checked nothing,
+# which is the exact failure this gate exists to prevent. So first prove the
+# search finds a string we know is there.
+if [[ -z "$(scan 'class MindProjectionSwitcher')" ]]; then
+  echo "FATAL: the search found no MindProjectionSwitcher, which must exist." >&2
+  echo "This gate cannot verify anything, and passing silently would be worse" >&2
+  echo "than failing. Check grep availability and the scan paths." >&2
+  exit 127
 fi
 
 violations="$(
-  rg -n \
-    --glob '*.dart' \
-    --glob '!**/test/**' \
-    --glob '!**/cargokit/**' \
-    -e "path:\s*'/?(mind/)?(graph|timeline|search)'" \
-    -e "name:\s*'(mind_)?(graph|timeline|search)'" \
-    "${scan_paths[@]}" || true
+  {
+    scan "path:[[:space:]]*'/?(mind/)?(graph|timeline|search)'"
+    scan "name:[[:space:]]*'(mind_)?(graph|timeline|search)'"
+  } | sort -u
 )"
 
 if [[ -n "$violations" ]]; then

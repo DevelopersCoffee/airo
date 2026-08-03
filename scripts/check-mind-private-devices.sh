@@ -11,12 +11,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Both gates locate violations with ripgrep inside `|| true`, so a missing rg
-# would return no matches and the gate would pass having checked nothing. That
-# is the exact failure this file exists to prevent, so refuse to run instead.
-if ! command -v rg >/dev/null 2>&1; then
-  echo "FATAL: ripgrep (rg) is not installed. This gate cannot verify anything" >&2
-  echo "without it, and passing silently would be worse than failing." >&2
+# Positive control. This gate's whole job is to find something that should not
+# be there, so a broken search reports OK having checked nothing. Prove the
+# search works against a file that must exist before trusting a clean result.
+if ! grep -q 'name: feature_mind' packages/stubs/feature_mind_stub/pubspec.yaml 2>/dev/null; then
+  echo "FATAL: could not read the feature_mind stub's pubspec, so this gate" >&2
+  echo "cannot verify anything. Passing silently would be worse than failing." >&2
   exit 127
 fi
 
@@ -28,14 +28,14 @@ failed=false
 for pubspec in "${shared_pubspecs[@]}"; do
   [[ -f "$pubspec" ]] || continue
 
-  if grep -qE '^\s+feature_mind:' "$pubspec"; then
+  if grep -qE '^[[:space:]]+feature_mind:' "$pubspec"; then
     # A dependency is only acceptable when the same flavor points it at the
     # stub, either inline or through its own overrides file.
     overrides="${pubspec%.yaml}_overrides.yaml"
-    if grep -qE 'feature_mind_stub' "$pubspec"; then
+    if grep -q 'feature_mind_stub' "$pubspec"; then
       continue
     fi
-    if [[ -f "$overrides" ]] && grep -qE 'feature_mind_stub' "$overrides"; then
+    if [[ -f "$overrides" ]] && grep -q 'feature_mind_stub' "$overrides"; then
       continue
     fi
     failed=true
@@ -48,7 +48,7 @@ done
 # sources a web build compiles: nothing under app/web may reach the module.
 if [[ -d "app/web" ]]; then
   web_imports="$(
-    rg -n --glob '*.dart' -e "package:feature_mind/" app/web 2>/dev/null || true
+    grep -rn --include='*.dart' -e "package:feature_mind/" app/web 2>/dev/null || true
   )"
   if [[ -n "$web_imports" ]]; then
     failed=true
