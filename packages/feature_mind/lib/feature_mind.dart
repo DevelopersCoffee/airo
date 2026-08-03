@@ -49,9 +49,11 @@ export 'src/widgets/mind_number_strip.dart';
 export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
+export 'src/widgets/relative_time.dart';
 export 'src/widgets/mind_projection_switcher.dart';
 
 // Surfaces — the phone screens of the device system.
+export 'src/surfaces/devices_surface.dart';
 export 'src/surfaces/memory_surface.dart';
 export 'src/surfaces/mind_home_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
