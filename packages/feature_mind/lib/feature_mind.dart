@@ -52,4 +52,5 @@ export 'src/widgets/mind_presence_pip.dart';
 export 'src/widgets/mind_projection_switcher.dart';
 
 // Surfaces — the phone screens of the device system.
+export 'src/surfaces/mind_home_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
