@@ -8,6 +8,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Both gates locate violations with ripgrep inside `|| true`, so a missing rg
+# would return no matches and the gate would pass having checked nothing. That
+# is the exact failure this file exists to prevent, so refuse to run instead.
+if ! command -v rg >/dev/null 2>&1; then
+  echo "FATAL: ripgrep (rg) is not installed. This gate cannot verify anything" >&2
+  echo "without it, and passing silently would be worse than failing." >&2
+  exit 127
+fi
+
 scan_paths=()
 for path in "app/lib" "packages"; do
   [[ -e "$path" ]] && scan_paths+=("$path")
