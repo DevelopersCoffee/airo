@@ -60,40 +60,41 @@ const route = GoRoute(path: 'timeline', name: 'timeline');
     }
   });
 
-  test('the gate refuses to run without ripgrep rather than passing', () {
-    // Both gates find violations with rg inside `|| true`. Without rg that
-    // returns no matches and the gate would report OK having checked nothing —
-    // the exact failure these gates exist to prevent.
+  test('the gate refuses to run when its search finds nothing at all', () {
+    // The gate's job is to find something that should not be there, so a
+    // broken search — missing tool, wrong flags, wrong paths — reports OK
+    // having checked nothing. The positive control must catch that.
     //
-    // A PATH holding only the tools the script needs to reach its own guard,
-    // and provably not rg. Pointing PATH at a nonexistent directory would hide
-    // bash too and the shebang would fail before the guard ran, which proves
-    // nothing; naming real bin directories would still find rg on Linux.
-    final bin = Directory.systemTemp.createTempSync('mind_no_rg');
-    for (final tool in ['bash', 'env', 'dirname', 'pwd']) {
-      final resolved = Process.runSync('which', [
-        tool,
-      ]).stdout.toString().trim();
-      if (resolved.isEmpty) continue;
-      Link('${bin.path}/$tool').createSync(resolved);
-    }
-
+    // Simulated by copying the gate into a tree whose sources exist but do not
+    // contain MindProjectionSwitcher, which is what a broken search looks like
+    // from the gate's point of view. This replaced a `command -v rg` check:
+    // GitHub's ubuntu-latest runner has no ripgrep, both gates exited 127 on
+    // their first real CI run, and the lesson was that asserting a tool exists
+    // is weaker than asserting the search actually finds a known string.
+    final fake = Directory.systemTemp.createTempSync('mind_broken_search');
     try {
-      final result = Process.runSync(
-        gate,
-        const [],
-        environment: {'PATH': bin.path},
-        includeParentEnvironment: false,
-      );
+      Directory('${fake.path}/scripts').createSync();
+      Directory('${fake.path}/packages').createSync();
+      File(
+        '${fake.path}/packages/unrelated.dart',
+      ).writeAsStringSync('class Unrelated {}');
+      final copied = File('${fake.path}/scripts/gate.sh')
+        ..writeAsStringSync(File(gate).readAsStringSync());
+      Process.runSync('chmod', ['+x', copied.path]);
+
+      final result = Process.runSync('bash', [copied.path]);
 
       expect(
         result.exitCode,
         127,
-        reason: 'stdout: ${result.stdout}\nstderr: ${result.stderr}',
+        reason:
+            'The gate reported OK from a tree where its positive control '
+            'cannot match.\nstdout: ${result.stdout}\n'
+            'stderr: ${result.stderr}',
       );
-      expect(result.stderr.toString(), contains('ripgrep'));
+      expect(result.stderr.toString(), contains('cannot verify anything'));
     } finally {
-      bin.deleteSync(recursive: true);
+      fake.deleteSync(recursive: true);
     }
   });
 }
