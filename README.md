@@ -33,10 +33,11 @@ interactions in a real shipping app, not a demo.
 
 | Module | What it does | Status |
 |---|---|---|
-| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.4](https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.4)** |
+| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.6](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6)** |
 | ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
 | 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
 | 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |
+| 🪙 **Airo Coins** | Standalone money home and secure vault | **Available — [v0.0.6](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6)** (preview; see [#1240](https://github.com/DevelopersCoffee/airo/issues/1240)) |
 | 🎵 **Airo Music** | Music playback surfaces | In development |
 | ♟️ **Airo Games** | Chess and casual games (Stockfish engine) | In development |
 | 📖 **Airo Reader** | Reading surfaces with OCR | In development |
@@ -46,7 +47,7 @@ All modules live in one monorepo with strict package boundaries — see the
 
 ## 📺 Airo TV — Available Now
 
-[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4.apk)
+[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
 [![Live Showcase](https://img.shields.io/badge/▶-Live%20Showcase-blue?style=for-the-badge)](https://developerscoffee.github.io/airo/)
 
 ### See it in action
@@ -88,17 +89,30 @@ M3U/M3U8 playlists.
 
 ## Download
 
-| Platform | Link |
-|---|---|
-| 📺 Android TV | [Airo TV v0.0.4 APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4.apk) |
-| 🖥️ macOS (preview) | [Airo TV DMG](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4-macOS.dmg) |
-| 🤖 Android | [Android releases](https://github.com/DevelopersCoffee/airo/releases) |
-| 🍎 iOS | [Latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa) |
-| 🌐 Web | [Web build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip) |
-| 📦 All | [All releases](https://github.com/DevelopersCoffee/airo/releases) |
+Current release: **[v0.0.6](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6)** — one
+release carrying every product line.
+
+| Product | Package | Download |
+|---|---|---|
+| 📺 **Airo TV** (Android TV / Fire TV) | `io.airo.app.tv` | [Airo-TV-0.0.6.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk) · [arm64-v8a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-arm64-v8a.apk) · [armeabi-v7a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-armeabi-v7a.apk) · [x86_64](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-x86_64.apk) |
+| 🤖 **Airo** (phone / tablet) | `io.airo.app` | [Airo-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-0.0.6-10-arm64.apk) |
+| 🪙 **Airo Coins** | `io.airo.app.coins` | [AiroCoins-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/AiroCoins-0.0.6-10-arm64.apk) |
+| 🖥️ **Airo TV for macOS** | — | [DMG](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.dmg) · [ZIP](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.zip) |
+| 📦 All releases | — | [Releases](https://github.com/DevelopersCoffee/airo/releases) |
+
+Not published: iOS/iPadOS (no Apple developer account) and web (CI validation
+only). Play Store AABs are attached to the release for store submission but no
+build is on Google Play yet.
+
+Android builds are signed with a stable dogfood keystore. They upgrade cleanly
+over other dogfood-signed Airo builds but **not** over a future production-signed
+release — that transition will need an uninstall.
 
 Before installing a direct-download APK, verify it against
 [`SHA256SUMS`](VERIFY_DOWNLOAD.md).
+
+macOS builds are unsigned and not notarized; Gatekeeper will require an explicit
+override.
 
 ## Why Trust Airo?
 
@@ -137,7 +151,7 @@ command list. For the Airo TV Edge Intelligence runtime
 
 ### Platform Support
 
-- **Android**: API 24+ · **iOS**: 12.0+ · **Web**: modern browsers (Chrome preferred for development).
+- **Android**: API 26+ (Android 8.0), compiled and targeting API 36 · **iOS**: 12.0+ · **Web**: modern browsers (Chrome preferred for development).
 
 Android release builds require private signing material. Never commit
 `app/android/key.properties`, keystores, tokens, API keys, or local credentials.
