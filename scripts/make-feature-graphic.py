@@ -73,14 +73,16 @@ def render(title: str, subtitle: str, chips: list[str], note: str,
 
     # Right-hand mock panel: illustrative UI, never a real user's data.
     rounded(draw, (586, 56, 968, 444), 18, fill=(18, 18, 18), outline=(48, 48, 48))
-    draw.text((620, 88), rows[0][0], font=font("Arial Bold.ttf", 28), fill=TEXT)
+    draw.text((620, 88), rows[0][0], font=font("Arial Bold.ttf", 28), fill=ACCENT)
     ry = 148
     for label, value in rows[1:]:
         rounded(draw, (620, ry, 934, ry + 74), 12, fill=PANEL)
-        draw.text((640, ry + 14), label, font=row_font, fill=TEXT)
-        if 640 + draw.textlength(value, font=row_sub_font) > 934 - 12:
+        # Leading accent block: mirrors the app's own list rows.
+        rounded(draw, (636, ry + 22, 660, ry + 52), 6, fill=ACCENT)
+        draw.text((676, ry + 14), label, font=row_font, fill=TEXT)
+        if 676 + draw.textlength(value, font=row_sub_font) > 934 - 12:
             raise ValueError(f"row subtitle overflows the panel: {value!r}")
-        draw.text((640, ry + 44), value, font=row_sub_font, fill=MUTED)
+        draw.text((676, ry + 44), value, font=row_sub_font, fill=MUTED)
         ry += 90
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -114,9 +116,10 @@ def main() -> int:
             "Local-first money vault",
             ["Biometric lock", "Works offline", "No account"],
             "Records never leave your device.\nPreview release.",
-            [("Secure vault", ""), ("Bank accounts", "Unlocked with biometrics"),
-             ("Cards & documents", "Stored locally, encrypted"),
-             ("Spending", "Tracked on device only")],
+            [("Your phone is the vault", ""),
+             ("Bank accounts", "Unlocked with biometrics"),
+             ("Cards & documents", "Stored on device"),
+             ("Spending", "Tracked locally only")],
             args.icon, args.out,
         )
     print(f"wrote {path} ({Image.open(path).size})")
