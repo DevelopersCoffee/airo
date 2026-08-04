@@ -46,6 +46,10 @@ class ArtifactSelector:
     #: substituted from the artifact itself. Prefer this over `abi` when a store
     #: needs one exact file: it does not depend on manifest-inferred fields.
     filename_pattern: str | None = None
+    #: Ordered regexes; the first that matches anything wins. Lets a store
+    #: prefer a universal APK when the release built one and fall back to
+    #: the arm64 build for releases that predate it.
+    filename_preference: tuple[str, ...] = ()
     min_count: int = 1
     max_count: int | None = None
 
@@ -81,6 +85,9 @@ class ArtifactSelector:
             filename_contains=_as_tuple(data.get("filenameContains"), f"{context}.filenameContains"),
             filename_excludes=_as_tuple(data.get("filenameExcludes"), f"{context}.filenameExcludes"),
             filename_pattern=pattern,
+            filename_preference=_as_tuple(
+                data.get('filenamePreference'), f'{context}.filenamePreference'
+            ),
             min_count=min_count,
             max_count=max_count,
         )
@@ -107,7 +114,30 @@ class ArtifactSelector:
             return False
         return True
 
+    def _preferred(self, artifacts: Sequence[Artifact]) -> list[Artifact] | None:
+        for candidate_pattern in self.filename_preference:
+            matched = []
+            for artifact in artifacts:
+                rendered = candidate_pattern.format(
+                    version=re.escape(artifact.version),
+                    buildNumber=re.escape(artifact.build_number),
+                    profileId=re.escape(artifact.profile_id),
+                )
+                if re.fullmatch(rendered, artifact.filename):
+                    matched.append(artifact)
+            if matched:
+                return matched
+        return None
+
     def select(self, artifacts: Sequence[Artifact], context: str) -> list[Artifact]:
+        if self.filename_preference:
+            preferred = self._preferred(artifacts)
+            if preferred is None:
+                raise ConfigError(
+                    f"{context}: none of the preferred filename patterns matched. "
+                    f"Available: {', '.join(a.filename for a in artifacts)}"
+                )
+            return preferred
         chosen = [artifact for artifact in artifacts if self.matches(artifact)]
         if len(chosen) < self.min_count:
             raise ConfigError(

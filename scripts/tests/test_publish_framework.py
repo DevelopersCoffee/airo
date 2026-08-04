@@ -821,6 +821,44 @@ class ApkContentsTests(unittest.TestCase):
             self.assertFalse(contents.is_universal)
 
 
+class FilenamePreferenceTests(unittest.TestCase):
+    """A store should take the universal APK when the release built one."""
+
+    def _artifacts(self, names):
+        from tools.publish.models import Artifact
+        return [
+            Artifact(
+                filename=n, profile_id="tv", package_id="io.airo.app.tv", version="0.0.6",
+                build_number="10", artifact_type="apk", abi="android-arm64",
+                distribution_channel="direct-apk", size_bytes=1, sha256="x", path=Path(n),
+            )
+            for n in names
+        ]
+
+    SELECTOR = ArtifactSelector(
+        filename_preference=(
+            r"^Airo-TV-{version}-universal\.apk$",
+            r"^Airo-TV-{version}\.apk$",
+        ),
+        max_count=1,
+    )
+
+    def test_prefers_the_universal_apk_when_present(self) -> None:
+        chosen = self.SELECTOR.select(
+            self._artifacts(["Airo-TV-0.0.6.apk", "Airo-TV-0.0.6-universal.apk"]), "t"
+        )
+        self.assertEqual([a.filename for a in chosen], ["Airo-TV-0.0.6-universal.apk"])
+
+    def test_falls_back_for_releases_that_predate_it(self) -> None:
+        """0.0.6 shipped before the universal build existed and must still publish."""
+        chosen = self.SELECTOR.select(self._artifacts(["Airo-TV-0.0.6.apk"]), "t")
+        self.assertEqual([a.filename for a in chosen], ["Airo-TV-0.0.6.apk"])
+
+    def test_no_match_at_all_is_an_error(self) -> None:
+        with self.assertRaises(ConfigError):
+            self.SELECTOR.select(self._artifacts(["Airo-TV-0.0.6-arm64-v8a.apk"]), "t")
+
+
 class DeviceCoverageTests(unittest.TestCase):
     """A listing must say which devices it leaves out, not only which it serves."""
 
