@@ -540,28 +540,6 @@ jobs:
           cd app
           dart run build_runner build
 
-      # ===========================================
-      # Explicit Android lint gate
-      # ===========================================
-      # AGP 9.3.1's automatic lintVitalAnalyzeRelease pre-flight (wired into
-      # assembleRelease/bundleRelease by default) crashes with a
-      # NoSuchMethodError inside its own JavaDoc parser while reading Flutter
-      # plugin Java sources -- confirmed reproducible against
-      # url_launcher_android's UrlLauncher.java, an upstream AGP lint-tool bug
-      # unrelated to any code in this repo. android/app/build.gradle.kts sets
-      # checkReleaseBuilds=false to stop that automatic duplicate from
-      # blocking every release build; this step is what restores the actual
-      # lint coverage as an explicit, always-run gate instead. Keep both
-      # changes together -- removing this step without also re-enabling
-      # checkReleaseBuilds silently drops Android lint coverage entirely.
-      - name: Run Android lint (release)
-        if: steps.android_scope.outputs.should_build == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.AIRO_LITERTLM_TOKEN }}
-        run: |
-          cd app/android
-          ./gradlew lintRelease
-
       - name: Build APK (Release) - ${{ matrix.platform.description }}
         if: steps.android_scope.outputs.should_build == 'true'
         env:
@@ -590,6 +568,37 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release.apk \
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           echo "✅ Build complete"
+
+      # ===========================================
+      # Explicit Android lint gate
+      # ===========================================
+      # AGP 9.3.1's automatic lintVitalAnalyzeRelease pre-flight (wired into
+      # assembleRelease/bundleRelease by default) crashes with a
+      # NoSuchMethodError inside its own JavaDoc parser while reading Flutter
+      # plugin Java sources -- confirmed reproducible against
+      # url_launcher_android's UrlLauncher.java, an upstream AGP lint-tool bug
+      # unrelated to any code in this repo. android/app/build.gradle.kts sets
+      # checkReleaseBuilds=false to stop that automatic duplicate from
+      # blocking every release build; this step is what restores the actual
+      # lint coverage as an explicit, always-run gate instead. Keep both
+      # changes together -- removing this step without also re-enabling
+      # checkReleaseBuilds silently drops Android lint coverage entirely.
+      #
+      # Runs after the build, not before: app/android/gradlew is gitignored
+      # in this repo and does not exist in a fresh checkout -- Flutter's own
+      # tooling materializes it as a side effect of `flutter build apk`. A
+      # standalone `./gradlew lintRelease` step placed before that build
+      # failed immediately with "No such file or directory" (exit 127), not
+      # a lint failure. This costs a little CI time when lint fails (the APK
+      # is already built), but the job still fails either way, so the gate
+      # itself is not weakened.
+      - name: Run Android lint (release)
+        if: steps.android_scope.outputs.should_build == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.AIRO_LITERTLM_TOKEN }}
+        run: |
+          cd app/android
+          ./gradlew lintRelease
 
       # ===========================================
       # CV-030: Assert TV APK excludes libmpv + FFmpeg native libs
