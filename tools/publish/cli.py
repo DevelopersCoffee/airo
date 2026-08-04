@@ -91,6 +91,18 @@ def build_parser() -> argparse.ArgumentParser:
                              help="Write a markdown summary here (default: $GITHUB_STEP_SUMMARY).")
             cmd.add_argument("--results-json", type=Path, default=None,
                              help="Write machine-readable results here.")
+            # Same flags as `doctor`, so proving a store and publishing to it do
+            # not take different arguments for the same decision.
+            cmd.add_argument(
+                "--browser",
+                choices=[mode.value for mode in BrowserMode],
+                default=None,
+                help="Browser for browser-driven stores. Overrides the target config.",
+            )
+            cmd.add_argument("--browser-path", default=None,
+                             help="default|arc|brave|chrome|edge or a full path.")
+            cmd.add_argument("--cdp-endpoint", default=None)
+            cmd.add_argument("--profile-dir", type=Path, default=None)
 
     login = sub.add_parser("login", help="Create or refresh a store browser session, by hand.")
     login.add_argument("target", choices=["apkpure"])
@@ -238,6 +250,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         submit=args.submit,
         force=args.force,
         timeout_seconds=args.timeout_seconds,
+        browser=args.browser,
+        browser_path=args.browser_path,
+        cdp_endpoint=args.cdp_endpoint,
+        profile_dir=str(args.profile_dir) if args.profile_dir else None,
     )
     if options.submit and options.dry_run:
         print("--submit is ignored with --dry-run", file=sys.stderr)

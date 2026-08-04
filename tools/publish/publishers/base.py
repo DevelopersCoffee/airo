@@ -31,6 +31,13 @@ class PublishOptions:
     submit: bool = False
     force: bool = False
     timeout_seconds: int = 600
+    # Browser selection for browser-driven publishers. Set from the CLI, and
+    # takes precedence over the target's config so `run` and `doctor` accept
+    # the same flags for the same job.
+    browser: str | None = None
+    browser_path: str | None = None
+    cdp_endpoint: str | None = None
+    profile_dir: str | None = None
 
     @property
     def may_submit(self) -> bool:

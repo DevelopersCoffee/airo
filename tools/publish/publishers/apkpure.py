@@ -45,7 +45,9 @@ class ApkPurePublisher(Publisher):
         if not ctx.options.dry_run:
             # Only the bundled-Chromium mode replays a saved storage state; the
             # chrome and cdp modes carry their session in a real browser profile.
-            mode = resolve_browser_mode(ctx.config.option("browser"), ctx.env)
+            mode = resolve_browser_mode(
+            ctx.options.browser or ctx.config.option("browser"), ctx.env
+        )
             state = storage_state_path(ctx)
             if mode is BrowserMode.BUNDLED and not state.is_file():
                 blockers.append(
@@ -89,7 +91,9 @@ class ApkPurePublisher(Publisher):
 
         selectors = SelectorSet.load(ctx.config.option("selectorsFile"))
         ctx.evidence.log(f"selector source: {selectors.source}")
-        mode = resolve_browser_mode(ctx.config.option("browser"), ctx.env)
+        mode = resolve_browser_mode(
+            ctx.options.browser or ctx.config.option("browser"), ctx.env
+        )
         # A real browser must be visible: a human may need to clear a challenge.
         headless = bool(ctx.config.option("headless", True)) and mode is BrowserMode.BUNDLED
         state = storage_state_path(ctx)
@@ -101,9 +105,16 @@ class ApkPurePublisher(Publisher):
             headless=headless,
             timeout_ms=ctx.options.timeout_seconds * 1000,
             mode=mode,
-            profile_dir=_optional_path(ctx.config.option("profileDir")),
-            cdp_endpoint=str(ctx.config.option("cdpEndpoint", DEFAULT_CDP_ENDPOINT)),
-            browser_path=resolve_browser_path(ctx.config.option("browserPath")),
+            profile_dir=_optional_path(
+                ctx.options.profile_dir or ctx.config.option("profileDir")
+            ),
+            cdp_endpoint=str(
+                ctx.options.cdp_endpoint
+                or ctx.config.option("cdpEndpoint", DEFAULT_CDP_ENDPOINT)
+            ),
+            browser_path=resolve_browser_path(
+                ctx.options.browser_path or ctx.config.option("browserPath")
+            ),
         ) as session:
             session.open_app(package_id)
 
