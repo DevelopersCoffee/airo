@@ -92,15 +92,25 @@ android {
     }
 
     lint {
-        // AGP 9.3.1's bundled lintVitalAnalyzeRelease crashes with
-        // NoSuchMethodError inside its own JavaDoc parser while reading
-        // Flutter-plugin Java sources (url_launcher_android's UrlLauncher.java
-        // is the confirmed trigger) -- an upstream AGP lint-tool bug, not
-        // anything in this repo's code. checkReleaseBuilds=false only unhooks
-        // that automatic pre-flight duplicate from assembleRelease/bundleRelease;
-        // it does not disable lint. Full `lintRelease` coverage runs explicitly
-        // as its own CI step in the build-android job (ci.yml) instead, so no
-        // real coverage is lost -- see the CI step for why this line exists.
+        // AGP 9.3.1's own lint-analysis engine crashes with a NoSuchMethodError
+        // in its JavaDoc/UAST parser while reading Flutter-plugin Java sources
+        // (url_launcher_android's UrlLauncher.java is the confirmed trigger).
+        // This is an upstream AGP bug, not anything in this repo's code --
+        // and it is not specific to the automatic lintVitalAnalyzeRelease
+        // pre-flight: an explicit `./gradlew lintRelease` run with correct
+        // -Ptarget/-Pdart-defines hit the identical crash (confirmed against
+        // CI logs, not assumed), so no lint task at all currently completes
+        // against this dependency graph.
+        //
+        // checkReleaseBuilds=false unhooks the crashing pre-flight from
+        // assembleRelease/bundleRelease so release builds are not blocked.
+        // This is a real, deliberate coverage gap, not a redundant duplicate
+        // being removed -- there is currently NO working Android-native lint
+        // gate anywhere in this repo (the separate `lint:` CI job in ci.yml
+        // is also a dead stub; see #1533). Restoring coverage
+        // needs a fix at the AGP/lint-engine-version layer -- e.g. pinning
+        // an older lint via android.experimental.lint.version, or downgrading
+        // AGP below 9.3 -- neither of which has been attempted yet.
         checkReleaseBuilds = false
     }
 
