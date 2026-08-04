@@ -71,14 +71,40 @@ DEFAULT_SELECTORS: dict[str, list[str]] = {
         "input[type='file'][accept*='apk']",
         "input[type='file']",
     ],
-    "upload_complete_marker": [
-        "[data-testid='upload-complete']",
-        ":text-matches('(Upload (complete|success)|100%)', 'i')",
+    # The uploader is a Vue component: it reads the file, clears the native
+    # input (so input.files goes back to 0) and renders the filename. That
+    # rendered name is the only client-side proof the file was accepted.
+    "upload_accepted_marker": [
+        ".uploadify-wrap p.title:text-matches('\\.(apk|xapk)$', 'i')",
+        ".uploadify-wrap .title",
     ],
+    # The form's own submit control. This is the first action that actually
+    # sends the APK to APKPure and creates a version, so it lives behind
+    # --submit. It is NOT the app-level PUBLISH control.
+    "upload_submit_button": [
+        "form button[type='submit']:has-text('Upload')",
+        ".submit-upload-wrap button[type='submit']",
+    ],
+    # Must NOT be a bare [role='alert']: APKPure uses that role for the
+    # *success* notice ("under the upload verification"), so a generic match
+    # reports a completed upload as a failure.
     "upload_error_marker": [
+        ":text-matches('(upload failed|invalid apk|signature mismatch|not a valid)', 'i')",
         ".toast :text-matches('(failed|invalid|error)', 'i')",
-        "[role='alert']",
-        ":text-matches('(upload failed|invalid apk|signature mismatch)', 'i')",
+    ],
+    # The real success signal. APKPure reviews every APK by hand, so an accepted
+    # upload sits in verification and does NOT appear in the version table for
+    # hours or days -- waiting for the row would time out on a healthy upload.
+    # Verification cleared: the binary is accepted and only the app-level
+    # PUBLISH click remains. The Upload button is disabled in this state, so a
+    # run that does not recognise it will retry a dead click until it times out.
+    "upload_verified_marker": [
+        ":text-matches('passed upload verification', 'i')",
+        ":text-matches('please click the .?Publish', 'i')",
+    ],
+    "upload_pending_marker": [
+        ":text-matches('under the upload verification', 'i')",
+        ":text-matches('(wait and refresh|please wait to see the result)', 'i')",
     ],
     "release_notes_input": [
         "textarea#textarea1",
@@ -102,6 +128,12 @@ DEFAULT_SELECTORS: dict[str, list[str]] = {
     # ".step-name" is excluded deliberately: step 4 of the static flow diagram
     # is literally the text "Pending Approval", so an unscoped match reports
     # success on an idle page that has published nothing.
+    # Publishing is also queued for human review, so the version does not
+    # become a normal table row on success either. This banner is the signal.
+    "publish_pending_marker": [
+        ":text-matches('under the publishing review', 'i')",
+        ":text-matches('version you published', 'i')",
+    ],
     "submit_success_marker": [
         ":text-matches('(in review|under review|submitted)', 'i'):not(.step-name)",
         "[data-testid='review-status']",
@@ -111,6 +143,14 @@ DEFAULT_SELECTORS: dict[str, list[str]] = {
     "version_row": [
         "table tbody tr:visible",
         "[data-testid='version-row']",
+    ],
+    # App-level listing description, on the APP DETAILS tab.
+    "description_input": [
+        "textarea#Full_description",
+        "textarea[name='Full_description']",
+    ],
+    "app_details_submit": [
+        "form button[type='submit']",
     ],
     "human_gate_marker": [
         "iframe[src*='recaptcha']",

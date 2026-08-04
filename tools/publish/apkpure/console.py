@@ -68,6 +68,30 @@ class ConsoleSession:
             return locator
         return None
 
+    def require_enabled(self, key: str, what: str, timeout_ms: int | None = None) -> Any:
+        """require(), but refuses a control the page has disabled.
+
+        Playwright retries a click on a disabled element until the timeout
+        expires, which turns "APKPure disabled this button on purpose" into a
+        ten-minute hang with no explanation.
+        """
+        locator = self.require(key, what, timeout_ms)
+        # Materialize marks controls dead with a CSS class, not the disabled
+        # attribute, so is_enabled() reports True for a button the page will
+        # ignore. Clicking it silently does nothing -- which is how a listing
+        # edit can appear to succeed while changing nothing at all.
+        class_disabled = locator.evaluate(
+            "e => (e.className || '').split(/\\s+/).includes('disabled') "
+            "|| e.getAttribute('aria-disabled') === 'true'"
+        )
+        if class_disabled or not locator.is_enabled():
+            self.snapshot(f"disabled-{key}")
+            raise RemoteError(
+                f"{what} is present but disabled, so the console is not in a state that "
+                "accepts this action. See the snapshot in the evidence directory."
+            )
+        return locator
+
     def require(self, key: str, what: str, timeout_ms: int | None = None) -> Any:
         locator = self._first_visible(key, timeout_ms)
         if locator is None:
@@ -125,6 +149,15 @@ class ConsoleSession:
         self.require("signed_in_marker", "a signed-in console shell", timeout_ms=15_000)
         self.snapshot("console")
 
+    def open_app_details(self, package_id: str) -> None:
+        """Navigate to the APP DETAILS tab for this package."""
+        url = console_url(package_id)
+        if self.page.url.rstrip("/") != url.rstrip("/"):
+            self.page.goto(url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+        self.page.wait_for_timeout(1_500)
+        self.guard_human_gate("app-details")
+        self.snapshot("app-details")
+
     def published_versions(self) -> list[str]:
         """Best-effort read of the versions already listed for this app."""
         rows = self._first_visible("version_row", timeout_ms=8_000)
@@ -167,6 +200,13 @@ class ConsoleSession:
         self.guard_human_gate("upload-form")
 
     def upload_apk(self, apk_path: Path) -> None:
+        """Attach the APK. Nothing is sent to APKPure by this step.
+
+        The console's uploader is a Vue component that reads the file locally,
+        clears the native input, and renders the filename. Transmission happens
+        only when the form's Upload button is pressed, which is a separate,
+        gated step.
+        """
         file_input = self.require("apk_file_input", "the APK file input")
         self.evidence.log(f"attaching {apk_path.name} ({apk_path.stat().st_size} bytes)")
         file_input.set_input_files(str(apk_path))
@@ -176,13 +216,144 @@ class ConsoleSession:
                 "APKPure reported an error immediately after attaching the APK. "
                 "See the snapshot in the evidence directory."
             )
-        if self._first_visible("upload_complete_marker", timeout_ms=self.timeout_ms) is None:
-            self.snapshot("upload-unconfirmed")
+        accepted = self._first_visible("upload_accepted_marker", timeout_ms=30_000)
+        if accepted is None:
+            self.snapshot("attach-unconfirmed")
             raise RemoteError(
-                "APK upload never reported completion within the timeout. "
-                "The console may still be processing; check the snapshot before retrying."
+                "The console never displayed the attached filename, so the uploader did "
+                "not accept the file. Nothing was sent."
             )
-        self.snapshot("upload-complete")
+        shown = (accepted.inner_text() or "").strip()
+        if apk_path.name not in shown:
+            self.snapshot("attach-mismatch")
+            raise RemoteError(
+                f"The console shows {shown!r} attached but this run selected "
+                f"{apk_path.name!r}. Refusing to continue with the wrong file."
+            )
+        self.evidence.log(f"uploader accepted {shown}")
+        self.snapshot("apk-attached")
+
+    def send_upload(self, expected_version: str | None = None) -> str:
+        """Press the form's Upload button. This transmits the APK.
+
+        Returns "pending" when APKPure has queued the APK for its manual review,
+        or "listed" when the version is already visible in the table. Both are
+        success: APKPure verifies every upload by hand, so the version row can
+        be hours or days away and cannot be the completion signal.
+        """
+        button = self.require_enabled("upload_submit_button", "the form's Upload button")
+        self.evidence.log("pressing Upload — this sends the APK to APKPure")
+        button.click()
+        self.guard_human_gate("upload")
+
+        # Check the explicit error text first; the pending notice and the error
+        # notice share a container, so order matters.
+        if self._first_visible("upload_error_marker", timeout_ms=8_000) is not None:
+            self.snapshot("upload-error")
+            raise RemoteError("APKPure reported an error while uploading the APK.")
+
+        pending = self._first_visible("upload_pending_marker", timeout_ms=120_000)
+        if pending is not None:
+            self.evidence.log(f"APKPure queued the upload: {(pending.inner_text() or '').strip()[:120]}")
+            self.snapshot("upload-pending-verification")
+            return "pending"
+
+        if expected_version and self._await_version_row(expected_version, attempts=5):
+            self.snapshot("upload-listed")
+            return "listed"
+
+        self.snapshot("upload-unconfirmed")
+        raise RemoteError(
+            "Pressed Upload but saw neither the verification notice nor a new version row"
+            + (f" for {expected_version}" if expected_version else "")
+            + ". Check the console by hand before retrying: a blind retry may upload twice."
+        )
+
+    def upload_is_pending_verification(self) -> bool:
+        """True when a previous upload is still in APKPure's review queue."""
+        return self.present("upload_pending_marker", timeout_ms=6_000)
+
+    def upload_awaiting_publish(self) -> bool:
+        """True when an uploaded version has cleared verification.
+
+        In this state the binary is already on APKPure and the Upload button is
+        disabled; only the app-level PUBLISH click remains.
+        """
+        return self.present("upload_verified_marker", timeout_ms=6_000)
+
+    @staticmethod
+    def plain_text_notes(markdown: str) -> str:
+        """Flatten CHANGELOG markdown into store-listing prose.
+
+        A store description is plain text: "### Added" and
+        "[label](url)" render literally, so the source markdown has to be
+        converted rather than pasted.
+        """
+        lines: list[str] = []
+        for raw in markdown.splitlines():
+            line = raw.rstrip()
+            # [label](url) -> label (url), or just the url when the label is the url
+            line = re.sub(
+                r"\[([^\]]+)\]\(([^)]+)\)",
+                lambda m: m.group(2) if m.group(1) == m.group(2) else f"{m.group(1)} ({m.group(2)})",
+                line,
+            )
+            line = re.sub(r"`([^`]*)`", r"\1", line)          # inline code
+            line = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)     # bold
+            heading = re.match(r"^\s*#{1,6}\s+(.*)$", line)
+            if heading:
+                lines.append("")
+                lines.append(f"{heading.group(1).strip()}:")
+                continue
+            bullet = re.match(r"^\s*[-*]\s+(.*)$", line)
+            if bullet:
+                lines.append(f"\u2022 {bullet.group(1).strip()}")
+                continue
+            lines.append(line.strip())
+        text = "\n".join(lines)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+    #: Delimiters for the release-notes block this tool owns inside the
+    #: listing description. Everything between them is replaced on each
+    #: release; everything outside is the maintainer's copy and is never
+    #: touched. Without markers, each release would append another changelog
+    #: and the description would grow without bound.
+    NOTES_BEGIN = "--- What's new (maintained by airo publish) ---"
+    NOTES_END = "--- end what's new ---"
+
+    def upsert_description_notes(self, version: str, notes: str, max_chars: int = 1200) -> str:
+        """Insert or replace the release-notes block in the listing description."""
+        field = self.require("description_input", "the listing description field")
+        current = field.input_value()
+
+        body = self.plain_text_notes(notes)
+        if len(body) > max_chars:
+            body = body[: max_chars - 1].rstrip() + "\u2026"
+        block = f"{self.NOTES_BEGIN}\nv{version}\n{body}\n{self.NOTES_END}"
+
+        start = current.find(self.NOTES_BEGIN)
+        end = current.find(self.NOTES_END)
+        if start != -1 and end != -1 and end > start:
+            updated = current[:start] + block + current[end + len(self.NOTES_END) :]
+            self.evidence.log("replacing the existing release-notes block in the description")
+        else:
+            updated = current.rstrip() + "\n\n" + block
+            self.evidence.log("appending a release-notes block to the description")
+
+        if updated == current:
+            self.evidence.log("description already up to date")
+            return updated
+        field.fill(updated)
+        self.snapshot("description-updated")
+        return updated
+
+    def save_app_details(self) -> None:
+        button = self.require_enabled("app_details_submit", "the APP DETAILS save button")
+        self.evidence.log("saving APP DETAILS — this updates the public listing")
+        button.click()
+        self.guard_human_gate("app-details")
+        self.snapshot("app-details-saved")
 
     def fill_release_notes(self, notes: str) -> None:
         field = self.require("release_notes_input", "the What's New field")
@@ -190,12 +361,21 @@ class ConsoleSession:
         self.snapshot("release-notes")
 
     def submit_for_review(self, expected_version: str | None = None) -> None:
-        button = self.require("submit_button", "the Publish button")
+        button = self.require_enabled("submit_button", "the Publish button")
         button.click()
         confirm = self._first_visible("submit_confirm_button", timeout_ms=5_000)
         if confirm is not None:
             confirm.click()
         self.guard_human_gate("submit")
+
+        # APKPure queues publishing for human review too, so a published
+        # version does not become a normal table row -- waiting for one would
+        # time out on a successful publish, exactly as it did on upload.
+        pending = self._first_visible("publish_pending_marker", timeout_ms=60_000)
+        if pending is not None:
+            self.evidence.log(f"APKPure queued the publish: {(pending.inner_text() or '').strip()[:120]}")
+            self.snapshot("publish-pending-review")
+            return
 
         # Prefer a falsifiable check -- the version actually appearing in the
         # table -- over a status string. The console's flow diagram permanently

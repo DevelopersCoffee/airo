@@ -117,13 +117,68 @@ class ApkPurePublisher(Publisher):
             ),
         ) as session:
             session.open_app(package_id)
+            # The version table lives on /versions, so the duplicate check has
+            # to happen after navigating there — on the app-details page it
+            # silently finds nothing and skips the check entirely.
+            session.open_upload_form()
 
-            # Exact match on the version cell: a leftover 0.0.6-rc.1 row must
-            # not make 0.0.6 look already published.
+            # Listing description: opt-in, and independent of the binary. Runs
+            # before the upload branches so it still happens when the APK is
+            # already published and there is nothing left to upload.
+            if ctx.config.option("updateDescription"):
+                if ctx.options.may_submit:
+                    session.open_app_details(package_id)
+                    session.upsert_description_notes(
+                        artifact.version,
+                        ctx.release_notes,
+                        int(ctx.config.option("descriptionMaxChars", 1200)),
+                    )
+                    session.save_app_details()
+                    session.open_upload_form()
+                else:
+                    ctx.evidence.warn(
+                        "skipping the listing description update: it edits public copy, "
+                        "so it needs --submit"
+                    )
+
+            # The binary is already up and verified; only PUBLISH remains.
+            # Re-attaching here would be pointless -- the Upload button is
+            # disabled in this state -- so go straight to the publish step.
+            if session.upload_awaiting_publish():
+                ctx.evidence.log("an uploaded version has cleared verification; only PUBLISH remains")
+                if not ctx.options.may_submit:
+                    return self.result(
+                        ctx,
+                        PublishStatus.STAGED,
+                        "An uploaded version has passed APKPure verification and is waiting "
+                        "for PUBLISH; re-run with --submit to publish it",
+                        {**plan, "uploadState": "verified-awaiting-publish"},
+                    )
+                session.submit_for_review(artifact.version)
+                return self.result(
+                    ctx,
+                    PublishStatus.SUCCEEDED,
+                    f"Published the verified {artifact.version} upload on APKPure",
+                    {**plan, "uploadState": "published"},
+                )
+
+            # A version awaiting APKPure's manual review is absent from the
+            # table, so the table alone cannot prove this version is not
+            # already in flight. Re-uploading would queue it twice.
+            if session.upload_is_pending_verification() and not ctx.options.force:
+                ctx.evidence.warn("an upload is already awaiting APKPure verification")
+                return self.result(
+                    ctx,
+                    PublishStatus.SKIPPED,
+                    "An upload for this app is already under APKPure verification; "
+                    "wait for it to clear, or pass --force",
+                    plan,
+                )
+
             existing = session.published_version_names()
             already = [name for name in existing if name == artifact.version]
             if already and not ctx.options.force:
-                ctx.evidence.log(f"version {artifact.version} already listed: {already[0]!r}")
+                ctx.evidence.log(f"version {artifact.version} already listed")
                 return self.result(
                     ctx,
                     PublishStatus.SKIPPED,
@@ -131,22 +186,34 @@ class ApkPurePublisher(Publisher):
                     {**plan, "existingVersion": already[0], "listedVersions": existing},
                 )
 
-            session.open_upload_form()
             session.upload_apk(artifact.path)
             session.fill_release_notes(ctx.release_notes)
 
             if not ctx.options.may_submit:
                 ctx.evidence.warn(
-                    "Stopped before Submit for Review. The version is uploaded but not submitted; "
-                    "review it in the console, or re-run with --submit."
+                    "Stopped before pressing Upload. The APK is attached in the browser "
+                    "and the notes are filled, but nothing has been sent to APKPure. "
+                    "Press Upload in the console yourself, or re-run with --submit."
                 )
                 return self.result(
                     ctx,
                     PublishStatus.STAGED,
-                    f"Uploaded {artifact.filename} and staged release notes; not submitted",
+                    f"Attached {artifact.filename} and filled release notes; nothing sent",
                     plan,
                 )
 
+            upload_state = session.send_upload(artifact.version)
+            if upload_state == "pending":
+                # APKPure reviews by hand. PUBLISH is meaningless until the
+                # binary clears verification, and clicking it now would prove
+                # nothing.
+                ctx.evidence.log("upload queued for APKPure verification; not clicking PUBLISH")
+                return self.result(
+                    ctx,
+                    PublishStatus.SUCCEEDED,
+                    f"Uploaded {artifact.filename} to APKPure; awaiting their manual verification",
+                    {**plan, "uploadState": "pending-verification"},
+                )
             session.submit_for_review(artifact.version)
 
         ctx.evidence.write_json("apkpure-result.json", {**plan, "submitted": True})

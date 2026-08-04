@@ -29,6 +29,11 @@ class RunRequest:
     options: PublishOptions
     evidence_dir: Path
     quiet: bool = False
+    #: Targets the caller named on the command line. `enabled: false` keeps a
+    #: target out of the default sweep, but naming it explicitly *is* the
+    #: deliberate opt-in, so it runs. Anything not named here still obeys the
+    #: config flag.
+    explicit_targets: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -99,11 +104,22 @@ def run(request: RunRequest) -> list[PublishResult]:
     for profile_config, ctx in resolved.contexts:
         publisher = get_publisher(profile_config.target)
 
-        if not request.config.is_target_enabled(profile_config.target):
+        explicitly_requested = profile_config.target in request.explicit_targets
+        if not request.config.is_target_enabled(profile_config.target) and not explicitly_requested:
             results.append(
-                _skipped(publisher.name, ctx, f"target {profile_config.target!r} is disabled in config")
+                _skipped(
+                    publisher.name,
+                    ctx,
+                    f"target {profile_config.target!r} is disabled in config "
+                    "(name it with --target to run it anyway)",
+                )
             )
             continue
+        if explicitly_requested and not request.config.is_target_enabled(profile_config.target):
+            ctx.evidence.warn(
+                f"target {profile_config.target!r} is disabled in config but was named "
+                "explicitly — running it"
+            )
         if not profile_config.enabled:
             results.append(
                 _skipped(publisher.name, ctx, f"profile {ctx.profile_id!r} is disabled in config")
