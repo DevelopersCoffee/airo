@@ -24,7 +24,7 @@ from ..apkpure.console import (
 )
 from ..apkpure.console import DEFAULT_CDP_ENDPOINT
 from ..apkpure.selectors import SelectorSet, console_url
-from ..apk_inspect import inspect_apk
+from ..apk_inspect import coverage_report, inspect_apk
 from ..upload_state import UploadState
 from ..errors import ConfigError, CredentialError, RemoteError
 from ..models import PublishResult, PublishStatus
@@ -96,6 +96,22 @@ class ApkPurePublisher(Publisher):
                         "the wrong slice would fail to install on the devices this "
                         "listing targets."
                     )
+            # State the coverage this listing gives users, including what it
+            # leaves out. A listing that silently serves one architecture is
+            # how a 32-bit device owner finds out by failing to install.
+            built = frozenset(
+                abi
+                for candidate in ctx.release.artifacts
+                if candidate.artifact_type == "apk" and candidate.profile_id == ctx.profile_id
+                for abi in inspect_apk(candidate.path).abis
+            )
+            coverage = coverage_report(expected_set, built)
+            for line in coverage["served"]:
+                ctx.evidence.log(f"serves {line}")
+            for line in coverage["notServed"]:
+                ctx.evidence.warn(f"NOT served by this listing: {line}")
+            self._coverage = coverage
+
             max_mb = ctx.config.option("maxSizeMb")
             if max_mb:
                 for candidate in artifacts:
@@ -127,6 +143,7 @@ class ApkPurePublisher(Publisher):
 
         plan = {
             "packageId": package_id,
+            "deviceCoverage": getattr(self, "_coverage", None),
             "consoleUrl": target_url,
             "apk": artifact.filename,
             "sha256": artifact.sha256,
