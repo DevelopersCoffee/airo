@@ -15,7 +15,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from ..apkpure.console import console_session
+from ..apkpure.console import BrowserMode, console_session, resolve_browser_mode
+from ..apkpure.console import DEFAULT_CDP_ENDPOINT
 from ..apkpure.selectors import SelectorSet, console_url
 from ..errors import ConfigError
 from ..models import PublishResult, PublishStatus
@@ -37,11 +38,15 @@ class ApkPurePublisher(Publisher):
     def preflight(self, ctx: PublishContext) -> list[str]:
         blockers = super().preflight(ctx)
         if not ctx.options.dry_run:
+            # Only the bundled-Chromium mode replays a saved storage state; the
+            # chrome and cdp modes carry their session in a real browser profile.
+            mode = resolve_browser_mode(ctx.config.option("browser"), ctx.env)
             state = storage_state_path(ctx)
-            if not state.is_file():
+            if mode is BrowserMode.BUNDLED and not state.is_file():
                 blockers.append(
                     f"no APKPure session state at {state}; run "
-                    "`python3 -m tools.publish login apkpure` first"
+                    "`python3 -m tools.publish login apkpure` first, or pass "
+                    "browser=chrome/cdp in the target options"
                 )
         return blockers
 
@@ -79,7 +84,9 @@ class ApkPurePublisher(Publisher):
 
         selectors = SelectorSet.load(ctx.config.option("selectorsFile"))
         ctx.evidence.log(f"selector source: {selectors.source}")
-        headless = bool(ctx.config.option("headless", True))
+        mode = resolve_browser_mode(ctx.config.option("browser"), ctx.env)
+        # A real browser must be visible: a human may need to clear a challenge.
+        headless = bool(ctx.config.option("headless", True)) and mode is BrowserMode.BUNDLED
         state = storage_state_path(ctx)
 
         with console_session(
@@ -88,6 +95,9 @@ class ApkPurePublisher(Publisher):
             selectors=selectors,
             headless=headless,
             timeout_ms=ctx.options.timeout_seconds * 1000,
+            mode=mode,
+            profile_dir=_optional_path(ctx.config.option("profileDir")),
+            cdp_endpoint=str(ctx.config.option("cdpEndpoint", DEFAULT_CDP_ENDPOINT)),
         ) as session:
             session.open_app(package_id)
 
@@ -127,3 +137,7 @@ class ApkPurePublisher(Publisher):
             f"Submitted {artifact.filename} to APKPure review for {package_id}",
             {**plan, "submitted": True},
         )
+
+
+def _optional_path(value: object) -> Path | None:
+    return Path(str(value)).expanduser() if value else None

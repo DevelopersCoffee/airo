@@ -157,6 +157,44 @@ Developer Console with Playwright. Three hard rules:
    `APKPURE_SELECTORS_FILE` can point at a JSON override — so a console redesign
    is unblocked by a config file, not by a code review.
 
+### Cloudflare, and what this tool will not do
+
+APKPure sits behind Cloudflare, which challenges Playwright's bundled Chromium.
+This code will not evade that: no stealth plugins, no fingerprint or user-agent
+spoofing, no automated challenge solving. What it does instead is let a human
+drive a real browser through the check, and work inside the session that human
+established. Pick a mode with `--browser`, the `browser` target option, or
+`APKPURE_BROWSER`:
+
+| Mode | What it does | When |
+| --- | --- | --- |
+| `bundled` (default) | Playwright Chromium replaying a saved storage state | Fast, headless-capable, most likely to be challenged |
+| `chrome` | Real Google Chrome with a persistent profile that survives runs | Cloudflare challenges the bundled browser |
+| `cdp` | Attaches to a Chrome you started and signed in yourself | Strongest option: nothing about the session is synthesised |
+
+`chrome` and `cdp` need no storage state — the session lives in the browser
+profile — and both run headed, because a human may need to clear a check.
+
+Sign in to a persistent Chrome profile:
+
+```bash
+python3 -m tools.publish login apkpure --browser chrome
+```
+
+Or attach to your own browser. Start Chrome with remote debugging, sign in to
+APKPure in that window, then run with `--browser cdp`:
+
+```bash
+'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --remote-debugging-port=9222 --user-data-dir="$HOME/.config/airo/apkpure-chrome-profile"
+```
+
+In `cdp` mode the tool attaches to a tab and detaches when done; it never closes
+the browser you own.
+
+If Cloudflare still blocks a real, human-signed-in Chrome, treat that as APKPure
+declining automated uploads and publish that release by hand — `ManualPublisher`
+exists for exactly this outcome.
+
 ### Selectors are UNVERIFIED
 
 The candidates in `apkpure/selectors.py` are written against the documented

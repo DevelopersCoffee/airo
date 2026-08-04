@@ -16,6 +16,7 @@ from __future__ import annotations
 import contextlib
 import json
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -188,6 +189,41 @@ class ConsoleSession:
         self.snapshot("submitted")
 
 
+class BrowserMode(str, Enum):
+    """How the driver gets a browser.
+
+    APKPure sits behind Cloudflare, which challenges Playwright's bundled
+    Chromium. The answer is not to disguise the automation — this code will not
+    spoof fingerprints or solve challenges — but to let a human drive a real
+    browser through the challenge and have the automation work inside the
+    browser they already trust.
+    """
+
+    #: Playwright's bundled Chromium plus a saved storage state. Fastest, and
+    #: the most likely to be challenged.
+    BUNDLED = "bundled"
+    #: The real Google Chrome install, with a persistent profile directory that
+    #: survives between runs, so Cloudflare sees a returning browser.
+    CHROME = "chrome"
+    #: Attach to a Chrome the human started with --remote-debugging-port and
+    #: signed in themselves. Nothing about the session is synthesised.
+    CDP = "cdp"
+
+
+def resolve_browser_mode(configured: object, env: dict[str, str] | None = None) -> "BrowserMode":
+    """Config value wins, then APKPURE_BROWSER, then the bundled default."""
+    raw = configured or (env or {}).get("APKPURE_BROWSER") or BrowserMode.BUNDLED.value
+    try:
+        return BrowserMode(str(raw).strip().lower())
+    except ValueError as exc:
+        valid = ", ".join(mode.value for mode in BrowserMode)
+        raise PreflightError(f"Unknown browser mode {raw!r}. Valid: {valid}") from exc
+
+
+DEFAULT_PROFILE_DIR = Path.home() / ".config" / "airo" / "apkpure-chrome-profile"
+DEFAULT_CDP_ENDPOINT = "http://127.0.0.1:9222"
+
+
 @contextlib.contextmanager
 def console_session(
     *,
@@ -196,37 +232,158 @@ def console_session(
     selectors: SelectorSet,
     headless: bool = True,
     timeout_ms: int = 60_000,
+    mode: BrowserMode = BrowserMode.BUNDLED,
+    profile_dir: Path | None = None,
+    cdp_endpoint: str = DEFAULT_CDP_ENDPOINT,
 ) -> Iterator[ConsoleSession]:
-    """Open a Chromium context restored from a saved, human-created session."""
-    if not storage_state.is_file():
-        raise CredentialError(
-            f"No APKPure session state at {storage_state}. Run "
-            "`python3 -m tools.publish login apkpure` on a machine with a display first."
-        )
+    """Open an APKPure console page using whichever browser `mode` selects."""
     sync_playwright = import_playwright()
+    evidence.log(f"browser mode: {mode.value}")
+
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=headless)
-        try:
-            context = browser.new_context(
-                storage_state=str(storage_state),
-                viewport=DEFAULT_VIEWPORT,
-                accept_downloads=False,
+        if mode is BrowserMode.CDP:
+            manager = _cdp_context(playwright, cdp_endpoint, evidence)
+        elif mode is BrowserMode.CHROME:
+            manager = _persistent_chrome_context(
+                playwright, profile_dir or DEFAULT_PROFILE_DIR, headless, evidence
             )
+        else:
+            manager = _bundled_context(playwright, storage_state, headless, evidence)
+
+        with manager as (context, persist_storage_state):
             context.set_default_timeout(timeout_ms)
-            page = context.new_page()
+            page = context.pages[0] if context.pages else context.new_page()
             page.on("console", lambda msg: evidence.log(f"browser console [{msg.type}] {msg.text}"))
             try:
                 yield ConsoleSession(
                     page=page, selectors=selectors, evidence=evidence, timeout_ms=timeout_ms
                 )
             finally:
-                # Refresh the stored session so a rolling cookie does not expire
-                # the automation between releases.
-                with contextlib.suppress(Exception):
-                    context.storage_state(path=str(storage_state))
-                context.close()
+                if persist_storage_state:
+                    # Refresh the stored session so a rolling cookie does not
+                    # expire the automation between releases.
+                    with contextlib.suppress(Exception):
+                        context.storage_state(path=str(storage_state))
+
+
+@contextlib.contextmanager
+def _bundled_context(playwright, storage_state: Path, headless: bool, evidence: EvidenceRecorder):
+    if not storage_state.is_file():
+        raise CredentialError(
+            f"No APKPure session state at {storage_state}. Run "
+            "`python3 -m tools.publish login apkpure` on a machine with a display first."
+        )
+    browser = playwright.chromium.launch(headless=headless)
+    try:
+        context = browser.new_context(
+            storage_state=str(storage_state),
+            viewport=DEFAULT_VIEWPORT,
+            accept_downloads=False,
+        )
+        try:
+            yield context, True
         finally:
+            context.close()
+    finally:
+        browser.close()
+
+
+@contextlib.contextmanager
+def _persistent_chrome_context(
+    playwright, profile_dir: Path, headless: bool, evidence: EvidenceRecorder
+):
+    """Real Chrome with a profile that persists between runs.
+
+    No stealth flags and no fingerprint patching: this is a genuine Chrome with
+    a genuine profile, which is simply a truer description of what is happening
+    than a throwaway Chromium is.
+    """
+    profile_dir = profile_dir.expanduser()
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    evidence.log(f"chrome profile: {profile_dir}")
+    try:
+        context = playwright.chromium.launch_persistent_context(
+            str(profile_dir),
+            channel="chrome",
+            headless=headless,
+            viewport=DEFAULT_VIEWPORT,
+            accept_downloads=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
+        raise PreflightError(
+            f"Could not start Google Chrome ({exc}). Install Chrome, or use "
+            "--browser cdp to attach to a browser you started yourself."
+        ) from exc
+    try:
+        yield context, False
+    finally:
+        with contextlib.suppress(Exception):
+            context.close()
+
+
+@contextlib.contextmanager
+def _cdp_context(playwright, endpoint: str, evidence: EvidenceRecorder):
+    """Attach to a Chrome the human already started and signed in.
+
+    The human clears any Cloudflare or login challenge in their own browser.
+    This process never sees a credential and never answers a challenge; it only
+    drives a tab in a session that a human established.
+    """
+    evidence.log(f"attaching over CDP to {endpoint}")
+    try:
+        browser = playwright.chromium.connect_over_cdp(endpoint)
+    except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
+        raise PreflightError(
+            f"Could not attach to Chrome at {endpoint} ({exc}).\n"
+            "Start Chrome with remote debugging first, for example:\n"
+            "  /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome \\\n"
+            "    --remote-debugging-port=9222 --user-data-dir=\"$HOME/.config/airo/apkpure-chrome-profile\"\n"
+            "then sign in to APKPure in that window before re-running."
+        ) from exc
+    context = browser.contexts[0] if browser.contexts else browser.new_context()
+    try:
+        yield context, False
+    finally:
+        # The human owns this browser: detach, never close it.
+        with contextlib.suppress(Exception):
             browser.close()
+
+
+def interactive_chrome_login(
+    profile_dir: Path,
+    evidence: EvidenceRecorder,
+    confirm: Callable[[str], object] = input,
+) -> Path:
+    """Sign in inside a persistent real-Chrome profile.
+
+    Nothing is exported: the cookies stay in Chrome's own profile directory and
+    later runs reuse that same profile, so a Cloudflare challenge cleared by
+    hand here stays cleared. Use this when the bundled Chromium is challenged.
+    """
+    sync_playwright = import_playwright()
+    profile_dir = profile_dir.expanduser()
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as playwright:
+        try:
+            context = playwright.chromium.launch_persistent_context(
+                str(profile_dir), channel="chrome", headless=False, viewport=DEFAULT_VIEWPORT
+            )
+        except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
+            raise PreflightError(
+                f"Could not start Google Chrome ({exc}). Install Chrome, or sign in "
+                "with your own browser and use --browser cdp instead."
+            ) from exc
+        page = context.pages[0] if context.pages else context.new_page()
+        page.goto(SIGN_IN_URL, wait_until="domcontentloaded")
+        evidence.log(f"opened {SIGN_IN_URL} in persistent Chrome profile {profile_dir}")
+        confirm(
+            "\nSign in to APKPure in the Chrome window that just opened, clearing any\n"
+            "Cloudflare check yourself. Then press Enter here to close it: "
+        )
+        with contextlib.suppress(Exception):
+            context.close()
+    evidence.log(f"chrome profile retained at {profile_dir}")
+    return profile_dir
 
 
 def interactive_login(

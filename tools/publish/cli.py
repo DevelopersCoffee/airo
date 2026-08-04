@@ -21,7 +21,15 @@ import os
 import sys
 from pathlib import Path
 
-from .apkpure.console import console_session, interactive_login
+from .apkpure.console import (
+    DEFAULT_CDP_ENDPOINT,
+    DEFAULT_PROFILE_DIR,
+    BrowserMode,
+    console_session,
+    interactive_chrome_login,
+    interactive_login,
+    resolve_browser_mode,
+)
 from .apkpure.selectors import SelectorSet, console_url
 from .config import REPO_ROOT, PublishConfig
 from .errors import PublishError
@@ -86,6 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
     login = sub.add_parser("login", help="Create or refresh a store browser session, by hand.")
     login.add_argument("target", choices=["apkpure"])
     login.add_argument("--storage-state", type=Path, default=None)
+    login.add_argument(
+        "--browser",
+        choices=[mode.value for mode in BrowserMode],
+        default=None,
+        help="bundled saves a storage state; chrome signs in to a persistent Chrome profile.",
+    )
+    login.add_argument("--profile-dir", type=Path, default=None)
 
     doctor = sub.add_parser("doctor", help="Dump a store console page so selectors can be re-mapped.")
     doctor.add_argument("target", choices=["apkpure"])
@@ -93,6 +108,18 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--storage-state", type=Path, default=None)
     doctor.add_argument("--evidence-dir", type=Path, default=DEFAULT_EVIDENCE_DIR)
     doctor.add_argument("--headed", action="store_true")
+    doctor.add_argument(
+        "--browser",
+        choices=[mode.value for mode in BrowserMode],
+        default=None,
+        help=(
+            "bundled = Playwright Chromium + saved session (default); "
+            "chrome = real Chrome with a persistent profile; "
+            "cdp = attach to a Chrome you started and signed in yourself."
+        ),
+    )
+    doctor.add_argument("--profile-dir", type=Path, default=None)
+    doctor.add_argument("--cdp-endpoint", default=DEFAULT_CDP_ENDPOINT)
 
     return parser
 
@@ -240,8 +267,32 @@ def _storage_state(args: argparse.Namespace) -> Path:
 
 
 def cmd_login(args: argparse.Namespace) -> int:
-    state = _storage_state(args)
+    mode = resolve_browser_mode(args.browser, dict(os.environ))
     evidence = EvidenceRecorder(root=DEFAULT_EVIDENCE_DIR / "login" / args.target)
+
+    if mode is BrowserMode.CDP:
+        print(
+            "Nothing to do for --browser cdp: you sign in to APKPure in your own Chrome.\n"
+            "Start it with remote debugging, sign in there, then run doctor/run with\n"
+            "--browser cdp:\n"
+            "  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \\\n"
+            "    --remote-debugging-port=9222 \\\n"
+            f"    --user-data-dir=\"{DEFAULT_PROFILE_DIR}\"\n"
+        )
+        return 0
+
+    if mode is BrowserMode.CHROME:
+        profile = (args.profile_dir or DEFAULT_PROFILE_DIR).expanduser()
+        print(
+            "Real Chrome will open. Sign in to APKPure yourself and clear any Cloudflare\n"
+            "check — this tool never reads, types, or stores your password. The session\n"
+            f"stays inside the Chrome profile at:\n  {profile}\n"
+        )
+        interactive_chrome_login(profile, evidence)
+        print(f"\nDone. Re-run doctor/run with --browser chrome (profile: {profile}).")
+        return 0
+
+    state = _storage_state(args)
     print(
         "A browser window will open. Sign in to APKPure yourself — this tool never\n"
         "reads, types, or stores your password. Only the resulting session cookies\n"
@@ -257,11 +308,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     evidence = EvidenceRecorder(root=args.evidence_dir / "doctor" / args.target)
     selectors = SelectorSet.load()
     evidence.log(f"selector source: {selectors.source}")
+    mode = resolve_browser_mode(args.browser, dict(os.environ))
     with console_session(
         storage_state=state,
         evidence=evidence,
         selectors=selectors,
-        headless=not args.headed,
+        headless=not args.headed and mode is BrowserMode.BUNDLED,
+        mode=mode,
+        profile_dir=args.profile_dir,
+        cdp_endpoint=args.cdp_endpoint,
     ) as session:
         session.open_app(args.package_id)
         report = {
