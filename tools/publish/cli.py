@@ -29,6 +29,7 @@ from .apkpure.console import (
     interactive_chrome_login,
     interactive_login,
     resolve_browser_mode,
+    resolve_browser_path,
 )
 from .apkpure.selectors import SelectorSet, console_url
 from .config import REPO_ROOT, PublishConfig
@@ -101,6 +102,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="bundled saves a storage state; chrome signs in to a persistent Chrome profile.",
     )
     login.add_argument("--profile-dir", type=Path, default=None)
+    login.add_argument(
+        "--browser-path",
+        default="default",
+        help=(
+            "Chromium-family browser for --browser chrome. 'default' (the default) uses "
+            "this machine's default browser; or arc|brave|edge|chrome, or a full path."
+        ),
+    )
 
     doctor = sub.add_parser("doctor", help="Dump a store console page so selectors can be re-mapped.")
     doctor.add_argument("target", choices=["apkpure"])
@@ -120,6 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor.add_argument("--profile-dir", type=Path, default=None)
     doctor.add_argument("--cdp-endpoint", default=DEFAULT_CDP_ENDPOINT)
+    doctor.add_argument(
+        "--browser-path",
+        default="default",
+        help=(
+            "Chromium-family browser for --browser chrome. 'default' (the default) uses "
+            "this machine's default browser; or arc|brave|edge|chrome, or a full path."
+        ),
+    )
 
     return parser
 
@@ -288,7 +305,9 @@ def cmd_login(args: argparse.Namespace) -> int:
             "check — this tool never reads, types, or stores your password. The session\n"
             f"stays inside the Chrome profile at:\n  {profile}\n"
         )
-        interactive_chrome_login(profile, evidence)
+        interactive_chrome_login(
+            profile, evidence, executable_path=resolve_browser_path(args.browser_path)
+        )
         print(f"\nDone. Re-run doctor/run with --browser chrome (profile: {profile}).")
         return 0
 
@@ -317,6 +336,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         mode=mode,
         profile_dir=args.profile_dir,
         cdp_endpoint=args.cdp_endpoint,
+        browser_path=resolve_browser_path(args.browser_path),
     ) as session:
         session.open_app(args.package_id)
         report = {

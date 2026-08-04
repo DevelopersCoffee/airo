@@ -175,7 +175,20 @@ established. Pick a mode with `--browser`, the `browser` target option, or
 `chrome` and `cdp` need no storage state — the session lives in the browser
 profile — and both run headed, because a human may need to clear a check.
 
-Sign in to a persistent Chrome profile:
+`chrome` mode drives any Chromium-family browser, not just Google's. Point it
+with `--browser-path`, which defaults to `default` — this machine's actual
+default browser, read from LaunchServices rather than guessed:
+
+| `--browser-path` | Resolves to |
+| --- | --- |
+| `default` (the default) | whichever browser handles `https` on this Mac |
+| `arc`, `brave`, `chrome`, `edge` | that app's executable |
+| any path | used as-is |
+
+Arc, Brave, and Edge are all Chromium underneath, so they work here even though
+Playwright's own `channel=` only knows Google's builds.
+
+Sign in to a persistent profile in your default browser:
 
 ```bash
 python3 -m tools.publish login apkpure --browser chrome
