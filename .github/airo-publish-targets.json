@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "_comment": [
+    "Publish targets for tools/publish. Profile ids and package ids must match",
+    ".github/airo-build-profiles.json and docs/release/V2_DISTRIBUTION_MATRIX.md.",
+    "A target with enabled:false is listed but never run without an explicit --target."
+  ],
+  "targets": {
+    "github": {
+      "enabled": true,
+      "_note": "No packageId pin here: one release tag carries every artifact for the profile, and the macOS bundle uses com.developerscoffee.airo.tv rather than the Android app id.",
+      "profiles": {
+        "tv": {
+          "artifactSelector": {
+            "artifactType": ["apk", "aab", "macos_zip", "macos_dmg"],
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "fallback": "See the release notes in CHANGELOG.md."
+          },
+          "options": {
+            "repository": "DevelopersCoffee/airo",
+            "tag": "v{version}"
+          }
+        },
+        "full": {
+          "artifactSelector": {
+            "artifactType": ["apk", "aab"],
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "fallback": "See the release notes in CHANGELOG.md."
+          },
+          "options": {
+            "repository": "DevelopersCoffee/airo",
+            "tag": "v{version}"
+          }
+        }
+      }
+    },
+
+    "play": {
+      "enabled": false,
+      "_note": "Enable once GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is provisioned for the TV listing.",
+      "profiles": {
+        "tv": {
+          "packageId": "io.airo.app.tv",
+          "artifactSelector": {
+            "artifactType": ["aab"],
+            "minCount": 1,
+            "maxCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 500,
+            "fallback": "Bug fixes and stability improvements."
+          },
+          "options": {
+            "track": "internal",
+            "rollout": null
+          }
+        }
+      }
+    },
+
+    "apkpure": {
+      "enabled": false,
+      "_note": "Enable after `python3 -m tools.publish doctor apkpure` proves the selectors against the live console. Selection is by exact filename, not by abi: the universal APK and the arm64-v8a APK share abi=android-arm64, so only the filename distinguishes them.",
+      "profiles": {
+        "tv": {
+          "packageId": "io.airo.app.tv",
+          "artifactSelector": {
+            "artifactType": ["apk"],
+            "filenamePattern": "^Airo-TV-{version}\\.apk$",
+            "minCount": 1,
+            "maxCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 4000,
+            "fallback": "Bug fixes and stability improvements."
+          },
+          "options": {
+            "headless": true
+          }
+        }
+      }
+    },
+
+    "amazon": {
+      "enabled": false,
+      "profiles": {
+        "tv": {
+          "packageId": "io.airo.app.tv",
+          "artifactSelector": {
+            "artifactType": ["apk"],
+            "filenamePattern": "^Airo-TV-{version}\\.apk$",
+            "minCount": 1,
+            "maxCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 4000,
+            "fallback": "Bug fixes and stability improvements."
+          }
+        }
+      }
+    },
+
+    "huawei": {
+      "enabled": false,
+      "profiles": {
+        "tv": {
+          "packageId": "io.airo.app.tv",
+          "artifactSelector": {
+            "artifactType": ["apk"],
+            "filenamePattern": "^Airo-TV-{version}\\.apk$",
+            "minCount": 1,
+            "maxCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 4000,
+            "fallback": "Bug fixes and stability improvements."
+          }
+        }
+      }
+    },
+
+    "fdroid": {
+      "enabled": false,
+      "profiles": {
+        "tv": {
+          "packageId": "io.airo.app.tv",
+          "artifactSelector": {
+            "artifactType": ["apk"],
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "fallback": "See CHANGELOG.md."
+          }
+        }
+      }
+    },
+
+    "website": {
+      "enabled": false,
+      "_note": "Enable once docs/_data consumes the generated download metadata. No packageId pin: the macOS bundle id differs from the Android app id.",
+      "profiles": {
+        "tv": {
+          "artifactSelector": {
+            "artifactType": ["apk", "macos_zip", "macos_dmg"],
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "fallback": "See CHANGELOG.md."
+          },
+          "options": {
+            "outputPath": "docs/_data/downloads_tv.json",
+            "downloadBaseUrl": "https://github.com/DevelopersCoffee/airo/releases/download/v{version}"
+          }
+        }
+      }
+    }
+  }
+}
