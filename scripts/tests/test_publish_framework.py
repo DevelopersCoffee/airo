@@ -41,6 +41,7 @@ from tools.publish.apkpure.console import (  # noqa: E402
 from tools.publish.evidence import EvidenceRecorder  # noqa: E402
 from tools.publish.fetch import FetchedRelease, index_manifests  # noqa: E402
 from tools.publish.models import PublishStatus, ReleaseMetadata  # noqa: E402
+from tools.publish.cli import build_parser  # noqa: E402
 from tools.publish.publishers import PublishContext, PublishOptions, get_publisher  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from resolve_release_tv_apk import resolve_canonical_tv_apk  # noqa: E402
@@ -711,6 +712,70 @@ class BrowserModeTests(unittest.TestCase):
                 )
                 blockers = get_publisher("apkpure").preflight(ctx)
                 self.assertEqual(blockers, [], f"{mode}: {blockers}")
+
+
+class BrowserOptionPrecedenceTests(unittest.TestCase):
+    """`run` and `doctor` must accept the same flags for the same decision."""
+
+    def _ctx(self, root: Path, config_options: dict, cli: PublishOptions) -> PublishContext:
+        release = ReleaseMetadata.from_manifest_file(write_release(root))
+        config = PublishConfig.load(
+            write_config(
+                root,
+                {
+                    "apkpure": {
+                        "enabled": True,
+                        "profiles": {
+                            "tv": {
+                                "packageId": "io.airo.app.tv",
+                                "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
+                                "releaseNotes": {"source": "inline", "text": "Notes."},
+                                "options": config_options,
+                            }
+                        },
+                    }
+                },
+            )
+        )
+        profile = config.profiles_for("apkpure")[0]
+        return PublishContext(
+            release=release,
+            config=profile,
+            artifacts=profile.select_artifacts(release),
+            options=cli,
+            evidence=EvidenceRecorder(root=root / "evidence", quiet=True),
+            release_notes="Notes.",
+            env={},
+        )
+
+    def test_cli_browser_overrides_the_target_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ctx = self._ctx(root, {"browser": "bundled"}, PublishOptions(browser="cdp"))
+            # bundled would demand a storage state; cdp must not.
+            self.assertEqual(get_publisher("apkpure").preflight(ctx), [])
+
+    def test_config_still_applies_when_the_cli_is_silent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ctx = self._ctx(
+                root,
+                {"browser": "bundled", "storageState": str(root / "absent.json")},
+                PublishOptions(),
+            )
+            blockers = get_publisher("apkpure").preflight(ctx)
+            self.assertTrue(any("session state" in b for b in blockers), blockers)
+
+    def test_run_accepts_the_same_browser_flags_as_doctor(self) -> None:
+        parser = build_parser()
+        for command in ("run", "doctor"):
+            with self.subTest(command=command):
+                args = parser.parse_args(
+                    ([command, "--manifest", "m.json"] if command == "run" else [command, "apkpure"])
+                    + ["--browser", "cdp", "--browser-path", "chrome"]
+                )
+                self.assertEqual(args.browser, "cdp")
+                self.assertEqual(args.browser_path, "chrome")
 
 
 class ApkPureVersionTableTests(unittest.TestCase):
