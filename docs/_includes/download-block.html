@@ -1,0 +1,75 @@
+<!--
+  Single-source download block. Renders from _data/release.yml so every page
+  stays current from one edit. The site went stale at the previous release
+  three separate times (README, wiki, this page) because the tag and
+  artifact names were hand-typed in more than one place -- this include
+  exists specifically so a fourth place cannot happen.
+-->
+{% assign r = site.data.release %}
+<section class="band band-alt" id="download" aria-labelledby="download-title">
+  <div class="container">
+    <div class="section-intro">
+      <div>
+        <p class="eyebrow">Download</p>
+        <h2 id="download-title">Current release: {{ r.version }}</h2>
+      </div>
+      <p>
+        One release carries every product line, signed with the stable
+        dogfood keystore.
+        <a href="{{ r.release_url }}">Full release notes and checksums
+        <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+      </p>
+    </div>
+    <div class="device-list">
+      <article class="device-row">
+        <h3>{{ r.products.tv.label }} — Android TV / Fire TV</h3>
+        <p>
+          <code>{{ r.products.tv.package_id }}</code>. Universal APK covers
+          most devices; per-ABI builds exist for devices that need one.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="{{ r.release_url | replace: '/tag/', '/download/' }}/{{ r.products.tv.universal_apk }}"
+            ><i data-lucide="download" aria-hidden="true"></i> Download Airo TV</a
+          >
+        </div>
+      </article>
+      <article class="device-row">
+        <h3>{{ r.products.full.label }} — phone / tablet</h3>
+        <p><code>{{ r.products.full.package_id }}</code>. arm64 only.</p>
+        <div class="hero-actions">
+          <a class="button button-secondary" href="{{ r.release_url | replace: '/tag/', '/download/' }}/{{ r.products.full.arm64_apk }}"
+            ><i data-lucide="download" aria-hidden="true"></i> Download Airo</a
+          >
+        </div>
+      </article>
+      <article class="device-row">
+        <h3>{{ r.products.coins.label }}</h3>
+        <p><code>{{ r.products.coins.package_id }}</code>. Preview; arm64 only.</p>
+        <div class="hero-actions">
+          <a class="button button-secondary" href="{{ r.release_url | replace: '/tag/', '/download/' }}/{{ r.products.coins.arm64_apk }}"
+            ><i data-lucide="download" aria-hidden="true"></i> Download Airo Coins</a
+          >
+        </div>
+      </article>
+      <article class="device-row">
+        <h3>{{ r.products.macos.label }}</h3>
+        <p>Unsigned and not notarized; Gatekeeper needs an explicit override.</p>
+        <div class="hero-actions">
+          <a class="button button-secondary" href="{{ r.release_url | replace: '/tag/', '/download/' }}/{{ r.products.macos.dmg }}"
+            >DMG</a
+          ><a class="button button-secondary" href="{{ r.release_url | replace: '/tag/', '/download/' }}/{{ r.products.macos.zip }}"
+            >ZIP</a
+          >
+        </div>
+      </article>
+    </div>
+    <p class="download-note">
+      Not published: iOS/iPadOS (no Apple developer account) and web (CI
+      validation only). Android builds carry the dogfood keystore and will
+      not upgrade over a future production-signed release. Verify any
+      direct-download APK against
+      <a href="https://github.com/DevelopersCoffee/airo/blob/main/VERIFY_DOWNLOAD.md">SHA256SUMS</a>
+      before installing.
+    </p>
+  </div>
+</section>

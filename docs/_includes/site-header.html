@@ -1,0 +1,27 @@
+<header class="site-header">
+  <div class="container nav-shell">
+    <a class="brand" href="{{ '/' | relative_url }}" aria-label="Airo platform home"
+      ><img src="{{ '/assets/airo-tv/airo-icon.svg' | relative_url }}" alt="" /><span
+        >Airo</span
+      ></a
+    ><button
+      class="menu-button"
+      type="button"
+      aria-label="Open navigation"
+      aria-controls="site-navigation"
+      aria-expanded="false"
+      data-menu-button
+    >
+      <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+    <nav id="site-navigation" class="site-nav" data-site-nav>
+      <a href="{{ '/tv/' | relative_url }}">Airo TV</a
+      ><a href="{{ '/tv/guides/' | relative_url }}">Guides</a
+      ><a
+        class="button button-primary"
+        href="#download"
+        ><i data-lucide="download" aria-hidden="true"></i> Download</a
+      >
+    </nav>
+  </div>
+</header>

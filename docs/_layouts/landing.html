@@ -1,0 +1,113 @@
+---
+layout: null
+---
+<!--
+  Shared template for search-intent landing pages (#1485). A new page is
+  front matter plus body content -- it does not touch CSS, JS, the header,
+  the footer, or the download links. See docs/iptv-player/index.md for a
+  worked example and docs/_data/release.yml for the single-sourced release
+  data this layout renders.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    {% include site-head.html %}
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    {% include site-header.html %}
+
+    <main id="main-content">
+      <section class="intent-hero" id="top">
+        <div class="container">
+          {% if page.eyebrow %}<p class="eyebrow">{{ page.eyebrow }}</p>{% endif %}
+          <h1>{{ page.hero_title | default: page.title }}</h1>
+          {% if page.lede %}<p class="hero-lede">{{ page.lede }}</p>{% endif %}
+          {% include boundary-block.html %}
+          <div class="hero-actions" style="margin-top: 24px;">
+            <a class="button button-primary" href="#download"
+              ><i data-lucide="download" aria-hidden="true"></i>
+              {{ page.primary_cta | default: "Download Airo TV" }}</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="answer">
+        <div class="container intent-body">
+          {{ content }}
+        </div>
+      </section>
+
+      {% if page.capabilities %}
+      <section class="band band-alt" id="capability-matrix" aria-labelledby="capability-title">
+        <div class="container">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">What Airo TV does here</p>
+              <h2 id="capability-title">{{ page.capabilities_title | default: "Available today" }}</h2>
+            </div>
+          </div>
+          <div class="capability-grid">
+            {% for item in page.capabilities %}
+            <article class="capability-item">
+              <span class="status status-{{ item.status | default: 'available' }}">{{ item.status_label | default: "Available" }}</span>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.text }}</p>
+            </article>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if page.related %}
+      <section class="band" id="related" aria-labelledby="related-title">
+        <div class="container">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Related</p>
+              <h2 id="related-title">{{ page.related_title | default: "Go deeper" }}</h2>
+            </div>
+          </div>
+          <div class="guide-list">
+            {% for item in page.related %}
+            <a class="guide-item" href="{{ item.url | relative_url }}"
+              ><i data-lucide="{{ item.icon | default: 'arrow-right' }}" aria-hidden="true"></i>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.text }}</p>
+              <i data-lucide="arrow-right" aria-hidden="true"></i
+            ></a>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if page.faq %}
+      <section class="band band-alt" id="faq" aria-labelledby="faq-title">
+        <div class="container">
+          <div class="section-intro">
+            <div>
+              <p class="eyebrow">Questions</p>
+              <h2 id="faq-title">Frequently asked</h2>
+            </div>
+          </div>
+          <div class="faq-list">
+            {% for item in page.faq %}
+            <details class="faq-item">
+              <summary>{{ item.q }}</summary>
+              <p>{{ item.a }}</p>
+            </details>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% include download-block.html %}
+    </main>
+
+    {% include site-footer.html %}
+  </body>
+</html>
