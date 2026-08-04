@@ -28,7 +28,9 @@ from tools.publish.errors import (  # noqa: E402
     ArtifactIntegrityError,
     ConfigError,
     ManifestError,
+    PreflightError,
 )
+from tools.publish.apkpure.console import BrowserMode, resolve_browser_mode  # noqa: E402
 from tools.publish.evidence import EvidenceRecorder  # noqa: E402
 from tools.publish.fetch import FetchedRelease, index_manifests  # noqa: E402
 from tools.publish.models import PublishStatus, ReleaseMetadata  # noqa: E402
@@ -592,6 +594,73 @@ class SubmitGatingTests(unittest.TestCase):
             )
             blockers = get_publisher("play").preflight(ctx)
             self.assertTrue(any("track" in blocker for blocker in blockers), blockers)
+
+
+class BrowserModeTests(unittest.TestCase):
+    """APKPure sits behind Cloudflare; the answer is a real browser, not stealth."""
+
+    def test_default_is_the_bundled_chromium(self) -> None:
+        self.assertIs(resolve_browser_mode(None, {}), BrowserMode.BUNDLED)
+
+    def test_env_selects_a_mode(self) -> None:
+        self.assertIs(resolve_browser_mode(None, {"APKPURE_BROWSER": "cdp"}), BrowserMode.CDP)
+
+    def test_config_beats_env(self) -> None:
+        self.assertIs(
+            resolve_browser_mode("chrome", {"APKPURE_BROWSER": "cdp"}), BrowserMode.CHROME
+        )
+
+    def test_unknown_mode_is_rejected(self) -> None:
+        with self.assertRaises(PreflightError):
+            resolve_browser_mode("firefox", {})
+
+    def _context(self, root: Path, options: dict) -> PublishContext:
+        release = ReleaseMetadata.from_manifest_file(write_release(root))
+        config = PublishConfig.load(
+            write_config(
+                root,
+                {
+                    "apkpure": {
+                        "enabled": True,
+                        "profiles": {
+                            "tv": {
+                                "packageId": "io.airo.app.tv",
+                                "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
+                                "releaseNotes": {"source": "inline", "text": "Notes."},
+                                "options": options,
+                            }
+                        },
+                    }
+                },
+            )
+        )
+        profile = config.profiles_for("apkpure")[0]
+        return PublishContext(
+            release=release,
+            config=profile,
+            artifacts=profile.select_artifacts(release),
+            options=PublishOptions(),
+            evidence=EvidenceRecorder(root=root / "evidence", quiet=True),
+            release_notes="Notes.",
+            env={},
+        )
+
+    def test_bundled_mode_still_requires_a_saved_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ctx = self._context(root, {"storageState": str(root / "absent.json")})
+            blockers = get_publisher("apkpure").preflight(ctx)
+            self.assertTrue(any("session state" in b for b in blockers), blockers)
+
+    def test_chrome_and_cdp_modes_do_not_require_a_storage_state(self) -> None:
+        for mode in ("chrome", "cdp"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                ctx = self._context(
+                    root, {"browser": mode, "storageState": str(root / "absent.json")}
+                )
+                blockers = get_publisher("apkpure").preflight(ctx)
+                self.assertEqual(blockers, [], f"{mode}: {blockers}")
 
 
 class CanonicalApkAgreementTests(unittest.TestCase):
