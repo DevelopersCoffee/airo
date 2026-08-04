@@ -31,7 +31,7 @@ from tools.publish.errors import (  # noqa: E402
     ManifestError,
     PreflightError,
 )
-from tools.publish.apk_inspect import inspect_apk  # noqa: E402
+from tools.publish.apk_inspect import coverage_report, inspect_apk  # noqa: E402
 from tools.publish.apkpure.console import ConsoleSession  # noqa: E402
 from tools.publish.apkpure.console import (  # noqa: E402
     KNOWN_CHROMIUM_BROWSERS,
@@ -819,6 +819,28 @@ class ApkContentsTests(unittest.TestCase):
             contents = inspect_apk(path)
             self.assertEqual(contents.abis, frozenset())
             self.assertFalse(contents.is_universal)
+
+
+class DeviceCoverageTests(unittest.TestCase):
+    """A listing must say which devices it leaves out, not only which it serves."""
+
+    def test_arm64_only_listing_names_the_excluded_devices(self) -> None:
+        report = coverage_report(
+            frozenset({"arm64-v8a"}),
+            frozenset({"arm64-v8a", "armeabi-v7a", "x86_64"}),
+        )
+        self.assertEqual(report["servedAbis"], ["arm64-v8a"])
+        self.assertEqual(report["notServedAbis"], ["armeabi-v7a", "x86_64"])
+        self.assertTrue(any("older Fire TV" in line for line in report["notServed"]))
+
+    def test_full_coverage_leaves_nothing_unserved(self) -> None:
+        abis = frozenset({"arm64-v8a", "armeabi-v7a", "x86_64"})
+        report = coverage_report(abis, abis)
+        self.assertEqual(report["notServedAbis"], [])
+
+    def test_unknown_abi_falls_back_to_its_name(self) -> None:
+        report = coverage_report(frozenset(), frozenset({"riscv64"}))
+        self.assertEqual(report["notServed"], ["riscv64"])
 
 
 class ApkPureVersionTableTests(unittest.TestCase):

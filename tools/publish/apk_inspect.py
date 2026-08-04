@@ -51,3 +51,31 @@ def inspect_apk(path: Path) -> ApkContents:
         native_bytes=native,
         total_bytes=path.stat().st_size,
     )
+
+
+#: What each ABI actually reaches, in device terms rather than architecture
+#: names. Used to state a listing's coverage in a release summary, so an
+#: excluded device class is visible at publish time instead of discovered by a
+#: user whose install fails.
+ABI_DEVICE_CLASSES = {
+    "arm64-v8a": "64-bit ARM: Fire TV Stick 4K / 4K Max, current Android TV boxes, modern phones",
+    "armeabi-v7a": "32-bit ARM: older Fire TV Sticks (2nd gen, Lite), legacy Android TV boxes",
+    "x86_64": "64-bit x86: emulators, some Chromebooks",
+    "x86": "32-bit x86: old emulators",
+}
+
+
+def coverage_report(served: frozenset[str], candidates: frozenset[str]) -> dict:
+    """Describe which device classes a listing serves, and which it does not.
+
+    `candidates` is every ABI the release built, so "not served" means an
+    artifact exists for those devices somewhere else -- on the GitHub release --
+    rather than that the devices are unsupported outright.
+    """
+    missing = sorted(candidates - served)
+    return {
+        "servedAbis": sorted(served),
+        "served": [ABI_DEVICE_CLASSES.get(a, a) for a in sorted(served)],
+        "notServedAbis": missing,
+        "notServed": [ABI_DEVICE_CLASSES.get(a, a) for a in missing],
+    }
