@@ -7,6 +7,15 @@ layout: null
   the footer, or the download links. See docs/iptv-player/index.md for a
   worked example and docs/_data/release.yml for the single-sourced release
   data this layout renders.
+
+  Cross-page links in front matter (`related[].url`) are already run
+  through `relative_url` by this layout -- write them site-relative, e.g.
+  `/tv/guides/#playlist`. Links written directly in the page's markdown
+  BODY are not: Kramdown renders `[text](/m3u-player/)` as a literal,
+  unprefixed href, which 404s once `site.baseurl` is non-empty. Every body
+  link to another page on this site must go through Liquid explicitly:
+  `[text]({{ '/m3u-player/' | relative_url }})`. This bit every one of the
+  first four intent pages before anyone rebuilt the site locally to check.
 -->
 <!doctype html>
 <html lang="en">

@@ -60,8 +60,8 @@ faq:
 
 Most IPTV apps bundle a channel catalog, a subscription, or both. Airo TV
 does neither — it is a player, not a service. You supply an
-[M3U or M3U8 playlist](/tv/guides/#playlist) and, if you have one, an
-[XMLTV guide](/tv/#capability-matrix), and Airo TV turns that into a
+[M3U or M3U8 playlist]({{ '/tv/guides/#playlist' | relative_url }}) and, if you have one, an
+[XMLTV guide]({{ '/tv/#capability-matrix' | relative_url }}), and Airo TV turns that into a
 TV-first channel grid with search and favorites.
 
 That also means Airo TV can't tell you what to watch, because it has no
