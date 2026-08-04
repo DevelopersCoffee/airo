@@ -107,15 +107,17 @@ class ApkPurePublisher(Publisher):
         ) as session:
             session.open_app(package_id)
 
-            existing = session.published_versions()
-            already = [row for row in existing if artifact.version in row]
+            # Exact match on the version cell: a leftover 0.0.6-rc.1 row must
+            # not make 0.0.6 look already published.
+            existing = session.published_version_names()
+            already = [name for name in existing if name == artifact.version]
             if already and not ctx.options.force:
                 ctx.evidence.log(f"version {artifact.version} already listed: {already[0]!r}")
                 return self.result(
                     ctx,
                     PublishStatus.SKIPPED,
                     f"Version {artifact.version} already present on APKPure; pass --force to upload anyway",
-                    {**plan, "existingRow": already[0]},
+                    {**plan, "existingVersion": already[0], "listedVersions": existing},
                 )
 
             session.open_upload_form()
@@ -134,7 +136,7 @@ class ApkPurePublisher(Publisher):
                     plan,
                 )
 
-            session.submit_for_review()
+            session.submit_for_review(artifact.version)
 
         ctx.evidence.write_json("apkpure-result.json", {**plan, "submitted": True})
         return self.result(

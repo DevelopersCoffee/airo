@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import plistlib
 import sys
 from dataclasses import dataclass
@@ -139,6 +140,20 @@ class ConsoleSession:
                 break
         return [text for text in texts if text]
 
+    def published_version_names(self) -> list[str]:
+        """Just the version cell of each row.
+
+        Substring matching is not safe here: "0.0.6" is a substring of the
+        "0.0.6-rc.1" row that a release candidate leaves behind, so a contains
+        check would treat the real 0.0.6 as already published and skip it.
+        """
+        names = []
+        for row in self.published_versions():
+            first = re.split(r"[\t\n]", row.strip(), maxsplit=1)[0].strip()
+            if first:
+                names.append(first)
+        return names
+
     def open_upload_form(self) -> None:
         link = self._first_visible("manage_versions_link", timeout_ms=10_000)
         if link is not None:
@@ -174,21 +189,38 @@ class ConsoleSession:
         field.fill(notes)
         self.snapshot("release-notes")
 
-    def submit_for_review(self) -> None:
-        button = self.require("submit_button", "the Submit for Review button")
+    def submit_for_review(self, expected_version: str | None = None) -> None:
+        button = self.require("submit_button", "the Publish button")
         button.click()
         confirm = self._first_visible("submit_confirm_button", timeout_ms=5_000)
         if confirm is not None:
             confirm.click()
         self.guard_human_gate("submit")
-        if self._first_visible("submit_success_marker", timeout_ms=self.timeout_ms) is None:
-            self.snapshot("submit-unconfirmed")
-            raise RemoteError(
-                "Submitted, but APKPure never showed a review-status confirmation. "
-                "Check the console by hand before re-running: a blind retry may create a "
-                "duplicate submission."
-            )
-        self.snapshot("submitted")
+
+        # Prefer a falsifiable check -- the version actually appearing in the
+        # table -- over a status string. The console's flow diagram permanently
+        # reads "Pending Approval", so text alone cannot prove anything.
+        if expected_version and self._await_version_row(expected_version):
+            self.snapshot("submitted")
+            return
+        if self._first_visible("submit_success_marker", timeout_ms=self.timeout_ms) is not None:
+            self.snapshot("submitted")
+            return
+
+        self.snapshot("submit-unconfirmed")
+        raise RemoteError(
+            "Clicked Publish, but neither a review status nor a new version row appeared"
+            + (f" for {expected_version}" if expected_version else "")
+            + ". Check the console by hand before re-running: a blind retry may create a "
+            "duplicate submission."
+        )
+
+    def _await_version_row(self, version: str, attempts: int = 10) -> bool:
+        for _ in range(attempts):
+            if version in self.published_version_names():
+                return True
+            self.page.wait_for_timeout(2_000)
+        return False
 
 
 class BrowserMode(str, Enum):
