@@ -325,12 +325,50 @@ def cmd_login(args: argparse.Namespace) -> int:
     return 0
 
 
+#: Selectors that must resolve on the app-details page of a signed-in console.
+REQUIRED_ON_APP_PAGE = ("signed_in_marker", "manage_versions_link")
+#: Selectors that must resolve once the versions/upload page is open.
+REQUIRED_ON_VERSIONS_PAGE = (
+    "apk_file_input",
+    "release_notes_input",
+    "submit_button",
+    "version_row",
+)
+#: Selectors that only appear in a state doctor deliberately never reaches:
+#: signed out, mid-upload, or with a confirmation modal open. Their absence on
+#: a healthy signed-in page is the correct result, not a finding.
+STATE_DEPENDENT_SELECTORS = (
+    "sign_in_marker",
+    "human_gate_marker",
+    "new_version_button",
+    "upload_complete_marker",
+    "upload_error_marker",
+    "submit_confirm_button",
+    "submit_success_marker",
+)
+
+
+def _match_map(session, selectors: SelectorSet) -> dict[str, list[str]]:
+    matches: dict[str, list[str]] = {}
+    for key in selectors.keys():
+        hits = []
+        for candidate in selectors.candidates(key):
+            try:
+                if session.page.locator(candidate).count() > 0:
+                    hits.append(candidate)
+            except Exception:  # noqa: BLE001 - a bad selector is a finding, not a crash
+                continue
+        matches[key] = hits
+    return matches
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     state = _storage_state(args)
     evidence = EvidenceRecorder(root=args.evidence_dir / "doctor" / args.target)
     selectors = SelectorSet.load()
     evidence.log(f"selector source: {selectors.source}")
     mode = resolve_browser_mode(args.browser, dict(os.environ))
+
     with console_session(
         storage_state=state,
         evidence=evidence,
@@ -342,34 +380,49 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         browser_path=resolve_browser_path(args.browser_path),
     ) as session:
         session.open_app(args.package_id)
-        report = {
-            "url": session.page.url,
-            "consoleUrl": console_url(args.package_id),
-            "selectorSource": selectors.source,
-            "matches": {
-                key: [
-                    candidate
-                    for candidate in selectors.candidates(key)
-                    if session.page.locator(candidate).count() > 0
-                ]
-                for key in selectors.keys()
-            },
-        }
+        # Probe each page where the selectors actually live: the upload form and
+        # the version table only exist after navigating to /versions, so a single
+        # probe on the app-details page reports them missing when they are fine.
+        app_matches = _match_map(session, selectors)
         session.open_upload_form()
         session.snapshot("doctor-upload-form")
+        versions_matches = _match_map(session, selectors)
+        report = {
+            "consoleUrl": console_url(args.package_id),
+            "finalUrl": session.page.url,
+            "selectorSource": selectors.source,
+            "appPageMatches": app_matches,
+            "versionsPageMatches": versions_matches,
+        }
         path = evidence.write_json("selector-report.json", report)
-    unmatched = [key for key, hits in report["matches"].items() if not hits]
+
+    missing = [k for k in REQUIRED_ON_APP_PAGE if not app_matches.get(k)]
+    missing += [k for k in REQUIRED_ON_VERSIONS_PAGE if not versions_matches.get(k)]
+    unresolved = [
+        key
+        for key in STATE_DEPENDENT_SELECTORS
+        if not app_matches.get(key) and not versions_matches.get(key)
+    ]
+
     print(f"Selector report: {path}")
-    if unmatched:
-        print("Selector keys with NO match on the live page:")
-        for key in unmatched:
+    if missing:
+        print("\nREQUIRED selector keys with NO match:")
+        for key in missing:
             print(f"  - {key}")
         print(
-            "\nMap these against the HTML dumps in the evidence directory, write the new\n"
-            "selectors into a JSON file, and point APKPURE_SELECTORS_FILE at it."
+            "\nMap these against the HTML dumps in the evidence directory, write the\n"
+            "new selectors into a JSON file, and point APKPURE_SELECTORS_FILE at it."
         )
         return 2
-    print("Every selector key matched at least one element.")
+
+    print("All required selectors resolved.")
+    if unresolved:
+        print(
+            "\nNot observable from a signed-in idle page (expected — these need a\n"
+            "signed-out session, an upload in flight, or an open modal):"
+        )
+        for key in unresolved:
+            print(f"  - {key}")
     return 0
 
 

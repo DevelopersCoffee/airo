@@ -8,14 +8,17 @@ nobody controls but APKPure. Every selector below is therefore:
 * overridable at runtime from a JSON file via ``APKPURE_SELECTORS_FILE``, so a
   broken release can be unblocked without a code change and a PR.
 
-**Status: UNVERIFIED.** These candidates are written against the documented
-console flow (sign in -> app -> Manage Versions -> upload APK -> what's new ->
-submit) but have not been recorded against the live DOM. Run
+**Status: recorded against the live console on 2026-08-04** for
+io.airo.app.tv, signed in, via CDP. The navigation, upload-form, release-notes,
+and publish selectors were read off the real DOM. Three could not be recorded
+because they only appear mid-upload -- ``upload_complete_marker``,
+``upload_error_marker`` and ``submit_success_marker`` remain heuristics, and the
+first real upload should confirm them.
 
-    python3 -m tools.publish doctor apkpure --profile tv
+Re-record after any console redesign with
 
-to dump the real page and replace them. Until that dump exists, treat a
-successful run as unproven.
+    python3 -m tools.publish doctor apkpure --browser cdp --browser-path chrome
+
 """
 
 from __future__ import annotations
@@ -33,31 +36,38 @@ CONSOLE_URL_TEMPLATE = f"{CONSOLE_ORIGIN}/console/{{package_id}}"
 #: Logical step -> ordered candidate selectors. Playwright selector syntax;
 #: ``text=`` and ``role=`` engines are allowed and preferred over brittle
 #: class-name chains.
+#: Logical step -> ordered candidate selectors, tried in order.
+#:
+#: Recorded against the live console on 2026-08-04 for io.airo.app.tv. The
+#: console is a Materialize CSS app: the version table and the upload form both
+#: live on /console/<package>/versions, and there is no separate "new version"
+#: dialog. Ids (#file, #textarea1) come first because they are what the page
+#: actually uses; the text-based candidates are fallbacks for a redesign.
 DEFAULT_SELECTORS: dict[str, list[str]] = {
-    # Proof that the stored session is still valid.
+    # Sidebar entry present on every signed-in console page. The Logout links
+    # exist too but live in a collapsed dropdown, so they are never visible and
+    # cannot serve as the marker.
     "signed_in_marker": [
-        "[data-testid='user-menu']",
-        "header :text-matches('(Sign out|Log out|Logout)', 'i')",
-        "a[href*='/console/']",
+        "a:has-text('Manage Apps')",
+        "a:has-text('MANAGE VERSIONS')",
+        "a:has-text('APP DETAILS')",
     ],
-    # Shown when the session has expired and a human must re-authenticate.
     "sign_in_marker": [
         "form[action*='login']",
         "input[type='password']",
         ":text-matches('^(Sign in|Log in)$', 'i')",
     ],
     "manage_versions_link": [
-        "a:has-text('Manage Versions')",
-        "a:has-text('Versions')",
-        "[data-testid='manage-versions']",
+        "a:has-text('MANAGE VERSIONS')",
+        "a[href$='/versions']",
     ],
+    # There is no separate dialog: the upload form is rendered directly on the
+    # versions page. open_upload_form() treats this as optional and continues.
     "new_version_button": [
-        "button:has-text('Upload APK')",
-        "button:has-text('New Version')",
-        "button:has-text('Add Version')",
+        "a:has-text('Upload .APK File')",
     ],
-    # The <input type=file>; Playwright sets files on it directly, no OS dialog.
     "apk_file_input": [
+        "input#file",
         "input[type='file'][accept*='apk']",
         "input[type='file']",
     ],
@@ -66,36 +76,42 @@ DEFAULT_SELECTORS: dict[str, list[str]] = {
         ":text-matches('(Upload (complete|success)|100%)', 'i')",
     ],
     "upload_error_marker": [
+        ".toast :text-matches('(failed|invalid|error)', 'i')",
         "[role='alert']",
-        ".ant-message-error",
         ":text-matches('(upload failed|invalid apk|signature mismatch)', 'i')",
     ],
     "release_notes_input": [
+        "textarea#textarea1",
         "textarea[name*='whatsnew' i]",
         "textarea[name*='release' i]",
-        "textarea[placeholder*=\"What's New\" i]",
-        "textarea",
     ],
+    # PUBLISH is an anchor, not a button, and sits next to an identically
+    # styled VIEW ON APKPURE link -- so match on the text, never the class.
     "submit_button": [
-        "button:has-text('Submit for Review')",
-        "button:has-text('Submit')",
-        "button[type='submit']",
+        "a:has-text('PUBLISH')",
+        "button:has-text('Publish')",
     ],
+    # Deliberately narrow. The only modal on this page is the *delete* confirm
+    # ("Yes,delete it!"), so a loose confirm selector here would click destroy
+    # instead of publish. Nothing generic, and never .modal-action alone.
     "submit_confirm_button": [
-        "button:has-text('Confirm')",
-        "button:has-text('OK')",
-        ".ant-modal button:has-text('Submit')",
+        "a.modal-action:has-text('Yes, publish')",
+        ".modal.open a:has-text('Publish')",
+        ".modal.open button:has-text('Confirm')",
     ],
+    # ".step-name" is excluded deliberately: step 4 of the static flow diagram
+    # is literally the text "Pending Approval", so an unscoped match reports
+    # success on an idle page that has published nothing.
     "submit_success_marker": [
-        ":text-matches('(in review|under review|submitted)', 'i')",
+        ":text-matches('(in review|under review|submitted)', 'i'):not(.step-name)",
         "[data-testid='review-status']",
     ],
-    # Rows in the versions table, used to detect an already-published version.
+    # Version rows only. The table also holds collapsed detail rows (signature,
+    # SHA1, architecture) that are present but never visible.
     "version_row": [
-        "table tbody tr",
+        "table tbody tr:visible",
         "[data-testid='version-row']",
     ],
-    # Anything that means a human has to take over: captcha, 2FA, device check.
     "human_gate_marker": [
         "iframe[src*='recaptcha']",
         "iframe[src*='hcaptcha']",

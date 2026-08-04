@@ -30,6 +30,7 @@ from tools.publish.errors import (  # noqa: E402
     ManifestError,
     PreflightError,
 )
+from tools.publish.apkpure.console import ConsoleSession  # noqa: E402
 from tools.publish.apkpure.console import (  # noqa: E402
     KNOWN_CHROMIUM_BROWSERS,
     BrowserMode,
@@ -710,6 +711,40 @@ class BrowserModeTests(unittest.TestCase):
                 )
                 blockers = get_publisher("apkpure").preflight(ctx)
                 self.assertEqual(blockers, [], f"{mode}: {blockers}")
+
+
+class ApkPureVersionTableTests(unittest.TestCase):
+    """Duplicate detection must not confuse a release with its release candidate."""
+
+    class _FakeSession(ConsoleSession):
+        def __init__(self, rows):  # noqa: D107 - test double
+            self._rows = rows
+
+        def published_versions(self):
+            return self._rows
+
+    LIVE_ROWS = [
+        "0.0.6-rc.1\tAPK\t28.6 MB\t2026-08-03\tinfo",
+        "0.0.5\tAPK\t30.6 MB\t2026-07-28\tinfo",
+    ]
+
+    def test_version_names_are_the_first_cell_only(self) -> None:
+        session = self._FakeSession(self.LIVE_ROWS)
+        self.assertEqual(session.published_version_names(), ["0.0.6-rc.1", "0.0.5"])
+
+    def test_a_release_is_not_masked_by_its_release_candidate(self) -> None:
+        """`"0.0.6" in "0.0.6-rc.1"` is True — a contains check would skip the release."""
+        names = self._FakeSession(self.LIVE_ROWS).published_version_names()
+        self.assertNotIn("0.0.6", names)
+        self.assertIn("0.0.6-rc.1", names)
+
+    def test_an_actually_published_version_is_detected(self) -> None:
+        names = self._FakeSession(self.LIVE_ROWS).published_version_names()
+        self.assertIn("0.0.5", names)
+
+    def test_blank_and_detail_rows_are_dropped(self) -> None:
+        session = self._FakeSession(["", "   ", "0.0.7\tAPK\t1 MB"])
+        self.assertEqual(session.published_version_names(), ["0.0.7"])
 
 
 class CanonicalApkAgreementTests(unittest.TestCase):
