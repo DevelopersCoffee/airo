@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +31,7 @@ from tools.publish.errors import (  # noqa: E402
     ManifestError,
     PreflightError,
 )
+from tools.publish.apk_inspect import inspect_apk  # noqa: E402
 from tools.publish.apkpure.console import ConsoleSession  # noqa: E402
 from tools.publish.apkpure.console import (  # noqa: E402
     KNOWN_CHROMIUM_BROWSERS,
@@ -777,6 +779,46 @@ class BrowserOptionPrecedenceTests(unittest.TestCase):
                 )
                 self.assertEqual(args.browser, "cdp")
                 self.assertEqual(args.browser_path, "chrome")
+
+
+class ApkContentsTests(unittest.TestCase):
+    """A store upload is judged by contents, not filename."""
+
+    def _apk(self, root: Path, name: str, abis: list[str]) -> Path:
+        path = root / name
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("AndroidManifest.xml", "x")
+            for abi in abis:
+                z.writestr(f"lib/{abi}/libflutter.so", b"\0" * 2048)
+        return path
+
+    def test_single_abi_apk_is_not_universal(self) -> None:
+        """Airo-TV-<v>.apk reads as universal and carries arm64 only."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._apk(Path(tmp), "Airo-TV-0.0.6.apk", ["arm64-v8a"])
+            contents = inspect_apk(path)
+            self.assertEqual(contents.abis, frozenset({"arm64-v8a"}))
+            self.assertFalse(contents.is_universal)
+
+    def test_multi_abi_apk_is_universal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._apk(Path(tmp), "fat.apk", ["arm64-v8a", "armeabi-v7a", "x86_64"])
+            self.assertTrue(inspect_apk(path).is_universal)
+
+    def test_non_abi_lib_directories_are_ignored(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.apk"
+            with zipfile.ZipFile(path, "w") as z:
+                z.writestr("lib/flutter_assets/font.ttf", "x")
+                z.writestr("lib/arm64-v8a/libapp.so", b"\0" * 100)
+            self.assertEqual(inspect_apk(path).abis, frozenset({"arm64-v8a"}))
+
+    def test_apk_without_native_code_reports_none(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._apk(Path(tmp), "b.apk", [])
+            contents = inspect_apk(path)
+            self.assertEqual(contents.abis, frozenset())
+            self.assertFalse(contents.is_universal)
 
 
 class ApkPureVersionTableTests(unittest.TestCase):
