@@ -16,6 +16,14 @@ layout: null
   link to another page on this site must go through Liquid explicitly:
   `[text]({{ '/m3u-player/' | relative_url }})`. This bit every one of the
   first four intent pages before anyone rebuilt the site locally to check.
+
+  Optional `steps` / `before_you_start` front matter (added for #1489)
+  render a procedure using the site's existing `.tutorial-content` CSS
+  from docs/airo-tv/guides/index.html, unchanged -- no new component. Use
+  it only for pages that are genuinely a procedure; keep `structured_data`
+  in sync by hand (type HowTo, one HowToStep per item in `steps`). Don't
+  add a HowTo type to a page that isn't a procedure -- see
+  how-to-use-iptv-legally/index.md, which uses `capabilities` instead.
 -->
 <!doctype html>
 <html lang="en">
@@ -47,6 +55,30 @@ layout: null
           {{ content }}
         </div>
       </section>
+
+      {% if page.steps %}
+      <section class="band band-alt" id="steps" aria-labelledby="steps-title">
+        <div class="container intent-body">
+          <div class="tutorial-content">
+            <h2 id="steps-title">{{ page.steps_title | default: "Steps" }}</h2>
+            {% if page.before_you_start %}
+            <h3>Before you start</h3>
+            <ul>
+              {% for item in page.before_you_start %}
+              <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            <h3>{{ page.steps_subtitle | default: "Do this" }}</h3>
+            <ol>
+              {% for item in page.steps %}
+              <li>{{ item }}</li>
+              {% endfor %}
+            </ol>
+          </div>
+        </div>
+      </section>
+      {% endif %}
 
       {% if page.capabilities %}
       <section class="band band-alt" id="capability-matrix" aria-labelledby="capability-title">
