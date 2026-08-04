@@ -199,6 +199,24 @@ class ConsoleSession:
             self.snapshot("new-version-form")
         self.guard_human_gate("upload-form")
 
+    def upload_form_is_ready(self) -> bool:
+        """True when the console will actually accept an upload right now.
+
+        The form is still rendered while a previous version is in review, but
+        its submit button carries Materialize's `disabled` class -- so presence
+        of the form proves nothing.
+        """
+        button = self._first_visible("upload_submit_button", timeout_ms=8_000)
+        if button is None:
+            return False
+        blocked = button.evaluate(
+            "e => (e.className || '').split(/\\s+/).includes('disabled') "
+            "|| e.disabled === true"
+        )
+        if blocked:
+            self.evidence.log("upload form present but its submit button is disabled")
+        return not blocked
+
     def upload_apk(self, apk_path: Path) -> None:
         """Attach the APK. Nothing is sent to APKPure by this step.
 

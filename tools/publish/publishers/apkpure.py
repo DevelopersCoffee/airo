@@ -12,6 +12,7 @@ Playwright. Two consequences shape the design:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import ClassVar
 
@@ -23,7 +24,8 @@ from ..apkpure.console import (
 )
 from ..apkpure.console import DEFAULT_CDP_ENDPOINT
 from ..apkpure.selectors import SelectorSet, console_url
-from ..errors import ConfigError
+from ..upload_state import UploadState
+from ..errors import ConfigError, CredentialError, RemoteError
 from ..models import PublishResult, PublishStatus
 from .base import Publisher, PublishContext
 
@@ -58,13 +60,41 @@ class ApkPurePublisher(Publisher):
         return blockers
 
     def publish(self, ctx: PublishContext) -> PublishResult:
-        artifact = ctx.sole_artifact()
-        if artifact.artifact_type != "apk":
+        artifacts = list(ctx.artifacts)
+        wrong = [a for a in artifacts if a.artifact_type != "apk"]
+        if wrong:
             raise ConfigError(
-                f"{ctx.config.context}: APKPure distributes APKs, selector chose "
-                f"{artifact.filename} ({artifact.artifact_type})."
+                f"{ctx.config.context}: APKPure distributes APKs, selector also chose "
+                + ", ".join(f"{a.filename} ({a.artifact_type})" for a in wrong)
             )
-        package_id = ctx.config.package_id or artifact.package_id
+        # Upload order is deliberate: the universal APK first, so the listing is
+        # usable even if a later per-ABI upload is rejected or stalls in review.
+        artifacts.sort(key=lambda a: (0 if _is_universal(a.filename) else 1, a.filename))
+        package_id = ctx.config.package_id or artifacts[0].package_id
+
+        # APKPure allows one version in flight at a time, so a multi-APK
+        # release is many short runs rather than one long one. State is keyed
+        # by content hash so a rebuilt APK of the same name is not mistaken for
+        # one already accepted.
+        # evidence.root is build/publish-evidence/<target>/<profile>/<version>;
+        # the state belongs beside publish-evidence, not inside it.
+        state = UploadState.load(
+            ctx.evidence.root.parents[3] / "publish-state", self.name, package_id
+        )
+        remaining = state.pending(artifacts)
+        if not remaining:
+            return self.result(
+                ctx,
+                PublishStatus.SKIPPED,
+                f"All {len(artifacts)} APK(s) already accepted by APKPure for {package_id}",
+                {"packageId": package_id, "accepted": sorted(a.filename for a in artifacts)},
+            )
+        artifact = remaining[0]
+        ctx.evidence.log(
+            f"{len(remaining)} of {len(artifacts)} APK(s) left; this run handles {artifact.filename}"
+        )
+        self._state = state
+        self._remaining = remaining
         target_url = console_url(package_id)
 
         plan = {
@@ -127,14 +157,21 @@ class ApkPurePublisher(Publisher):
             # already published and there is nothing left to upload.
             if ctx.config.option("updateDescription"):
                 if ctx.options.may_submit:
-                    session.open_app_details(package_id)
-                    session.upsert_description_notes(
-                        artifact.version,
-                        ctx.release_notes,
-                        int(ctx.config.option("descriptionMaxChars", 1200)),
-                    )
-                    session.save_app_details()
-                    session.open_upload_form()
+                    # Best effort: the listing form is locked while a publish
+                    # review is in flight, and a cosmetic description update
+                    # must never block shipping a binary.
+                    try:
+                        session.open_app_details(package_id)
+                        session.upsert_description_notes(
+                            artifact.version,
+                            ctx.release_notes,
+                            int(ctx.config.option("descriptionMaxChars", 1200)),
+                        )
+                        session.save_app_details()
+                    except (RemoteError, CredentialError) as exc:
+                        ctx.evidence.warn(f"listing description not updated: {exc}")
+                    finally:
+                        session.open_upload_form()
                 else:
                     ctx.evidence.warn(
                         "skipping the listing description update: it edits public copy, "
@@ -155,6 +192,7 @@ class ApkPurePublisher(Publisher):
                         {**plan, "uploadState": "verified-awaiting-publish"},
                     )
                 session.submit_for_review(artifact.version)
+                self._state.record(artifact.sha256, artifact.filename, artifact.version, "published")
                 return self.result(
                     ctx,
                     PublishStatus.SUCCEEDED,
@@ -186,6 +224,23 @@ class ApkPurePublisher(Publisher):
                     {**plan, "existingVersion": already[0], "listedVersions": existing},
                 )
 
+            # APKPure permits one version in flight per app: while a previous
+            # version is in publishing review the upload form is rendered but
+            # its button is disabled. That is a queueing constraint, not a
+            # failure, so it must not read as a broken release.
+            if not session.upload_form_is_ready():
+                ctx.evidence.warn(
+                    "APKPure has a version in review; the upload form is locked. "
+                    f"{len(remaining)} APK(s) still to upload."
+                )
+                return self.result(
+                    ctx,
+                    PublishStatus.SKIPPED,
+                    f"APKPure is still reviewing a previous version; {len(remaining)} APK(s) "
+                    "remain. Re-run once review clears.",
+                    {**plan, "remaining": [a.filename for a in remaining], "blockedBy": "review"},
+                )
+
             session.upload_apk(artifact.path)
             session.fill_release_notes(ctx.release_notes)
 
@@ -208,6 +263,7 @@ class ApkPurePublisher(Publisher):
                 # binary clears verification, and clicking it now would prove
                 # nothing.
                 ctx.evidence.log("upload queued for APKPure verification; not clicking PUBLISH")
+                self._state.record(artifact.sha256, artifact.filename, artifact.version, "pending-verification")
                 return self.result(
                     ctx,
                     PublishStatus.SUCCEEDED,
@@ -227,3 +283,8 @@ class ApkPurePublisher(Publisher):
 
 def _optional_path(value: object) -> Path | None:
     return Path(str(value)).expanduser() if value else None
+
+
+def _is_universal(filename: str) -> bool:
+    """True for the ABI-less APK (Airo-TV-0.0.6.apk, not ...-x86_64.apk)."""
+    return not re.search(r"-(arm64-v8a|armeabi-v7a|x86_64|x86|arm64)\.apk$", filename, re.I)
