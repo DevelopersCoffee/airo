@@ -81,7 +81,7 @@
     },
     "apkpure": {
       "enabled": false,
-      "_note": "Uploads every per-ABI APK, universal first. APKPure allows one version in flight at a time, so a run handles one APK and records it in build/publish-state; re-run until the summary reports all accepted. io.airo.app and io.airo.app.coins have no APKPure listing yet, so their profiles stay disabled until someone registers them by hand.",
+      "_note": "APKPure models one APK per version -- each version row carries a single Architecture field and the per-ABI splits all share versionCode 10, so they cannot coexist as variants of 0.0.6. The universal APK already contains arm64-v8a, armeabi-v7a and x86_64, so it is the correct upload; the splits stay on the GitHub release for people who want a smaller download. The pipeline still supports multiple APKs per profile if a store ever accepts them. io.airo.app and io.airo.app.coins have no APKPure listing, so their profiles stay disabled until someone registers them by hand.",
       "profiles": {
         "tv": {
           "packageId": "io.airo.app.tv",
@@ -89,11 +89,9 @@
             "artifactType": [
               "apk"
             ],
-            "filenameExcludes": [
-              "debug",
-              "profile"
-            ],
-            "minCount": 1
+            "filenamePattern": "^Airo-TV-{version}\\.apk$",
+            "minCount": 1,
+            "maxCount": 1
           },
           "releaseNotes": {
             "source": "changelog",
@@ -105,7 +103,11 @@
           "options": {
             "headless": true,
             "updateDescription": true,
-            "descriptionMaxChars": 1200
+            "descriptionMaxChars": 1200,
+            "expectedAbis": [
+              "arm64-v8a"
+            ],
+            "maxSizeMb": 35
           }
         },
         "full": {
@@ -126,7 +128,10 @@
             "fallback": "Bug fixes and stability improvements."
           },
           "options": {
-            "headless": true
+            "headless": true,
+            "expectedAbis": [
+              "arm64-v8a"
+            ]
           }
         },
         "coins": {
@@ -147,7 +152,10 @@
             "fallback": "Bug fixes and stability improvements."
           },
           "options": {
-            "headless": true
+            "headless": true,
+            "expectedAbis": [
+              "arm64-v8a"
+            ]
           }
         }
       }
