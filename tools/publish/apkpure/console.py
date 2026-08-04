@@ -484,7 +484,7 @@ def interactive_chrome_login(
         page.goto(SIGN_IN_URL, wait_until="domcontentloaded")
         evidence.log(f"opened {SIGN_IN_URL} in persistent Chrome profile {profile_dir}")
         confirm(
-            "\nSign in to APKPure in the Chrome window that just opened, clearing any\n"
+            "\nSign in to APKPure in the browser window that just opened, clearing any\n"
             "Cloudflare check yourself. Then press Enter here to close it: "
         )
         with contextlib.suppress(Exception):
