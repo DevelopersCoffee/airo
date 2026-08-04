@@ -592,13 +592,29 @@ jobs:
       # a lint failure. This costs a little CI time when lint fails (the APK
       # is already built), but the job still fails either way, so the gate
       # itself is not weakened.
+      #
+      # `flutter build apk` passes --target/--target-platform/--dart-define
+      # through to Gradle as -Ptarget / -Ptarget-platform / -Pdart-defines.
+      # Without them, Gradle's own Dart compilation step for lint defaults to
+      # lib/main.dart -- the full app's entrypoint -- against whichever
+      # pubspec this matrix entry swapped in, and fails to resolve packages
+      # the swapped-in pubspec never declared (e.g. feature_coin while
+      # building the tv variant). -Pdart-defines follows the exact base64,
+      # comma-joined encoding app/android/app/build.gradle.kts's own
+      # dartDefine() helper already decodes, matching what Flutter's tool
+      # would have generated for the same invocation.
       - name: Run Android lint (release)
         if: steps.android_scope.outputs.should_build == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.AIRO_LITERTLM_TOKEN }}
         run: |
           cd app/android
-          ./gradlew lintRelease
+          variant_define=$(printf '%s' "APP_VARIANT=${{ matrix.platform.variant }}" | base64 -w0)
+          platform_define=$(printf '%s' "APP_PLATFORM=${{ matrix.platform.app_platform }}" | base64 -w0)
+          ./gradlew lintRelease \
+            -Ptarget=${{ matrix.platform.target }} \
+            -Ptarget-platform=android-arm64 \
+            -Pdart-defines="${variant_define},${platform_define}"
 
       # ===========================================
       # CV-030: Assert TV APK excludes libmpv + FFmpeg native libs
