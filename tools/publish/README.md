@@ -185,8 +185,15 @@ default browser, read from LaunchServices rather than guessed:
 | `arc`, `brave`, `chrome`, `edge` | that app's executable |
 | any path | used as-is |
 
-Arc, Brave, and Edge are all Chromium underneath, so they work here even though
+Brave and Edge are Chromium underneath, so they work here even though
 Playwright's own `channel=` only knows Google's builds.
+
+**Arc is the exception.** It accepts `--remote-debugging-port` and then never
+opens the port, so `--browser cdp` against Arc can only ever fail with a
+connection refused several steps after the real mistake. Verified by probing
+Arc and Chrome identically: Chrome answered `/json/version`, Arc refused. If
+Arc is your default browser, pass `--browser-path chrome` explicitly — you sign
+in to APKPure there once, and it does not have to be your default browser.
 
 Sign in to a persistent profile in your default browser:
 

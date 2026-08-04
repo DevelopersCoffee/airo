@@ -35,6 +35,7 @@ from tools.publish.apkpure.console import (  # noqa: E402
     BrowserMode,
     resolve_browser_mode,
     resolve_browser_path,
+    supports_cdp,
 )
 from tools.publish.evidence import EvidenceRecorder  # noqa: E402
 from tools.publish.fetch import FetchedRelease, index_manifests  # noqa: E402
@@ -643,6 +644,24 @@ class BrowserModeTests(unittest.TestCase):
         resolved = resolve_browser_path("default")
         self.assertIsNotNone(resolved)
         self.assertTrue(resolved.is_file(), resolved)
+
+    def test_arc_is_known_not_to_expose_cdp(self) -> None:
+        """Arc accepts --remote-debugging-port and never opens the port.
+
+        Verified by probing Arc and Chrome identically: Chrome answered
+        /json/version, Arc refused the connection. Without this guard the only
+        symptom is ECONNREFUSED several steps after the real mistake.
+        """
+        arc = Path(KNOWN_CHROMIUM_BROWSERS["arc"])
+        self.assertFalse(supports_cdp(arc))
+
+    def test_mainstream_chromium_browsers_are_not_blocked(self) -> None:
+        for name in ("chrome", "brave", "edge"):
+            with self.subTest(browser=name):
+                self.assertTrue(supports_cdp(Path(KNOWN_CHROMIUM_BROWSERS[name])))
+
+    def test_bundled_chromium_is_not_blocked(self) -> None:
+        self.assertTrue(supports_cdp(None))
 
     def _context(self, root: Path, options: dict) -> PublishContext:
         release = ReleaseMetadata.from_manifest_file(write_release(root))

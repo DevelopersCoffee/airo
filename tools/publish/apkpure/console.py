@@ -295,6 +295,16 @@ def default_browser_path() -> Path:
     )
 
 
+#: Chromium forks that ship without the DevTools protocol. Arc launches
+#: happily with --remote-debugging-port and then never opens the port, so the
+#: only symptom is a connection refused several steps later.
+BROWSERS_WITHOUT_CDP = {"arc"}
+
+
+def supports_cdp(executable: Path | None) -> bool:
+    return not (executable and executable.name.lower() in BROWSERS_WITHOUT_CDP)
+
+
 def resolve_browser_path(value: object) -> Path | None:
     """Accept either a shorthand name (arc, brave, edge) or a full path."""
     if not value:
@@ -331,7 +341,7 @@ def console_session(
 
     with sync_playwright() as playwright:
         if mode is BrowserMode.CDP:
-            manager = _cdp_context(playwright, cdp_endpoint, evidence)
+            manager = _cdp_context(playwright, cdp_endpoint, evidence, browser_path)
         elif mode is BrowserMode.CHROME:
             manager = _persistent_chrome_context(
                 playwright,
@@ -424,7 +434,12 @@ def _persistent_chrome_context(
 
 
 @contextlib.contextmanager
-def _cdp_context(playwright, endpoint: str, evidence: EvidenceRecorder):
+def _cdp_context(
+    playwright,
+    endpoint: str,
+    evidence: EvidenceRecorder,
+    browser_path: Path | None = None,
+):
     """Attach to a Chrome the human already started and signed in.
 
     The human clears any Cloudflare or login challenge in their own browser.
@@ -432,15 +447,26 @@ def _cdp_context(playwright, endpoint: str, evidence: EvidenceRecorder):
     drives a tab in a session that a human established.
     """
     evidence.log(f"attaching over CDP to {endpoint}")
+    if not supports_cdp(browser_path):
+        raise PreflightError(
+            f"{browser_path.name} does not expose the DevTools protocol: it accepts "
+            "--remote-debugging-port and then never opens the port, so this attach can "
+            "only ever fail. Use a browser that does, for example:\n"
+            "  --browser cdp --browser-path chrome\n"
+            "You sign in to APKPure there once; it does not have to be your default browser."
+        )
     try:
         browser = playwright.chromium.connect_over_cdp(endpoint)
     except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
+        launcher = str(browser_path or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
         raise PreflightError(
-            f"Could not attach to Chrome at {endpoint} ({exc}).\n"
-            "Start Chrome with remote debugging first, for example:\n"
-            "  /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome \\\n"
-            "    --remote-debugging-port=9222 --user-data-dir=\"$HOME/.config/airo/apkpure-chrome-profile\"\n"
-            "then sign in to APKPure in that window before re-running."
+            f"Could not attach to a browser at {endpoint} ({exc}).\n"
+            "Nothing is listening there. Start the browser with remote debugging first:\n"
+            f"  '{launcher}' \\\n"
+            "    --remote-debugging-port=9222 \\\n"
+            "    --user-data-dir=\"$HOME/.config/airo/apkpure-chrome-profile\"\n"
+            "then sign in to APKPure in that window and re-run this command.\n"
+            "Note: Arc accepts the flag but never opens the port -- use Chrome or Brave."
         ) from exc
     context = browser.contexts[0] if browser.contexts else browser.new_context()
     try:
