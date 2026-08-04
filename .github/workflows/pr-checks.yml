@@ -77,6 +77,8 @@ jobs:
           scripts/check-build-profiles.py
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
+          chmod +x scripts/test-publish-framework.sh
+          scripts/test-publish-framework.sh
 
       - name: Validate Engineering Council module manifests
         run: |

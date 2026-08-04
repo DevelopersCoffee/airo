@@ -1,0 +1,139 @@
+name: Publish to stores
+
+# Opt-in only. Release workflows build and publish the GitHub Release; this
+# workflow takes an existing release's artifacts and pushes them to the stores
+# configured in .github/airo-publish-targets.json.
+#
+# Nothing irreversible happens unless `submit: true` is chosen explicitly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag whose assets should be published (e.g. v0.0.6)'
+        required: true
+      targets:
+        description: 'Comma-separated publish targets (e.g. apkpure,play). Empty = every enabled target.'
+        required: false
+        default: ''
+      profile:
+        description: 'Release profile id (tv, full). Empty = every profile present in the manifest.'
+        required: false
+        default: ''
+      mode:
+        description: 'plan = resolve only; stage = upload without submitting; submit = perform the store submission'
+        required: true
+        type: choice
+        options:
+          - plan
+          - stage
+          - submit
+        default: plan
+      runner:
+        description: 'Runner label. Use the self-hosted mac runner for browser-driven stores.'
+        required: true
+        type: choice
+        options:
+          - ubuntu-latest
+          - self-hosted
+        default: ubuntu-latest
+
+concurrency:
+  group: publish-stores-${{ inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.tag }} (${{ inputs.mode }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Resolve target list
+        id: resolve
+        env:
+          RAW_TARGETS: ${{ inputs.targets }}
+          RAW_PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          args=""
+          if [[ -n "$RAW_TARGETS" ]]; then
+            IFS=',' read -ra parts <<< "$RAW_TARGETS"
+            for part in "${parts[@]}"; do
+              trimmed="$(echo "$part" | tr -d '[:space:]')"
+              [[ -z "$trimmed" ]] && continue
+              if [[ ! "$trimmed" =~ ^[a-z0-9_-]+$ ]]; then
+                echo "::error::Invalid target name: $trimmed"
+                exit 1
+              fi
+              args+=" --target $trimmed"
+            done
+          fi
+          if [[ -n "$RAW_PROFILE" ]]; then
+            if [[ ! "$RAW_PROFILE" =~ ^[a-z0-9_-]+$ ]]; then
+              echo "::error::Invalid profile id: $RAW_PROFILE"
+              exit 1
+            fi
+            args+=" --profile $RAW_PROFILE"
+          fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -m tools.publish fetch --tag "${{ inputs.tag }}" --clean
+
+      - name: Install Playwright
+        if: contains(inputs.targets, 'apkpure') || inputs.targets == ''
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Plan
+        if: inputs.mode == 'plan'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 -m tools.publish plan \
+            --tag "${{ inputs.tag }}" \
+            ${{ steps.resolve.outputs.args }}
+
+      - name: Publish
+        if: inputs.mode != 'plan'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          # Path to the session state a human created with
+          # `python3 -m tools.publish login apkpure`. Never a password.
+          APKPURE_STORAGE_STATE: ${{ secrets.APKPURE_STORAGE_STATE_PATH }}
+          APKPURE_SELECTORS_FILE: ${{ vars.APKPURE_SELECTORS_FILE }}
+        run: |
+          python3 -m tools.publish run \
+            --tag "${{ inputs.tag }}" \
+            ${{ steps.resolve.outputs.args }} \
+            --results-json build/publish-results.json \
+            ${{ inputs.mode == 'submit' && '--submit' || '' }}
+
+      - name: Upload publish evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-evidence-${{ inputs.tag }}-${{ inputs.mode }}
+          path: |
+            build/publish-evidence/
+            build/publish-results.json
+            build/release-artifacts/*Release-Manifest.json
+          if-no-files-found: ignore
+          retention-days: 30

@@ -68,6 +68,24 @@ The canonical checksum and manifest generator is
 final artifact renaming so `SHA256SUMS` and the JSON manifest cover the exact
 APK/AAB filenames attached to GitHub Releases or passed to store upload jobs.
 
+## Store Upload Automation
+
+Store uploads run through `tools/publish`, which consumes the manifest above
+rather than re-deriving version, package id, ABI, or checksum data, and pulls
+artifacts from a published GitHub Release rather than a local build. Which
+stores run for a release is configured in `.github/airo-publish-targets.json`;
+the profile ids and package ids there must stay aligned with
+`.github/airo-build-profiles.json` and this table, and a test in
+`scripts/tests/test_publish_framework.py` enforces that.
+
+```bash
+python3 -m tools.publish plan --tag v0.0.6 --profile tv
+```
+
+Nothing irreversible happens without `--submit`. See
+[tools/publish/README.md](../../tools/publish/README.md) for the store-by-store
+behaviour, the APKPure browser-automation constraints, and the evidence layout.
+
 ## Artifact Naming
 
 Use stable, user-facing names:
