@@ -15,7 +15,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from ..apkpure.console import BrowserMode, console_session, resolve_browser_mode
+from ..apkpure.console import (
+    BrowserMode,
+    console_session,
+    resolve_browser_mode,
+    resolve_browser_path,
+)
 from ..apkpure.console import DEFAULT_CDP_ENDPOINT
 from ..apkpure.selectors import SelectorSet, console_url
 from ..errors import ConfigError
@@ -98,6 +103,7 @@ class ApkPurePublisher(Publisher):
             mode=mode,
             profile_dir=_optional_path(ctx.config.option("profileDir")),
             cdp_endpoint=str(ctx.config.option("cdpEndpoint", DEFAULT_CDP_ENDPOINT)),
+            browser_path=resolve_browser_path(ctx.config.option("browserPath")),
         ) as session:
             session.open_app(package_id)
 
