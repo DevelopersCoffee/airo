@@ -20,9 +20,16 @@
       "appPlatform": "mobileFull",
       "ciBuild": true,
       "edgeProfile": false,
-      "requiredPackages": ["airo"],
-      "featureModules": ["airo", "feature_coin"],
-      "allowedNativePlugins": ["*"],
+      "requiredPackages": [
+        "airo"
+      ],
+      "featureModules": [
+        "airo",
+        "feature_coin"
+      ],
+      "allowedNativePlugins": [
+        "*"
+      ],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
@@ -51,8 +58,13 @@
       "appPlatform": "androidTv",
       "ciBuild": true,
       "edgeProfile": true,
-      "requiredPackages": ["airo", "audio_service"],
-      "featureModules": ["feature_iptv"],
+      "requiredPackages": [
+        "airo",
+        "audio_service"
+      ],
+      "featureModules": [
+        "feature_iptv"
+      ],
       "allowedNativePlugins": [
         "audio_service",
         "flutter_chrome_cast",
@@ -106,20 +118,28 @@
         "wakelock_plus": "../packages/stubs/wakelock_plus_stub",
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
       },
-      "assetAllowlist": ["assets/airo_icon.png"],
+      "assetAllowlist": [
+        "assets/airo_icon.png"
+      ],
       "android": {
         "apkArtifact": "app-arm64-v8a-release.apk",
         "abiStrategy": "single-arm64-apk",
         "releaseBudgetMb": 35,
         "debugBudgetMb": 650,
-        "enforceReleaseBudget": true
+        "enforceReleaseBudget": true,
+        "universalApkArtifact": "app-release.apk",
+        "universalBudgetMb": 80,
+        "universalRationale": "Store listings accept one APK per version, so a single-ABI build silently excludes 32-bit and x86_64 devices. This universal APK is for store distribution only; the 35 MB releaseBudgetMb still governs the arm64 edge artifact and is unchanged."
       },
       "macos": {
         "appName": "Airo TV",
         "bundleId": "com.developerscoffee.airo.tv",
         "artifactZip": "Airo-TV-macOS.zip",
         "artifactDmg": "Airo-TV-macOS.dmg",
-        "distribution": ["github-release", "homebrew-cask"],
+        "distribution": [
+          "github-release",
+          "homebrew-cask"
+        ],
         "signing": "optional-developer-id",
         "notarization": "optional-required-for-public-direct-download"
       }
@@ -136,8 +156,12 @@
       "deviceClass": "phone",
       "ciBuild": true,
       "edgeProfile": true,
-      "requiredPackages": ["feature_coin"],
-      "featureModules": ["feature_coin"],
+      "requiredPackages": [
+        "feature_coin"
+      ],
+      "featureModules": [
+        "feature_coin"
+      ],
       "allowedNativePlugins": [
         "flutter_secure_storage",
         "local_auth",
@@ -169,9 +193,16 @@
       "appPlatform": "ios",
       "ciBuild": false,
       "edgeProfile": false,
-      "requiredPackages": ["airo"],
-      "featureModules": ["airo", "feature_coin"],
-      "allowedNativePlugins": ["*"],
+      "requiredPackages": [
+        "airo"
+      ],
+      "featureModules": [
+        "airo",
+        "feature_coin"
+      ],
+      "allowedNativePlugins": [
+        "*"
+      ],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
@@ -189,8 +220,12 @@
       "appPlatform": "webFull",
       "ciBuild": false,
       "edgeProfile": false,
-      "requiredPackages": ["feature_iptv"],
-      "featureModules": ["feature_iptv"],
+      "requiredPackages": [
+        "feature_iptv"
+      ],
+      "featureModules": [
+        "feature_iptv"
+      ],
       "allowedNativePlugins": [],
       "heavyPackages": [],
       "requiredDependencyOverrides": {

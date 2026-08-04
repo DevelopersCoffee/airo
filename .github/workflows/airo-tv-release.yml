@@ -536,6 +536,31 @@ jobs:
             --split-debug-info=build/debug-info-tv \
             --obfuscate
 
+      - name: Build Android TV universal APK
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          # Store listings accept one APK per version, so a single-ABI build
+          # silently excludes 32-bit and x86_64 devices. This build carries all
+          # three ABIs and is for store distribution only -- the 35 MB edge
+          # budget still governs the arm64 artifact and is unchanged.
+          flutter build apk --release \
+            --target=lib/main_tv.dart \
+            --dart-define=APP_VARIANT=tv \
+            --dart-define=APP_PLATFORM=androidTv \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --tree-shake-icons \
+            --split-debug-info=build/debug-info-tv \
+            --obfuscate
+          cp build/app/outputs/flutter-apk/app-release.apk build/airo-tv-universal.apk
+          size_mb=$(( $(stat -c%s build/airo-tv-universal.apk 2>/dev/null || stat -f%z build/airo-tv-universal.apk) / 1000000 ))
+          echo "universal APK: ${size_mb} MB"
+          if [ "$size_mb" -gt 80 ]; then
+            echo "::error::Universal APK is ${size_mb} MB, over the 80 MB store budget."
+            exit 1
+          fi
+
       - name: Verify release artifacts
         env:
           AIRO_TV_RELEASE_APK: app/build/airo-tv-canonical-arm64.apk
@@ -546,6 +571,7 @@ jobs:
         run: |
           mkdir -p release-artifacts
           cp app/build/airo-tv-canonical-arm64.apk "release-artifacts/Airo-TV-${BUILD_NAME}.apk"
+          cp app/build/airo-tv-universal.apk "release-artifacts/Airo-TV-${BUILD_NAME}-universal.apk"
           cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-arm64-v8a.apk"
           cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-armeabi-v7a.apk"
           cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-x86_64.apk"

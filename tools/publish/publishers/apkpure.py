@@ -82,17 +82,20 @@ class ApkPurePublisher(Publisher):
         # What is inside the APK decides what devices it serves, so check it
         # before shipping rather than trusting the filename or the store's own
         # inferred label.
-        expected = ctx.config.option("expectedAbis")
+        expected = ctx.config.option("requiredAbis") or ctx.config.option("expectedAbis")
         if expected:
             expected_set = frozenset(expected)
             for candidate in artifacts:
                 contents = inspect_apk(candidate.path)
                 ctx.evidence.log(contents.describe())
-                if contents.abis != expected_set:
+                # Subset, not equality: a universal APK legitimately carries
+                # more ABIs than the listing strictly requires, and rejecting it
+                # for that would block the very build that widens coverage.
+                if not expected_set <= contents.abis:
                     raise ConfigError(
                         f"{ctx.config.context}: {candidate.filename} carries "
                         f"[{', '.join(sorted(contents.abis)) or 'none'}] but the listing "
-                        f"expects [{', '.join(sorted(expected_set))}]. Refusing to upload: "
+                        f"requires [{', '.join(sorted(expected_set))}]. Refusing to upload: "
                         "the wrong slice would fail to install on the devices this "
                         "listing targets."
                     )
@@ -105,7 +108,9 @@ class ApkPurePublisher(Publisher):
                 if candidate.artifact_type == "apk" and candidate.profile_id == ctx.profile_id
                 for abi in inspect_apk(candidate.path).abis
             )
-            coverage = coverage_report(expected_set, built)
+            coverage = coverage_report(
+                frozenset().union(*(inspect_apk(a.path).abis for a in artifacts)), built
+            )
             for line in coverage["served"]:
                 ctx.evidence.log(f"serves {line}")
             for line in coverage["notServed"]:
