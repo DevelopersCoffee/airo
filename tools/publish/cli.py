@@ -300,14 +300,17 @@ def cmd_login(args: argparse.Namespace) -> int:
 
     if mode is BrowserMode.CHROME:
         profile = (args.profile_dir or DEFAULT_PROFILE_DIR).expanduser()
+        executable = resolve_browser_path(args.browser_path)
+        # Name the browser actually being launched: --browser-path defaults to
+        # this machine's default browser, which is often not Google Chrome.
+        browser_name = executable.name if executable else "Google Chrome"
         print(
-            "Real Chrome will open. Sign in to APKPure yourself and clear any Cloudflare\n"
-            "check — this tool never reads, types, or stores your password. The session\n"
-            f"stays inside the Chrome profile at:\n  {profile}\n"
+            f"Launching {browser_name} ({executable or 'via Playwright channel=chrome'}).\n"
+            "Sign in to APKPure yourself and clear any Cloudflare check — this tool never\n"
+            "reads, types, or stores your password. The session stays inside the browser\n"
+            f"profile at:\n  {profile}\n"
         )
-        interactive_chrome_login(
-            profile, evidence, executable_path=resolve_browser_path(args.browser_path)
-        )
+        interactive_chrome_login(profile, evidence, executable_path=executable)
         print(f"\nDone. Re-run doctor/run with --browser chrome (profile: {profile}).")
         return 0
 
