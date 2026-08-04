@@ -103,7 +103,11 @@
           "options": {
             "headless": true,
             "updateDescription": true,
-            "descriptionMaxChars": 1200
+            "descriptionMaxChars": 1200,
+            "expectedAbis": [
+              "arm64-v8a"
+            ],
+            "maxSizeMb": 35
           }
         },
         "full": {
@@ -124,7 +128,10 @@
             "fallback": "Bug fixes and stability improvements."
           },
           "options": {
-            "headless": true
+            "headless": true,
+            "expectedAbis": [
+              "arm64-v8a"
+            ]
           }
         },
         "coins": {
@@ -145,7 +152,10 @@
             "fallback": "Bug fixes and stability improvements."
           },
           "options": {
-            "headless": true
+            "headless": true,
+            "expectedAbis": [
+              "arm64-v8a"
+            ]
           }
         }
       }

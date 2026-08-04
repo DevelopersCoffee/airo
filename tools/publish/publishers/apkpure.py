@@ -24,6 +24,7 @@ from ..apkpure.console import (
 )
 from ..apkpure.console import DEFAULT_CDP_ENDPOINT
 from ..apkpure.selectors import SelectorSet, console_url
+from ..apk_inspect import inspect_apk
 from ..upload_state import UploadState
 from ..errors import ConfigError, CredentialError, RemoteError
 from ..models import PublishResult, PublishStatus
@@ -78,6 +79,33 @@ class ApkPurePublisher(Publisher):
         # one already accepted.
         # evidence.root is build/publish-evidence/<target>/<profile>/<version>;
         # the state belongs beside publish-evidence, not inside it.
+        # What is inside the APK decides what devices it serves, so check it
+        # before shipping rather than trusting the filename or the store's own
+        # inferred label.
+        expected = ctx.config.option("expectedAbis")
+        if expected:
+            expected_set = frozenset(expected)
+            for candidate in artifacts:
+                contents = inspect_apk(candidate.path)
+                ctx.evidence.log(contents.describe())
+                if contents.abis != expected_set:
+                    raise ConfigError(
+                        f"{ctx.config.context}: {candidate.filename} carries "
+                        f"[{', '.join(sorted(contents.abis)) or 'none'}] but the listing "
+                        f"expects [{', '.join(sorted(expected_set))}]. Refusing to upload: "
+                        "the wrong slice would fail to install on the devices this "
+                        "listing targets."
+                    )
+            max_mb = ctx.config.option("maxSizeMb")
+            if max_mb:
+                for candidate in artifacts:
+                    size_mb = candidate.size_bytes / 1e6
+                    if size_mb > float(max_mb):
+                        raise ConfigError(
+                            f"{ctx.config.context}: {candidate.filename} is "
+                            f"{size_mb:.1f} MB, over the {max_mb} MB listing budget."
+                        )
+
         state = UploadState.load(
             ctx.evidence.root.parents[3] / "publish-state", self.name, package_id
         )
