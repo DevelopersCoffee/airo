@@ -91,6 +91,19 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    lint {
+        // AGP 9.3.1's bundled lintVitalAnalyzeRelease crashes with
+        // NoSuchMethodError inside its own JavaDoc parser while reading
+        // Flutter-plugin Java sources (url_launcher_android's UrlLauncher.java
+        // is the confirmed trigger) -- an upstream AGP lint-tool bug, not
+        // anything in this repo's code. checkReleaseBuilds=false only unhooks
+        // that automatic pre-flight duplicate from assembleRelease/bundleRelease;
+        // it does not disable lint. Full `lintRelease` coverage runs explicitly
+        // as its own CI step in the build-android job (ci.yml) instead, so no
+        // real coverage is lost -- see the CI step for why this line exists.
+        checkReleaseBuilds = false
+    }
+
     defaultConfig {
         applicationId = variantApplicationId
         minSdk = 26 // Android 8.0 - broader device compatibility
