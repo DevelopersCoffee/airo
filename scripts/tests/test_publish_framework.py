@@ -30,7 +30,12 @@ from tools.publish.errors import (  # noqa: E402
     ManifestError,
     PreflightError,
 )
-from tools.publish.apkpure.console import BrowserMode, resolve_browser_mode  # noqa: E402
+from tools.publish.apkpure.console import (  # noqa: E402
+    KNOWN_CHROMIUM_BROWSERS,
+    BrowserMode,
+    resolve_browser_mode,
+    resolve_browser_path,
+)
 from tools.publish.evidence import EvidenceRecorder  # noqa: E402
 from tools.publish.fetch import FetchedRelease, index_manifests  # noqa: E402
 from tools.publish.models import PublishStatus, ReleaseMetadata  # noqa: E402
@@ -613,6 +618,31 @@ class BrowserModeTests(unittest.TestCase):
     def test_unknown_mode_is_rejected(self) -> None:
         with self.assertRaises(PreflightError):
             resolve_browser_mode("firefox", {})
+
+    def test_browser_path_shorthands_resolve_to_real_binaries(self) -> None:
+        for name in ("arc", "brave", "chrome", "edge"):
+            with self.subTest(browser=name):
+                path = Path(KNOWN_CHROMIUM_BROWSERS[name])
+                if not path.exists():
+                    self.skipTest(f"{name} is not installed on this machine")
+                self.assertEqual(resolve_browser_path(name), path)
+
+    def test_browser_path_accepts_an_explicit_path(self) -> None:
+        with tempfile.NamedTemporaryFile() as handle:
+            self.assertEqual(resolve_browser_path(handle.name), Path(handle.name))
+
+    def test_unknown_browser_path_is_rejected(self) -> None:
+        with self.assertRaises(PreflightError):
+            resolve_browser_path("/nonexistent/Browser.app/Contents/MacOS/Browser")
+
+    def test_no_browser_path_means_playwrights_own_chrome_channel(self) -> None:
+        self.assertIsNone(resolve_browser_path(None))
+
+    @unittest.skipUnless(sys.platform == "darwin", "LaunchServices is macOS-only")
+    def test_default_resolves_to_an_executable_browser(self) -> None:
+        resolved = resolve_browser_path("default")
+        self.assertIsNotNone(resolved)
+        self.assertTrue(resolved.is_file(), resolved)
 
     def _context(self, root: Path, options: dict) -> PublishContext:
         release = ReleaseMetadata.from_manifest_file(write_release(root))

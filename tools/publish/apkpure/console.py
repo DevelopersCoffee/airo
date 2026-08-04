@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import contextlib
 import json
+import plistlib
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -223,6 +225,92 @@ def resolve_browser_mode(configured: object, env: dict[str, str] | None = None) 
 DEFAULT_PROFILE_DIR = Path.home() / ".config" / "airo" / "apkpure-chrome-profile"
 DEFAULT_CDP_ENDPOINT = "http://127.0.0.1:9222"
 
+#: Chromium-family browsers a user is likely to already have signed in. Any of
+#: these can back the `chrome` mode via --browser-path; Playwright's `channel`
+#: only knows about Google's own builds.
+KNOWN_CHROMIUM_BROWSERS = {
+    "arc": "/Applications/Arc.app/Contents/MacOS/Arc",
+    "brave": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "edge": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+}
+
+
+LAUNCH_SERVICES_PLIST = (
+    "Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist"
+)
+
+
+def default_browser_path() -> Path:
+    """The executable of whichever browser handles https on this Mac.
+
+    Read from LaunchServices rather than guessed, then resolved to a real
+    binary by scanning app bundles for the matching identifier. Spotlight is
+    not consulted: `mdfind` returns nothing when indexing is off.
+    """
+    if sys.platform != "darwin":
+        raise PreflightError(
+            "--browser-path default only resolves the system browser on macOS. "
+            "Pass an explicit path, or one of: "
+            + ", ".join(sorted(KNOWN_CHROMIUM_BROWSERS))
+        )
+    plist = Path.home() / LAUNCH_SERVICES_PLIST
+    bundle_id = ""
+    if plist.is_file():
+        with contextlib.suppress(Exception):
+            handlers = plistlib.loads(plist.read_bytes()).get("LSHandlers", [])
+            for handler in handlers:
+                if handler.get("LSHandlerURLScheme") == "https":
+                    bundle_id = str(
+                        handler.get("LSHandlerRoleAll")
+                        or handler.get("LSHandlerRoleViewer")
+                        or ""
+                    ).lower()
+                    break
+    if not bundle_id:
+        raise PreflightError(
+            "Could not read the default browser from LaunchServices. Pass "
+            "--browser-path with an explicit browser instead."
+        )
+
+    for root in (Path("/Applications"), Path.home() / "Applications"):
+        if not root.is_dir():
+            continue
+        for app in sorted(root.glob("*.app")):
+            info = app / "Contents" / "Info.plist"
+            if not info.is_file():
+                continue
+            try:
+                data = plistlib.loads(info.read_bytes())
+            except Exception:  # noqa: BLE001 - a malformed bundle is not fatal
+                continue
+            if str(data.get("CFBundleIdentifier", "")).lower() != bundle_id:
+                continue
+            executable = app / "Contents" / "MacOS" / str(data.get("CFBundleExecutable", ""))
+            if executable.is_file():
+                return executable
+    raise PreflightError(
+        f"Default browser {bundle_id!r} is not an app bundle this tool can launch. "
+        "Pass --browser-path with an explicit Chromium-family browser."
+    )
+
+
+def resolve_browser_path(value: object) -> Path | None:
+    """Accept either a shorthand name (arc, brave, edge) or a full path."""
+    if not value:
+        return None
+    raw = str(value).strip()
+    if raw.lower() == "default":
+        return default_browser_path()
+    candidate = Path(KNOWN_CHROMIUM_BROWSERS.get(raw.lower(), raw)).expanduser()
+    if not candidate.exists():
+        known = ", ".join(sorted(KNOWN_CHROMIUM_BROWSERS))
+        raise PreflightError(
+            f"Browser executable not found: {candidate}. "
+            f"Pass a full path, or one of: {known}."
+        )
+    return candidate
+
 
 @contextlib.contextmanager
 def console_session(
@@ -235,6 +323,7 @@ def console_session(
     mode: BrowserMode = BrowserMode.BUNDLED,
     profile_dir: Path | None = None,
     cdp_endpoint: str = DEFAULT_CDP_ENDPOINT,
+    browser_path: Path | None = None,
 ) -> Iterator[ConsoleSession]:
     """Open an APKPure console page using whichever browser `mode` selects."""
     sync_playwright = import_playwright()
@@ -245,7 +334,11 @@ def console_session(
             manager = _cdp_context(playwright, cdp_endpoint, evidence)
         elif mode is BrowserMode.CHROME:
             manager = _persistent_chrome_context(
-                playwright, profile_dir or DEFAULT_PROFILE_DIR, headless, evidence
+                playwright,
+                profile_dir or DEFAULT_PROFILE_DIR,
+                headless,
+                evidence,
+                browser_path,
             )
         else:
             manager = _bundled_context(playwright, storage_state, headless, evidence)
@@ -290,7 +383,11 @@ def _bundled_context(playwright, storage_state: Path, headless: bool, evidence: 
 
 @contextlib.contextmanager
 def _persistent_chrome_context(
-    playwright, profile_dir: Path, headless: bool, evidence: EvidenceRecorder
+    playwright,
+    profile_dir: Path,
+    headless: bool,
+    evidence: EvidenceRecorder,
+    executable_path: Path | None = None,
 ):
     """Real Chrome with a profile that persists between runs.
 
@@ -300,18 +397,23 @@ def _persistent_chrome_context(
     """
     profile_dir = profile_dir.expanduser()
     profile_dir.mkdir(parents=True, exist_ok=True)
-    evidence.log(f"chrome profile: {profile_dir}")
+    evidence.log(f"browser profile: {profile_dir}")
+    launch: dict = {"channel": "chrome"} if executable_path is None else {
+        "executable_path": str(executable_path)
+    }
+    evidence.log(f"launching {executable_path or 'channel=chrome'}")
     try:
         context = playwright.chromium.launch_persistent_context(
             str(profile_dir),
-            channel="chrome",
             headless=headless,
             viewport=DEFAULT_VIEWPORT,
             accept_downloads=False,
+            **launch,
         )
     except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
         raise PreflightError(
-            f"Could not start Google Chrome ({exc}). Install Chrome, or use "
+            f"Could not start {executable_path or 'Google Chrome'} ({exc}). "
+            "Pass --browser-path arc|brave|edge or a full path, or use "
             "--browser cdp to attach to a browser you started yourself."
         ) from exc
     try:
@@ -353,6 +455,7 @@ def interactive_chrome_login(
     profile_dir: Path,
     evidence: EvidenceRecorder,
     confirm: Callable[[str], object] = input,
+    executable_path: Path | None = None,
 ) -> Path:
     """Sign in inside a persistent real-Chrome profile.
 
@@ -365,13 +468,17 @@ def interactive_chrome_login(
     profile_dir.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
         try:
+            launch: dict = {"channel": "chrome"} if executable_path is None else {
+                "executable_path": str(executable_path)
+            }
             context = playwright.chromium.launch_persistent_context(
-                str(profile_dir), channel="chrome", headless=False, viewport=DEFAULT_VIEWPORT
+                str(profile_dir), headless=False, viewport=DEFAULT_VIEWPORT, **launch
             )
         except Exception as exc:  # noqa: BLE001 - Playwright raises its own errors
             raise PreflightError(
-                f"Could not start Google Chrome ({exc}). Install Chrome, or sign in "
-                "with your own browser and use --browser cdp instead."
+                f"Could not start {executable_path or 'Google Chrome'} ({exc}). Pass "
+                "--browser-path arc|brave|edge, or sign in with your own browser and "
+                "use --browser cdp instead."
             ) from exc
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(SIGN_IN_URL, wait_until="domcontentloaded")
