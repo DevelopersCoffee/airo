@@ -278,7 +278,7 @@ dependencies {
     // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
     // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
     if (!isCoinsVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
-        implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.15.0")
     }
 
     if (!isCoinsVariant) {
