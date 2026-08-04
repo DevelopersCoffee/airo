@@ -81,7 +81,7 @@
     },
     "apkpure": {
       "enabled": false,
-      "_note": "Enable after `python3 -m tools.publish doctor apkpure` proves the selectors against the live console. Selection is by exact filename, not by abi: the universal APK and the arm64-v8a APK share abi=android-arm64, so only the filename distinguishes them.",
+      "_note": "Uploads every per-ABI APK, universal first. APKPure allows one version in flight at a time, so a run handles one APK and records it in build/publish-state; re-run until the summary reports all accepted. io.airo.app and io.airo.app.coins have no APKPure listing yet, so their profiles stay disabled until someone registers them by hand.",
       "profiles": {
         "tv": {
           "packageId": "io.airo.app.tv",
@@ -89,9 +89,11 @@
             "artifactType": [
               "apk"
             ],
-            "filenamePattern": "^Airo-TV-{version}\\.apk$",
-            "minCount": 1,
-            "maxCount": 1
+            "filenameExcludes": [
+              "debug",
+              "profile"
+            ],
+            "minCount": 1
           },
           "releaseNotes": {
             "source": "changelog",
@@ -104,6 +106,48 @@
             "headless": true,
             "updateDescription": true,
             "descriptionMaxChars": 1200
+          }
+        },
+        "full": {
+          "enabled": false,
+          "packageId": "io.airo.app",
+          "artifactSelector": {
+            "artifactType": [
+              "apk"
+            ],
+            "filenamePattern": "^Airo-{version}-\\\\d+-arm64\\\\.apk$",
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 4000,
+            "fallback": "Bug fixes and stability improvements."
+          },
+          "options": {
+            "headless": true
+          }
+        },
+        "coins": {
+          "enabled": false,
+          "packageId": "io.airo.app.coins",
+          "artifactSelector": {
+            "artifactType": [
+              "apk"
+            ],
+            "filenamePattern": "^AiroCoins-{version}-\\\\d+-arm64\\\\.apk$",
+            "minCount": 1
+          },
+          "releaseNotes": {
+            "source": "changelog",
+            "path": "CHANGELOG.md",
+            "headingPattern": "^##\\s+v{version}\\b.*$",
+            "maxChars": 4000,
+            "fallback": "Bug fixes and stability improvements."
+          },
+          "options": {
+            "headless": true
           }
         }
       }

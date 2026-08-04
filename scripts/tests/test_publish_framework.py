@@ -43,6 +43,7 @@ from tools.publish.fetch import FetchedRelease, index_manifests  # noqa: E402
 from tools.publish.models import PublishStatus, ReleaseMetadata  # noqa: E402
 from tools.publish.cli import build_parser  # noqa: E402
 from tools.publish.publishers import PublishContext, PublishOptions, get_publisher  # noqa: E402
+from tools.publish.publishers.apkpure import _is_universal  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from resolve_release_tv_apk import resolve_canonical_tv_apk  # noqa: E402
 from tools.publish.runner import (  # noqa: E402
@@ -835,16 +836,12 @@ class CanonicalApkAgreementTests(unittest.TestCase):
     def test_selector_matches_the_workflow_resolver(self) -> None:
         expected = resolve_canonical_tv_apk(self.ASSETS)
 
-        pattern = (
-            PublishConfig.load()
-            .profiles_for("apkpure")[0]
-            .selector.filename_pattern
-        )
-        self.assertIsNotNone(pattern, "the apkpure selector must pin an exact filename")
-        rendered = pattern.format(version=re.escape("0.0.6"), buildNumber="", profileId="")
-        matched = [name for name in self.ASSETS if re.fullmatch(rendered, name)]
-
-        self.assertEqual(matched, [expected])
+        # APKPure now takes every per-ABI APK, so the guarantee is about
+        # *order*: the canonical universal APK must be uploaded first, so the
+        # listing is usable even if a later variant stalls in review.
+        tv_apks = [n for n in self.ASSETS if n.startswith("Airo-TV-") and n.endswith(".apk")]
+        first = sorted(tv_apks, key=lambda n: (0 if _is_universal(n) else 1, n))[0]
+        self.assertEqual(first, expected)
 
 
 class ManifestIndexTests(unittest.TestCase):
