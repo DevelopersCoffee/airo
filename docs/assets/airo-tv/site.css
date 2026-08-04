@@ -2411,3 +2411,128 @@ button,
     align-items: flex-start;
   }
 }
+
+/* Search-intent landing pages (docs/_layouts/landing.html) */
+
+.intent-hero {
+  position: relative;
+  padding: calc(var(--header) + 72px) 0 64px;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 14% 22%, color-mix(in oklch, var(--gold), transparent 88%), transparent 42%),
+    var(--bg);
+}
+
+.intent-hero .container {
+  max-width: 840px;
+}
+
+.intent-hero h1 {
+  max-width: 16ch;
+  margin: 14px 0 18px;
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.intent-hero .hero-lede {
+  max-width: 62ch;
+}
+
+.boundary-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 62ch;
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.boundary-note i {
+  flex: none;
+  margin-top: 2px;
+  color: var(--gold);
+}
+
+.download-note {
+  max-width: 76ch;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.faq-list {
+  display: grid;
+  gap: 12px;
+}
+
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  padding: 16px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  flex: none;
+  color: var(--quiet);
+  font-size: 20px;
+}
+
+.faq-item[open] summary::after {
+  content: "\2212";
+}
+
+.faq-item p {
+  margin: 0;
+  padding: 0 20px 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.related-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.intent-body {
+  max-width: 720px;
+}
+
+.intent-body p + p {
+  margin-top: 1.1em;
+}
+
+.intent-body a {
+  color: var(--green);
+}
+
+@media (max-width: 780px) {
+  .intent-hero {
+    padding: calc(var(--header) + 48px) 0 48px;
+  }
+}

@@ -1,0 +1,49 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{ page.title }}</title>
+<meta name="title" content="{{ page.title }}" />
+<meta name="description" content="{{ page.description }}" />
+<meta name="robots" content="index, follow" />
+<meta name="google-site-verification" content="WusRxM2aVnZImHcic5ehEu-ticQ4L645xgLhu13kmro" />
+<link rel="canonical" href="{{ page.url | absolute_url }}" />
+<meta name="theme-color" content="#071010" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="{{ page.url | absolute_url }}" />
+<meta property="og:title" content="{{ page.title }}" />
+<meta property="og:description" content="{{ page.description }}" />
+<meta
+  property="og:image"
+  content="{{ '/store-assets/airo-tv/feature-graphic-1024x500.png' | absolute_url }}"
+/>
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ page.title }}" />
+<meta name="twitter:description" content="{{ page.description }}" />
+<link rel="icon" type="image/svg+xml" href="{{ '/assets/airo-tv/airo-icon.svg' | relative_url }}" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
+  rel="stylesheet"
+  media="print"
+  onload="this.media='all'"
+/>
+<noscript>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
+    rel="stylesheet"
+  />
+</noscript>
+<link
+  rel="preload"
+  href="{{ '/assets/airo-tv/site.css' | relative_url }}"
+  as="style"
+  onload="this.onload=null;this.rel='stylesheet'"
+/>
+<noscript><link rel="stylesheet" href="{{ '/assets/airo-tv/site.css' | relative_url }}" /></noscript>
+<script defer src="{{ '/assets/airo-tv/third-party/lucide.min.js' | relative_url }}"></script>
+<script defer src="{{ '/assets/airo-tv/site.js' | relative_url }}"></script>
+{% if page.structured_data %}
+<script type="application/ld+json">
+  {{ page.structured_data | jsonify }}
+</script>
+{% endif %}

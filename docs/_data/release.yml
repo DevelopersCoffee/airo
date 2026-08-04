@@ -1,0 +1,32 @@
+# Single source of truth for the current public release.
+#
+# Every download link and version string on the public site should render
+# from this file through _includes/download-block.html rather than being
+# hardcoded per page. The site has gone stale at the previous release three
+# separate times (README, wiki, and this page itself) because the tag and
+# artifact names were hand-typed in more than one place. Update this file on
+# every release; nothing else should need to change.
+tag: v0.0.6
+version: "0.0.6"
+build_number: "10"
+release_url: https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6
+products:
+  tv:
+    label: Airo TV
+    package_id: io.airo.app.tv
+    universal_apk: Airo-TV-0.0.6.apk
+    arm64_apk: Airo-TV-0.0.6-arm64-v8a.apk
+    armeabi_apk: Airo-TV-0.0.6-armeabi-v7a.apk
+    x86_64_apk: Airo-TV-0.0.6-x86_64.apk
+  full:
+    label: Airo
+    package_id: io.airo.app
+    arm64_apk: Airo-0.0.6-10-arm64.apk
+  coins:
+    label: Airo Coins
+    package_id: io.airo.app.coins
+    arm64_apk: AiroCoins-0.0.6-10-arm64.apk
+  macos:
+    label: Airo TV for macOS
+    dmg: Airo-TV-0.0.6-macOS.dmg
+    zip: Airo-TV-0.0.6-macOS.zip
