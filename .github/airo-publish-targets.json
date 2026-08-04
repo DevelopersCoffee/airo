@@ -12,7 +12,12 @@
       "profiles": {
         "tv": {
           "artifactSelector": {
-            "artifactType": ["apk", "aab", "macos_zip", "macos_dmg"],
+            "artifactType": [
+              "apk",
+              "aab",
+              "macos_zip",
+              "macos_dmg"
+            ],
             "minCount": 1
           },
           "releaseNotes": {
@@ -28,7 +33,10 @@
         },
         "full": {
           "artifactSelector": {
-            "artifactType": ["apk", "aab"],
+            "artifactType": [
+              "apk",
+              "aab"
+            ],
             "minCount": 1
           },
           "releaseNotes": {
@@ -44,7 +52,6 @@
         }
       }
     },
-
     "play": {
       "enabled": false,
       "_note": "Enable once GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is provisioned for the TV listing.",
@@ -52,7 +59,9 @@
         "tv": {
           "packageId": "io.airo.app.tv",
           "artifactSelector": {
-            "artifactType": ["aab"],
+            "artifactType": [
+              "aab"
+            ],
             "minCount": 1,
             "maxCount": 1
           },
@@ -70,7 +79,6 @@
         }
       }
     },
-
     "apkpure": {
       "enabled": false,
       "_note": "Enable after `python3 -m tools.publish doctor apkpure` proves the selectors against the live console. Selection is by exact filename, not by abi: the universal APK and the arm64-v8a APK share abi=android-arm64, so only the filename distinguishes them.",
@@ -78,7 +86,9 @@
         "tv": {
           "packageId": "io.airo.app.tv",
           "artifactSelector": {
-            "artifactType": ["apk"],
+            "artifactType": [
+              "apk"
+            ],
             "filenamePattern": "^Airo-TV-{version}\\.apk$",
             "minCount": 1,
             "maxCount": 1
@@ -91,19 +101,22 @@
             "fallback": "Bug fixes and stability improvements."
           },
           "options": {
-            "headless": true
+            "headless": true,
+            "updateDescription": true,
+            "descriptionMaxChars": 1200
           }
         }
       }
     },
-
     "amazon": {
       "enabled": false,
       "profiles": {
         "tv": {
           "packageId": "io.airo.app.tv",
           "artifactSelector": {
-            "artifactType": ["apk"],
+            "artifactType": [
+              "apk"
+            ],
             "filenamePattern": "^Airo-TV-{version}\\.apk$",
             "minCount": 1,
             "maxCount": 1
@@ -118,14 +131,15 @@
         }
       }
     },
-
     "huawei": {
       "enabled": false,
       "profiles": {
         "tv": {
           "packageId": "io.airo.app.tv",
           "artifactSelector": {
-            "artifactType": ["apk"],
+            "artifactType": [
+              "apk"
+            ],
             "filenamePattern": "^Airo-TV-{version}\\.apk$",
             "minCount": 1,
             "maxCount": 1
@@ -140,14 +154,15 @@
         }
       }
     },
-
     "fdroid": {
       "enabled": false,
       "profiles": {
         "tv": {
           "packageId": "io.airo.app.tv",
           "artifactSelector": {
-            "artifactType": ["apk"],
+            "artifactType": [
+              "apk"
+            ],
             "minCount": 1
           },
           "releaseNotes": {
@@ -159,14 +174,17 @@
         }
       }
     },
-
     "website": {
       "enabled": false,
       "_note": "Enable once docs/_data consumes the generated download metadata. No packageId pin: the macOS bundle id differs from the Android app id.",
       "profiles": {
         "tv": {
           "artifactSelector": {
-            "artifactType": ["apk", "macos_zip", "macos_dmg"],
+            "artifactType": [
+              "apk",
+              "macos_zip",
+              "macos_dmg"
+            ],
             "minCount": 1
           },
           "releaseNotes": {
