@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:feature_mind/feature_mind.dart';
-import 'package:feature_mind/src/api/mind.dart' as rust;
+import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

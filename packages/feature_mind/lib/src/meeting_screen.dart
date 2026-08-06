@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'api/mind.dart' as rust;
+import 'whisper/api/meetings.dart' as rust;
 import 'mind_service.dart';
 
 /// Transcript and minutes — live, or reopened.

@@ -1,0 +1,38 @@
+[package]
+name = "airo_mind_llama"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind generation engine — llama.cpp and its Flutter bridge."
+license = "MIT"
+
+[lib]
+name = "airo_mind_llama"
+# See the note in airo_mind_whisper/Cargo.toml: one cdylib per engine, because
+# the two vendored ggml copies cannot share a linked image.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+flutter_rust_bridge = "=2.11.1"
+# `default-features = false` is a CORRECTNESS setting, not a size one.
+#
+# llama-cpp-2's default features include `common`, which compiles llama.cpp's
+# `download.cpp` and `hf-cache.cpp` -- a HuggingFace HTTP client -- into the
+# binary. `ADR-0018 §1` says the runtime never acquires models, and "cloud
+# optional, never cloud required" is not a claim a binary carrying a model
+# downloader can make. It also does not link: httplib is not in the archive,
+# so the offline product and the building product happen to be the same one.
+#
+# Dropping the default `openmp` costs nothing here: the Supervisor owns the CPU
+# budget (`C6`) and the engine is pinned to one thread.
+llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false }
+# Re-exported by llama-cpp-2 for token_to_piece; pinned to the version it uses.
+encoding_rs = { version = "0.8", optional = true }
+
+[features]
+default = []
+# Real offline generation. Requires cmake and a C++ toolchain.
+llama = ["dep:llama-cpp-2", "dep:encoding_rs"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

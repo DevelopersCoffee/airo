@@ -7,7 +7,7 @@
 
 use std::path::PathBuf;
 
-use airo_mind_runtime::{
+use airo_mind_whisper::{
     AudioInput, CancelToken, EngineError, ResourceBudget, Supervisor, TranscriptSegment,
     WhisperSpeechEngine,
 };
@@ -17,7 +17,7 @@ fn model_path() -> PathBuf {
 }
 
 fn fixture() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/jfk.wav")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../fixtures/jfk.wav")
 }
 
 /// Minimal 16-bit PCM WAV reader.
@@ -145,7 +145,7 @@ fn a_cancelled_transcription_stops_and_reports_it() {
     );
     assert!(matches!(
         r,
-        Err(airo_mind_runtime::RuntimeError::Engine(
+        Err(airo_mind_whisper::RuntimeError::Engine(
             EngineError::Cancelled
         ))
     ));
@@ -161,7 +161,7 @@ fn transcription_writes_no_files() {
     if !model.exists() {
         return;
     }
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../fixtures");
     let before: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(|e| e.ok().map(|e| e.file_name()))

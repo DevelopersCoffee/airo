@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds airo_mind_runtime for an Apple target and checks the artefact the pod
+# Builds one Airo Mind engine for an Apple target and checks the artefact the pod
 # actually ships.
 #
 # macOS consumes the DYLIB. whisper.cpp and llama.cpp each vendor their own ggml
@@ -24,11 +24,13 @@ sh "$BASEDIR/../cargokit/build_pod.sh" "$@"
 # stays in the cargo target directory it built in. Found rather than
 # constructed, because the path carries a rust target triple and a profile name
 # that this script has no business hardcoding.
-DYLIB="$BUILT_PRODUCTS_DIR/libairo_mind_runtime.dylib"
-slices=$(find "$TARGET_TEMP_DIR" -name libairo_mind_runtime.dylib -not -path "*/deps/*" 2>/dev/null)
+# $2 is the library name, already passed by the podspec.
+LIBNAME="${2:?usage: build_runtime_pod.sh <manifestDir> <libname>}"
+DYLIB="$BUILT_PRODUCTS_DIR/lib$LIBNAME.dylib"
+slices=$(find "$TARGET_TEMP_DIR" -name "lib$LIBNAME.dylib" -not -path "*/deps/*" 2>/dev/null)
 
 if [ -z "$slices" ]; then
-  echo "error: cargokit produced no libairo_mind_runtime.dylib under" >&2
+  echo "error: cargokit produced no lib$LIBNAME.dylib under" >&2
   echo "       $TARGET_TEMP_DIR" >&2
   echo "       The crate must declare crate-type = [\"cdylib\", ...]." >&2
   exit 1

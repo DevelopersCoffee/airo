@@ -3,15 +3,13 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-// Static analysis wrongly picks the IO variant, thus ignore this
-// ignore_for_file: argument_type_not_assignable
-
-import 'api/mind.dart';
+import 'api/meetings.dart';
 import 'api/setup.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -25,7 +23,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AnyhowException dco_decode_AnyhowException(dynamic raw);
 
   @protected
-  RustStreamSink<ProcessingEvent> dco_decode_StreamSink_processing_event_Sse(
+  RustStreamSink<TranscriptEvent> dco_decode_StreamSink_transcript_event_Sse(
     dynamic raw,
   );
 
@@ -69,13 +67,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MeetingRecord? dco_decode_opt_box_autoadd_meeting_record(dynamic raw);
 
   @protected
-  ProcessingEvent dco_decode_processing_event(dynamic raw);
-
-  @protected
   RequiredModel dco_decode_required_model(dynamic raw);
 
   @protected
   SearchHit dco_decode_search_hit(dynamic raw);
+
+  @protected
+  TranscriptEvent dco_decode_transcript_event(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -93,7 +91,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
-  RustStreamSink<ProcessingEvent> sse_decode_StreamSink_processing_event_Sse(
+  RustStreamSink<TranscriptEvent> sse_decode_StreamSink_transcript_event_Sse(
     SseDeserializer deserializer,
   );
 
@@ -147,13 +145,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ProcessingEvent sse_decode_processing_event(SseDeserializer deserializer);
-
-  @protected
   RequiredModel sse_decode_required_model(SseDeserializer deserializer);
 
   @protected
   SearchHit sse_decode_search_hit(SseDeserializer deserializer);
+
+  @protected
+  TranscriptEvent sse_decode_transcript_event(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -177,8 +175,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_processing_event_Sse(
-    RustStreamSink<ProcessingEvent> self,
+  void sse_encode_StreamSink_transcript_event_Sse(
+    RustStreamSink<TranscriptEvent> self,
     SseSerializer serializer,
   );
 
@@ -249,16 +247,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_processing_event(
-    ProcessingEvent self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_required_model(RequiredModel self, SseSerializer serializer);
 
   @protected
   void sse_encode_search_hit(SearchHit self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_transcript_event(
+    TranscriptEvent self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -279,12 +277,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
-  RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+  factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
+      RustLibWire(lib.ffiDynamicLibrary);
+
+  /// Holds the symbol lookup function.
+  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
+  _lookup;
+
+  /// The symbols are looked up in [dynamicLibrary].
+  RustLibWire(ffi.DynamicLibrary dynamicLibrary)
+    : _lookup = dynamicLibrary.lookup;
 }
-
-@JS('wasm_bindgen')
-external RustLibWasmModule get wasmModule;
-
-@JS()
-@anonymous
-extension type RustLibWasmModule._(JSObject _) implements JSObject {}

@@ -1,5 +1,5 @@
 #
-# Cargokit builds `airo_mind_runtime` as part of the Xcode build, so the runtime
+# Cargokit builds the Airo Mind engines as part of the Xcode build, so they are
 # is compiled by the normal Flutter build rather than by a script someone has to
 # remember to run.
 #
@@ -33,26 +33,50 @@ Records a meeting, transcribes it and writes minutes entirely on the device.
   s.platform = :osx, '10.15'
   s.swift_version = '5.0'
 
+  # Two engines, two libraries. whisper.cpp and llama.cpp each statically
+  # vendor their own ggml; a single library holding both links on macOS only by
+  # emitting 339 duplicate-symbol warnings and picking an implementation per
+  # symbol by link order (#1546). Building them separately removes that.
   s.script_phases = [
     {
-      :name => 'Build airo_mind_runtime',
-      # The runtime lives in the cargo WORKSPACE at <repo>/rust, not inside this
+      :name => 'Build airo_mind_whisper',
+      # The engines live in the cargo WORKSPACE at <repo>/rust, not inside this
       # package, so the manifest path climbs out of packages/feature_mind.
-      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/build_runtime_pod.sh" ../../../rust/airo_mind_runtime airo_mind_runtime',
+      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/build_runtime_pod.sh" ../../../rust/airo_mind_whisper airo_mind_whisper',
       :execution_position => :before_compile,
       # A phony input keeps Xcode from caching the phase away; cargo does its
       # own up-to-date checking and is fast when nothing changed.
       :input_files  => ['${BUILT_PRODUCTS_DIR}/cargokit_phony'],
-      :output_files => ['${BUILT_PRODUCTS_DIR}/libairo_mind_runtime.dylib'],
+      :output_files => ['${BUILT_PRODUCTS_DIR}/libairo_mind_whisper.dylib'],
     },
     {
-      :name => 'Embed airo_mind_runtime',
+      :name => 'Embed airo_mind_whisper',
       # After the framework exists, so there is somewhere to put it. CocoaPods
       # embeds pod frameworks into the app, which is how the dylib ships.
-      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/embed_runtime.sh"',
+      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/embed_runtime.sh" airo_mind_whisper',
       :execution_position => :after_compile,
-      :input_files  => ['${BUILT_PRODUCTS_DIR}/libairo_mind_runtime.dylib'],
-      :output_files => ['${BUILT_PRODUCTS_DIR}/feature_mind.framework/Resources/libairo_mind_runtime.dylib'],
+      :input_files  => ['${BUILT_PRODUCTS_DIR}/libairo_mind_whisper.dylib'],
+      :output_files => ['${BUILT_PRODUCTS_DIR}/feature_mind.framework/Resources/libairo_mind_whisper.dylib'],
+    },
+    {
+      :name => 'Build airo_mind_llama',
+      # The engines live in the cargo WORKSPACE at <repo>/rust, not inside this
+      # package, so the manifest path climbs out of packages/feature_mind.
+      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/build_runtime_pod.sh" ../../../rust/airo_mind_llama airo_mind_llama',
+      :execution_position => :before_compile,
+      # A phony input keeps Xcode from caching the phase away; cargo does its
+      # own up-to-date checking and is fast when nothing changed.
+      :input_files  => ['${BUILT_PRODUCTS_DIR}/cargokit_phony'],
+      :output_files => ['${BUILT_PRODUCTS_DIR}/libairo_mind_llama.dylib'],
+    },
+    {
+      :name => 'Embed airo_mind_llama',
+      # After the framework exists, so there is somewhere to put it. CocoaPods
+      # embeds pod frameworks into the app, which is how the dylib ships.
+      :script => 'sh "$PODS_TARGET_SRCROOT/../tool/embed_runtime.sh" airo_mind_llama',
+      :execution_position => :after_compile,
+      :input_files  => ['${BUILT_PRODUCTS_DIR}/libairo_mind_llama.dylib'],
+      :output_files => ['${BUILT_PRODUCTS_DIR}/feature_mind.framework/Resources/libairo_mind_llama.dylib'],
     },
   ]
 
