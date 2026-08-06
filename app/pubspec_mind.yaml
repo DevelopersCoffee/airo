@@ -172,6 +172,20 @@ dependency_overrides:
     path: ../packages/stubs/mlkit_image_labeling_stub
   media_kit_libs_android_video:
     path: ../packages/stubs/media_kit_libs_android_video_stub
+  # Same stub pubspec_tv.yaml uses, for the same reason. In this flavour's
+  # dependency set the real package's Android implementation does not resolve,
+  # and the generated registrant then names a class that is not on the compile
+  # classpath:
+  #
+  #   GeneratedPluginRegistrant.java: cannot find symbol
+  #     com.fluttercandies.flutter_image_compress.ImageCompressPlugin
+  #
+  # The cost is bounded and worth stating: image compression becomes a no-op,
+  # so a screenshot attached to a bug report from the Mind flavour is sent at
+  # full size. Nothing on the record -> transcribe -> minutes -> search journey
+  # touches it.
+  flutter_image_compress:
+    path: ../packages/stubs/flutter_image_compress_stub
 
 flutter:
   config:
