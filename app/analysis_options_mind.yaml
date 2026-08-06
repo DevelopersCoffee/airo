@@ -24,8 +24,11 @@
 #     `@visibleForTesting` access inside a directory literally named `test`, so
 #     analysing the Mind suite reports eleven
 #     `invalid_use_of_visible_for_testing_member` warnings for correct code.
-#     The suite is covered by `flutter test test_mind/` in the same CI job,
-#     which compiles every one of those files.
+#     The suite is covered by
+#     `flutter test test_mind/ --dart-define=APP_VARIANT=mind` in the same CI
+#     job, which compiles every one of those files. The define is not optional:
+#     `mind_firebase_variant_test.dart` asserts the Firebase variant selection,
+#     which `String.fromEnvironment` resolves at compile time.
 #   * `custom_lint` is not registered as a plugin -- it is a dev_dependency of
 #     `pubspec.yaml`, not of `pubspec_mind.yaml`, and an unresolvable plugin
 #     turns the whole analysis into a single confusing error.

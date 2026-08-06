@@ -294,7 +294,8 @@ jobs:
       - name: Run Mind shell tests
         run: |
           cd app
-          flutter test test_mind/ --reporter=compact
+          flutter test test_mind/ --reporter=compact \
+            --dart-define=APP_VARIANT=mind
 
       # `flutter test` compiles for the host only. This proves the profile also
       # compiles the entrypoint into a device bundle -- the whole point of
