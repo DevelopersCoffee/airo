@@ -7,7 +7,8 @@
 // Do not commit real Firebase keys into this file.
 //
 // Supports: Mobile Full (io.airo.app), Mobile Streaming
-// (io.airo.app.streaming), Android TV (io.airo.app.tv)
+// (io.airo.app.streaming), Android TV (io.airo.app.tv), Airo Mind
+// (io.airo.app.mind)
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
@@ -19,6 +20,7 @@ enum AppVariant {
   full, // io.airo.app - All features
   streaming, // io.airo.app.streaming - Music + IPTV
   tv, // io.airo.app.tv - IPTV only
+  mind, // io.airo.app.mind - Airo Mind standalone shell
 }
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
@@ -37,6 +39,8 @@ class DefaultFirebaseOptions {
         return AppVariant.tv;
       case 'streaming':
         return AppVariant.streaming;
+      case 'mind':
+        return AppVariant.mind;
       default:
         return AppVariant.full;
     }
@@ -114,6 +118,8 @@ class DefaultFirebaseOptions {
         return androidTv;
       case AppVariant.streaming:
         return androidStreaming;
+      case AppVariant.mind:
+        return androidMind;
       case AppVariant.full:
         return android;
     }
@@ -148,6 +154,22 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions androidTv = FirebaseOptions(
     apiKey: 'YOUR_ANDROID_TV_API_KEY',
     appId: 'YOUR_ANDROID_TV_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
+  );
+
+  /// Airo Mind - io.airo.app.mind
+  ///
+  /// The Mind shell initializes Firebase only for auth parity with the super
+  /// app (the assistant's profile screen signs in with Google). Gradle installs
+  /// this variant as `io.airo.app.mind`, so Dart must hand
+  /// `Firebase.initializeApp` that client's own appId -- handing it the
+  /// `io.airo.app` one instead resolves as a package/signature mismatch and
+  /// Google Sign-In fails with `ApiException: 10`.
+  static const FirebaseOptions androidMind = FirebaseOptions(
+    apiKey: 'YOUR_ANDROID_MIND_API_KEY',
+    appId: 'YOUR_ANDROID_MIND_APP_ID',
     messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
     projectId: 'YOUR_PROJECT_ID',
     storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
