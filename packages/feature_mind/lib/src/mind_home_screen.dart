@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'api/mind.dart' as rust;
+import 'whisper/api/meetings.dart' as rust;
 import 'meeting_screen.dart';
 import 'mind_service.dart';
 

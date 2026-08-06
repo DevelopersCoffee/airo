@@ -1,4 +1,4 @@
-// Cargokit cross-compiles airo_mind_runtime for each Android ABI using the NDK
+// Cargokit cross-compiles the Airo Mind engines for each Android ABI using the NDK
 // as part of the ordinary Gradle build.
 group = "com.developerscoffee.airo.mind"
 version = "0.1.0"
@@ -16,10 +16,14 @@ apply plugin: "com.android.library"
 apply from: "../cargokit/gradle/plugin.gradle"
 
 cargokit {
-    // Relative to this file. The runtime is in the cargo workspace at
-    // <repo>/rust, not inside the package.
-    manifestDir = "../../../rust/airo_mind_runtime"
-    libname = "airo_mind_runtime"
+    // Two libraries, not one. whisper.cpp and llama.cpp each statically vendor
+    // their own ggml with the same symbol names, so a single library holding
+    // both fails to link on Android with 20+ duplicate symbols (#1546).
+    //
+    // Paths are relative to this file. The engines are in the cargo workspace
+    // at <repo>/rust, not inside the package.
+    library("../../../rust/airo_mind_whisper", "airo_mind_whisper")
+    library("../../../rust/airo_mind_llama", "airo_mind_llama")
 }
 
 android {

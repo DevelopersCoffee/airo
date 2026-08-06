@@ -59,13 +59,21 @@ name = "airo_mind_core"
 version = "0.1.0"
 
 [[package]]
-name = "airo_mind_runtime"
+name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
  "encoding_rs",
  "flutter_rust_bridge",
  "llama-cpp-2",
+]
+
+[[package]]
+name = "airo_mind_whisper"
+version = "0.1.0"
+dependencies = [
+ "airo_mind_core",
+ "flutter_rust_bridge",
  "whisper-rs",
 ]
 

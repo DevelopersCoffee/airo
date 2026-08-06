@@ -1,0 +1,14 @@
+# Cargokit reads this from the crate's manifest directory.
+#
+# Without it the crate builds with DEFAULT features, which excludes whisper --
+# and `api` is gated on it, so the library links with zero bridge symbols and
+# the app fails at `RustLib.init` with nothing to explain it. The failure is
+# silent at build time: cargo succeeds, the artefact is produced, and only `nm`
+# shows the problem.
+cargo:
+  debug:
+    extra_flags: ["--features", "whisper"]
+  release:
+    extra_flags: ["--features", "whisper"]
+  profile:
+    extra_flags: ["--features", "whisper"]

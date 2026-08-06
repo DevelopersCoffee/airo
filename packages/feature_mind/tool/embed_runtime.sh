@@ -1,5 +1,11 @@
 #!/bin/sh
-# Puts libairo_mind_runtime.dylib inside feature_mind.framework.
+# Puts an Airo Mind engine dylib inside feature_mind.framework.
+#
+# Usage: embed_runtime.sh <libname>
+#
+# There are two engines -- whisper.cpp and llama.cpp vendor incompatible
+# copies of ggml and cannot share a linked image (#1546) -- so the name is
+# an argument rather than baked in.
 #
 # CocoaPods embeds pod frameworks into the app bundle, so a dylib carried in the
 # framework's Resources ships with the app and needs no separate copy step. That
@@ -10,7 +16,9 @@
 # is a bundle that works exactly once, here.
 set -e
 
-SOURCE="$BUILT_PRODUCTS_DIR/libairo_mind_runtime.dylib"
+LIBNAME="${1:?usage: embed_runtime.sh <libname>}"
+
+SOURCE="$BUILT_PRODUCTS_DIR/lib$LIBNAME.dylib"
 FRAMEWORK="$BUILT_PRODUCTS_DIR/feature_mind.framework"
 DEST="$FRAMEWORK/Resources"
 
@@ -25,13 +33,13 @@ if [ ! -d "$FRAMEWORK" ]; then
 fi
 
 mkdir -p "$DEST"
-cp "$SOURCE" "$DEST/libairo_mind_runtime.dylib"
-install_name_tool -id "@rpath/libairo_mind_runtime.dylib" \
-  "$DEST/libairo_mind_runtime.dylib"
+cp "$SOURCE" "$DEST/lib$LIBNAME.dylib"
+install_name_tool -id "@rpath/lib$LIBNAME.dylib" \
+  "$DEST/lib$LIBNAME.dylib"
 
 # Re-signed because changing the install name invalidates whatever signature
 # cargo's linker left, and macOS refuses to load a dylib whose signature does
 # not match its contents.
-codesign --force --sign - "$DEST/libairo_mind_runtime.dylib" 2>/dev/null || true
+codesign --force --sign - "$DEST/lib$LIBNAME.dylib" 2>/dev/null || true
 
 echo "==> Embedded $(basename "$SOURCE") in feature_mind.framework"

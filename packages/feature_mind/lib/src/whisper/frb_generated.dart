@@ -3,7 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/mind.dart';
+import 'api/meetings.dart';
 import 'api/setup.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -65,36 +65,44 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -425026298;
+  int get rustContentHash => 77687079;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'airo_mind_runtime',
-        ioDirectory: '../../rust/airo_mind_runtime/target/release/',
+        stem: 'airo_mind_whisper',
+        ioDirectory: '../../rust/airo_mind_whisper/target/release/',
         webPrefix: 'pkg/',
       );
 }
 
 abstract class RustLibApi extends BaseApi {
-  void crateApiMindCancelProcessing();
+  void crateApiMeetingsCancelProcessing();
 
-  Future<MeetingRecord?> crateApiMindGetMeeting({required String id});
+  Future<MeetingRecord?> crateApiMeetingsGetMeeting({required String id});
 
-  Future<void> crateApiMindInitialize({required MindConfig config});
+  Future<void> crateApiMeetingsInitialize({required MindConfig config});
 
-  bool crateApiMindIsReady();
+  bool crateApiMeetingsIsReady();
 
-  Future<List<MeetingRecord>> crateApiMindListMeetings();
-
-  Stream<ProcessingEvent> crateApiMindProcessRecording({
-    required String wavPath,
-    required String title,
-    required BigInt recordedAtMs,
-  });
+  Future<List<MeetingRecord>> crateApiMeetingsListMeetings();
 
   Future<List<RequiredModel>> crateApiSetupRequiredModels();
 
-  Future<List<SearchHit>> crateApiMindSearchMeetings({required String query});
+  Future<String> crateApiMeetingsSaveMeeting({
+    required String title,
+    required BigInt recordedAtMs,
+    required String transcript,
+    required String minutes,
+    required String model,
+  });
+
+  Future<List<SearchHit>> crateApiMeetingsSearchMeetings({
+    required String query,
+  });
+
+  Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
+    required String wavPath,
+  });
 
   Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
     required String modelsDir,
@@ -110,7 +118,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  void crateApiMindCancelProcessing() {
+  void crateApiMeetingsCancelProcessing() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -121,18 +129,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiMindCancelProcessingConstMeta,
+        constMeta: kCrateApiMeetingsCancelProcessingConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindCancelProcessingConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsCancelProcessingConstMeta =>
       const TaskConstMeta(debugName: "cancel_processing", argNames: []);
 
   @override
-  Future<MeetingRecord?> crateApiMindGetMeeting({required String id}) {
+  Future<MeetingRecord?> crateApiMeetingsGetMeeting({required String id}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -149,18 +157,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_opt_box_autoadd_meeting_record,
           decodeErrorData: sse_decode_String,
         ),
-        constMeta: kCrateApiMindGetMeetingConstMeta,
+        constMeta: kCrateApiMeetingsGetMeetingConstMeta,
         argValues: [id],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindGetMeetingConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsGetMeetingConstMeta =>
       const TaskConstMeta(debugName: "get_meeting", argNames: ["id"]);
 
   @override
-  Future<void> crateApiMindInitialize({required MindConfig config}) {
+  Future<void> crateApiMeetingsInitialize({required MindConfig config}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -177,18 +185,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_String,
         ),
-        constMeta: kCrateApiMindInitializeConstMeta,
+        constMeta: kCrateApiMeetingsInitializeConstMeta,
         argValues: [config],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindInitializeConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsInitializeConstMeta =>
       const TaskConstMeta(debugName: "initialize", argNames: ["config"]);
 
   @override
-  bool crateApiMindIsReady() {
+  bool crateApiMeetingsIsReady() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -199,18 +207,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_bool,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiMindIsReadyConstMeta,
+        constMeta: kCrateApiMeetingsIsReadyConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindIsReadyConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsIsReadyConstMeta =>
       const TaskConstMeta(debugName: "is_ready", argNames: []);
 
   @override
-  Future<List<MeetingRecord>> crateApiMindListMeetings() {
+  Future<List<MeetingRecord>> crateApiMeetingsListMeetings() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -226,57 +234,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_meeting_record,
           decodeErrorData: sse_decode_String,
         ),
-        constMeta: kCrateApiMindListMeetingsConstMeta,
+        constMeta: kCrateApiMeetingsListMeetingsConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindListMeetingsConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsListMeetingsConstMeta =>
       const TaskConstMeta(debugName: "list_meetings", argNames: []);
-
-  @override
-  Stream<ProcessingEvent> crateApiMindProcessRecording({
-    required String wavPath,
-    required String title,
-    required BigInt recordedAtMs,
-  }) {
-    final sink = RustStreamSink<ProcessingEvent>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_String(wavPath, serializer);
-            sse_encode_String(title, serializer);
-            sse_encode_u_64(recordedAtMs, serializer);
-            sse_encode_StreamSink_processing_event_Sse(sink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 6,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_String,
-          ),
-          constMeta: kCrateApiMindProcessRecordingConstMeta,
-          argValues: [wavPath, title, recordedAtMs, sink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return sink.stream;
-  }
-
-  TaskConstMeta get kCrateApiMindProcessRecordingConstMeta =>
-      const TaskConstMeta(
-        debugName: "process_recording",
-        argNames: ["wavPath", "title", "recordedAtMs", "sink"],
-      );
 
   @override
   Future<List<RequiredModel>> crateApiSetupRequiredModels() {
@@ -287,7 +253,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 6,
             port: port_,
           );
         },
@@ -306,7 +272,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "required_models", argNames: []);
 
   @override
-  Future<List<SearchHit>> crateApiMindSearchMeetings({required String query}) {
+  Future<String> crateApiMeetingsSaveMeeting({
+    required String title,
+    required BigInt recordedAtMs,
+    required String transcript,
+    required String minutes,
+    required String model,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(title, serializer);
+          sse_encode_u_64(recordedAtMs, serializer);
+          sse_encode_String(transcript, serializer);
+          sse_encode_String(minutes, serializer);
+          sse_encode_String(model, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMeetingsSaveMeetingConstMeta,
+        argValues: [title, recordedAtMs, transcript, minutes, model],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSaveMeetingConstMeta =>
+      const TaskConstMeta(
+        debugName: "save_meeting",
+        argNames: ["title", "recordedAtMs", "transcript", "minutes", "model"],
+      );
+
+  @override
+  Future<List<SearchHit>> crateApiMeetingsSearchMeetings({
+    required String query,
+  }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -323,15 +332,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_search_hit,
           decodeErrorData: sse_decode_String,
         ),
-        constMeta: kCrateApiMindSearchMeetingsConstMeta,
+        constMeta: kCrateApiMeetingsSearchMeetingsConstMeta,
         argValues: [query],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiMindSearchMeetingsConstMeta =>
+  TaskConstMeta get kCrateApiMeetingsSearchMeetingsConstMeta =>
       const TaskConstMeta(debugName: "search_meetings", argNames: ["query"]);
+
+  @override
+  Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
+    required String wavPath,
+  }) {
+    final sink = RustStreamSink<TranscriptEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_String(wavPath, serializer);
+            sse_encode_StreamSink_transcript_event_Sse(sink, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 9,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_String,
+          ),
+          constMeta: kCrateApiMeetingsTranscribeRecordingConstMeta,
+          argValues: [wavPath, sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta get kCrateApiMeetingsTranscribeRecordingConstMeta =>
+      const TaskConstMeta(
+        debugName: "transcribe_recording",
+        argNames: ["wavPath", "sink"],
+      );
 
   @override
   Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
@@ -345,7 +392,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -373,7 +420,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<ProcessingEvent> dco_decode_StreamSink_processing_event_Sse(
+  RustStreamSink<TranscriptEvent> dco_decode_StreamSink_transcript_event_Sse(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -484,27 +531,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ProcessingEvent dco_decode_processing_event(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return ProcessingEvent_Transcribing(text: dco_decode_String(raw[1]));
-      case 1:
-        return ProcessingEvent_TranscriptReady(text: dco_decode_String(raw[1]));
-      case 2:
-        return ProcessingEvent_Generating(text: dco_decode_String(raw[1]));
-      case 3:
-        return ProcessingEvent_MinutesReady(text: dco_decode_String(raw[1]));
-      case 4:
-        return ProcessingEvent_Saved(meetingId: dco_decode_String(raw[1]));
-      case 5:
-        return ProcessingEvent_Cancelled();
-      default:
-        throw Exception("unreachable");
-    }
-  }
-
-  @protected
   RequiredModel dco_decode_required_model(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -529,6 +555,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       recordedAt: dco_decode_u_64(arr[2]),
       snippet: dco_decode_String(arr[3]),
     );
+  }
+
+  @protected
+  TranscriptEvent dco_decode_transcript_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return TranscriptEvent_Transcribing(text: dco_decode_String(raw[1]));
+      case 1:
+        return TranscriptEvent_TranscriptReady(text: dco_decode_String(raw[1]));
+      case 2:
+        return TranscriptEvent_Cancelled();
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -563,7 +604,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<ProcessingEvent> sse_decode_StreamSink_processing_event_Sse(
+  RustStreamSink<TranscriptEvent> sse_decode_StreamSink_transcript_event_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -719,34 +760,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ProcessingEvent sse_decode_processing_event(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_text = sse_decode_String(deserializer);
-        return ProcessingEvent_Transcribing(text: var_text);
-      case 1:
-        var var_text = sse_decode_String(deserializer);
-        return ProcessingEvent_TranscriptReady(text: var_text);
-      case 2:
-        var var_text = sse_decode_String(deserializer);
-        return ProcessingEvent_Generating(text: var_text);
-      case 3:
-        var var_text = sse_decode_String(deserializer);
-        return ProcessingEvent_MinutesReady(text: var_text);
-      case 4:
-        var var_meetingId = sse_decode_String(deserializer);
-        return ProcessingEvent_Saved(meetingId: var_meetingId);
-      case 5:
-        return ProcessingEvent_Cancelled();
-      default:
-        throw UnimplementedError('');
-    }
-  }
-
-  @protected
   RequiredModel sse_decode_required_model(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_fileName = sse_decode_String(deserializer);
@@ -772,6 +785,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       recordedAt: var_recordedAt,
       snippet: var_snippet,
     );
+  }
+
+  @protected
+  TranscriptEvent sse_decode_transcript_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_text = sse_decode_String(deserializer);
+        return TranscriptEvent_Transcribing(text: var_text);
+      case 1:
+        var var_text = sse_decode_String(deserializer);
+        return TranscriptEvent_TranscriptReady(text: var_text);
+      case 2:
+        return TranscriptEvent_Cancelled();
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -813,15 +845,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_processing_event_Sse(
-    RustStreamSink<ProcessingEvent> self,
+  void sse_encode_StreamSink_transcript_event_Sse(
+    RustStreamSink<TranscriptEvent> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(
       self.setupAndSerialize(
         codec: SseCodec(
-          decodeSuccessData: sse_decode_processing_event,
+          decodeSuccessData: sse_decode_transcript_event,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -962,33 +994,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_processing_event(
-    ProcessingEvent self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case ProcessingEvent_Transcribing(text: final text):
-        sse_encode_i_32(0, serializer);
-        sse_encode_String(text, serializer);
-      case ProcessingEvent_TranscriptReady(text: final text):
-        sse_encode_i_32(1, serializer);
-        sse_encode_String(text, serializer);
-      case ProcessingEvent_Generating(text: final text):
-        sse_encode_i_32(2, serializer);
-        sse_encode_String(text, serializer);
-      case ProcessingEvent_MinutesReady(text: final text):
-        sse_encode_i_32(3, serializer);
-        sse_encode_String(text, serializer);
-      case ProcessingEvent_Saved(meetingId: final meetingId):
-        sse_encode_i_32(4, serializer);
-        sse_encode_String(meetingId, serializer);
-      case ProcessingEvent_Cancelled():
-        sse_encode_i_32(5, serializer);
-    }
-  }
-
-  @protected
   void sse_encode_required_model(RequiredModel self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.fileName, serializer);
@@ -1003,6 +1008,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.title, serializer);
     sse_encode_u_64(self.recordedAt, serializer);
     sse_encode_String(self.snippet, serializer);
+  }
+
+  @protected
+  void sse_encode_transcript_event(
+    TranscriptEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case TranscriptEvent_Transcribing(text: final text):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(text, serializer);
+      case TranscriptEvent_TranscriptReady(text: final text):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(text, serializer);
+      case TranscriptEvent_Cancelled():
+        sse_encode_i_32(2, serializer);
+    }
   }
 
   @protected

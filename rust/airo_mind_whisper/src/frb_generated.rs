@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -425026298;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 77687079;
 
 // Section: executor
 
@@ -45,7 +45,7 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__mind__cancel_processing_impl(
+fn wire__crate__api__meetings__cancel_processing_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -69,14 +69,14 @@ fn wire__crate__api__mind__cancel_processing_impl(
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok({
-                    crate::api::mind::cancel_processing();
+                    crate::api::meetings::cancel_processing();
                 })?;
                 Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__mind__get_meeting_impl(
+fn wire__crate__api__meetings__get_meeting_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -102,14 +102,14 @@ fn wire__crate__api__mind__get_meeting_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::mind::get_meeting(api_id)?;
+                    let output_ok = crate::api::meetings::get_meeting(api_id)?;
                     Ok(output_ok)
                 })())
             }
         },
     )
 }
-fn wire__crate__api__mind__initialize_impl(
+fn wire__crate__api__meetings__initialize_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -131,18 +131,18 @@ fn wire__crate__api__mind__initialize_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_config = <crate::api::mind::MindConfig>::sse_decode(&mut deserializer);
+            let api_config = <crate::api::meetings::MindConfig>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::mind::initialize(api_config)?;
+                    let output_ok = crate::api::meetings::initialize(api_config)?;
                     Ok(output_ok)
                 })())
             }
         },
     )
 }
-fn wire__crate__api__mind__is_ready_impl(
+fn wire__crate__api__meetings__is_ready_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -165,13 +165,13 @@ fn wire__crate__api__mind__is_ready_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::mind::is_ready())?;
+                let output_ok = Result::<_, ()>::Ok(crate::api::meetings::is_ready())?;
                 Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__mind__list_meetings_impl(
+fn wire__crate__api__meetings__list_meetings_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -196,51 +196,7 @@ fn wire__crate__api__mind__list_meetings_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::mind::list_meetings()?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__mind__process_recording_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "process_recording",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_wav_path = <String>::sse_decode(&mut deserializer);
-            let api_title = <String>::sse_decode(&mut deserializer);
-            let api_recorded_at_ms = <u64>::sse_decode(&mut deserializer);
-            let api_sink = <StreamSink<
-                crate::api::mind::ProcessingEvent,
-                flutter_rust_bridge::for_generated::SseCodec,
-            >>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::mind::process_recording(
-                        api_wav_path,
-                        api_title,
-                        api_recorded_at_ms,
-                        api_sink,
-                    )?;
+                    let output_ok = crate::api::meetings::list_meetings()?;
                     Ok(output_ok)
                 })())
             }
@@ -279,7 +235,50 @@ fn wire__crate__api__setup__required_models_impl(
         },
     )
 }
-fn wire__crate__api__mind__search_meetings_impl(
+fn wire__crate__api__meetings__save_meeting_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "save_meeting",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_title = <String>::sse_decode(&mut deserializer);
+            let api_recorded_at_ms = <u64>::sse_decode(&mut deserializer);
+            let api_transcript = <String>::sse_decode(&mut deserializer);
+            let api_minutes = <String>::sse_decode(&mut deserializer);
+            let api_model = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::meetings::save_meeting(
+                        api_title,
+                        api_recorded_at_ms,
+                        api_transcript,
+                        api_minutes,
+                        api_model,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__search_meetings_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -305,7 +304,45 @@ fn wire__crate__api__mind__search_meetings_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::mind::search_meetings(api_query)?;
+                    let output_ok = crate::api::meetings::search_meetings(api_query)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__transcribe_recording_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "transcribe_recording",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_wav_path = <String>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::meetings::TranscriptEvent,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::meetings::transcribe_recording(api_wav_path, api_sink)?;
                     Ok(output_ok)
                 })())
             }
@@ -359,7 +396,10 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
 }
 
 impl SseDecode
-    for StreamSink<crate::api::mind::ProcessingEvent, flutter_rust_bridge::for_generated::SseCodec>
+    for StreamSink<
+        crate::api::meetings::TranscriptEvent,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -413,13 +453,15 @@ impl SseDecode for Vec<crate::api::setup::InstalledModel> {
     }
 }
 
-impl SseDecode for Vec<crate::api::mind::MeetingRecord> {
+impl SseDecode for Vec<crate::api::meetings::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::mind::MeetingRecord>::sse_decode(deserializer));
+            ans_.push(<crate::api::meetings::MeetingRecord>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -449,19 +491,19 @@ impl SseDecode for Vec<crate::api::setup::RequiredModel> {
     }
 }
 
-impl SseDecode for Vec<crate::api::mind::SearchHit> {
+impl SseDecode for Vec<crate::api::meetings::SearchHit> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::mind::SearchHit>::sse_decode(deserializer));
+            ans_.push(<crate::api::meetings::SearchHit>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for crate::api::mind::MeetingRecord {
+impl SseDecode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
@@ -470,7 +512,7 @@ impl SseDecode for crate::api::mind::MeetingRecord {
         let mut var_transcript = <String>::sse_decode(deserializer);
         let mut var_minutes = <String>::sse_decode(deserializer);
         let mut var_model = <String>::sse_decode(deserializer);
-        return crate::api::mind::MeetingRecord {
+        return crate::api::meetings::MeetingRecord {
             id: var_id,
             title: var_title,
             recorded_at: var_recordedAt,
@@ -481,13 +523,13 @@ impl SseDecode for crate::api::mind::MeetingRecord {
     }
 }
 
-impl SseDecode for crate::api::mind::MindConfig {
+impl SseDecode for crate::api::meetings::MindConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_modelsDir = <String>::sse_decode(deserializer);
         let mut var_storePath = <String>::sse_decode(deserializer);
         let mut var_memoryBudgetMb = <u32>::sse_decode(deserializer);
-        return crate::api::mind::MindConfig {
+        return crate::api::meetings::MindConfig {
             models_dir: var_modelsDir,
             store_path: var_storePath,
             memory_budget_mb: var_memoryBudgetMb,
@@ -495,50 +537,15 @@ impl SseDecode for crate::api::mind::MindConfig {
     }
 }
 
-impl SseDecode for Option<crate::api::mind::MeetingRecord> {
+impl SseDecode for Option<crate::api::meetings::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::api::mind::MeetingRecord>::sse_decode(deserializer));
+            return Some(<crate::api::meetings::MeetingRecord>::sse_decode(
+                deserializer,
+            ));
         } else {
             return None;
-        }
-    }
-}
-
-impl SseDecode for crate::api::mind::ProcessingEvent {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut tag_ = <i32>::sse_decode(deserializer);
-        match tag_ {
-            0 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::mind::ProcessingEvent::Transcribing { text: var_text };
-            }
-            1 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::mind::ProcessingEvent::TranscriptReady { text: var_text };
-            }
-            2 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::mind::ProcessingEvent::Generating { text: var_text };
-            }
-            3 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::mind::ProcessingEvent::MinutesReady { text: var_text };
-            }
-            4 => {
-                let mut var_meetingId = <String>::sse_decode(deserializer);
-                return crate::api::mind::ProcessingEvent::Saved {
-                    meeting_id: var_meetingId,
-                };
-            }
-            5 => {
-                return crate::api::mind::ProcessingEvent::Cancelled;
-            }
-            _ => {
-                unimplemented!("");
-            }
         }
     }
 }
@@ -557,19 +564,42 @@ impl SseDecode for crate::api::setup::RequiredModel {
     }
 }
 
-impl SseDecode for crate::api::mind::SearchHit {
+impl SseDecode for crate::api::meetings::SearchHit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_meetingId = <String>::sse_decode(deserializer);
         let mut var_title = <String>::sse_decode(deserializer);
         let mut var_recordedAt = <u64>::sse_decode(deserializer);
         let mut var_snippet = <String>::sse_decode(deserializer);
-        return crate::api::mind::SearchHit {
+        return crate::api::meetings::SearchHit {
             meeting_id: var_meetingId,
             title: var_title,
             recorded_at: var_recordedAt,
             snippet: var_snippet,
         };
+    }
+}
+
+impl SseDecode for crate::api::meetings::TranscriptEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_text = <String>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::Transcribing { text: var_text };
+            }
+            1 => {
+                let mut var_text = <String>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::TranscriptReady { text: var_text };
+            }
+            2 => {
+                return crate::api::meetings::TranscriptEvent::Cancelled;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -615,13 +645,16 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        2 => wire__crate__api__mind__get_meeting_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__mind__initialize_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__mind__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__mind__process_recording_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__mind__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
         9 => {
+            wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
+        }
+        10 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -636,8 +669,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__mind__cancel_processing_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__mind__is_ready_impl(ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -668,7 +701,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::setup::InstalledModel>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mind::MeetingRecord {
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingRecord {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.id.into_into_dart().into_dart(),
@@ -682,18 +715,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::mind::MeetingRecord {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::mind::MeetingRecord
+    for crate::api::meetings::MeetingRecord
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::MeetingRecord>
-    for crate::api::mind::MeetingRecord
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingRecord>
+    for crate::api::meetings::MeetingRecord
 {
-    fn into_into_dart(self) -> crate::api::mind::MeetingRecord {
+    fn into_into_dart(self) -> crate::api::meetings::MeetingRecord {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mind::MindConfig {
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MindConfig {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.models_dir.into_into_dart().into_dart(),
@@ -703,48 +736,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::mind::MindConfig {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::mind::MindConfig {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::MindConfig>
-    for crate::api::mind::MindConfig
-{
-    fn into_into_dart(self) -> crate::api::mind::MindConfig {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mind::ProcessingEvent {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            crate::api::mind::ProcessingEvent::Transcribing { text } => {
-                [0.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::mind::ProcessingEvent::TranscriptReady { text } => {
-                [1.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::mind::ProcessingEvent::Generating { text } => {
-                [2.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::mind::ProcessingEvent::MinutesReady { text } => {
-                [3.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::mind::ProcessingEvent::Saved { meeting_id } => {
-                [4.into_dart(), meeting_id.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::mind::ProcessingEvent::Cancelled => [5.into_dart()].into_dart(),
-            _ => {
-                unimplemented!("");
-            }
-        }
-    }
-}
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::mind::ProcessingEvent
+    for crate::api::meetings::MindConfig
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::ProcessingEvent>
-    for crate::api::mind::ProcessingEvent
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MindConfig>
+    for crate::api::meetings::MindConfig
 {
-    fn into_into_dart(self) -> crate::api::mind::ProcessingEvent {
+    fn into_into_dart(self) -> crate::api::meetings::MindConfig {
         self
     }
 }
@@ -771,7 +770,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::setup::RequiredModel>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::mind::SearchHit {
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::SearchHit {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.meeting_id.into_into_dart().into_dart(),
@@ -782,11 +781,42 @@ impl flutter_rust_bridge::IntoDart for crate::api::mind::SearchHit {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::mind::SearchHit {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::mind::SearchHit>
-    for crate::api::mind::SearchHit
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::SearchHit
 {
-    fn into_into_dart(self) -> crate::api::mind::SearchHit {
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::SearchHit>
+    for crate::api::meetings::SearchHit
+{
+    fn into_into_dart(self) -> crate::api::meetings::SearchHit {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
+                [0.into_dart(), text.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
+                [1.into_dart(), text.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::meetings::TranscriptEvent::Cancelled => [2.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptEvent
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptEvent>
+    for crate::api::meetings::TranscriptEvent
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptEvent {
         self
     }
 }
@@ -799,7 +829,10 @@ impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
 }
 
 impl SseEncode
-    for StreamSink<crate::api::mind::ProcessingEvent, flutter_rust_bridge::for_generated::SseCodec>
+    for StreamSink<
+        crate::api::meetings::TranscriptEvent,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -841,12 +874,12 @@ impl SseEncode for Vec<crate::api::setup::InstalledModel> {
     }
 }
 
-impl SseEncode for Vec<crate::api::mind::MeetingRecord> {
+impl SseEncode for Vec<crate::api::meetings::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::mind::MeetingRecord>::sse_encode(item, serializer);
+            <crate::api::meetings::MeetingRecord>::sse_encode(item, serializer);
         }
     }
 }
@@ -871,17 +904,17 @@ impl SseEncode for Vec<crate::api::setup::RequiredModel> {
     }
 }
 
-impl SseEncode for Vec<crate::api::mind::SearchHit> {
+impl SseEncode for Vec<crate::api::meetings::SearchHit> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::mind::SearchHit>::sse_encode(item, serializer);
+            <crate::api::meetings::SearchHit>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for crate::api::mind::MeetingRecord {
+impl SseEncode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
@@ -893,7 +926,7 @@ impl SseEncode for crate::api::mind::MeetingRecord {
     }
 }
 
-impl SseEncode for crate::api::mind::MindConfig {
+impl SseEncode for crate::api::meetings::MindConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.models_dir, serializer);
@@ -902,46 +935,12 @@ impl SseEncode for crate::api::mind::MindConfig {
     }
 }
 
-impl SseEncode for Option<crate::api::mind::MeetingRecord> {
+impl SseEncode for Option<crate::api::meetings::MeetingRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <crate::api::mind::MeetingRecord>::sse_encode(value, serializer);
-        }
-    }
-}
-
-impl SseEncode for crate::api::mind::ProcessingEvent {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        match self {
-            crate::api::mind::ProcessingEvent::Transcribing { text } => {
-                <i32>::sse_encode(0, serializer);
-                <String>::sse_encode(text, serializer);
-            }
-            crate::api::mind::ProcessingEvent::TranscriptReady { text } => {
-                <i32>::sse_encode(1, serializer);
-                <String>::sse_encode(text, serializer);
-            }
-            crate::api::mind::ProcessingEvent::Generating { text } => {
-                <i32>::sse_encode(2, serializer);
-                <String>::sse_encode(text, serializer);
-            }
-            crate::api::mind::ProcessingEvent::MinutesReady { text } => {
-                <i32>::sse_encode(3, serializer);
-                <String>::sse_encode(text, serializer);
-            }
-            crate::api::mind::ProcessingEvent::Saved { meeting_id } => {
-                <i32>::sse_encode(4, serializer);
-                <String>::sse_encode(meeting_id, serializer);
-            }
-            crate::api::mind::ProcessingEvent::Cancelled => {
-                <i32>::sse_encode(5, serializer);
-            }
-            _ => {
-                unimplemented!("");
-            }
+            <crate::api::meetings::MeetingRecord>::sse_encode(value, serializer);
         }
     }
 }
@@ -955,13 +954,35 @@ impl SseEncode for crate::api::setup::RequiredModel {
     }
 }
 
-impl SseEncode for crate::api::mind::SearchHit {
+impl SseEncode for crate::api::meetings::SearchHit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.meeting_id, serializer);
         <String>::sse_encode(self.title, serializer);
         <u64>::sse_encode(self.recorded_at, serializer);
         <String>::sse_encode(self.snippet, serializer);
+    }
+}
+
+impl SseEncode for crate::api::meetings::TranscriptEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(text, serializer);
+            }
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(text, serializer);
+            }
+            crate::api::meetings::TranscriptEvent::Cancelled => {
+                <i32>::sse_encode(2, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 

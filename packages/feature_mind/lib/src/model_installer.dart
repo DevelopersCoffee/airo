@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
-import 'api/setup.dart' as rust;
+import 'whisper/api/setup.dart' as rust;
 
 /// Puts the bundled models on disk. `ADR-0018 §2`, the **Bundled** strategy.
 ///
