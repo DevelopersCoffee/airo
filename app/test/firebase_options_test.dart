@@ -24,7 +24,7 @@ void main() {
       );
     });
 
-    test('marks real Firebase app ids as configured', () {
+    test('marks the provisioned Android app ids as configured', () {
       if (usingPlaceholderConfig) {
         markTestSkipped(
           'firebase_options.dart is the placeholder template -- no '
@@ -32,16 +32,23 @@ void main() {
         );
         return;
       }
-      expect(
-        DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.web),
-        isTrue,
-      );
+      // Android only. FIREBASE_OPTIONS_DART_B64 carries real values for the
+      // three registered Android clients; `web`, `ios`, `macos`, `windows` and
+      // `androidStreaming` are still placeholders because those apps are not
+      // registered in the Firebase project. `usingPlaceholderConfig` is read
+      // off `android`, so asserting `web` here would fail the moment the
+      // Android clients alone were provisioned -- which is exactly what
+      // happened.
       expect(
         DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.android),
         isTrue,
       );
       expect(
         DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.androidTv),
+        isTrue,
+      );
+      expect(
+        DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.androidMind),
         isTrue,
       );
     });
@@ -60,12 +67,21 @@ void main() {
       );
     });
 
-    test('selects the supported full, streaming, and TV variants', () {
+    test('selects the supported full, streaming, TV, and Mind variants', () {
       expect(
         AppVariant.values,
-        containsAll([AppVariant.full, AppVariant.streaming, AppVariant.tv]),
+        containsAll([
+          AppVariant.full,
+          AppVariant.streaming,
+          AppVariant.tv,
+          AppVariant.mind,
+        ]),
       );
-      expect(AppVariant.values, hasLength(3));
+      // Exact length, not just containsAll: a new variant needs a matching
+      // `_getAndroidOptions()` arm and its own registered Firebase client, or
+      // it silently initializes as `io.airo.app` and Google Sign-In fails with
+      // `ApiException: 10` on device. Failing here is the cheap reminder.
+      expect(AppVariant.values, hasLength(4));
     });
   });
 }
