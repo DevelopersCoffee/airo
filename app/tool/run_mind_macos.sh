@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds and runs Airo Mind on macOS.
 #
-# Cargokit compiles, links and signs airo_mind_runtime as part of the Flutter
+# Cargokit compiles, links and signs the Airo Mind engines as part of the Flutter
 # build, so this script does not touch the Rust. It fetches the bundled model
 # weights -- which are not in git -- and then builds.
 #

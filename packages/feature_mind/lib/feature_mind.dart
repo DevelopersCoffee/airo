@@ -5,12 +5,18 @@
 /// recorder** is what shipped before the runtime existed, and it keeps working
 /// while milestone 22 builds the real surfaces around it.
 ///
-/// The generated bridge is not exported and must not be reached: a consumer
-/// that imports `src/api/` or `frb_generated` has coupled itself to a code
-/// generator's output. Only `rust_mind_runtime.dart` may touch it.
+/// The generated bridges are not exported and must not be reached: a consumer
+/// that imports `src/whisper/`, `src/llama/` or `frb_generated` has coupled
+/// itself to a code generator's output. Only `rust_mind_runtime.dart` may touch
+/// them.
+///
+/// There are two bridges because there are two engine libraries — whisper.cpp
+/// and llama.cpp vendor incompatible copies of ggml and cannot share a linked
+/// image (#1546). That split is an implementation detail: it stops at
+/// `MindService`, and the names exported here are unchanged.
 library;
 
-export 'src/api/mind.dart' show MeetingRecord, SearchHit;
+export 'src/whisper/api/meetings.dart' show MeetingRecord, SearchHit;
 export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'

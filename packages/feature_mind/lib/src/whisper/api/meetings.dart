@@ -6,59 +6,83 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-part 'mind.freezed.dart';
+part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `lock`, `minutes_prompt`
+// These functions are ignored because they are not marked as `pub`: `lock`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
-/// Loads both models and opens the store. Safe to call again — a Flutter hot
-/// restart runs it a second time, and refusing would make development require a
-/// full relaunch.
+/// Loads the speech model and opens the store. Safe to call again — a Flutter
+/// hot restart runs it a second time, and refusing would make development
+/// require a full relaunch.
 ///
 /// A missing model is an ordinary error carrying the path, because on a real
 /// device it is the most likely failure and the user can act on it.
 Future<void> initialize({required MindConfig config}) =>
-    RustLib.instance.api.crateApiMindInitialize(config: config);
+    RustLib.instance.api.crateApiMeetingsInitialize(config: config);
 
 /// True once `initialize` has succeeded. Lets the UI show why it cannot record
 /// instead of failing at the moment the user presses the button.
-bool isReady() => RustLib.instance.api.crateApiMindIsReady();
+bool isReady() => RustLib.instance.api.crateApiMeetingsIsReady();
 
-/// Recording → transcript → minutes → saved, streaming throughout.
+/// Recording → transcript, streaming throughout.
 ///
-/// The whole of steps 2–5 of the milestone journey. Runs on a
-/// `flutter_rust_bridge` worker thread, never the Dart main isolate.
-Stream<ProcessingEvent> processRecording({
-  required String wavPath,
+/// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
+/// The caller takes the transcript on to generation, which lives in the other
+/// library.
+Stream<TranscriptEvent> transcribeRecording({required String wavPath}) =>
+    RustLib.instance.api.crateApiMeetingsTranscribeRecording(wavPath: wavPath);
+
+/// Makes a meeting durable and searchable. Returns its id.
+///
+/// Separate from transcription because the minutes come from the other library.
+/// The ordering below is a contract, not an implementation detail: an index
+/// entry for a meeting the store does not hold is a search result that opens
+/// nothing. Keeping it here rather than in Dart is deliberate — the caller
+/// sequences the pipeline, but it does not get to sequence durability.
+///
+/// `model` is the logical identity and version of whatever produced `minutes`
+/// (`ADR-0018 §5`), supplied by the generation library. An LLM is not
+/// deterministic across versions, so what produced a summary is stored, not
+/// inferred later.
+Future<String> saveMeeting({
   required String title,
   required BigInt recordedAtMs,
-}) => RustLib.instance.api.crateApiMindProcessRecording(
-  wavPath: wavPath,
+  required String transcript,
+  required String minutes,
+  required String model,
+}) => RustLib.instance.api.crateApiMeetingsSaveMeeting(
   title: title,
   recordedAtMs: recordedAtMs,
+  transcript: transcript,
+  minutes: minutes,
+  model: model,
 );
 
-/// Stops the in-flight job at the next segment or token.
-void cancelProcessing() => RustLib.instance.api.crateApiMindCancelProcessing();
+/// Stops the in-flight transcription at the next segment.
+///
+/// Only this library's job. Dart cancels generation through the other library —
+/// two engines, two admission controls, two cancellations.
+void cancelProcessing() =>
+    RustLib.instance.api.crateApiMeetingsCancelProcessing();
 
 /// Every meeting, newest first.
 Future<List<MeetingRecord>> listMeetings() =>
-    RustLib.instance.api.crateApiMindListMeetings();
+    RustLib.instance.api.crateApiMeetingsListMeetings();
 
 /// Step 7 of the journey. Searches transcripts and minutes.
 Future<List<SearchHit>> searchMeetings({required String query}) =>
-    RustLib.instance.api.crateApiMindSearchMeetings(query: query);
+    RustLib.instance.api.crateApiMeetingsSearchMeetings(query: query);
 
 /// Step 8. Opens one meeting.
 Future<MeetingRecord?> getMeeting({required String id}) =>
-    RustLib.instance.api.crateApiMindGetMeeting(id: id);
+    RustLib.instance.api.crateApiMeetingsGetMeeting(id: id);
 
 /// A stored meeting, flattened for the bridge.
 ///
-/// Deliberately not `crate::Meeting` re-exported: the wire contract and the
-/// storage record are allowed to diverge, and coupling them means a storage
-/// change becomes a Dart change.
+/// Deliberately not `Meeting` re-exported: the wire contract and the storage
+/// record are allowed to diverge, and coupling them means a storage change
+/// becomes a Dart change.
 class MeetingRecord {
   final String id;
   final String title;
@@ -131,32 +155,6 @@ class MindConfig {
           memoryBudgetMb == other.memoryBudgetMb;
 }
 
-@freezed
-sealed class ProcessingEvent with _$ProcessingEvent {
-  const ProcessingEvent._();
-
-  /// One transcript segment, as whisper produced it.
-  const factory ProcessingEvent.transcribing({required String text}) =
-      ProcessingEvent_Transcribing;
-
-  /// The joined transcript. The UI can stop appending and start displaying.
-  const factory ProcessingEvent.transcriptReady({required String text}) =
-      ProcessingEvent_TranscriptReady;
-
-  /// One token, as llama produced it.
-  const factory ProcessingEvent.generating({required String text}) =
-      ProcessingEvent_Generating;
-  const factory ProcessingEvent.minutesReady({required String text}) =
-      ProcessingEvent_MinutesReady;
-
-  /// Durable. Only after this is the meeting reopenable.
-  const factory ProcessingEvent.saved({required String meetingId}) =
-      ProcessingEvent_Saved;
-
-  /// The user navigated away. Nothing was saved.
-  const factory ProcessingEvent.cancelled() = ProcessingEvent_Cancelled;
-}
-
 /// A search result, with the line that matched.
 class SearchHit {
   final String meetingId;
@@ -187,4 +185,20 @@ class SearchHit {
           title == other.title &&
           recordedAt == other.recordedAt &&
           snippet == other.snippet;
+}
+
+@freezed
+sealed class TranscriptEvent with _$TranscriptEvent {
+  const TranscriptEvent._();
+
+  /// One transcript segment, as whisper produced it.
+  const factory TranscriptEvent.transcribing({required String text}) =
+      TranscriptEvent_Transcribing;
+
+  /// The joined transcript. The UI can stop appending and start displaying.
+  const factory TranscriptEvent.transcriptReady({required String text}) =
+      TranscriptEvent_TranscriptReady;
+
+  /// The user navigated away. Nothing was saved.
+  const factory TranscriptEvent.cancelled() = TranscriptEvent_Cancelled;
 }

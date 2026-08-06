@@ -9,7 +9,7 @@
 # "Bundled" strategy means by *ships inside the app*.
 #
 # The digests below are the same values pinned in
-# rust/airo_mind_runtime/src/models.rs. They are the contract: the upstream refs
+# rust/airo_mind_core/src/models.rs. They are the contract: the upstream refs
 # are branch names and can move, so a changed file fails here loudly rather than
 # shipping weights nobody reviewed. If a digest mismatches, that is a decision
 # for a human, not a reason to pass --force.
@@ -46,7 +46,7 @@ for entry in "${MODELS[@]}"; do
   # A local copy is preferred over the network -- a developer who already has
   # the weights should not re-download half a gigabyte, and CI can seed this
   # directory from a cache.
-  cache="$ROOT/rust/airo_mind_runtime/models/$name"
+  cache="$ROOT/rust/airo_mind_core/models/$name"
   if [ -f "$cache" ] && [ "$(digest_of "$cache")" = "$sha" ]; then
     echo "==> $name from local cache"
     cp "$cache" "$target"

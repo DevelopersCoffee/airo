@@ -18,7 +18,7 @@ import '../ports/vault_port.dart';
 
 /// The real runtime, honest about what milestone 19 has not landed.
 ///
-/// Every method here either delegates to `rust/airo_mind_runtime` or reports
+/// Every method here either delegates to a `rust/airo_mind_*` engine or reports
 /// [MindPortUnavailable] naming its port and the issue that fills it in. As
 /// those issues land, methods are replaced one at a time and no surface
 /// changes — that is what the port bought.

@@ -12,9 +12,49 @@ CargoKitPlugin.file = buildscript.sourceFile
 
 apply plugin: CargoKitPlugin
 
-class CargoKitExtension {
+// PATCHED: upstream cargokit builds exactly one library per Gradle module.
+// Airo Mind needs two -- whisper.cpp and llama.cpp each statically vendor their
+// own ggml and cannot share a linked image (#1546) -- and they belong to one
+// Flutter plugin, so splitting them across two Gradle modules would mean two
+// packages for one feature.
+//
+// The single-library form still works and is what every other cargokit
+// consumer uses. `library(manifestDir, libname)` is additive.
+class CargoKitLibrary {
     String manifestDir; // Relative path to folder containing Cargo.toml
     String libname; // Library name within Cargo.toml. Must be a cdylib
+}
+
+class CargoKitExtension {
+    String manifestDir;
+    String libname;
+
+    final List<CargoKitLibrary> libraries = []
+
+    void library(String manifestDir, String libname) {
+        def entry = new CargoKitLibrary()
+        entry.manifestDir = manifestDir
+        entry.libname = libname
+        libraries.add(entry)
+    }
+
+    /// Every library to build: the explicit list when one was declared, and the
+    /// single-library properties otherwise. Never both -- declaring the list
+    /// and the properties would leave which one wins to reading order.
+    List<CargoKitLibrary> allLibraries() {
+        if (!libraries.isEmpty()) {
+            if (manifestDir != null || libname != null) {
+                throw new GradleException(
+                    "cargokit: use either library(...) entries or the " +
+                    "manifestDir/libname properties, not both.")
+            }
+            return libraries
+        }
+        def single = new CargoKitLibrary()
+        single.manifestDir = manifestDir
+        single.libname = libname
+        return [single]
+    }
 }
 
 abstract class CargoKitBuildTask extends DefaultTask {
@@ -50,20 +90,21 @@ abstract class CargoKitBuildTask extends DefaultTask {
     @Inject
     abstract ExecOperations getExecOperations()
 
+    // PATCHED: carried on the task rather than read back off the extension, so
+    // that one module can build several libraries -- each task knows its own.
+    @Input
+    String cargoManifestDir
+
     @TaskAction
     def build() {
-        if (project.cargokit.manifestDir == null) {
+        if (cargoManifestDir == null) {
             throw new GradleException("Property 'manifestDir' must be set on cargokit extension");
-        }
-
-        if (project.cargokit.libname == null) {
-            throw new GradleException("Property 'libname' must be set on cargokit extension");
         }
 
         def executableName = Os.isFamily(Os.FAMILY_WINDOWS) ? "run_build_tool.cmd" : "run_build_tool.sh"
         def path = Paths.get(new File(pluginFile).parent, "..", executableName);
 
-        def manifestDir = Paths.get(project.buildscript.sourceFile.parent, project.cargokit.manifestDir)
+        def manifestDir = Paths.get(project.buildscript.sourceFile.parent, cargoManifestDir)
 
         def rootProjectDir = project.rootProject.projectDir
 
@@ -153,36 +194,46 @@ class CargoKitPlugin implements Plugin<Project> {
             // The task name depends on plugin properties, which are not available
             // at this point
             project.getGradle().afterProject {
-                def taskName = "cargokitCargoBuild${project.cargokit.libname.capitalize()}${buildType.capitalize()}";
-
-                if (project.tasks.findByName(taskName)) {
-                    return
-                }
-
-                if (plugin.project.android.ndkVersion == null) {
-                    throw new GradleException("Please set 'android.ndkVersion' in 'app/build.gradle'.")
-                }
-
-                def task = project.tasks.create(taskName, CargoKitBuildTask.class) {
-                    buildMode = variant.buildType.name
-                    buildDir = cargoBuildDir
-                    outputDir = cargoOutputDir
-                    ndkVersion = plugin.project.android.ndkVersion
-                    sdkDirectory = plugin.project.android.sdkDirectory
-                    minSdkVersion = plugin.project.android.defaultConfig.minSdkVersion.apiLevel as int
-                    compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8) as int
-                    targetPlatforms = platforms
-                    pluginFile = CargoKitPlugin.file
-                }
-                def onTask = { newTask ->
-                    if (newTask.name == "merge${buildType.capitalize()}NativeLibs") {
-                        newTask.dependsOn task
-                        // Fix gradle 7.4.2 not picking up JNI library changes
-                        newTask.outputs.upToDateWhen { false }
+                // PATCHED: one task per declared library. Each carries its own
+                // manifest directory, and the library name keeps the task names
+                // distinct.
+                project.cargokit.allLibraries().each { lib ->
+                    if (lib.libname == null) {
+                        throw new GradleException("Property 'libname' must be set on cargokit extension");
                     }
+
+                    def taskName = "cargokitCargoBuild${lib.libname.capitalize()}${buildType.capitalize()}";
+
+                    if (project.tasks.findByName(taskName)) {
+                        return
+                    }
+
+                    if (plugin.project.android.ndkVersion == null) {
+                        throw new GradleException("Please set 'android.ndkVersion' in 'app/build.gradle'.")
+                    }
+
+                    def task = project.tasks.create(taskName, CargoKitBuildTask.class) {
+                        buildMode = variant.buildType.name
+                        buildDir = cargoBuildDir
+                        outputDir = cargoOutputDir
+                        ndkVersion = plugin.project.android.ndkVersion
+                        sdkDirectory = plugin.project.android.sdkDirectory
+                        minSdkVersion = plugin.project.android.defaultConfig.minSdkVersion.apiLevel as int
+                        compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8) as int
+                        targetPlatforms = platforms
+                        pluginFile = CargoKitPlugin.file
+                        cargoManifestDir = lib.manifestDir
+                    }
+                    def onTask = { newTask ->
+                        if (newTask.name == "merge${buildType.capitalize()}NativeLibs") {
+                            newTask.dependsOn task
+                            // Fix gradle 7.4.2 not picking up JNI library changes
+                            newTask.outputs.upToDateWhen { false }
+                        }
+                    }
+                    project.tasks.each onTask
+                    project.tasks.whenTaskAdded onTask
                 }
-                project.tasks.each onTask
-                project.tasks.whenTaskAdded onTask
             }
         }
     }

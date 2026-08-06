@@ -1,23 +1,31 @@
-//! The Meeting capability, and the only thing Flutter can see. `#1401`.
+//! The Meeting capability's speech half, and the meeting library. `#1401`.
 //!
 //! # Why the domain lives here and not below
 //!
 //! `C5` limits a capability to six functions and forbids the runtime from
-//! knowing what a meeting is. Everything meeting-shaped — the word "minutes",
-//! the secretary prompt, the WAV container, the id scheme — is in this module
-//! or `crate::wav`. Below it, `SpeechEngine` takes PCM and `GenerationEngine`
-//! takes a prompt, and neither has heard of a meeting.
+//! knowing what a meeting is. Everything meeting-shaped — the WAV container,
+//! the id scheme — is in this module or `airo_mind_core::wav`. Below it,
+//! `SpeechEngine` takes PCM and has never heard of a meeting.
 //!
-//! That is not tidiness. It is what lets a second capability reuse both engines
+//! That is not tidiness. It is what lets a second capability reuse the engine
 //! without inheriting the first one's vocabulary.
+//!
+//! # Why transcription and generation are separate calls
+//!
+//! They used to be one `process_recording` that ran the whole pipeline inside
+//! Rust. They cannot be any more: the two engines live in two libraries,
+//! because their vendored ggml copies cannot share a linked image. Dart holds
+//! both and composes them.
+//!
+//! What that moves is *sequencing*, and only sequencing. Each library still
+//! owns its own admission, budget and cancellation (`C6`), and the durability
+//! rule below is still enforced here rather than trusted to the caller.
 //!
 //! # Streaming, because `I7`
 //!
-//! `process_recording` yields a `Stream`, not a future. Segments and tokens
-//! reach the UI as the models produce them, so "watch processing" is the
-//! pipeline being honest rather than a spinner over a black box. Nothing here
-//! accumulates on behalf of the caller — the strings this module joins are the
-//! ones it must persist anyway.
+//! `transcribe_recording` yields a `Stream`, not a future. Segments reach the
+//! UI as the model produces them, so "watch processing" is the pipeline being
+//! honest rather than a spinner over a black box.
 //!
 //! # Clocks
 //!
@@ -33,10 +41,10 @@ use flutter_rust_bridge::frb;
 // compile.
 use crate::frb_generated::StreamSink;
 
-use crate::models;
-use crate::{
-    AudioInput, CancelToken, GenerationRequest, LlamaGenerationEngine, Meeting, MeetingStore,
-    ResourceBudget, SearchIndex, Supervisor, WhisperSpeechEngine,
+use crate::WhisperSpeechEngine;
+use airo_mind_core::models;
+use airo_mind_core::{
+    AudioInput, CancelToken, Meeting, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
 };
 
 // ---------------------------------------------------------------------------
@@ -58,9 +66,9 @@ pub struct MindConfig {
 
 /// A stored meeting, flattened for the bridge.
 ///
-/// Deliberately not `crate::Meeting` re-exported: the wire contract and the
-/// storage record are allowed to diverge, and coupling them means a storage
-/// change becomes a Dart change.
+/// Deliberately not `Meeting` re-exported: the wire contract and the storage
+/// record are allowed to diverge, and coupling them means a storage change
+/// becomes a Dart change.
 pub struct MeetingRecord {
     pub id: String,
     pub title: String,
@@ -91,27 +99,12 @@ pub struct SearchHit {
     pub snippet: String,
 }
 
-/// Progress, as it happens.
-pub enum ProcessingEvent {
+/// Transcription progress, as it happens.
+pub enum TranscriptEvent {
     /// One transcript segment, as whisper produced it.
-    Transcribing {
-        text: String,
-    },
+    Transcribing { text: String },
     /// The joined transcript. The UI can stop appending and start displaying.
-    TranscriptReady {
-        text: String,
-    },
-    /// One token, as llama produced it.
-    Generating {
-        text: String,
-    },
-    MinutesReady {
-        text: String,
-    },
-    /// Durable. Only after this is the meeting reopenable.
-    Saved {
-        meeting_id: String,
-    },
+    TranscriptReady { text: String },
     /// The user navigated away. Nothing was saved.
     Cancelled,
 }
@@ -120,8 +113,9 @@ pub enum ProcessingEvent {
 // State
 // ---------------------------------------------------------------------------
 
-/// Loaded models. Held apart from `LIBRARY` on purpose: transcription holds
-/// this lock for the length of a recording, and search must not queue behind it.
+/// The loaded speech model. Held apart from `LIBRARY` on purpose:
+/// transcription holds this lock for the length of a recording, and search must
+/// not queue behind it.
 static ENGINES: Mutex<Option<Supervisor>> = Mutex::new(None);
 
 /// The store and its projection.
@@ -134,10 +128,6 @@ struct Library {
     store: MeetingStore,
     /// `C4`: rebuilt from the store, never persisted, disposable.
     index: SearchIndex,
-    /// Which generation model produced the minutes in this session. Recorded
-    /// with each meeting per `ADR-0018` — an LLM is not deterministic across
-    /// versions, so what produced a summary is stored, not inferred later.
-    generation_model: String,
 }
 
 /// A poisoned lock means a panic inside inference. The Supervisor keeps no
@@ -147,25 +137,13 @@ fn lock<T>(m: &'static Mutex<T>) -> std::sync::MutexGuard<'static, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// The Meeting capability's prompt. It lives here, above the engine boundary,
-/// because `GenerationEngine::summarize(transcript) -> Minutes` would push
-/// meeting semantics into the runtime.
-fn minutes_prompt(transcript: &str) -> String {
-    format!(
-        "<|im_start|>system\nYou are a meeting secretary. Extract Decisions and Action Items. \
-         Return Markdown only. Do not invent facts.<|im_end|>\n\
-         <|im_start|>user\nTranscript:\n{transcript}<|im_end|>\n\
-         <|im_start|>assistant\n"
-    )
-}
-
 // ---------------------------------------------------------------------------
 // The capability surface
 // ---------------------------------------------------------------------------
 
-/// Loads both models and opens the store. Safe to call again — a Flutter hot
-/// restart runs it a second time, and refusing would make development require a
-/// full relaunch.
+/// Loads the speech model and opens the store. Safe to call again — a Flutter
+/// hot restart runs it a second time, and refusing would make development
+/// require a full relaunch.
 ///
 /// A missing model is an ordinary error carrying the path, because on a real
 /// device it is the most likely failure and the user can act on it.
@@ -186,49 +164,20 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
-    let generation_model = models::resolve(
-        &models::ModelRequirement {
-            task: models::ModelTask::Generation,
-            memory_budget_mb: config.memory_budget_mb,
-            minimum_quality: models::ModelQuality::Draft,
-        },
-        models_dir,
-        &[],
-        false,
-    )
-    .map_err(|e| e.to_string())?;
-
     let speech = WhisperSpeechEngine::load(
         std::path::Path::new(&speech_model.path),
         speech_model.memory_mb,
     )
     .map_err(|e| format!("{}: {e}", speech_model.logical_id))?;
-    let generation = LlamaGenerationEngine::load(
-        std::path::Path::new(&generation_model.path),
-        generation_model.memory_mb,
-        2048,
-    )
-    .map_err(|e| format!("{}: {e}", generation_model.logical_id))?;
 
     let mut supervisor = Supervisor::new(ResourceBudget::new(config.memory_budget_mb));
     supervisor.register_speech(Box::new(speech));
-    supervisor.register_generation(Box::new(generation));
 
     let store = MeetingStore::open(&config.store_path);
     let index = SearchIndex::rebuild(&store.all().map_err(|e| e.to_string())?);
 
     *lock(&ENGINES) = Some(supervisor);
-    *lock(&LIBRARY) = Some(Library {
-        store,
-        index,
-        // `ADR-0018 §5`: the LOGICAL identity and version, recorded with the
-        // content it produces. A file name would not survive a model update
-        // that changes quantisation, and replay must reproduce the reference.
-        generation_model: format!(
-            "{}@{}",
-            generation_model.logical_id, generation_model.version
-        ),
-    });
+    *lock(&LIBRARY) = Some(Library { store, index });
     Ok(())
 }
 
@@ -239,33 +188,30 @@ pub fn is_ready() -> bool {
     lock(&ENGINES).is_some()
 }
 
-/// Recording → transcript → minutes → saved, streaming throughout.
+/// Recording → transcript, streaming throughout.
 ///
-/// The whole of steps 2–5 of the milestone journey. Runs on a
-/// `flutter_rust_bridge` worker thread, never the Dart main isolate.
-pub fn process_recording(
+/// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
+/// The caller takes the transcript on to generation, which lives in the other
+/// library.
+pub fn transcribe_recording(
     wav_path: String,
-    title: String,
-    recorded_at_ms: u64,
-    sink: StreamSink<ProcessingEvent>,
+    sink: StreamSink<TranscriptEvent>,
 ) -> Result<(), String> {
-    let emit = |event: ProcessingEvent| -> Result<(), String> {
+    let emit = |event: TranscriptEvent| -> Result<(), String> {
         sink.add(event).map_err(|e| e.to_string())
     };
 
     let bytes = std::fs::read(&wav_path).map_err(|e| format!("reading {wav_path}: {e}"))?;
-    let pcm = crate::wav::decode(&bytes)?;
+    let pcm = airo_mind_core::wav::decode(&bytes)?;
 
     let cancel = CancelToken::new();
     *lock(&CANCEL) = Some(cancel.clone());
 
-    // Scoped so the engine lock is released before the library lock is taken.
-    // Holding both is how two locks become one deadlock.
-    let (transcript, minutes) = {
+    let mut transcript = String::new();
+    {
         let mut engines = lock(&ENGINES);
         let supervisor = engines.as_mut().ok_or("Airo Mind is not initialised")?;
 
-        let mut transcript = String::new();
         let speech = supervisor.run_speech(
             AudioInput {
                 samples: &pcm.samples,
@@ -280,78 +226,65 @@ pub fn process_recording(
                 transcript.push_str(segment.text.trim());
                 // Emitting per segment is the point: a ten-minute recording
                 // shows text within seconds instead of after the whole file.
-                let _ = sink.add(ProcessingEvent::Transcribing {
+                let _ = sink.add(TranscriptEvent::Transcribing {
                     text: segment.text.clone(),
                 });
                 Ok(())
             },
         );
         if cancel.is_cancelled() {
-            emit(ProcessingEvent::Cancelled)?;
+            emit(TranscriptEvent::Cancelled)?;
             return Ok(());
         }
         speech.map_err(|e| e.to_string())?;
+    }
 
-        if transcript.trim().is_empty() {
-            return Err("No speech was found in the recording.".into());
-        }
-        emit(ProcessingEvent::TranscriptReady {
-            text: transcript.clone(),
-        })?;
+    if transcript.trim().is_empty() {
+        return Err("No speech was found in the recording.".into());
+    }
+    emit(TranscriptEvent::TranscriptReady { text: transcript })
+}
 
-        let mut minutes = String::new();
-        let generation = supervisor.run_generation(
-            &GenerationRequest {
-                prompt: minutes_prompt(&transcript),
-                max_output_tokens: 320,
-            },
-            &cancel,
-            &mut |chunk| {
-                minutes.push_str(&chunk.text);
-                let _ = sink.add(ProcessingEvent::Generating {
-                    text: chunk.text.clone(),
-                });
-                Ok(())
-            },
-        );
-        if cancel.is_cancelled() {
-            emit(ProcessingEvent::Cancelled)?;
-            return Ok(());
-        }
-        generation.map_err(|e| e.to_string())?;
-
-        (transcript, minutes)
-    };
-
-    emit(ProcessingEvent::MinutesReady {
-        text: minutes.clone(),
-    })?;
-
+/// Makes a meeting durable and searchable. Returns its id.
+///
+/// Separate from transcription because the minutes come from the other library.
+/// The ordering below is a contract, not an implementation detail: an index
+/// entry for a meeting the store does not hold is a search result that opens
+/// nothing. Keeping it here rather than in Dart is deliberate — the caller
+/// sequences the pipeline, but it does not get to sequence durability.
+///
+/// `model` is the logical identity and version of whatever produced `minutes`
+/// (`ADR-0018 §5`), supplied by the generation library. An LLM is not
+/// deterministic across versions, so what produced a summary is stored, not
+/// inferred later.
+pub fn save_meeting(
+    title: String,
+    recorded_at_ms: u64,
+    transcript: String,
+    minutes: String,
+    model: String,
+) -> Result<String, String> {
     let meeting = Meeting {
         id: format!("m{recorded_at_ms}"),
         title,
         recorded_at: recorded_at_ms / 1000,
         transcript,
         minutes,
-        model: lock(&LIBRARY)
-            .as_ref()
-            .map(|l| l.generation_model.clone())
-            .unwrap_or_default(),
+        model,
     };
 
     let mut library = lock(&LIBRARY);
     let library = library.as_mut().ok_or("Airo Mind is not initialised")?;
-    // Durable before the projection: an index entry for a meeting the store
-    // does not hold is a search result that opens nothing.
+    // Durable before the projection.
     library.store.save(&meeting).map_err(|e| e.to_string())?;
     library.index.insert(&meeting);
-
-    emit(ProcessingEvent::Saved {
-        meeting_id: meeting.id,
-    })
+    Ok(meeting.id)
 }
 
-/// Stops the in-flight job at the next segment or token.
+/// Stops the in-flight transcription at the next segment.
+///
+/// Only this library's job. Dart cancels generation through the other library —
+/// two engines, two admission controls, two cancellations.
 #[frb(sync)]
 pub fn cancel_processing() {
     if let Some(token) = lock(&CANCEL).as_ref() {
@@ -417,16 +350,10 @@ mod tests {
         assert!(list_meetings().is_err());
         assert!(search_meetings("anything".into()).is_err());
         assert!(get_meeting("nope".into()).is_err());
+        assert!(save_meeting("t".into(), 0, "x".into(), "y".into(), "m".into()).is_err());
         // Cancelling with nothing in flight is a no-op, not a crash: the user
         // can press Stop on a screen whose job already finished.
         cancel_processing();
-    }
-
-    #[test]
-    fn the_prompt_carries_the_transcript_and_forbids_invention() {
-        let p = minutes_prompt("Priya said the lag is the bottleneck.");
-        assert!(p.contains("Priya said the lag is the bottleneck."));
-        assert!(p.contains("Do not invent facts"));
     }
 
     /// `ADR-0018 §4`: nothing above the Model Manager names a file. If a
@@ -434,7 +361,7 @@ mod tests {
     /// coupling the ADR removed has come back.
     #[test]
     fn the_capability_never_names_a_model_file() {
-        let source = include_str!("mind.rs");
+        let source = include_str!("meetings.rs");
         for forbidden in [".gguf", ".bin", "q4_k_m"] {
             // The literal in this test is the only permitted occurrence.
             let occurrences = source.matches(forbidden).count();

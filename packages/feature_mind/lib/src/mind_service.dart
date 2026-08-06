@@ -6,9 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-import 'api/mind.dart' as rust;
 import 'library_loader.dart';
+import 'llama/api/minutes.dart' as llama;
 import 'model_installer.dart';
+import 'whisper/api/meetings.dart' as rust;
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -104,7 +105,9 @@ class MindService {
   /// would make the app's normal opening move look like a crash.
   Future<MindStatus> initialize() async {
     try {
-      await initializeMindBridge();
+      // Only the speech library. Generation is loaded on first use — see
+      // `process`.
+      await initializeWhisperBridge();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.bridgeMissing, '$e');
     }
@@ -197,6 +200,21 @@ class MindService {
   ///
   /// Each event folds into the previous [MindProgress], so a widget can render
   /// the latest value and nothing accumulates in two places.
+  ///
+  /// # Why this is composed here
+  ///
+  /// The two engines are in two libraries, because whisper.cpp and llama.cpp
+  /// vendor incompatible copies of ggml and cannot share a linked image. So the
+  /// pipeline that used to be one Rust call is three, sequenced here.
+  ///
+  /// What moved is *sequencing*, and only sequencing. Each library still owns
+  /// its own admission, budget and cancellation (`C6`), and the store-before-
+  /// index durability rule stays inside `saveMeeting` rather than becoming
+  /// something this method is trusted to get right.
+  ///
+  /// The emitted [MindStage] sequence is unchanged from when Rust drove the
+  /// whole pipeline: transcribing → generating → saving → done. Widgets cannot
+  /// tell the difference, which is the point.
   Stream<MindProgress> process({
     required String wavPath,
     required String title,
@@ -204,41 +222,84 @@ class MindService {
     var progress = const MindProgress(stage: MindStage.transcribing);
     yield progress;
 
-    final stream = rust.processRecording(
-      wavPath: wavPath,
-      title: title,
-      recordedAtMs: BigInt.from(DateTime.now().millisecondsSinceEpoch),
-    );
+    // Dart owns the clock. `C2` forbids reading a wall clock on a path replay
+    // must reproduce, so the timestamp is taken once, here, and carried through
+    // to `saveMeeting` as the meeting's identity.
+    final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
 
     try {
-      await for (final event in stream) {
-        progress = switch (event) {
-          rust.ProcessingEvent_Transcribing(:final text) => progress.copyWith(
-            stage: MindStage.transcribing,
-            transcript: _append(progress.transcript, text),
-          ),
+      // ── 1. Audio → transcript, in the speech library ───────────────────────
+      await for (final event in rust.transcribeRecording(wavPath: wavPath)) {
+        switch (event) {
+          case rust.TranscriptEvent_Transcribing(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.transcribing,
+              transcript: _append(progress.transcript, text),
+            );
           // The joined transcript from Rust replaces what was accumulated, so a
           // dropped segment cannot leave the two out of step.
-          rust.ProcessingEvent_TranscriptReady(:final text) =>
-            progress.copyWith(stage: MindStage.generating, transcript: text),
-          rust.ProcessingEvent_Generating(:final text) => progress.copyWith(
-            stage: MindStage.generating,
-            minutes: progress.minutes + text,
-          ),
-          rust.ProcessingEvent_MinutesReady(:final text) => progress.copyWith(
-            stage: MindStage.saving,
-            minutes: text,
-          ),
-          rust.ProcessingEvent_Saved(:final meetingId) => progress.copyWith(
-            stage: MindStage.done,
-            meetingId: meetingId,
-          ),
-          rust.ProcessingEvent_Cancelled() => progress.copyWith(
-            stage: MindStage.idle,
-          ),
-        };
+          case rust.TranscriptEvent_TranscriptReady(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.generating,
+              transcript: text,
+            );
+          case rust.TranscriptEvent_Cancelled():
+            yield progress.copyWith(stage: MindStage.idle);
+            return;
+        }
         yield progress;
       }
+
+      // ── 2. Transcript → minutes, in the generation library ────────────────
+      //
+      // Loaded now rather than at startup: it is roughly 48 MB and only this
+      // step needs it. The stage is already `generating`, so the wait is
+      // visible rather than a silent pause.
+      await initializeLlamaBridge();
+      if (!llama.isReady()) {
+        final dir = await modelsDirectory();
+        await llama.initialize(
+          config: llama.GenerationConfig(
+            modelsDir: dir.path,
+            memoryBudgetMb: 4096,
+          ),
+        );
+      }
+
+      await for (final event in llama.generateMinutes(
+        transcript: progress.transcript,
+      )) {
+        switch (event) {
+          case llama.GenerationEvent_Generating(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.generating,
+              minutes: progress.minutes + text,
+            );
+          case llama.GenerationEvent_MinutesReady(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.saving,
+              minutes: text,
+            );
+          case llama.GenerationEvent_Cancelled():
+            yield progress.copyWith(stage: MindStage.idle);
+            return;
+        }
+        yield progress;
+      }
+
+      // ── 3. Durable, in the speech library, which owns the store ───────────
+      //
+      // `model` comes from the generation library: only it knows which model
+      // produced these minutes, and `ADR-0018 §5` records that with the content
+      // rather than inferring it later.
+      final meetingId = await rust.saveMeeting(
+        title: title,
+        recordedAtMs: BigInt.from(recordedAtMs),
+        transcript: progress.transcript,
+        minutes: progress.minutes,
+        model: llama.generationModelId(),
+      );
+      yield progress.copyWith(stage: MindStage.done, meetingId: meetingId);
     } on Object catch (e) {
       yield progress.copyWith(stage: MindStage.failed, error: '$e');
     }
@@ -251,7 +312,17 @@ class MindService {
   }
 
   /// Stops the in-flight job at the next segment or token.
-  void cancelProcessing() => rust.cancelProcessing();
+  ///
+  /// Both libraries, unconditionally. The user pressed Stop once; which engine
+  /// happens to be running is not something they should have to know, and
+  /// cancelling an idle library is a documented no-op on both sides. Cancelling
+  /// only the "current" one would leave the other running whenever the guess
+  /// was wrong — which is exactly at the handover, the moment most likely to be
+  /// slow enough for someone to press Stop.
+  void cancelProcessing() {
+    rust.cancelProcessing();
+    if (isLlamaLoaded) llama.cancelGeneration();
+  }
 
   Future<List<rust.MeetingRecord>> meetings() => rust.listMeetings();
 

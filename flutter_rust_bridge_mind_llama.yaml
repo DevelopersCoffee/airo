@@ -1,0 +1,15 @@
+# Airo Mind's generation bridge. One config per engine library: whisper.cpp and
+# llama.cpp vendor incompatible ggml copies and cannot share a linked image, so
+# they are separate cdylibs with separate generated bindings.
+#
+# Neither config may regenerate the other's output -- a codegen run for one
+# engine must not touch the other's Dart.
+rust_root: rust/airo_mind_llama
+rust_input: crate::api
+dart_output: packages/feature_mind/lib/src/llama
+rust_output: rust/airo_mind_llama/src/frb_generated.rs
+# The api module is gated on the real backend -- codegen must enable it or it
+# parses an empty crate and silently generates nothing. That failure mode is a
+# successful "Done!" with no bindings, so it is worth stating here.
+rust_features:
+  - llama

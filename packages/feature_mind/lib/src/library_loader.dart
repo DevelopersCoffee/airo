@@ -5,38 +5,45 @@ import 'dart:io';
 // same rather than depending on an internal path directly.
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-import 'frb_generated.dart';
+import 'llama/frb_generated.dart' as llama;
+import 'whisper/frb_generated.dart' as whisper;
 
-/// Finds `airo_mind_runtime`, whatever shape the platform's build gave it.
+/// Finds an Airo Mind engine library, whatever shape the platform's build gave
+/// it.
 ///
-/// Cargokit compiles the crate during the ordinary Flutter build, but it does
-/// not produce the same artefact everywhere:
+/// # Why there are two
 ///
-/// - **iOS and macOS** get a static library that the podspec force-loads into
-///   the app binary. There is no file to open — the symbols are already in the
-///   process, and asking for a dylib fails on a build that is working.
+/// whisper.cpp and llama.cpp each statically vendor their own copy of ggml,
+/// with the same symbol names and 348 files of difference between the trees.
+/// One library holding both is a one-definition-rule conflict between two
+/// upstream projects: Android's lld refuses it, a merged static archive fails
+/// with 592 duplicate symbols, and Apple's linker links it anyway while warning
+/// about 339 of them and choosing an implementation per symbol by link order.
+///
+/// Two libraries, loaded separately, is the fix. Neither exports its ggml
+/// (rustc's version script exports only the bridge), so the copies stay private
+/// to their own image even with both loaded into this process.
+///
+/// # What each platform produces
+///
 /// - **Android** gets a `.so` inside the APK, resolved by name.
-/// - **Linux and Windows** get a shared library beside the executable.
+/// - **macOS** gets dylibs inside `feature_mind.framework`.
+/// - **Linux and Windows** get shared libraries beside the executable.
+/// - **iOS** has never shipped this runtime: it links a static archive into the
+///   app binary, which is the 592-duplicate-symbol case above. It needs dynamic
+///   frameworks before it can work at all, so it is not resolved here.
 ///
-/// The generated loader's `ioDirectory` points at the crate's `target/`, while
+/// The generated loader's `ioDirectory` points at each crate's `target/`, while
 /// this workspace builds into the cargo *workspace's* `rust/target/`. Rather
 /// than patch generated code — the next codegen run reverts it — the fallbacks
 /// live here.
-Future<ExternalLibrary?> resolveMindLibrary() async {
-  // iOS links the runtime into the process. macOS does not: the static
-  // archive cannot be linked at all, because whisper.cpp and llama.cpp each
-  // vendor their own ggml and the symbol names collide. macOS ships the dylib
-  // inside feature_mind.framework instead.
-  if (Platform.isIOS) {
-    return ExternalLibrary.process(iKnowHowToUseIt: true);
-  }
-
+Future<ExternalLibrary?> _resolve(String stem) async {
   if (Platform.isMacOS) {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     for (final candidate in [
-      '$exeDir/../Frameworks/feature_mind.framework/Resources/libairo_mind_runtime.dylib',
-      '$exeDir/../Frameworks/feature_mind.framework/Versions/A/Resources/libairo_mind_runtime.dylib',
-      '$exeDir/../Frameworks/libairo_mind_runtime.dylib',
+      '$exeDir/../Frameworks/feature_mind.framework/Resources/lib$stem.dylib',
+      '$exeDir/../Frameworks/feature_mind.framework/Versions/A/Resources/lib$stem.dylib',
+      '$exeDir/../Frameworks/lib$stem.dylib',
     ]) {
       final file = File(candidate);
       if (file.existsSync()) return ExternalLibrary.open(file.path);
@@ -48,9 +55,7 @@ Future<ExternalLibrary?> resolveMindLibrary() async {
   // Android `.so` by name from the APK.
   if (Platform.isAndroid) return null;
 
-  final name = Platform.isWindows
-      ? 'airo_mind_runtime.dll'
-      : 'libairo_mind_runtime.so';
+  final name = Platform.isWindows ? '$stem.dll' : 'lib$stem.so';
   final exeDir = File(Platform.resolvedExecutable).parent.path;
 
   for (final candidate in ['$exeDir/$name', '$exeDir/lib/$name']) {
@@ -63,7 +68,33 @@ Future<ExternalLibrary?> resolveMindLibrary() async {
   return null;
 }
 
-/// Initialises the bridge, resolving the library first.
-Future<void> initializeMindBridge() async {
-  await RustLib.init(externalLibrary: await resolveMindLibrary());
+/// Initialises the speech bridge — transcription and the meeting library.
+///
+/// Loaded during startup, because every journey begins with it.
+Future<void> initializeWhisperBridge() async {
+  await whisper.RustLib.init(
+    externalLibrary: await _resolve('airo_mind_whisper'),
+  );
 }
+
+bool _llamaInitialized = false;
+
+/// Initialises the generation bridge, once.
+///
+/// **Deliberately not called at startup.** This library is roughly 48 MB and
+/// only minutes need it, so recording and transcription do not pay for it. The
+/// first generation does, which is why the caller shows a state for it rather
+/// than letting the UI sit still.
+///
+/// Idempotent: `MindService` calls it before every generation and only the
+/// first one loads anything.
+Future<void> initializeLlamaBridge() async {
+  if (_llamaInitialized) return;
+  await llama.RustLib.init(externalLibrary: await _resolve('airo_mind_llama'));
+  _llamaInitialized = true;
+}
+
+/// Whether the generation library has been loaded into this process.
+///
+/// Exposed for the test that asserts a transcribe-only run does not load it.
+bool get isLlamaLoaded => _llamaInitialized;
