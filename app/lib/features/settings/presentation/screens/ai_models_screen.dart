@@ -5,7 +5,6 @@ import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
-import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../widgets/model_card.dart';
 import '../widgets/model_filter_bar.dart';
 import 'model_detail_screen.dart';

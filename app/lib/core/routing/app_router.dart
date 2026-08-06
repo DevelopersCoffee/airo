@@ -1,26 +1,14 @@
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:core_ai/core_ai.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/airo_explore/presentation/screens/airo_explore_screen.dart';
-import '../../features/agent_chat/presentation/screens/chat_screen.dart';
-import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
-import '../../features/agent_chat/presentation/screens/device_capability_report_screen.dart';
-import '../../features/agent_chat/presentation/screens/model_advisor_screen.dart';
-import '../../features/agent_chat/presentation/screens/agent_skills_screen.dart';
-import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
-import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/screens/airo_portability_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/home/screens/home_screen.dart';
-import '../../features/assistant/presentation/screens/assistant_screen.dart';
-import '../../features/wellbeing/presentation/screens/wellbeing_screen.dart';
-import '../../features/assistant/presentation/screens/prompt_lab_screen.dart';
-import '../../features/assistant/presentation/screens/audio_scribe_screen.dart';
-import '../../features/assistant/presentation/screens/mobile_actions_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -55,6 +43,14 @@ class AppRouter {
     }
     final coinVaultRoutes = _requiredModuleRoutes(moduleRegistry, 'coin_vault');
     final iptvRoutes = _requiredModuleRoutes(moduleRegistry, 'iptv');
+    // The assistant is read as a module instance rather than as a flat route
+    // bundle: it owns two mount points (the Mind branch and a top-level
+    // destination), and the module names them so the router does not have to
+    // re-derive the split from route paths.
+    final assistant = _requiredModule<AssistantModule>(
+      moduleRegistry,
+      'assistant',
+    );
 
     return GoRouter(
       initialLocation: initialLocation,
@@ -95,14 +91,10 @@ class AppRouter {
           path: '/agent/models',
           redirect: (context, state) => '/assistant/models',
         ),
-        // Wellbeing split off the old Mind hub in milestone 22. It is a
-        // destination rather than a tab: three cards and a streak do not earn
-        // a slot in the bottom nav, and the assistant hub links to it.
-        GoRoute(
-          path: '/wellbeing',
-          name: 'Wellbeing',
-          builder: (context, state) => const WellbeingScreen(),
-        ),
+        // Assistant destinations that are reached from the Mind hub but are
+        // not part of it (Wellbeing), so they render full-screen instead of
+        // inside the bottom nav.
+        ...assistant.rootRoutesFor(moduleRegistry.shell),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
         GoRoute(
@@ -229,82 +221,7 @@ class AppRouter {
             ),
             // Mind branch
             StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/assistant',
-                  name: 'Assistant',
-                  builder: (context, state) => const AssistantScreen(),
-                  routes: [
-                    GoRoute(
-                      path: 'chat',
-                      name: 'assistant_chat',
-                      builder: (context, state) => ChatScreen(
-                        initialDraft: state.uri.queryParameters['prefill'],
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'notifications',
-                      name: 'agent_notifications',
-                      builder: (context, state) => NotificationsScreen(
-                        initialCategory: state.uri.queryParameters['category'],
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'profile',
-                      name: 'profile',
-                      builder: (context, state) => const ProfileScreen(),
-                    ),
-                    GoRoute(
-                      path: 'models',
-                      name: 'assistant_models',
-                      builder: (context, state) => ModelLibraryScreen(
-                        onModelSelected: (candidate) {
-                          context.go('/assistant');
-                        },
-                        onOpenModelManager: () {
-                          context.push('/assistant/profile');
-                        },
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'device-capabilities',
-                      name: 'assistant_device_capabilities',
-                      builder: (context, state) =>
-                          DeviceCapabilityReportLoaderScreen(
-                            models: ModelCatalog.bundledModels,
-                          ),
-                    ),
-                    GoRoute(
-                      path: 'model-advisor',
-                      name: 'assistant_model_advisor',
-                      builder: (context, state) => const ModelAdvisorScreen(),
-                    ),
-                    GoRoute(
-                      path: 'prompt-lab',
-                      name: 'assistant_prompt_lab',
-                      builder: (context, state) => PromptLabScreen(
-                        initialImageMode:
-                            state.uri.queryParameters['mode'] == 'image',
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'audio-scribe',
-                      name: 'assistant_audio_scribe',
-                      builder: (context, state) => const AudioScribeScreen(),
-                    ),
-                    GoRoute(
-                      path: 'skills',
-                      name: 'assistant_agent_skills',
-                      builder: (context, state) => const AgentSkillsScreen(),
-                    ),
-                    GoRoute(
-                      path: 'mobile-actions',
-                      name: 'assistant_mobile_actions',
-                      builder: (context, state) => const MobileActionsScreen(),
-                    ),
-                  ],
-                ),
-              ],
+              routes: assistant.hubRoutesFor(moduleRegistry.shell),
             ),
             // Beats branch
             StatefulShellBranch(
@@ -372,6 +289,28 @@ class AppRouter {
         onRetry: () => context.go('/money'),
       ),
     );
+  }
+
+  /// Resolves a registered module the shell cannot start without, typed.
+  ///
+  /// Used instead of [_requiredModuleRoutes] when the router needs more from a
+  /// module than one flat route bundle — currently the assistant, which mounts
+  /// part of itself in a navigation branch and part at the top level.
+  static T _requiredModule<T extends AppModule>(
+    ModuleRegistry registry,
+    String moduleId,
+  ) {
+    final module = registry.registeredModules
+        .whereType<T>()
+        .where((candidate) => candidate.id == moduleId)
+        .firstOrNull;
+    if (module == null) {
+      throw ModuleCompositionException(
+        'Required module "$moduleId" is not registered as a $T for '
+        'shell "${registry.shell.value}".',
+      );
+    }
+    return module;
   }
 
   static List<GoRoute> _requiredModuleRoutes(

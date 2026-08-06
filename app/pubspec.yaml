@@ -108,6 +108,8 @@ dependencies:
     path: ../packages/feature_billsplit_core
   feature_coins_core:
     path: ../packages/feature_coins_core
+  feature_assistant:
+    path: ../packages/feature_assistant
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

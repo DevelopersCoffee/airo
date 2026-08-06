@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -11,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/portability/airo_backup_service.dart';
 import '../../../../core/portability/airo_lan_sync_service.dart';
 import '../../../../core/portability/airo_portability_codec.dart';
-import '../../../agent_chat/data/services/chat_history_store.dart';
 
 /// Encrypted export/import for Airo Mind configuration and model metadata.
 class AiroPortabilityScreen extends StatefulWidget {

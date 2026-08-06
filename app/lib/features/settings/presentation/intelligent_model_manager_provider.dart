@@ -1,9 +1,6 @@
 import 'package:core_ai/core_ai.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/local_runtime_preloader_service.dart';
-import '../../../core/services/model_preload_preferences.dart';
-import '../../agent_chat/application/assistant_model_preferences.dart';
-import '../../agent_chat/domain/models/assistant_model_selection.dart';
 import '../application/ai_model_management.dart';
 
 /// Bridges Airo's runtime preloader to the reusable model-manager contract.

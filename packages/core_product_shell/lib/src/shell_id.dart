@@ -23,6 +23,10 @@ class ShellId {
   /// this contract. No production UI ships behind this identifier yet.
   static const coins = ShellId('coins');
 
+  /// The standalone Airo Mind shell (`app/lib/main_mind.dart`), which ships
+  /// the assistant on its own without the super app's other tabs.
+  static const mind = ShellId('mind');
+
   /// Stable, lowercase identifier for this shell (used for equality, logs,
   /// and any future serialization — never for display).
   final String value;

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
+import 'package:core_ai/core_ai.dart' hide ReceiptItem;
 
-import '../../../../core/services/litert_lm_service.dart';
 import '../models/receipt_item.dart';
 
 /// Parses OCR text into receipt structure using a local LiteRT-LM model.

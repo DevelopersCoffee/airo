@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 
 import '../../application/ai_model_management.dart';
 import '../../application/ai_preferences_settings.dart';
 import '../intelligent_model_manager_provider.dart';
-import '../../../agent_chat/presentation/screens/model_health_center_screen.dart';
 
 /// Screen for displaying and managing AI models using glassmorphic UI elements,
 /// gradient backgrounds, and animations.

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:airo_app/core/audio/tv_audio_service.dart';
-import 'package:airo_app/core/services/voice_search_service.dart';
 import 'package:airo_app/core/tv/tv_focus_manager.dart';
 import 'package:airo_app/core/tv/tv_focusable.dart';
 import 'package:airo_app/core/tv/tv_input_handler.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 
 /// Integration tests for TV navigation flows
 ///

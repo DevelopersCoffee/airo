@@ -1,4 +1,4 @@
-import 'package:airo_app/core/services/gemini_nano_service.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

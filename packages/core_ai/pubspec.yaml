@@ -21,6 +21,7 @@ dependencies:
   crypto: ^3.0.3
   platform_downloads:
     path: ../platform_downloads
+  url_launcher: 6.3.2
 
 dev_dependencies:
   flutter_test:

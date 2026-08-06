@@ -1,3 +1,4 @@
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:feature_coin/feature_coin.dart';
 
 class RouteNames {
@@ -11,6 +12,24 @@ class RouteNames {
   static const String register = '/register';
   static const String profile = '/profile';
   static const String settings = '/settings';
+
+  // Assistant (Airo Mind). Owned by packages/feature_assistant so the super
+  // app and the standalone Mind shell mount identical paths.
+  static const String assistant = AssistantRouteNames.assistant;
+  static const String assistantChat = AssistantRouteNames.chat;
+  static const String assistantNotifications =
+      AssistantRouteNames.notifications;
+  static const String assistantProfile = AssistantRouteNames.profile;
+  static const String assistantModels = AssistantRouteNames.models;
+  static const String assistantDeviceCapabilities =
+      AssistantRouteNames.deviceCapabilities;
+  static const String assistantModelAdvisor = AssistantRouteNames.modelAdvisor;
+  static const String assistantPromptLab = AssistantRouteNames.promptLab;
+  static const String assistantAudioScribe = AssistantRouteNames.audioScribe;
+  static const String assistantAgentSkills = AssistantRouteNames.agentSkills;
+  static const String assistantMobileActions =
+      AssistantRouteNames.mobileActions;
+  static const String wellbeing = AssistantRouteNames.wellbeing;
 
   // Bill Split
   static const String billSplit = '/money/split';
