@@ -4,7 +4,14 @@ reviewers:
   - Chief Architect
   - Platform Architect
   - Chief Security Officer
-allowed_dependencies: []
+allowed_dependencies:
+  # ModelDownloadService / ModelStorageManager: Airo Mind's model acquisition
+  # moves onto core_ai's existing download pipeline rather than shipping model
+  # weights in the APK (docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md).
+  - core_ai
+  # Dev-only: DownloadArtifactRequest/DownloadProgress, constructed directly by
+  # DownloadModelProvider's test doubles. Not linked into the shipped package.
+  - platform_downloads
 forbidden_dependencies:
   - app
 quality_gates: {}

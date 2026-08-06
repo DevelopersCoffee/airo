@@ -1,43 +1,80 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
+import 'models/model_provider.dart';
 import 'whisper/api/setup.dart' as rust;
 
 /// Puts the bundled models on disk. `ADR-0018 §2`, the **Bundled** strategy.
 ///
-/// Bundled is the only strategy Milestone 2 ships, and §7 says why the sequence
-/// matters: *"bundling is the only strategy that proves the offline claim."*
-/// Import and download are declared in the Rust registry's
-/// `AcquisitionStrategy` so their verification difference is written down, and
-/// neither is implemented.
+/// One [ModelProvider] implementation among several
+/// (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`), not
+/// the only path any more: both apps default to `DownloadModelProvider`
+/// instead, so neither ships model weights in the APK. This stays for a build
+/// that intentionally bundles, and for tests that need no network.
 ///
-/// # This replaces the development fallback
+/// # This replaced the development fallback
 ///
-/// Until now `MindService` reached into the checkout's `rust/.../models/`
-/// directory when nothing was installed. That made a developer machine work and
-/// a device fail, which is the worst arrangement: the failure only appears
-/// where it cannot be debugged. Models now come from the app's own asset
-/// bundle, on every platform, or they are absent and the UI says so.
-class ModelInstaller {
+/// Before this existed, `MindService` reached into the checkout's
+/// `rust/.../models/` directory when nothing was installed. That made a
+/// developer machine work and a device fail, which is the worst arrangement:
+/// the failure only appears where it cannot be debugged.
+class ModelInstaller implements ModelProvider {
   const ModelInstaller();
 
   /// Assets are addressed through the package, so the app that hosts Airo Mind
   /// does not have to re-declare them.
   static const String assetPrefix = 'packages/feature_mind/assets/models/';
 
+  @override
+  Future<List<RequiredModel>> requiredModels() async => [
+    for (final required in await rust.requiredModels())
+      RequiredModel(
+        fileName: required.fileName,
+        sizeBytes: required.sizeBytes.toInt(),
+        sha256: required.sha256,
+      ),
+  ];
+
   /// True when every required model is on disk at its pinned size.
   ///
   /// Size, not digest: hashing half a gigabyte on every launch costs about a
   /// second. Full verification is [verify], run after an install.
+  @override
   Future<bool> isInstalled(Directory modelsDir) async {
-    for (final required in await rust.requiredModels()) {
+    for (final required in await requiredModels()) {
       final file = File(p.join(modelsDir.path, required.fileName));
       if (!file.existsSync()) return false;
-      if (file.lengthSync() != required.sizeBytes.toInt()) return false;
+      if (file.lengthSync() != required.sizeBytes) return false;
     }
     return true;
+  }
+
+  /// [ModelProvider.acquire]. Runs [install] and translates its
+  /// copy-by-copy progress and its failed-file-name result into
+  /// [ModelAcquisitionEvent]s — the copy logic itself is unchanged, only how
+  /// its progress is reported.
+  @override
+  Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) async* {
+    final events = StreamController<ModelAcquisitionEvent>();
+    final failedFuture = install(
+      modelsDir,
+      onProgress: (fileName, copied, total) {
+        events.add(ModelAcquisitionProgress(fileName, copied, total));
+      },
+    );
+    // The controller closes only after `install` has finished adding to it,
+    // so nothing is dropped between the last progress event and the done
+    // event that follows.
+    unawaited(
+      failedFuture.then((failed) {
+        events.add(ModelAcquisitionDone(failed));
+        events.close();
+      }),
+    );
+    yield* events.stream;
   }
 
   /// Copies any missing model out of the asset bundle.
@@ -139,6 +176,16 @@ class ModelInstaller {
   ///
   /// Off the launch path deliberately — see `models::resolve`, which documents
   /// the trade.
-  Future<List<rust.InstalledModel>> verify(Directory modelsDir) =>
-      rust.verifyInstalledModels(modelsDir: modelsDir.path);
+  @override
+  Future<List<InstalledModel>> verify(Directory modelsDir) async => [
+    for (final status in await rust.verifyInstalledModels(
+      modelsDir: modelsDir.path,
+    ))
+      InstalledModel(
+        fileName: status.fileName,
+        present: status.present,
+        verified: status.verified,
+        detail: status.detail,
+      ),
+  ];
 }

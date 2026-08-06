@@ -6,9 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-import 'library_loader.dart';
-import 'llama/api/minutes.dart' as llama;
+import 'bridges/mind_generation_bridge.dart';
+import 'bridges/mind_speech_bridge.dart';
 import 'model_installer.dart';
+import 'models/model_provider.dart';
 import 'whisper/api/meetings.dart' as rust;
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
@@ -90,12 +91,27 @@ class MindProgress {
 /// runnable without a Rust library present, and it means the day the bridge
 /// changes shape, one file changes.
 class MindService {
-  MindService({AudioRecorder? recorder, ModelInstaller? installer})
-    : _recorder = recorder ?? AudioRecorder(),
-      _installer = installer ?? const ModelInstaller();
+  /// Every collaborator is injectable, defaulting to the production path.
+  ///
+  /// [modelProvider] defaults to the bundled-asset [ModelInstaller] — the
+  /// behaviour this class always had. Which app ships which provider
+  /// (download vs. bundled) is a decision for the shell composing this
+  /// service, not a default `feature_mind` bakes in
+  /// (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
+  MindService({
+    AudioRecorder? recorder,
+    ModelProvider? modelProvider,
+    MindSpeechBridge? speechBridge,
+    MindGenerationBridge? generationBridge,
+  }) : _recorder = recorder ?? AudioRecorder(),
+       _models = modelProvider ?? const ModelInstaller(),
+       _speech = speechBridge ?? const RustMindSpeechBridge(),
+       _generation = generationBridge ?? RustMindGenerationBridge();
 
   final AudioRecorder _recorder;
-  final ModelInstaller _installer;
+  final ModelProvider _models;
+  final MindSpeechBridge _speech;
+  final MindGenerationBridge _generation;
   String? _recordingPath;
 
   /// Loads the native library and the models.
@@ -107,20 +123,31 @@ class MindService {
     try {
       // Only the speech library. Generation is loaded on first use — see
       // `process`.
-      await initializeWhisperBridge();
+      await _speech.loadLibrary();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.bridgeMissing, '$e');
     }
 
     final dir = await modelsDirectory();
 
-    // `ADR-0018 §2`, Bundled: copy out of the app's own asset bundle. Not from
-    // the checkout -- that made a developer machine work and a device fail.
-    if (!await _installer.isInstalled(dir)) {
-      final failed = await _installer.install(
-        dir,
-        onProgress: onInstallProgress,
-      );
+    // `ModelProvider` — bundled asset by default, download in production
+    // (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
+    // Not from the checkout: that made a developer machine work and a device
+    // fail.
+    if (!await _models.isInstalled(dir)) {
+      final failed = <String>[];
+      await for (final event in _models.acquire(dir)) {
+        switch (event) {
+          case ModelAcquisitionProgress(
+            :final fileName,
+            :final fetched,
+            :final total,
+          ):
+            onInstallProgress?.call(fileName, fetched, total);
+          case ModelAcquisitionDone(:final failedFileNames):
+            failed.addAll(failedFileNames);
+        }
+      }
       if (failed.isNotEmpty) {
         return MindStatus.unavailable(
           MindUnavailable.modelsMissing,
@@ -132,14 +159,12 @@ class MindService {
     try {
       // `ADR-0018 §1`: hand over a DIRECTORY and a budget. Which model serves
       // which task is the Model Manager's decision, not this layer's.
-      await rust.initialize(
-        config: rust.MindConfig(
-          modelsDir: dir.path,
-          storePath: p.join(dir.path, 'meetings.log'),
-          // Admission ceiling, not an allocation. The Supervisor refuses a
-          // model it cannot afford before anything is loaded.
-          memoryBudgetMb: 4096,
-        ),
+      await _speech.initialize(
+        modelsDir: dir.path,
+        storePath: p.join(dir.path, 'meetings.log'),
+        // Admission ceiling, not an allocation. The Supervisor refuses a
+        // model it cannot afford before anything is loaded.
+        memoryBudgetMb: 4096,
       );
       return const MindStatus.ready();
     } on Object catch (e) {
@@ -162,8 +187,8 @@ class MindService {
   void Function(String fileName, int copied, int total)? onInstallProgress;
 
   /// Hashes every installed model against the digest pinned in Rust source.
-  Future<List<dynamic>> verifyModels() async =>
-      _installer.verify(await modelsDirectory());
+  Future<List<InstalledModel>> verifyModels() async =>
+      _models.verify(await modelsDirectory());
 
   Future<bool> hasMicrophonePermission() => _recorder.hasPermission();
 
@@ -229,21 +254,21 @@ class MindService {
 
     try {
       // ── 1. Audio → transcript, in the speech library ───────────────────────
-      await for (final event in rust.transcribeRecording(wavPath: wavPath)) {
+      await for (final event in _speech.transcribe(wavPath: wavPath)) {
         switch (event) {
-          case rust.TranscriptEvent_Transcribing(:final text):
+          case TranscriptEventTranscribing(:final text):
             progress = progress.copyWith(
               stage: MindStage.transcribing,
               transcript: _append(progress.transcript, text),
             );
           // The joined transcript from Rust replaces what was accumulated, so a
           // dropped segment cannot leave the two out of step.
-          case rust.TranscriptEvent_TranscriptReady(:final text):
+          case TranscriptEventTranscriptReady(:final text):
             progress = progress.copyWith(
               stage: MindStage.generating,
               transcript: text,
             );
-          case rust.TranscriptEvent_Cancelled():
+          case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
             return;
         }
@@ -255,32 +280,24 @@ class MindService {
       // Loaded now rather than at startup: it is roughly 48 MB and only this
       // step needs it. The stage is already `generating`, so the wait is
       // visible rather than a silent pause.
-      await initializeLlamaBridge();
-      if (!llama.isReady()) {
-        final dir = await modelsDirectory();
-        await llama.initialize(
-          config: llama.GenerationConfig(
-            modelsDir: dir.path,
-            memoryBudgetMb: 4096,
-          ),
-        );
-      }
+      final dir = await modelsDirectory();
+      await _generation.ensureLoaded(modelsDir: dir.path, memoryBudgetMb: 4096);
 
-      await for (final event in llama.generateMinutes(
+      await for (final event in _generation.generate(
         transcript: progress.transcript,
       )) {
         switch (event) {
-          case llama.GenerationEvent_Generating(:final text):
+          case GenerationEventGenerating(:final text):
             progress = progress.copyWith(
               stage: MindStage.generating,
               minutes: progress.minutes + text,
             );
-          case llama.GenerationEvent_MinutesReady(:final text):
+          case GenerationEventMinutesReady(:final text):
             progress = progress.copyWith(
               stage: MindStage.saving,
               minutes: text,
             );
-          case llama.GenerationEvent_Cancelled():
+          case GenerationEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
             return;
         }
@@ -292,12 +309,12 @@ class MindService {
       // `model` comes from the generation library: only it knows which model
       // produced these minutes, and `ADR-0018 §5` records that with the content
       // rather than inferring it later.
-      final meetingId = await rust.saveMeeting(
+      final meetingId = await _speech.save(
         title: title,
-        recordedAtMs: BigInt.from(recordedAtMs),
+        recordedAtMs: recordedAtMs,
         transcript: progress.transcript,
         minutes: progress.minutes,
-        model: llama.generationModelId(),
+        model: _generation.modelId(),
       );
       yield progress.copyWith(stage: MindStage.done, meetingId: meetingId);
     } on Object catch (e) {
@@ -320,16 +337,15 @@ class MindService {
   /// was wrong — which is exactly at the handover, the moment most likely to be
   /// slow enough for someone to press Stop.
   void cancelProcessing() {
-    rust.cancelProcessing();
-    if (isLlamaLoaded) llama.cancelGeneration();
+    _speech.cancel();
+    if (_generation.isLoaded) _generation.cancel();
   }
 
-  Future<List<rust.MeetingRecord>> meetings() => rust.listMeetings();
+  Future<List<rust.MeetingRecord>> meetings() => _speech.meetings();
 
-  Future<List<rust.SearchHit>> search(String query) =>
-      rust.searchMeetings(query: query);
+  Future<List<rust.SearchHit>> search(String query) => _speech.search(query);
 
-  Future<rust.MeetingRecord?> meeting(String id) => rust.getMeeting(id: id);
+  Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
 
   Future<void> dispose() => _recorder.dispose();
 }
