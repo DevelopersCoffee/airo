@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+#
+# Builds the Airo Mind APK (APP_VARIANT=mind, lib/main_mind.dart).
+#
+# Machine prerequisites beyond the usual Flutter/Android toolchain, because
+# feature_mind cross-compiles a Rust runtime through cargokit:
+#   * rustup, with its shims ahead of any other rustc/cargo on PATH. A Homebrew
+#     `rust` install shadows `~/.cargo/bin` on a default macOS PATH, and then
+#     `rustup run stable cargo` silently uses a toolchain with no Android std --
+#     surfacing as "can't find crate for `core`" for a target rustup reports as
+#     installed. `brew unlink rust` or reorder PATH.
+#   * An Android NDK. Resolved below; set ANDROID_NDK_ROOT to override.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,21 +39,51 @@ fi
 # feature_mind builds a Rust runtime through cargokit, and two of its native
 # dependencies (llama-cpp-sys-2, whisper-rs-sys) locate the Android NDK through
 # the environment rather than through cargokit's own variables. Cargokit does
-# not export it, so derive it here from the SDK Gradle already resolved.
+# not export it, so derive it here.
+#
+# It must be the SAME NDK cargokit hands to clang, or the crates that read the
+# environment compile against a different sysroot than the ones that do not.
+# Cargokit reads `plugin.project.android.ndkVersion` -- the *app* module's, i.e.
+# `flutter.ndkVersion` -- not the `ndkVersion` that
+# `packages/feature_mind/android/build.gradle` pins for its own AGP compilation.
+# Those two currently disagree (see the report); this follows the one that
+# actually drives the Rust build.
 if [[ -z "${ANDROID_NDK_ROOT:-}" ]]; then
   sdk_dir="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
   if [[ -z "$sdk_dir" && -f "$APP_DIR/android/local.properties" ]]; then
     sdk_dir="$(sed -n 's/^sdk\.dir=//p' "$APP_DIR/android/local.properties" | tail -1)"
   fi
-  if [[ -n "$sdk_dir" && -d "$sdk_dir/ndk" ]]; then
-    ANDROID_NDK_ROOT="$sdk_dir/ndk/$(ls "$sdk_dir/ndk" | sort -V | tail -1)"
-    export ANDROID_NDK_ROOT
-    echo "Using ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT"
-  else
-    echo "ANDROID_NDK_ROOT is not set and no NDK was found under the Android SDK." >&2
+  if [[ -z "$sdk_dir" || ! -d "$sdk_dir/ndk" ]]; then
+    echo "ANDROID_NDK_ROOT is not set and no Android SDK with an ndk/ directory was found." >&2
     echo "The feature_mind Rust runtime cannot cross-compile without it." >&2
     exit 1
   fi
+
+  # flutter.ndkVersion, straight from the Flutter SDK the app builds against.
+  ndk_version=""
+  flutter_sdk="$(sed -n 's/^flutter\.sdk=//p' "$APP_DIR/android/local.properties" 2>/dev/null | tail -1)"
+  flutter_extension="$flutter_sdk/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
+  if [[ -n "$flutter_sdk" && -f "$flutter_extension" ]]; then
+    ndk_version="$(sed -n 's/.*val ndkVersion: String = "\([^"]*\)".*/\1/p' "$flutter_extension" | tail -1)"
+  fi
+  if [[ -n "$ndk_version" && ! -d "$sdk_dir/ndk/$ndk_version" ]]; then
+    echo "::warning::flutter.ndkVersion $ndk_version is not installed under $sdk_dir/ndk" >&2
+    ndk_version=""
+  fi
+  # Only when the pinned version could not be read or is not installed.
+  if [[ -z "$ndk_version" ]]; then
+    ndk_version="$(find "$sdk_dir/ndk" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort -V | tail -1)"
+    if [[ -z "$ndk_version" ]]; then
+      echo "No NDK is installed under $sdk_dir/ndk." >&2
+      echo "The feature_mind Rust runtime cannot cross-compile without one." >&2
+      exit 1
+    fi
+    echo "::warning::Falling back to the newest installed NDK $ndk_version" >&2
+  fi
+
+  ANDROID_NDK_ROOT="$sdk_dir/ndk/$ndk_version"
+  export ANDROID_NDK_ROOT
+  echo "Using ANDROID_NDK_ROOT=$ANDROID_NDK_ROOT"
 fi
 # llama-cpp-sys-2 and whisper-rs-sys read these two spellings instead.
 export ANDROID_NDK="${ANDROID_NDK:-$ANDROID_NDK_ROOT}"
