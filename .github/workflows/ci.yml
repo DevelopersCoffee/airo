@@ -225,6 +225,92 @@ jobs:
   # App Tests with Coverage
   # Runs on every push to main, and on PRs targeting main/v2.
   # ============================================
+  # Airo Mind shell (flavour-scoped)
+  # ============================================
+  # Flavours are separate pubspecs, so `lib/main_mind.dart`, `lib/core/mind/**`
+  # and `test_mind/**` resolve under NO pubspec any other job installs.
+  # `app/analysis_options.yaml` excludes them for exactly that reason, and the
+  # default `flutter analyze` / `flutter test` therefore never sees them. This
+  # job is the only thing that does: it swaps in the Mind profile the way
+  # `app/tool/run_mind_macos.sh` does, then analyses, tests and compiles
+  # against it.
+  #
+  # The analysis options are swapped too, because `dart analyze <path>` cannot
+  # override an exclude -- it reports "No issues found!" on a hard type error
+  # in an excluded file. See the header of `app/analysis_options_mind.yaml`.
+  airo-mind-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-mind-${{ hashFiles('app/pubspec_mind.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      # feature_mind's *.freezed.dart is gitignored, so without codegen the
+      # shell fails to compile with a misleading "Couldn't find constructor
+      # ProcessingEvent_*" from inside the package.
+      - name: Generate feature_mind code
+        run: |
+          cd packages/feature_mind
+          flutter pub get
+          dart run build_runner build
+
+      - name: Swap in the Mind flavour
+        run: |
+          cp app/pubspec_mind.yaml app/pubspec.yaml
+          cp app/analysis_options_mind.yaml app/analysis_options.yaml
+          cd app
+          flutter pub get
+
+      - name: Configure firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART_B64: ${{ secrets.FIREBASE_OPTIONS_DART_B64 }}
+        run: |
+          cd app
+          if [[ -n "$FIREBASE_OPTIONS_DART_B64" ]]; then
+            echo "$FIREBASE_OPTIONS_DART_B64" | base64 -d > lib/firebase_options.dart
+            echo "Using FIREBASE_OPTIONS_DART_B64."
+          else
+            cp lib/firebase_options.dart.template lib/firebase_options.dart
+            echo "::warning::FIREBASE_OPTIONS_DART_B64 is not set; using placeholder firebase_options.dart."
+          fi
+
+      # Same flags as the `code-quality` job: infos and warnings are advisory
+      # in this repo, errors are not.
+      - name: Analyze the Mind shell
+        run: |
+          cd app
+          flutter analyze --no-fatal-infos --no-fatal-warnings lib/main_mind.dart lib/core/mind
+
+      - name: Run Mind shell tests
+        run: |
+          cd app
+          flutter test test_mind/ --reporter=compact
+
+      # `flutter test` compiles for the host only. This proves the profile also
+      # compiles the entrypoint into a device bundle -- the whole point of
+      # expanding it. The Android APK build is deliberately NOT the gate here:
+      # feature_mind's vendored cargokit gradle plugin calls `Project.exec()`,
+      # removed in Gradle 9, so `:feature_mind:cargokitCargoBuild...` fails
+      # before it reaches the Rust. That is Task 9's fix, not this job's.
+      - name: Compile the Mind entrypoint
+        run: |
+          cd app
+          flutter build bundle --target=lib/main_mind.dart --dart-define=APP_VARIANT=mind
+
+  # ============================================
   test-app:
     runs-on: ubuntu-latest
     timeout-minutes: 30

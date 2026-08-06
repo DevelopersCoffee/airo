@@ -41,21 +41,33 @@ analyzer:
     #
     # The shell's own suite lives in `test_mind/`, excluded for the same
     # dependency reason. `flutter test` with no arguments walks `test/` only,
-    # so the phone suite never tries to compile the Mind shell; the Mind suite
-    # runs under the Mind flavour instead:
+    # so the phone suite never tries to compile the Mind shell.
+    #
+    # These files ARE covered, by the `airo-mind-shell` job in
+    # `.github/workflows/pr-checks.yml` and `.github/workflows/ci.yml`. It
+    # swaps in the expanded `app/pubspec_mind.yaml`, then analyses, tests and
+    # compiles the entrypoint against it:
     #
     #   cp app/pubspec_mind.yaml app/pubspec.yaml
-    #   cd app && flutter pub get && flutter test test_mind/
+    #   cp app/analysis_options_mind.yaml app/analysis_options.yaml
+    #   cd app && flutter pub get
+    #   flutter analyze --no-fatal-infos --no-fatal-warnings \
+    #     lib/main_mind.dart lib/core/mind
+    #   flutter test test_mind/
+    #   flutter build bundle --target=lib/main_mind.dart \
+    #     --dart-define=APP_VARIANT=mind
     #
-    # KNOWN GAP: that command does not pass at HEAD, and nothing else covers
-    # these files either -- `app/tool/run_mind_macos.sh` builds against the
-    # un-expanded `pubspec_mind.yaml`, which still carries only `flutter` and
-    # `feature_mind`, so it cannot compile a shell that also needs
-    # core_product_shell, feature_assistant, go_router, riverpod and
-    # firebase_core. The Mind entrypoint is therefore UNCOVERED -- no analysis,
-    # no build, no CI -- until `pubspec_mind.yaml` is expanded and a Mind CI
-    # job lands (Airo Mind modular-app tasks 8/9). Do not read this exclusion
-    # as "covered elsewhere".
+    # The second `cp` is not optional. Excludes are not overridable from the
+    # command line: with this file in place, `dart analyze lib/main_mind.dart`
+    # reports "No issues found!" even on an injected hard type error.
+    # `app/analysis_options_mind.yaml` is the same configuration with the Mind
+    # paths un-excluded.
+    #
+    # Still open: the Android APK build. `flutter build apk --debug
+    # --target=lib/main_mind.dart` gets past Dart and Kotlin and then fails in
+    # `:feature_mind:cargokitCargoBuild...` -- the vendored cargokit gradle
+    # plugin calls `Project.exec()`, which Gradle 9 removed. Airo Mind
+    # modular-app task 9 owns that.
     - "lib/main_mind.dart"
     - "lib/core/mind/**"
     - "test_mind/**"
