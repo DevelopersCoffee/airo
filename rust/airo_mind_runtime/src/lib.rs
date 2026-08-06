@@ -51,52 +51,32 @@ pub mod api;
 // generator overwrites it, so a fix made here is a fix that disappears.
 mod frb_generated;
 
-/// SHA-256 for model verification. Private: the Model Manager is the only
-/// caller, and a hash function on the public surface invites reuse it was not
-/// reviewed for.
-#[cfg_attr(not(all(feature = "whisper", feature = "llama")), allow(dead_code))]
-mod digest;
+// The backend-free half of the runtime now lives in `airo_mind_core`, so that
+// the whisper and llama engines can be linked into separate cdylibs without
+// duplicating it. See that crate's root for why they must be separate at all.
+//
+// These are `use`, not `mod`: `crate::wav::decode` and friends keep resolving
+// exactly as before, so moving the files did not touch a single call site.
+#[cfg_attr(
+    not(all(feature = "whisper", feature = "llama")),
+    allow(unused_imports)
+)]
+pub(crate) use airo_mind_core::{budget, cancel, engine, models, wav};
 
 /// Re-exported for `api::setup`, which is the only caller outside `models`.
 #[cfg(all(feature = "whisper", feature = "llama"))]
-pub(crate) use digest::file_digest as digest_file;
-
-/// The Model Manager (`ADR-0018`). A platform service, not a Dart API: a
-/// capability asks it for a task and a budget, and Flutter never sees it. It
-/// sits outside `api` for the same reason `wav` does -- anything under `api` is
-/// generated into Dart.
-#[cfg_attr(not(all(feature = "whisper", feature = "llama")), allow(dead_code))]
-mod models;
-
-mod budget;
-mod cancel;
-mod engine;
-mod search;
-mod store;
-mod supervisor;
-/// WAV decoding for the capability layer. Private: a container format is an
-/// input detail, not part of the runtime's surface.
-///
-/// Compiled even without the backends so its tests run in a CI job that does
-/// not build whisper.cpp -- parsing a container is exactly the kind of thing
-/// worth testing cheaply. Only `api` calls it, hence the conditional allow.
-#[cfg_attr(not(all(feature = "whisper", feature = "llama")), allow(dead_code))]
-mod wav;
+pub(crate) use airo_mind_core::file_digest as digest_file;
 
 #[cfg(feature = "llama")]
 mod llama;
 #[cfg(feature = "whisper")]
 mod whisper;
 
-pub use budget::{ResourceBudget, ResourceRequest};
-pub use cancel::CancelToken;
-pub use engine::{
-    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
-    TranscriptSegment,
+pub use airo_mind_core::{
+    AudioInput, CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest,
+    Hit, Meeting, MeetingStore, ResourceBudget, ResourceRequest, RuntimeError, SearchIndex,
+    SpeechEngine, StoreError, Supervisor, TranscriptSegment,
 };
-pub use search::{Hit, SearchIndex};
-pub use store::{Meeting, MeetingStore, StoreError};
-pub use supervisor::{RuntimeError, Supervisor};
 
 #[cfg(feature = "llama")]
 pub use llama::LlamaGenerationEngine;

@@ -1,0 +1,20 @@
+[package]
+name = "airo_mind_core"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind runtime core — Supervisor, engine boundary, store and index. No inference backend."
+license = "MIT"
+
+[lib]
+name = "airo_mind_core"
+# rlib only. This crate is linked *into* the engine cdylibs, never loaded on its
+# own, and it deliberately carries no FFI surface: the bridge belongs to the
+# crate that owns an engine.
+crate-type = ["rlib"]
+
+# Nothing. Every module here is std-only, which is what makes it safe to link
+# into two cdylibs that must not share anything else -- see the note in lib.rs.
+[dependencies]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
