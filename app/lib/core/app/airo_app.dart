@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../features/agent_chat/data/services/notification_navigation_service.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import '../error/global_error_handler.dart';
 import '../providers/app_theme_provider.dart';
 import '../platform/platform_config.dart';

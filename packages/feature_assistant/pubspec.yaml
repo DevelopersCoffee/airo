@@ -18,10 +18,20 @@ dependencies:
     path: ../core_ui
   core_product_shell:
     path: ../core_product_shell
+  core_domain:
+    path: ../core_domain
+  core_data:
+    path: ../core_data
   shared_preferences: ^2.5.5
   image_picker: ^1.2.1
+  dio: ^5.10.0
+  equatable: ^2.1.0
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  llama_flutter_android: ^0.2.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
+  shared_preferences_platform_interface: ^2.4.1

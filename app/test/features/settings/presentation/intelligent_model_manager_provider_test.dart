@@ -1,9 +1,7 @@
-import 'package:airo_app/core/services/local_runtime_preloader_service.dart';
-import 'package:airo_app/features/agent_chat/application/assistant_model_preferences.dart';
-import 'package:airo_app/features/agent_chat/domain/models/assistant_model_selection.dart';
 import 'package:airo_app/features/settings/application/ai_model_management.dart';
 import 'package:airo_app/features/settings/presentation/intelligent_model_manager_provider.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
