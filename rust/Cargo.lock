@@ -55,9 +55,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "airo_mind_core"
+version = "0.1.0"
+
+[[package]]
 name = "airo_mind_runtime"
 version = "0.1.0"
 dependencies = [
+ "airo_mind_core",
  "encoding_rs",
  "flutter_rust_bridge",
  "llama-cpp-2",
