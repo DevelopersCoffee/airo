@@ -6,12 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  test('super-app production registry composes Coins and IPTV', () {
+  test('super-app production registry composes Coins, Mind and IPTV', () {
     final registry = buildMainModuleRegistry();
 
     expect(registry.shell, ShellId.mobile);
-    expect(registry.moduleIds, ['coin_vault', 'iptv']);
+    expect(registry.moduleIds, ['coin_vault', 'assistant', 'iptv']);
     expect(registry.isRegistered('coin_vault'), isTrue);
+    expect(registry.isRegistered('assistant'), isTrue);
     expect(registry.isRegistered('iptv'), isTrue);
   });
 
@@ -21,7 +22,14 @@ void main() {
       (route) => route.path,
     );
 
-    expect(paths, ['vault', '/iptv', '/iptv/player', '/vod']);
+    expect(paths, [
+      'vault',
+      '/assistant',
+      '/wellbeing',
+      '/iptv',
+      '/iptv/player',
+      '/vod',
+    ]);
   });
 
   test('super-app registry keeps the vault prefix aligned with its route', () {
