@@ -298,10 +298,13 @@ jobs:
 
       # `flutter test` compiles for the host only. This proves the profile also
       # compiles the entrypoint into a device bundle -- the whole point of
-      # expanding it. The Android APK build is deliberately NOT the gate here:
-      # feature_mind's vendored cargokit gradle plugin calls `Project.exec()`,
-      # removed in Gradle 9, so `:feature_mind:cargokitCargoBuild...` fails
-      # before it reaches the Rust. That is Task 9's fix, not this job's.
+      # expanding it. The Android APK build (`scripts/build-mind.sh`) is still
+      # deliberately NOT the gate here. The Gradle 9 `Project.exec()` break in
+      # the vendored cargokit plugin is fixed, but the Rust runtime itself does
+      # not cross-compile to Android yet: `whisper-rs-sys` fails to link
+      # (`could not find native static library ggml-blas`) and
+      # `llama-cpp-sys-2` panics outright on `armv7-linux-androideabi`.
+      # Promote this step to `scripts/build-mind.sh` once those are resolved.
       - name: Compile the Mind entrypoint
         run: |
           cd app
