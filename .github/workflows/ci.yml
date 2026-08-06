@@ -222,9 +222,6 @@ jobs:
           scripts/test-generate-release-qualification-report.sh
 
   # ============================================
-  # App Tests with Coverage
-  # Runs on every push to main, and on PRs targeting main/v2.
-  # ============================================
   # Airo Mind shell (flavour-scoped)
   # ============================================
   # Flavours are separate pubspecs, so `lib/main_mind.dart`, `lib/core/mind/**`
@@ -241,6 +238,11 @@ jobs:
   airo-mind-shell:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Push only. The identical job in `.github/workflows/pr-checks.yml` is the
+    # PR gate, and both workflows fire on `pull_request` -- without this an
+    # ~8-minute job would run twice per PR for one result. Same idiom as
+    # `build-web`, `security-scan` and `lint` below.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v7
 
@@ -310,6 +312,9 @@ jobs:
           cd app
           flutter build bundle --target=lib/main_mind.dart --dart-define=APP_VARIANT=mind
 
+  # ============================================
+  # App Tests with Coverage
+  # Runs on every push to main, and on PRs targeting main/v2.
   # ============================================
   test-app:
     runs-on: ubuntu-latest

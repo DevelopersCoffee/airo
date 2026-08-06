@@ -12,6 +12,11 @@ environment:
 # against `pubspec.yaml`. Every entry below is here because the compile
 # closure of that entrypoint demands it; nothing is here "for parity".
 #
+# "Demanded by the compile closure" is the only reason anything is listed. No
+# entry is here for parity with pubspec.yaml, and the list was trimmed against
+# `flutter pub get` + `flutter build bundle` until every remaining line was
+# load-bearing.
+#
 # The closure is wider than the scribe journey alone because the Mind shell
 # mounts `AssistantModule` with the super app's `AppAssistantHostAdapter`.
 # That adapter is app-internal and reaches into the Coins providers, the
@@ -25,8 +30,8 @@ environment:
 #     --dart-define=APP_VARIANT=mind
 # (restore `app/pubspec.yaml` afterwards -- it must stay the default profile).
 
-# platform_playlist (via feature_iptv) already brings sqlite3_flutter_libs with
-# the pinned native library. Same rationale as pubspec.yaml: use it instead of
+# sqlite3_flutter_libs is declared directly below and packages the pinned
+# native library. Same rationale as pubspec.yaml: load that one instead of
 # downloading another binary during the sqlite3 build hook.
 hooks:
   user_defines:
@@ -41,8 +46,10 @@ dependencies:
   # Routing -- main_mind.dart builds a GoRouter directly.
   go_router: ^17.3.0
 
-  # State management -- ProviderScope in AiroMindApp, providers everywhere.
-  riverpod: 3.3.2
+  # State management -- ProviderScope in AiroMindApp, and 106 of the closure's
+  # files import it. Only flutter_riverpod: nothing in the closure imports
+  # `package:riverpod` directly, and flutter_riverpod 3.3.2 pins the matching
+  # riverpod itself.
   flutter_riverpod: 3.3.2
 
   # Storage & persistence
@@ -78,8 +85,6 @@ dependencies:
   flutter_tts: 4.2.5
 
   # Utilities
-  # intl: date/currency formatting across the assistant + coins surfaces.
-  intl: ^0.20.3
   # uuid + equatable: money models and repositories.
   uuid: ^4.5.3
   equatable: ^2.1.0
@@ -89,8 +94,6 @@ dependencies:
   package_info_plus: ^10.2.0
   image_picker: ^1.2.3
   flutter_image_compress: 2.4.0
-
-  cupertino_icons: ^1.0.9
 
   # Local packages - Core
   core_domain:
@@ -119,9 +122,6 @@ dependencies:
   # feature_assistant: the second module the shell registers.
   feature_assistant:
     path: ../packages/feature_assistant
-  # airo: app_database.dart's schema lives here.
-  airo:
-    path: ../packages/airo
   # feature_coin / feature_coins_core: RouteNames re-exports the Coins route
   # names, and the adapter's finance chat ingestion uses the Coins services.
   feature_coin:
