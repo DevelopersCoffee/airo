@@ -18,6 +18,8 @@ dependencies:
     path: ../core_ui
   core_product_shell:
     path: ../core_product_shell
+  core_app_shell:
+    path: ../core_app_shell
   core_domain:
     path: ../core_domain
   core_data:

@@ -1,3 +1,4 @@
+import 'package:feature_assistant/src/host/assistant_host_adapter.dart';
 import 'package:feature_assistant/src/services/local_runtime_preloader_service.dart';
 import 'package:feature_assistant/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_assistant/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../support/fake_assistant_host_adapter.dart';
 
 void main() {
   testWidgets('chat initialization triggers the global local preloader', (
@@ -61,6 +63,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
           ),

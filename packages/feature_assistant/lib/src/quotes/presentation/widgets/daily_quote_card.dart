@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/auth/auth_service.dart';
+import '../../../host/assistant_host_adapter.dart';
 import '../../application/providers/quote_provider.dart';
 
 export '../../application/providers/quote_provider.dart'
@@ -29,7 +29,7 @@ class DailyQuoteCard extends ConsumerWidget {
     }
 
     final quoteAsync = ref.watch(dailyQuoteProvider);
-    final currentUser = AuthService.instance.currentUser;
+    final currentUser = ref.watch(assistantHostAdapterProvider).currentUser;
     final username = currentUser?.username ?? 'Guest';
 
     return quoteAsync.when(

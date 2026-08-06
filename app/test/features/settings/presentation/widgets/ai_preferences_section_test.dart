@@ -1,6 +1,6 @@
 import 'package:core_app_shell/core_app_shell.dart';
-import 'package:feature_assistant/src/agent_chat/presentation/screens/profile_screen.dart';
 import 'package:airo_app/features/settings/application/ai_storage_dashboard.dart';
+import 'package:airo_app/features/settings/presentation/widgets/ai_preferences_section.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:airo_app/features/settings/application/ai_preferences_settings.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('profile shows AI preferences and persists fallback changes', (
+  testWidgets('section shows AI preferences and persists fallback changes', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
@@ -61,7 +61,11 @@ void main() {
             );
           }),
         ],
-        child: const MaterialApp(home: ProfileScreen()),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(child: AIPreferencesSection()),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -85,7 +89,7 @@ void main() {
     );
   });
 
-  testWidgets('profile storage dashboard shows all local storage categories', (
+  testWidgets('storage dashboard shows all local storage categories', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -134,7 +138,11 @@ void main() {
             );
           }),
         ],
-        child: const MaterialApp(home: ProfileScreen()),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(child: AIPreferencesSection()),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -153,7 +161,7 @@ void main() {
     expect(find.text('2.0 GB'), findsOneWidget);
   });
 
-  testWidgets('profile saves an OpenAI-compatible remote model server', (
+  testWidgets('section saves an OpenAI-compatible remote model server', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -169,7 +177,11 @@ void main() {
             return const AIStorageDashboardSummary(categories: []);
           }),
         ],
-        child: const MaterialApp(home: ProfileScreen()),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(child: AIPreferencesSection()),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -187,6 +199,7 @@ void main() {
       find.byKey(const Key('ai-remote-server-model')),
       'qwen2.5:7b',
     );
+    await tester.ensureVisible(find.text('Save server'));
     await tester.tap(find.text('Save server'));
     await tester.pumpAndSettle();
 
@@ -201,7 +214,7 @@ void main() {
     expect(find.text('Remote model server saved.'), findsOneWidget);
   });
 
-  testWidgets('profile shows persistent remote server diagnostics', (
+  testWidgets('section shows persistent remote server diagnostics', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -217,7 +230,11 @@ void main() {
             return const AIStorageDashboardSummary(categories: []);
           }),
         ],
-        child: const MaterialApp(home: ProfileScreen()),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(child: AIPreferencesSection()),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -235,6 +252,7 @@ void main() {
       find.byKey(const Key('ai-remote-server-model')),
       'qwen2.5:7b',
     );
+    await tester.ensureVisible(find.byKey(const Key('ai-remote-server-test')));
     await tester.tap(find.byKey(const Key('ai-remote-server-test')));
     await tester.pumpAndSettle();
 

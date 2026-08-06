@@ -6,10 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
-import '../../../../core/dictionary/dictionary.dart';
-import '../../../../core/accessibility/airo_speech_service.dart';
-import '../../../../core/platform/platform_config.dart';
-import '../../../../core/utils/locale_settings.dart';
+import '../../../host/assistant_host_adapter.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
@@ -32,10 +29,6 @@ import '../../../agent_chat/domain/services/tool_registry.dart';
 import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
-import '../../../coins/application/providers/dashboard_providers.dart';
-import '../../../coins/application/providers/expense_providers.dart';
-import '../../../coins/application/services/finance_chat_ingestion_service.dart';
-import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../services/local_runtime_preloader_service.dart';
 import '../../../services/model_preload_preferences.dart';
 import '../../../services/voice_search_service.dart';
@@ -221,7 +214,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Besides avoiding needless work, this prevents an orphaned timeout
       // timer when a test/widget is torn down before an unsupported channel
       // call completes.
-      if (!PlatformConfig.isAndroid) {
+      if (!ref.read(assistantHostAdapterProvider).isAndroidHost) {
         if (mounted) {
           setState(() {
             _isDeviceSupported = false;
@@ -411,97 +404,100 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     return AiroResponsiveScaffold(
       backgroundColor: Colors.transparent,
-      body: DictionarySelectionArea(
-        child: Column(
-          children: [
-            _buildSelectedModelBar(selectedAssistantModelId),
+      body: ref
+          .read(assistantHostAdapterProvider)
+          .wrapWithDictionarySelection(
+            child: Column(
+              children: [
+                _buildSelectedModelBar(selectedAssistantModelId),
 
-            // Messages list
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                itemCount:
-                    _messages.length + (_shouldShowPromptSuggestions ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length) {
-                    return _buildSamplePrompts();
-                  }
+                // Messages list
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    itemCount:
+                        _messages.length +
+                        (_shouldShowPromptSuggestions ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return _buildSamplePrompts();
+                      }
 
-                  final message = _messages[index];
-                  return _buildMessage(message, index);
-                },
-              ),
-            ),
-
-            // Input area
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colorScheme.surface.withValues(alpha: 0.34),
-                border: Border(
-                  top: BorderSide(color: colorScheme.outlineVariant),
+                      final message = _messages[index];
+                      return _buildMessage(message, index);
+                    },
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  OutlinedButton.icon(
-                    key: const Key('agent_chat_skills_button'),
-                    focusNode: _skillsButtonFocusNode,
-                    onPressed: _showManageSkills,
-                    icon: const Icon(Icons.auto_fix_high, size: 18),
-                    label: const Text('Skills'),
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    button: true,
-                    label: _isCapturingVoice
-                        ? 'Stop voice input'
-                        : 'Speak message',
-                    child: IconButton(
-                      key: const Key('agent_chat_voice_button'),
-                      tooltip: _isCapturingVoice
-                          ? 'Stop voice input'
-                          : 'Speak message',
-                      onPressed: _captureVoice,
-                      icon: Icon(
-                        _isCapturingVoice ? Icons.stop : Icons.mic_none,
-                      ),
+
+                // Input area
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(alpha: 0.34),
+                    border: Border(
+                      top: BorderSide(color: colorScheme.outlineVariant),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      key: const Key('agent_chat_input'),
-                      focusNode: _messageInputFocusNode,
-                      controller: _messageController,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(0),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                  child: Row(
+                    children: [
+                      OutlinedButton.icon(
+                        key: const Key('agent_chat_skills_button'),
+                        focusNode: _skillsButtonFocusNode,
+                        onPressed: _showManageSkills,
+                        icon: const Icon(Icons.auto_fix_high, size: 18),
+                        label: const Text('Skills'),
+                      ),
+                      const SizedBox(width: 8),
+                      Semantics(
+                        button: true,
+                        label: _isCapturingVoice
+                            ? 'Stop voice input'
+                            : 'Speak message',
+                        child: IconButton(
+                          key: const Key('agent_chat_voice_button'),
+                          tooltip: _isCapturingVoice
+                              ? 'Stop voice input'
+                              : 'Speak message',
+                          onPressed: _captureVoice,
+                          icon: Icon(
+                            _isCapturingVoice ? Icons.stop : Icons.mic_none,
+                          ),
                         ),
                       ),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          key: const Key('agent_chat_input'),
+                          focusNode: _messageInputFocusNode,
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(0),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        key: const Key('agent_chat_send_button'),
+                        focusNode: _sendButtonFocusNode,
+                        onPressed: _sendMessage,
+                        icon: const Icon(Icons.send),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    key: const Key('agent_chat_send_button'),
-                    focusNode: _sendButtonFocusNode,
-                    onPressed: _sendMessage,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -812,7 +808,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _readMessageAloud(String text) async {
-    final started = await AiroSpeechService.instance.speak(text);
+    final started = await ref
+        .read(assistantHostAdapterProvider)
+        .speakAloud(text);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -861,7 +859,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     final safety = SafetyGuardrails.withDefaults(
-      profile: ref.read(aiPreferencesSettingsProvider).safetyProfile,
+      profile: ref.read(assistantHostAdapterProvider).safetyProfile,
     );
     final safetyResult = safety.checkInput(message);
     if (safetyResult.isErr) {
@@ -1037,107 +1035,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         lower.contains('not now');
   }
 
+  /// Offers the message to the host's finance ingestion before treating it as
+  /// a normal assistant prompt. Returns true when the host consumed it.
   Future<bool> _tryIngestFinanceMessage(String message) async {
+    final AssistantFinanceIngestion? outcome;
     try {
-      final accounts = await ref.read(expenseAccountOptionsProvider.future);
-      final defaultAccount = accounts
-          .where((account) => account.isDefault)
-          .fold(accounts.first, (selected, account) => account);
-      final accountId = defaultAccount.id;
-
-      final result = await ref
-          .read(financeChatIngestionServiceProvider)
-          .ingest(message, accountId: accountId);
-
-      if (result.status == FinanceChatIngestionStatus.ignored) {
-        return false;
-      }
-
-      if (result.changedLedger) {
-        _refreshCoinsProviders();
-      }
-
-      if (!mounted) return true;
-      final response = _financeIngestionResponse(result);
-      setState(() {
-        _messages.add(ChatMessage(text: response, isUser: false));
-      });
-      _showFinanceIngestionUndo(result);
-      return true;
+      outcome = await ref
+          .read(assistantHostAdapterProvider)
+          .ingestFinanceMessage(message);
     } catch (e) {
-      debugPrint('Finance SMS ingestion failed: $e');
+      debugPrint('Finance message ingestion failed: $e');
       return false;
     }
-  }
+    if (outcome == null) return false;
+    if (!mounted) return true;
 
-  void _refreshCoinsProviders() {
-    ref.invalidate(allExpensesProvider);
-    ref.invalidate(recentExpensesProvider);
-    ref.invalidate(spentTodayProvider);
-    ref.invalidate(spentThisMonthProvider);
-    ref.invalidate(monthlySpendingByCategoryProvider);
-    ref.invalidate(dashboardDataProvider);
-  }
+    setState(() {
+      _messages.add(ChatMessage(text: outcome!.responseText, isUser: false));
+    });
 
-  void _showFinanceIngestionUndo(FinanceChatIngestionResult result) {
-    final transaction = result.transaction;
-    if (transaction == null ||
-        (result.status != FinanceChatIngestionStatus.created &&
-            result.status != FinanceChatIngestionStatus.needsReview) ||
-        !mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added ${transaction.description} to Coins.'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () async {
-            final deleteResult = await ref
-                .read(transactionRepositoryProvider)
-                .delete(transaction.id);
-            if (deleteResult.error != null || !mounted) {
-              return;
-            }
-            _refreshCoinsProviders();
-            setState(() {
-              _messages.add(
-                ChatMessage(
-                  text: 'Removed ${transaction.description} from Coins.',
-                  isUser: false,
-                ),
-              );
-            });
-          },
+    final undoLabel = outcome.undoLabel;
+    final onUndo = outcome.onUndo;
+    if (undoLabel != null && onUndo != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(undoLabel),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              final confirmation = await onUndo();
+              if (confirmation == null || !mounted) return;
+              setState(() {
+                _messages.add(ChatMessage(text: confirmation, isUser: false));
+              });
+            },
+          ),
         ),
-      ),
-    );
-  }
-
-  String _financeIngestionResponse(FinanceChatIngestionResult result) {
-    final formatter = ref.read(currencyFormatterProvider);
-    final parsed = result.parsed;
-    if (parsed == null) {
-      return 'I could not read this as a finance transaction.';
+      );
     }
-
-    final amount = formatter.formatCents(parsed.amountCents);
-    switch (result.status) {
-      case FinanceChatIngestionStatus.created:
-        return 'Added to Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
-      case FinanceChatIngestionStatus.updated:
-        return 'Updated Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
-      case FinanceChatIngestionStatus.needsReview:
-        if (result.transaction != null) {
-          return 'Queued for Coins review: ${parsed.description} - $amount - ${parsed.categoryId}.';
-        }
-        return 'I found a possible transaction for ${parsed.description} - $amount, but it needs review before I add it.';
-      case FinanceChatIngestionStatus.failed:
-        return result.message ?? 'I could not update Coins from this message.';
-      case FinanceChatIngestionStatus.ignored:
-        return 'I could not read this as a finance transaction.';
-    }
+    return true;
   }
 
   Future<ChatResponseMetadata?> _generateSelectedModelResponse(
@@ -1165,7 +1101,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return null;
       }
       final outputResult = SafetyGuardrails.withDefaults(
-        profile: ref.read(aiPreferencesSettingsProvider).safetyProfile,
+        profile: ref.read(assistantHostAdapterProvider).safetyProfile,
       ).checkOutput(latestChunk);
       if (outputResult.isErr) {
         _replaceStreamingMessage(
@@ -1184,7 +1120,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     } on AssistantRuntimeUnavailableException catch (e) {
       stopwatch.stop();
-      final autoFallback = ref.read(aiPreferencesSettingsProvider).autoFallback;
+      final autoFallback = ref
+          .read(assistantHostAdapterProvider)
+          .autoFallbackEnabled;
       if (autoFallback) {
         final fallback = await _assistantRuntime.resolveFallback(
           failedRuntimeId: e.runtimeId ?? selectedModelId,
@@ -1555,7 +1493,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onSubmitted: (word) {
             if (word.trim().isNotEmpty) {
               Navigator.of(context).pop();
-              DictionaryPopup.showAdaptive(context, word.trim());
+              ref
+                  .read(assistantHostAdapterProvider)
+                  .showWordDefinition(context, word.trim());
             }
           },
         ),
@@ -1569,7 +1509,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               final word = controller.text.trim();
               if (word.isNotEmpty) {
                 Navigator.of(context).pop();
-                DictionaryPopup.showAdaptive(context, word);
+                ref
+                    .read(assistantHostAdapterProvider)
+                    .showWordDefinition(context, word);
               }
             },
             icon: const Icon(Icons.search),

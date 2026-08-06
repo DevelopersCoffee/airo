@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/auth/auth_service.dart';
+import '../../../host/assistant_host_adapter.dart';
 import '../../domain/models/quote_model.dart';
 import '../../domain/models/quote_preferences.dart';
 import '../../domain/services/quote_service.dart';
@@ -91,7 +91,7 @@ final quoteServiceProvider = Provider<QuoteService>((ref) {
 /// Daily quote provider - personalized for current user
 final dailyQuoteProvider = FutureProvider<Quote>((ref) async {
   final quoteService = ref.watch(quoteServiceProvider);
-  final currentUser = AuthService.instance.currentUser;
+  final currentUser = ref.watch(assistantHostAdapterProvider).currentUser;
 
   // Use user ID for personalization, fallback to 'guest' if not logged in
   final userId = currentUser?.id ?? 'guest';

@@ -8,12 +8,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../host/assistant_host_adapter.dart';
 import '../../application/assistant_model_preferences.dart';
-import '../../../settings/application/ai_preferences_settings.dart';
 import '../../data/services/assistant_runtime_service.dart';
-import '../../../../core/platform/platform_config.dart';
 import '../../../services/llama_gguf_service.dart';
-import '../../../settings/presentation/intelligent_model_manager_provider.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'model_health_center_screen.dart';
 
@@ -24,7 +22,10 @@ final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
 final assistantModelLibraryProvider =
     FutureProvider<AssistantModelLibraryState>((ref) async {
       final task = ref.watch(selectedAssistantTaskProvider);
-      return AssistantModelLibraryState.load(task: task);
+      return AssistantModelLibraryState.load(
+        task: task,
+        isAndroidHost: ref.read(assistantHostAdapterProvider).isAndroidHost,
+      );
     });
 
 enum AssistantTask {
@@ -205,6 +206,11 @@ class AssistantModelLibraryState {
 
   static Future<AssistantModelLibraryState> load({
     required AssistantTask task,
+
+    /// Whether the shell runs on Android, where AICore/Gemini Nano probes are
+    /// meaningful. Supplied by the host adapter so the package never reaches
+    /// for `dart:io`.
+    bool isAndroidHost = false,
     Future<bool> Function()? isNanoSupported,
     Future<Map<String, dynamic>> Function()? loadDeviceInfo,
     Future<bool> Function()? isLiteRtAvailable,
@@ -230,12 +236,12 @@ class AssistantModelLibraryState {
     // teardown.
     final nanoSupported = isNanoSupported != null
         ? await isNanoSupported()
-        : PlatformConfig.isAndroid
+        : isAndroidHost
         ? await nanoService.isSupported()
         : false;
     final deviceInfo = loadDeviceInfo != null
         ? await loadDeviceInfo()
-        : PlatformConfig.isAndroid
+        : isAndroidHost
         ? await nanoService.getDeviceInfo()
         : const <String, dynamic>{};
     final liteRtService = LiteRtLmService();
@@ -824,8 +830,8 @@ class _ModelLibraryContent extends ConsumerWidget {
         candidate: candidate,
         template: template,
         contextLengthOverride: ref
-            .read(aiPreferencesSettingsProvider)
-            .contextLength,
+            .read(assistantHostAdapterProvider)
+            .modelContextLength,
       );
       if (!result.isReady) {
         return;
@@ -1168,17 +1174,11 @@ class _RuntimeHealthButton extends ConsumerWidget {
                 onAction: (action) {
                   var reducedContext = 1024;
                   if (action == ModelHealthAction.reduceContext) {
-                    final settings = ref.read(aiPreferencesSettingsProvider);
-                    reducedContext = settings.contextLength <= 1024
+                    final host = ref.read(assistantHostAdapterProvider);
+                    reducedContext = host.modelContextLength <= 1024
                         ? 512
                         : 1024;
-                    unawaited(
-                      ref
-                          .read(aiPreferencesSettingsProvider.notifier)
-                          .update(
-                            settings.copyWith(contextLength: reducedContext),
-                          ),
-                    );
+                    unawaited(host.setModelContextLength(reducedContext));
                   }
                   final message = switch (action) {
                     ModelHealthAction.retry =>
@@ -1199,8 +1199,8 @@ class _RuntimeHealthButton extends ConsumerWidget {
                       candidate.package != null) {
                     unawaited(
                       ref
-                          .read(intelligentModelManagerProvider)
-                          .repairModel(candidate.package!.id),
+                          .read(assistantHostAdapterProvider)
+                          .repairModelPackage(candidate.package!.id),
                     );
                   }
                   onOpenModelManager();

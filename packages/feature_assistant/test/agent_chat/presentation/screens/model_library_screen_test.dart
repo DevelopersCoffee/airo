@@ -1,3 +1,4 @@
+import 'package:feature_assistant/src/host/assistant_host_adapter.dart';
 import 'package:feature_assistant/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_assistant/src/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:feature_assistant/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../support/fake_assistant_host_adapter.dart';
 
 void main() {
   test('does not advertise a downloaded GGUF file as locally runnable', () {
@@ -305,6 +307,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            assistantHostAdapterProvider.overrideWithValue(
+              FakeAssistantHostAdapter(),
+            ),
             assistantModelLibraryProvider.overrideWith((ref) async => state),
             selectedAssistantModelIdProvider.overrideWith(
               (ref) => _SelectedAssistantModelNotifier(),
@@ -388,6 +393,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -456,6 +464,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -525,6 +536,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -598,6 +612,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -672,6 +689,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -749,6 +769,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
@@ -812,6 +835,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           assistantModelLibraryProvider.overrideWith((ref) async => state),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),

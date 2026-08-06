@@ -1,3 +1,4 @@
+import 'package:feature_assistant/src/host/assistant_host_adapter.dart';
 import 'package:feature_assistant/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_assistant/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_assistant/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../support/gemini_nano_channel.dart';
+import '../../../support/fake_assistant_host_adapter.dart';
 
 void main() {
   test('buildRuntimeChatResponseMetadata records tokens and timings', () {
@@ -279,19 +281,12 @@ void main() {
   });
 
   testWidgets('read aloud reports unavailable TTS engines', (tester) async {
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    const ttsChannel = MethodChannel('flutter_tts');
-    messenger.setMockMethodCallHandler(ttsChannel, (call) async {
-      throw PlatformException(code: 'tts_unavailable');
-    });
-    addTearDown(() {
-      messenger.setMockMethodCallHandler(ttsChannel, null);
-    });
-
+    // The host owns the TTS engine; the screen's job is to explain when the
+    // host reports it is unusable rather than fail silently.
     await _pumpChatScreen(
       tester,
       initialMessages: [ChatMessage(text: 'Assistant answer', isUser: false)],
+      host: FakeAssistantHostAdapter(speakResult: false),
     );
 
     await tester.tap(find.byTooltip('Read message aloud'));
@@ -455,6 +450,7 @@ Future<void> _pumpChatScreen(
   WidgetTester tester, {
   required List<ChatMessage> initialMessages,
   String? initialDraft,
+  FakeAssistantHostAdapter? host,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
@@ -472,6 +468,9 @@ Future<void> _pumpChatScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        assistantHostAdapterProvider.overrideWithValue(
+          host ?? FakeAssistantHostAdapter(),
+        ),
         assistantModelLibraryProvider.overrideWith(
           (ref) async => _chatLibraryState,
         ),

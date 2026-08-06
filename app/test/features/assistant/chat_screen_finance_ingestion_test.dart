@@ -1,8 +1,7 @@
 import 'package:core_app_shell/core_app_shell.dart';
-import 'package:feature_assistant/src/agent_chat/application/assistant_model_preferences.dart';
-import 'package:feature_assistant/src/agent_chat/domain/models/assistant_runtime_ids.dart';
-import 'package:feature_assistant/src/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:airo_app/core/assistant/app_assistant_host_adapter.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
+import 'package:feature_assistant/feature_assistant.dart';
 import 'package:feature_coins_core/src/entities/account.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';
 import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
@@ -29,6 +28,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWith(
+            (ref) => AppAssistantHostAdapter(ref),
+          ),
           currencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('INR'),
           ),
@@ -99,6 +101,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWith(
+            (ref) => AppAssistantHostAdapter(ref),
+          ),
           currencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('INR'),
           ),

@@ -1,6 +1,10 @@
 /// Airo Mind tab - AI assistant, models, prompt lab, and wellbeing.
 library;
 
+// Host seam + routes
+export 'src/host/assistant_host_adapter.dart';
+export 'src/routing/assistant_route_names.dart';
+
 // Assistant hub + tools
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';

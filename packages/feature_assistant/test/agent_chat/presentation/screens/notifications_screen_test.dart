@@ -1,3 +1,4 @@
+import 'package:feature_assistant/src/host/assistant_host_adapter.dart';
 import 'package:feature_assistant/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_assistant/src/agent_chat/data/services/agent_notification_scheduler.dart';
 import 'package:feature_assistant/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../support/gemini_nano_channel.dart';
+import '../../../support/fake_assistant_host_adapter.dart';
 
 void main() {
   test('buildNotificationChatPrefill includes reminder context', () {
@@ -71,6 +73,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
           selectedAssistantModelIdProvider.overrideWith(
             (ref) => _SelectedAssistantModelNotifier(),
           ),
