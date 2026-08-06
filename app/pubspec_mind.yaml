@@ -7,19 +7,197 @@ environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
 
-# Deliberately minimal. Airo Mind's milestone is one journey -- record,
-# transcribe, summarise, search -- and every package not on that path is
-# weight the journey has to carry while it is being proven.
+# Flavors are separate pubspecs in this repo (see CLAUDE.md), so this file is
+# the complete dependency profile for `lib/main_mind.dart` -- not a diff
+# against `pubspec.yaml`. Every entry below is here because the compile
+# closure of that entrypoint demands it; nothing is here "for parity".
+#
+# "Demanded by the compile closure" is the only reason anything is listed. No
+# entry is here for parity with pubspec.yaml, and the list was trimmed against
+# `flutter pub get` + `flutter build bundle` until every remaining line was
+# load-bearing.
+#
+# The closure is wider than the scribe journey alone because the Mind shell
+# mounts `AssistantModule` with the super app's `AppAssistantHostAdapter`.
+# That adapter is app-internal and reaches into the Coins providers, the
+# settings model manager, the dictionary, and the bug-report dialog, each of
+# which drags its own package edge. Trimming that closure means narrowing the
+# adapter, which is a code change this profile deliberately does not assume.
+#
+# Verify with:
+#   cp app/pubspec_mind.yaml app/pubspec.yaml && cd app && flutter pub get
+#   flutter build apk --debug --target=lib/main_mind.dart \
+#     --dart-define=APP_VARIANT=mind
+# (restore `app/pubspec.yaml` afterwards -- it must stay the default profile).
+
+# sqlite3_flutter_libs is declared directly below and packages the pinned
+# native library. Same rationale as pubspec.yaml: load that one instead of
+# downloading another binary during the sqlite3 build hook.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlite3
+
 dependencies:
   flutter:
     sdk: flutter
+
+  # Routing -- main_mind.dart builds a GoRouter directly.
+  go_router: ^17.3.0
+
+  # State management -- ProviderScope in AiroMindApp, and 106 of the closure's
+  # files import it. Only flutter_riverpod: nothing in the closure imports
+  # `package:riverpod` directly, and flutter_riverpod 3.3.2 pins the matching
+  # riverpod itself.
+  flutter_riverpod: 3.3.2
+
+  # Storage & persistence
+  # shared_preferences: settings + AI preferences persistence.
+  shared_preferences: ^2.5.5
+  # drift/sqlite3/path/path_provider: lib/core/database/app_database.dart,
+  # reached from the Coins expense providers the adapter exposes.
+  drift: ^2.32.1
+  sqlite3_flutter_libs: ^0.5.41
+  path: 1.9.1
+  path_provider: ^2.1.6
+
+  # connectivity_plus: money sync service (Coins providers).
+  connectivity_plus: ^7.3.1
+
+  # dio: dictionary lookup service.
+  dio: ^5.10.0
+
+  # Firebase & authentication -- _initializeFirebase(), AuthService,
+  # GoogleAuthService, and the login/register screens the adapter navigates to.
+  firebase_core: ^4.12.0
+  firebase_auth: ^6.5.5
+  google_sign_in: 7.2.0
+
+  # audio_service: no Dart file in this closure imports it, but Android's
+  # MainActivity extends AudioServiceFragmentActivity, so dropping it fails
+  # `:app:compileDebugKotlin` with "Unresolved reference
+  # 'AudioServiceFragmentActivity'". Same reason pubspec_tv.yaml keeps it real.
+  audio_service: ^0.18.19
+  # audioplayers: dictionary pronunciation playback.
+  audioplayers: ^6.7.1
+  # flutter_tts: AiroSpeechService (accessibility), used by the adapter.
+  flutter_tts: 4.2.5
+
+  # Utilities
+  # uuid + equatable: money models and repositories.
+  uuid: ^4.5.3
+  equatable: ^2.1.0
+  # url_launcher / package_info_plus / image_picker / flutter_image_compress:
+  # the bug-report dialog the adapter opens.
+  url_launcher: 6.3.2
+  package_info_plus: ^10.2.0
+  image_picker: ^1.2.3
+  flutter_image_compress: 2.4.0
+
+  # Local packages - Core
+  core_domain:
+    path: ../packages/core_domain
+  core_data:
+    path: ../packages/core_data
+  core_ui:
+    path: ../packages/core_ui
+  core_ai:
+    path: ../packages/core_ai
+  core_auth:
+    path: ../packages/core_auth
+  core_app_shell:
+    path: ../packages/core_app_shell
+  core_entitlements:
+    path: ../packages/core_entitlements
+  core_product_shell:
+    path: ../packages/core_product_shell
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
+
+  # Local packages - Features
+  # feature_mind: the scribe journey -- the reason this flavor exists.
   feature_mind:
     path: ../packages/feature_mind
+  # feature_assistant: the second module the shell registers.
+  feature_assistant:
+    path: ../packages/feature_assistant
+  # feature_coin / feature_coins_core: RouteNames re-exports the Coins route
+  # names, and the adapter's finance chat ingestion uses the Coins services.
+  feature_coin:
+    path: ../packages/feature_coin
+  feature_coins_core:
+    path: ../packages/feature_coins_core
+  # feature_iptv: the settings model manager (AI model management) reads the
+  # IPTV settings surface. Reached from the adapter's model-manager provider.
+  feature_iptv:
+    path: ../packages/feature_iptv
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
 
+dependency_overrides:
+  # Copied verbatim from pubspec.yaml -- these are workspace-wide resolution
+  # facts, not flavor choices.
+  video_player_avfoundation:
+    path: ../packages/platform_player/third_party/video_player_avfoundation
+  meta: ^1.19.0
+  analyzer_plugin: ^0.14.0
+  analyzer: ^12.0.0
+  dart_style: 3.1.8
+  mockito: 5.6.1
+  source_gen: ^4.2.0
+  build: ^4.0.0
+  rxdart: ^0.28.0
+  flutter_chrome_cast:
+    path: ../packages/platform_player/third_party/flutter_chrome_cast
+  screen_protector:
+    path: ../packages/third_party/screen_protector
+
+  # Stubs. Airo Mind ships no games, no OCR and no IPTV playback; these edges
+  # arrive transitively through feature_coin / feature_iptv and are replaced
+  # with the existing no-native stubs so the flavor does not carry their
+  # binaries. Same blocks as pubspec_tv.yaml.
+  stockfish:
+    path: ../packages/stubs/stockfish_stub
+  chess:
+    path: ../packages/stubs/chess_stub
+  flame:
+    path: ../packages/stubs/flame_stub
+  google_mlkit_text_recognition:
+    path: ../packages/stubs/mlkit_stub
+  google_mlkit_image_labeling:
+    path: ../packages/stubs/mlkit_image_labeling_stub
+  media_kit_libs_android_video:
+    path: ../packages/stubs/media_kit_libs_android_video_stub
+
 flutter:
+  config:
+    # Same rationale as pubspec.yaml: several macOS plugins in this graph have
+    # not migrated to SwiftPM, and app/tool/run_mind_macos.sh builds macOS.
+    enable-swift-package-manager: false
+
   uses-material-design: true
+
+  assets:
+    - assets/audio/
+    - assets/packs/
+    - assets/airo_icon.png
+    - assets/hermes/images/filler-bg0.jpg
+
+  fonts:
+    - family: AiroCollapse
+      fonts:
+        - asset: assets/hermes/fonts/Collapse-Regular.woff2
+        - asset: assets/hermes/fonts/Collapse-Bold.woff2
+          weight: 700
+    - family: AiroRulesExpanded
+      fonts:
+        - asset: assets/hermes/fonts/RulesExpanded-Regular.woff2
+        - asset: assets/hermes/fonts/RulesExpanded-Bold.woff2
+          weight: 700
+    - family: AiroMondwest
+      fonts:
+        - asset: assets/hermes/fonts/Mondwest-Regular.woff2

@@ -1,0 +1,67 @@
+# Analyzer configuration for the Airo Mind flavour.
+#
+# `analysis_options.yaml` excludes `lib/main_mind.dart`, `lib/core/mind/**` and
+# `test_mind/**` because those files resolve only under `pubspec_mind.yaml`,
+# and analysing them against the phone flavour's dependency set reports errors
+# about a dependency set they were never meant to have.
+#
+# Excludes are not overridable from the command line: `dart analyze
+# lib/main_mind.dart` still applies them and reports "No issues found!" even on
+# a hard type error. So the Mind flavour swaps this file in the same way it
+# swaps the pubspec -- see the `airo-mind-shell` job in
+# `.github/workflows/pr-checks.yml` and `.github/workflows/ci.yml`:
+#
+#   cp app/pubspec_mind.yaml app/pubspec.yaml
+#   cp app/analysis_options_mind.yaml app/analysis_options.yaml
+#   cd app && flutter pub get && flutter analyze lib/main_mind.dart lib/core/mind
+#
+# Everything below mirrors `analysis_options.yaml` except:
+#   * `lib/main_mind.dart` and `lib/core/mind/**` are NOT excluded -- that is
+#     the whole point;
+#   * the paths that do not resolve under this flavour ARE excluded: the patrol
+#     suites and the phone flavour's `test/` tree;
+#   * `test_mind/**` stays excluded. The analyzer only grants
+#     `@visibleForTesting` access inside a directory literally named `test`, so
+#     analysing the Mind suite reports eleven
+#     `invalid_use_of_visible_for_testing_member` warnings for correct code.
+#     The suite is covered by `flutter test test_mind/` in the same CI job,
+#     which compiles every one of those files.
+#   * `custom_lint` is not registered as a plugin -- it is a dev_dependency of
+#     `pubspec.yaml`, not of `pubspec_mind.yaml`, and an unresolvable plugin
+#     turns the whole analysis into a single confusing error.
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "build/**"
+    - ".dart_tool/**"
+    - "**/generated/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    # Resolve only under pubspec_patrol.yaml.
+    - "integration_test/**"
+    - "patrol_test/**"
+    # The phone flavour's suite. It imports packages this profile does not
+    # carry (games, IPTV playback, media), so analysing it here reports the
+    # mirror image of the problem this file exists to fix.
+    - "test/**"
+    - "test_mind/**"
+
+  errors:
+    unused_import: info
+    unused_local_variable: info
+    unused_field: info
+    unused_result: info
+    deprecated_member_use: info
+    avoid_print: info
+    unnecessary_underscores: info
+    unnecessary_import: info
+    invalid_return_type_for_catch_error: warning
+    override_on_non_overriding_member: warning
+    use_build_context_synchronously: info
+
+linter:
+  rules:
+    avoid_print: false
+    prefer_single_quotes: true

@@ -183,6 +183,65 @@
       }
     },
     {
+      "id": "mind",
+      "releaseLine": "v2",
+      "description": "Airo Mind: on-device meeting scribe and assistant.",
+      "entrypoint": "app/lib/main_mind.dart",
+      "pubspec": "app/pubspec_mind.yaml",
+      "appId": "io.airo.app.mind",
+      "appVariant": "mind",
+      "appPlatform": "mobileFull",
+      "deviceClass": "phone",
+      "ciBuild": false,
+      "edgeProfile": false,
+      "requiredPackages": [
+        "feature_mind",
+        "audio_service"
+      ],
+      "featureModules": [
+        "feature_mind",
+        "feature_assistant"
+      ],
+      "allowedNativePlugins": [
+        "audio_service",
+        "audioplayers",
+        "connectivity_plus",
+        "firebase_auth",
+        "firebase_core",
+        "flutter_image_compress",
+        "flutter_tts",
+        "google_sign_in",
+        "image_picker",
+        "package_info_plus",
+        "path_provider",
+        "shared_preferences",
+        "sqlite3_flutter_libs",
+        "url_launcher"
+      ],
+      "heavyPackages": [
+        "stockfish",
+        "chess",
+        "flame",
+        "google_mlkit_text_recognition"
+      ],
+      "requiredDependencyOverrides": {
+        "stockfish": "../packages/stubs/stockfish_stub",
+        "chess": "../packages/stubs/chess_stub",
+        "flame": "../packages/stubs/flame_stub",
+        "google_mlkit_text_recognition": "../packages/stubs/mlkit_stub",
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast",
+        "screen_protector": "../packages/third_party/screen_protector"
+      },
+      "assetAllowlist": [],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 120,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": false
+      }
+    },
+    {
       "id": "ios-spm",
       "releaseLine": "v2",
       "description": "iOS Swift Package Manager dependency profile.",

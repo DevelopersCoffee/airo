@@ -40,17 +40,19 @@ val singleAbi: String? =
         }
 
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
-val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
 val isCoinsVariant = appVariant == "coins"
+val isMindVariant = appVariant == "mind"
 val variantApplicationId = when (appVariant) {
     "tv" -> "io.airo.app.tv"
     "coins" -> "io.airo.app.coins"
+    "mind" -> "io.airo.app.mind"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
     "tv" -> "Airo TV"
     "coins" -> "Airo Coins"
+    "mind" -> "Airo Mind"
     else -> "Airo"
 }
 
@@ -207,6 +209,15 @@ android {
                 manifest.srcFile("src/tv/AndroidManifest.xml")
                 res.srcDir("src/tv/res")
             }
+            if (isMindVariant) {
+                // Mind reuses the product MainActivity (it extends
+                // AudioServiceFragmentActivity and pubspec_mind.yaml keeps
+                // audio_service real), so there is no `src/mind/kotlin`. The
+                // variant manifest only exists to drop the IPTV deep links and
+                // picture-in-picture the full app declares -- io.airo.app.mind
+                // must not claim `airo://iptv` or the /airo/iptv app link.
+                manifest.srcFile("src/mind/AndroidManifest.xml")
+            }
             if (isCoinsVariant) {
                 manifest.srcFile("src/coins/AndroidManifest.xml")
                 kotlin.setSrcDirs(listOf("src/coins/kotlin"))
@@ -247,7 +258,14 @@ android {
                     excludes += "lib/$other/**"
                 }
             }
-            if (isLeanVariant) {
+            // TV and Coins never reach a local-LLM code path, so their
+            // LiteRT-LM natives are unreachable weight -- TV keeps the Gradle
+            // dependency on the classpath without the .so and is fine, because
+            // nothing in that product calls it. Mind is lean too, but its
+            // assistant surface drives the on-device model manager as a
+            // first-class feature, so it is the one lean variant that must
+            // keep the libraries.
+            if (isTvVariant || isCoinsVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
                     "**/libLiteRt.so",
