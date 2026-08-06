@@ -22,8 +22,27 @@ cargokit {
     //
     // Paths are relative to this file. The engines are in the cargo workspace
     // at <repo>/rust, not inside the package.
-    library("../../../rust/airo_mind_whisper", "airo_mind_whisper")
-    library("../../../rust/airo_mind_llama", "airo_mind_llama")
+    //
+    // arm64 only, and this is what makes a debug build possible at all.
+    // Cargokit adds x86 and x86_64 for debug builds (emulator ABIs), and
+    // neither engine can be built for 32-bit x86 here:
+    //
+    //   * whisper-rs-sys cannot generate bindings without a sysroot, falls back
+    //     to bindings pinned for 64-bit, and those fail const-eval on i686
+    //     ("attempt to compute 12_usize - 16_usize, which would overflow").
+    //     Supplying a sysroot fixes that, and then CMake fails separately with
+    //     "unsupported option '-arch' for target 'i686-linux-android24'" -- an
+    //     Apple flag reaching an Android cross-compile from a macOS host.
+    //   * llama-cpp-sys-2's build script panics outright on
+    //     armv7-linux-androideabi.
+    //
+    // x86 Android is emulator-only and no device in this project's test rig
+    // uses it, so the engines are not built for it. On an ABI without them the
+    // app degrades to MindUnavailable, which is a state the UI already
+    // explains -- rather than a build that cannot be produced.
+    def engineAbis = ["android-arm64"]
+    library("../../../rust/airo_mind_whisper", "airo_mind_whisper", engineAbis)
+    library("../../../rust/airo_mind_llama", "airo_mind_llama", engineAbis)
 }
 
 android {

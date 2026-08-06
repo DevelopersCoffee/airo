@@ -23,6 +23,11 @@ apply plugin: CargoKitPlugin
 class CargoKitLibrary {
     String manifestDir; // Relative path to folder containing Cargo.toml
     String libname; // Library name within Cargo.toml. Must be a cdylib
+    // Optional. When set, only these Flutter target platforms are built for
+    // this library; when null, whatever the build type asks for. Declared by
+    // the consumer rather than hardcoded here, so the reason lives with the
+    // package that has it.
+    List<String> platforms;
 }
 
 class CargoKitExtension {
@@ -31,10 +36,11 @@ class CargoKitExtension {
 
     final List<CargoKitLibrary> libraries = []
 
-    void library(String manifestDir, String libname) {
+    void library(String manifestDir, String libname, List<String> platforms = null) {
         def entry = new CargoKitLibrary()
         entry.manifestDir = manifestDir
         entry.libname = libname
+        entry.platforms = platforms
         libraries.add(entry)
     }
 
@@ -264,6 +270,13 @@ class CargoKitPlugin implements Plugin<Project> {
                         throw new GradleException("Please set 'android.ndkVersion' in 'app/build.gradle'.")
                     }
 
+                    // PATCHED: a library may narrow the ABI set. Intersected
+                    // rather than substituted, so declaring a platform the
+                    // build is not producing cannot conjure one.
+                    def libPlatforms = lib.platforms == null
+                        ? platforms
+                        : platforms.findAll { lib.platforms.contains(it) }
+
                     def task = project.tasks.create(taskName, CargoKitBuildTask.class) {
                         buildMode = variant.buildType.name
                         buildDir = cargoBuildDir
@@ -272,7 +285,7 @@ class CargoKitPlugin implements Plugin<Project> {
                         sdkDirectory = plugin.project.android.sdkDirectory
                         minSdkVersion = plugin.project.android.defaultConfig.minSdkVersion.apiLevel as int
                         compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8) as int
-                        targetPlatforms = platforms
+                        targetPlatforms = libPlatforms
                         pluginFile = CargoKitPlugin.file
                         cargoManifestDir = lib.manifestDir
                     }
