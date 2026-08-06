@@ -10,7 +10,8 @@
 ///
 /// ```bash
 /// cp app/pubspec_mind.yaml app/pubspec.yaml   # restored by run_mind_macos.sh
-/// cd app && flutter pub get && flutter test test_mind/
+/// cd app && flutter pub get
+/// flutter test test_mind/ --dart-define=APP_VARIANT=mind
 /// ```
 library;
 
