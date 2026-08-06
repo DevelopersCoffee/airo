@@ -25,6 +25,23 @@ class AssistantRouteNames {
   /// Wellbeing is a destination rather than a tab, so it sits at the root.
   static const String wellbeing = '/wellbeing';
 
+  // GoRouter route *names*. Deep links, notification payloads, and existing
+  // `goNamed`/`namedLocation` call sites resolve on these, so the literals
+  // below are frozen: they are the pre-extraction super-app names, not a
+  // tidied-up scheme. Renaming one is a breaking change for every shell.
+  static const String assistantName = 'Assistant';
+  static const String chatName = 'assistant_chat';
+  static const String notificationsName = 'agent_notifications';
+  static const String profileName = 'profile';
+  static const String modelsName = 'assistant_models';
+  static const String deviceCapabilitiesName = 'assistant_device_capabilities';
+  static const String modelAdvisorName = 'assistant_model_advisor';
+  static const String promptLabName = 'assistant_prompt_lab';
+  static const String audioScribeName = 'assistant_audio_scribe';
+  static const String agentSkillsName = 'assistant_agent_skills';
+  static const String mobileActionsName = 'assistant_mobile_actions';
+  static const String wellbeingName = 'Wellbeing';
+
   // Child segments, for shells that declare the routes as nested `GoRoute`s.
   static const String chatSegment = 'chat';
   static const String notificationsSegment = 'notifications';
