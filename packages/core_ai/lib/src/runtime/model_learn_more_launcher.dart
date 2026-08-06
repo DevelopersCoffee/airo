@@ -1,6 +1,7 @@
-import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../models/offline_model_info.dart';
 
 typedef LaunchModelUrl = Future<bool> Function(Uri uri, {LaunchMode mode});
 

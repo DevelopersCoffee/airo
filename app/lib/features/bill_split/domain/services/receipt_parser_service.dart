@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/services/gemini_nano_service.dart';
+import 'package:core_ai/core_ai.dart' hide ReceiptItem;
+
 import '../models/receipt_item.dart';
 import 'receipt_litert_lm_extraction_service.dart';
 import 'receipt_pdf_renderer_service.dart';

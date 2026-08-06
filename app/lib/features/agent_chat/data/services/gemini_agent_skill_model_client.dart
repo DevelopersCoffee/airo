@@ -1,4 +1,5 @@
-import '../../../../core/services/gemini_nano_service.dart';
+import 'package:core_ai/core_ai.dart';
+
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_skill_orchestrator.dart';
 

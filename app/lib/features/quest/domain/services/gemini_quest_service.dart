@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart'
     as ml_label;
+import 'package:core_ai/core_ai.dart';
+
 import '../models/quest_models.dart';
 import 'quest_service.dart';
-import '../../../../core/services/gemini_nano_service.dart';
 
 class QuestProcessingUnavailableException implements Exception {
   const QuestProcessingUnavailableException(this.message);

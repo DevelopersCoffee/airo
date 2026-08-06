@@ -36,8 +36,6 @@ import '../../../coins/application/providers/dashboard_providers.dart';
 import '../../../coins/application/providers/expense_providers.dart';
 import '../../../coins/application/services/finance_chat_ingestion_service.dart';
 import '../../../settings/application/ai_preferences_settings.dart';
-import '../../../../core/services/gemini_nano_service.dart';
-import '../../../../core/services/litert_lm_service.dart';
 import '../../../../core/services/local_runtime_preloader_service.dart';
 import '../../../../core/services/model_preload_preferences.dart';
 import '../../../../core/services/voice_search_service.dart';

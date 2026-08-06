@@ -1,4 +1,3 @@
-import 'package:airo_app/core/services/litert_lm_service.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';

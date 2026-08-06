@@ -1,4 +1,4 @@
-import 'package:airo_app/core/services/litert_lm_service.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

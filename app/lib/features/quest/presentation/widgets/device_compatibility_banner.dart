@@ -1,7 +1,7 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 // ignore: unnecessary_import
 import 'package:flutter/foundation.dart';
-import '../../../../core/services/gemini_nano_service.dart';
 
 /// Widget that displays device compatibility status for Gemini Nano
 class DeviceCompatibilityBanner extends StatefulWidget {

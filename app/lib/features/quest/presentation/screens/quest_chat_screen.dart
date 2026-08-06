@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,8 +8,6 @@ import '../widgets/reminder_dialog.dart';
 import '../widgets/attachment_button.dart';
 import '../../../../core/ai/widgets/ai_provider_selector.dart';
 import '../../../../core/ai/ai_router_service.dart';
-import '../../../../core/ai/ai_provider.dart';
-import '../../../../core/services/gemini_nano_service.dart';
 
 /// Quest chat screen - interact with AI about uploaded files
 class QuestChatScreen extends ConsumerStatefulWidget {

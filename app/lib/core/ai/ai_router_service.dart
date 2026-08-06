@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ai/core_ai.dart';
-import '../services/gemini_nano_service.dart';
-import '../services/gemini_api_service.dart';
 
 /// AI Router Service - Routes queries to appropriate AI provider
 class AIRouterService {

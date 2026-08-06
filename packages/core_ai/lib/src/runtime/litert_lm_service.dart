@@ -1,15 +1,20 @@
-export 'package:core_ai/core_ai.dart'
+export '../litert/litert_lm_runtime_adapter.dart'
     show
         LiteRtLmBackend,
         LiteRtLmClient,
         LiteRtLmConfig,
         LiteRtLmModelKind,
         LiteRtLmRuntimeAdapter,
-        MediaPipeWebRuntimeAdapter,
         MethodChannelLiteRtLmClient;
+export '../litert/mediapipe_web_runtime_adapter.dart'
+    show MediaPipeWebRuntimeAdapter;
 
 import 'package:flutter/foundation.dart';
-import 'package:core_ai/core_ai.dart';
+import '../download/model_download_service.dart';
+import '../litert/litert_lm_runtime_adapter.dart';
+import '../litert/mediapipe_web_runtime_adapter.dart';
+import '../models/offline_model_info.dart';
+import '../runtime/local_inference_runtime_adapter.dart';
 
 /// Transitional app-facing shim around the framework-owned LiteRT-LM adapter.
 ///
