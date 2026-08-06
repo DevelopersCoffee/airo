@@ -187,9 +187,14 @@ if [[ "$BUILD_MODE" == "debug" ]]; then
 else
   manifest_task="processReleaseManifest"
 fi
-merged_manifest="$APP_DIR/build/app/intermediates/merged_manifests/$BUILD_MODE/$manifest_task/AndroidManifest.xml"
-if [[ ! -f "$merged_manifest" ]]; then
-  echo "Airo Mind merged manifest missing: $merged_manifest" >&2
+# Found, not constructed. `--split-per-abi` adds an ABI segment to this path
+# (.../processReleaseManifest/arm64-v8a/AndroidManifest.xml) and a non-split
+# build does not, so a fixed path reports a missing manifest for a build that
+# succeeded -- which is exactly what it did.
+manifest_dir="$APP_DIR/build/app/intermediates/merged_manifests/$BUILD_MODE/$manifest_task"
+merged_manifest="$(find "$manifest_dir" -name AndroidManifest.xml 2>/dev/null | head -1)"
+if [[ -z "$merged_manifest" ]]; then
+  echo "Airo Mind merged manifest missing under: $manifest_dir" >&2
   exit 1
 fi
 # Mind reuses the product MainActivity; the assertion that matters is that the
