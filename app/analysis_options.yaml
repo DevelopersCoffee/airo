@@ -39,16 +39,23 @@ analyzer:
     # llama.cpp through the NDK and carry the native code for a feature this
     # flavour does not ship.
     #
-    # The entrypoint is still covered -- the macOS build compiles it, which is
-    # stronger than analysis. The shell's own suite lives in `test_mind/`,
-    # excluded for the same dependency reason and compiled + run under the
-    # Mind flavour:
+    # The shell's own suite lives in `test_mind/`, excluded for the same
+    # dependency reason. `flutter test` with no arguments walks `test/` only,
+    # so the phone suite never tries to compile the Mind shell; the Mind suite
+    # runs under the Mind flavour instead:
     #
     #   cp app/pubspec_mind.yaml app/pubspec.yaml
     #   cd app && flutter pub get && flutter test test_mind/
     #
-    # `flutter test` with no arguments walks `test/` only, so the phone suite
-    # never tries to compile the Mind shell.
+    # KNOWN GAP: that command does not pass at HEAD, and nothing else covers
+    # these files either -- `app/tool/run_mind_macos.sh` builds against the
+    # un-expanded `pubspec_mind.yaml`, which still carries only `flutter` and
+    # `feature_mind`, so it cannot compile a shell that also needs
+    # core_product_shell, feature_assistant, go_router, riverpod and
+    # firebase_core. The Mind entrypoint is therefore UNCOVERED -- no analysis,
+    # no build, no CI -- until `pubspec_mind.yaml` is expanded and a Mind CI
+    # job lands (Airo Mind modular-app tasks 8/9). Do not read this exclusion
+    # as "covered elsewhere".
     - "lib/main_mind.dart"
     - "lib/core/mind/**"
     - "test_mind/**"

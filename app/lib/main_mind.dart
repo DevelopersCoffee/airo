@@ -133,12 +133,12 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) => <RouteBase>[
     GoRoute(path: alias.key, redirect: (context, state) => alias.value),
   GoRoute(
     path: RouteNames.login,
-    name: RouteNames.login,
+    name: 'login',
     builder: (context, state) => const LoginScreen(),
   ),
   GoRoute(
     path: RouteNames.register,
-    name: RouteNames.register,
+    name: 'register',
     builder: (context, state) => const RegisterScreen(),
   ),
 ];
@@ -173,6 +173,10 @@ class _AiroMindAppState extends State<AiroMindApp> {
 
   @override
   void dispose() {
+    // The registry owns module teardown, and MindScribeModule's is real work:
+    // it releases the microphone and the loaded models. `State.dispose` cannot
+    // await, so this is fire-and-forget — the shell is going away either way.
+    unawaited(widget.registry.disposeAll());
     _router.dispose();
     super.dispose();
   }
