@@ -258,11 +258,13 @@ android {
                     excludes += "lib/$other/**"
                 }
             }
-            // TV and Coins ship no local LLM, so their LiteRT-LM natives are
-            // dead weight. Mind is lean too but its assistant surface drives
-            // the on-device model manager, so it keeps them: stripping the
-            // libraries while the Gradle dependency stays on the classpath
-            // would fail at runtime rather than at build time.
+            // TV and Coins never reach a local-LLM code path, so their
+            // LiteRT-LM natives are unreachable weight -- TV keeps the Gradle
+            // dependency on the classpath without the .so and is fine, because
+            // nothing in that product calls it. Mind is lean too, but its
+            // assistant surface drives the on-device model manager as a
+            // first-class feature, so it is the one lean variant that must
+            // keep the libraries.
             if (isTvVariant || isCoinsVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
