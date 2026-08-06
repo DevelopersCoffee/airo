@@ -21,6 +21,11 @@ dependencies:
   # Required by flutter_rust_bridge for the generated sealed classes that carry
   # ProcessingEvent's variants.
   freezed_annotation: ^3.0.0
+  # ModelDownloadService / ModelStorageManager -- model acquisition moves onto
+  # the download pipeline Airo already uses, behind ModelProvider so the
+  # source can change without touching MindService. See module.yaml.
+  core_ai:
+    path: ../core_ai
 
 # An FFI plugin. Declaring the platforms is what makes the Flutter tool run
 # cargokit's podspec/gradle/cmake hooks during a normal build -- without this
@@ -53,3 +58,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   freezed: ^3.0.0
   build_runner: ^2.4.13
+  mocktail: ^1.0.4
+  # Test doubles construct DownloadArtifactRequest/DownloadProgress directly.
+  platform_downloads:
+    path: ../platform_downloads
+  # mind_service_test.dart fakes path_provider's platform channel directly.
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8

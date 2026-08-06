@@ -1,0 +1,92 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+/// A model that must be on disk, and what proves it is the right one.
+///
+/// Deliberately not the generated `whisper.api.setup.RequiredModel` (a
+/// `BigInt` wire type from the bridge): a `ModelProvider` must not know the
+/// bridge exists. `ModelInstaller` and `DownloadModelProvider` both translate
+/// the pinned Rust registry into this shape.
+@immutable
+class RequiredModel {
+  const RequiredModel({
+    required this.fileName,
+    required this.sizeBytes,
+    required this.sha256,
+  });
+
+  final String fileName;
+  final int sizeBytes;
+
+  /// Pinned in `airo_mind_core::models` (`ADR-0018 §2`). Every provider
+  /// verifies against this same value; none of them invent their own.
+  final String sha256;
+}
+
+/// What a model looks like right now, after [ModelProvider.verify].
+@immutable
+class InstalledModel {
+  const InstalledModel({
+    required this.fileName,
+    required this.present,
+    required this.verified,
+    required this.detail,
+  });
+
+  final String fileName;
+  final bool present;
+
+  /// Only meaningful when [present]. False means the bytes on disk are not
+  /// the bytes that were pinned.
+  final bool verified;
+  final String detail;
+}
+
+/// Progress through [ModelProvider.acquire], file by file.
+sealed class ModelAcquisitionEvent {
+  const ModelAcquisitionEvent();
+}
+
+/// One file, some fraction of its bytes obtained.
+final class ModelAcquisitionProgress extends ModelAcquisitionEvent {
+  const ModelAcquisitionProgress(this.fileName, this.fetched, this.total);
+
+  final String fileName;
+  final int fetched;
+  final int total;
+}
+
+/// Acquisition finished. [failedFileNames] is empty on full success — a real
+/// state (no network, no bundled asset, a corrupt file) that the UI must be
+/// able to explain rather than crash on.
+final class ModelAcquisitionDone extends ModelAcquisitionEvent {
+  const ModelAcquisitionDone(this.failedFileNames);
+
+  final List<String> failedFileNames;
+}
+
+/// Where model bytes come from. `MindService` and the UI depend on this,
+/// never on a concrete source — `ModelInstaller` (bundled asset) and
+/// `DownloadModelProvider` (Airo's existing download pipeline, `core_ai`) are
+/// two implementations, not two special cases the caller has to know about.
+///
+/// Neither implementation may reach into `airo_mind_core`'s Rust registry
+/// directly from this abstraction: the pinned digest crosses the bridge once,
+/// through the bridge's own `required_files`/`requiredModels`, and every
+/// provider verifies against that same value. See
+/// `docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`.
+abstract interface class ModelProvider {
+  Future<List<RequiredModel>> requiredModels();
+
+  /// True when every required model is on disk at its pinned size.
+  ///
+  /// Size, not digest — hashing half a gigabyte on every launch costs about a
+  /// second. Full verification is [verify], run after an acquisition.
+  Future<bool> isInstalled(Directory modelsDir);
+
+  /// Puts missing models on disk, reporting progress as they arrive.
+  Stream<ModelAcquisitionEvent> acquire(Directory modelsDir);
+
+  Future<List<InstalledModel>> verify(Directory modelsDir);
+}
