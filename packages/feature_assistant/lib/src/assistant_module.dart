@@ -43,18 +43,17 @@ typedef AssistantHostAdapterBuilder = AssistantHostAdapter Function(Ref ref);
 /// module's complete path/name surface for conflict detection. Shells that
 /// need the distinction call the two accessors instead of splitting the
 /// combined list by path.
+///
+/// The mount points are fixed at [AssistantRouteNames]'s canonical paths and
+/// are deliberately not configurable. Every shell mounts the assistant at
+/// `/assistant` so deep links, notification payloads, and the tool registry
+/// resolve identically everywhere — and the package's own screens navigate by
+/// those absolute paths, so a rebased mount would 404 its own hub tiles.
 class AssistantModule extends AppModule {
-  AssistantModule({
-    required this.hostAdapterBuilder,
-    this.basePath = AssistantRouteNames.assistant,
-  }) : assert(basePath.startsWith('/'), 'basePath must be absolute');
+  AssistantModule({required this.hostAdapterBuilder});
 
   /// Builds the shell's implementation of the assistant's host seam.
   final AssistantHostAdapterBuilder hostAdapterBuilder;
-
-  /// Absolute path the assistant hub mounts at. Both shipping shells use
-  /// `/assistant` so deep links and notification payloads stay identical.
-  final String basePath;
 
   @override
   String get id => 'assistant';
@@ -79,7 +78,7 @@ class AssistantModule extends AppModule {
   /// The assistant hub and everything nested under it.
   List<RouteBase> hubRoutesFor(ShellId shell) => [
     GoRoute(
-      path: basePath,
+      path: AssistantRouteNames.assistant,
       name: AssistantRouteNames.assistantName,
       builder: (context, state) => const AssistantScreen(),
       routes: [
@@ -105,9 +104,9 @@ class AssistantModule extends AppModule {
           path: AssistantRouteNames.modelsSegment,
           name: AssistantRouteNames.modelsName,
           builder: (context, state) => ModelLibraryScreen(
-            onModelSelected: (candidate) => context.go(basePath),
-            onOpenModelManager: () =>
-                context.push('$basePath/${AssistantRouteNames.profileSegment}'),
+            onModelSelected: (candidate) =>
+                context.go(AssistantRouteNames.assistant),
+            onOpenModelManager: () => context.push(AssistantRouteNames.profile),
           ),
         ),
         GoRoute(

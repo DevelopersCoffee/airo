@@ -10,18 +10,21 @@ import '../../features/iptv/iptv_cast_provider_override.dart';
 /// Anything a module needs belongs in that module's `providerOverridesFor`
 /// (see [ModuleRegistry.allProviderOverrides]) rather than here, so a shell
 /// can never mount a module's routes while forgetting its providers.
+///
+/// [moduleRegistry] is required for exactly that reason: an optional registry
+/// would let a caller build a scope that mounts module routes with none of the
+/// providers behind them.
 List<Override> buildMainProviderOverrides({
   required SharedPreferences prefs,
   required EpgReminderNotificationGateway epgReminderGateway,
-  ModuleRegistry? moduleRegistry,
+  required ModuleRegistry moduleRegistry,
 }) {
-  final registry = moduleRegistry;
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
     epgReminderNotificationGatewayProvider.overrideWithValue(
       epgReminderGateway,
     ),
     realIptvCastControllerOverride(),
-    if (registry != null) ...registry.allProviderOverrides,
+    ...moduleRegistry.allProviderOverrides,
   ];
 }

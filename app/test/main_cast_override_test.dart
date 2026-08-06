@@ -1,4 +1,5 @@
 import 'package:airo_app/core/app/main_provider_overrides.dart';
+import 'package:airo_app/main.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ void main() {
       overrides: buildMainProviderOverrides(
         prefs: prefs,
         epgReminderGateway: const UnavailableEpgReminderNotificationGateway(),
+        moduleRegistry: buildMainModuleRegistry(),
       ),
     );
     addTearDown(container.dispose);
@@ -38,6 +40,7 @@ void main() {
       overrides: buildMainProviderOverrides(
         prefs: prefs,
         epgReminderGateway: const UnavailableEpgReminderNotificationGateway(),
+        moduleRegistry: buildMainModuleRegistry(),
       ),
     );
     addTearDown(container.dispose);

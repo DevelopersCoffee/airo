@@ -7,11 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import 'support/fake_assistant_host_adapter.dart';
 
-AssistantModule _module({String basePath = AssistantRouteNames.assistant}) =>
-    AssistantModule(
-      hostAdapterBuilder: (ref) => FakeAssistantHostAdapter(),
-      basePath: basePath,
-    );
+AssistantModule _module() =>
+    AssistantModule(hostAdapterBuilder: (ref) => FakeAssistantHostAdapter());
 
 Iterable<String> _namesOf(Iterable<RouteBase> routes) sync* {
   for (final route in routes) {
@@ -77,15 +74,33 @@ void main() {
     expect(mind.path, mobile.path);
   });
 
-  test('basePath rebases the hub and its child navigation', () {
-    final module = _module(basePath: '/mind');
-    final hub = module.hubRoutesFor(ShellId.mind).first as GoRoute;
+  test('declared mount points match the paths the package navigates to', () {
+    // The hub tiles, tool registry, and notification payloads all push
+    // absolute `/assistant/...` locations, so the declared routes have to
+    // resolve at exactly those paths — a rebased mount would 404 the
+    // package's own navigation.
+    final module = _module();
+    final hub = module.hubRoutesFor(ShellId.mobile).first as GoRoute;
 
-    expect(hub.path, '/mind');
-    // Children stay relative, so they inherit the rebased parent.
+    String absolute(GoRoute child) => '${hub.path}/${child.path}';
+    final childPaths = hub.routes.whereType<GoRoute>().map(absolute);
+
+    expect(hub.path, AssistantRouteNames.assistant);
+    expect(childPaths, [
+      AssistantRouteNames.chat,
+      AssistantRouteNames.notifications,
+      AssistantRouteNames.profile,
+      AssistantRouteNames.models,
+      AssistantRouteNames.deviceCapabilities,
+      AssistantRouteNames.modelAdvisor,
+      AssistantRouteNames.promptLab,
+      AssistantRouteNames.audioScribe,
+      AssistantRouteNames.agentSkills,
+      AssistantRouteNames.mobileActions,
+    ]);
     expect(
-      hub.routes.whereType<GoRoute>().map((route) => route.path),
-      isNot(contains(startsWith('/'))),
+      (module.rootRoutesFor(ShellId.mobile).first as GoRoute).path,
+      AssistantRouteNames.wellbeing,
     );
   });
 
