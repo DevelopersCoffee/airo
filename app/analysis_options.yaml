@@ -40,8 +40,18 @@ analyzer:
     # flavour does not ship.
     #
     # The entrypoint is still covered -- the macOS build compiles it, which is
-    # stronger than analysis.
+    # stronger than analysis. The shell's own suite lives in `test_mind/`,
+    # excluded for the same dependency reason and compiled + run under the
+    # Mind flavour:
+    #
+    #   cp app/pubspec_mind.yaml app/pubspec.yaml
+    #   cd app && flutter pub get && flutter test test_mind/
+    #
+    # `flutter test` with no arguments walks `test/` only, so the phone suite
+    # never tries to compile the Mind shell.
     - "lib/main_mind.dart"
+    - "lib/core/mind/**"
+    - "test_mind/**"
 
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail
