@@ -31,6 +31,41 @@ if [[ -n "$BUILD_NUMBER" && ! "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
   exit 2
 fi
 
+# The PATH note in this file's header was documentation, and documentation did
+# not stop the build from picking the wrong toolchain. Check it instead.
+#
+# A Homebrew `rust` provides /opt/homebrew/bin/cargo, which precedes
+# ~/.cargo/bin on a default macOS PATH. It has no Android std, so cargokit dies
+# with "can't find crate for `core`" naming a target that `rustup target list`
+# reports as installed -- an error that sends you looking at rustup, which is
+# not the problem.
+active_cargo="$(command -v cargo || true)"
+if [[ -z "$active_cargo" ]]; then
+  echo "cargo not found on PATH. Install rustup: https://rustup.rs" >&2
+  exit 1
+fi
+# Can the active toolchain actually target Android?
+#
+# `--print target-libdir` is not the test -- it happily prints a path for a
+# toolchain that has no Android std at all, which is precisely the Homebrew
+# case. The standard library has to be on disk, so look for libcore in it.
+android_libdir="$(rustc --target aarch64-linux-android --print target-libdir 2>/dev/null || true)"
+if [[ -z "$android_libdir" ]] || ! compgen -G "$android_libdir/libcore-*.rlib" >/dev/null; then
+  echo "The active Rust toolchain cannot target aarch64-linux-android." >&2
+  echo "  active cargo: $active_cargo" >&2
+  echo "  active rustc: $(command -v rustc || echo 'not found')" >&2
+  if [[ "$active_cargo" != "$HOME/.cargo/bin/cargo" && -x "$HOME/.cargo/bin/cargo" ]]; then
+    echo >&2
+    echo "A non-rustup cargo is shadowing rustup's shims (Homebrew installs one" >&2
+    echo "at /opt/homebrew/bin). Fix with 'brew unlink rust', or put" >&2
+    echo "\$HOME/.cargo/bin ahead of it on PATH." >&2
+  else
+    echo >&2
+    echo "Install the target: rustup target add aarch64-linux-android" >&2
+  fi
+  exit 1
+fi
+
 if [[ ! -f "$PROFILE_PUBSPEC" ]]; then
   echo "Airo Mind profile not found: $PROFILE_PUBSPEC" >&2
   exit 1
@@ -88,6 +123,21 @@ fi
 # llama-cpp-sys-2 and whisper-rs-sys read these two spellings instead.
 export ANDROID_NDK="${ANDROID_NDK:-$ANDROID_NDK_ROOT}"
 export NDK_ROOT="${NDK_ROOT:-$ANDROID_NDK_ROOT}"
+
+# feature_mind's *.freezed.dart is gitignored, so a fresh clone has none and the
+# Dart compile fails long before the Rust runtime is reached, with
+# "Couldn't find constructor ProcessingEvent_*" pointing at the package rather
+# than at the missing codegen. The CI job runs this as its own step; a local
+# build has nothing that would.
+#
+# Presence-checked, not up-to-date-checked: build_runner is the authority on
+# staleness, and re-running it on every build costs more than it saves. Run it
+# by hand after changing an annotated type.
+mind_pkg="$ROOT_DIR/packages/feature_mind"
+if [[ ! -f "$mind_pkg/lib/src/api/mind.freezed.dart" ]]; then
+  echo "Generating feature_mind code (freezed outputs are gitignored)"
+  (cd "$mind_pkg" && flutter pub get >/dev/null && dart run build_runner build)
+fi
 
 backup_dir="$(mktemp -d)"
 cp "$ACTIVE_PUBSPEC" "$backup_dir/pubspec.yaml"
