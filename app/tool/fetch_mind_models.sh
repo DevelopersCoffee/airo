@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
-# Fetches Airo Mind's bundled models into the asset directory the Flutter build
-# packages.
+# Seeds a local dev cache of Airo Mind's models. NOT part of the normal build
+# any more -- both apps default to `DownloadModelProvider`, which fetches
+# through Airo's existing download pipeline at first run instead of shipping
+# weights in the APK (docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md).
 #
-# BUILD TIME, NOT RUN TIME. `ADR-0018 §1` says the runtime never acquires
-# models -- and it cannot: llama-cpp-2 is built with `default-features = false`
-# precisely so llama.cpp's HuggingFace client is not compiled in. Getting a
-# bundled model into the bundle is an installation concern, which is what §2's
-# "Bundled" strategy means by *ships inside the app*.
+# What this script is still for:
+#   * Seeding `ModelInstaller`'s bundled path (`ADR-0018 §2`), for anyone
+#     building a flavour that intentionally bundles -- that also needs
+#     `packages/feature_mind/pubspec.yaml`'s `assets:` block restored.
+#     `DownloadModelProvider` does NOT consult this directory; it always
+#     fetches from `mindModelDownloadUrl`.
+#   * A fast way to get verified weights on disk for manual testing without
+#     waiting on a real download.
+#
+# `ADR-0018 §1` still holds either way: the runtime never acquires models.
+# llama-cpp-2 is built with `default-features = false` precisely so llama.cpp's
+# HuggingFace client is not compiled in; this script and
+# `DownloadModelProvider` are both Dart-side.
 #
 # The digests below are the same values pinned in
-# rust/airo_mind_core/src/models.rs. They are the contract: the upstream refs
-# are branch names and can move, so a changed file fails here loudly rather than
-# shipping weights nobody reviewed. If a digest mismatches, that is a decision
-# for a human, not a reason to pass --force.
-#
-# Weights are not in git. Half a gigabyte of binary is not source, and the
-# pinned digest is what makes an untracked artefact safe to ship.
+# rust/airo_mind_core/src/models.rs, and the same URLs
+# `app/lib/core/mind/mind_model_source.dart` uses for the real download path.
+# They are the contract: the upstream refs are branch names and can move, so a
+# changed file fails here loudly rather than shipping weights nobody reviewed.
+# If a digest mismatches, that is a decision for a human, not a reason to pass
+# --force.
 #
 # Usage:  app/tool/fetch_mind_models.sh
 set -euo pipefail

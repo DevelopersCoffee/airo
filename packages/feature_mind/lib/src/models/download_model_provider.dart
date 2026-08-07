@@ -50,14 +50,25 @@ class DownloadModelProvider implements ModelProvider {
   }
 
   /// `core_ai.OfflineModelInfo.id` is the download service's identity for a
-  /// model. The file name already is one, pinned in the same registry that
-  /// pins the digest, so nothing new is invented here.
+  /// model, and it must be the file name **without its extension**.
+  ///
+  /// `ModelStorageManager.getModelPath` -- which is what actually decides
+  /// where the download is written, independently of [OfflineModelInfo.filePath]
+  /// below -- builds the destination as `$id$extension`
+  /// (`_artifactExtensionFor` infers the extension from `filePath`). Passing
+  /// the full file name as `id` doubles the extension
+  /// (`qwen….gguf` → `qwen….gguf.gguf`), so the download lands somewhere
+  /// [ModelStorageManager.verifyModelIntegrity] never looks and the Rust
+  /// bridge never reads. Verified end to end on device: 491 MB of qwen
+  /// downloaded correctly, `verifyModelIntegrity` returned false instantly
+  /// because it was hashing a file that was never written.
   core_ai.OfflineModelInfo _asOfflineModelInfo(
     RequiredModel required,
     Directory modelsDir,
   ) {
+    final id = p.basenameWithoutExtension(required.fileName);
     return core_ai.OfflineModelInfo(
-      id: required.fileName,
+      id: id,
       name: required.fileName,
       // `family` is a catalog concern the download service does not act on
       // for a direct-URL fetch; `other` says so rather than guessing one.

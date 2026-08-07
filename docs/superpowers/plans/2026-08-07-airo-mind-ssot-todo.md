@@ -74,26 +74,86 @@ Full-package regression: `flutter analyze` and `flutter test` both clean
 (`flutter test test_mind/ --dart-define=APP_VARIANT=mind`) also green, 9/9,
 confirming the abstraction layer doesn't break the shell that already exists.
 
-### 1B — cut both apps over
+### 1B — cut the standalone shell over ✅ DONE (super app is Phase 4)
 
-- [ ] **1B.1** Record baseline: current APK size (super app + standalone),
-      first-run behaviour
-- [ ] **1B.2** Wire `DownloadModelProvider` as the default in both shells
-      (`main.dart`, `main_mind.dart`) — the choice of provider is a shell
-      decision, not a `feature_mind` default
-- [ ] **1B.3** Surface download progress in the Mind UI — first run is now a
-      wait that needs a state, not a blank screen
-- [ ] **1B.4** Drop `assets/models/` from `pubspec_mind.yaml` (and from the
-      super app's pubspec once Phase 4 adds `feature_mind` there); keep
-      `fetch_mind_models.sh` as a dev seeding convenience, say so in its header
-- [ ] **1B.5** Confirm `ADR-0018 §1` still holds — no HTTP client in the Rust
-      binary (`build_runtime_pod.sh` already checks; run it)
-- [ ] **1B.6** Device: fresh install, first-run download, full journey on the
-      Pixel 9
-- [ ] **1B.7** PR + merge
+- [x] **1B.1** Baseline: standalone Mind release APK was 620 MB (bundled
+      models) before this session; 707 MB debug / to-be-measured release after
+      (see note below — this run only produced debug builds).
+- [x] **1B.2** `app/lib/core/mind/mind_model_source.dart` — new file, builds
+      `DownloadModelProvider` wired to the real HuggingFace URLs
+      `fetch_mind_models.sh` already used, keyed by the pinned file names.
+      `MindScribeModule._defaultService` wires it into `MindService`. The super
+      app has no `MindScribeModule` registration yet (Phase 4), so only the
+      standalone shell is cut over in this phase.
+- [x] **1B.3** `_Loading` widget in `mind_home_screen.dart` — file name +
+      `LinearProgressIndicator` + percentage during the download, falling back
+      to a bare spinner once nothing is downloading. `MindService.onInstallProgress`
+      wired in `initState`. Also fixed `modelsMissing`'s failure message,
+      written for the bundled-asset era ("this build does not carry") and
+      wrong for a download failure (no network, interrupted transfer, digest
+      mismatch).
+- [x] **1B.4** Dropped `assets/models/` from `packages/feature_mind/pubspec.yaml`
+      (the actual bundling declaration — not `app/pubspec_mind.yaml`, which
+      never declared it directly). `fetch_mind_models.sh` re-scoped as a dev
+      seeding convenience for `ModelInstaller`'s bundled path; `DownloadModelProvider`
+      does not consult it.
+- [x] **1B.5** Re-checked `nm -u` on both engine dylibs for `httplib` — 0, as
+      expected (nothing here touches Rust).
+- [x] **1B.6** Device walk — **partial**, see below.
+- [x] **1B.7** *(this commit; PR still to open)*
 
-**Checkpoint 1** — APK size before/after (both apps), first-run on a real
-connection. Offline first-run stops working here; confirm that is accepted.
+**A real bug was found and fixed on device, not simulated.** `DownloadModelProvider`
+set `OfflineModelInfo.id` to the full file name, already carrying its
+extension. `ModelStorageManager.getModelPath` appends an extension to `id`
+independently of `filePath` (`_artifactExtensionFor` infers it from `filePath`,
+but the destination path itself is `$id$extension`) — so the download landed at
+a **doubled extension** (`qwen….gguf.gguf`), a file neither `verifyModelIntegrity`
+nor the Rust bridge ever looks at. Fixed by deriving `id` via
+`p.basenameWithoutExtension(fileName)`, so the reconstructed path matches the
+original name exactly.
+
+**Verified on the Pixel 9 without relying on the flaky live retries**: after the
+fix, `adb shell run-as … ls` showed the file at the *correct* single-extension
+path, and `adb shell run-as … sha256sum` matched the pinned digest exactly
+(`921e4cf8…`) — byte-for-byte correct, independent of whatever the app's own
+progress stream reported.
+
+**What's not confirmed**: a full clean run — install → download both models →
+record → transcribe → minutes → search — end to end in one sitting. Repeated
+attempts hit intermittent WorkManager network-constraint stalls
+(`NetworkRequestConstraintController` reporting `blocked=true` for no
+observable reason; network was validated throughout) made worse by an
+`adb shell svc wifi disable` issued mid-session to probe the stall, which
+dropped the wireless-debugging link entirely and required re-pairing. By the
+time the connection was back, the same stalling pattern persisted across
+several clean install attempts. Decision: ship on the evidence already
+gathered (the bug is real, the fix is verified at the file level, the pipeline
+completed two full downloads earlier in the session before the connection
+incident) rather than keep re-touching a device in a bad state.
+
+**Redo attempt (same session, later)**: fresh reinstall of the actually-current
+APK (caught a stale-APK false negative first — the "final" build predated the
+`_Loading`/message-wording commits; rebuilt and confirmed via `strings` on
+`kernel_blob.bin` that the new copy was present). `_Loading` UI confirmed
+genuinely working on device — screenshots at 9% and 76% for
+`qwen2.5-0.5b-instruct-q4_k_m.gguf`. Run still ended in `modelsMissing` for
+both files. `adb logcat` root cause this time: `ActivityManager: Stop FGS
+timeout` fired on `SystemForegroundService` twice (8s and 94s after start),
+each immediately followed by `JobScheduler: Job didn't exist in JobStore` for
+`ProgressiveDownloadWorker` — the OS is tearing down the download's foreground
+service mid-run on this specific device, independent of anything this session
+changed. Decision (user-confirmed): ship on the evidence already gathered —
+the double-extension bug, the manifest fix, and the UI/message fixes are all
+independently verified; the remaining flakiness is WorkManager/device
+environment, not a `feature_mind`/`core_ai` defect. **Not** re-litigated
+further in this pass; worth a standalone investigation if it recurs on other
+hardware.
+
+**Checkpoint 1** — APK size before/after not fully re-measured (release build
+not re-run after the fix); first-run-on-a-real-connection story is proven
+piecewise (file+hash correctness) but not as one continuous walk. Offline
+first-run no longer works, as intended — confirm that trade is still accepted
+before Phase 4 repeats it for the super app.
 
 ## Phase 2 — merge feature_assistant into feature_mind
 

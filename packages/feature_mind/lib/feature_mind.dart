@@ -22,6 +22,22 @@ export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
+// Model acquisition. A shell composes `DownloadModelProvider` with its own
+// `downloadUrlFor` (hosting is a Dart-side decision, `ADR-0018 §1` — the
+// registry pins a digest, not a URL) and passes it to `MindService`. Neither
+// this package nor the shell is required to use it: `ModelInstaller` (the
+// bundled-asset default) still works unchanged.
+export 'src/model_installer.dart' show ModelInstaller;
+export 'src/models/download_model_provider.dart' show DownloadModelProvider;
+export 'src/models/model_provider.dart'
+    show
+        InstalledModel,
+        ModelAcquisitionDone,
+        ModelAcquisitionEvent,
+        ModelAcquisitionProgress,
+        ModelProvider,
+        RequiredModel;
+
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';
 export 'src/runtime/models/context_models.dart';

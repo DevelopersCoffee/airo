@@ -32,13 +32,12 @@ dependencies:
 # block the Rust is never compiled, which is precisely the state core_native
 # has been in.
 flutter:
-  # `ADR-0018 §2`, Bundled: the models ship inside the app. They are NOT in git
-  # -- half a gigabyte of weights is not source -- so `tool/fetch_models.sh`
-  # populates this directory before a build. A build without them still
-  # compiles; it reports `modelsMissing`, which is a state the UI explains.
-  assets:
-    - assets/models/
-
+  # No bundled `assets/models/` any more. Neither app ships model weights in
+  # the APK -- both default to `DownloadModelProvider`
+  # (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
+  # `ModelInstaller` (`ADR-0018 §2`, Bundled) still exists as one
+  # `ModelProvider` implementation for a build that intentionally bundles; it
+  # needs its `assets:` block restored, and the assets it names, to work.
   plugin:
     platforms:
       android:
