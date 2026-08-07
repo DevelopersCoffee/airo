@@ -30,8 +30,12 @@ class MindScribeModule extends AppModule {
   /// The scribe's service, created on first use and torn down by [dispose].
   MindService get service => _service ??= _createService();
 
+  /// The registry id, named so the shell can ask for this module's routes by
+  /// constant rather than by a literal that drifts.
+  static const String moduleId = 'mind_scribe';
+
   @override
-  String get id => 'mind_scribe';
+  String get id => moduleId;
 
   /// The standalone Airo Mind shell only. The super app reaches the scribe
   /// through the assistant hub's audio-scribe screen instead, and the TV

@@ -15,6 +15,7 @@
 /// ```
 library;
 
+import 'package:airo_app/core/mind/mind_shell.dart';
 import 'package:airo_app/core/mind/mind_unavailable_screen.dart';
 import 'package:airo_app/main_mind.dart';
 import 'package:core_product_shell/core_product_shell.dart';
@@ -69,6 +70,99 @@ void main() {
     },
   );
 
+  test('mind shell wraps its three destinations in one navigation shell', () {
+    final routes = buildMindRoutes(buildMindModuleRegistry());
+
+    final shellRoutes = routes.whereType<StatefulShellRoute>().toList();
+    expect(
+      shellRoutes,
+      hasLength(1),
+      reason: 'the bottom nav must be drawn once, by one shell route',
+    );
+
+    final branches = shellRoutes.single.branches;
+    expect(branches, hasLength(MindShell.destinations.length));
+    expect(
+      branches
+          .map((branch) => branch.routes.whereType<GoRoute>().first.path)
+          .toList(),
+      ['/', '/assistant', '/wellbeing'],
+      reason: 'branch order must match MindShell.destinations',
+    );
+  });
+
+  test('mind shell mounts wellbeing exactly once', () {
+    // AssistantModule.routesFor() returns hub + root routes combined, so
+    // mounting `registry.allRoutes` *and* a wellbeing branch would register
+    // `/wellbeing` twice. The shell assembles branches from the module's two
+    // named accessors instead; this pins that it stayed that way.
+    final paths = _allPaths(buildMindRoutes(buildMindModuleRegistry()));
+
+    expect(paths.where((path) => path == '/wellbeing'), hasLength(1));
+    expect(paths.where((path) => path == '/assistant'), hasLength(1));
+    expect(paths.where((path) => path == '/'), hasLength(1));
+  });
+
+  test('mind shell labels its destinations Scribe, Assistant, Wellbeing', () {
+    expect(
+      MindShell.destinations.map((destination) => destination.label).toList(),
+      ['Scribe', 'Assistant', 'Wellbeing'],
+    );
+  });
+
+  testWidgets('tapping a destination switches branches', (tester) async {
+    // Exercises MindShell against stand-in branch content: the real branch
+    // roots are MindHomeScreen (which owns a microphone and model files) and
+    // the assistant hub (which needs the host adapter's provider overrides),
+    // neither of which belongs in a test of the navigation chrome. The real
+    // branch wiring is covered by the structural tests above.
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) =>
+              MindShell(navigationShell: navigationShell),
+          branches: [
+            for (final path in const ['/', '/assistant', '/wellbeing'])
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: path,
+                    builder: (context, state) => Text('branch $path'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Scribe'), findsOneWidget);
+    expect(find.text('Assistant'), findsOneWidget);
+    expect(find.text('Wellbeing'), findsOneWidget);
+    expect(find.text('branch /'), findsOneWidget);
+
+    await tester.tap(find.text('Assistant'));
+    await tester.pumpAndSettle();
+    expect(find.text('branch /assistant'), findsOneWidget);
+    expect(router.state.uri.toString(), '/assistant');
+
+    await tester.tap(find.text('Wellbeing'));
+    await tester.pumpAndSettle();
+    expect(find.text('branch /wellbeing'), findsOneWidget);
+    expect(router.state.uri.toString(), '/wellbeing');
+
+    await tester.tap(find.text('Scribe'));
+    await tester.pumpAndSettle();
+    expect(find.text('branch /'), findsOneWidget);
+    expect(router.state.uri.toString(), '/');
+  });
+
   testWidgets('super-app destinations degrade to the Mind explainer', (
     tester,
   ) async {
@@ -97,3 +191,16 @@ void main() {
     }
   });
 }
+
+/// Every [GoRoute] path in [routes], walking children and shell branches.
+List<String> _allPaths(List<RouteBase> routes) => [
+  for (final route in routes) ...[
+    if (route is GoRoute) route.path,
+    if (route is StatefulShellRoute)
+      ..._allPaths([
+        for (final branch in route.branches) ...branch.routes,
+      ])
+    else
+      ..._allPaths(route.routes),
+  ],
+];

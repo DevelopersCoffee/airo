@@ -14,6 +14,18 @@
 ///   at its canonical `/assistant` + `/wellbeing` paths, wired to the same
 ///   [AppAssistantHostAdapter] the super app uses.
 ///
+/// ### Navigating between them
+///
+/// Neither package knows the other is mounted — `MindHomeScreen` renders only
+/// the scribe, and the assistant hub links out to Wellbeing but never back to
+/// the recorder — so before this shell grew a nav bar the assistant was
+/// unreachable on a device (#1555). The three destinations are therefore
+/// branches of a `StatefulShellRoute.indexedStack` wrapped in [MindShell]:
+/// Scribe (`/`), Assistant (`/assistant`), Wellbeing (`/wellbeing`). The
+/// affordance is shell-owned; `feature_mind` and `feature_assistant` stay
+/// untouched. See [buildMindRoutes] for how the branches are assembled from
+/// the registry.
+///
 /// ### Destinations this shell does not ship
 ///
 /// The assistant package navigates by absolute super-app paths, and it must
@@ -52,6 +64,7 @@ import 'package:go_router/go_router.dart';
 import 'core/assistant/app_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
 import 'core/mind/mind_scribe_module.dart';
+import 'core/mind/mind_shell.dart';
 import 'core/mind/mind_unavailable_screen.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
 import 'core/routing/route_names.dart';
@@ -124,24 +137,67 @@ const Map<String, String> mindLegacyRedirects = <String, String>{
   '/agent/models': AssistantRouteNames.models,
 };
 
-/// The Mind shell's complete route table: module routes, legacy aliases, and
-/// the account screens the host adapter navigates to.
+/// The Mind shell's complete route table: the navigation shell holding the
+/// three destinations, the legacy aliases, and the account screens the host
+/// adapter navigates to.
+///
+/// The three destinations are branches of a [StatefulShellRoute.indexedStack]
+/// wrapped in [MindShell], so each keeps its own navigation stack and the
+/// bottom bar is drawn once. That means the route table is *not*
+/// `registry.allRoutes`: the assistant contributes two mount points and only
+/// the module knows which is which, so the branches are assembled from
+/// [AssistantModule.hubRoutesFor] and [AssistantModule.rootRoutesFor] the same
+/// way the super app's router does it. `allRoutes` still exists and is still
+/// what [ModuleRegistry] uses for conflict detection — the shell just does not
+/// mount the flattened list, which is what keeps `/wellbeing` from being
+/// mounted twice.
+///
+/// Aliases, `/login` and `/register` stay at the router's top level: they are
+/// redirects and full-screen account screens, not destinations, and none of
+/// them should render inside the bottom nav.
 @visibleForTesting
-List<RouteBase> buildMindRoutes(ModuleRegistry registry) => <RouteBase>[
-  ...registry.allRoutes,
-  for (final MapEntry<String, String> alias in mindLegacyRedirects.entries)
-    GoRoute(path: alias.key, redirect: (context, state) => alias.value),
-  GoRoute(
-    path: RouteNames.login,
-    name: 'login',
-    builder: (context, state) => const LoginScreen(),
-  ),
-  GoRoute(
-    path: RouteNames.register,
-    name: 'register',
-    builder: (context, state) => const RegisterScreen(),
-  ),
-];
+List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
+  final assistantModules = registry.registeredModules
+      .whereType<AssistantModule>();
+  if (assistantModules.isEmpty) {
+    throw ModuleCompositionException(
+      'The Airo Mind shell requires the assistant module to be registered for '
+      'shell "${registry.shell.value}".',
+    );
+  }
+  final assistant = assistantModules.first;
+  final scribeRoutes = registry.routesForModule(MindScribeModule.moduleId);
+  if (scribeRoutes.isEmpty) {
+    throw ModuleCompositionException(
+      'The Airo Mind shell requires the scribe module to contribute routes for '
+      'shell "${registry.shell.value}".',
+    );
+  }
+
+  return <RouteBase>[
+    for (final MapEntry<String, String> alias in mindLegacyRedirects.entries)
+      GoRoute(path: alias.key, redirect: (context, state) => alias.value),
+    GoRoute(
+      path: RouteNames.login,
+      name: 'login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: RouteNames.register,
+      name: 'register',
+      builder: (context, state) => const RegisterScreen(),
+    ),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          MindShell(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(routes: scribeRoutes),
+        StatefulShellBranch(routes: assistant.hubRoutesFor(registry.shell)),
+        StatefulShellBranch(routes: assistant.rootRoutesFor(registry.shell)),
+      ],
+    ),
+  ];
+}
 
 /// Builds the Mind shell's router. [initialLocation] is a seam for tests that
 /// need to land on one route without walking there.
