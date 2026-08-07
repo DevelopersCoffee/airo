@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../../routing/assistant_route_names.dart';
 import 'agent_notification_scheduler.dart';
 
 class NotificationNavigationService {
@@ -79,19 +80,25 @@ String? routeFromNotificationPayload(
   }
 }
 
-/// Rewrites a deep link written before the assistant hub left `/mind`.
+/// Rewrites a deep link written before the hub moved to `/mind`.
 ///
-/// Notifications live in the OS, not in this process: one scheduled by an
-/// older build fires against this one and would otherwise open a route that no
-/// longer exists. Migrating here rather than with a router redirect keeps the
-/// old path out of the route table, so milestone 22's Mind can claim it.
+/// This mapping ran the other way until Phase 3 of the SSOT plan: the hub had
+/// been evicted from `/mind` so milestone 22 could claim the name, and this
+/// function forwarded `/mind` -> `/assistant`. Mind is now the owner, so the
+/// arrow points back the way it originally did.
 ///
-/// Delete once no device can still be holding a pre-split notification.
+/// Notifications live in the OS, not in this process: one scheduled by an older
+/// build fires against this one and would otherwise open a route that no longer
+/// exists. Migrating here rather than only with a router redirect means a
+/// payload is normalised before it ever reaches the route table.
+///
+/// Delete once no device can still be holding a pre-Phase-3 notification.
 String _migrateLegacyMindRoute(String route) {
-  const legacy = '/mind'; // mind-name-exempt: migration, not a live route.
-  if (route == legacy) return '/assistant';
+  const legacy = '/assistant';
+  if (route == legacy) return AssistantRouteNames.assistant;
   if (route.startsWith('$legacy/')) {
-    return '/assistant${route.substring(legacy.length)}';
+    return '${AssistantRouteNames.assistant}'
+        '${route.substring(legacy.length)}';
   }
   return route;
 }
