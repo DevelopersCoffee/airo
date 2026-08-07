@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'meeting_screen.dart';
 import 'mind_service.dart';
+import 'models/model_provider.dart';
 
 /// The whole app. Record, search, open.
 ///
@@ -44,6 +45,14 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     if (!mounted) return;
     setState(() => _status = status);
     if (status.isReady) await _refresh();
+  }
+
+  /// Re-runs startup from scratch, back through the loading state. Used after
+  /// the models arrive: the previous status is stale the moment they do, and
+  /// leaving it on screen while the engines load reads as "nothing happened".
+  Future<void> _restart() async {
+    setState(() => _status = null);
+    await _start();
   }
 
   Future<void> _refresh() async {
@@ -116,6 +125,13 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       appBar: AppBar(title: const Text('Airo Mind')),
       body: switch (status) {
         null => const Center(child: CircularProgressIndicator()),
+        // Models missing is the one blocker the user can clear from here, and
+        // only when the provider fetches them — a build that bundles its
+        // models and still reports them missing has nothing to offer but the
+        // explanation (#1554).
+        MindStatus(unavailable: MindUnavailable.modelsMissing)
+            when widget.service.modelsNeedDownload =>
+          _ModelDownload(service: widget.service, onInstalled: _restart),
         MindStatus(isReady: false) => _Unavailable(status: status),
         _ => _library(context),
       },
@@ -237,6 +253,166 @@ class _Empty extends StatelessWidget {
       child: Text(message, textAlign: TextAlign.center),
     ),
   );
+}
+
+/// The first-run state, with the one action that clears it.
+///
+/// Before this existed the app dead-ended here: the blocker named the missing
+/// files and offered nothing to tap, on a fresh install, forever (#1554).
+///
+/// The download is offered rather than started. It is roughly 570 MB, which is
+/// a real cost on a metered connection, and a user who would rather wait for
+/// Wi-Fi has to be able to.
+class _ModelDownload extends StatefulWidget {
+  const _ModelDownload({required this.service, required this.onInstalled});
+
+  final MindService service;
+
+  /// Called once every model is on disk — the screen re-runs startup.
+  final Future<void> Function() onInstalled;
+
+  @override
+  State<_ModelDownload> createState() => _ModelDownloadState();
+}
+
+class _ModelDownloadState extends State<_ModelDownload> {
+  List<RequiredModel>? _required;
+  bool _running = false;
+  ModelAcquisitionProgress? _progress;
+  List<String> _failed = const [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSizes();
+  }
+
+  Future<void> _loadSizes() async {
+    try {
+      final required = await widget.service.missingModels();
+      if (mounted) setState(() => _required = required);
+    } on Object catch (e) {
+      // The size is a nicety; the button must still work without it.
+      if (mounted) setState(() => _error = '$e');
+    }
+  }
+
+  Future<void> _download() async {
+    setState(() {
+      _running = true;
+      _failed = const [];
+      _error = null;
+      _progress = null;
+    });
+
+    try {
+      await for (final event in widget.service.acquireModels()) {
+        if (!mounted) return;
+        switch (event) {
+          case ModelAcquisitionProgress():
+            setState(() => _progress = event);
+          case ModelAcquisitionDone(:final failedFileNames):
+            setState(() => _failed = failedFileNames);
+        }
+      }
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
+
+    if (!mounted) return;
+    setState(() => _running = false);
+    if (_failed.isEmpty && _error == null) await widget.onInstalled();
+  }
+
+  static String _megabytes(int bytes) =>
+      '${(bytes / (1000 * 1000)).round()} MB';
+
+  @override
+  Widget build(BuildContext context) {
+    final required = _required;
+    final total = required?.fold<int>(0, (sum, m) => sum + m.sizeBytes);
+    final failed = _failed.isNotEmpty;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Models are not installed yet',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Airo Mind runs entirely on this device, so it needs the speech '
+              'and writing models on disk before it can record. They are '
+              'downloaded once and never leave this device.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Best on Wi-Fi — this is a large, one-time download.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            if (_running) ..._progressViews(context) else _action(total),
+            if (failed) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Could not download ${_failed.join(', ')}. Check the '
+                'connection and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              SelectableText(
+                _error!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _action(int? total) {
+    final label = total == null
+        ? 'Download models'
+        : 'Download models (~${_megabytes(total)})';
+    return FilledButton.icon(
+      onPressed: _download,
+      icon: const Icon(Icons.download),
+      label: Text(_failed.isEmpty && _error == null ? label : 'Retry'),
+    );
+  }
+
+  List<Widget> _progressViews(BuildContext context) {
+    final progress = _progress;
+    final fraction = progress == null || progress.total <= 0
+        ? null
+        : progress.fetched / progress.total;
+    return [
+      // Indeterminate until the first byte count arrives: a bar sitting at
+      // zero and a bar that has not started look the same, and only one of
+      // them means the download is stuck.
+      LinearProgressIndicator(value: fraction),
+      const SizedBox(height: 12),
+      Text(
+        progress == null
+            ? 'Starting download…'
+            : '${progress.fileName} — '
+                  '${_megabytes(progress.fetched)} of '
+                  '${_megabytes(progress.total)}',
+        textAlign: TextAlign.center,
+      ),
+    ];
+  }
 }
 
 /// Why the app cannot start, and what to do about it.

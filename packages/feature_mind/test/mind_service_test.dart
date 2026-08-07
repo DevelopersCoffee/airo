@@ -41,6 +41,9 @@ class FakeReadyModelProvider implements ModelProvider {
   Future<List<RequiredModel>> requiredModels() async => const [];
 
   @override
+  bool get acquiresWithoutNetwork => true;
+
+  @override
   Future<bool> isInstalled(Directory modelsDir) async => true;
 
   @override

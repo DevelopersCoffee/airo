@@ -39,6 +39,11 @@ class DownloadModelProvider implements ModelProvider {
   @override
   Future<List<RequiredModel>> requiredModels() => _requiredModelsLookup();
 
+  /// Roughly 570 MB over the network. `MindService` must offer this rather
+  /// than start it.
+  @override
+  bool get acquiresWithoutNetwork => false;
+
   @override
   Future<bool> isInstalled(Directory modelsDir) async {
     for (final required in await requiredModels()) {
@@ -52,10 +57,16 @@ class DownloadModelProvider implements ModelProvider {
   /// `core_ai.OfflineModelInfo.id` is the download service's identity for a
   /// model. The file name already is one, pinned in the same registry that
   /// pins the digest, so nothing new is invented here.
-  core_ai.OfflineModelInfo _asOfflineModelInfo(
-    RequiredModel required,
-    Directory modelsDir,
-  ) {
+  ///
+  /// [filePath] is deliberately left null for the **download**: the download
+  /// service resolves its own destination from `ModelStorageManager` and
+  /// re-verifies the artifact there when the transport completes. Handing it a
+  /// path in Mind's directory does not move the download — `getModelPath`
+  /// ignores `filePath` — it only makes that post-download verification look
+  /// at a file the transport never wrote, so every download would report
+  /// `integrity_mismatch`. The bytes are therefore staged by `core_ai` and
+  /// moved into [modelsDir] by [_install] once they are verified.
+  core_ai.OfflineModelInfo _stagedInfo(RequiredModel required) {
     return core_ai.OfflineModelInfo(
       id: required.fileName,
       name: required.fileName,
@@ -63,10 +74,48 @@ class DownloadModelProvider implements ModelProvider {
       // for a direct-URL fetch; `other` says so rather than guessing one.
       family: core_ai.ModelFamily.other,
       fileSizeBytes: required.sizeBytes,
-      filePath: p.join(modelsDir.path, required.fileName),
       downloadUrl: _downloadUrlFor(required),
       sha256: required.sha256,
     );
+  }
+
+  /// The same model, addressed where Airo Mind keeps it: the Rust engines are
+  /// handed one directory (`ADR-0018 §1`) and read the pinned file names out
+  /// of it, so this is the only location that counts as installed.
+  core_ai.OfflineModelInfo _installedInfo(
+    RequiredModel required,
+    Directory modelsDir,
+  ) => _stagedInfo(
+    required,
+  ).copyWith(filePath: p.join(modelsDir.path, required.fileName));
+
+  /// Moves a verified artifact out of `core_ai`'s staging directory and into
+  /// Mind's models directory, under its pinned file name.
+  ///
+  /// A rename, not a copy: both directories live under the same app container
+  /// on every platform Mind ships to, so this is a metadata operation rather
+  /// than half a gigabyte read and written again. The copy path is the honest
+  /// fallback for a layout where they are not.
+  Future<bool> _install(RequiredModel required, Directory modelsDir) async {
+    final target = File(p.join(modelsDir.path, required.fileName));
+    if (target.existsSync() && target.lengthSync() == required.sizeBytes) {
+      return true;
+    }
+
+    final stagedPath = await _downloadService.resolveExistingModelPath(
+      required.fileName,
+      model: _stagedInfo(required),
+    );
+    if (stagedPath == null) return false;
+
+    final staged = File(stagedPath);
+    try {
+      staged.renameSync(target.path);
+    } on FileSystemException {
+      staged.copySync(target.path);
+      staged.deleteSync();
+    }
+    return target.existsSync() && target.lengthSync() == required.sizeBytes;
   }
 
   @override
@@ -78,7 +127,20 @@ class DownloadModelProvider implements ModelProvider {
     // and running both downloads at once on a constrained connection is a
     // worse experience than a predictable queue, not a faster one.
     for (final model in required) {
-      final info = _asOfflineModelInfo(model, modelsDir);
+      final target = File(p.join(modelsDir.path, model.fileName));
+      if (target.existsSync() && target.lengthSync() == model.sizeBytes) {
+        // Already installed. Only some of the set is usually missing, and
+        // re-fetching 469 MB because 77 MB is absent is not a retry anyone
+        // asked for.
+        yield ModelAcquisitionProgress(
+          model.fileName,
+          model.sizeBytes,
+          model.sizeBytes,
+        );
+        continue;
+      }
+
+      final info = _stagedInfo(model);
 
       if (info.downloadUrl == null) {
         failed.add(model.fileName);
@@ -114,6 +176,10 @@ class DownloadModelProvider implements ModelProvider {
         if (settled) break;
       }
 
+      // Verified bytes in the staging directory are not yet an installed
+      // model: the engines only read [modelsDir].
+      if (succeeded) succeeded = await _install(model, modelsDir);
+
       if (!succeeded) failed.add(model.fileName);
     }
 
@@ -137,7 +203,7 @@ class DownloadModelProvider implements ModelProvider {
         );
         continue;
       }
-      final info = _asOfflineModelInfo(model, modelsDir);
+      final info = _installedInfo(model, modelsDir);
       final ok = await core_ai.ModelStorageManager().verifyModelIntegrity(info);
       results.add(
         InstalledModel(

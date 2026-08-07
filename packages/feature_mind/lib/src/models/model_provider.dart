@@ -79,6 +79,17 @@ final class ModelAcquisitionDone extends ModelAcquisitionEvent {
 abstract interface class ModelProvider {
   Future<List<RequiredModel>> requiredModels();
 
+  /// True when [acquire] spends nothing but this device's own time — copying
+  /// a model that already shipped inside the app.
+  ///
+  /// False when it spends the user's network. Airo Mind's two models are about
+  /// 570 MB together, and starting that on first launch, unannounced, on
+  /// whatever connection happens to be up, is not a default anyone consented
+  /// to. `MindService.initialize` reads this to decide whether acquisition may
+  /// run by itself or has to be offered; it is on the provider because only
+  /// the provider knows what its own bytes cost.
+  bool get acquiresWithoutNetwork;
+
   /// True when every required model is on disk at its pinned size.
   ///
   /// Size, not digest — hashing half a gigabyte on every launch costs about a

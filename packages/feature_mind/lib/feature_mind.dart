@@ -22,6 +22,21 @@ export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
+// Model acquisition. A shell composes which provider its app uses — where the
+// bytes come from is distribution policy, not something `feature_mind` bakes
+// in (`ADR-0018 §1`: the runtime never acquires models).
+export 'src/model_installer.dart' show ModelInstaller;
+export 'src/models/download_model_provider.dart' show DownloadModelProvider;
+export 'src/models/model_provider.dart'
+    show
+        InstalledModel,
+        ModelAcquisitionDone,
+        ModelAcquisitionEvent,
+        ModelAcquisitionProgress,
+        ModelProvider,
+        RequiredModel;
+export 'src/models/pinned_models.dart' show pinnedRequiredModels;
+
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';
 export 'src/runtime/models/context_models.dart';

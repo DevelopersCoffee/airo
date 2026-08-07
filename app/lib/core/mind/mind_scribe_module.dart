@@ -2,6 +2,8 @@ import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
 
+import 'mind_model_sources.dart';
+
 /// Wraps the `feature_mind` scribe journey — record a meeting, transcribe it,
 /// read the minutes, search what was said — as a shell-registrable module,
 /// the same way `CoinVaultModule` wraps `feature_coin`.
@@ -19,9 +21,16 @@ import 'package:go_router/go_router.dart';
 /// Loading the models is *not* this module's job — [MindHomeScreen] calls
 /// `MindService.initialize()` itself and renders the resulting status
 /// (models missing, bridge missing, ready) as its opening state.
+///
+/// Choosing *where the models come from* is, though, and it is this module
+/// alone: [buildMindDownloadService] composes the service over `core_ai`'s
+/// download pipeline with the shell's pinned URLs. `MindService`'s own default
+/// is the bundled-asset installer, and this app ships no bundled weights — so
+/// before this wiring existed a fresh install had no path to a working app
+/// (#1554).
 class MindScribeModule extends AppModule {
   MindScribeModule({MindService Function()? createService})
-    : _createService = createService ?? MindService.new;
+    : _createService = createService ?? buildMindDownloadService;
 
   final MindService Function() _createService;
 

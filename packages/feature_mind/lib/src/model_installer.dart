@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
 import 'models/model_provider.dart';
+import 'models/pinned_models.dart';
 import 'whisper/api/setup.dart' as rust;
 
 /// Puts the bundled models on disk. `ADR-0018 §2`, the **Bundled** strategy.
@@ -29,14 +30,12 @@ class ModelInstaller implements ModelProvider {
   static const String assetPrefix = 'packages/feature_mind/assets/models/';
 
   @override
-  Future<List<RequiredModel>> requiredModels() async => [
-    for (final required in await rust.requiredModels())
-      RequiredModel(
-        fileName: required.fileName,
-        sizeBytes: required.sizeBytes.toInt(),
-        sha256: required.sha256,
-      ),
-  ];
+  Future<List<RequiredModel>> requiredModels() => pinnedRequiredModels();
+
+  /// The assets are already inside the app. Copying them costs no network, so
+  /// `MindService` may run this acquisition without asking first.
+  @override
+  bool get acquiresWithoutNetwork => true;
 
   /// True when every required model is on disk at its pinned size.
   ///

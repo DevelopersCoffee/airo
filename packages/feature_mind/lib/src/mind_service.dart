@@ -135,6 +135,19 @@ class MindService {
     // Not from the checkout: that made a developer machine work and a device
     // fail.
     if (!await _models.isInstalled(dir)) {
+      // A download is not started here. `acquiresWithoutNetwork` false means
+      // the models cost the user roughly 570 MB of their connection, and
+      // spending that unasked on first launch is not a decision this method
+      // gets to make. The screen offers it instead — [acquireModels] — and
+      // this returns the state that makes the offer visible (#1554).
+      if (!_models.acquiresWithoutNetwork) {
+        final missing = await missingModels();
+        return MindStatus.unavailable(
+          MindUnavailable.modelsMissing,
+          'Missing: ${missing.map((m) => m.fileName).join(', ')}.',
+        );
+      }
+
       final failed = <String>[];
       await for (final event in _models.acquire(dir)) {
         switch (event) {
@@ -185,6 +198,37 @@ class MindService {
   /// Reports asset-copy progress on first launch. Half a gigabyte takes long
   /// enough that a silent first launch reads as a hang.
   void Function(String fileName, int copied, int total)? onInstallProgress;
+
+  /// True when acquiring the models spends the user's network, so the UI has
+  /// to offer the download rather than assume it.
+  bool get modelsNeedDownload => !_models.acquiresWithoutNetwork;
+
+  /// Every model the runtime requires, at its pinned size — what the UI needs
+  /// to say how large the download is before starting it.
+  Future<List<RequiredModel>> requiredModels() => _models.requiredModels();
+
+  /// The subset of [requiredModels] not yet on disk.
+  Future<List<RequiredModel>> missingModels() async {
+    final dir = await modelsDirectory();
+    return [
+      for (final model in await requiredModels())
+        if (!_isOnDisk(dir, model)) model,
+    ];
+  }
+
+  static bool _isOnDisk(Directory dir, RequiredModel model) {
+    final file = File(p.join(dir.path, model.fileName));
+    return file.existsSync() && file.lengthSync() == model.sizeBytes;
+  }
+
+  /// Puts the missing models on disk, streaming progress.
+  ///
+  /// Separate from [initialize] because it is the user's decision, not a
+  /// startup step: on the download provider this is ~570 MB. Call
+  /// [initialize] again once the stream ends without failures.
+  Stream<ModelAcquisitionEvent> acquireModels() async* {
+    yield* _models.acquire(await modelsDirectory());
+  }
 
   /// Hashes every installed model against the digest pinned in Rust source.
   Future<List<InstalledModel>> verifyModels() async =>
