@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
 import 'core/assistant/app_assistant_host_adapter.dart';
@@ -133,6 +133,6 @@ void main() async {
 ModuleRegistry buildMainModuleRegistry() {
   return ModuleRegistry(shell: ShellId.mobile)
     ..register(CoinVaultModule())
-    ..register(AssistantModule(hostAdapterBuilder: AppAssistantHostAdapter.new))
+    ..register(MindModule(hostAdapterBuilder: AppAssistantHostAdapter.new))
     ..register(IptvFeatureModule());
 }

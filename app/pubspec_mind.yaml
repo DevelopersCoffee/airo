@@ -116,12 +116,11 @@ dependencies:
     path: ../packages/airo_pro_bootstrap
 
   # Local packages - Features
-  # feature_mind: the scribe journey -- the reason this flavor exists.
+  # feature_mind: the scribe journey and the assistant hub, merged into one
+  # package in Phase 2 of the SSOT plan
+  # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md).
   feature_mind:
     path: ../packages/feature_mind
-  # feature_assistant: the second module the shell registers.
-  feature_assistant:
-    path: ../packages/feature_assistant
   # feature_coin / feature_coins_core: RouteNames re-exports the Coins route
   # names, and the adapter's finance chat ingestion uses the Coins services.
   feature_coin:

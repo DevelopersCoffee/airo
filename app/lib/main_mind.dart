@@ -7,12 +7,12 @@
 /// Composed the same way every other shell is: a [ModuleRegistry] scoped to
 /// [ShellId.mind] owns module inclusion, routes, lifecycle, and provider
 /// overrides, while this file owns only the shell's own chrome (theme, router,
-/// startup). Two modules ship here:
-///
-/// * [MindScribeModule] — the `feature_mind` scribe journey, mounted at `/`.
-/// * [AssistantModule] — the assistant hub from `feature_assistant`, mounted
-///   at its canonical `/assistant` + `/wellbeing` paths, wired to the same
-///   [AppAssistantHostAdapter] the super app uses.
+/// startup). One [MindModule] ships here, carrying both halves of the
+/// package (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`, Phase
+/// 2): the scribe journey (mounted at `/`, since [createService] is supplied)
+/// and the assistant hub (mounted at its canonical `/assistant` +
+/// `/wellbeing` paths, wired to the same [AppAssistantHostAdapter] the super
+/// app uses).
 ///
 /// ### Destinations this shell does not ship
 ///
@@ -43,7 +43,7 @@ library;
 import 'dart:async';
 
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,7 +51,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/assistant/app_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
-import 'core/mind/mind_scribe_module.dart';
+import 'core/mind/mind_model_source.dart';
 import 'core/mind/mind_unavailable_screen.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
 import 'core/routing/route_names.dart';
@@ -104,11 +104,16 @@ Future<void> _initializeFirebase() async {
 /// entrypoint performs without sharing static state.
 @visibleForTesting
 ModuleRegistry buildMindModuleRegistry() {
-  return ModuleRegistry(shell: ShellId.mind)
-    ..register(MindScribeModule())
-    ..register(
-      AssistantModule(hostAdapterBuilder: AppAssistantHostAdapter.new),
-    );
+  return ModuleRegistry(shell: ShellId.mind)..register(
+    MindModule(
+      hostAdapterBuilder: AppAssistantHostAdapter.new,
+      // The shell's actual default: models come from Airo's existing download
+      // pipeline, not the app bundle — neither this shell nor the super app
+      // ships model weights in the APK
+      // (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
+      createService: () => MindService(modelProvider: buildMindModelProvider()),
+    ),
+  );
 }
 
 /// Pre-extraction assistant paths, mapped onto the paths this shell mounts.
@@ -173,8 +178,8 @@ class _AiroMindAppState extends State<AiroMindApp> {
 
   @override
   void dispose() {
-    // The registry owns module teardown, and MindScribeModule's is real work:
-    // it releases the microphone and the loaded models. `State.dispose` cannot
+    // The registry owns module teardown, and MindModule's is real work: it
+    // releases the microphone and the loaded models. `State.dispose` cannot
     // await, so this is fire-and-forget — the shell is going away either way.
     unawaited(widget.registry.disposeAll());
     _router.dispose();
