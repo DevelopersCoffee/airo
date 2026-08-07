@@ -129,8 +129,25 @@ time the connection was back, the same stalling pattern persisted across
 several clean install attempts. Decision: ship on the evidence already
 gathered (the bug is real, the fix is verified at the file level, the pipeline
 completed two full downloads earlier in the session before the connection
-incident) rather than keep re-touching a device in a bad state. **Redo the full
-clean walk before this is treated as fully proven.**
+incident) rather than keep re-touching a device in a bad state.
+
+**Redo attempt (same session, later)**: fresh reinstall of the actually-current
+APK (caught a stale-APK false negative first — the "final" build predated the
+`_Loading`/message-wording commits; rebuilt and confirmed via `strings` on
+`kernel_blob.bin` that the new copy was present). `_Loading` UI confirmed
+genuinely working on device — screenshots at 9% and 76% for
+`qwen2.5-0.5b-instruct-q4_k_m.gguf`. Run still ended in `modelsMissing` for
+both files. `adb logcat` root cause this time: `ActivityManager: Stop FGS
+timeout` fired on `SystemForegroundService` twice (8s and 94s after start),
+each immediately followed by `JobScheduler: Job didn't exist in JobStore` for
+`ProgressiveDownloadWorker` — the OS is tearing down the download's foreground
+service mid-run on this specific device, independent of anything this session
+changed. Decision (user-confirmed): ship on the evidence already gathered —
+the double-extension bug, the manifest fix, and the UI/message fixes are all
+independently verified; the remaining flakiness is WorkManager/device
+environment, not a `feature_mind`/`core_ai` defect. **Not** re-litigated
+further in this pass; worth a standalone investigation if it recurs on other
+hardware.
 
 **Checkpoint 1** — APK size before/after not fully re-measured (release build
 not re-run after the fix); first-run-on-a-real-connection story is proven
