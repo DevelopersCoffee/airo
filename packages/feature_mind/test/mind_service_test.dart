@@ -47,6 +47,10 @@ class FakeReadyModelProvider implements ModelProvider {
   Future<bool> isInstalled(Directory modelsDir) async => true;
 
   @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) async =>
+      const [];
+
+  @override
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) =>
       const Stream.empty();
 

@@ -203,23 +203,13 @@ class MindService {
   /// to offer the download rather than assume it.
   bool get modelsNeedDownload => !_models.acquiresWithoutNetwork;
 
-  /// Every model the runtime requires, at its pinned size — what the UI needs
-  /// to say how large the download is before starting it.
-  Future<List<RequiredModel>> requiredModels() => _models.requiredModels();
-
-  /// The subset of [requiredModels] not yet on disk.
-  Future<List<RequiredModel>> missingModels() async {
-    final dir = await modelsDirectory();
-    return [
-      for (final model in await requiredModels())
-        if (!_isOnDisk(dir, model)) model,
-    ];
-  }
-
-  static bool _isOnDisk(Directory dir, RequiredModel model) {
-    final file = File(p.join(dir.path, model.fileName));
-    return file.existsSync() && file.lengthSync() == model.sizeBytes;
-  }
+  /// The models the runtime needs and does not have, at their pinned sizes —
+  /// what the UI needs to say how large the download is before starting it.
+  ///
+  /// Answered by the provider, which owns what "installed" means for its own
+  /// layout, rather than by this class stat-ing the directory itself.
+  Future<List<RequiredModel>> missingModels() async =>
+      _models.missingModels(await modelsDirectory());
 
   /// Puts the missing models on disk, streaming progress.
   ///

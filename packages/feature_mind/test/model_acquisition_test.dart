@@ -53,6 +53,10 @@ class FakeDownloadProvider implements ModelProvider {
   Future<bool> isInstalled(Directory modelsDir) async => installed;
 
   @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) async =>
+      installed ? const [] : const [model];
+
+  @override
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) {
     acquireCalls++;
     return events.stream;
@@ -200,6 +204,10 @@ class _LocalProvider implements ModelProvider {
   @override
   Future<bool> isInstalled(Directory modelsDir) =>
       _inner.isInstalled(modelsDir);
+
+  @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) =>
+      _inner.missingModels(modelsDir);
 
   @override
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) {

@@ -261,6 +261,71 @@ void main() {
     },
   );
 
+  // A throw out of the install step used to abort the whole `async*` stream:
+  // no `ModelAcquisitionDone`, the next model never attempted, and a raw
+  // exception where the retry should be.
+  test(
+    'an install that throws is one file failing, not the acquisition',
+    () async {
+      const second = RequiredModel(
+        fileName: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+        sizeBytes: 491400032,
+        sha256:
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db',
+      );
+      final provider = DownloadModelProvider(
+        downloadService: service,
+        requiredModelsLookup: () async => [_whisper(), second],
+        // The second model has no source, so it fails on a path that cannot
+        // throw — if the first model's throw had aborted the stream, this one
+        // would never be reached and could not appear in the result.
+        downloadUrlFor: (model) => model.fileName == _whisper().fileName
+            ? 'https://example.test/ggml-tiny.en.bin'
+            : null,
+      );
+      var integrityChecks = 0;
+      when(() => storage.verifyModelIntegrity(any())).thenAnswer((_) async {
+        integrityChecks++;
+        return integrityChecks > 1;
+      });
+      when(
+        () => storage.hasEnoughDiskSpace(any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => storage.getModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => '${stagingDir.path}/ggml-tiny.en.bin.bin');
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenThrow(const FileSystemException('storage is gone'));
+      when(() => storage.writeInstallReceipt(any())).thenAnswer(
+        (_) async => ModelInstallReceipt(
+          modelId: _whisper().fileName,
+          catalogFingerprint: 'test',
+          installedAt: DateTime(2026),
+        ),
+      );
+
+      final events = <ModelAcquisitionEvent>[];
+      final acquisition = provider.acquire(modelsDir).forEach(events.add);
+      await Future<void>.delayed(Duration.zero);
+      downloads.eventController.add(
+        DownloadProgress(
+          artifactId: downloads.requests.single.artifactId,
+          status: DownloadStatus.completed,
+          downloadedBytes: _whisper().sizeBytes,
+          totalBytes: _whisper().sizeBytes,
+        ),
+      );
+
+      // The stream completes rather than erroring, and says so.
+      await acquisition;
+      expect(
+        (events.last as ModelAcquisitionDone).failedFileNames,
+        containsAll(<String>[_whisper().fileName, second.fileName]),
+      );
+    },
+  );
+
   test(
     'a model with no download URL fails closed rather than silently skipping',
     () async {

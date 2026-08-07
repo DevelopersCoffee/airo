@@ -52,10 +52,28 @@ String? mindModelDownloadUrlFor(RequiredModel model) =>
 /// The default [MindService] provider is the bundled-asset installer, and this
 /// app does not bundle half a gigabyte of weights — without this wiring a
 /// fresh install reported the models missing and offered nothing (#1554).
-MindService buildMindDownloadService() {
+///
+/// [onDownloadService] hands the created [ModelDownloadService] back to the
+/// caller, which owns disposing it: the service holds a subscription to the
+/// platform download stream, and nothing else can see it once it is buried in
+/// the provider.
+MindService buildMindDownloadService({
+  void Function(ModelDownloadService)? onDownloadService,
+}) {
+  // Application support, not documents. Airo Mind keeps its models in the
+  // app's support directory on purpose (`MindService.modelsDirectory`) — on
+  // iOS the documents directory is user-visible in Files and backed up to
+  // iCloud, which a 491 MB model has no business being. Staging the download
+  // in documents would put it there anyway, along with the install receipt
+  // left behind after the artifact is moved.
+  final downloadService = ModelDownloadService(
+    storageLocation: ModelStorageLocation.applicationSupport,
+  );
+  onDownloadService?.call(downloadService);
+
   return MindService(
     modelProvider: DownloadModelProvider(
-      downloadService: ModelDownloadService(),
+      downloadService: downloadService,
       // The pinned registry, read across the bridge — never restated here.
       requiredModelsLookup: pinnedRequiredModels,
       downloadUrlFor: mindModelDownloadUrlFor,

@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
@@ -30,14 +31,22 @@ import 'mind_model_sources.dart';
 /// (#1554).
 class MindScribeModule extends AppModule {
   MindScribeModule({MindService Function()? createService})
-    : _createService = createService ?? buildMindDownloadService;
+    : this._(createService);
 
-  final MindService Function() _createService;
+  MindScribeModule._(this._createService);
+
+  /// Null means the production composition, which also hands back the
+  /// download service so [dispose] can close it. A test-supplied builder
+  /// brings its own collaborators and has nothing here to tear down.
+  final MindService Function()? _createService;
 
   MindService? _service;
+  ModelDownloadService? _downloadService;
 
   /// The scribe's service, created on first use and torn down by [dispose].
-  MindService get service => _service ??= _createService();
+  MindService get service => _service ??=
+      _createService?.call() ??
+      buildMindDownloadService(onDownloadService: (s) => _downloadService = s);
 
   /// The registry id, named so the shell can ask for this module's routes by
   /// constant rather than by a literal that drifts.
@@ -64,6 +73,11 @@ class MindScribeModule extends AppModule {
   Future<void> dispose() async {
     await _service?.dispose();
     _service = null;
+    // The download service holds a live subscription to the platform download
+    // stream and a controller per model; the provider that owns it is not
+    // reachable from here, so the composition root kept the handle.
+    await _downloadService?.dispose();
+    _downloadService = null;
   }
 
   /// The scribe is the Mind shell's home, so it mounts at the root.

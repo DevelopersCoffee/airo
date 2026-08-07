@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 /// A model that must be on disk, and what proves it is the right one.
 ///
@@ -96,8 +97,43 @@ abstract interface class ModelProvider {
   /// second. Full verification is [verify], run after an acquisition.
   Future<bool> isInstalled(Directory modelsDir);
 
+  /// The required models that are not installed.
+  ///
+  /// On the provider rather than on a caller stat-ing the directory itself: a
+  /// provider decides what "installed" means for its own layout, and a caller
+  /// that re-implements the check is a copy that goes stale the moment one
+  /// does something different.
+  Future<List<RequiredModel>> missingModels(Directory modelsDir);
+
   /// Puts missing models on disk, reporting progress as they arrive.
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir);
 
   Future<List<InstalledModel>> verify(Directory modelsDir);
+}
+
+/// The disk half of a [ModelProvider] that keeps models as files in one
+/// directory, under the names the registry pins — which is every provider
+/// there is, because that is what the Rust engines are handed
+/// (`ADR-0018 §1`: a directory and a budget).
+///
+/// Exists so the pinned-size check is written once. It was previously three
+/// copies — one per provider, one in `MindService` — which is how "installed"
+/// quietly comes to mean three different things.
+mixin PinnedModelFiles implements ModelProvider {
+  @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) async => [
+    for (final model in await requiredModels())
+      if (!isPresent(modelsDir, model)) model,
+  ];
+
+  @override
+  Future<bool> isInstalled(Directory modelsDir) async =>
+      (await missingModels(modelsDir)).isEmpty;
+
+  /// Present at its pinned size. Not its pinned digest — see
+  /// [ModelProvider.isInstalled] for why hashing is not on the launch path.
+  static bool isPresent(Directory modelsDir, RequiredModel model) {
+    final file = File(p.join(modelsDir.path, model.fileName));
+    return file.existsSync() && file.lengthSync() == model.sizeBytes;
+  }
 }

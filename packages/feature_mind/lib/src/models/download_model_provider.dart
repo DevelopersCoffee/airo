@@ -25,7 +25,7 @@ import 'model_provider.dart';
 /// models). `downloadUrlFor` is where that decision is made, and it is a
 /// constructor parameter rather than a hardcoded host so it can change without
 /// touching this class.
-class DownloadModelProvider implements ModelProvider {
+class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
   DownloadModelProvider({
     required this._downloadService,
     required this._requiredModelsLookup,
@@ -43,16 +43,6 @@ class DownloadModelProvider implements ModelProvider {
   /// than start it.
   @override
   bool get acquiresWithoutNetwork => false;
-
-  @override
-  Future<bool> isInstalled(Directory modelsDir) async {
-    for (final required in await requiredModels()) {
-      final file = File(p.join(modelsDir.path, required.fileName));
-      if (!file.existsSync()) return false;
-      if (file.lengthSync() != required.sizeBytes) return false;
-    }
-    return true;
-  }
 
   /// `core_ai.OfflineModelInfo.id` is the download service's identity for a
   /// model. The file name already is one, pinned in the same registry that
@@ -96,26 +86,34 @@ class DownloadModelProvider implements ModelProvider {
   /// on every platform Mind ships to, so this is a metadata operation rather
   /// than half a gigabyte read and written again. The copy path is the honest
   /// fallback for a layout where they are not.
+  ///
+  /// Every failure is one file's failure, reported by name. Letting one throw
+  /// would abort the `async*` stream mid-acquisition: no
+  /// [ModelAcquisitionDone], the second model never attempted, and a raw
+  /// exception on screen instead of a retry.
   Future<bool> _install(RequiredModel required, Directory modelsDir) async {
     final target = File(p.join(modelsDir.path, required.fileName));
-    if (target.existsSync() && target.lengthSync() == required.sizeBytes) {
-      return true;
-    }
 
-    final stagedPath = await _downloadService.resolveExistingModelPath(
-      required.fileName,
-      model: _stagedInfo(required),
-    );
-    if (stagedPath == null) return false;
-
-    final staged = File(stagedPath);
     try {
-      staged.renameSync(target.path);
-    } on FileSystemException {
-      staged.copySync(target.path);
-      staged.deleteSync();
+      if (PinnedModelFiles.isPresent(modelsDir, required)) return true;
+
+      final stagedPath = await _downloadService.resolveExistingModelPath(
+        required.fileName,
+        model: _stagedInfo(required),
+      );
+      if (stagedPath == null) return false;
+
+      final staged = File(stagedPath);
+      try {
+        staged.renameSync(target.path);
+      } on FileSystemException {
+        staged.copySync(target.path);
+        staged.deleteSync();
+      }
+      return PinnedModelFiles.isPresent(modelsDir, required);
+    } on Object {
+      return false;
     }
-    return target.existsSync() && target.lengthSync() == required.sizeBytes;
   }
 
   @override
@@ -127,8 +125,7 @@ class DownloadModelProvider implements ModelProvider {
     // and running both downloads at once on a constrained connection is a
     // worse experience than a predictable queue, not a faster one.
     for (final model in required) {
-      final target = File(p.join(modelsDir.path, model.fileName));
-      if (target.existsSync() && target.lengthSync() == model.sizeBytes) {
+      if (PinnedModelFiles.isPresent(modelsDir, model)) {
         // Already installed. Only some of the set is usually missing, and
         // re-fetching 469 MB because 77 MB is absent is not a retry anyone
         // asked for.
