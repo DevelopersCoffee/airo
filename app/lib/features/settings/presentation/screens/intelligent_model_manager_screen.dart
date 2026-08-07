@@ -244,6 +244,11 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     required ModelDownloadProgress? downloadProgress,
   }) {
     final theme = Theme.of(context);
+    // The scribe owns its own weights: it downloads, verifies and loads them
+    // through `MindService`, and this screen holds no handle on that runtime.
+    // Offering Activate/Warm/Benchmark/Delete here would be four buttons that
+    // either do nothing or delete a file the scribe expects to find.
+    final isExternallyManaged = modelInfo.tags.contains(mindScribeModelTag);
     final cardColor = theme.brightness == Brightness.dark
         ? Colors.black.withValues(alpha: 0.25)
         : Colors.white.withValues(alpha: 0.45);
@@ -352,7 +357,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (model.isDownloaded)
+                    if (model.isDownloaded && !isExternallyManaged)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -385,25 +390,109 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildModelMetrics(context, modelInfo),
                 const SizedBox(height: 16),
-                _buildDownloadStatusPanel(
-                  context,
-                  model,
-                  modelInfo,
-                  downloadProgress,
-                ),
-                const SizedBox(height: 16),
-                if (isDownloading && downloadProgress != null)
-                  _buildDownloadProgress(
+                if (isExternallyManaged)
+                  _buildManagedByScribePanel(context, modelInfo)
+                else ...[
+                  _buildDownloadStatusPanel(
                     context,
-                    ref,
+                    model,
                     modelInfo,
                     downloadProgress,
-                  )
-                else
-                  _buildActionRow(context, ref, model, modelInfo, isActive),
+                  ),
+                  const SizedBox(height: 16),
+                  if (isDownloading && downloadProgress != null)
+                    _buildDownloadProgress(
+                      context,
+                      ref,
+                      modelInfo,
+                      downloadProgress,
+                    )
+                  else
+                    _buildActionRow(context, ref, model, modelInfo, isActive),
+                ],
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Install state for a model another runtime owns — status, no actions.
+  ///
+  /// Install state is read from [modelInfo], not from the [ModelEntry]: the
+  /// manager decides "downloaded" by asking its own storage manager, which
+  /// looks in the download service's directory. The scribe installs in the
+  /// app-support directory it hands to the runtime, so the registry entry is
+  /// the only one of the two that knows the truth.
+  Widget _buildManagedByScribePanel(
+    BuildContext context,
+    OfflineModelInfo modelInfo,
+  ) {
+    final theme = Theme.of(context);
+    final isInstalled = modelInfo.isDownloaded;
+    return Semantics(
+      container: true,
+      label: 'Scribe model status for ${modelInfo.name}',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.45,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.record_voice_over_outlined,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Managed by Scribe',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Chip(
+                  label: Text(
+                    isInstalled ? 'Status: installed' : 'Status: not installed',
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                Chip(
+                  label: Text(
+                    'Required storage: ${_formatBytes(modelInfo.fileSizeBytes)}',
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The Scribe downloads, verifies and loads this model itself. '
+              'Manage it from the Scribe screen.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
         ),
       ),
     );

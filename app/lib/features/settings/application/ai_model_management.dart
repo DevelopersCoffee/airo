@@ -10,12 +10,25 @@ import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 
 import 'ai_preferences_settings.dart';
 
+/// Tags a registry entry whose bytes another runtime owns.
+///
+/// The model explorer's verbs — activate, warm, benchmark, delete — all speak
+/// to the LiteRT/llama.cpp chat runtime this screen drives. A tagged entry is
+/// acquired and loaded elsewhere (today: the Airo Mind scribe), so the screen
+/// reports its install state and offers none of those actions.
+///
+/// It lives here rather than beside the Mind catalog that applies it because
+/// `lib/core/mind/**` resolves only under `pubspec_mind.yaml` — the phone,
+/// TV and Coins flavours have no `feature_mind`, and a settings screen that
+/// imported it would stop compiling for three of the four apps.
+const String mindScribeModelTag = 'mind-scribe';
+
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
   registry.registerModels(ModelCatalog.bundledModels);
   unawaited(
-    _hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
+    hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
   );
   ref.onDispose(registry.dispose);
   return registry;
@@ -26,7 +39,12 @@ final modelRegistryEventsProvider = StreamProvider<ModelRegistryEvent>((ref) {
   return registry.changes;
 });
 
-Future<void> _hydrateDownloadedModels(
+/// Marks catalog models the download service can prove are installed.
+///
+/// Public because shells that override [modelRegistryProvider] with a wider
+/// catalog still owe the bundled models the same truthful install state —
+/// re-implementing this check per shell is how they drift apart.
+Future<void> hydrateDownloadedModels(
   ModelRegistry registry,
   ModelDownloadService service,
 ) async {

@@ -1,8 +1,10 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_mind/feature_mind.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'mind_model_catalog.dart';
 import 'mind_model_sources.dart';
 
 /// Wraps the `feature_mind` scribe journey — record a meeting, transcribe it,
@@ -79,6 +81,19 @@ class MindScribeModule extends AppModule {
     await _downloadService?.dispose();
     _downloadService = null;
   }
+
+  /// Puts the scribe's weights in the shell's shared model explorer.
+  ///
+  /// Without this the Mind shell's Profile → AI preferences screen listed the
+  /// super app's chat models and said nothing about the two models this app
+  /// actually runs on. The override reads install state from [service]'s own
+  /// models directory, so the screen reports what is really on disk rather
+  /// than what the download service would have installed elsewhere.
+  @override
+  List<Override> providerOverridesFor(ShellId shell) =>
+      mindModelRegistryOverrides(
+        modelsDirectory: () => service.modelsDirectory(),
+      );
 
   /// The scribe is the Mind shell's home, so it mounts at the root.
   @override
