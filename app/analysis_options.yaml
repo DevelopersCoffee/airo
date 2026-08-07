@@ -62,11 +62,17 @@ analyzer:
     # `app/analysis_options_mind.yaml` is the same configuration with the Mind
     # paths un-excluded.
     #
-    # Still open: the Android APK build. `flutter build apk --debug
-    # --target=lib/main_mind.dart` gets past Dart and Kotlin and then fails in
-    # `:feature_mind:cargokitCargoBuild...` -- the vendored cargokit gradle
-    # plugin calls `Project.exec()`, which Gradle 9 removed. Airo Mind
-    # modular-app task 9 owns that.
+    # The Android APK is NOT part of this job, and no longer because it is
+    # broken -- that note was stale. The vendored cargokit gradle plugin has
+    # been patched off the removed `Project.exec()` onto `ExecOperations`, and
+    # the APK builds, installs and runs on device (#1550).
+    #
+    # Build it with `scripts/build-mind.sh`, which pins
+    # `--target-platform=android-arm64`: `llama-cpp-sys-2`'s build script
+    # panics on `armv7-linux-androideabi`, and Mind is an arm64 product. Note
+    # that cross-compiling `whisper-rs-sys` from a macOS host still fails to
+    # link (`ggml-blas`) because its build script evaluates `cfg!(macos)` on
+    # the HOST; a Linux runner builds it.
     - "lib/main_mind.dart"
     - "lib/core/mind/**"
     - "test_mind/**"
