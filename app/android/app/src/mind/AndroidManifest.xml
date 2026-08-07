@@ -21,6 +21,16 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- ModelDownloadService's WorkManager-backed background download
+         (platform_downloads) runs its worker in a foreground service. Android
+         14+ enforces that a foreground service's declared type is a superset
+         of what is requested at runtime. src/main declares this, but this
+         manifest replaces src/main rather than merging into it (see the file
+         header), so without a copy here the app crashes the instant a
+         download starts:
+           IllegalArgumentException: foregroundServiceType 0x00000001 is not
+           a subset of foregroundServiceType attribute 0x00000000 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
 
     <application
         android:label="${appLabel}"
@@ -77,6 +87,15 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <!-- WorkManager foreground service type mapping for
+             ModelDownloadService's downloads. See the permission comment
+             above for why this cannot rely on src/main's copy. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false"
+            tools:node="merge" />
     </application>
 
     <!-- Required to query activities that can process text, see:

@@ -2,6 +2,8 @@ import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
 
+import 'mind_model_source.dart';
+
 /// Wraps the `feature_mind` scribe journey — record a meeting, transcribe it,
 /// read the minutes, search what was said — as a shell-registrable module,
 /// the same way `CoinVaultModule` wraps `feature_coin`.
@@ -21,7 +23,14 @@ import 'package:go_router/go_router.dart';
 /// (models missing, bridge missing, ready) as its opening state.
 class MindScribeModule extends AppModule {
   MindScribeModule({MindService Function()? createService})
-    : _createService = createService ?? MindService.new;
+    : _createService = createService ?? _defaultService;
+
+  /// The shell's actual default: models come from Airo's existing download
+  /// pipeline, not the app bundle — neither this shell nor the super app
+  /// ships model weights in the APK
+  /// (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
+  static MindService _defaultService() =>
+      MindService(modelProvider: buildMindModelProvider());
 
   final MindService Function() _createService;
 
