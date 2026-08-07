@@ -1,4 +1,4 @@
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:feature_coin/feature_coin.dart';
 
 class RouteNames {
@@ -13,8 +13,8 @@ class RouteNames {
   static const String profile = '/profile';
   static const String settings = '/settings';
 
-  // Assistant (Airo Mind). Owned by packages/feature_assistant so the super
-  // app and the standalone Mind shell mount identical paths.
+  // Assistant (Airo Mind). Owned by packages/feature_mind so the super app
+  // and the standalone Mind shell mount identical paths.
   static const String assistant = AssistantRouteNames.assistant;
   static const String assistantChat = AssistantRouteNames.chat;
   static const String assistantNotifications =

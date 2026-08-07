@@ -1,9 +1,26 @@
 name: feature_mind
 owner: Product Manager
+capabilities:
+  - capability.assistant.chat
+  - capability.assistant.models.local
+  - capability.assistant.wellbeing
+supported_devices:
+  - phone
+  - tablet
+  - desktop
+ship_policy:
+  tv: Never Ship
+  phone: Always Ship
+  tablet: Always Ship
+  desktop: Optional
+native_dependencies:
+  - image_picker
 reviewers:
   - Chief Architect
   - Platform Architect
   - Chief Security Officer
+  - Chief Cloud Officer
+  - Chief QA Officer
 allowed_dependencies:
   # ModelDownloadService / ModelStorageManager: Airo Mind's model acquisition
   # moves onto core_ai's existing download pipeline rather than shipping model
@@ -12,6 +29,13 @@ allowed_dependencies:
   # Dev-only: DownloadArtifactRequest/DownloadProgress, constructed directly by
   # DownloadModelProvider's test doubles. Not linked into the shipped package.
   - platform_downloads
+  # Below: brought in from feature_assistant on the Phase 2 merge
+  # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md) -- the assistant
+  # hub is now this package.
+  - core_ui
+  - core_product_shell
+  - core_domain
+  - core_data
 forbidden_dependencies:
   - app
 quality_gates: {}

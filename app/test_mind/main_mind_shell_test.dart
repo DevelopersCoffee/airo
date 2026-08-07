@@ -1,12 +1,14 @@
 /// Tests for the standalone Airo Mind shell.
 ///
 /// These live outside `app/test/` on purpose. Flavors are separate pubspecs
-/// in this repo, and `feature_mind` is deliberately *not* a dependency of
-/// `app/pubspec.yaml` (it declares cargokit hooks, so every phone build would
-/// cross-compile whisper.cpp and llama.cpp — see the exclusion note in
-/// `app/analysis_options.yaml`). `flutter test` with no arguments only walks
-/// `test/`, so the default phone suite stays green while this suite runs
-/// under the Mind flavour:
+/// in this repo, and `feature_mind` declares cargokit hooks — every phone
+/// build cross-compiles whisper.cpp and llama.cpp now that the merged package
+/// carries the assistant hub too
+/// (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`, Phase 2), but
+/// this suite still needs the Mind flavour's own pubspec and dart-define, not
+/// the phone default. `flutter test` with no arguments only walks `test/`, so
+/// the default phone suite stays green while this suite runs under the Mind
+/// flavour:
 ///
 /// ```bash
 /// cp app/pubspec_mind.yaml app/pubspec.yaml   # restored by run_mind_macos.sh
@@ -23,11 +25,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  test('mind registry registers scribe and assistant modules', () {
+  test('mind registry registers the merged scribe + assistant module', () {
     final registry = buildMindModuleRegistry();
 
     expect(registry.shell, ShellId.mind);
-    expect(registry.moduleIds, containsAll(['mind_scribe', 'assistant']));
+    expect(registry.moduleIds, ['mind']);
 
     final paths = registry.allRoutes.whereType<GoRoute>().map((r) => r.path);
     expect(paths, contains('/'));
