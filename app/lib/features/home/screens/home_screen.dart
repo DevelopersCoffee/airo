@@ -1,6 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:feature_mind/feature_mind.dart';
 
 import '../../../core/routing/route_names.dart';
 
@@ -47,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                   title: 'Assistant',
                   description: 'Think, write, and work with your local AI.',
                   icon: Icons.psychology_outlined,
-                  route: '/assistant',
+                  route: AssistantRouteNames.assistant,
                 ),
                 _HomeDestination(
                   title: 'Coins',

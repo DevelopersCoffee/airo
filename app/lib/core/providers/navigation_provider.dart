@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:feature_mind/feature_mind.dart';
 
 /// NOTE (CV unified-browse Task 5): the first six members below (`coins`
 /// through `quest`) are the pre-existing super-app domains and are
@@ -28,7 +29,7 @@ enum AppNavigationTab {
   ),
   assistant(
     label: 'Assistant',
-    path: '/assistant',
+    path: AssistantRouteNames.assistant,
     icon: Icons.psychology_outlined,
     selectedIcon: Icons.psychology,
   ),
@@ -215,7 +216,7 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     // both entry points under the super-app header so Coins gets the single
     // global notification action instead of owning duplicate local chrome.
     '/money/dashboard',
-    '/assistant',
+    AssistantRouteNames.assistant,
     '/assistant/chat',
     '/assistant/models',
     '/games',
