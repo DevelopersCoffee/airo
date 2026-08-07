@@ -1,5 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -47,10 +47,7 @@ class AppRouter {
     // bundle: it owns two mount points (the Mind branch and a top-level
     // destination), and the module names them so the router does not have to
     // re-derive the split from route paths.
-    final assistant = _requiredModule<AssistantModule>(
-      moduleRegistry,
-      'assistant',
-    );
+    final assistant = _requiredModule<MindModule>(moduleRegistry, 'mind');
 
     return GoRouter(
       initialLocation: initialLocation,

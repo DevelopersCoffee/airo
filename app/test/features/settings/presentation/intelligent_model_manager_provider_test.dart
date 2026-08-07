@@ -1,7 +1,7 @@
 import 'package:airo_app/features/settings/application/ai_model_management.dart';
 import 'package:airo_app/features/settings/presentation/intelligent_model_manager_provider.dart';
 import 'package:core_ai/core_ai.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

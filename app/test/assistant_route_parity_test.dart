@@ -8,10 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:airo_app/features/iptv/iptv_feature_module.dart';
 
 /// The Mind tab's route names, exactly as the super app declared them inline
-/// before `feature_assistant` was extracted. Deep links, notification
-/// payloads, and `goNamed` call sites resolve on these, so the extraction is
-/// only correct if every one of them still resolves — and to the same
-/// location.
+/// before `feature_assistant` was extracted (and later merged into
+/// `feature_mind`). Deep links, notification payloads, and `goNamed` call
+/// sites resolve on these, so both moves are only correct if every one of
+/// them still resolves — and to the same location.
 const _preExtractionAssistantRoutes = <String, String>{
   'Assistant': '/assistant',
   'assistant_chat': '/assistant/chat',
@@ -70,7 +70,7 @@ void main() {
     );
   });
 
-  test('the router refuses to start without the assistant module', () {
+  test('the router refuses to start without the mind module', () {
     final registry = ModuleRegistry(shell: ShellId.mobile)
       ..register(CoinVaultModule())
       ..register(IptvFeatureModule());
@@ -81,7 +81,7 @@ void main() {
         isA<ModuleCompositionException>().having(
           (error) => error.message,
           'message',
-          contains('assistant'),
+          contains('mind'),
         ),
       ),
     );

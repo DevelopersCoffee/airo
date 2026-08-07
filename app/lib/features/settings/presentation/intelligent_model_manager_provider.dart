@@ -1,5 +1,5 @@
 import 'package:core_ai/core_ai.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/ai_model_management.dart';
 

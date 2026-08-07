@@ -1,7 +1,7 @@
 import 'package:core_ai/core_ai.dart' show SafetyProfile;
 import 'package:core_app_shell/core_app_shell.dart'
     show currencyFormatterProvider;
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

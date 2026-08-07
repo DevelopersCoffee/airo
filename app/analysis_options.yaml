@@ -28,20 +28,19 @@ analyzer:
     # them here checks nothing; it only hides the errors that matter.
     - "integration_test/patrol_test.dart"
     - "patrol_test/**"
-    # Same reason, same shape: `main_mind.dart` resolves only under
-    # pubspec_mind.yaml, and `feature_mind` is not a dependency of
-    # app/pubspec.yaml. Analysing it against the phone flavour checks it
-    # against a dependency set it was never meant to have.
-    #
-    # Adding feature_mind to app/pubspec.yaml the way feature_coin is there
-    # would fix the analysis and break the product: feature_mind declares
-    # cargokit hooks, so every phone build would cross-compile whisper.cpp and
-    # llama.cpp through the NDK and carry the native code for a feature this
-    # flavour does not ship.
+    # `main_mind.dart` is the standalone Mind shell's entrypoint and is never
+    # part of the phone flavour's own route tree or build target, even though
+    # `feature_mind` became a phone dependency in the Phase 2 SSOT merge
+    # (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`) — the
+    # assistant hub the phone flavour ships now lives in that package. This
+    # file and `lib/core/mind/**` stay excluded because they are the *other*
+    # entrypoint's composition root, analysed instead under
+    # `pubspec_mind.yaml` where its shell-specific wiring (legacy `/agent*`
+    # redirects, `MindUnavailableScreen`) is what's actually being checked.
     #
     # The shell's own suite lives in `test_mind/`, excluded for the same
-    # dependency reason. `flutter test` with no arguments walks `test/` only,
-    # so the phone suite never tries to compile the Mind shell.
+    # reason. `flutter test` with no arguments walks `test/` only, so the
+    # phone suite never tries to run the Mind shell's tests.
     #
     # These files ARE covered, by the `airo-mind-shell` job in
     # `.github/workflows/pr-checks.yml` and `.github/workflows/ci.yml`. It
