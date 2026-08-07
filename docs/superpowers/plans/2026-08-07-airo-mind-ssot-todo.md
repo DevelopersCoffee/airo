@@ -222,15 +222,15 @@ web/TV" consequence was accepted by the user earlier in this plan, but is not
 yet *implemented* — web still ships the hub today (see above). Flag before
 Phase 3/4 close it out for real.
 
-## Phase 3 — claim /mind
+## Phase 3 — claim /mind  (3.1-3.4 done; 3.5 tests deferred)
 
-- [ ] **3.1** Move `/assistant/*` paths to `/mind/*`, keeping every route
+- [x] **3.1** Move `/assistant/*` paths to `/mind/*`, keeping every route
       **name** unchanged (names are what notifications and deep links resolve)
-- [ ] **3.2** Redirect old `/assistant/*` paths
-- [ ] **3.3** Invert the legacy mapping in
+- [x] **3.2** Redirect old `/assistant/*` paths
+- [x] **3.3** Invert the legacy mapping in
       `notification_navigation_service.dart:91` (`/mind` → `/assistant` becomes
       the reverse)
-- [ ] **3.4** Retire `app/test/core/routing/mind_name_is_free_test.dart` — the
+- [x] **3.4** Retire `app/test/core/routing/mind_name_is_free_test.dart` — the
       reservation has been claimed by its intended owner
 - [ ] **3.5** Tests: route parity, redirect coverage, and a notification payload
       carrying an old path

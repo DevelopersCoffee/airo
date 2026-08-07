@@ -1,15 +1,32 @@
-/// Route paths owned by the assistant package.
+/// Route paths owned by the Mind package.
 ///
-/// Every shell that mounts the assistant (the super app and the standalone
-/// Airo Mind shell) mounts these exact paths, so deep links, notification
-/// payloads, and in-package navigation resolve identically everywhere.
-/// The app's `RouteNames` references these constants rather than repeating
-/// the literals, so the two can never drift apart.
+/// Every shell that mounts the hub (the super app and the standalone Airo Mind
+/// shell) mounts these exact paths, so deep links, notification payloads, and
+/// in-package navigation resolve identically everywhere. The app's `RouteNames`
+/// references these constants rather than repeating the literals, so the two
+/// can never drift apart.
+///
+/// # The hub lives at `/mind`
+///
+/// Phase 3 of the SSOT plan claimed `/mind` for its intended owner. Everything
+/// below derives from the one root constant, so the move is that constant and
+/// nothing else -- which is the whole reason the paths were centralised here
+/// before the move rather than during it.
+///
+/// The route **names** did not change and must not. Deep links, notification
+/// payloads and every `goNamed`/`namedLocation` call site resolve on names, not
+/// paths; renaming one is a breaking change for every shell and for
+/// notifications already sitting in the OS. `assistantName = 'Assistant'` is
+/// deliberately still spelled that way for exactly that reason.
 class AssistantRouteNames {
   const AssistantRouteNames._();
 
-  /// Assistant hub — the branch root.
-  static const String assistant = '/assistant';
+  /// The Mind hub — the branch root. Every path below is built from it.
+  ///
+  /// Was `/assistant` until Phase 3. Old links keep working: the router
+  /// redirects `/assistant/*`, and notification payloads are migrated in
+  /// `notification_navigation_service.dart`.
+  static const String assistant = '/mind';
   static const String chat = '$assistant/$chatSegment';
   static const String notifications = '$assistant/$notificationsSegment';
   static const String profile = '$assistant/$profileSegment';
