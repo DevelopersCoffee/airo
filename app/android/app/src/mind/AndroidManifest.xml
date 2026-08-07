@@ -19,6 +19,10 @@
          declared and permitted. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Model downloads run through platform_downloads' WorkManager foreground
+         service; without the dataSync type here the first download crashes with
+         "foregroundServiceType 0x00000001 is not a subset of ... 0x00000000". -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
@@ -60,6 +64,15 @@
         <uses-native-library
             android:name="libOpenCL-pixel.so"
             android:required="false" />
+
+        <!-- WorkManager foreground service type mapping for model downloads
+             (platform_downloads). Mirrors src/main; this manifest replaces
+             main, so the mapping must be restated here. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false"
+            tools:node="merge" />
 
         <!-- audio_service background playback. -->
         <service
