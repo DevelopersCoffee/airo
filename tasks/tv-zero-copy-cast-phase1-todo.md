@@ -37,7 +37,7 @@ methods). Covers F7.1's metric set as an aggregate summary.
 
 ---
 
-## Task 2: Network key derivation
+## Task 2: Network key derivation — DONE (8cb9e7a0)
 
 **Tier:** implement (Sonnet)
 
@@ -195,8 +195,8 @@ acceptance.
 
 ## Checkpoints
 
-### Checkpoint A (after Tasks 1–2)
-- [ ] `core_analytics` tests + analyzer green
+### Checkpoint A (after Tasks 1–2) — DONE
+- [x] `core_analytics` tests + analyzer green (97/97, 0 issues)
 
 ### Checkpoint B (after Tasks 3–4)
 - [ ] Dev-build manual check: session summary appears, redacted, hashed key
