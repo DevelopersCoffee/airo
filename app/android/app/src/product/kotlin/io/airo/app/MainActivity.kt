@@ -56,6 +56,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private var pendingFlashlightResult: MethodChannel.Result? = null
     private var pendingFlashlightEnabled: Boolean? = null
 
+    private lateinit var streamingEnginePlugin: AiroStreamingEnginePlugin
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
     private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
@@ -143,6 +144,9 @@ class MainActivity : AudioServiceFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        streamingEnginePlugin = AiroStreamingEnginePlugin()
+        streamingEnginePlugin.register(flutterEngine.dartExecutor.binaryMessenger)
 
         pictureInPicturePlugin = AiroPictureInPicturePlugin(this)
         pictureInPicturePlugin.register(flutterEngine.dartExecutor.binaryMessenger)
