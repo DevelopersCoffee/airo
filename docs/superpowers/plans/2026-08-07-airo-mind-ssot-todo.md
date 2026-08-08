@@ -246,7 +246,53 @@ Phase 3/4 close it out for real.
 - [ ] **4.2** Add `feature_mind` to `app/pubspec.yaml`
 - [ ] **4.3** Register `MindModule` in `main.dart` beside `CoinVaultModule` and
       `IptvFeatureModule`
-- [ ] **4.4** Confirm web and TV still swap in `feature_mind_stub`
+- [ ] **4.4** Web does NOT swap in `feature_mind_stub` today -- R05 is
+      currently violated on `main`. TV never depended on `feature_mind` in the
+      first place, so it was never at risk.
+
+      **Two things tried, both instructive, neither shippable yet.**
+
+      The obvious fix -- swap `feature_mind` for `feature_mind_stub` via
+      `pubspec_overrides.yaml` -- does not work: the stub deliberately exports
+      no `MindModule` ("a shared-surface build should fail to compile if it
+      reaches for a Mind surface", its own doc comment), so the swap breaks the
+      web BUILD rather than silently stubbing it.
+
+      A `dart.library.html` conditional import
+      (`app/lib/core/mind/mind_registration.dart` /
+      `mind_registration_web.dart`, matching the pattern already used seven
+      times elsewhere in `app/lib` -- `app_database.dart`,
+      `money_provider.dart`, etc.) does correctly keep `main.dart` from
+      referencing `MindModule` on web, and it analyzed clean for the phone
+      target. That part is real progress and a smaller fix than the pubspec
+      idea: no CI wiring, no committed override file.
+
+      It is not sufficient by itself. `AppRouter.createRouter`
+      (`app/lib/core/routing/app_router.dart:50`) -- used by every shell, not
+      swapped per platform -- unconditionally does
+      `_requiredModule<MindModule>(moduleRegistry, 'mind')` to build the route
+      tree, for both the Mind branch AND the top-level Wellbeing destination.
+      If `registerMind` is a no-op on web, that lookup finds nothing and
+      THROWS AT RUNTIME. `flutter build web --release` would compile clean and
+      the app would crash on launch -- a green compile that hides the actual
+      failure, which is why the build was stopped rather than trusted to
+      "prove" the fix.
+
+      The router itself has to learn a module can legitimately be absent --
+      `_requiredModule<MindModule>` needs an optional counterpart, and the two
+      route groups built from it unconditionally
+      (`assistant.rootRoutesFor(...)`, `assistant.hubRoutesFor(...)`) need to
+      become conditional on whether it resolved. That is router surface used
+      by every shell, phone included, and is not a change to make without the
+      router's own test suite plus a real web smoke test.
+
+      One artefact survived and is real, safe, forward-compatible progress:
+      `packages/feature_mind/lib/src/mind_availability.dart` --
+      `AiroMindAbsent.value = false`, mirroring the stub's marker of the same
+      name and shape, exported from the package barrel. It is inert until
+      something reads it, which is exactly the point: whichever fix lands next
+      (router-level optional-module lookup, most likely) has an availability
+      signal to read that already exists on both sides of the pubspec swap.
 - [ ] **4.5** `cd app && flutter build web --release` succeeds
 - [ ] **4.6** `scripts/check-mind-private-devices.sh` passes (R05)
 - [ ] **4.7** Device walk on **both** shells: first-run download, record →
