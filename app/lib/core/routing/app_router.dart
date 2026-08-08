@@ -47,7 +47,13 @@ class AppRouter {
     // bundle: it owns two mount points (the Mind branch and a top-level
     // destination), and the module names them so the router does not have to
     // re-derive the split from route paths.
-    final assistant = _requiredModule<MindModule>(moduleRegistry, 'mind');
+    //
+    // Optional, not required: R05 keeps Mind off shared surfaces (web) by
+    // never registering it there (`main.dart`'s conditional import), and this
+    // router is the one entrypoint every surface shares. A missing module is
+    // a legitimate composition, not a startup failure -- see
+    // `_mindAbsentHubRoutes` for what the Mind branch renders instead.
+    final assistant = _optionalModule<MindModule>(moduleRegistry, 'mind');
 
     return GoRouter(
       initialLocation: initialLocation,
@@ -89,8 +95,9 @@ class AppRouter {
         ..._legacyHubRedirects('/assistant'),
         // Assistant destinations that are reached from the Mind hub but are
         // not part of it (Wellbeing), so they render full-screen instead of
-        // inside the bottom nav.
-        ...assistant.rootRoutesFor(moduleRegistry.shell),
+        // inside the bottom nav. Absent entirely when Mind itself is absent
+        // (web) -- there is no hub for them to be reached from.
+        if (assistant != null) ...assistant.rootRoutesFor(moduleRegistry.shell),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
         GoRoute(
@@ -215,9 +222,15 @@ class AppRouter {
                 ),
               ],
             ),
-            // Mind branch
+            // Mind branch. Falls back to a redirect-only route when the
+            // module is absent (web) -- the branch itself stays present so
+            // `navigationShell.currentIndex` keeps lining up with
+            // `AppNavigationTab.values` (see navigation_provider.dart), and
+            // a stray `/mind` link resolves to something instead of a 404.
             StatefulShellBranch(
-              routes: assistant.hubRoutesFor(moduleRegistry.shell),
+              routes: assistant != null
+                  ? assistant.hubRoutesFor(moduleRegistry.shell)
+                  : _mindAbsentHubRoutes(),
             ),
             // Beats branch
             StatefulShellBranch(
@@ -287,27 +300,37 @@ class AppRouter {
     );
   }
 
-  /// Resolves a registered module the shell cannot start without, typed.
+  /// Resolves a registered module by id, typed, or `null` if it was never
+  /// registered for this shell.
   ///
-  /// Used instead of [_requiredModuleRoutes] when the router needs more from a
-  /// module than one flat route bundle — currently the assistant, which mounts
-  /// part of itself in a navigation branch and part at the top level.
-  static T _requiredModule<T extends AppModule>(
+  /// Used instead of [_requiredModuleRoutes] when the router needs more from
+  /// a module than one flat route bundle — currently the assistant, which
+  /// mounts part of itself in a navigation branch and part at the top level.
+  /// Nullable rather than throwing: composing without Mind is a legitimate
+  /// shape, not a misconfiguration (R05 -- absent from shared surfaces by
+  /// construction, not by choice).
+  static T? _optionalModule<T extends AppModule>(
     ModuleRegistry registry,
     String moduleId,
   ) {
-    final module = registry.registeredModules
+    return registry.registeredModules
         .whereType<T>()
         .where((candidate) => candidate.id == moduleId)
         .firstOrNull;
-    if (module == null) {
-      throw ModuleCompositionException(
-        'Required module "$moduleId" is not registered as a $T for '
-        'shell "${registry.shell.value}".',
-      );
-    }
-    return module;
   }
+
+  /// What the Mind branch renders when [MindModule] is absent (web, R05).
+  ///
+  /// A single redirect rather than an empty route list: `StatefulShellBranch`
+  /// requires at least one route, and a bare `/mind` visited directly (a
+  /// stale deep link, the legacy `/agent` and `/assistant` rewrites) should
+  /// land somewhere real instead of a 404.
+  static List<GoRoute> _mindAbsentHubRoutes() => [
+    GoRoute(
+      path: AssistantRouteNames.assistant,
+      redirect: (context, state) => '/money',
+    ),
+  ];
 
   static List<GoRoute> _requiredModuleRoutes(
     ModuleRegistry registry,
