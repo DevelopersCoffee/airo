@@ -23,10 +23,23 @@ Checked before writing tasks, not assumed:
   no Media3/ExoPlayer dependency anywhere in `app/android`. There is no
   `PlatformView` anywhere in this repo (searched — zero hits). This is a
   **from-scratch native module**, not an extension of existing Kotlin.
-- **The `tv` Gradle flavor source set exists but is empty.**
-  `app/android/app/src/tv/` has no Kotlin files yet — this is the correct,
-  already-provisioned home for receiver-only native code, but nothing is
-  in it.
+- **CORRECTED (was wrong when first written): there is no Gradle flavor
+  dimension at all.** `isTvVariant` is a plain Kotlin DSL `val` in
+  `build.gradle.kts`, derived from a `--dart-define=APP_VARIANT=tv`
+  Gradle property — not a `productFlavors`/`flavorDimensions` block (none
+  exists). The `main` source set's `kotlin.srcDirs` is *always*
+  `src/product/kotlin` (TV included) unless `isCoinsVariant`; `src/tv/`
+  only contributes `AndroidManifest.xml` and `res/`, never Kotlin.
+  **MainActivity and every plugin registered in it are shared source
+  across phone and TV builds.** TV-only differences are expressed via
+  `isTvVariant`-gated `excludes` in the packaging block (native libs) and
+  the tv manifest/res override, not via a separate Kotlin source
+  directory. Tasks below were corrected to match this before any Kotlin
+  was written — the new plugin lives in `src/product/kotlin` alongside
+  everything else and registers unconditionally; nothing tv-exclusive
+  happens until Media3 actually gets added in Task 4, at which point
+  APK-size gating (if needed) follows the existing `excludes` pattern,
+  not a separate source set.
 - **The MethodChannel plugin pattern is established and should be reused
   exactly**, not reinvented: a static Dart wrapper class holding a `const
   MethodChannel('com.airo.player/<name>')`, `MissingPluginException`
@@ -124,36 +137,43 @@ and is unit-testable before any native code exists.
 
 ---
 
-### Task 2: Kotlin plugin skeleton + `ping` implementation, `tv` flavor only
+### Task 2: Kotlin plugin skeleton + `ping` implementation
 
 **Tier:** implement, with platform-architect review before merge (channel
 contract shape) per SPEC.md routing rule 1 ("contract-touching = architect").
 
-**Description:** `AiroStreamingEnginePlugin.kt` under
-`app/android/app/src/tv/kotlin/io/airo/app/`, wired in `MainActivity`
-*only* for the `tv` flavor (mirrors `isTvVariant` check already present
-in `build.gradle`). Implements `ping` only — proves the channel resolves
-end-to-end on a real TV build. No Media3 dependency yet.
+**Description:** `AiroStreamingEnginePlugin.kt` under the *shared*
+`app/android/app/src/product/kotlin/io/airo/app/` (corrected — see
+Investigation findings above; there is no separate tv Kotlin source
+set), registered unconditionally in `MainActivity.configureFlutterEngine`
+alongside the other plugins there. Implements `ping` only — proves the
+channel resolves end-to-end on a real device. No Media3 dependency yet,
+so there is nothing to gate by variant at this stage; phone/Coins builds
+simply carry an inert extra `MethodChannel` handler, same as every other
+plugin already registered there.
 
 **Acceptance criteria:**
-- [ ] Plugin registers only when `isTvVariant` — phone/coins flavors see
-      `MissingPluginException` from Task 1's Dart wrapper, not a crash
-- [ ] `ping()` round-trips Dart→Kotlin→Dart on a real Android TV device
-      or emulator image with the tv flavor (**manual verification with
-      the user present — no automated proof for this half**)
-- [ ] `./gradlew :app:compileTvDebugKotlin` (or the repo's equivalent
-      flavor-scoped compile task — confirm exact task name) succeeds
+- [ ] Plugin compiles into every variant (phone, TV, Coins, Mind) since
+      the Kotlin source is shared — confirm this is acceptable (it
+      matches existing precedent for every other plugin in this file)
+      rather than assuming TV-only registration was ever required
+- [ ] `ping()` round-trips Dart→Kotlin→Dart on a real Android device
+      (**manual verification with the user present — no automated proof
+      for this half**)
+- [ ] `./gradlew :app:compileDebugKotlin` succeeds (confirm the exact
+      task name against this project's actual Gradle task list — no
+      flavor-scoped variant exists to target specifically)
 
 **Verification:**
-- [ ] Gradle compile succeeds for the tv flavor
+- [ ] Gradle compile succeeds
 - [ ] Manual round-trip check on device (flag this explicitly when
       reporting the task done — it is not a `flutter test` proof)
 
 **Dependencies:** Task 1
 
 **Files likely touched:**
-- `app/android/app/src/tv/kotlin/io/airo/app/AiroStreamingEnginePlugin.kt` (new)
-- `app/android/app/src/product/kotlin/io/airo/app/MainActivity.kt` (registration, tv-flavor-guarded)
+- `app/android/app/src/product/kotlin/io/airo/app/AiroStreamingEnginePlugin.kt` (new)
+- `app/android/app/src/product/kotlin/io/airo/app/MainActivity.kt` (registration)
 
 **Estimated scope:** S
 
@@ -201,24 +221,35 @@ plays one hardcoded test HLS URL through Media3's *stock* `DataSource`
 combination.
 
 **Acceptance criteria:**
-- [ ] `./gradlew :app:assembleTvDebug` succeeds with Media3 present
+- [ ] Media3 dependency added `isTvVariant`-gated in
+      `build.gradle.kts`'s `dependencies {}` block, following the same
+      pattern as the existing `isTvVariant`/`isCoinsVariant`-conditional
+      `excludes` in the packaging block (corrected from an earlier,
+      wrong assumption of a separate tv flavor's own `build.gradle`)
+- [ ] `./gradlew :app:assembleDebug` with `APP_VARIANT=tv` succeeds with
+      Media3 present (confirm exact invocation — this project builds
+      variants via Flutter's `--dart-define`, not Gradle flavor tasks;
+      see `run-airo-tv` skill for the real launch command)
 - [ ] A frame from the hardcoded test stream is visible on a real TV
       device/rig (**manual, interactive verification — the actual bar
       for this task, not the Gradle build**)
-- [ ] Phone/Coins flavor builds are unaffected (Media3 not on their
-      classpath) — `./gradlew :app:assembleDebug` (phone) still succeeds
-      unchanged
+- [ ] A phone-variant build (`APP_VARIANT` unset/`full`) is unaffected
+      at runtime — if the dependency can't be Gradle-conditionally
+      excluded per variant (single source set, single `dependencies`
+      block, only `packaging.excludes` is variant-aware today), confirm
+      whether Media3 ends up on the phone classpath too and whether
+      that's acceptable or needs its own follow-up
 
 **Verification:**
-- [ ] Gradle builds for both `tv` and phone flavors
+- [ ] Gradle build succeeds
 - [ ] Manual on-device frame check (flag explicitly, requires the
       physical rig and the user's presence)
 
 **Dependencies:** Task 3 (confirmed), Task 2
 
 **Files likely touched:**
-- `app/android/app/build.gradle` (tv-flavor-scoped dependency)
-- `app/android/app/src/tv/kotlin/io/airo/app/AiroStreamingSurfaceViewFactory.kt` (new)
+- `app/android/app/build.gradle.kts` (Media3 dependency)
+- `app/android/app/src/product/kotlin/io/airo/app/AiroStreamingSurfaceViewFactory.kt` (new)
 - `packages/platform_streaming_engine/lib/src/airo_streaming_surface_view.dart` (new)
 
 **Estimated scope:** M
@@ -256,7 +287,7 @@ naming them the same now avoids a rename later.
 **Dependencies:** Task 4
 
 **Files likely touched:**
-- `app/android/app/src/tv/kotlin/io/airo/app/AiroStreamingEnginePlugin.kt`
+- `app/android/app/src/product/kotlin/io/airo/app/AiroStreamingEnginePlugin.kt`
 - `packages/platform_streaming_engine/lib/src/airo_streaming_engine_state.dart` (new)
 - `packages/platform_streaming_engine/test/airo_streaming_engine_state_test.dart` (new)
 
@@ -304,10 +335,11 @@ naming them the same now avoids a rename later.
 
 ## Open Questions
 
-- **P2-1:** Exact Gradle task names for tv-flavor-scoped compile/assemble
-  (`compileTvDebugKotlin` is a guess based on standard Android Gradle
-  Plugin flavor naming — confirm against this repo's actual
-  `build.gradle` flavor config before Task 2 starts).
+- **P2-1 — RESOLVED (investigation):** There is no flavor-scoped Gradle
+  task naming to confirm — there are no `productFlavors`, so builds are
+  plain `assembleDebug`/`assembleRelease` etc. with variant selection via
+  `--dart-define=APP_VARIANT=tv` at the Flutter level, per the
+  `run-airo-tv` skill.
 - **P2-2:** Does the physical test rig currently include an Android TV
   device with `tv` flavor installable, or only the Fire TV Stick /
   Pixel 9 phone (per `physical-device-test-rig` memory)? Affects which

@@ -15,7 +15,7 @@ green alone when its acceptance criteria include a device check.
 - **Verification:** `flutter test && flutter analyze` in the new package
 - **Dependencies:** None
 
-## Task 2: Kotlin plugin skeleton + `ping`, `tv` flavor only
+## Task 2: Kotlin plugin skeleton + `ping` (shared source, registers unconditionally — corrected, see plan)
 - [ ] Not started
 - **Tier:** implement + platform-architect review before merge
 - **Verification:** Gradle compile (flavor-scoped) + **manual device
