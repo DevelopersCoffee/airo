@@ -1,3 +1,4 @@
+import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -22,6 +23,7 @@ List<Override> buildMainProviderOverrides({
 }) {
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
+    secureStoreProvider.overrideWithValue(SecureStoreFactory.createSecure()),
     epgReminderNotificationGatewayProvider.overrideWithValue(
       epgReminderGateway,
     ),
