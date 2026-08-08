@@ -77,34 +77,55 @@ void main() {
     );
   });
 
-  test(
-    'the router starts without the mind module and falls back to a '
-    'redirect-only Mind branch (R05: web never registers it)',
-    () {
-      final registry = ModuleRegistry(shell: ShellId.mobile)
+  test('the router starts without the mind module and falls back to a '
+      'redirect-only Mind branch (R05: web never registers it)', () {
+    final registry = ModuleRegistry(shell: ShellId.mobile)
+      ..register(CoinVaultModule())
+      ..register(IptvFeatureModule());
+
+    final router = AppRouter.createRouter(moduleRegistry: registry);
+    addTearDown(router.dispose);
+
+    final branchPaths = router.configuration.routes
+        .whereType<StatefulShellRoute>()
+        .expand((shell) => shell.branches)
+        .expand((branch) => branch.routes)
+        .whereType<GoRoute>()
+        .map((route) => route.path);
+
+    expect(branchPaths, contains(AssistantRouteNames.assistant));
+    expect(
+      router.configuration.routes.whereType<GoRoute>().map(
+        (route) => route.path,
+      ),
+      isNot(contains('/wellbeing')),
+      reason:
+          'Wellbeing is reached from the Mind hub; with no hub, it must '
+          'not be mounted at all.',
+    );
+  });
+
+  // The branch slot survives even though its contents do not. `AppShell`
+  // addresses branches by `AppNavigationTab` ordinal and every `goBranch`
+  // call site passes an `AppNavigationTab.index`, so a missing branch would
+  // silently renumber Beats, Live, Arena, Quest and Home.
+  test('the mind branch keeps its slot when the module is absent', () {
+    final withMind = AppRouter.createRouter(
+      moduleRegistry: buildMainModuleRegistry(),
+    );
+    addTearDown(withMind.dispose);
+    final withoutMind = AppRouter.createRouter(
+      moduleRegistry: ModuleRegistry(shell: ShellId.mobile)
         ..register(CoinVaultModule())
-        ..register(IptvFeatureModule());
+        ..register(IptvFeatureModule()),
+    );
+    addTearDown(withoutMind.dispose);
 
-      final router = AppRouter.createRouter(moduleRegistry: registry);
-      addTearDown(router.dispose);
+    int branchCount(GoRouter router) => router.configuration.routes
+        .whereType<StatefulShellRoute>()
+        .expand((shell) => shell.branches)
+        .length;
 
-      final branchPaths = router.configuration.routes
-          .whereType<StatefulShellRoute>()
-          .expand((shell) => shell.branches)
-          .expand((branch) => branch.routes)
-          .whereType<GoRoute>()
-          .map((route) => route.path);
-
-      expect(branchPaths, contains(AssistantRouteNames.assistant));
-      expect(
-        router.configuration.routes.whereType<GoRoute>().map(
-          (route) => route.path,
-        ),
-        isNot(contains('/wellbeing')),
-        reason:
-            'Wellbeing is reached from the Mind hub; with no hub, it must '
-            'not be mounted at all.',
-      );
-    },
-  );
+    expect(branchCount(withoutMind), branchCount(withMind));
+  });
 }

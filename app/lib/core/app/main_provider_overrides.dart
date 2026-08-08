@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/iptv/iptv_cast_provider_override.dart';
+import '../providers/navigation_provider.dart';
 
 /// Shell-owned provider overrides, plus whatever the composed modules bring.
 ///
@@ -25,6 +26,15 @@ List<Override> buildMainProviderOverrides({
       epgReminderGateway,
     ),
     realIptvCastControllerOverride(),
+    // Navigation chrome follows composition. R05 composes Mind out of
+    // shared-surface builds (web), and the router then mounts a placeholder in
+    // that branch — showing the Assistant destination anyway would advertise a
+    // journey this binary does not carry. Keyed on the registry rather than on
+    // a platform check so the two can never disagree.
+    if (!moduleRegistry.isRegistered('mind'))
+      appNavigationPolicyProvider.overrideWithValue(
+        appNavigationPolicy.without(AppNavigationTab.assistant),
+      ),
     ...moduleRegistry.allProviderOverrides,
   ];
 }

@@ -130,6 +130,30 @@ class AppNavigationPolicy {
   final double compactWidthBreakpoint;
   final AppNavigationOverflowConfig overflow;
 
+  /// The same policy with [tab] removed from every destination list.
+  ///
+  /// Used when a build composed no module behind a destination — R05 leaves
+  /// the super app's web compile without Mind, and a tab that navigates to a
+  /// branch holding nothing is a dead entry the user can only discover by
+  /// tapping it.
+  ///
+  /// Removing from the *policy* (what is shown) rather than from
+  /// [AppNavigationTab] (what exists) is deliberate: the enum's ordinals are
+  /// the router's branch indices and every `goBranch` argument, so dropping a
+  /// member would renumber every branch after it.
+  AppNavigationPolicy without(AppNavigationTab tab) {
+    List<AppNavigationTab> drop(List<AppNavigationTab> tabs) =>
+        tabs.where((candidate) => candidate != tab).toList(growable: false);
+
+    return AppNavigationPolicy(
+      compactPrimaryTabs: drop(compactPrimaryTabs),
+      widePrimaryTabs: drop(widePrimaryTabs),
+      overflowTabs: drop(overflowTabs),
+      compactWidthBreakpoint: compactWidthBreakpoint,
+      overflow: overflow,
+    );
+  }
+
   AppNavigationLayoutConfig layoutForWidth(double width) {
     if (width >= compactWidthBreakpoint) {
       return AppNavigationLayoutConfig(
