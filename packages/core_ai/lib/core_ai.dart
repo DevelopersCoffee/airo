@@ -21,8 +21,7 @@ export 'src/residency/model_residency_manager.dart';
 export 'src/preload/model_preloader.dart';
 export 'src/runtime/local_inference_runtime_adapter.dart';
 export 'src/runtime/gemini_api_service.dart';
-export 'src/runtime/gemini_nano_service.dart'
-    hide DeviceInfo, GenerationResult;
+export 'src/runtime/gemini_nano_service.dart' hide DeviceInfo, GenerationResult;
 export 'src/runtime/litert_lm_service.dart';
 export 'src/runtime/model_learn_more_launcher.dart';
 export 'src/litert/litert_lm_runtime_adapter.dart';
@@ -37,8 +36,10 @@ export 'src/llm/gemini_nano_client.dart';
 export 'src/llm/gemini_api_client.dart';
 export 'src/llm/llm_router_impl.dart';
 export 'src/router/ai_router.dart';
+export 'src/router/ai_task.dart';
 export 'src/router/fallback_chain.dart';
 export 'src/router/model_health_checker.dart';
+export 'src/router/task_model_router.dart';
 
 // GGUF Model Support
 export 'src/llm/gguf_model_config.dart';

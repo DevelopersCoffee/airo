@@ -82,7 +82,15 @@ enum ModelCapability {
   audioUnderstanding('Audio understanding'),
   agentSkills('Agent skills'),
   mobileActions('Mobile actions'),
-  benchmark('Benchmark');
+  benchmark('Benchmark'),
+  // Below: task-shaped capabilities `TaskModelRouter` (`router/ai_task.dart`)
+  // matches an `AiTask` against. Added rather than reused from the values
+  // above because none of them name the task precisely enough to route on:
+  // `documents` describes a product surface, not "this model can summarize."
+  meetingSummarization('Meeting summarization'),
+  translation('Translation'),
+  embeddings('Embeddings'),
+  ocr('OCR');
 
   const ModelCapability(this.displayName);
 
