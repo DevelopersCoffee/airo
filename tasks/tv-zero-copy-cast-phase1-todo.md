@@ -3,7 +3,7 @@
 Plan: `tasks/tv-zero-copy-cast-phase1-plan.md` · Spec: `SPEC.md`
 Executor tier per task noted; escalation one-way per SPEC routing rules.
 
-## Task 1: Streaming QoE metrics models in core_analytics
+## Task 1: Streaming QoE metrics models in core_analytics — DONE (b33f1ec6)
 
 **Tier:** implement (Sonnet)
 
