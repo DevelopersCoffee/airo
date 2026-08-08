@@ -71,7 +71,7 @@ connectivity/wifi usage first and extends rather than adds a plugin.
 
 ---
 
-## Task 3: StreamingSessionMetricsCollector
+## Task 3: StreamingSessionMetricsCollector — DONE (ed59cb44)
 
 **Tier:** implement (Sonnet)
 
