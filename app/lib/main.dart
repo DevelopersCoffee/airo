@@ -6,10 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:feature_mind/feature_mind.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
-import 'core/assistant/app_assistant_host_adapter.dart';
+// R05: Mind renders only on a device one person owns. The registration lives
+// behind a `dart.library` seam so a web compile — a shared surface — resolves
+// it to a no-op and never links the module. Do not construct the module in
+// this file; `scripts/check-mind-private-devices.sh` fails the build if you do.
+import 'core/mind/register_mind_module_web.dart'
+    if (dart.library.io) 'core/mind/register_mind_module_io.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/routing/app_router.dart';
@@ -129,10 +133,16 @@ void main() async {
 ///
 /// Shell-specific navigation chrome remains in [AppRouter], while the registry
 /// owns module inclusion, routes, lifecycle, and provider overrides.
+///
+/// Mind is registered through [registerMindModule] rather than inline: on a
+/// shared surface (web) that call resolves to a no-op, so the composed
+/// registry has no `mind` module and the router builds no Mind destination.
+/// Registration order is unchanged on private devices — coin_vault, mind,
+/// iptv — because the router's branch order is positional.
 @visibleForTesting
 ModuleRegistry buildMainModuleRegistry() {
-  return ModuleRegistry(shell: ShellId.mobile)
-    ..register(CoinVaultModule())
-    ..register(MindModule(hostAdapterBuilder: AppAssistantHostAdapter.new))
-    ..register(IptvFeatureModule());
+  final registry = ModuleRegistry(shell: ShellId.mobile)
+    ..register(CoinVaultModule());
+  registerMindModule(registry);
+  return registry..register(IptvFeatureModule());
 }

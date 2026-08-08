@@ -47,7 +47,13 @@ class AppRouter {
     // bundle: it owns two mount points (the Mind branch and a top-level
     // destination), and the module names them so the router does not have to
     // re-derive the split from route paths.
-    final assistant = _requiredModule<MindModule>(moduleRegistry, 'mind');
+    //
+    // Optional, unlike Coins and IPTV. R05 keeps Mind off shared surfaces by
+    // making the module absent from the build rather than hidden inside it
+    // (see `core/mind/register_mind_module_web.dart`), and this router is the
+    // one every phone-class shell uses — web included. A required lookup here
+    // would compile clean on web and then throw before the first frame.
+    final assistant = _optionalModule<MindModule>(moduleRegistry, 'mind');
 
     return GoRouter(
       initialLocation: initialLocation,
@@ -90,7 +96,11 @@ class AppRouter {
         // Assistant destinations that are reached from the Mind hub but are
         // not part of it (Wellbeing), so they render full-screen instead of
         // inside the bottom nav.
-        ...assistant.rootRoutesFor(moduleRegistry.shell),
+        // Wellbeing and the rest of the module's top-level mounts. Nothing
+        // when Mind is absent: an unmatched /wellbeing then falls to the
+        // router's 404, which is the honest answer on a build that does not
+        // ship it.
+        ...?assistant?.rootRoutesFor(moduleRegistry.shell),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
         GoRoute(
@@ -215,9 +225,20 @@ class AppRouter {
                 ),
               ],
             ),
-            // Mind branch
+            // Mind branch.
+            //
+            // The branch itself is unconditional even though its contents are
+            // not. `AppShell` maps `navigationShell.currentIndex` onto
+            // `AppNavigationTab.values` by ordinal, and every `goBranch` call
+            // site passes an `AppNavigationTab.index`, so dropping a branch
+            // would silently renumber Beats, Live, Arena, Quest and Home. On
+            // a build without Mind the branch holds an inert placeholder and
+            // the destination is removed from the nav policy instead — see
+            // `buildMainProviderOverrides`.
             StatefulShellBranch(
-              routes: assistant.hubRoutesFor(moduleRegistry.shell),
+              routes:
+                  assistant?.hubRoutesFor(moduleRegistry.shell) ??
+                  _mindAbsentBranchRoutes(),
             ),
             // Beats branch
             StatefulShellBranch(
@@ -287,26 +308,24 @@ class AppRouter {
     );
   }
 
-  /// Resolves a registered module the shell cannot start without, typed.
+  /// Resolves a registered module if this build composed one, typed.
   ///
   /// Used instead of [_requiredModuleRoutes] when the router needs more from a
   /// module than one flat route bundle — currently the assistant, which mounts
   /// part of itself in a navigation branch and part at the top level.
-  static T _requiredModule<T extends AppModule>(
+  ///
+  /// Null-returning rather than throwing because Mind is genuinely optional in
+  /// this shell: R05 composes it out of shared-surface builds entirely, so
+  /// "not registered" is a supported composition, not a wiring mistake. Coins
+  /// and IPTV keep the strict [_requiredModuleRoutes] lookup.
+  static T? _optionalModule<T extends AppModule>(
     ModuleRegistry registry,
     String moduleId,
   ) {
-    final module = registry.registeredModules
+    return registry.registeredModules
         .whereType<T>()
         .where((candidate) => candidate.id == moduleId)
         .firstOrNull;
-    if (module == null) {
-      throw ModuleCompositionException(
-        'Required module "$moduleId" is not registered as a $T for '
-        'shell "${registry.shell.value}".',
-      );
-    }
-    return module;
   }
 
   static List<GoRoute> _requiredModuleRoutes(
@@ -325,6 +344,32 @@ class AppRouter {
     }
     return routes;
   }
+}
+
+/// Holds the Mind branch's slot on a build that does not ship Mind.
+///
+/// `StatefulShellRoute.indexedStack` needs one route per branch, and the shell
+/// addresses branches by `AppNavigationTab` ordinal, so the slot has to stay
+/// occupied even when its module does not exist (see the branch comment).
+///
+/// The path is deliberately NOT `AssistantRouteNames.assistant`: leaving `/mind`
+/// resolvable on a shared surface would give the hub root, every legacy
+/// `/agent` and `/assistant` deep link, and every stale notification payload a
+/// live destination on a screen R05 says Mind must not reach. Unmatched is the
+/// honest answer, and the router's `errorBuilder` already renders it. Nothing
+/// links here — no tab, no name, no redirect target — so the builder exists
+/// only so the branch is never a blank screen if a future edit does.
+List<GoRoute> _mindAbsentBranchRoutes() {
+  return <GoRoute>[
+    GoRoute(
+      path: '/mind-unavailable',
+      builder: (context, state) => HttpDogErrorScreen(
+        statusCode: 404,
+        customMessage: 'Airo Mind is not part of this build.',
+        onRetry: () => context.go('/money'),
+      ),
+    ),
+  ];
 }
 
 /// Rewrites a legacy hub prefix onto the current hub root, preserving whatever
