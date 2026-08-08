@@ -24,7 +24,9 @@ export 'src/mind_service.dart'
 
 // Model acquisition. A shell composes which provider its app uses — where the
 // bytes come from is distribution policy, not something `feature_mind` bakes
-// in (`ADR-0018 §1`: the runtime never acquires models).
+// in (`ADR-0018 §1`: the registry pins a digest, not a URL, and the runtime
+// never acquires models). Nothing here forces the choice: `ModelInstaller`,
+// the bundled-asset path, still works unchanged.
 export 'src/model_installer.dart' show ModelInstaller;
 export 'src/models/download_model_provider.dart' show DownloadModelProvider;
 export 'src/models/model_provider.dart'

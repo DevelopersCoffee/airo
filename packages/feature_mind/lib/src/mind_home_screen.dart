@@ -28,9 +28,25 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   bool _recording = false;
   String? _error;
 
+  /// The file currently being fetched, and how far. First run is now a
+  /// download rather than an asset copy
+  /// (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`), and
+  /// ~570 MB with nothing on screen reads as a hang, not progress.
+  String? _downloadingFile;
+  int _downloadedBytes = 0;
+  int _downloadTotalBytes = 0;
+
   @override
   void initState() {
     super.initState();
+    widget.service.onInstallProgress = (fileName, copied, total) {
+      if (!mounted) return;
+      setState(() {
+        _downloadingFile = fileName;
+        _downloadedBytes = copied;
+        _downloadTotalBytes = total;
+      });
+    };
     _start();
   }
 
@@ -43,7 +59,11 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   Future<void> _start() async {
     final status = await widget.service.initialize();
     if (!mounted) return;
-    setState(() => _status = status);
+    setState(() {
+      _status = status;
+      // Whatever the outcome, the download phase (if there was one) is over.
+      _downloadingFile = null;
+    });
     if (status.isReady) await _refresh();
   }
 
@@ -124,7 +144,15 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Airo Mind')),
       body: switch (status) {
-        null => const Center(child: CircularProgressIndicator()),
+        // Startup. A provider that installs on its own (the bundled copy, or
+        // a resumed download) reports through `onInstallProgress`, and
+        // [_Loading] falls back to a bare spinner when there is no file in
+        // flight — ~570 MB with nothing on screen reads as a hang (#1553).
+        null => _Loading(
+          fileName: _downloadingFile,
+          downloadedBytes: _downloadedBytes,
+          totalBytes: _downloadTotalBytes,
+        ),
         // Models missing is the one blocker the user can clear from here, and
         // only when the provider fetches them — a build that bundles its
         // models and still reports them missing has nothing to offer but the
@@ -238,6 +266,55 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
           onTap: () => _open(m.id),
         );
       },
+    );
+  }
+}
+
+/// Shown while [MindService.initialize] is in flight. Nothing to show yet
+/// (native library load, or a model already on disk) falls back to a bare
+/// spinner; a download in progress gets its own file name and percentage,
+/// because ~570 MB with no feedback reads as a hang, not progress.
+class _Loading extends StatelessWidget {
+  const _Loading({
+    required this.fileName,
+    required this.downloadedBytes,
+    required this.totalBytes,
+  });
+
+  final String? fileName;
+  final int downloadedBytes;
+  final int totalBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = fileName;
+    if (name == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final fraction = totalBytes > 0 ? downloadedBytes / totalBytes : 0.0;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Downloading $name',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            LinearProgressIndicator(value: totalBytes > 0 ? fraction : null),
+            const SizedBox(height: 8),
+            Text(
+              totalBytes > 0
+                  ? '${(fraction * 100).toStringAsFixed(0)}%'
+                  : 'Starting…',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

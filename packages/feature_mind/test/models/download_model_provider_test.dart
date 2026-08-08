@@ -141,13 +141,25 @@ void main() {
       when(
         () => storage.hasEnoughDiskSpace(any()),
       ).thenAnswer((_) async => true);
-      final staged = File('${stagingDir.path}/ggml-tiny.en.bin.bin');
+      // Both mocks compose the staging path the way `ModelStorageManager`
+      // really does -- `$modelId$extension` -- rather than returning a fixed
+      // string. That is what makes this test able to see a doubled extension:
+      // the download lands wherever the id says, and the install step has to
+      // ask for the same id to find it (#1553).
+      String stagingPathFor(Invocation invocation) =>
+          '${stagingDir.path}/${invocation.positionalArguments.first}.bin';
       when(
         () => storage.getModelPath(any(), model: any(named: 'model')),
-      ).thenAnswer((_) async => staged.path);
+      ).thenAnswer((invocation) async => stagingPathFor(invocation));
       when(
         () => storage.findExistingModelPath(any(), model: any(named: 'model')),
-      ).thenAnswer((_) async => staged.existsSync() ? staged.path : null);
+      ).thenAnswer((invocation) async {
+        final candidate = File(stagingPathFor(invocation));
+        return candidate.existsSync() ? candidate.path : null;
+      });
+      // The pinned name is `ggml-tiny.en.bin`, so the id is `ggml-tiny.en` and
+      // the artifact keeps exactly one extension.
+      final staged = File('${stagingDir.path}/ggml-tiny.en.bin');
       when(() => storage.writeInstallReceipt(any())).thenAnswer(
         (_) async => ModelInstallReceipt(
           modelId: _whisper().fileName,

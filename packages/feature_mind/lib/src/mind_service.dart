@@ -162,9 +162,13 @@ class MindService {
         }
       }
       if (failed.isNotEmpty) {
+        // "This build does not carry" was accurate for the bundled-asset
+        // default; a download provider can also fail here from no network,
+        // an interrupted transfer, or a digest mismatch, none of which "not
+        // carried by this build" describes.
         return MindStatus.unavailable(
           MindUnavailable.modelsMissing,
-          'This build does not carry ${failed.join(', ')}.',
+          'Could not get ${failed.join(', ')}.',
         );
       }
     }

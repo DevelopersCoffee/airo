@@ -45,20 +45,33 @@ class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
   bool get acquiresWithoutNetwork => false;
 
   /// `core_ai.OfflineModelInfo.id` is the download service's identity for a
-  /// model. The file name already is one, pinned in the same registry that
-  /// pins the digest, so nothing new is invented here.
+  /// model, and it must be the pinned file name **without its extension**.
+  ///
+  /// `ModelStorageManager.getModelPath` composes the staging destination as
+  /// `$id$extension`, inferring the extension from `filePath` or, failing
+  /// that, from the download URL. Handing it the whole file name therefore
+  /// doubles the extension (`qwen….gguf` → `qwen….gguf.gguf`). Nothing
+  /// downstream broke — [_install] resolves the staged artifact through the
+  /// same manager, which tries every supported extension — but the doubled
+  /// name is a trap for anything that looks at the staging directory directly
+  /// (`verifyModelIntegrity` on a bare id, an `adb ls`, a human), so the id is
+  /// stripped here (#1553).
   ///
   /// [filePath] is deliberately left null for the **download**: the download
   /// service resolves its own destination from `ModelStorageManager` and
   /// re-verifies the artifact there when the transport completes. Handing it a
   /// path in Mind's directory does not move the download — `getModelPath`
-  /// ignores `filePath` — it only makes that post-download verification look
-  /// at a file the transport never wrote, so every download would report
-  /// `integrity_mismatch`. The bytes are therefore staged by `core_ai` and
-  /// moved into [modelsDir] by [_install] once they are verified.
+  /// ignores everything but the extension — it only makes that post-download
+  /// verification look at a file the transport never wrote, so every download
+  /// would report `integrity_mismatch`. The bytes are therefore staged by
+  /// `core_ai` and moved into [modelsDir] by [_install] once they are
+  /// verified.
+  static String _stagedId(RequiredModel required) =>
+      p.basenameWithoutExtension(required.fileName);
+
   core_ai.OfflineModelInfo _stagedInfo(RequiredModel required) {
     return core_ai.OfflineModelInfo(
-      id: required.fileName,
+      id: _stagedId(required),
       name: required.fileName,
       // `family` is a catalog concern the download service does not act on
       // for a direct-URL fetch; `other` says so rather than guessing one.
@@ -97,8 +110,10 @@ class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
     try {
       if (PinnedModelFiles.isPresent(modelsDir, required)) return true;
 
+      // The same id the download was enqueued under — anything else asks the
+      // storage manager about a model it never wrote.
       final stagedPath = await _downloadService.resolveExistingModelPath(
-        required.fileName,
+        _stagedId(required),
         model: _stagedInfo(required),
       );
       if (stagedPath == null) return false;
