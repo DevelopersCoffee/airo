@@ -48,11 +48,11 @@ class AppRouter {
     // destination), and the module names them so the router does not have to
     // re-derive the split from route paths.
     //
-    // Optional, unlike Coins and IPTV. R05 keeps Mind off shared surfaces by
-    // making the module absent from the build rather than hidden inside it
-    // (see `core/mind/register_mind_module_web.dart`), and this router is the
-    // one every phone-class shell uses — web included. A required lookup here
-    // would compile clean on web and then throw before the first frame.
+    // Optional, not required: R05 keeps Mind off shared surfaces (web) by
+    // never registering it there (`main.dart`'s conditional import), and this
+    // router is the one entrypoint every surface shares. A missing module is
+    // a legitimate composition, not a startup failure -- see
+    // `_mindAbsentHubRoutes` for what the Mind branch renders instead.
     final assistant = _optionalModule<MindModule>(moduleRegistry, 'mind');
 
     return GoRouter(
@@ -95,12 +95,9 @@ class AppRouter {
         ..._legacyHubRedirects('/assistant'),
         // Assistant destinations that are reached from the Mind hub but are
         // not part of it (Wellbeing), so they render full-screen instead of
-        // inside the bottom nav.
-        // Wellbeing and the rest of the module's top-level mounts. Nothing
-        // when Mind is absent: an unmatched /wellbeing then falls to the
-        // router's 404, which is the honest answer on a build that does not
-        // ship it.
-        ...?assistant?.rootRoutesFor(moduleRegistry.shell),
+        // inside the bottom nav. Absent entirely when Mind itself is absent
+        // (web) -- there is no hub for them to be reached from.
+        if (assistant != null) ...assistant.rootRoutesFor(moduleRegistry.shell),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
         GoRoute(
@@ -225,20 +222,15 @@ class AppRouter {
                 ),
               ],
             ),
-            // Mind branch.
-            //
-            // The branch itself is unconditional even though its contents are
-            // not. `AppShell` maps `navigationShell.currentIndex` onto
-            // `AppNavigationTab.values` by ordinal, and every `goBranch` call
-            // site passes an `AppNavigationTab.index`, so dropping a branch
-            // would silently renumber Beats, Live, Arena, Quest and Home. On
-            // a build without Mind the branch holds an inert placeholder and
-            // the destination is removed from the nav policy instead — see
-            // `buildMainProviderOverrides`.
+            // Mind branch. Falls back to a redirect-only route when the
+            // module is absent (web) -- the branch itself stays present so
+            // `navigationShell.currentIndex` keeps lining up with
+            // `AppNavigationTab.values` (see navigation_provider.dart), and
+            // a stray `/mind` link resolves to something instead of a 404.
             StatefulShellBranch(
-              routes:
-                  assistant?.hubRoutesFor(moduleRegistry.shell) ??
-                  _mindAbsentBranchRoutes(),
+              routes: assistant != null
+                  ? assistant.hubRoutesFor(moduleRegistry.shell)
+                  : _mindAbsentHubRoutes(),
             ),
             // Beats branch
             StatefulShellBranch(
@@ -308,16 +300,15 @@ class AppRouter {
     );
   }
 
-  /// Resolves a registered module if this build composed one, typed.
+  /// Resolves a registered module by id, typed, or `null` if it was never
+  /// registered for this shell.
   ///
-  /// Used instead of [_requiredModuleRoutes] when the router needs more from a
-  /// module than one flat route bundle — currently the assistant, which mounts
-  /// part of itself in a navigation branch and part at the top level.
-  ///
-  /// Null-returning rather than throwing because Mind is genuinely optional in
-  /// this shell: R05 composes it out of shared-surface builds entirely, so
-  /// "not registered" is a supported composition, not a wiring mistake. Coins
-  /// and IPTV keep the strict [_requiredModuleRoutes] lookup.
+  /// Used instead of [_requiredModuleRoutes] when the router needs more from
+  /// a module than one flat route bundle — currently the assistant, which
+  /// mounts part of itself in a navigation branch and part at the top level.
+  /// Nullable rather than throwing: composing without Mind is a legitimate
+  /// shape, not a misconfiguration (R05 -- absent from shared surfaces by
+  /// construction, not by choice).
   static T? _optionalModule<T extends AppModule>(
     ModuleRegistry registry,
     String moduleId,
@@ -327,6 +318,19 @@ class AppRouter {
         .where((candidate) => candidate.id == moduleId)
         .firstOrNull;
   }
+
+  /// What the Mind branch renders when [MindModule] is absent (web, R05).
+  ///
+  /// A single redirect rather than an empty route list: `StatefulShellBranch`
+  /// requires at least one route, and a bare `/mind` visited directly (a
+  /// stale deep link, the legacy `/agent` and `/assistant` rewrites) should
+  /// land somewhere real instead of a 404.
+  static List<GoRoute> _mindAbsentHubRoutes() => [
+    GoRoute(
+      path: AssistantRouteNames.assistant,
+      redirect: (context, state) => '/money',
+    ),
+  ];
 
   static List<GoRoute> _requiredModuleRoutes(
     ModuleRegistry registry,
@@ -344,32 +348,6 @@ class AppRouter {
     }
     return routes;
   }
-}
-
-/// Holds the Mind branch's slot on a build that does not ship Mind.
-///
-/// `StatefulShellRoute.indexedStack` needs one route per branch, and the shell
-/// addresses branches by `AppNavigationTab` ordinal, so the slot has to stay
-/// occupied even when its module does not exist (see the branch comment).
-///
-/// The path is deliberately NOT `AssistantRouteNames.assistant`: leaving `/mind`
-/// resolvable on a shared surface would give the hub root, every legacy
-/// `/agent` and `/assistant` deep link, and every stale notification payload a
-/// live destination on a screen R05 says Mind must not reach. Unmatched is the
-/// honest answer, and the router's `errorBuilder` already renders it. Nothing
-/// links here — no tab, no name, no redirect target — so the builder exists
-/// only so the branch is never a blank screen if a future edit does.
-List<GoRoute> _mindAbsentBranchRoutes() {
-  return <GoRoute>[
-    GoRoute(
-      path: '/mind-unavailable',
-      builder: (context, state) => HttpDogErrorScreen(
-        statusCode: 404,
-        customMessage: 'Airo Mind is not part of this build.',
-        onRetry: () => context.go('/money'),
-      ),
-    ),
-  ];
 }
 
 /// Rewrites a legacy hub prefix onto the current hub root, preserving whatever

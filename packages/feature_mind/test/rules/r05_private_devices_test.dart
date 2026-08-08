@@ -63,7 +63,41 @@ void main() {
     }
   });
 
+  test(
+    'the gate fails when the web entrypoint constructs MindModule directly',
+    () {
+      // The web build compiles app/lib/main.dart, not app/web (which holds
+      // only index.html and assets, never a .dart file) -- so the gate reads
+      // the entrypoint's module registry rather than scanning app/web. See
+      // the "real question" comment in check-mind-private-devices.sh for why
+      // the app/web scan this replaced was a vacuous positive control.
+      final entrypoint = File('${root.path}/app/lib/main.dart');
+      final original = entrypoint.readAsStringSync();
+
+      entrypoint.writeAsStringSync(
+        '$original\n'
+        '// r05 mutation probe\n'
+        'final _r05Probe = MindModule(hostAdapterBuilder: (_, __) {});\n',
+      );
+
+      try {
+        final result = Process.runSync(gate, const []);
+        expect(
+          result.exitCode,
+          isNonZero,
+          reason:
+              'A web build that constructs MindModule directly -- bypassing '
+              'the conditional-import registration -- must fail the gate.',
+        );
+      } finally {
+        entrypoint.writeAsStringSync(original);
+      }
+    },
+  );
+
   test('the gate fails when the entrypoint imports the module', () {
+    // A type reference needs no `MindModule(` token, so the construction
+    // mutation above cannot see this route back in.
     final entrypoint = File('${root.path}/app/lib/main.dart');
     final original = entrypoint.readAsStringSync();
 
@@ -86,17 +120,19 @@ void main() {
     }
   });
 
-  // The registration seam is where R05 is actually decided now: `main.dart`
-  // names no module at all, and the web compile resolves `registerMindModule`
-  // to the file below. A gate that only read the entrypoint would report OK
-  // having checked nothing — the same failure its own comments describe.
+  // The two below are the ones the entrypoint checks cannot reach. Since the
+  // registration moved behind a conditional import, `main.dart` names no
+  // module at all and the web compile resolves `registerMind` to the stub --
+  // so a gate that only read the entrypoint would report OK having checked
+  // nothing. That is the same vacuous-search failure the gate's own comments
+  // describe about the `app/web` scan, one file further along.
   test('the gate fails when the web registration imports the module', () {
-    final web = File(
-      '${root.path}/app/lib/core/mind/register_mind_module_web.dart',
+    final stub = File(
+      '${root.path}/app/lib/core/mind/mind_registration_stub.dart',
     );
-    final original = web.readAsStringSync();
+    final original = stub.readAsStringSync();
 
-    web.writeAsStringSync(
+    stub.writeAsStringSync(
       "import 'package:feature_mind/feature_mind.dart';\n$original",
     );
 
@@ -111,21 +147,22 @@ void main() {
             'personal vault.',
       );
     } finally {
-      web.writeAsStringSync(original);
+      stub.writeAsStringSync(original);
     }
   });
 
   test('the gate fails when the web registration composes the module', () {
-    final web = File(
-      '${root.path}/app/lib/core/mind/register_mind_module_web.dart',
+    final stub = File(
+      '${root.path}/app/lib/core/mind/mind_registration_stub.dart',
     );
-    final original = web.readAsStringSync();
+    final original = stub.readAsStringSync();
 
-    web.writeAsStringSync(
+    stub.writeAsStringSync(
       original.replaceFirst(
-        'void registerMindModule(ModuleRegistry registry) {',
-        'void registerMindModule(ModuleRegistry registry) {\n'
-            '  registry.register(MindModule(hostAdapterBuilder: null));',
+        'void registerMind(ModuleRegistry registry) {}',
+        'void registerMind(ModuleRegistry registry) {\n'
+            '  registry.register(MindModule(hostAdapterBuilder: null));\n'
+            '}',
       ),
     );
 
@@ -133,19 +170,19 @@ void main() {
       final result = Process.runSync(gate, const []);
       expect(result.exitCode, isNonZero, reason: result.stdout.toString());
     } finally {
-      web.writeAsStringSync(original);
+      stub.writeAsStringSync(original);
     }
   });
 
   test('the gate refuses to run when the entrypoint leaves the seam', () {
-    // Not a violation but not verifiable either: an entrypoint that registers
-    // Mind some other way leaves the gate reading a file nothing imports. It
-    // must say so rather than report a clean tree.
+    // Not a violation, but not verifiable either: an entrypoint that
+    // registers Mind some other way leaves the gate inspecting a stub nothing
+    // imports. It must say so rather than report a clean tree.
     final entrypoint = File('${root.path}/app/lib/main.dart');
     final original = entrypoint.readAsStringSync();
 
     entrypoint.writeAsStringSync(
-      original.replaceAll('registerMindModule(', 'someOtherRegistration('),
+      original.replaceAll('registerMind(', 'someOtherRegistration('),
     );
 
     try {

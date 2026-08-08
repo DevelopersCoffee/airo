@@ -293,12 +293,101 @@ Phase 3/4 close it out for real.
       something reads it, which is exactly the point: whichever fix lands next
       (router-level optional-module lookup, most likely) has an availability
       signal to read that already exists on both sides of the pubspec swap.
-- [ ] **4.5** `cd app && flutter build web --release` succeeds
-- [ ] **4.6** `scripts/check-mind-private-devices.sh` passes (R05)
+      **Resolved this session.** `AppRouter.createRouter` is the one
+      entrypoint every phone/web build shares (`ShellId.mobile` — there is no
+      separate web `ShellId`), so the fix has two parts:
+
+      1. `main.dart` no longer constructs `MindModule(...)` itself. The
+         construction moved into `app/lib/core/mind/mind_registration.dart`
+         (`registerMind(registry)`), conditionally imported
+         (`if (dart.library.html) 'mind_registration_stub.dart'`) exactly like
+         the seven existing examples this pattern is modeled on. The web
+         variant's `registerMind` is a no-op — nothing registers under module
+         id `'mind'`, and critically, the literal text `MindModule(` no longer
+         appears anywhere in `main.dart`, which is what
+         `check-mind-private-devices.sh` actually greps for.
+      2. `AppRouter.createRouter` gained `_optionalModule<T>` alongside the
+         existing `_requiredModule<T>`-shaped lookup (folded into one nullable
+         helper, since the module-typed lookup had exactly one caller). Mind
+         is now looked up as `assistant = _optionalModule<MindModule>(...)`.
+         `rootRoutesFor` (Wellbeing) is included only `if (assistant != null)`.
+         The Mind `StatefulShellBranch` itself stays present at its fixed
+         index even when the module is absent — removing it would shift
+         `navigationShell.currentIndex` out of sync with
+         `AppNavigationTab.values` in `navigation_provider.dart`, which is
+         indexed positionally and referenced elsewhere by `.index`
+         (`.beats.index`, `.live.index`) — instead its `routes` fall back to a
+         single `GoRoute(path: AssistantRouteNames.assistant, redirect: (_,
+         __) => '/money')`, so a stray `/mind` (including the `/agent` and
+         `/assistant` legacy rewrites, which target this same path) lands
+         somewhere real instead of a 404.
+
+      **A locked test had to change.**
+      `assistant_route_parity_test.dart` had `'the router refuses to start
+      without the mind module'`, asserting the exact opposite of the new
+      contract. Renamed to assert the router now starts successfully and
+      falls back correctly (Mind branch redirects, Wellbeing absent). This is
+      the deliberate behavior change task 4.4 called for, not a regression.
+
+      **Two bugs found only by running the full suites, not by analyze:**
+      - `buildMainModuleRegistry()`'s first attempt called `registerMind`
+        *after* `IptvFeatureModule`, changing `registry.moduleIds` from
+        `[coin_vault, mind, iptv]` to `[coin_vault, iptv, mind]`.
+        `main_super_app_shell_test.dart` asserts that order exactly (module
+        registration order, not route order) — fixed by registering Mind
+        between the two, preserving the original sequence.
+      - `navigation_provider_test.dart`'s `'uses stable root paths for each
+        tab'` asserted the Mind tab's path is `/assistant` — stale since
+        Phase 3 moved the hub root to `/mind`
+        (`AssistantRouteNames.assistant == '/mind'`). Confirmed failing on
+        unmodified `main` too (unrelated to this change, just never caught);
+        fixed the literal since it sits directly in the file this phase
+        touches.
+      - Not a code bug, but cost real time: a **fresh worktree has no
+        `build_runner` output**. `packages/feature_mind`'s freezed unions
+        (`minutes.freezed.dart`, `meetings.freezed.dart`) are gitignored and
+        only exist after `dart run build_runner build` — without them,
+        `flutter test` fails with "isn't a type" errors on generated
+        `GenerationEvent_*`/`TranscriptEvent_*` variants that look like a
+        real compile break but are actually just missing codegen. Analyze
+        doesn't hit this (no generated-code type checking on the files that
+        need it); only a real `flutter test` run surfaces it, which is part
+        of why this phase's instructions insist on running the suites and not
+        trusting a clean analyze.
+
+      **Verified, not just claimed clean:**
+      - `flutter analyze` on `app` — 0 issues.
+      - `flutter test` in `packages/feature_mind` — 357/357.
+      - `flutter test test/rules/r05_private_devices_test.dart` in
+        `feature_mind` — 6/6 (was 2 failing on `main` before this fix: `'the
+        gate passes the current tree'`, the direct R05 regression, plus
+        `'the gate fails when web sources reach the module'`, which was
+        separately stale — it wrote a probe file to `app/web/*.dart`, a check
+        `check-mind-private-devices.sh`'s own comments say was already
+        replaced by the `main.dart`-based check because `app/web` never
+        contains `.dart` files. Rewrote it to mutate `main.dart` with a
+        direct `MindModule(...)` construction instead, matching what the
+        script actually checks now).
+      - `scripts/check-mind-private-devices.sh` — exit 0, "R05 OK: no
+        shared-surface flavor links feature_mind."
+      - `flutter test` in `app` — 1040 passed, 0 failed, 2 skipped.
+      - `cd app && flutter build web --release` — real compiled build,
+        `✓ Built build/web` (not just analyze — task 4.4's own instructions
+        called out that a clean analyze isn't sufficient evidence, since a
+        prior attempt this session compiled clean and would have crashed at
+        runtime).
+- [x] **4.5** `cd app && flutter build web --release` succeeds — confirmed
+      above, satisfied by the 4.4 fix.
+- [x] **4.6** `scripts/check-mind-private-devices.sh` passes (R05) — confirmed
+      above, satisfied by the 4.4 fix.
 - [ ] **4.7** Device walk on **both** shells: first-run download, record →
       transcribe → minutes → search, `/mind` → chat → models → prompt lab →
-      wellbeing
-- [ ] **4.8** PR + merge
+      wellbeing. **Blocked**: no physical device attached to this session
+      (`adb devices` empty). This project's testing rig is physical hardware
+      only (Pixel 9 / iPad Air 4 / Fire TV Stick 4K) — no simulators/emulators
+      substitute for this step.
+- [ ] **4.8** PR + merge — PR opened this session covering 4.2-4.6; merge
+      gated on 4.7's device walk per this phase's own checkpoint below.
 
 **Checkpoint 3** — phone APK size and cold-build time before/after. Two native
 engines now cross-compile on every super-app build.

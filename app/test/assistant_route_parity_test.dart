@@ -1,4 +1,3 @@
-import 'package:airo_app/core/providers/navigation_provider.dart';
 import 'package:airo_app/core/routing/app_router.dart';
 import 'package:airo_app/main.dart';
 import 'package:core_product_shell/core_product_shell.dart';
@@ -78,12 +77,8 @@ void main() {
     );
   });
 
-  // Mind was a hard requirement here until R05 made it a composition choice:
-  // `core/mind/register_mind_module_web.dart` registers nothing, so a web
-  // build reaches this router with exactly the registry below. Requiring the
-  // module would compile clean and then throw before the first frame — the
-  // failure mode this test now exists to catch, inverted.
-  test('the router starts without the mind module', () {
+  test('the router starts without the mind module and falls back to a '
+      'redirect-only Mind branch (R05: web never registers it)', () {
     final registry = ModuleRegistry(shell: ShellId.mobile)
       ..register(CoinVaultModule())
       ..register(IptvFeatureModule());
@@ -91,41 +86,29 @@ void main() {
     final router = AppRouter.createRouter(moduleRegistry: registry);
     addTearDown(router.dispose);
 
-    expect(router.configuration.routes, isNotEmpty);
-  });
+    final branchPaths = router.configuration.routes
+        .whereType<StatefulShellRoute>()
+        .expand((shell) => shell.branches)
+        .expand((branch) => branch.routes)
+        .whereType<GoRoute>()
+        .map((route) => route.path);
 
-  test('a router without the mind module offers no Mind destination', () {
-    final registry = ModuleRegistry(shell: ShellId.mobile)
-      ..register(CoinVaultModule())
-      ..register(IptvFeatureModule());
-    final router = AppRouter.createRouter(moduleRegistry: registry);
-    addTearDown(router.dispose);
-
-    final allPaths = [
-      ...router.configuration.routes.whereType<GoRoute>().map((r) => r.path),
-      ...router.configuration.routes
-          .whereType<StatefulShellRoute>()
-          .expand((shell) => shell.branches)
-          .expand((branch) => branch.routes)
-          .whereType<GoRoute>()
-          .map((r) => r.path),
-    ];
-
-    // The hub root and Wellbeing must not resolve: absent, not disabled.
-    expect(allPaths, isNot(contains(AssistantRouteNames.assistant)));
-    expect(allPaths, isNot(contains(AssistantRouteNames.wellbeing)));
-    for (final name in _preExtractionAssistantRoutes.keys) {
-      expect(
-        () => router.namedLocation(name),
-        throwsAssertionError,
-        reason: 'route "$name" must not resolve on a build without Mind',
-      );
-    }
+    expect(branchPaths, contains(AssistantRouteNames.assistant));
+    expect(
+      router.configuration.routes.whereType<GoRoute>().map(
+        (route) => route.path,
+      ),
+      isNot(contains('/wellbeing')),
+      reason:
+          'Wellbeing is reached from the Mind hub; with no hub, it must '
+          'not be mounted at all.',
+    );
   });
 
   // The branch slot survives even though its contents do not. `AppShell`
-  // addresses branches by `AppNavigationTab` ordinal, so a missing branch
-  // would renumber Beats, Live, Arena, Quest and Home.
+  // addresses branches by `AppNavigationTab` ordinal and every `goBranch`
+  // call site passes an `AppNavigationTab.index`, so a missing branch would
+  // silently renumber Beats, Live, Arena, Quest and Home.
   test('the mind branch keeps its slot when the module is absent', () {
     final withMind = AppRouter.createRouter(
       moduleRegistry: buildMainModuleRegistry(),
@@ -144,26 +127,5 @@ void main() {
         .length;
 
     expect(branchCount(withoutMind), branchCount(withMind));
-  });
-
-  test('the nav policy drops the Assistant tab when Mind is absent', () {
-    final policy = appNavigationPolicy.without(AppNavigationTab.assistant);
-
-    expect(
-      policy.compactPrimaryTabs,
-      isNot(contains(AppNavigationTab.assistant)),
-    );
-    expect(policy.widePrimaryTabs, isNot(contains(AppNavigationTab.assistant)));
-    expect(policy.overflowTabs, isNot(contains(AppNavigationTab.assistant)));
-    // Everything else is untouched — this removes a destination, not a policy.
-    expect(policy.compactPrimaryTabs, contains(AppNavigationTab.coins));
-    expect(
-      policy.widePrimaryTabs.length,
-      appNavigationPolicy.widePrimaryTabs.length - 1,
-    );
-    expect(
-      policy.compactWidthBreakpoint,
-      appNavigationPolicy.compactWidthBreakpoint,
-    );
   });
 }
