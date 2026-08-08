@@ -1,31 +1,53 @@
-# Airo Super App — AI Agent & LLM Context Index
+# Airo Super App — Comprehensive AI Agent & LLM Context Index
 
-> Airo is a privacy-first, on-device AI super app ecosystem built with Flutter & Rust. It unifies AI Chat, Personal Finance (Airo Coins), TV & IPTV (Airo TV with EPG/M3U/XMLTV), Music, Games, and Offline Reading into one local-first application.
+> Airo is a local-first Flutter & Rust super-app ecosystem. It unifies On-Device AI (Airo Mind), Personal Finance (Airo Coins), TV & IPTV (Airo TV with EPG/M3U/XMLTV), Offline Games, Music, and Reading into a single codebase.
 
-## Core Features & Sub-Apps
+## 🧠 1. Airo Mind — On-Device AI Platform
 
-- [Airo TV Landing Page](https://developerscoffee.github.io/airo/tv/): High-performance leanback IPTV & Live TV player for Android TV and Fire TV with EPG grid support.
-- [Airo Coins (Finance Hub)](https://developerscoffee.github.io/airo/coins/): On-device personal finance tracker with zero server logging and local telemetry.
-- [IPTV Hub](https://developerscoffee.github.io/airo/iptv/): Complete player and setup specs for M3U, XMLTV, and HLS streaming.
-- [Airo TV User Guides](https://developerscoffee.github.io/airo/tv/guides/): Comprehensive onboarding guides for Android TV, Fire TV, and Remote navigation.
-- [IPTV Research Papers](https://developerscoffee.github.io/airo/iptv-research/): Architectural study on off-main-isolate parser execution and native Rust stream decoding.
+Airo Mind provides 100% private, on-device AI inference with zero external cloud dependencies.
+- **Model Runtimes**: Supports Google LiteRT (Gemini Nano / Gemma), GGUF local models, and SenseVoice audio transcription.
+- **Off-Main Isolate Execution**: All prompt formatting, model weights loading, and streaming decodes execute off the UI thread via `packages/core_workers` or Rust native bindings (`packages/core_native`).
+- **Reliability Health Center**: Automated device capability detection, RAM/VRAM checks, and background model repair.
+- [Airo Mind Architecture Freeze Spec](https://developerscoffee.github.io/airo/AIRO_MIND_ARCHITECTURE_FREEZE_v1.md)
+- [Airo Runtime Implementation Guide](https://developerscoffee.github.io/airo/architecture/AIRO_RUNTIME_IMPLEMENTATION_GUIDE.md)
 
-## Technical Guides & Documentation
+## 💰 2. Airo Coins — On-Device Personal Finance
 
-- [Getting Started Guide](https://developerscoffee.github.io/airo/getting-started/): Architecture overview and developer quickstart.
-- [How to Use IPTV on Android TV](https://developerscoffee.github.io/airo/how-to-use-iptv-on-android-tv/): Step-by-step setup guide for Smart TVs.
-- [How to Add M3U Playlist](https://developerscoffee.github.io/airo/how-to-add-m3u-playlist/): M3U & M3U8 file parsing, headers, and authentication setup.
-- [How to Import XMLTV EPG](https://developerscoffee.github.io/airo/how-to-import-xmltv/): Electronic Program Guide synchronization and offline caching.
-- [How to Organize Large Channel Lists](https://developerscoffee.github.io/airo/how-to-organize-large-channel-lists/): Category mapping, favorites, and performance tuning for 10,000+ channel streams.
-- [How to Use IPTV Legally](https://developerscoffee.github.io/airo/how-to-use-iptv-legally/): Compliance and safe stream usage guidelines.
+Airo Coins is a local-first personal finance and budget tracker designed for privacy.
+- **Zero Server Telemetry**: All financial records, vaults, transactions, and categories are encrypted locally using SQLite/Drift (`*_stub.dart` vs `*_native.dart`).
+- **Biometric Vault**: Hardware-backed key store protection for sensitive transaction data.
+- [Airo Coins Landing Page](https://developerscoffee.github.io/airo/coins/)
+- [Coins Personal Finance Specification](https://developerscoffee.github.io/airo/features/coins/PROJECT_STRUCTURE.md)
 
-## AI Agent Integration & Architecture Rules
+## 📺 3. Airo TV & IPTV Engine
 
-- **Isolate Offloading**: All parse operations, JSON decodes, M3U/EPG transforms over 50 KB execute off the main thread via `packages/core_workers` or Rust native bindings (`packages/core_native`).
-- **Flavor Independence**: Flavors (`app/pubspec.yaml`, `pubspec_tv.yaml`, `pubspec_coins.yaml`) use independent entry points and isolated pubspec files.
-- **Local First Data**: Drift/SQLite database operations use strict native/web conditional imports (`*_stub.dart` vs `*_native.dart`).
+Airo TV is a high-performance leanback media player optimized for Android TV, Fire TV, and touch devices.
+- **Stream Formats**: Full support for M3U, M3U8, XMLTV EPG grids, HLS, and Google Cast v1.
+- **Leanback D-Pad Navigation**: Optimized for standard TV remotes with zero focus dead-ends and overscan-safe layout.
+- [Airo TV Landing Page](https://developerscoffee.github.io/airo/tv/)
+- [IPTV Hub & Player Specs](https://developerscoffee.github.io/airo/iptv/)
+- [How to Use IPTV on Android TV](https://developerscoffee.github.io/airo/how-to-use-iptv-on-android-tv/)
+- [How to Add M3U Playlist](https://developerscoffee.github.io/airo/how-to-add-m3u-playlist/)
+- [How to Import XMLTV EPG](https://developerscoffee.github.io/airo/how-to-import-xmltv/)
+- [How to Organize Large Channel Lists](https://developerscoffee.github.io/airo/how-to-organize-large-channel-lists/)
+- [How to Use IPTV Legally](https://developerscoffee.github.io/airo/how-to-use-iptv-legally/)
+- [IPTV Research Papers](https://developerscoffee.github.io/airo/iptv-research/)
 
-## Legal & Compliance
+## 🎮 4. Airo Games & Media Hub
 
-- [Privacy Policy](https://developerscoffee.github.io/airo/legal/privacy-policy/): 100% on-device privacy guarantee.
-- [Terms & Conditions](https://developerscoffee.github.io/airo/legal/terms-conditions/): Open-source license terms and guidelines.
+Offline, zero-ad entertainment built directly into the super app.
+- **Built-in Games**: Stockfish-powered Chess, Solitaire, Blackjack, Poker, and Rummy.
+- **Media Hub**: Unified media player for local audio, video, and streaming podcasts.
+- [Chess Guide & Implementation](https://developerscoffee.github.io/airo/features/CHESS_IMPLEMENTATION_COMPLETE.md)
+
+## 🏗️ 5. Framework Architecture & Developer Rules
+
+- **Melos Workspace**: Framework code resides in `packages/`, product code in `app/`.
+- **Isolate Offloading Policy**: Any JSON parse or stream transform over 50 KB must use `runOffMain()` from `packages/core_workers`.
+- **Flavor Independence**: Separate entrypoints (`main.dart`, `main_tv.dart`, `main_coins.dart`) pair with distinct pubspecs (`pubspec.yaml`, `pubspec_tv.yaml`, `pubspec_coins.yaml`).
+- **Web Compatibility**: Native FFI paths use `*_stub.dart` conditional imports to guarantee successful `flutter build web` output.
+
+## 🔒 6. Legal & Privacy
+
+- [Privacy Policy](https://developerscoffee.github.io/airo/legal/privacy-policy/): 100% on-device data processing commitment.
+- [Terms & Conditions](https://developerscoffee.github.io/airo/legal/terms-conditions/): Open-source licensing.
