@@ -16,6 +16,8 @@
 /// `MindService`, and the names exported here are unchanged.
 library;
 
+export 'src/mind_availability.dart';
+
 export 'src/whisper/api/meetings.dart' show MeetingRecord, SearchHit;
 export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen;
