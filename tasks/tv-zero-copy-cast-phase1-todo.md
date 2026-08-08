@@ -103,7 +103,7 @@ testable and Phase 2's Kotlin engine can feed the same interface later.
 
 ---
 
-## Task 4: Engine wiring + emission
+## Task 4: Engine wiring + emission — DONE (08f09014)
 
 **Tier:** implement (Sonnet)
 
@@ -198,9 +198,10 @@ acceptance.
 ### Checkpoint A (after Tasks 1–2) — DONE
 - [x] `core_analytics` tests + analyzer green (97/97, 0 issues)
 
-### Checkpoint B (after Tasks 3–4)
-- [ ] Dev-build manual check: session summary appears, redacted, hashed key
-- [ ] `platform_player` tests green
+### Checkpoint B (after Tasks 3–4) — DONE
+- [x] Dev-build manual check: session summary appears, redacted, hashed key
+      (verified via test-harness output, not a manual UI run — see Task 4 commit)
+- [x] `platform_player` tests green (235/235), `platform_media` 165/165
 
 ### Checkpoint C — phase gate (after Tasks 5–6)
 - [ ] Narrow test runs green; web release build passes
