@@ -385,5 +385,12 @@ class MindService {
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
 
-  Future<void> dispose() => _recorder.dispose();
+  /// Releases the microphone and the model provider. The provider matters
+  /// because the download-backed one holds a subscription to the platform
+  /// download stream, and the shell that composed it cannot reach it once it
+  /// is in here.
+  Future<void> dispose() async {
+    await _recorder.dispose();
+    await _models.dispose();
+  }
 }

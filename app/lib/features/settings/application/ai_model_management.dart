@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 
 import 'ai_preferences_settings.dart';

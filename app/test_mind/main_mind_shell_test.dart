@@ -1,12 +1,14 @@
 /// Tests for the standalone Airo Mind shell.
 ///
 /// These live outside `app/test/` on purpose. Flavors are separate pubspecs
-/// in this repo, and `feature_mind` is deliberately *not* a dependency of
-/// `app/pubspec.yaml` (it declares cargokit hooks, so every phone build would
-/// cross-compile whisper.cpp and llama.cpp — see the exclusion note in
-/// `app/analysis_options.yaml`). `flutter test` with no arguments only walks
-/// `test/`, so the default phone suite stays green while this suite runs
-/// under the Mind flavour:
+/// in this repo, and `feature_mind` declares cargokit hooks — every phone
+/// build cross-compiles whisper.cpp and llama.cpp now that the merged package
+/// carries the assistant hub too
+/// (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`, Phase 2), but
+/// this suite still needs the Mind flavour's own pubspec and dart-define, not
+/// the phone default. `flutter test` with no arguments only walks `test/`, so
+/// the default phone suite stays green while this suite runs under the Mind
+/// flavour:
 ///
 /// ```bash
 /// cp app/pubspec_mind.yaml app/pubspec.yaml   # restored by run_mind_macos.sh
@@ -19,34 +21,41 @@ import 'package:airo_app/core/mind/mind_shell.dart';
 import 'package:airo_app/core/mind/mind_unavailable_screen.dart';
 import 'package:airo_app/main_mind.dart';
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  test('mind registry registers scribe and assistant modules', () {
+  test('mind registry registers the merged scribe + assistant module', () {
     final registry = buildMindModuleRegistry();
 
     expect(registry.shell, ShellId.mind);
-    expect(registry.moduleIds, containsAll(['mind_scribe', 'assistant']));
+    expect(registry.moduleIds, ['mind']);
 
     final paths = registry.allRoutes.whereType<GoRoute>().map((r) => r.path);
     expect(paths, contains('/'));
-    expect(paths, contains('/assistant'));
+    expect(paths, contains(AssistantRouteNames.assistant));
   });
 
   test(
     'mind shell mounts the legacy /agent aliases the package still emits',
     () {
-      // The assistant package's tool registry and route connector still answer
-      // with the pre-extraction `/agent*` paths, so the shell owns the same
-      // aliases the super app's router owns.
-      expect(mindLegacyRedirects['/agent'], '/assistant');
-      expect(mindLegacyRedirects['/agent/profile'], '/assistant/profile');
-      expect(mindLegacyRedirects['/agent/models'], '/assistant/models');
+      // The package's tool registry and route connector still answer with the
+      // pre-extraction `/agent*` paths, so the shell owns the same aliases the
+      // super app's router owns. The targets are read off
+      // [AssistantRouteNames] rather than spelled out: the hub's root moved
+      // once already (Phase 3 claimed `/mind`) and a literal here would have
+      // pinned the shell to the old one.
+      expect(mindLegacyRedirects['/agent'], AssistantRouteNames.assistant);
+      expect(
+        mindLegacyRedirects['/agent/profile'],
+        AssistantRouteNames.profile,
+      );
+      expect(mindLegacyRedirects['/agent/models'], AssistantRouteNames.models);
       expect(
         mindLegacyRedirects['/agent/notifications'],
-        '/assistant/notifications',
+        AssistantRouteNames.notifications,
       );
 
       final paths = buildMindRoutes(
@@ -86,20 +95,26 @@ void main() {
       branches
           .map((branch) => branch.routes.whereType<GoRoute>().first.path)
           .toList(),
-      ['/', '/assistant', '/wellbeing'],
+      ['/', AssistantRouteNames.assistant, AssistantRouteNames.wellbeing],
       reason: 'branch order must match MindShell.destinations',
     );
   });
 
   test('mind shell mounts wellbeing exactly once', () {
-    // AssistantModule.routesFor() returns hub + root routes combined, so
+    // MindModule.routesFor() returns scribe + hub + root routes combined, so
     // mounting `registry.allRoutes` *and* a wellbeing branch would register
-    // `/wellbeing` twice. The shell assembles branches from the module's two
+    // `/wellbeing` twice. The shell assembles branches from the module's three
     // named accessors instead; this pins that it stayed that way.
     final paths = _allPaths(buildMindRoutes(buildMindModuleRegistry()));
 
-    expect(paths.where((path) => path == '/wellbeing'), hasLength(1));
-    expect(paths.where((path) => path == '/assistant'), hasLength(1));
+    expect(
+      paths.where((path) => path == AssistantRouteNames.wellbeing),
+      hasLength(1),
+    );
+    expect(
+      paths.where((path) => path == AssistantRouteNames.assistant),
+      hasLength(1),
+    );
     expect(paths.where((path) => path == '/'), hasLength(1));
   });
 
@@ -197,9 +212,7 @@ List<String> _allPaths(List<RouteBase> routes) => [
   for (final route in routes) ...[
     if (route is GoRoute) route.path,
     if (route is StatefulShellRoute)
-      ..._allPaths([
-        for (final branch in route.branches) ...branch.routes,
-      ])
+      ..._allPaths([for (final branch in route.branches) ...branch.routes])
     else
       ..._allPaths(route.routes),
   ],

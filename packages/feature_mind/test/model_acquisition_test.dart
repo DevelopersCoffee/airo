@@ -27,6 +27,9 @@ class FakePathProviderPlatform extends PathProviderPlatform
 /// A provider whose bytes cost network — the production shape (#1554) — with
 /// the acquisition scripted so a test can hold it half-finished.
 class FakeDownloadProvider implements ModelProvider {
+  @override
+  Future<void> dispose() async {}
+
   FakeDownloadProvider({this.failures = const []});
 
   static const model = RequiredModel(
@@ -191,6 +194,9 @@ void main() {
 /// The same scripted acquisition, declared as costing no network — the
 /// bundled-asset case, which `initialize` is allowed to run on its own.
 class _LocalProvider implements ModelProvider {
+  @override
+  Future<void> dispose() async {}
+
   _LocalProvider(this._inner);
 
   final FakeDownloadProvider _inner;

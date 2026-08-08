@@ -109,6 +109,15 @@ abstract interface class ModelProvider {
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir);
 
   Future<List<InstalledModel>> verify(Directory modelsDir);
+
+  /// Releases whatever acquiring models holds open, and is called by
+  /// `MindService.dispose`.
+  ///
+  /// On the bundled installer there is nothing to release. A download-backed
+  /// provider holds a subscription to the platform download stream and a
+  /// progress controller per model — invisible to the shell once the provider
+  /// is inside the service, so the service is what has to close it.
+  Future<void> dispose();
 }
 
 /// The disk half of a [ModelProvider] that keeps models as files in one
@@ -120,6 +129,11 @@ abstract interface class ModelProvider {
 /// copies — one per provider, one in `MindService` — which is how "installed"
 /// quietly comes to mean three different things.
 mixin PinnedModelFiles implements ModelProvider {
+  /// Nothing to release by default: a provider that only reads files holds no
+  /// stream open. Overridden by the ones that do.
+  @override
+  Future<void> dispose() async {}
+
   @override
   Future<List<RequiredModel>> missingModels(Directory modelsDir) async => [
     for (final model in await requiredModels())

@@ -28,20 +28,19 @@ analyzer:
     # them here checks nothing; it only hides the errors that matter.
     - "integration_test/patrol_test.dart"
     - "patrol_test/**"
-    # Same reason, same shape: `main_mind.dart` resolves only under
-    # pubspec_mind.yaml, and `feature_mind` is not a dependency of
-    # app/pubspec.yaml. Analysing it against the phone flavour checks it
-    # against a dependency set it was never meant to have.
-    #
-    # Adding feature_mind to app/pubspec.yaml the way feature_coin is there
-    # would fix the analysis and break the product: feature_mind declares
-    # cargokit hooks, so every phone build would cross-compile whisper.cpp and
-    # llama.cpp through the NDK and carry the native code for a feature this
-    # flavour does not ship.
+    # `main_mind.dart` is the standalone Mind shell's entrypoint and is never
+    # part of the phone flavour's own route tree or build target, even though
+    # `feature_mind` became a phone dependency in the Phase 2 SSOT merge
+    # (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`) — the
+    # assistant hub the phone flavour ships now lives in that package. This
+    # file and `lib/core/mind/**` stay excluded because they are the *other*
+    # entrypoint's composition root, analysed instead under
+    # `pubspec_mind.yaml` where its shell-specific wiring (legacy `/agent*`
+    # redirects, `MindUnavailableScreen`) is what's actually being checked.
     #
     # The shell's own suite lives in `test_mind/`, excluded for the same
-    # dependency reason. `flutter test` with no arguments walks `test/` only,
-    # so the phone suite never tries to compile the Mind shell.
+    # reason. `flutter test` with no arguments walks `test/` only, so the
+    # phone suite never tries to run the Mind shell's tests.
     #
     # These files ARE covered, by the `airo-mind-shell` job in
     # `.github/workflows/pr-checks.yml` and `.github/workflows/ci.yml`. It
@@ -63,11 +62,17 @@ analyzer:
     # `app/analysis_options_mind.yaml` is the same configuration with the Mind
     # paths un-excluded.
     #
-    # Still open: the Android APK build. `flutter build apk --debug
-    # --target=lib/main_mind.dart` gets past Dart and Kotlin and then fails in
-    # `:feature_mind:cargokitCargoBuild...` -- the vendored cargokit gradle
-    # plugin calls `Project.exec()`, which Gradle 9 removed. Airo Mind
-    # modular-app task 9 owns that.
+    # The Android APK is NOT part of this job, and no longer because it is
+    # broken -- that note was stale. The vendored cargokit gradle plugin has
+    # been patched off the removed `Project.exec()` onto `ExecOperations`, and
+    # the APK builds, installs and runs on device (#1550).
+    #
+    # Build it with `scripts/build-mind.sh`, which pins
+    # `--target-platform=android-arm64`: `llama-cpp-sys-2`'s build script
+    # panics on `armv7-linux-androideabi`, and Mind is an arm64 product. Note
+    # that cross-compiling `whisper-rs-sys` from a macOS host still fails to
+    # link (`ggml-blas`) because its build script evaluates `cfg!(macos)` on
+    # the HOST; a Linux runner builds it.
     - "lib/main_mind.dart"
     - "lib/core/mind/**"
     - "test_mind/**"

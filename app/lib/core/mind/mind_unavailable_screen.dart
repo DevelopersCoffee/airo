@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 /// What the Airo Mind shell shows for a destination it does not ship.
 ///
-/// `packages/feature_assistant` navigates to absolute super-app paths that
+/// `feature_mind`'s assistant hub navigates to absolute super-app paths that
 /// only the super app mounts — `/games` and `/quest/new` from the hub and the
 /// chat screen, `/money*`, `/live/*`, `/offers`, `/reader` from the tool
 /// registry, `/settings` from the profile screen's Settings tile. The package

@@ -53,27 +53,22 @@ String? mindModelDownloadUrlFor(RequiredModel model) =>
 /// app does not bundle half a gigabyte of weights — without this wiring a
 /// fresh install reported the models missing and offered nothing (#1554).
 ///
-/// [onDownloadService] hands the created [ModelDownloadService] back to the
-/// caller, which owns disposing it: the service holds a subscription to the
-/// platform download stream, and nothing else can see it once it is buried in
-/// the provider.
-MindService buildMindDownloadService({
-  void Function(ModelDownloadService)? onDownloadService,
-}) {
-  // Application support, not documents. Airo Mind keeps its models in the
-  // app's support directory on purpose (`MindService.modelsDirectory`) — on
-  // iOS the documents directory is user-visible in Files and backed up to
-  // iCloud, which a 491 MB model has no business being. Staging the download
-  // in documents would put it there anyway, along with the install receipt
-  // left behind after the artifact is moved.
-  final downloadService = ModelDownloadService(
-    storageLocation: ModelStorageLocation.applicationSupport,
-  );
-  onDownloadService?.call(downloadService);
-
+/// The download service is not handed back: `MindService.dispose` closes the
+/// provider, which closes it. Nothing outside can see it once it is in there,
+/// so nothing outside should be responsible for its subscription to the
+/// platform download stream.
+MindService buildMindDownloadService() {
   return MindService(
     modelProvider: DownloadModelProvider(
-      downloadService: downloadService,
+      // Application support, not documents. Airo Mind keeps its models in the
+      // app's support directory on purpose (`MindService.modelsDirectory`) —
+      // on iOS the documents directory is user-visible in Files and backed up
+      // to iCloud, which a 491 MB model has no business being. Staging the
+      // download in documents would put it there anyway, along with the
+      // install receipt left behind after the artifact is moved.
+      downloadService: ModelDownloadService(
+        storageLocation: ModelStorageLocation.applicationSupport,
+      ),
       // The pinned registry, read across the bridge — never restated here.
       requiredModelsLookup: pinnedRequiredModels,
       downloadUrlFor: mindModelDownloadUrlFor,

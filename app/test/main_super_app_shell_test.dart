@@ -1,6 +1,7 @@
 import 'package:airo_app/main.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -10,9 +11,9 @@ void main() {
     final registry = buildMainModuleRegistry();
 
     expect(registry.shell, ShellId.mobile);
-    expect(registry.moduleIds, ['coin_vault', 'assistant', 'iptv']);
+    expect(registry.moduleIds, ['coin_vault', 'mind', 'iptv']);
     expect(registry.isRegistered('coin_vault'), isTrue);
-    expect(registry.isRegistered('assistant'), isTrue);
+    expect(registry.isRegistered('mind'), isTrue);
     expect(registry.isRegistered('iptv'), isTrue);
   });
 
@@ -24,8 +25,8 @@ void main() {
 
     expect(paths, [
       'vault',
-      '/assistant',
-      '/wellbeing',
+      AssistantRouteNames.assistant,
+      AssistantRouteNames.wellbeing,
       '/iptv',
       '/iptv/player',
       '/vod',

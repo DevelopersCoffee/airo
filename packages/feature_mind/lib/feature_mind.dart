@@ -22,11 +22,62 @@ export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
-// Model acquisition. A shell composes which provider its app uses — where the
-// bytes come from is distribution policy, not something `feature_mind` bakes
-// in (`ADR-0018 §1`: the registry pins a digest, not a URL, and the runtime
-// never acquires models). Nothing here forces the choice: `ModelInstaller`,
-// the bundled-asset path, still works unchanged.
+// Module contract + host seam + routes — the assistant hub, merged in from
+// `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
+// Phase 2).
+export 'src/mind_module.dart';
+export 'src/host/assistant_host_adapter.dart';
+export 'src/routing/assistant_route_names.dart';
+
+// Assistant hub + tools
+export 'src/assistant/presentation/screens/assistant_screen.dart';
+export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
+export 'src/assistant/presentation/screens/mobile_actions_screen.dart';
+export 'src/assistant/presentation/screens/prompt_lab_screen.dart';
+
+// Agent chat + model management
+export 'src/agent_chat/application/assistant_model_preferences.dart';
+export 'src/agent_chat/data/services/agent_notification_scheduler.dart';
+export 'src/agent_chat/data/services/assistant_runtime_service.dart';
+export 'src/agent_chat/data/services/chat_history_store.dart';
+export 'src/agent_chat/data/services/notification_navigation_service.dart';
+export 'src/agent_chat/domain/models/agent_skill.dart';
+export 'src/agent_chat/domain/models/assistant_model_selection.dart';
+export 'src/agent_chat/domain/models/assistant_runtime_ids.dart';
+export 'src/agent_chat/domain/models/chat_models.dart';
+export 'src/agent_chat/domain/models/chat_response_metadata.dart';
+export 'src/agent_chat/domain/services/agent_skill_registry.dart';
+export 'src/agent_chat/presentation/screens/agent_skills_screen.dart';
+export 'src/agent_chat/presentation/screens/chat_screen.dart' hide ChatMessage;
+export 'src/agent_chat/presentation/screens/device_capability_report_screen.dart';
+export 'src/agent_chat/presentation/screens/model_advisor_screen.dart';
+export 'src/agent_chat/presentation/screens/model_health_center_screen.dart';
+export 'src/agent_chat/presentation/screens/model_library_screen.dart';
+export 'src/agent_chat/presentation/screens/notifications_screen.dart';
+export 'src/agent_chat/presentation/screens/profile_screen.dart';
+
+// Wellbeing
+export 'src/wellbeing/presentation/screens/wellbeing_screen.dart';
+
+// Quotes
+export 'src/quotes/presentation/widgets/daily_quote_card.dart';
+export 'src/quotes/domain/models/quote_model.dart';
+export 'src/quotes/domain/models/quote_preferences.dart';
+export 'src/quotes/domain/services/quote_service.dart';
+export 'src/quotes/application/providers/quote_provider.dart';
+
+// Assistant-only services
+export 'src/services/local_runtime_preloader_service.dart';
+export 'src/services/model_preload_preferences.dart';
+export 'src/services/voice_search_service.dart';
+export 'src/services/device_actions_service.dart';
+export 'src/services/llama_gguf_service.dart';
+
+// Model acquisition. A shell composes `DownloadModelProvider` with its own
+// `downloadUrlFor` (hosting is a Dart-side decision, `ADR-0018 §1` — the
+// registry pins a digest, not a URL) and passes it to `MindService`. Neither
+// this package nor the shell is required to use it: `ModelInstaller` (the
+// bundled-asset default) still works unchanged.
 export 'src/model_installer.dart' show ModelInstaller;
 export 'src/models/download_model_provider.dart' show DownloadModelProvider;
 export 'src/models/model_provider.dart'
@@ -37,6 +88,9 @@ export 'src/models/model_provider.dart'
         ModelAcquisitionProgress,
         ModelProvider,
         RequiredModel;
+// The pinned registry itself, for a shell that needs the same list a provider
+// needs — the Mind shell's model explorer reports install state per pinned
+// file (#1556) without going through a provider to get it.
 export 'src/models/pinned_models.dart' show pinnedRequiredModels;
 
 // Runtime — models.

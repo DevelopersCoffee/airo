@@ -33,6 +33,13 @@ class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
   });
 
   final core_ai.ModelDownloadService _downloadService;
+
+  /// Closes the download pipeline this provider was composed over: it holds a
+  /// subscription to the platform download stream and a progress controller
+  /// per model, neither of which the shell can reach once the provider is
+  /// inside `MindService`.
+  @override
+  Future<void> dispose() => _downloadService.dispose();
   final Future<List<RequiredModel>> Function() _requiredModelsLookup;
   final String? Function(RequiredModel) _downloadUrlFor;
 

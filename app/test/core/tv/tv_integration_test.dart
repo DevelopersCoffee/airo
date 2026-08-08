@@ -5,7 +5,7 @@ import 'package:airo_app/core/audio/tv_audio_service.dart';
 import 'package:airo_app/core/tv/tv_focus_manager.dart';
 import 'package:airo_app/core/tv/tv_focusable.dart';
 import 'package:airo_app/core/tv/tv_input_handler.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 
 /// Integration tests for TV navigation flows
 ///

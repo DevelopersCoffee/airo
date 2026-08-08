@@ -38,6 +38,9 @@ class FakePathProviderPlatform extends PathProviderPlatform
 /// `download_model_provider_test.dart` already covers.
 class FakeReadyModelProvider implements ModelProvider {
   @override
+  Future<void> dispose() async {}
+
+  @override
   Future<List<RequiredModel>> requiredModels() async => const [];
 
   @override

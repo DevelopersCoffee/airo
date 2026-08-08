@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 /// The Airo Mind shell's navigation chrome.
 ///
 /// The standalone shell mounts three destinations — the scribe at `/`, the
-/// assistant hub at `/assistant`, and Wellbeing at `/wellbeing` — but neither
-/// `packages/feature_mind` nor `packages/feature_assistant` knows the others
-/// exist: the scribe's home screen renders only the scribe journey, and the
-/// assistant hub links to Wellbeing but never back to the recorder. Navigation
-/// between shell destinations is a shell concern (issue #1555), so it lives
-/// here rather than inside either package.
+/// assistant hub at `/mind`, and Wellbeing at `/wellbeing` — but
+/// `packages/feature_mind` does not link them to each other: the scribe's home
+/// screen renders only the scribe journey, and the assistant hub links to
+/// Wellbeing but never back to the recorder. Navigation between shell
+/// destinations is a shell concern (issue #1555), so it lives here rather than
+/// inside the package.
 ///
 /// A [NavigationBar] fed by [StatefulNavigationShell], matching the super
 /// app's `AppShell`: same Material 3 component, same outlined/filled icon
