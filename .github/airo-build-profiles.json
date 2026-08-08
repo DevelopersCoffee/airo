@@ -199,8 +199,7 @@
         "audio_service"
       ],
       "featureModules": [
-        "feature_mind",
-        "feature_assistant"
+        "feature_mind"
       ],
       "allowedNativePlugins": [
         "audio_service",
