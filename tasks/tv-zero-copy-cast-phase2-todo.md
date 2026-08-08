@@ -10,7 +10,7 @@ user present with the physical rig. Don't report a task done on Gradle-
 green alone when its acceptance criteria include a device check.
 
 ## Task 1: `platform_streaming_engine` package scaffold + method-channel round trip
-- [ ] Not started
+- [x] DONE (3ff18d46) — 4/4 tests green, analyzer clean
 - **Tier:** architect (package shape) → implement (scaffold)
 - **Verification:** `flutter test && flutter analyze` in the new package
 - **Dependencies:** None
