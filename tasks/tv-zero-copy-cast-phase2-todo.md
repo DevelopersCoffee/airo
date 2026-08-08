@@ -16,7 +16,12 @@ green alone when its acceptance criteria include a device check.
 - **Dependencies:** None
 
 ## Task 2: Kotlin plugin skeleton + `ping` (shared source, registers unconditionally — corrected, see plan)
-- [ ] Not started
+- [~] PARTIAL (0135ae68) — code written, mirrors AiroPictureInPicturePlugin
+  exactly. **Gradle compile NOT verified**: 3 attempts blocked by
+  media_kit_libs_android_video's config-time HTTP download (network-
+  unreachable in this sandbox, unrelated to this change, confirmed by
+  failure happening before compileDebugKotlin runs). Needs a real
+  `./gradlew` run or the device rig to actually close this out.
 - **Tier:** implement + platform-architect review before merge
 - **Verification:** Gradle compile (flavor-scoped) + **manual device
   round-trip check**
