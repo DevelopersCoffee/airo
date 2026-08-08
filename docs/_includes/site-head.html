@@ -18,28 +18,12 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="{{ page.title }}" />
 <meta name="twitter:description" content="{{ page.description }}" />
-<link rel="icon" type="image/svg+xml" href="{{ '/assets/airo-tv/airo-icon.svg' | relative_url }}" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
-  rel="stylesheet"
-  media="print"
-  onload="this.media='all'"
-/>
-<noscript>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
-    rel="stylesheet"
-  />
-</noscript>
-<link
-  rel="preload"
-  href="{{ '/assets/airo-tv/site.css' | relative_url }}"
-  as="style"
-  onload="this.onload=null;this.rel='stylesheet'"
-/>
-<noscript><link rel="stylesheet" href="{{ '/assets/airo-tv/site.css' | relative_url }}" /></noscript>
+<!-- AI Agent & LLM Auto-Discovery -->
+<link rel="llms-txt" type="text/markdown" href="{{ '/llms.txt' | relative_url }}" />
+<link rel="agent" type="text/markdown" href="{{ '/llms.txt' | relative_url }}" />
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" />
+<link rel="stylesheet" href="{{ '/assets/airo-tv/site.css' | relative_url }}" />
 <script defer src="{{ '/assets/airo-tv/third-party/lucide.min.js' | relative_url }}"></script>
 <script defer src="{{ '/assets/airo-tv/site.js' | relative_url }}"></script>
 {% if page.structured_data %}
