@@ -136,7 +136,7 @@ through `AppLogger.analytics()` on session boundaries.
 
 ---
 
-## Task 5: Batched upload wiring
+## Task 5: Batched upload wiring — DONE (f6f1cd22, contract tests, no app-bootstrap wiring — see note below)
 
 **Tier:** implement (Sonnet)
 
@@ -166,7 +166,7 @@ platform_media); ≤5 files or split the task
 
 ---
 
-## Task 6: Credential/PII leak scan test (AC-9 seed)
+## Task 6: Credential/PII leak scan test (AC-9 seed) — DONE (678ca6a7)
 
 **Tier:** implement (Sonnet)
 
@@ -203,8 +203,33 @@ acceptance.
       (verified via test-harness output, not a manual UI run — see Task 4 commit)
 - [x] `platform_player` tests green (235/235), `platform_media` 165/165
 
-### Checkpoint C — phase gate (after Tasks 5–6)
-- [ ] Narrow test runs green; web release build passes
-- [ ] Human review + PRs (cluster: core_analytics PR, platform_player PR)
-- [ ] CSO + QA council review recorded
-- [ ] Phase 2 planning unblocked
+### Checkpoint C — phase gate (after Tasks 5–6) — DONE (client-side scope)
+- [x] Narrow test runs green: core_analytics 105/105, platform_player 235/235,
+      platform_media 170/170; analyzer clean on every touched file
+- [x] Web release build passes (`flutter build web --release`, verified
+      after Task 4's engine wiring; Tasks 5-6 were test-only, no lib/ change)
+- [x] Leak-scan test verified non-vacuous by mutation: temporarily fed a raw
+      URL into activeSourceId, confirmed the test goes RED, reverted cleanly
+- [ ] Human review + PRs (cluster: core_analytics PR, platform_player PR,
+      platform_media PR) — not yet opened, pending user direction
+- [ ] CSO + QA council review recorded — not yet requested
+- [x] Phase 2 planning unblocked (baseline instrumentation ships; app-wide
+      consent/backend wiring explicitly deferred, see note below)
+
+**Note on scope actually delivered vs. planned:** Task 5's acceptance
+criteria as written assumed a live app-bootstrap wiring decision
+(which `AiroAnalyticsService` to install, what default consent posture).
+Investigation found `core_analytics` already ships three complete,
+tested implementations (`AiroNoOpAnalyticsService` — today's actual
+wired default everywhere, since `AppLogger.setAnalyticsService()` is
+never called in `app/lib` — `AiroLocalDiagnosticsAnalyticsService`,
+`AiroProviderBackedAnalyticsService` with a playback-aware upload gate)
+plus a bounded queue and consent-transition policy. No new
+batching/gateway code was needed or written (matches AD-P1.3). What
+*was* missing, and is out of scope for a code task: neither built-in
+consent preset grants `playbackQuality`, so streaming telemetry records
+nothing today even locally, and there's no settings surface to grant it.
+Task 5 shipped as contract tests proving the existing pipeline correctly
+carries our event once a grant exists; wiring a real default into
+`app/lib/main.dart` is deferred to Open Question P1-2 (product decision:
+default consent posture + settings UI), not silently defaulted here.

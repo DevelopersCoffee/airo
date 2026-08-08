@@ -100,6 +100,15 @@ assumptions. Codex adversarial review auto-runs on every edit.
 - **P1-1:** Where does the ingestion backend + baseline dashboard live?
   (Self-hosted per `AiroAnalyticsGatewayRegion` model? Owner:
   chief-cloud-officer.) Client ships gateway-ready regardless.
-- **P1-2:** Does an existing settings surface expose analytics consent
-  today, or does Phase 1 need a toggle UI? Implementer answers in Task 5;
-  if UI is needed it becomes Task 7 (flutter-architect review).
+- **P1-2 — RESOLVED (investigation), open (decision):** No settings
+  surface exposes analytics consent today, and `AppLogger.setAnalyticsService()`
+  is never called anywhere in `app/lib` — every build runs on the no-op
+  default, so nothing is recorded currently. Separately: neither built-in
+  consent preset (`.disabled()`, `.localOnly()`) grants `playbackQuality`,
+  so even wiring a real service with a default preset would still record
+  nothing for streaming telemetry specifically. Two decisions needed
+  before Task 7 (a settings UI + bootstrap wiring task) can be scoped:
+  (1) default consent posture for a fresh install, (2) which service tier
+  ships first (`AiroLocalDiagnosticsAnalyticsService` needs no backend;
+  `AiroProviderBackedAnalyticsService` needs P1-1 resolved first).
+  Product decision, not an implementer call — flagged, not defaulted.
