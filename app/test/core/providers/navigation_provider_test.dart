@@ -29,7 +29,7 @@ void main() {
     test('uses stable root paths for each tab', () {
       expect(AppNavigationTab.values.map((tab) => tab.path), [
         '/money',
-        '/assistant',
+        '/mind',
         '/music',
         '/iptv',
         '/games',

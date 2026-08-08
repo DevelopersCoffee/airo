@@ -77,20 +77,34 @@ void main() {
     );
   });
 
-  test('the router refuses to start without the mind module', () {
-    final registry = ModuleRegistry(shell: ShellId.mobile)
-      ..register(CoinVaultModule())
-      ..register(IptvFeatureModule());
+  test(
+    'the router starts without the mind module and falls back to a '
+    'redirect-only Mind branch (R05: web never registers it)',
+    () {
+      final registry = ModuleRegistry(shell: ShellId.mobile)
+        ..register(CoinVaultModule())
+        ..register(IptvFeatureModule());
 
-    expect(
-      () => AppRouter.createRouter(moduleRegistry: registry),
-      throwsA(
-        isA<ModuleCompositionException>().having(
-          (error) => error.message,
-          'message',
-          contains('mind'),
+      final router = AppRouter.createRouter(moduleRegistry: registry);
+      addTearDown(router.dispose);
+
+      final branchPaths = router.configuration.routes
+          .whereType<StatefulShellRoute>()
+          .expand((shell) => shell.branches)
+          .expand((branch) => branch.routes)
+          .whereType<GoRoute>()
+          .map((route) => route.path);
+
+      expect(branchPaths, contains(AssistantRouteNames.assistant));
+      expect(
+        router.configuration.routes.whereType<GoRoute>().map(
+          (route) => route.path,
         ),
-      ),
-    );
-  });
+        isNot(contains('/wellbeing')),
+        reason:
+            'Wellbeing is reached from the Mind hub; with no hub, it must '
+            'not be mounted at all.',
+      );
+    },
+  );
 }

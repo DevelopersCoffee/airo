@@ -63,17 +63,37 @@ void main() {
     }
   });
 
-  test('the gate fails when web sources reach the module', () {
-    final probe = File('${root.path}/app/web/r05_mutation_probe.dart');
-    probe.writeAsStringSync("import 'package:feature_mind/feature_mind.dart';");
+  test(
+    'the gate fails when the web entrypoint constructs MindModule directly',
+    () {
+      // The web build compiles app/lib/main.dart, not app/web (which holds
+      // only index.html and assets, never a .dart file) -- so the gate reads
+      // the entrypoint's module registry rather than scanning app/web. See
+      // the "real question" comment in check-mind-private-devices.sh for why
+      // the app/web scan this replaced was a vacuous positive control.
+      final entrypoint = File('${root.path}/app/lib/main.dart');
+      final original = entrypoint.readAsStringSync();
 
-    try {
-      final result = Process.runSync(gate, const []);
-      expect(result.exitCode, isNonZero);
-    } finally {
-      if (probe.existsSync()) probe.deleteSync();
-    }
-  });
+      entrypoint.writeAsStringSync(
+        '$original\n'
+        '// r05 mutation probe\n'
+        'final _r05Probe = MindModule(hostAdapterBuilder: (_, __) {});\n',
+      );
+
+      try {
+        final result = Process.runSync(gate, const []);
+        expect(
+          result.exitCode,
+          isNonZero,
+          reason:
+              'A web build that constructs MindModule directly -- bypassing '
+              'the conditional-import registration -- must fail the gate.',
+        );
+      } finally {
+        entrypoint.writeAsStringSync(original);
+      }
+    },
+  );
 
   test('the stub answers to the same package name', () {
     final stub = File(

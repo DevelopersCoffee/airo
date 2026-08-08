@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:feature_mind/feature_mind.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
-import 'core/assistant/app_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
+import 'core/mind/mind_registration.dart'
+    if (dart.library.html) 'core/mind/mind_registration_stub.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -131,8 +131,9 @@ void main() async {
 /// owns module inclusion, routes, lifecycle, and provider overrides.
 @visibleForTesting
 ModuleRegistry buildMainModuleRegistry() {
-  return ModuleRegistry(shell: ShellId.mobile)
-    ..register(CoinVaultModule())
-    ..register(MindModule(hostAdapterBuilder: AppAssistantHostAdapter.new))
-    ..register(IptvFeatureModule());
+  final registry = ModuleRegistry(shell: ShellId.mobile)
+    ..register(CoinVaultModule());
+  registerMind(registry);
+  registry.register(IptvFeatureModule());
+  return registry;
 }
