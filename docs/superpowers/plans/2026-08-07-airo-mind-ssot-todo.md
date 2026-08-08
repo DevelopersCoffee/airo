@@ -79,12 +79,16 @@ confirming the abstraction layer doesn't break the shell that already exists.
 - [x] **1B.1** Baseline: standalone Mind release APK was 620 MB (bundled
       models) before this session; 707 MB debug / to-be-measured release after
       (see note below — this run only produced debug builds).
-- [x] **1B.2** `app/lib/core/mind/mind_model_source.dart` — new file, builds
+- [x] **1B.2** `app/lib/core/mind/mind_model_sources.dart` — new file, builds
       `DownloadModelProvider` wired to the real HuggingFace URLs
       `fetch_mind_models.sh` already used, keyed by the pinned file names.
-      `MindScribeModule._defaultService` wires it into `MindService`. The super
+      `MindScribeModule` wires it into `MindService` through
+      `buildMindDownloadService`, which also stages downloads in application
+      support and hands the `ModelDownloadService` back for disposal. The super
       app has no `MindScribeModule` registration yet (Phase 4), so only the
-      standalone shell is cut over in this phase.
+      standalone shell is cut over in this phase. (Merged with #1554, which
+      landed the same cut-over in parallel as `mind_model_sources.dart`; that
+      file is the one that survives.)
 - [x] **1B.3** `_Loading` widget in `mind_home_screen.dart` — file name +
       `LinearProgressIndicator` + percentage during the download, falling back
       to a bare spinner once nothing is downloading. `MindService.onInstallProgress`
@@ -242,7 +246,53 @@ Phase 3/4 close it out for real.
 - [ ] **4.2** Add `feature_mind` to `app/pubspec.yaml`
 - [ ] **4.3** Register `MindModule` in `main.dart` beside `CoinVaultModule` and
       `IptvFeatureModule`
-- [ ] **4.4** Confirm web and TV still swap in `feature_mind_stub`
+- [ ] **4.4** Web does NOT swap in `feature_mind_stub` today -- R05 is
+      currently violated on `main`. TV never depended on `feature_mind` in the
+      first place, so it was never at risk.
+
+      **Two things tried, both instructive, neither shippable yet.**
+
+      The obvious fix -- swap `feature_mind` for `feature_mind_stub` via
+      `pubspec_overrides.yaml` -- does not work: the stub deliberately exports
+      no `MindModule` ("a shared-surface build should fail to compile if it
+      reaches for a Mind surface", its own doc comment), so the swap breaks the
+      web BUILD rather than silently stubbing it.
+
+      A `dart.library.html` conditional import
+      (`app/lib/core/mind/mind_registration.dart` /
+      `mind_registration_web.dart`, matching the pattern already used seven
+      times elsewhere in `app/lib` -- `app_database.dart`,
+      `money_provider.dart`, etc.) does correctly keep `main.dart` from
+      referencing `MindModule` on web, and it analyzed clean for the phone
+      target. That part is real progress and a smaller fix than the pubspec
+      idea: no CI wiring, no committed override file.
+
+      It is not sufficient by itself. `AppRouter.createRouter`
+      (`app/lib/core/routing/app_router.dart:50`) -- used by every shell, not
+      swapped per platform -- unconditionally does
+      `_requiredModule<MindModule>(moduleRegistry, 'mind')` to build the route
+      tree, for both the Mind branch AND the top-level Wellbeing destination.
+      If `registerMind` is a no-op on web, that lookup finds nothing and
+      THROWS AT RUNTIME. `flutter build web --release` would compile clean and
+      the app would crash on launch -- a green compile that hides the actual
+      failure, which is why the build was stopped rather than trusted to
+      "prove" the fix.
+
+      The router itself has to learn a module can legitimately be absent --
+      `_requiredModule<MindModule>` needs an optional counterpart, and the two
+      route groups built from it unconditionally
+      (`assistant.rootRoutesFor(...)`, `assistant.hubRoutesFor(...)`) need to
+      become conditional on whether it resolved. That is router surface used
+      by every shell, phone included, and is not a change to make without the
+      router's own test suite plus a real web smoke test.
+
+      One artefact survived and is real, safe, forward-compatible progress:
+      `packages/feature_mind/lib/src/mind_availability.dart` --
+      `AiroMindAbsent.value = false`, mirroring the stub's marker of the same
+      name and shape, exported from the package barrel. It is inert until
+      something reads it, which is exactly the point: whichever fix lands next
+      (router-level optional-module lookup, most likely) has an availability
+      signal to read that already exists on both sides of the pubspec swap.
 - [ ] **4.5** `cd app && flutter build web --release` succeeds
 - [ ] **4.6** `scripts/check-mind-private-devices.sh` passes (R05)
 - [ ] **4.7** Device walk on **both** shells: first-run download, record →

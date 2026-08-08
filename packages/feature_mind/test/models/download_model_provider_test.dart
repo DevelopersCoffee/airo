@@ -68,6 +68,7 @@ void main() {
   late MockModelStorageManager storage;
   late ModelDownloadService service;
   late Directory modelsDir;
+  late Directory stagingDir;
 
   setUp(() {
     downloads = FakeBackgroundDownloads();
@@ -77,10 +78,14 @@ void main() {
       storageManager: storage,
     );
     modelsDir = Directory.systemTemp.createTempSync('mind_provider_test_');
+    // `core_ai` downloads into its own models directory, not Mind's — the
+    // provider moves the verified artifact across afterwards.
+    stagingDir = Directory.systemTemp.createTempSync('mind_provider_staging_');
   });
 
   tearDown(() {
     modelsDir.deleteSync(recursive: true);
+    stagingDir.deleteSync(recursive: true);
   });
 
   test('requiredModels reflects the pinned Rust registry', () async {
@@ -136,9 +141,25 @@ void main() {
       when(
         () => storage.hasEnoughDiskSpace(any()),
       ).thenAnswer((_) async => true);
+      // Both mocks compose the staging path the way `ModelStorageManager`
+      // really does -- `$modelId$extension` -- rather than returning a fixed
+      // string. That is what makes this test able to see a doubled extension:
+      // the download lands wherever the id says, and the install step has to
+      // ask for the same id to find it (#1553).
+      String stagingPathFor(Invocation invocation) =>
+          '${stagingDir.path}/${invocation.positionalArguments.first}.bin';
       when(
         () => storage.getModelPath(any(), model: any(named: 'model')),
-      ).thenAnswer((_) async => '${modelsDir.path}/ggml-tiny.en.bin');
+      ).thenAnswer((invocation) async => stagingPathFor(invocation));
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((invocation) async {
+        final candidate = File(stagingPathFor(invocation));
+        return candidate.existsSync() ? candidate.path : null;
+      });
+      // The pinned name is `ggml-tiny.en.bin`, so the id is `ggml-tiny.en` and
+      // the artifact keeps exactly one extension.
+      final staged = File('${stagingDir.path}/ggml-tiny.en.bin');
       when(() => storage.writeInstallReceipt(any())).thenAnswer(
         (_) async => ModelInstallReceipt(
           modelId: _whisper().fileName,
@@ -156,8 +177,12 @@ void main() {
 
       expect(downloads.requests, hasLength(1));
       final request = downloads.requests.single;
-      expect(request.destinationPath, '${modelsDir.path}/ggml-tiny.en.bin');
+      expect(request.destinationPath, staged.path);
       expect(request.expectedSha256, _whisper().sha256);
+
+      // What the transport writes: the bytes land in `core_ai`'s staging
+      // directory, which is not where the engines read from.
+      staged.writeAsBytesSync(List.filled(_whisper().sizeBytes.toInt(), 0));
 
       // Drive the fake transport to completion -- the provider's `acquire`
       // stream never closes on its own (the service's per-model stream is
@@ -184,6 +209,131 @@ void main() {
           'failedFileNames',
           isEmpty,
         ),
+      );
+      // The point of the whole exercise: the model is installed where the
+      // Rust engines are pointed, under its pinned name, and nothing is left
+      // behind in staging.
+      expect(File('${modelsDir.path}/ggml-tiny.en.bin').existsSync(), isTrue);
+      expect(staged.existsSync(), isFalse);
+      expect(await provider.isInstalled(modelsDir), isTrue);
+    },
+  );
+
+  // Verified bytes that cannot be moved across must not report success:
+  // `isInstalled` would still be false and the app would loop on the same
+  // blocker with no explanation.
+  test(
+    'a download that never lands in the models directory is a failure',
+    () async {
+      final provider = DownloadModelProvider(
+        downloadService: service,
+        requiredModelsLookup: () async => [_whisper()],
+        downloadUrlFor: (_) => 'https://example.test/ggml-tiny.en.bin',
+      );
+      var integrityChecks = 0;
+      when(() => storage.verifyModelIntegrity(any())).thenAnswer((_) async {
+        integrityChecks++;
+        return integrityChecks > 1;
+      });
+      when(
+        () => storage.hasEnoughDiskSpace(any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => storage.getModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => '${stagingDir.path}/ggml-tiny.en.bin.bin');
+      // Nothing on disk to move.
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => null);
+      when(() => storage.writeInstallReceipt(any())).thenAnswer(
+        (_) async => ModelInstallReceipt(
+          modelId: _whisper().fileName,
+          catalogFingerprint: 'test',
+          installedAt: DateTime(2026),
+        ),
+      );
+
+      final events = <ModelAcquisitionEvent>[];
+      final acquisition = provider.acquire(modelsDir).forEach(events.add);
+      await Future<void>.delayed(Duration.zero);
+      downloads.eventController.add(
+        DownloadProgress(
+          artifactId: downloads.requests.single.artifactId,
+          status: DownloadStatus.completed,
+          downloadedBytes: _whisper().sizeBytes,
+          totalBytes: _whisper().sizeBytes,
+        ),
+      );
+      await acquisition;
+
+      expect(
+        (events.last as ModelAcquisitionDone).failedFileNames,
+        contains('ggml-tiny.en.bin'),
+      );
+    },
+  );
+
+  // A throw out of the install step used to abort the whole `async*` stream:
+  // no `ModelAcquisitionDone`, the next model never attempted, and a raw
+  // exception where the retry should be.
+  test(
+    'an install that throws is one file failing, not the acquisition',
+    () async {
+      const second = RequiredModel(
+        fileName: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+        sizeBytes: 491400032,
+        sha256:
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db',
+      );
+      final provider = DownloadModelProvider(
+        downloadService: service,
+        requiredModelsLookup: () async => [_whisper(), second],
+        // The second model has no source, so it fails on a path that cannot
+        // throw — if the first model's throw had aborted the stream, this one
+        // would never be reached and could not appear in the result.
+        downloadUrlFor: (model) => model.fileName == _whisper().fileName
+            ? 'https://example.test/ggml-tiny.en.bin'
+            : null,
+      );
+      var integrityChecks = 0;
+      when(() => storage.verifyModelIntegrity(any())).thenAnswer((_) async {
+        integrityChecks++;
+        return integrityChecks > 1;
+      });
+      when(
+        () => storage.hasEnoughDiskSpace(any()),
+      ).thenAnswer((_) async => true);
+      when(
+        () => storage.getModelPath(any(), model: any(named: 'model')),
+      ).thenAnswer((_) async => '${stagingDir.path}/ggml-tiny.en.bin.bin');
+      when(
+        () => storage.findExistingModelPath(any(), model: any(named: 'model')),
+      ).thenThrow(const FileSystemException('storage is gone'));
+      when(() => storage.writeInstallReceipt(any())).thenAnswer(
+        (_) async => ModelInstallReceipt(
+          modelId: _whisper().fileName,
+          catalogFingerprint: 'test',
+          installedAt: DateTime(2026),
+        ),
+      );
+
+      final events = <ModelAcquisitionEvent>[];
+      final acquisition = provider.acquire(modelsDir).forEach(events.add);
+      await Future<void>.delayed(Duration.zero);
+      downloads.eventController.add(
+        DownloadProgress(
+          artifactId: downloads.requests.single.artifactId,
+          status: DownloadStatus.completed,
+          downloadedBytes: _whisper().sizeBytes,
+          totalBytes: _whisper().sizeBytes,
+        ),
+      );
+
+      // The stream completes rather than erroring, and says so.
+      await acquisition;
+      expect(
+        (events.last as ModelAcquisitionDone).failedFileNames,
+        containsAll(<String>[_whisper().fileName, second.fileName]),
       );
     },
   );

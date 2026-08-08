@@ -25,7 +25,7 @@ import 'model_provider.dart';
 /// models). `downloadUrlFor` is where that decision is made, and it is a
 /// constructor parameter rather than a hardcoded host so it can change without
 /// touching this class.
-class DownloadModelProvider implements ModelProvider {
+class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
   DownloadModelProvider({
     required this._downloadService,
     required this._requiredModelsLookup,
@@ -33,51 +33,109 @@ class DownloadModelProvider implements ModelProvider {
   });
 
   final core_ai.ModelDownloadService _downloadService;
+
+  /// Closes the download pipeline this provider was composed over: it holds a
+  /// subscription to the platform download stream and a progress controller
+  /// per model, neither of which the shell can reach once the provider is
+  /// inside `MindService`.
+  @override
+  Future<void> dispose() => _downloadService.dispose();
   final Future<List<RequiredModel>> Function() _requiredModelsLookup;
   final String? Function(RequiredModel) _downloadUrlFor;
 
   @override
   Future<List<RequiredModel>> requiredModels() => _requiredModelsLookup();
 
+  /// Roughly 570 MB over the network. `MindService` must offer this rather
+  /// than start it.
   @override
-  Future<bool> isInstalled(Directory modelsDir) async {
-    for (final required in await requiredModels()) {
-      final file = File(p.join(modelsDir.path, required.fileName));
-      if (!file.existsSync()) return false;
-      if (file.lengthSync() != required.sizeBytes) return false;
-    }
-    return true;
-  }
+  bool get acquiresWithoutNetwork => false;
 
   /// `core_ai.OfflineModelInfo.id` is the download service's identity for a
-  /// model, and it must be the file name **without its extension**.
+  /// model, and it must be the pinned file name **without its extension**.
   ///
-  /// `ModelStorageManager.getModelPath` -- which is what actually decides
-  /// where the download is written, independently of [OfflineModelInfo.filePath]
-  /// below -- builds the destination as `$id$extension`
-  /// (`_artifactExtensionFor` infers the extension from `filePath`). Passing
-  /// the full file name as `id` doubles the extension
-  /// (`qwen….gguf` → `qwen….gguf.gguf`), so the download lands somewhere
-  /// [ModelStorageManager.verifyModelIntegrity] never looks and the Rust
-  /// bridge never reads. Verified end to end on device: 491 MB of qwen
-  /// downloaded correctly, `verifyModelIntegrity` returned false instantly
-  /// because it was hashing a file that was never written.
-  core_ai.OfflineModelInfo _asOfflineModelInfo(
-    RequiredModel required,
-    Directory modelsDir,
-  ) {
-    final id = p.basenameWithoutExtension(required.fileName);
+  /// `ModelStorageManager.getModelPath` composes the staging destination as
+  /// `$id$extension`, inferring the extension from `filePath` or, failing
+  /// that, from the download URL. Handing it the whole file name therefore
+  /// doubles the extension (`qwen….gguf` → `qwen….gguf.gguf`). Nothing
+  /// downstream broke — [_install] resolves the staged artifact through the
+  /// same manager, which tries every supported extension — but the doubled
+  /// name is a trap for anything that looks at the staging directory directly
+  /// (`verifyModelIntegrity` on a bare id, an `adb ls`, a human), so the id is
+  /// stripped here (#1553).
+  ///
+  /// [filePath] is deliberately left null for the **download**: the download
+  /// service resolves its own destination from `ModelStorageManager` and
+  /// re-verifies the artifact there when the transport completes. Handing it a
+  /// path in Mind's directory does not move the download — `getModelPath`
+  /// ignores everything but the extension — it only makes that post-download
+  /// verification look at a file the transport never wrote, so every download
+  /// would report `integrity_mismatch`. The bytes are therefore staged by
+  /// `core_ai` and moved into [modelsDir] by [_install] once they are
+  /// verified.
+  static String _stagedId(RequiredModel required) =>
+      p.basenameWithoutExtension(required.fileName);
+
+  core_ai.OfflineModelInfo _stagedInfo(RequiredModel required) {
     return core_ai.OfflineModelInfo(
-      id: id,
+      id: _stagedId(required),
       name: required.fileName,
       // `family` is a catalog concern the download service does not act on
       // for a direct-URL fetch; `other` says so rather than guessing one.
       family: core_ai.ModelFamily.other,
       fileSizeBytes: required.sizeBytes,
-      filePath: p.join(modelsDir.path, required.fileName),
       downloadUrl: _downloadUrlFor(required),
       sha256: required.sha256,
     );
+  }
+
+  /// The same model, addressed where Airo Mind keeps it: the Rust engines are
+  /// handed one directory (`ADR-0018 §1`) and read the pinned file names out
+  /// of it, so this is the only location that counts as installed.
+  core_ai.OfflineModelInfo _installedInfo(
+    RequiredModel required,
+    Directory modelsDir,
+  ) => _stagedInfo(
+    required,
+  ).copyWith(filePath: p.join(modelsDir.path, required.fileName));
+
+  /// Moves a verified artifact out of `core_ai`'s staging directory and into
+  /// Mind's models directory, under its pinned file name.
+  ///
+  /// A rename, not a copy: both directories live under the same app container
+  /// on every platform Mind ships to, so this is a metadata operation rather
+  /// than half a gigabyte read and written again. The copy path is the honest
+  /// fallback for a layout where they are not.
+  ///
+  /// Every failure is one file's failure, reported by name. Letting one throw
+  /// would abort the `async*` stream mid-acquisition: no
+  /// [ModelAcquisitionDone], the second model never attempted, and a raw
+  /// exception on screen instead of a retry.
+  Future<bool> _install(RequiredModel required, Directory modelsDir) async {
+    final target = File(p.join(modelsDir.path, required.fileName));
+
+    try {
+      if (PinnedModelFiles.isPresent(modelsDir, required)) return true;
+
+      // The same id the download was enqueued under — anything else asks the
+      // storage manager about a model it never wrote.
+      final stagedPath = await _downloadService.resolveExistingModelPath(
+        _stagedId(required),
+        model: _stagedInfo(required),
+      );
+      if (stagedPath == null) return false;
+
+      final staged = File(stagedPath);
+      try {
+        staged.renameSync(target.path);
+      } on FileSystemException {
+        staged.copySync(target.path);
+        staged.deleteSync();
+      }
+      return PinnedModelFiles.isPresent(modelsDir, required);
+    } on Object {
+      return false;
+    }
   }
 
   @override
@@ -89,7 +147,19 @@ class DownloadModelProvider implements ModelProvider {
     // and running both downloads at once on a constrained connection is a
     // worse experience than a predictable queue, not a faster one.
     for (final model in required) {
-      final info = _asOfflineModelInfo(model, modelsDir);
+      if (PinnedModelFiles.isPresent(modelsDir, model)) {
+        // Already installed. Only some of the set is usually missing, and
+        // re-fetching 469 MB because 77 MB is absent is not a retry anyone
+        // asked for.
+        yield ModelAcquisitionProgress(
+          model.fileName,
+          model.sizeBytes,
+          model.sizeBytes,
+        );
+        continue;
+      }
+
+      final info = _stagedInfo(model);
 
       if (info.downloadUrl == null) {
         failed.add(model.fileName);
@@ -125,6 +195,10 @@ class DownloadModelProvider implements ModelProvider {
         if (settled) break;
       }
 
+      // Verified bytes in the staging directory are not yet an installed
+      // model: the engines only read [modelsDir].
+      if (succeeded) succeeded = await _install(model, modelsDir);
+
       if (!succeeded) failed.add(model.fileName);
     }
 
@@ -148,7 +222,7 @@ class DownloadModelProvider implements ModelProvider {
         );
         continue;
       }
-      final info = _asOfflineModelInfo(model, modelsDir);
+      final info = _installedInfo(model, modelsDir);
       final ok = await core_ai.ModelStorageManager().verifyModelIntegrity(info);
       results.add(
         InstalledModel(

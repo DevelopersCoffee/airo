@@ -2,29 +2,36 @@ import 'package:airo_app/core/routing/app_router.dart';
 import 'package:airo_app/main.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:airo_app/features/iptv/iptv_feature_module.dart';
 
-/// The Mind tab's route names, exactly as the super app declared them inline
-/// before `feature_assistant` was extracted (and later merged into
+/// The Mind tab's route **names**, exactly as the super app declared them
+/// inline before `feature_assistant` was extracted (and later merged into
 /// `feature_mind`). Deep links, notification payloads, and `goNamed` call
-/// sites resolve on these, so both moves are only correct if every one of
-/// them still resolves — and to the same location.
-const _preExtractionAssistantRoutes = <String, String>{
-  'Assistant': '/assistant',
-  'assistant_chat': '/assistant/chat',
-  'agent_notifications': '/assistant/notifications',
-  'profile': '/assistant/profile',
-  'assistant_models': '/assistant/models',
-  'assistant_device_capabilities': '/assistant/device-capabilities',
-  'assistant_model_advisor': '/assistant/model-advisor',
-  'assistant_prompt_lab': '/assistant/prompt-lab',
-  'assistant_audio_scribe': '/assistant/audio-scribe',
-  'assistant_agent_skills': '/assistant/skills',
-  'assistant_mobile_actions': '/assistant/mobile-actions',
-  'Wellbeing': '/wellbeing',
+/// sites resolve on these, so every move is only correct if every one of them
+/// still resolves.
+///
+/// The locations are read off [AssistantRouteNames] rather than written out:
+/// the hub's root deliberately moved once (Phase 3 claimed `/mind` for its
+/// owner), so a literal here would assert the opposite of what the package
+/// declares. The names are what must not drift, and they are literals for
+/// exactly that reason.
+final _preExtractionAssistantRoutes = <String, String>{
+  'Assistant': AssistantRouteNames.assistant,
+  'assistant_chat': AssistantRouteNames.chat,
+  'agent_notifications': AssistantRouteNames.notifications,
+  'profile': AssistantRouteNames.profile,
+  'assistant_models': AssistantRouteNames.models,
+  'assistant_device_capabilities': AssistantRouteNames.deviceCapabilities,
+  'assistant_model_advisor': AssistantRouteNames.modelAdvisor,
+  'assistant_prompt_lab': AssistantRouteNames.promptLab,
+  'assistant_audio_scribe': AssistantRouteNames.audioScribe,
+  'assistant_agent_skills': AssistantRouteNames.agentSkills,
+  'assistant_mobile_actions': AssistantRouteNames.mobileActions,
+  'Wellbeing': AssistantRouteNames.wellbeing,
 };
 
 void main() {
@@ -60,8 +67,8 @@ void main() {
         .whereType<GoRoute>()
         .map((route) => route.path);
 
-    expect(branchPaths, contains('/assistant'));
-    expect(branchPaths, isNot(contains('/wellbeing')));
+    expect(branchPaths, contains(AssistantRouteNames.assistant));
+    expect(branchPaths, isNot(contains(AssistantRouteNames.wellbeing)));
     expect(
       router.configuration.routes.whereType<GoRoute>().map(
         (route) => route.path,
