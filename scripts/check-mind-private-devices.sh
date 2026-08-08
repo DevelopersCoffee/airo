@@ -43,17 +43,40 @@ for pubspec in "${shared_pubspecs[@]}"; do
   fi
 done
 
-# The web build uses app/pubspec.yaml, where Mind is a legitimate dependency
-# for the phone and desktop targets. The check for web is therefore on the
-# sources a web build compiles: nothing under app/web may reach the module.
-if [[ -d "app/web" ]]; then
-  web_imports="$(
-    grep -rn --include='*.dart' -e "package:feature_mind/" app/web 2>/dev/null || true
-  )"
-  if [[ -n "$web_imports" ]]; then
+# The web build uses app/pubspec.yaml, where Mind is a legitimate dependency for
+# the phone and desktop targets. So the web check cannot be "is feature_mind a
+# dependency" -- it has to be "does a web build REACH the module".
+#
+# This check used to grep `app/web` for `package:feature_mind/` imports.
+# `app/web` holds index.html, the manifest and icons: it has never contained a
+# single .dart file, so that search could not fail for any state of the
+# repository. It reported OK having checked nothing, which is the exact failure
+# the positive control above exists to prevent -- and the web half had no
+# positive control of its own.
+#
+# The real question is the entrypoint's module registry. `app/lib/main.dart` is
+# what a web build compiles, and registering MindModule there puts Mind in the
+# web binary.
+web_entrypoint="app/lib/main.dart"
+
+# Positive control, same reasoning as above: prove the search can find
+# something before trusting it to find nothing.
+if ! grep -q 'ModuleRegistry' "$web_entrypoint" 2>/dev/null; then
+  echo "FATAL: could not find a module registry in $web_entrypoint, so this" >&2
+  echo "gate cannot tell what a web build links. Passing silently would be" >&2
+  echo "worse than failing." >&2
+  exit 127
+fi
+
+if grep -qE '(^|[^_[:alnum:]])MindModule\(' "$web_entrypoint"; then
+  # Acceptable only when the same pubspec points feature_mind at the stub, so
+  # the symbol resolves to a module that renders nothing.
+  if ! { grep -q 'feature_mind_stub' app/pubspec.yaml 2>/dev/null ||
+         { [[ -f app/pubspec_overrides.yaml ]] &&
+           grep -q 'feature_mind_stub' app/pubspec_overrides.yaml; }; }; then
     failed=true
-    echo "R05 violation: web sources import feature_mind." >&2
-    echo "$web_imports" >&2
+    echo "R05 violation: $web_entrypoint registers MindModule and no stub swap" >&2
+    echo "is in place, so a web build links the real feature_mind." >&2
   fi
 fi
 
