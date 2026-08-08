@@ -299,13 +299,29 @@ jobs:
 
       # `flutter test` compiles for the host only. This proves the profile also
       # compiles the entrypoint into a device bundle -- the whole point of
-      # expanding it. The Android APK build (`scripts/build-mind.sh`) is still
-      # deliberately NOT the gate here. The Gradle 9 `Project.exec()` break in
-      # the vendored cargokit plugin is fixed, but the Rust runtime itself does
-      # not cross-compile to Android yet: `whisper-rs-sys` fails to link
-      # (`could not find native static library ggml-blas`) and
-      # `llama-cpp-sys-2` panics outright on `armv7-linux-androideabi`.
-      # Promote this step to `scripts/build-mind.sh` once those are resolved.
+      # expanding it.
+      #
+      # The Android APK build (`scripts/build-mind.sh`) is deliberately NOT the
+      # gate here, and no longer because it is broken. Both original blockers
+      # are closed: the Gradle 9 `Project.exec()` break in the vendored cargokit
+      # plugin is patched to `ExecOperations`, and the APK builds, installs and
+      # runs on device (#1550).
+      #
+      # What remains is narrower, and is a HOST constraint rather than a
+      # failure:
+      #
+      #   - arm64 only. `llama-cpp-sys-2`'s build script panics on
+      #     `armv7-linux-androideabi`, so `scripts/build-mind.sh` pins
+      #     `--target-platform=android-arm64`. Mind is an arm64 product.
+      #   - Cross-compiling `whisper-rs-sys` from a macOS host still fails to
+      #     link (`could not find native static library ggml-blas`) because its
+      #     build script evaluates `cfg!(macos)` on the HOST. A Linux runner
+      #     builds it fine.
+      #
+      # So this could be promoted to `scripts/build-mind.sh` on a Linux runner.
+      # It is not, because compiling whisper.cpp and llama.cpp for the NDK adds
+      # tens of minutes to every PR, and GitHub Actions minutes are a costed
+      # shared resource. The device path is covered by the release workflow.
       - name: Compile the Mind entrypoint
         run: |
           cd app

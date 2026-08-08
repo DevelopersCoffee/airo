@@ -1,4 +1,5 @@
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_mind/feature_mind.dart';
 
 /// Resolves the active product mood from the canonical route.
 ///
@@ -11,7 +12,11 @@ AiroDomain airoDomainForLocation(String location) {
   if (path.startsWith('/money') || path.startsWith('/vault')) {
     return AiroDomain.money;
   }
-  if (path.startsWith('/assistant') || path.startsWith('/agent')) {
+  // The hub root plus both legacy roots: a redirect resolves the location,
+  // but this runs on whatever path the caller still holds.
+  if (path.startsWith(AssistantRouteNames.assistant) ||
+      path.startsWith('/assistant') ||
+      path.startsWith('/agent')) {
     return AiroDomain.mind;
   }
   if (path.startsWith('/music') || path.startsWith('/beats')) {

@@ -14,6 +14,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   media_kit_libs_windows_video
   pdfx
   permission_handler_windows
+  record_windows
   screen_brightness_windows
   share_plus
   sqlite3_flutter_libs
@@ -21,6 +22,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  feature_mind
   flutter_local_notifications_windows
   jni
   media_kit_native_event_loop

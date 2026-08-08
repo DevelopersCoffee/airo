@@ -1,5 +1,5 @@
 import 'package:core_product_shell/core_product_shell.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -47,10 +47,7 @@ class AppRouter {
     // bundle: it owns two mount points (the Mind branch and a top-level
     // destination), and the module names them so the router does not have to
     // re-derive the split from route paths.
-    final assistant = _requiredModule<AssistantModule>(
-      moduleRegistry,
-      'assistant',
-    );
+    final assistant = _requiredModule<MindModule>(moduleRegistry, 'mind');
 
     return GoRouter(
       initialLocation: initialLocation,
@@ -78,19 +75,18 @@ class AppRouter {
       routes: [
         // Redirect root to finance dashboard.
         GoRoute(path: '/', redirect: (context, state) => '/money'),
-        GoRoute(path: '/agent', redirect: (context, state) => '/assistant'),
-        GoRoute(
-          path: '/agent/notifications',
-          redirect: (context, state) => '/assistant/notifications',
-        ),
-        GoRoute(
-          path: '/agent/profile',
-          redirect: (context, state) => '/assistant/profile',
-        ),
-        GoRoute(
-          path: '/agent/models',
-          redirect: (context, state) => '/assistant/models',
-        ),
+        // Legacy hub roots. The hub lives at `/mind` from Phase 3 of the SSOT
+        // plan; `/agent` and `/assistant` are both previous homes and both
+        // still appear in shipped deep links and in notifications sitting in
+        // the OS.
+        //
+        // A PREFIX rewrite, not a route per destination. The `/agent` block
+        // this replaces enumerated four children while the hub has eleven, so
+        // `/agent/prompt-lab`, `/agent/audio-scribe`, `/agent/skills` and the
+        // rest fell through to a 404. Enumerating is how that drifted, and it
+        // would drift again the next time a destination is added.
+        ..._legacyHubRedirects('/agent'),
+        ..._legacyHubRedirects('/assistant'),
         // Assistant destinations that are reached from the Mind hub but are
         // not part of it (Wellbeing), so they render full-screen instead of
         // inside the bottom nav.
@@ -329,4 +325,29 @@ class AppRouter {
     }
     return routes;
   }
+}
+
+/// Rewrites a legacy hub prefix onto the current hub root, preserving whatever
+/// follows it.
+///
+/// Two routes rather than one: GoRouter matches `/agent` and `/agent/...` as
+/// separate patterns, so the bare root needs its own entry. The wildcard keeps
+/// the remainder verbatim -- including query strings, which callers use for
+/// notification payload ids.
+List<GoRoute> _legacyHubRedirects(String legacyRoot) {
+  return <GoRoute>[
+    GoRoute(
+      path: legacyRoot,
+      redirect: (context, state) => AssistantRouteNames.assistant,
+    ),
+    GoRoute(
+      path: '$legacyRoot/:rest(.*)',
+      redirect: (context, state) {
+        final rest = state.pathParameters['rest'] ?? '';
+        final query = state.uri.query;
+        final suffix = query.isEmpty ? '' : '?$query';
+        return '${AssistantRouteNames.assistant}/$rest$suffix';
+      },
+    ),
+  ];
 }

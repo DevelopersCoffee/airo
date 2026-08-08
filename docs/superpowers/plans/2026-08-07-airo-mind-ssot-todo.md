@@ -155,37 +155,82 @@ piecewise (file+hash correctness) but not as one continuous walk. Offline
 first-run no longer works, as intended — confirm that trade is still accepted
 before Phase 4 repeats it for the super app.
 
-## Phase 2 — merge feature_assistant into feature_mind
+## Phase 2 — merge feature_assistant into feature_mind ✅ DONE
 
-- [ ] **2.1** Council: agree the merged package's owner (AI/Brain Agent vs
-      Product Manager). Blocks the rest of the phase.
-- [ ] **2.2** `git mv` the four trees (`assistant`, `agent_chat`, `wellbeing`,
-      `quotes`) into `packages/feature_mind/lib/src/`; same for `test/`
-- [ ] **2.3** Merge `AssistantModule` + `MindScribeModule` into one `MindModule`
-      exporting the combined route table
-- [ ] **2.4** Widen `packages/feature_mind/module.yaml` `allowed_dependencies`
-      to `core_ai`, `core_ui`, `core_product_shell`, `core_domain`, `core_data`;
-      keep `forbidden_dependencies: [app]`
-- [ ] **2.5** Update both shells to register `MindModule`
-- [ ] **2.6** Delete `packages/feature_assistant/`
-- [ ] **2.7** `cd packages/feature_mind && flutter test`;
-      `assistant_route_parity_test.dart` passes unchanged
-- [ ] **2.8** Module-manifest gate passes
-- [ ] **2.9** PR + merge
+- [x] **2.1** Owner: **Product Manager** (feature_mind's existing owner,
+      user-confirmed) — the merged package is mostly product-surface
+      (chat, wellbeing, prompt lab, journeys) with a scribe engine on top.
+- [x] **2.2** `git mv`'d `assistant`, `agent_chat`, `wellbeing`, `quotes`, plus
+      `host`, `routing`, `services`, and the one non-colliding file in
+      `widgets/` — feature_assistant's actual top-level tree was wider than
+      the plan's four names. Same for `test/`. No path collisions with
+      feature_mind's own `lib/src/widgets` or `test/support`.
+- [x] **2.3** `AssistantModule` + `MindScribeModule` merged into one
+      `MindModule` (`packages/feature_mind/lib/src/mind_module.dart`, was
+      `assistant_module.dart`). `createService` is now a constructor param
+      exactly like `hostAdapterBuilder` — null means this shell instance
+      carries the hub only (mobile today); non-null adds the `/` scribe route
+      (`scribeRoutesFor`) and the module's `initialize()`/`dispose()` own the
+      service lifecycle. `id` changed `'assistant'` → `'mind'`.
+- [x] **2.4** `module.yaml` widened to `core_ai`, `core_ui`,
+      `core_product_shell`, `core_domain`, `core_data`;
+      `forbidden_dependencies: [app]` unchanged. Owner, capabilities,
+      ship_policy, and reviewers merged in from feature_assistant's manifest.
+- [x] **2.5** `app/lib/main.dart` and `app/lib/main_mind.dart` both register
+      `MindModule` now. The Mind shell composes `createService` inline
+      (`() => MindService(modelProvider: buildMindModelProvider())`), so
+      `app/lib/core/mind/mind_scribe_module.dart` — now dead — was deleted.
+      `app/lib/core/routing/app_router.dart` looks up module id `'mind'`.
+- [x] **2.6** `packages/feature_assistant/` deleted.
+- [x] **2.7** `feature_mind`'s suite: 345/345 passing (one real failure
+      found and fixed: `wellbeing_screen_test.dart`'s third action card was
+      genuinely below the fold at the default 800×600 test surface — a
+      pre-existing fragility the merge's added `uses-material-design: true`
+      and content shift exposed, not a merge-introduced behavior change).
+      `assistant_route_parity_test.dart` passes with names unchanged (only
+      the "no assistant module" error-message assertion updated, since the
+      id it greps for is now `mind`).
+- [x] **2.8** Module-manifest gate (`module_contract_test.dart`) passes.
+- [x] **2.9** *(this commit; PR to open next)*
 
-**Checkpoint 2** — council sign-off on the owner, and explicit written
-confirmation that the assistant leaving web/TV is understood as removing shipped
-functionality from two surfaces.
+**Scope pull-forward, user-confirmed**: merging means `AssistantModule` only
+exists inside `feature_mind` now, so `app/pubspec.yaml` (the phone flavour)
+needed `feature_mind` added in this phase, not Phase 4 as originally planned —
+the phone build now cross-compiles the whisper.cpp/llama.cpp engines a full
+phase early. Phase 4 is now just "mount the scribe route on the phone shell",
+not "add the package".
 
-## Phase 3 — claim /mind
+**A second real bug, found by `flutter build web --release` failing** (not in
+this phase's original verify list, but required by `CLAUDE.md`'s "run before
+landing anything touching a native path" rule): `main.dart` is the same
+entrypoint web and phone share — no `--target` split in CI — so the moment it
+imports `MindModule`, dart2js compiles all of `feature_mind`, including
+`library_loader.dart`'s `ExternalLibrary.open` (native FFI, unsupported on
+web). Fixed the same way `CLAUDE.md`'s "Web has no `dart:ffi`" gotcha
+prescribes: `library_loader.dart` now picks `library_loader_stub.dart` (returns
+null, `RustLib.init` throws, `MindService.initialize()` surfaces
+`MindUnavailable.bridgeMissing` — matching that enum case's own doc comment)
+or `library_loader_io.dart` (the real resolver) via conditional import. Web
+keeps the assistant hub exactly as it rendered before this merge; no nav
+restructuring. **Not done**: actually removing Mind from web/TV nav is real
+work (separate entrypoint or router changes to tolerate a missing tab),
+deferred — the R05 "Mind is private-devices only" acceptance covers what
+should eventually happen, not what happens today.
 
-- [ ] **3.1** Move `/assistant/*` paths to `/mind/*`, keeping every route
+**Checkpoint 2** — owner confirmed (Product Manager). The "assistant leaving
+web/TV" consequence was accepted by the user earlier in this plan, but is not
+yet *implemented* — web still ships the hub today (see above). Flag before
+Phase 3/4 close it out for real.
+
+## Phase 3 — claim /mind  (3.1-3.4 done; 3.5 tests deferred)
+
+- [x] **3.1** Move `/assistant/*` paths to `/mind/*`, keeping every route
       **name** unchanged (names are what notifications and deep links resolve)
-- [ ] **3.2** Redirect old `/assistant/*` paths
-- [ ] **3.3** Invert the legacy mapping in
+- [x] **3.2** Redirect old `/assistant/*` paths
+- [x] **3.3** Invert the legacy mapping in
       `notification_navigation_service.dart:91` (`/mind` → `/assistant` becomes
       the reverse)
-- [ ] **3.4** Retire `app/test/core/routing/mind_name_is_free_test.dart` — the
+- [x] **3.4** Retire `app/test/core/routing/mind_name_is_free_test.dart` — the
       reservation has been claimed by its intended owner
 - [ ] **3.5** Tests: route parity, redirect coverage, and a notification payload
       carrying an old path

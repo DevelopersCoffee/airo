@@ -1,5 +1,5 @@
 import 'package:core_app_shell/core_app_shell.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
 import 'package:feature_coins_core/src/entities/account.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';

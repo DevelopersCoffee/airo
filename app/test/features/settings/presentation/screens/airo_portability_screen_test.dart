@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:airo_app/core/portability/airo_backup_service.dart';
 import 'package:airo_app/features/settings/presentation/screens/airo_portability_screen.dart';
-import 'package:feature_assistant/feature_assistant.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

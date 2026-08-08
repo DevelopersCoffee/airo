@@ -10,9 +10,9 @@ void main() {
     final registry = buildMainModuleRegistry();
 
     expect(registry.shell, ShellId.mobile);
-    expect(registry.moduleIds, ['coin_vault', 'assistant', 'iptv']);
+    expect(registry.moduleIds, ['coin_vault', 'mind', 'iptv']);
     expect(registry.isRegistered('coin_vault'), isTrue);
-    expect(registry.isRegistered('assistant'), isTrue);
+    expect(registry.isRegistered('mind'), isTrue);
     expect(registry.isRegistered('iptv'), isTrue);
   });
 

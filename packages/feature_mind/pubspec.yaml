@@ -26,12 +26,36 @@ dependencies:
   # source can change without touching MindService. See module.yaml.
   core_ai:
     path: ../core_ai
+  # Below: brought in from feature_assistant on the Phase 2 merge
+  # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md) -- the assistant
+  # hub (chat, models, prompt lab, wellbeing) is now this package.
+  flutter_riverpod: ^3.3.2
+  go_router: ^17.1.0
+  core_ui:
+    path: ../core_ui
+  core_product_shell:
+    path: ../core_product_shell
+  core_domain:
+    path: ../core_domain
+  core_data:
+    path: ../core_data
+  shared_preferences: ^2.5.5
+  image_picker: ^1.2.1
+  dio: ^5.10.0
+  equatable: ^2.1.0
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  llama_flutter_android: ^0.2.6
 
 # An FFI plugin. Declaring the platforms is what makes the Flutter tool run
 # cargokit's podspec/gradle/cmake hooks during a normal build -- without this
 # block the Rust is never compiled, which is precisely the state core_native
 # has been in.
 flutter:
+  # The assistant hub (merged in from feature_assistant, Phase 2 of
+  # docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md) uses Material
+  # icons throughout; core_ui, one of its dependencies, assumes this is set.
+  uses-material-design: true
   # No bundled `assets/models/` any more. Neither app ships model weights in
   # the APK -- both default to `DownloadModelProvider`
   # (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).
@@ -64,3 +88,4 @@ dev_dependencies:
   # mind_service_test.dart fakes path_provider's platform channel directly.
   path_provider_platform_interface: ^2.1.2
   plugin_platform_interface: ^2.1.8
+  shared_preferences_platform_interface: ^2.4.1
