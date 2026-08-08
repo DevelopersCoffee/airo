@@ -5,15 +5,18 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
 import 'models/model_provider.dart';
+import 'models/pinned_models.dart';
 import 'whisper/api/setup.dart' as rust;
 
 /// Puts the bundled models on disk. `ADR-0018 §2`, the **Bundled** strategy.
 ///
-/// One [ModelProvider] implementation among several
-/// (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`), not
-/// the only path any more: both apps default to `DownloadModelProvider`
-/// instead, so neither ships model weights in the APK. This stays for a build
-/// that intentionally bundles, and for tests that need no network.
+/// One [ModelProvider] implementation among several, and no longer the only
+/// path: the standalone Airo Mind shell composes `DownloadModelProvider`
+/// instead (`app/lib/core/mind/mind_model_sources.dart`), so it ships no model
+/// weights in the APK. This stays for a build that intentionally bundles, for
+/// tests that need no network, and as `MindService`'s own default — a service
+/// constructed without a provider still copies from assets, which is the
+/// behaviour it always had.
 ///
 /// # This replaced the development fallback
 ///
@@ -21,7 +24,7 @@ import 'whisper/api/setup.dart' as rust;
 /// `rust/.../models/` directory when nothing was installed. That made a
 /// developer machine work and a device fail, which is the worst arrangement:
 /// the failure only appears where it cannot be debugged.
-class ModelInstaller implements ModelProvider {
+class ModelInstaller with PinnedModelFiles implements ModelProvider {
   const ModelInstaller();
 
   /// Assets are addressed through the package, so the app that hosts Airo Mind
@@ -29,28 +32,12 @@ class ModelInstaller implements ModelProvider {
   static const String assetPrefix = 'packages/feature_mind/assets/models/';
 
   @override
-  Future<List<RequiredModel>> requiredModels() async => [
-    for (final required in await rust.requiredModels())
-      RequiredModel(
-        fileName: required.fileName,
-        sizeBytes: required.sizeBytes.toInt(),
-        sha256: required.sha256,
-      ),
-  ];
+  Future<List<RequiredModel>> requiredModels() => pinnedRequiredModels();
 
-  /// True when every required model is on disk at its pinned size.
-  ///
-  /// Size, not digest: hashing half a gigabyte on every launch costs about a
-  /// second. Full verification is [verify], run after an install.
+  /// The assets are already inside the app. Copying them costs no network, so
+  /// `MindService` may run this acquisition without asking first.
   @override
-  Future<bool> isInstalled(Directory modelsDir) async {
-    for (final required in await requiredModels()) {
-      final file = File(p.join(modelsDir.path, required.fileName));
-      if (!file.existsSync()) return false;
-      if (file.lengthSync() != required.sizeBytes) return false;
-    }
-    return true;
-  }
+  bool get acquiresWithoutNetwork => true;
 
   /// [ModelProvider.acquire]. Runs [install] and translates its
   /// copy-by-copy progress and its failed-file-name result into

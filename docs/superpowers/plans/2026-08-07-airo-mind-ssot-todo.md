@@ -79,12 +79,16 @@ confirming the abstraction layer doesn't break the shell that already exists.
 - [x] **1B.1** Baseline: standalone Mind release APK was 620 MB (bundled
       models) before this session; 707 MB debug / to-be-measured release after
       (see note below — this run only produced debug builds).
-- [x] **1B.2** `app/lib/core/mind/mind_model_source.dart` — new file, builds
+- [x] **1B.2** `app/lib/core/mind/mind_model_sources.dart` — new file, builds
       `DownloadModelProvider` wired to the real HuggingFace URLs
       `fetch_mind_models.sh` already used, keyed by the pinned file names.
-      `MindScribeModule._defaultService` wires it into `MindService`. The super
+      `MindScribeModule` wires it into `MindService` through
+      `buildMindDownloadService`, which also stages downloads in application
+      support and hands the `ModelDownloadService` back for disposal. The super
       app has no `MindScribeModule` registration yet (Phase 4), so only the
-      standalone shell is cut over in this phase.
+      standalone shell is cut over in this phase. (Merged with #1554, which
+      landed the same cut-over in parallel as `mind_model_sources.dart`; that
+      file is the one that survives.)
 - [x] **1B.3** `_Loading` widget in `mind_home_screen.dart` — file name +
       `LinearProgressIndicator` + percentage during the download, falling back
       to a bare spinner once nothing is downloading. `MindService.onInstallProgress`

@@ -36,9 +36,13 @@ class NotificationNavigationService {
   }
 }
 
+/// [fallbackRoute] defaults to the hub's notifications index — read off
+/// [AssistantRouteNames], not written out: Phase 3 moved the hub's root and a
+/// literal here would have kept sending every payload this function cannot
+/// parse to a path no shell mounts.
 String? routeFromNotificationPayload(
   String? payload, {
-  String fallbackRoute = '/assistant/notifications',
+  String fallbackRoute = AssistantRouteNames.notifications,
 }) {
   if (payload == null || payload.trim().isEmpty) {
     return null;

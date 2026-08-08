@@ -9,7 +9,17 @@ import '../models/offline_model_info.dart';
 import '../intelligent_model_manager/model_install_receipt.dart';
 
 /// Root used for model artifacts.
-enum ModelStorageLocation { applicationDocuments, applicationExternal }
+enum ModelStorageLocation {
+  applicationDocuments,
+
+  /// Application support: private, not user-visible, and not backed up to
+  /// iCloud. For artifacts that are machinery rather than the user's files —
+  /// on iOS the documents directory is browsable in Files and syncs, which a
+  /// half-gigabyte model has no business doing.
+  applicationSupport,
+
+  applicationExternal,
+}
 
 /// Manages storage, SHA-256 integrity check, and space validation.
 class ModelStorageManager {
@@ -40,11 +50,16 @@ class ModelStorageManager {
   }
 
   Future<Directory> _storageRootDirectory() async {
-    if (location == ModelStorageLocation.applicationExternal) {
-      final external = await getExternalStorageDirectory();
-      if (external != null) return external;
+    switch (location) {
+      case ModelStorageLocation.applicationExternal:
+        final external = await getExternalStorageDirectory();
+        if (external != null) return external;
+        return getApplicationDocumentsDirectory();
+      case ModelStorageLocation.applicationSupport:
+        return getApplicationSupportDirectory();
+      case ModelStorageLocation.applicationDocuments:
+        return getApplicationDocumentsDirectory();
     }
-    return getApplicationDocumentsDirectory();
   }
 
   Future<List<Directory>> _candidateModelDirectories() async {

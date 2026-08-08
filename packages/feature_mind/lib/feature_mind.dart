@@ -90,6 +90,10 @@ export 'src/models/model_provider.dart'
         ModelAcquisitionProgress,
         ModelProvider,
         RequiredModel;
+// The pinned registry itself, for a shell that needs the same list a provider
+// needs — the Mind shell's model explorer reports install state per pinned
+// file (#1556) without going through a provider to get it.
+export 'src/models/pinned_models.dart' show pinnedRequiredModels;
 
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';

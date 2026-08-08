@@ -852,6 +852,119 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
+  testWidgets(
+    'scribe-tagged models show status only and leave other rows untouched',
+    (tester) async {
+      tester.view.physicalSize = const Size(1400, 2200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const scribeInfo = OfflineModelInfo(
+        id: 'mind-scribe-whisper-tiny-en',
+        name: 'Whisper Tiny (English)',
+        family: ModelFamily.other,
+        fileSizeBytes: 77691713,
+        // Installed according to the registry, which is the only source that
+        // looks in the scribe's own directory.
+        filePath: '/support/airo_mind/ggml-tiny.en.bin',
+        description: 'Powers the Airo Mind Scribe.',
+        tags: [mindScribeModelTag],
+      );
+      const chatInfo = OfflineModelInfo(
+        id: 'installed',
+        name: 'Installed Model',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        filePath: '/models/installed.gguf',
+        description: 'Ready locally.',
+      );
+      final registry = ModelRegistry(
+        loadMemoryInfo: () async =>
+            MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096),
+      )..registerModels([scribeInfo, chatInfo]);
+      const snapshot = ModelManagerSnapshot(
+        models: [
+          // The manager reports the scribe entry as not downloaded: it asks
+          // its own storage manager, which never looks where the scribe
+          // installs. The card must read install state from the registry.
+          ModelEntry(
+            id: 'mind-scribe-whisper-tiny-en',
+            name: 'Whisper Tiny (English)',
+            version: 'Unversioned',
+            description: 'Powers the Airo Mind Scribe.',
+            sizeBytes: 77691713,
+            updateState: ModelUpdateState.notInstalled,
+          ),
+          ModelEntry(
+            id: 'installed',
+            name: 'Installed Model',
+            version: 'Unversioned',
+            description: 'Ready locally.',
+            sizeBytes: 1024,
+            isDownloaded: true,
+            updateState: ModelUpdateState.unknown,
+          ),
+        ],
+        downloadQueue: [],
+        storageUsedBytes: 1024,
+      );
+      final downloads = _MockDownloadService();
+      final manager = _MockManager();
+      when(
+        () => downloads.globalProgressStream,
+      ).thenAnswer((_) => const Stream<ModelDownloadProgress>.empty());
+      when(
+        () =>
+            downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
+      ).thenAnswer((_) async => []);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            modelRegistryProvider.overrideWithValue(registry),
+            modelDownloadServiceProvider.overrideWithValue(downloads),
+            intelligentModelManagerProvider.overrideWithValue(manager),
+            intelligentModelManagerSnapshotProvider.overrideWith(
+              (ref) async => snapshot,
+            ),
+            activeDownloadsProvider.overrideWith(
+              (ref) => ActiveDownloadsNotifier(ref)..state = const {},
+            ),
+          ],
+          child: const MaterialApp(home: IntelligentModelManagerScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The scribe row reports real install state and hands the user back to
+      // the Scribe rather than offering chat-runtime verbs.
+      expect(find.text('Managed by Scribe'), findsOneWidget);
+      expect(find.text('Status: installed'), findsOneWidget);
+      expect(find.text('Required storage: 74.1 MB'), findsOneWidget);
+      expect(
+        find.textContaining('Manage it from the Scribe screen.'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('Scribe model status for Whisper Tiny')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Download Model (74.1 MB)'),
+        findsNothing,
+        reason: 'the scribe acquires its own weights',
+      );
+
+      // The untagged row keeps every control it had.
+      expect(find.text('Warm now'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Benchmark'), findsOneWidget);
+      expect(find.text('Activate'), findsOneWidget);
+      expect(find.byTooltip('Delete Model'), findsOneWidget);
+      expect(find.text('Download Manager'), findsOneWidget);
+    },
+  );
+
   testWidgets('benchmark reports failed runtime status', (tester) async {
     tester.view.physicalSize = const Size(1200, 1500);
     tester.view.devicePixelRatio = 1;
