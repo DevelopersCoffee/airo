@@ -80,6 +80,57 @@ if grep -qE '(^|[^_[:alnum:]])MindModule\(' "$web_entrypoint"; then
   fi
 fi
 
+if grep -q 'package:feature_mind/' "$web_entrypoint"; then
+  failed=true
+  echo "R05 violation: $web_entrypoint imports package:feature_mind, so a web" >&2
+  echo "build reaches the real module straight from the entrypoint." >&2
+fi
+
+# The entrypoint delegates registration to a `dart.library` seam, so the check
+# above now passes by the module simply not being named there. That is the
+# intended shape -- and on its own it would rot into the same "reported OK
+# having checked nothing" failure the app/web grep had, because the file the
+# WEB compile actually picks would go unexamined. So follow the seam.
+#
+# Two halves, and this gate cares about exactly one of them: the default
+# (web/wasm) variant. The `if (dart.library.io)` variant is the private-device
+# build and is *supposed* to name MindModule.
+web_registration="app/lib/core/mind/register_mind_module_web.dart"
+
+# Positive control #1: the entrypoint must still route through the seam. A
+# `registerMindModule(` call that was deleted, renamed, or replaced by an
+# inline registration in some other file leaves this gate inspecting a file
+# nothing imports.
+if ! grep -q 'register_mind_module_web.dart' "$web_entrypoint" ||
+   ! grep -q 'registerMindModule(' "$web_entrypoint"; then
+  echo "FATAL: $web_entrypoint no longer registers Mind through the" >&2
+  echo "$web_registration seam, so this gate would be checking a file the" >&2
+  echo "web build does not use. Passing silently would be worse than" >&2
+  echo "failing." >&2
+  exit 127
+fi
+
+# Positive control #2: prove the search can read the seam's web half before
+# trusting it to find nothing there.
+if ! grep -q 'void registerMindModule(' "$web_registration" 2>/dev/null; then
+  echo "FATAL: could not find registerMindModule in $web_registration, so" >&2
+  echo "this gate cannot tell what a web build links. Passing silently would" >&2
+  echo "be worse than failing." >&2
+  exit 127
+fi
+
+if grep -q 'package:feature_mind/' "$web_registration"; then
+  failed=true
+  echo "R05 violation: $web_registration imports package:feature_mind, so a" >&2
+  echo "web build links the real module through the registration seam." >&2
+fi
+
+if grep -qE '(^|[^_[:alnum:]])MindModule\(' "$web_registration"; then
+  failed=true
+  echo "R05 violation: $web_registration constructs MindModule, so a web" >&2
+  echo "build composes Mind into a shared surface." >&2
+fi
+
 if [[ "$failed" == true ]]; then
   cat >&2 <<'EOF'
 
