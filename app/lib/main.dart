@@ -10,8 +10,13 @@ import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
-import 'core/mind/mind_registration.dart'
-    if (dart.library.html) 'core/mind/mind_registration_stub.dart';
+// Stub-by-default: dart.library.html is false under dart2wasm, so keying the
+// stub off html would link the real Mind module into a wasm web build — an
+// R05 violation the gate cannot see (the compiler resolves this condition).
+// Keying the REAL module off dart.library.io makes every non-native target
+// fall back to the stub.
+import 'core/mind/mind_registration_stub.dart'
+    if (dart.library.io) 'core/mind/mind_registration.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
