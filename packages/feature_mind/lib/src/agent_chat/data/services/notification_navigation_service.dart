@@ -38,7 +38,7 @@ class NotificationNavigationService {
 
 String? routeFromNotificationPayload(
   String? payload, {
-  String fallbackRoute = '/assistant/notifications',
+  String fallbackRoute = AssistantRouteNames.notifications,
 }) {
   if (payload == null || payload.trim().isEmpty) {
     return null;

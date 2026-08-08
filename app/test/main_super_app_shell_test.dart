@@ -24,7 +24,7 @@ void main() {
 
     expect(paths, [
       'vault',
-      '/assistant',
+      '/mind',
       '/wellbeing',
       '/iptv',
       '/iptv/player',
