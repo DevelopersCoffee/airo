@@ -9,7 +9,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// [loadPackageInfo] defaults to the real platform channel but is
 /// overridable so widget tests don't depend on it.
 class AppInfoTile extends StatefulWidget {
-  const AppInfoTile({super.key, this.loadPackageInfo = PackageInfo.fromPlatform});
+  const AppInfoTile({
+    super.key,
+    this.loadPackageInfo = PackageInfo.fromPlatform,
+  });
 
   final Future<PackageInfo> Function() loadPackageInfo;
 
