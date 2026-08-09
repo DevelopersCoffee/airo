@@ -241,6 +241,11 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     // global notification action instead of owning duplicate local chrome.
     '/money/dashboard',
     AssistantRouteNames.assistant,
+    '${AssistantRouteNames.assistant}/chat',
+    '${AssistantRouteNames.assistant}/models',
+    // Legacy `/assistant` aliases redirect to `${AssistantRouteNames.assistant}`
+    // (`/mind`) before this provider ever sees them, but keep the literal
+    // legacy paths too in case a caller passes a pre-redirect location.
     '/assistant/chat',
     '/assistant/models',
     '/games',
@@ -252,6 +257,10 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
 
   const routeOwnedPrefixes = [
     '/money/',
+    // Canonical SSOT path (post `/assistant` → `/mind` migration) plus the
+    // legacy alias, so nested Mind routes (profile, notifications, models,
+    // ...) reliably get route-owned chrome under either spelling.
+    '${AssistantRouteNames.assistant}/',
     '/assistant/',
     '/music',
     '/iptv',
