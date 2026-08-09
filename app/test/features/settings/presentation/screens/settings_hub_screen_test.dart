@@ -1,6 +1,7 @@
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/settings/presentation/screens/settings_hub_screen.dart';
 import 'package:core_data/core_data.dart';
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
@@ -71,6 +72,34 @@ void main() {
     expect(find.text('Playlist Source'), findsOneWidget);
     expect(find.text('EPG Guide Source'), findsOneWidget);
     expect(find.text('Picture-in-picture'), findsNothing);
+    expect(find.text('More Airo Apps'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
+    expect(find.text('Airo Coins'), findsOneWidget);
+    expect(find.text('Airo Mind'), findsOneWidget);
+    expect(find.text('Airo'), findsNothing);
+  });
+
+  testWidgets('a non-default shellId excludes itself, not mobile', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          iptvChannelsProvider.overrideWith((ref) async => channels),
+        ],
+        child: const MaterialApp(home: SettingsHubScreen(shellId: ShellId.tv)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Airo'), findsOneWidget);
+    expect(find.text('Airo TV'), findsNothing);
   });
 
   testWidgets('country settings picker updates the global country filter', (
