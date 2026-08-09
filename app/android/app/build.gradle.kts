@@ -238,6 +238,19 @@ android {
                     else "src/withoutLitertlm/kotlin",
                 )
             }
+            // Same shape as the LiteRT-LM split above: AiroStreamingSurfaceViewFactory
+            // exists under both names with an identical public API, so
+            // MainActivity's reference always resolves regardless of variant.
+            // Only src/tv/kotlin imports androidx.media3.* -- that dependency is
+            // isTvVariant-gated above, so a non-tv build must never compile a
+            // file that references it. Coins has its own CoinsActivity and never
+            // registers this factory, so it's excluded like the LiteRT-LM split.
+            if (!isCoinsVariant) {
+                kotlin.srcDir(
+                    if (isTvVariant) "src/tv/kotlin"
+                    else "src/streaming_engine_stub/kotlin",
+                )
+            }
         }
     }
 
@@ -330,6 +343,18 @@ dependencies {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
         implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    }
+
+    // Receiver-side zero-copy streaming engine (SPEC.md AD-1/AD-5, Phase 2
+    // Wave A). TV-only: minSdk 23 is well under this project's minSdk 26, so
+    // no compatibility gate is needed beyond the variant check itself. See
+    // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full
+    // dependency proposal (versions, size, license) this was confirmed against.
+    if (isTvVariant) {
+        implementation("androidx.media3:media3-exoplayer:1.11.0")
+        implementation("androidx.media3:media3-common:1.11.0")
+        implementation("androidx.media3:media3-datasource:1.11.0")
+        implementation("androidx.media3:media3-exoplayer-hls:1.11.0")
     }
 
 }
