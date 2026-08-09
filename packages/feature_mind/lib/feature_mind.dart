@@ -107,6 +107,15 @@ export 'src/models/model_provider.dart'
 // file (#1556) without going through a provider to get it.
 export 'src/models/pinned_models.dart' show pinnedRequiredModels;
 
+// Model download manager (#1457): progress in bytes, mobile-data pause,
+// storage budget — built on `ModelPort` rather than on `ModelProvider`
+// above, which is the older bundled/download acquisition path.
+export 'src/models/byte_format.dart';
+export 'src/models/model_download_connectivity.dart';
+export 'src/models/model_download_coordinator.dart';
+export 'src/models/model_download_state.dart';
+export 'src/models/model_management_panel.dart';
+
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';
 export 'src/runtime/models/context_models.dart';
