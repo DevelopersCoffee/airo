@@ -38,30 +38,75 @@ void main() {
     expect(paths, contains(AssistantRouteNames.assistant));
   });
 
-  test(
-    'mind shell mounts the legacy /agent aliases the package still emits',
-    () {
-      // The package's tool registry and route connector still answer with the
-      // pre-extraction `/agent*` paths, so the shell owns the same aliases the
-      // super app's router owns. The targets are read off
-      // [AssistantRouteNames] rather than spelled out: the hub's root moved
-      // once already (Phase 3 claimed `/mind`) and a literal here would have
-      // pinned the shell to the old one.
-      expect(mindLegacyRedirects['/agent'], AssistantRouteNames.assistant);
-      expect(
-        mindLegacyRedirects['/agent/profile'],
-        AssistantRouteNames.profile,
-      );
-      expect(mindLegacyRedirects['/agent/models'], AssistantRouteNames.models);
-      expect(
-        mindLegacyRedirects['/agent/notifications'],
-        AssistantRouteNames.notifications,
-      );
-
-      final paths = buildMindRoutes(
+  testWidgets(
+    'mind shell rewrites every legacy /agent and /assistant destination',
+    (tester) async {
+      // The assistant package's tool registry and route connector still answer
+      // with the pre-extraction `/agent*` paths, and `/assistant*` was the
+      // hub's home before Phase 3 claimed `/mind` — both must keep resolving,
+      // including the seven children an earlier, four-entry version of this
+      // redirect table let fall through to a 404.
+      //
+      // Calls each matching route's own `redirect` closure directly rather
+      // than driving live navigation: `/mind` and its children render real
+      // screens that need providers this test's bare `MaterialApp.router`
+      // does not set up, and none of that is what this test is checking.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      final context = tester.element(find.byType(SizedBox));
+      final router = buildMindRouter();
+      addTearDown(router.dispose);
+      final routes = buildMindRoutes(
         buildMindModuleRegistry(),
-      ).whereType<GoRoute>().map((route) => route.path).toSet();
-      expect(paths, containsAll(mindLegacyRedirects.keys));
+      ).whereType<GoRoute>().toList();
+
+      const cases = <String, String>{
+        '/agent': '/mind',
+        '/agent/notifications': '/mind/notifications',
+        '/agent/profile': '/mind/profile',
+        '/agent/models': '/mind/models',
+        '/agent/skills': '/mind/skills',
+        '/agent/prompt-lab': '/mind/prompt-lab',
+        '/assistant': '/mind',
+        '/assistant/chat': '/mind/chat',
+        '/assistant/audio-scribe': '/mind/audio-scribe',
+      };
+
+      for (final entry in cases.entries) {
+        final segments = entry.key
+            .split('/')
+            .where((s) => s.isNotEmpty)
+            .toList();
+        final route = routes.firstWhere((r) {
+          final routeSegments = r.path
+              .split('/')
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (routeSegments.length != segments.length) return false;
+          for (var i = 0; i < routeSegments.length; i++) {
+            if (!routeSegments[i].startsWith(':') &&
+                routeSegments[i] != segments[i]) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        final rest = segments.length > 1 ? segments.skip(1).join('/') : '';
+        final state = GoRouterState(
+          router.configuration,
+          uri: Uri.parse(entry.key),
+          matchedLocation: entry.key,
+          fullPath: route.path,
+          pathParameters: rest.isEmpty ? const {} : {'rest': rest},
+          pageKey: const ValueKey('test'),
+        );
+
+        expect(
+          await route.redirect!(context, state),
+          entry.value,
+          reason: '${entry.key} must redirect to ${entry.value}',
+        );
+      }
     },
   );
 

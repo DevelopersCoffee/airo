@@ -57,4 +57,45 @@ void main() {
       expect(webModels.every((m) => m.supportsWebRuntime), isTrue);
     });
   });
+
+  group('EmbeddingGemma catalog entry', () {
+    test('declares only the embeddings capability', () {
+      final model = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-300m-embed',
+      );
+
+      expect(model.capabilities, [ModelCapability.embeddings]);
+      expect(model.fileSizeBytes, 187695104);
+      expect(model.downloadUrl, endsWith('.tflite'));
+    });
+
+    test('TaskModelRouter resolves AiTask.embeddings to the embed entry, '
+        'never the tokenizer', () {
+      const router = TaskModelRouter();
+
+      final resolved = router.resolve(
+        AiTask.embeddings,
+        ModelCatalog.bundledModels,
+      );
+
+      expect(resolved?.id, 'embeddinggemma-300m-embed');
+    });
+
+    test('the tokenizer entry is not routable via any AiTask', () {
+      final tokenizer = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-300m-tokenizer',
+      );
+
+      expect(tokenizer.capabilities, isEmpty);
+      for (final task in AiTask.values.where((t) => t.isCatalogResolvable)) {
+        const router = TaskModelRouter();
+        final resolved = router.resolve(task, [tokenizer]);
+        expect(
+          resolved,
+          isNull,
+          reason: 'the tokenizer must never answer for $task',
+        );
+      }
+    });
+  });
 }

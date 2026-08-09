@@ -226,7 +226,7 @@ web/TV" consequence was accepted by the user earlier in this plan, but is not
 yet *implemented* — web still ships the hub today (see above). Flag before
 Phase 3/4 close it out for real.
 
-## Phase 3 — claim /mind  (3.1-3.4 done; 3.5 tests deferred)
+## Phase 3 — claim /mind ✅ DONE
 
 - [x] **3.1** Move `/assistant/*` paths to `/mind/*`, keeping every route
       **name** unchanged (names are what notifications and deep links resolve)
@@ -236,9 +236,33 @@ Phase 3/4 close it out for real.
       the reverse)
 - [x] **3.4** Retire `app/test/core/routing/mind_name_is_free_test.dart` — the
       reservation has been claimed by its intended owner
-- [ ] **3.5** Tests: route parity, redirect coverage, and a notification payload
-      carrying an old path
-- [ ] **3.6** PR + merge
+- [x] **3.5** Route parity (`assistant_route_parity_test.dart`), redirect
+      coverage for every `/assistant/*` and `/agent/*` destination including
+      the seven that fell through the original four-entry `/agent` map,
+      and notification-payload migration coverage
+      (`notification_navigation_service_test.dart`).
+- [x] **3.6** *(this commit; PR to open)*
+
+**Two real bugs found while writing the deferred tests, both in the original
+Phase 3 commit**:
+
+1. `_legacyHubRedirects`'s wildcard rewrite was correct, but `main_mind.dart`
+   (the standalone shell) still used the old four-entry `mindLegacyRedirects`
+   map — the exact latent bug Phase 3's own commit found and fixed in
+   `app_router.dart`, unfixed in its sibling. Replaced with the same
+   prefix-rewrite helper, `_legacyHubRedirects`, covering both `/agent` and
+   `/assistant` roots.
+2. `routeFromNotificationPayload`'s `fallbackRoute` default parameter was
+   still the literal `'/assistant/notifications'` — a fifth stale literal the
+   commit's own "four literals that should not have been literals" pass
+   missed. Now `AssistantRouteNames.notifications`.
+
+Testing the redirects required going around `AppRouter`'s top-level
+`redirect:` callback (it awaits `AuthService.instance.initialize()` before any
+per-route redirect gets a look, which would make an unauthenticated test
+assert about login state, not the rewrite) — both route-parity test files call
+the matching `GoRoute.redirect` closures directly with a constructed
+`GoRouterState`, which is what the router itself would have called.
 
 ## Phase 4 — the super app carries Mind
 
@@ -507,7 +531,15 @@ every super-app build.
 
 ## Carried over, not part of this plan
 
-- [ ] Journey coverage spec
-      (`docs/superpowers/specs/2026-08-06-airo-mind-journey-coverage.md`) — T3/T4/T5
-      restore the tests deleted in #1549. Still an open regression.
+- [x] Journey coverage spec — composition half
+      (`docs/superpowers/specs/2026-08-06-airo-mind-journey-coverage.md`,
+      T3–T8): implemented and verified on `main` as of 2026-08-09
+      (`packages/feature_mind/test/mind_service_test.dart`, 7/7 passing).
+      This entry was stale — the tests already existed when it was last
+      checked; re-verified by running them rather than assumed.
+- [ ] Journey coverage spec — device journey half: still not done.
+      `app/integration_test/mind_journey_device_test.dart` does not exist.
+      Needs a real device with the ~570 MB models installed to write *and*
+      run against — not attempted here, same discipline as not guessing at
+      an unverifiable native contract elsewhere in this plan.
 - [ ] iOS (#1546 phase 4) — has never built; needs dynamic frameworks.

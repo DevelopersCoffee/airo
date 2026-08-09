@@ -238,6 +238,20 @@ android {
                     else "src/withoutLitertlm/kotlin",
                 )
             }
+            // Same mechanism as LiteRT-LM above, a separate flag and a
+            // separate plugin (embeddings/semantic search -- see
+            // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
+            // Excluded from the Coins variant for the same reason LiteRT-LM
+            // is: Coins is a stripped-down flavor with no Mind surface to
+            // search.
+            val embeddingAvailable =
+                rootProject.extra.get("embeddingAvailable") as Boolean
+            if (!isCoinsVariant) {
+                kotlin.srcDir(
+                    if (embeddingAvailable) "src/withEmbedding/kotlin"
+                    else "src/withoutEmbedding/kotlin",
+                )
+            }
         }
     }
 
@@ -320,6 +334,18 @@ dependencies {
     // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
     if (!isCoinsVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.15.0")
+    }
+
+    // AI Edge RAG SDK, for on-device text embeddings (semantic search --
+    // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md). A
+    // separate dependency from LiteRT-LM above: different Gradle coordinate,
+    // different native API (GeckoEmbeddingModel/Embedder<String>, not
+    // Engine/Conversation). Pinned explicitly, same reasoning as LiteRT-LM's
+    // pin above — see this file's LiteRT-LM comment for the incident that
+    // pin exists to prevent.
+    if (!isCoinsVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
+        implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
+        implementation("com.google.mediapipe:tasks-genai:0.10.22")
     }
 
     if (!isCoinsVariant) {
