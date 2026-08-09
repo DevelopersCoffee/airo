@@ -13,36 +13,53 @@ other `ModelCatalog` entry.
 Likely 2-3 PRs: Phase 1 (new native plugin + dependency) first, its own
 checkpoint before Phase 2+3.
 
-## Phase 1 — embedding generation (core_ai + new native plugin)
+## Phase 1 — embedding generation (core_ai + new native plugin) ✅ MOSTLY DONE
 
-- [ ] **1.1** Add EmbeddingGemma
+- [x] **1.1** Add EmbeddingGemma
       (`embeddinggemma-300M_seq256_mixed-precision.tflite`, ~179 MB, generic
       variant, from `litert-community/embeddinggemma-300m`) + its
       `sentencepiece.model` tokenizer to `ModelCatalog`, tagged
-      `ModelCapability.embeddings` only. Re-verify URLs/sizes against the
-      live HuggingFace repo at implementation time.
-- [ ] **1.2** Verify `TaskModelRouter().resolve(AiTask.embeddings, ...)`
-      finds it (test).
-- [ ] **1.3** Add Gradle deps
+      `ModelCapability.embeddings` only. Landed separately: PR #1573.
+- [x] **1.2** Verified `TaskModelRouter().resolve(AiTask.embeddings, ...)`
+      finds it, and never returns the tokenizer entry (PR #1573).
+- [x] **1.3** Gradle deps added
       (`com.google.ai.edge.localagents:localagents-rag:0.1.0`,
       `com.google.mediapipe:tasks-genai:0.10.22`) to
-      `app/android/app/build.gradle.kts`.
-- [ ] **1.4** Confirm `GeckoEmbeddingModel`'s actual embed-call method
-      against the real AAR (public docs had no direct code sample) before
-      finalizing the plugin contract.
-- [ ] **1.5** `EmbeddingClient` Dart interface + `MethodChannel`
-      implementation in `core_ai`.
-- [ ] **1.6** New `EmbeddingPlugin.kt` wrapping `GeckoEmbeddingModel`.
-      Decide flavor source-set split (mirror `withLitertlm`/
-      `withoutLitertlm`, or something lighter) — understand *why* the
-      existing split exists before assuming it transfers.
+      `app/android/app/build.gradle.kts`, gated behind a new
+      `embeddingAvailable` flag (`AIRO_USE_EMBEDDING_STUB` env var) mirroring
+      `liteRtLmAvailable`'s existing mechanism exactly — same reasoning,
+      separate flag so toggling one dependency never silently toggles the
+      other.
+- [ ] **1.4** `GeckoEmbeddingModel`'s embed-call method — **not confirmed
+      against the real AAR**. No source/javadoc access in this session; the
+      public integration guide showed only the constructor, not a call
+      site. Implemented as `computeEmbeddings(text).get()`, inferred from
+      the AI Edge RAG SDK's `Embedder<String>`/`ListenableFuture` convention
+      and clearly flagged in the plugin's own doc comment as the one thing
+      needing verification before this ships. Isolated to a single call
+      site — if wrong, only that line changes.
+- [x] **1.5** `EmbeddingClient` Dart interface + `MethodChannelEmbeddingClient`
+      in `core_ai`, mirroring `LiteRtLmClient`'s shape (timeout,
+      `PlatformException`/`MissingPluginException` handling). 6 tests.
+- [x] **1.6** New `EmbeddingPlugin.kt`, two flavor variants
+      (`withEmbedding`/`withoutEmbedding`), mirroring `withLitertlm`/
+      `withoutLitertlm` exactly — confirmed the existing split's real reason
+      first (a CI/stub-build toggle for a public-Maven dependency, per
+      `app/android/build.gradle.kts`'s own comment) before replicating the
+      mechanism, rather than assuming it transfers.
 
-**Checkpoint — human review required.** This phase adds a real new
-third-party native dependency. Re-confirm it's still wanted once its actual
-diff/size is known, not just at spec-approval time.
+**Checkpoint — human review required, and 1.4 is still open.** This phase
+adds a real new third-party native dependency and one unverified native API
+call. Do not proceed to Phase 2 assuming 1.4's contract shape is final —
+confirm it first (Android Studio decompiled sources, the SDK's own javadoc,
+or a real device build attempt).
 
-- [ ] `flutter test` green in `core_ai`.
-- [ ] New plugin compiles in its wired flavor(s).
+- [x] `flutter test` green in `core_ai` (326/326, all packages, zero
+      regressions).
+- [ ] New plugin compiles in its wired flavor(s) — **not verified**, no
+      `gradlew` wrapper present in this checkout (Flutter-generated, absent
+      until a `flutter pub get`/build runs in `app/`). Needs a real build
+      environment.
 - [ ] 1.4's finding (real method signature) confirmed before Phase 2 assumes
       a contract shape.
 
