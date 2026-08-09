@@ -13,35 +13,45 @@ other `ModelCatalog` entry.
 Likely 2-3 PRs: Phase 1 (new native plugin + dependency) first, its own
 checkpoint before Phase 2+3.
 
-## Phase 1 — embedding generation (core_ai + new native plugin)
+## Phase 1 — embedding generation (core_ai + new native plugin) ✅ DONE, VERIFIED
 
-**Status: implementation-complete, environment-unverified.** Not "done."
-The Dart-provable half (interface, tests, Gradle/flavor wiring by
-inspection) is solid; the native half (does the AAR actually expose
-`computeEmbeddings`, does the Kotlin even compile) is unproven, and a
-plausible implementation is not evidence of a valid boundary. PR #1573
-holds here until it has a real Android build result:
+**Status: done — real Android build, real device.** The gate held: Phase 2
+did not start until this cleared for real, and clearing it for real changed
+the code (the guessed method name was wrong).
 
 ```text
 Phase 1
 ├── Dart interface              PASS
 ├── Tests                       PASS — 326/326
 ├── Gradle/flavor wiring        PASS by inspection
-├── Native AAR API              UNVERIFIED
-└── Kotlin compilation          UNVERIFIED
+├── Native AAR API              CONFIRMED — javap on the real AAR
+└── Kotlin compilation          CONFIRMED — compileDebugKotlin succeeds
                  │
                  ▼
-        #1573 Android build
-        │              │
-      GREEN            RED
-        │              │
-  proceed Phase 2   fix native contract, no Phase 2 yet
+        Pixel 9 build (USB, 2026-08-09)
+                 │
+               GREEN
+                 │
+          Phase 2 unblocked
 ```
 
-**Phase 2 stays unopened until the native contract is confirmed green.**
-Building `EmbeddingService`/`MeetingEmbeddingStore` on top of an unverified
-native call means any AAR-API mismatch becomes downstream rework across
-more files, not a one-line fix.
+What the real build found: `computeEmbeddings(text)` does not exist on
+`GeckoEmbeddingModel` — `compileDebugKotlin` failed with "Unresolved
+reference." Extracted the real AAR from `~/.gradle`'s module cache
+(`javap` on the decompiled `classes.jar`) and found the actual API:
+`getEmbeddings(EmbeddingRequest<String>) -> ListenableFuture<ImmutableList<Float>>`,
+built via `EmbeddingRequest.create(listOf(EmbedData.create(text, taskType)))`.
+Fixed, rebuilt clean, installed on a physical Pixel 9
+(`io.airo.app.mind`), launched, stayed alive, zero embedding-related
+logcat errors.
+
+**One real design note surfaced, not decided here**: the SDK's `TaskType`
+enum offers `RETRIEVAL_QUERY`/`RETRIEVAL_DOCUMENT` for asymmetric
+query-vs-document embedding, which would improve search quality over the
+single `SEMANTIC_SIMILARITY` this plugin currently always uses. `embed(text)`
+doesn't yet distinguish a query from a document. Whoever builds
+`SemanticSearchRanker` (Task 5, Phase 3) should decide whether that
+distinction is worth threading through — flagged, not implemented.
 
 - [x] **1.1** Add EmbeddingGemma
       (`embeddinggemma-300M_seq256_mixed-precision.tflite`, ~179 MB, generic
@@ -58,14 +68,10 @@ more files, not a one-line fix.
       `liteRtLmAvailable`'s existing mechanism exactly — same reasoning,
       separate flag so toggling one dependency never silently toggles the
       other.
-- [ ] **1.4** `GeckoEmbeddingModel`'s embed-call method — **not confirmed
-      against the real AAR**. No source/javadoc access in this session; the
-      public integration guide showed only the constructor, not a call
-      site. Implemented as `computeEmbeddings(text).get()`, inferred from
-      the AI Edge RAG SDK's `Embedder<String>`/`ListenableFuture` convention
-      and clearly flagged in the plugin's own doc comment as the one thing
-      needing verification before this ships. Isolated to a single call
-      site — if wrong, only that line changes.
+- [x] **1.4** `GeckoEmbeddingModel`'s embed-call method — **confirmed
+      against the real AAR** via `javap`. Was wrong as guessed
+      (`computeEmbeddings`); real call is `getEmbeddings(EmbeddingRequest<String>)`.
+      Fixed, rebuilt, verified on a physical Pixel 9.
 - [x] **1.5** `EmbeddingClient` Dart interface + `MethodChannelEmbeddingClient`
       in `core_ai`, mirroring `LiteRtLmClient`'s shape (timeout,
       `PlatformException`/`MissingPluginException` handling). 6 tests.
@@ -76,23 +82,22 @@ more files, not a one-line fix.
       `app/android/build.gradle.kts`'s own comment) before replicating the
       mechanism, rather than assuming it transfers.
 
-**Checkpoint — HOLDING here.** User-confirmed: do not open Phase 2 until
-#1573 has a real Android/Kotlin build result, not just Dart-side green.
+**Checkpoint — CLEARED.** Gate held through one real red/green cycle before
+opening: build failed on the guessed API, fix was made against verified
+evidence (not a second guess), rebuild succeeded.
 
 - [x] `flutter test` green in `core_ai` (326/326, all packages, zero
       regressions).
-- [ ] New plugin compiles in its wired flavor(s) — **not verified**, no
-      `gradlew` wrapper present in this checkout (Flutter-generated, absent
-      until a `flutter pub get`/build runs in `app/`). Needs a real build
-      environment.
-- [ ] 1.4's finding (real method signature) confirmed before Phase 2 assumes
-      a contract shape.
+- [x] New plugin compiles: `AIRO_MIND_BUILD_MODE=debug scripts/build-mind.sh`
+      succeeds end to end (`app-debug.apk`, 192 MB).
+- [x] 1.4's finding (real method signature) confirmed via `javap` on the
+      actual AAR, not guessed a second time.
+- [x] Installed and launched on a physical Pixel 9 (USB) — stable, zero
+      embedding-related logcat errors. (Plugin isn't called by anything yet —
+      this confirms registration/load, not the embed call itself; that needs
+      Phase 2/3's real caller.)
 
-**Next action is external to this session**: run #1573 through a real
-Android build (CI, or a local machine with the Android SDK + this repo's
-`app/` set up). Feed the result back — green unblocks Phase 2 as planned;
-red means fixing `EmbeddingPlugin.kt`'s native call is the very next task,
-still inside Phase 1, before anything else touches this feature.
+**Phase 2 is now unblocked.**
 
 ## Phase 2 — embedding service + storage
 
