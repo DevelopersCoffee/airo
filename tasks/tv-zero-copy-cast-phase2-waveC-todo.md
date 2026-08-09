@@ -21,11 +21,34 @@ Plan: `tasks/tv-zero-copy-cast-phase2-waveC-plan.md` · Spec: `SPEC.md`
   `AiroStreamingEngineChannel`. 20/20 JVM tests green (tv variant), 20/20
   Dart tests green, all 3 Gradle variants compile clean.
 - **Tier:** implement + chief-performance-officer review (hot-path Kotlin)
-- **Verification:** JVM tests (done) + device verification for real
-  splice/probe behavior (extends #1574, not filed as a separate issue yet
-  — do so once frame-accurate splicing lands, filing now would be
-  premature given switchSource is still v1)
+- **Verification:** JVM tests (done) + **device-verified on Pixel 9
+  (f42667c2)**: video plays, `shadowFetch` measures real throughput
+  (1107.6 kbps). Two real bugs found and fixed in the process — see below.
 - **Dependencies:** Wave B (confirmed on this branch)
+
+### Device verification pass (f42667c2) — 2 real bugs found and fixed
+Neither was catchable by unit tests or Gradle compile:
+1. **ExoPlayer init-order NullPointerException** — `Player.Listener`
+   referenced the outer `player` property before it finished being
+   assigned (ExoPlayer's `addListener()` can fire a synchronous initial
+   callback mid-construction). Fixed by tracking phase state as local
+   fields instead. Verified: `onRenderedFirstFrame` → `onPlaybackStateChanged:
+   READY` logged, video renders, played stably 17+ seconds.
+2. **shadowFetch `NetworkOnMainThreadException`** — the method-channel
+   handler called the blocking OkHttp probe synchronously from the main
+   thread (`preWarm` already backgrounded correctly; `shadowFetch` hadn't).
+   First appeared as a misleading `SSLHandshakeException` (TLS never got a
+   chance to run before the thread violation). Fixed by backgrounding the
+   call and posting `MethodChannel.Result` back via
+   `Handler(Looper.getMainLooper())`. Verified: real measured throughput.
+
+Also fixed a pre-existing flaky JVM test found during re-verification
+(`AiroResolverCacheTest` — asserted on the losing race resolver's call
+count with no synchronization guarantee it had run yet).
+
+GH issue #1574 updated with full evidence.
+**Not yet exercised:** `preWarm`/`switchSource` interactive taps (UI
+coordinate miss, not a code issue), Fire TV Stick (only Pixel 9 tested).
 
 ## Task 1-follow-up (not yet scheduled): Frame-accurate splice-on-keyframe
 Real PAT/PMT + IDR boundary detection for TS (F4.4.5), next-segment
