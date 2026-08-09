@@ -2,7 +2,7 @@
 
 Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.md](../SPEC.md)
 
-- [ ] Task: Create `SiblingApp` model + static registry in `core_product_shell`
+- [x] Task: Create `SiblingApp` model + static registry in `core_product_shell`
   - Acceptance: `SiblingApp` class with `id (ShellId)`, `name`, `pitch`,
     `iconAsset`, `deepLinkScheme` (nullable), `androidStoreUrl`,
     `iosStoreUrl`, `isPublishedAndroid`, `isPublishedIos`. Static
@@ -15,7 +15,9 @@ Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.
     `sibling_app_registry.dart`, `core_product_shell.dart` (barrel export),
     `test/sibling_apps/sibling_app_registry_test.dart`
 
-- [ ] Task: Copy + wire shared sibling-app icon assets
+- [x] Task: Copy + wire shared sibling-app icon assets (shipped as one
+      shared placeholder mark — no per-flavor icons exist yet, see spec
+      resolved decision 2)
   - Acceptance: 4 icon PNGs (one per app) present under
     `packages/core_product_shell/assets/sibling_icons/`, declared in that
     package's `pubspec.yaml` assets section, resolvable from
@@ -25,7 +27,7 @@ Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.
   - Files: `packages/core_product_shell/assets/sibling_icons/*.png`,
     `packages/core_product_shell/pubspec.yaml`
 
-- [ ] Task: Build `AppInfoTile` widget
+- [x] Task: Build `AppInfoTile` widget
   - Acceptance: reads `PackageInfo.fromPlatform()`, renders
     `version (buildNumber)`; tap expands/shows package name. Testable via
     injected `PackageInfo` (don't call the platform channel directly in
@@ -34,7 +36,7 @@ Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.
   - Files: `app/lib/features/settings/presentation/widgets/app_info_tile.dart`,
     `app/test/features/settings/app_info_tile_test.dart`
 
-- [ ] Task: Build `SiblingAppCard` widget
+- [x] Task: Build `SiblingAppCard` widget
   - Acceptance: renders icon + name + pitch; CTA button opens
     `androidStoreUrl`/`iosStoreUrl` (platform-aware) via `url_launcher` when
     published, renders disabled "Coming soon" when not. No deep-link call
@@ -45,7 +47,7 @@ Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.
   - Files: `app/lib/features/settings/presentation/widgets/sibling_app_card.dart`,
     `app/test/features/settings/sibling_app_card_test.dart`
 
-- [ ] Task: Wire into `SettingsHubScreen` (phone/coins/mind)
+- [x] Task: Wire into `SettingsHubScreen` (phone/coins/mind)
   - Acceptance: `AppInfoTile` + "More Airo Apps" section
     (`SiblingAppCard` per entry from `siblingAppsFor(currentShellId)`)
     appended after existing sections, doesn't reorder/break current tiles.
@@ -56,7 +58,7 @@ Plan: [cross-app-promotion-plan.md](cross-app-promotion-plan.md) · Spec: [SPEC.
     given `ShellId`.
   - Files: `app/lib/features/settings/presentation/screens/settings_hub_screen.dart`
 
-- [ ] Task: Wire into `TvSettingsScreen`
+- [x] Task: Wire into `TvSettingsScreen`
   - Acceptance: same two additions, adapted to TV rail/detail layout
     (matches existing D-pad focus/navigation conventions in that file —
     check `android-tv-design` skill guidance before laying out focus order).
