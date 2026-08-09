@@ -27,7 +27,10 @@ GH issue, don't claim it from a passing unit test.
   transport ends up OkHttp-backed
 
 ## Task 3: Connection pool config + custom DataSource.Factory
-- [ ] Not started
+- [x] DONE (16bd6353) — 5/5 new tests green (real loopback sockets, real
+  DNS delegation), 16/16 total under tv variant. Default/coins compile
+  clean, never see OkHttp or the new test file. SSLSocket tuning noted
+  as a documented follow-up (plain-socket TCP_NODELAY/SO_RCVBUF only).
 - **Tier:** implement + chief-performance-officer review
 - **Verification:** JVM tests for config/delegation logic + **device
   issue for real pooling behavior** (don't open a new one, extend #1574
