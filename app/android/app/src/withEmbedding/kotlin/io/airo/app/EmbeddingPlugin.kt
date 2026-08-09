@@ -3,6 +3,8 @@ package io.airo.app
 import android.content.Context
 import android.util.Log
 import androidx.annotation.NonNull
+import com.google.ai.edge.localagents.rag.models.EmbedData
+import com.google.ai.edge.localagents.rag.models.EmbeddingRequest
 import com.google.ai.edge.localagents.rag.models.GeckoEmbeddingModel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -22,17 +24,17 @@ import java.util.Optional
  * and a different SDK entirely
  * (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
  *
- * VERIFICATION NEEDED before this ships: `GeckoEmbeddingModel`'s embed-call
- * method name/signature below (`computeEmbeddings`) is inferred from the AI
- * Edge RAG SDK's `Embedder<String>` interface convention (a
- * `ListenableFuture`-returning async call, per Google's published samples
- * for this SDK family) -- the public Android integration guide did not show
- * a direct code sample for extracting a vector, only the constructor. Check
- * this against the actual `com.google.ai.edge.localagents:localagents-rag`
- * AAR's public API (e.g. via Android Studio's decompiled sources or the
- * SDK's own javadoc) before merging. If the real method differs, only this
- * one call site needs to change -- everything else in this file (channel
- * contract, lifecycle, error handling) does not depend on the exact name.
+ * The `getEmbeddings(EmbeddingRequest<String>)` call below was confirmed
+ * against the real `com.google.ai.edge.localagents:localagents-rag:0.1.0`
+ * AAR (`javap` on its decompiled `classes.jar`, on a Pixel 9 build attempt)
+ * -- the first version of this file guessed `computeEmbeddings(text)`,
+ * which failed `compileDebugKotlin` with "Unresolved reference." `TaskType`
+ * is `SEMANTIC_SIMILARITY` for every call: the SDK also offers
+ * `RETRIEVAL_QUERY`/`RETRIEVAL_DOCUMENT` for asymmetric query-vs-document
+ * encoding, which would improve search quality, but this plugin's
+ * `embed(text)` channel method doesn't yet distinguish a query from a
+ * document -- that's a real refinement for whoever builds
+ * `SemanticSearchRanker` (Phase 3), not invented here.
  */
 class EmbeddingPlugin(private val context: Context) : MethodChannel.MethodCallHandler {
     companion object {
@@ -86,9 +88,10 @@ class EmbeddingPlugin(private val context: Context) : MethodChannel.MethodCallHa
                 val vector = withContext(Dispatchers.IO) {
                     val activeEmbedder = embedder
                         ?: throw IllegalStateException("Embedding model is not initialized")
-                    // See the class doc: this call needs verification against
-                    // the real AAR before shipping.
-                    activeEmbedder.computeEmbeddings(text).get()
+                    val request = EmbeddingRequest.create(
+                        listOf(EmbedData.create(text, EmbedData.TaskType.SEMANTIC_SIMILARITY)),
+                    )
+                    activeEmbedder.getEmbeddings(request).get()
                 }
 
                 result.success(vector.toList())
