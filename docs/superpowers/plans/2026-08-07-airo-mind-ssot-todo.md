@@ -531,7 +531,15 @@ every super-app build.
 
 ## Carried over, not part of this plan
 
-- [ ] Journey coverage spec
-      (`docs/superpowers/specs/2026-08-06-airo-mind-journey-coverage.md`) — T3/T4/T5
-      restore the tests deleted in #1549. Still an open regression.
+- [x] Journey coverage spec — composition half
+      (`docs/superpowers/specs/2026-08-06-airo-mind-journey-coverage.md`,
+      T3–T8): implemented and verified on `main` as of 2026-08-09
+      (`packages/feature_mind/test/mind_service_test.dart`, 7/7 passing).
+      This entry was stale — the tests already existed when it was last
+      checked; re-verified by running them rather than assumed.
+- [ ] Journey coverage spec — device journey half: still not done.
+      `app/integration_test/mind_journey_device_test.dart` does not exist.
+      Needs a real device with the ~570 MB models installed to write *and*
+      run against — not attempted here, same discipline as not guessing at
+      an unverifiable native contract elsewhere in this plan.
 - [ ] iOS (#1546 phase 4) — has never built; needs dynamic frameworks.
