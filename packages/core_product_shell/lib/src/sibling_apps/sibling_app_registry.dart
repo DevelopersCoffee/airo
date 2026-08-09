@@ -1,6 +1,13 @@
 import '../shell_id.dart';
 import 'sibling_app.dart';
 
+/// Shared placeholder icon for every sibling-app card. No per-flavor icon
+/// assets exist yet for Coins/Mind, and TV only has a banner (not an
+/// icon) — cards distinguish apps by name/pitch text until real icons land,
+/// at which point swap each entry's [SiblingApp.iconAsset] individually.
+const _placeholderIconAsset =
+    'packages/core_product_shell/assets/sibling_icons/airo_mark.png';
+
 /// SSOT for cross-app promotion: the four shipped Airo shells, each with
 /// its store links. Every settings screen across every flavor renders its
 /// "More Airo Apps" section from [siblingAppsFor] instead of hardcoding its
@@ -14,7 +21,7 @@ final siblingApps = <SiblingApp>[
     id: ShellId.mobile,
     name: 'Airo',
     pitch: 'AI chat, finance, music, games, and reading in one app.',
-    iconAsset: 'packages/core_product_shell/assets/sibling_icons/airo.png',
+    iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.airo.app'),
     iosStoreUrl: _appStoreUrl('com.airo.app'),
   ),
@@ -22,7 +29,7 @@ final siblingApps = <SiblingApp>[
     id: ShellId.tv,
     name: 'Airo TV',
     pitch: 'Live TV and IPTV built for the big screen.',
-    iconAsset: 'packages/core_product_shell/assets/sibling_icons/airo_tv.png',
+    iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.airo.tv'),
     iosStoreUrl: _appStoreUrl('com.airo.tv'),
   ),
@@ -30,8 +37,7 @@ final siblingApps = <SiblingApp>[
     id: ShellId.coins,
     name: 'Airo Coins',
     pitch: 'Track and manage your personal finances.',
-    iconAsset:
-        'packages/core_product_shell/assets/sibling_icons/airo_coins.png',
+    iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.airo.coins'),
     iosStoreUrl: _appStoreUrl('com.airo.coins'),
   ),
@@ -39,8 +45,7 @@ final siblingApps = <SiblingApp>[
     id: ShellId.mind,
     name: 'Airo Mind',
     pitch: 'A private, local-first AI assistant.',
-    iconAsset:
-        'packages/core_product_shell/assets/sibling_icons/airo_mind.png',
+    iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.airo.mind'),
     iosStoreUrl: _appStoreUrl('com.airo.mind'),
   ),
