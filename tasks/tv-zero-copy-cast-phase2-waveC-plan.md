@@ -71,7 +71,12 @@ since it's being decided now).**
 No code. If rejected, this plan needs a different Task 1 (native-in-pro
 module using the `feature_mind`/`platform_downloads` precedent instead).
 
-### Task 1 (public repo): Shadow-fetch + splice mechanism on AiroStreamingEnginePlugin
+### Task 1 (public repo): Shadow-fetch + splice mechanism on AiroStreamingEnginePlugin — DONE (9c37d0f0)
+`AiroShadowFetch.probe` + `AiroShadowFetchLimiter` fully implemented and
+JVM-tested (real local-server tests). `switchSource` shipped as a v1
+"basic swap" — explicitly NOT the frame-accurate splice-on-keyframe this
+task originally specified; see the new todo file's "Task 1-follow-up"
+entry for the real splice work, scoped separately given its size.
 **Description:** New method-channel commands: `shadowFetch(sourceUrl) ->
 {throughputKbps}` (opens a second connection via the shared
 `OkHttpClient`, measures sustained throughput over the first 512KB per
