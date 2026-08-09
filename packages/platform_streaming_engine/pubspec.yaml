@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_player:
+    path: ../platform_player
 
 dev_dependencies:
   flutter_test:

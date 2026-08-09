@@ -149,7 +149,7 @@ class MainActivity : AudioServiceFragmentActivity() {
         streamingEnginePlugin.register(flutterEngine.dartExecutor.binaryMessenger)
         flutterEngine.platformViewsController.registry.registerViewFactory(
             AiroStreamingSurfaceViewFactory.VIEW_TYPE_ID,
-            AiroStreamingSurfaceViewFactory(),
+            AiroStreamingSurfaceViewFactory(streamingEnginePlugin::notifyPhase),
         )
 
         pictureInPicturePlugin = AiroPictureInPicturePlugin(this)

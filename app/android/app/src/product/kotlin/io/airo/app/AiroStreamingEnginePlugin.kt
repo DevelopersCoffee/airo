@@ -1,25 +1,30 @@
 package io.airo.app
 
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 /**
  * Wraps the receiver-side streaming engine for the
- * com.airo.player/streaming_engine channel (SPEC.md AD-1/AD-5, Phase 2).
+ * com.airo.player/streaming_engine method and event channels (SPEC.md
+ * AD-1/AD-5, Phase 2).
  *
- * `ping` only for now -- proves the channel round-trips before any Media3
- * wiring exists. Registered unconditionally like every other plugin in
- * this file: there is no separate tv Kotlin source set to gate this by
- * (see build.gradle.kts's isTvVariant, which only gates manifest/res and
- * packaging excludes), so an idle handler on phone/Coins builds is the
- * same cost every other plugin here already pays.
+ * `ping` proves the method channel round-trips. [notifyPhase] forwards
+ * native playback-phase transitions to the Dart state stream
+ * (`AiroStreamingEngineState.phaseStream`) -- the real (tv) streaming
+ * surface factory calls this from its Media3 `Player.Listener`; the stub
+ * factory on other variants never does, so the event channel simply never
+ * emits there. Registered unconditionally like every other plugin in this
+ * file, same reasoning as the method channel above.
  */
 class AiroStreamingEnginePlugin {
     companion object {
         const val CHANNEL_NAME = "com.airo.player/streaming_engine"
+        const val STATE_EVENT_CHANNEL_NAME = "com.airo.player/streaming_engine/state"
     }
 
     private var channel: MethodChannel? = null
+    private var stateEventSink: EventChannel.EventSink? = null
 
     fun register(messenger: BinaryMessenger) {
         val channel = MethodChannel(messenger, CHANNEL_NAME)
@@ -30,5 +35,22 @@ class AiroStreamingEnginePlugin {
             }
         }
         this.channel = channel
+
+        EventChannel(messenger, STATE_EVENT_CHANNEL_NAME).setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                    stateEventSink = events
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    stateEventSink = null
+                }
+            },
+        )
+    }
+
+    /** Forwards a native playback phase's stableId (e.g. "playing", "buffering"). */
+    fun notifyPhase(phaseStableId: String) {
+        stateEventSink?.success(phaseStableId)
     }
 }

@@ -4,7 +4,8 @@ reviewers:
   - Chief Architect
   - Chief Performance Officer
   - Platform Architect
-allowed_dependencies: []
+allowed_dependencies:
+  - platform_player
 forbidden_dependencies:
   - app
 quality_gates: {}

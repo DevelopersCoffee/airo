@@ -13,12 +13,13 @@ import io.flutter.plugin.platform.PlatformViewFactory
  * file that imports `androidx.media3.*`).
  *
  * Same shape as `LiteRtLmPlugin`'s available/unavailable split: identical
- * public API (same class name, same [VIEW_TYPE_ID]) so MainActivity's
- * registration call always resolves regardless of variant. The Dart side
- * never requests this view type on phone/Mind/Coins builds, so the plain
- * empty [View] this returns is never actually shown to a user.
+ * public API (same class name, same [VIEW_TYPE_ID], same constructor
+ * signature) so MainActivity's registration call always resolves
+ * regardless of variant. The Dart side never requests this view type on
+ * phone/Mind/Coins builds, so the plain empty [View] this returns is
+ * never actually shown to a user, and [onPhase] is never invoked.
  */
-class AiroStreamingSurfaceViewFactory :
+class AiroStreamingSurfaceViewFactory(@Suppress("UNUSED_PARAMETER") onPhase: (String) -> Unit) :
     PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     companion object {
         const val VIEW_TYPE_ID = "com.airo.player/streaming_surface"
