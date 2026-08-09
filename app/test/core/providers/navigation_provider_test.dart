@@ -166,6 +166,18 @@ void main() {
         appShellHeaderModeForLocation('/assistant/models'),
         AppShellHeaderMode.shell,
       );
+      expect(
+        appShellHeaderModeForLocation('/mind'),
+        AppShellHeaderMode.shell,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/chat'),
+        AppShellHeaderMode.shell,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/models'),
+        AppShellHeaderMode.shell,
+      );
       expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
       expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.shell);
       expect(appShellHeaderModeForLocation('/guide'), AppShellHeaderMode.shell);
@@ -197,6 +209,19 @@ void main() {
       );
       expect(
         appShellHeaderModeForLocation('/assistant/notifications'),
+        AppShellHeaderMode.route,
+      );
+      // Canonical SSOT path (post `/assistant` -> `/mind` migration): the
+      // legacy `/assistant` literal above must not be the only prefix that
+      // routes pushed-nested Mind screens (profile, notifications, ...) to
+      // route-owned chrome, or the shell AppBar/NavigationBar stay stuck on
+      // whatever tab was active before the push.
+      expect(
+        appShellHeaderModeForLocation('/mind/profile'),
+        AppShellHeaderMode.route,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/notifications'),
         AppShellHeaderMode.route,
       );
       // SettingsHubScreen owns its own Scaffold + AppBar (see
