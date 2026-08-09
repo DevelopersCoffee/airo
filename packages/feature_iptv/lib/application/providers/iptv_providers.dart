@@ -23,6 +23,7 @@ import '../../domain/channel_region_availability.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'content_source_providers.dart';
 import 'provider_health_providers.dart';
+import 'channel_library_merger_extension_point.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
@@ -299,7 +300,7 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
     _runtimeChannelsProvider(false).future,
   );
   final personalChannels = await ref.watch(personalChannelsProvider.future);
-  return _mergeChannelLibraries([runtimeChannels, personalChannels]);
+  return mergeChannelLibraries([runtimeChannels, personalChannels]);
 }, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
@@ -381,7 +382,7 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
     final byocChannels = await ref.watch(
       configuredXtreamChannelsProvider.future,
     );
-    final merged = _mergeChannelLibraries([
+    final merged = mergeChannelLibraries([
       primaryChannels,
       configuredM3uChannels,
       byocChannels,
@@ -460,7 +461,7 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
     // screen shows its error state and Retry instead.
     throw PlaylistSourcesUnavailableException(failedSources);
   }
-  return _mergeChannelLibraries([channels]);
+  return mergeChannelLibraries([channels]);
 }
 
 /// Thrown when every configured playlist source failed to load and no cached
@@ -577,60 +578,6 @@ Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
   return channels;
 }
 
-List<IPTVChannel> _mergeChannelLibraries(
-  Iterable<List<IPTVChannel>> libraries,
-) {
-  final channelsById = <String, IPTVChannel>{};
-  final channelIdByStreamUrl = <String, String>{};
-
-  for (final library in libraries) {
-    for (final channel in library) {
-      final existingId = channelsById.containsKey(channel.id)
-          ? channel.id
-          : channelIdByStreamUrl[channel.streamUrl];
-      if (existingId == null) {
-        channelsById[channel.id] = channel;
-        channelIdByStreamUrl[channel.streamUrl] = channel.id;
-        continue;
-      }
-
-      final existing = channelsById[existingId]!;
-      final streamSources = <String, ChannelStreamSource>{
-        for (final source in existing.streamSources) source.url: source,
-        for (final source in channel.streamSources) source.url: source,
-      };
-      for (final url in [
-        existing.streamUrl,
-        ...existing.sources,
-        channel.streamUrl,
-        ...channel.sources,
-      ]) {
-        streamSources.putIfAbsent(url, () => ChannelStreamSource(url: url));
-        channelIdByStreamUrl[url] = existingId;
-      }
-      final orderedSources = streamSources.values.toList()
-        ..sort(compareChannelStreamSources);
-
-      channelsById[existingId] = existing.copyWith(
-        sources: orderedSources.map((source) => source.url).toList(),
-        streamSources: orderedSources,
-        qualityUrls: {
-          ...?existing.qualityUrls,
-          ...?channel.qualityUrls,
-          for (var index = 1; index < orderedSources.length; index++)
-            'source-$index': orderedSources[index].url,
-        },
-        languages: {...existing.languages, ...channel.languages}.toList(),
-        altNames: {...existing.altNames, ...channel.altNames}.toList(),
-        categories: {...existing.categories, ...channel.categories}.toList(),
-        isWorking: existing.isWorking || channel.isWorking,
-      );
-    }
-  }
-
-  return List.unmodifiable(channelsById.values);
-}
-
 /// Refresh channels provider
 final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   ref,
@@ -646,7 +593,7 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
     _runtimeChannelsProvider(forceRefresh).future,
   );
   final personalChannels = await ref.watch(personalChannelsProvider.future);
-  final newChannels = _mergeChannelLibraries([
+  final newChannels = mergeChannelLibraries([
     runtimeChannels,
     personalChannels,
   ]);
