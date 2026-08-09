@@ -103,6 +103,15 @@ jobs:
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
 
+      # Library modules pin their own compileSdk; the app module's value does
+      # not override them. Catch SDK drift before Gradle's AAR metadata check
+      # fails a full-variant build (#1575).
+      - name: Enforce Android SDK baseline across modules
+        run: |
+          chmod +x scripts/check-android-sdk-baseline.sh scripts/test-check-android-sdk-baseline.sh
+          scripts/test-check-android-sdk-baseline.sh
+          scripts/check-android-sdk-baseline.sh
+
       # Scheduled notifications deserialize through Gson, so R8 renaming the
       # plugin's model fields breaks them in release builds only. No test layer
       # can see that, which is why it needs a gate here.

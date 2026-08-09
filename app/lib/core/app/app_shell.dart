@@ -157,7 +157,12 @@ class AppShell extends ConsumerWidget {
     if (directIndex != -1) {
       return directIndex;
     }
-    return layout.persistentTabs.length;
+    // Overflow destination sits right after persistentTabs — only valid when
+    // the layout actually renders one. Wide layout has no overflow slot and
+    // no Home destination, so a tab absent from persistentTabs there has no
+    // representable selection; clamp to the first destination instead of
+    // indexing past the end of NavigationBar's destinations list.
+    return layout.usesOverflow ? layout.persistentTabs.length : 0;
   }
 
   Future<void> _showOverflowDestinations(

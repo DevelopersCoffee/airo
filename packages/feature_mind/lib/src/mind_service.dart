@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:core_ai/core_ai.dart' show EmbeddingService;
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +11,8 @@ import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'model_installer.dart';
 import 'models/model_provider.dart';
+import 'search/meeting_embedding_store.dart';
+import 'search/semantic_search_ranker.dart';
 import 'whisper/api/meetings.dart' as rust;
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
@@ -103,15 +106,30 @@ class MindService {
     ModelProvider? modelProvider,
     MindSpeechBridge? speechBridge,
     MindGenerationBridge? generationBridge,
+    SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
-       _generation = generationBridge ?? RustMindGenerationBridge();
+       _generation = generationBridge ?? RustMindGenerationBridge(),
+       _rankerBuilder =
+           rankerBuilder ??
+           ((dir) => SemanticSearchRanker(
+             embeddingService: EmbeddingService(),
+             embeddingStore: MeetingEmbeddingStore(dir),
+           ));
 
   final AudioRecorder _recorder;
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
+
+  /// Built lazily against [modelsDirectory] rather than in the constructor:
+  /// resolving that directory is async, and every other collaborator here is
+  /// a ready-made instance. [rankerBuilder] is the seam a test substitutes
+  /// to avoid touching `core_ai`'s real `EmbeddingService`/model download
+  /// pipeline (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+  final SemanticSearchRanker Function(Directory modelsDir) _rankerBuilder;
+  SemanticSearchRanker? _ranker;
   String? _recordingPath;
 
   /// Loads the native library and the models.
@@ -381,7 +399,20 @@ class MindService {
 
   Future<List<rust.MeetingRecord>> meetings() => _speech.meetings();
 
-  Future<List<rust.SearchHit>> search(String query) => _speech.search(query);
+  /// Step 7 of the journey, now ranked by keyword **and** meaning
+  /// (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+  /// Signature is unchanged from the keyword-only version this replaced —
+  /// [MindHomeScreen]'s search box needed no changes for this.
+  Future<List<rust.SearchHit>> search(String query) async {
+    final keywordHits = await _speech.search(query);
+    _ranker ??= _rankerBuilder(await modelsDirectory());
+    final allMeetings = await _speech.meetings();
+    return _ranker!.rank(
+      query: query,
+      keywordHits: keywordHits,
+      meetings: allMeetings,
+    );
+  }
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
 

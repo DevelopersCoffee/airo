@@ -355,6 +355,67 @@ class ModelCatalog {
     // and SmolLM2-360M as .litertlm only (no .task file), and does not
     // publish a 1.7B variant at all, as of 2026-07-19. Re-check before
     // adding a web catalog entry for SmolLM2.
+
+    // EmbeddingGemma: the only catalog entry for AiTask.embeddings
+    // (docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
+    // Ships as raw .tflite + a separate sentencepiece.model tokenizer, not
+    // the .litertlm package format every other entry above uses -- it is
+    // loaded through a different native plugin (Google's AI Edge RAG SDK,
+    // GeckoEmbeddingModel), not the LiteRT-LM Engine/Conversation plugin.
+    // `seq256` (not the longer seq512/seq1024/seq2048 variants) because
+    // search queries and meeting-chunk text are short. The generic
+    // (no-chip-suffix) build, not a chip-specific one, for one consistent
+    // download regardless of device silicon.
+    const OfflineModelInfo(
+      id: 'embeddinggemma-300m-embed',
+      name: 'EmbeddingGemma-300M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 187695104, // 179 MB, litert-community/embeddinggemma-300m
+      downloadUrl:
+          'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq256_mixed-precision.tflite',
+      quantization:
+          ModelQuantization.unknown, // mixed-precision, not a flat Q-level
+      parameterCount: 308000000,
+      contextLength: 256,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'On-device text embeddings for semantic search. Needs the paired '
+          "embeddinggemma-300m-tokenizer entry; TaskModelRouter resolves "
+          'AiTask.embeddings to this entry, never the tokenizer.',
+      author: 'Google',
+      license: 'Gemma',
+      huggingFaceId: 'litert-community/embeddinggemma-300m',
+      modalities: [ModelModality.text],
+      capabilities: [ModelCapability.embeddings],
+      tags: ['embeddings', 'semantic-search', 'gecko', 'rag'],
+      minMemoryBytes: 500000000,
+      recommendedMemoryBytes: 700000000,
+    ),
+    // The tokenizer EmbeddingGemma needs alongside the model above.
+    // Deliberately zero capabilities: TaskModelRouter.resolve matches on
+    // ModelCapability, and this must never be handed back as the answer to
+    // AiTask.embeddings -- it cannot produce an embedding by itself.
+    const OfflineModelInfo(
+      id: 'embeddinggemma-300m-tokenizer',
+      name: 'EmbeddingGemma-300M tokenizer',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 4908892, // 4.68 MB, same HuggingFace repo
+      downloadUrl:
+          'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/sentencepiece.model',
+      quantization: ModelQuantization.unknown,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'SentencePiece tokenizer required by embeddinggemma-300m-embed. '
+          'Not independently useful -- not routable via any AiTask.',
+      author: 'Google',
+      license: 'Gemma',
+      huggingFaceId: 'litert-community/embeddinggemma-300m',
+      modalities: [],
+      capabilities: [],
+      tags: ['embeddings', 'tokenizer', 'embeddinggemma-300m-embed'],
+    ),
   ];
 
   /// Gets recommended models for mobile devices (< 3GB).

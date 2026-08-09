@@ -31,10 +31,10 @@
 /// not branch on which shell it is running in. The gap is closed here, at the
 /// shell, in two ways:
 ///
-/// * Paths with a real equivalent are redirected — [mindLegacyRedirects] maps
-///   the pre-extraction `/agent*` aliases (still emitted by the package's tool
-///   registry and route connector) onto `/assistant*`, mirroring the super
-///   app's router.
+/// * Paths with a real equivalent are redirected — [mindLegacyHubRoots] lists
+///   the legacy roots (`/agent`, still emitted by the package's tool registry
+///   and route connector, and `/assistant`, the hub's home before Phase 3),
+///   rewritten onto the current hub root, mirroring the super app's router.
 /// * Everything else degrades to [MindUnavailableScreen] via the router's
 ///   `errorBuilder`: `/games` and `/quest/new` (assistant hub and chat
 ///   screen), `/money*`, `/live/*`, `/offers`, `/reader` (tool registry), and
@@ -135,18 +135,36 @@ ModuleRegistry buildMindModuleRegistry() {
   return ModuleRegistry(shell: ShellId.mind)..register(mind);
 }
 
-/// Pre-extraction assistant paths, mapped onto the paths this shell mounts.
-///
-/// `feature_assistant`'s tool registry, route connector, and chat screen still
-/// answer with `/agent*`; the super app's router carries the same aliases. The
-/// map is public so a test can prove the two shells agree.
+/// Legacy hub roots this shell still needs to answer: `/agent` from the
+/// pre-extraction super app, and `/assistant` from before Phase 3 of the SSOT
+/// plan claimed `/mind`. The super app's router carries the same aliases
+/// (`app/lib/core/routing/app_router.dart`).
 @visibleForTesting
-const Map<String, String> mindLegacyRedirects = <String, String>{
-  '/agent': AssistantRouteNames.assistant,
-  '/agent/notifications': AssistantRouteNames.notifications,
-  '/agent/profile': AssistantRouteNames.profile,
-  '/agent/models': AssistantRouteNames.models,
-};
+const List<String> mindLegacyHubRoots = ['/agent', '/assistant'];
+
+/// Rewrites a legacy hub prefix onto the current hub root, preserving
+/// whatever follows it.
+///
+/// A PREFIX rewrite, not one route per destination. An earlier version of
+/// this enumerated four children (notifications, profile, models, the bare
+/// root) while the hub has eleven, so `/agent/prompt-lab`, `/agent/skills`
+/// and the rest fell through to a 404 — the same latent bug
+/// `app_router.dart`'s equivalent helper was written to fix, mirrored here.
+List<GoRoute> _legacyHubRedirects(String legacyRoot) => <GoRoute>[
+  GoRoute(
+    path: legacyRoot,
+    redirect: (context, state) => AssistantRouteNames.assistant,
+  ),
+  GoRoute(
+    path: '$legacyRoot/:rest(.*)',
+    redirect: (context, state) {
+      final rest = state.pathParameters['rest'] ?? '';
+      final query = state.uri.query;
+      final suffix = query.isEmpty ? '' : '?$query';
+      return '${AssistantRouteNames.assistant}/$rest$suffix';
+    },
+  ),
+];
 
 /// The Mind shell's complete route table: the navigation shell holding the
 /// three destinations, the legacy aliases, and the account screens the host
@@ -185,8 +203,8 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
   }
 
   return <RouteBase>[
-    for (final MapEntry<String, String> alias in mindLegacyRedirects.entries)
-      GoRoute(path: alias.key, redirect: (context, state) => alias.value),
+    for (final legacyRoot in mindLegacyHubRoots)
+      ..._legacyHubRedirects(legacyRoot),
     GoRoute(
       path: RouteNames.login,
       name: 'login',

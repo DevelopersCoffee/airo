@@ -12,6 +12,19 @@ if (!liteRtLmAvailable) {
     logger.warn("AIRO_USE_LITERT_STUB=true — using the LiteRT-LM stub backend.")
 }
 
+// Same mechanism, a different dependency: the AI Edge RAG SDK
+// (embeddings, semantic search -- see
+// docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md). A
+// separate flag rather than reusing liteRtLmAvailable: this is a distinct
+// Gradle dependency and a distinct native plugin, and toggling one must not
+// silently toggle the other.
+val embeddingAvailable: Boolean = System.getenv("AIRO_USE_EMBEDDING_STUB") != "true"
+extra["embeddingAvailable"] = embeddingAvailable
+
+if (!embeddingAvailable) {
+    logger.warn("AIRO_USE_EMBEDDING_STUB=true — using the embedding stub backend.")
+}
+
 allprojects {
     repositories {
         google()

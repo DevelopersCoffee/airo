@@ -32,4 +32,17 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.4.10" apply false
 }
 
+// Repository Android SDK baseline lives at ../../gradle/libs.versions.toml so
+// package modules and CI share one authority (#1575). The path is relative to
+// this settings file (app/android/).
+dependencyResolutionManagement {
+    // Keep existing per-project repositories (Flutter plugins + allprojects).
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    versionCatalogs {
+        create("libs") {
+            from(files("../../gradle/libs.versions.toml"))
+        }
+    }
+}
+
 include(":app")
