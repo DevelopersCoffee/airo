@@ -38,14 +38,23 @@ GH issue, don't claim it from a passing unit test.
 - **Dependencies:** Task 1 (confirmed), Task 2
 
 ## Task 4: Pre-warming hook + wire into SurfaceViewFactory
-- [ ] Not started
+- [x] DONE (eec2b785) — AiroStreamingEngine (real): system resolver +
+  Cloudflare DoH JSON transport + pooled OkHttpClient + DataSource.Factory,
+  wired into ExoPlayer replacing the stock default. preWarm(hosts) shares
+  the same client as playback. Stub mirrors API. Dart preWarm() added,
+  4/4 new tests green, 13/13 total in the package. All 3 Gradle variants
+  compile clean, zero warnings on new code.
 - **Tier:** implement
 - **Verification:** 3-variant Gradle compile + **device re-verification
   that the Wave A test stream still plays through the new DataSource**
 - **Dependencies:** Task 3
 
-## Checkpoint: Wave B complete
-- [ ] Tasks 1–4 done, JVM tests green, all 3 Gradle variants compile
-- [ ] Device-verification GH issue filed/extended
-- [ ] Human review of new dependency + hot-path Kotlin
-- [ ] Only then: plan Wave C (first pro-gated wave)
+## Checkpoint: Wave B — code-complete, device verification outstanding
+- [x] Tasks 1–4 done. JVM tests: 16/16 green under the tv variant
+  (11 from Task 2/pre-existing + 5 from Task 3). Dart: 13/13 green.
+  All 3 Gradle variants (default, tv, coins) compile clean throughout.
+- [ ] Device-verification GH issue extended (#1574) — real DoH/socket
+  behavior and the custom-DataSource playback path still need the
+  physical rig, same as Wave A
+- [ ] Human review of new dependency (OkHttp) + hot-path Kotlin
+- [ ] Only then: plan Wave C (first pro-gated wave — packages_pro/pro_streaming_engine)
