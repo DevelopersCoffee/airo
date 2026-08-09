@@ -1,7 +1,13 @@
 # Airo Mind — restore the journey coverage the split removed
 
 **Date:** 2026-08-06
-**Status:** Draft, pre-implementation
+**Status:** Composition tests (§6, T3–T8) implemented and passing on
+`main` as of 2026-08-09 — verified by running
+`cd packages/feature_mind && flutter test test/mind_service_test.dart`
+(7/7 passing). Acceptance criteria 1, 2, 4 met. **Criterion 3 (the device
+journey test, `app/integration_test/mind_journey_device_test.dart`) is
+still not written** — no such file exists in the repo. This spec is not
+fully closed; only the part that runs in the default CI suite is done.
 **Follows:** #1549 (the split), #1550 (Android device fixes)
 **Closes a regression introduced by:** #1549
 
