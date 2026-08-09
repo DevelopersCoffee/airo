@@ -122,33 +122,54 @@ evidence (not a second guess), rebuild succeeded.
 - [x] `git diff origin/main -- packages/core_ai/lib/src/router` — confirmed
       empty.
 
-## Phase 3 — ranking + integration
+## Phase 3 — ranking + integration ✅ DONE
 
-- [ ] **3.1** `SemanticSearchRanker` — union merge (every keyword hit
-      survives), named similarity threshold constant, graceful keyword-only
-      fallback when no embedding model is installed.
-- [ ] **3.2** Dedicated test: keyword hit with zero semantic similarity
-      still appears in output.
-- [ ] **3.3** Dedicated test: no embedding model installed → keyword-only,
-      no crash.
-- [ ] **3.4** Wire into `MindService.search()` — signature unchanged,
-      `MindHomeScreen` untouched.
+- [x] **3.0** (found while implementing, not planned): `EmbeddingService`
+      (Task 3) didn't expose which model produced a vector —
+      `MeetingEmbeddingStore.put()` needs that for its staleness-detection
+      design. Added `EmbeddingResult.modelId`, 2 new tests in `core_ai`.
+- [x] **3.1** `SemanticSearchRanker` — union merge (every keyword hit
+      survives), named `similarityThreshold` constant (0.6, documented as a
+      starting point, not tuned against real usage yet), graceful
+      keyword-only fallback when no embedding model is installed. Also
+      handles the previously-unaddressed question of *when* a meeting gets
+      an embedding: lazily, on first search after it exists, cached in
+      `MeetingEmbeddingStore` — no save-time indexing step yet (documented
+      as a reasonable v1 tradeoff, not decided as final).
+- [x] **3.2** Dedicated test: keyword hit with zero (in fact negative)
+      semantic similarity still appears in output.
+- [x] **3.3** Dedicated test: no embedding model installed → keyword-only,
+      no crash. Plus: below-threshold semantic match excluded, no duplicate
+      when a meeting is both a keyword and semantic match, embeddings cache
+      across repeated calls (only the query re-embeds), multi-result
+      ranking by descending similarity. 7 tests total.
+- [x] **3.4** Wired into `MindService.search()` — signature unchanged
+      (`Future<List<rust.SearchHit>> search(String query)`), `MindHomeScreen`
+      untouched. Ranker built lazily via an injectable
+      `rankerBuilder(Directory)` (mirrors every other collaborator's
+      "injectable, defaults to production" pattern) since it needs
+      `modelsDirectory()`, which is async — can't build it in the
+      constructor the way the other collaborators are built.
 
 ## Verification (full)
 
 ```bash
-cd packages/core_ai && flutter analyze && flutter test
-cd packages/feature_mind && flutter analyze && flutter test
-cd app && flutter analyze && flutter test
-git diff packages/core_ai/lib/src/router   # must be empty
-cd app/android && ./gradlew :app:compileDebugKotlin   # exact task TBD (1.6)
+cd packages/core_ai && flutter analyze && flutter test         # 332/332
+cd packages/feature_mind && flutter analyze && flutter test    # 379/379
+cd app && flutter analyze                                      # clean
+git diff origin/main -- packages/core_ai/lib/src/router        # empty
 ```
 
 ## Checkpoint: Complete
 
-- [ ] All tasks above checked.
+- [x] All Phase 1-3 tasks checked.
 - [ ] Device walk: download embedding model through normal model-library UI,
       record meeting, search by meaning not exact words, confirm real
       semantic hit. Also confirm keyword-only search still works with the
-      model *not* downloaded.
-- [ ] PR(s) opened, reviewed.
+      model *not* downloaded. **Not done in this session** — no meeting
+      exists yet to search on the connected Pixel 9, and this needs a full
+      record → transcribe → minutes → search walk, not just a build/install
+      check. Flagged rather than skipped silently.
+- [x] PR(s) opened: #1573 (Task 1-2), #1576 (Task 1.4 fix + verification),
+      #1577 (unrelated doc fix), #1578 (Task 3-4), this PR (Task 5-6 + the
+      3.0 addendum).
