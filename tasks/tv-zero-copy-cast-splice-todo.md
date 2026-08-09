@@ -44,7 +44,9 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - **Dependencies:** Task 0, Task 1
 
 ## Checkpoint: HLS splice complete
-- [ ] Device-verified clean, no visible glitch
+- [ ] Device-verified clean, no visible glitch — **deferred by user
+  request 2026-08-09**, Task 1's boundary detection is device-verified
+  but Task 2's actual splice swap is not; picked up again later
 - [ ] Human review + decide whether to proceed to TS now
 
 ## Task 3: Raw MPEG-TS test asset
