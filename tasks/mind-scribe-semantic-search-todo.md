@@ -163,13 +163,29 @@ git diff origin/main -- packages/core_ai/lib/src/router        # empty
 ## Checkpoint: Complete
 
 - [x] All Phase 1-3 tasks checked.
-- [ ] Device walk: download embedding model through normal model-library UI,
-      record meeting, search by meaning not exact words, confirm real
-      semantic hit. Also confirm keyword-only search still works with the
-      model *not* downloaded. **Not done in this session** — no meeting
-      exists yet to search on the connected Pixel 9, and this needs a full
-      record → transcribe → minutes → search walk, not just a build/install
-      check. Flagged rather than skipped silently.
+- [x] Device walk (partial, real, Pixel 9 USB, 2026-08-09): installed
+      `app-debug.apk`, launched `io.airo.app.mind`, recorded a real meeting
+      via the phone mic (audio source: nearby YouTube playback), stopped,
+      transcription ran (Whisper produced `[MUSIC]`/`[BLANK_AUDIO]` tags —
+      no clear speech in that clip, not a bug), minutes were generated
+      (LLM produced generic boilerplate from the near-empty transcript — a
+      real UX gap worth a separate issue, out of #508's scope), saved as
+      "Meeting 3". Searched via `MindService.search()`:
+      - keyword hit: query `"stakeholders"` returned Meeting 3 with the
+        correct matching snippet — confirms the full search path (keyword
+        → `SemanticSearchRanker.rank` → union merge) runs end to end on a
+        real device with zero logcat errors.
+      - no-match query (`"stakeholdersbudget"`, garbled by a mistyped
+        clear-field tap, incidentally still a valid no-hit case): returned
+        "No meeting mentions that." — clean empty state, no crash. This is
+        the "no embedding model installed → graceful keyword-only
+        behavior" acceptance criterion, confirmed for real.
+      **Not done**: a real semantic-only hit (query worded differently from
+      the transcript, model bridges the gap). Blocked on downloading
+      `embeddinggemma-300m-embed` (~179 MB) — there is no model-library UI
+      surface wired up yet to trigger that download; `EmbeddingService`
+      only *consumes* an already-downloaded model, it never downloads one
+      itself (by design). Flagged as a real gap, not silently skipped.
 - [x] PR(s) opened: #1573 (Task 1-2), #1576 (Task 1.4 fix + verification),
       #1577 (unrelated doc fix), #1578 (Task 3-4), this PR (Task 5-6 + the
       3.0 addendum).
