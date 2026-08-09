@@ -8,3 +8,5 @@ library;
 export 'src/app_module.dart';
 export 'src/module_registry.dart';
 export 'src/shell_id.dart';
+export 'src/sibling_apps/sibling_app.dart';
+export 'src/sibling_apps/sibling_app_registry.dart';
