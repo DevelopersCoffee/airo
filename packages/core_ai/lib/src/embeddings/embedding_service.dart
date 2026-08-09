@@ -21,14 +21,22 @@ enum EmbeddingUnavailable {
 /// The result of [EmbeddingService.embed].
 @immutable
 class EmbeddingResult {
-  const EmbeddingResult.ready(List<double> this.vector)
+  const EmbeddingResult.ready(List<double> this.vector, String this.modelId)
     : unavailable = null,
       detail = '';
 
   const EmbeddingResult.unavailable(this.unavailable, this.detail)
-    : vector = null;
+    : vector = null,
+      modelId = null;
 
   final List<double>? vector;
+
+  /// Which catalog entry produced [vector] — null unless [isReady]. Callers
+  /// that persist a vector (e.g. `MeetingEmbeddingStore`) need this to detect
+  /// staleness later (`ADR-0018 §5`'s "record what produced this" pattern);
+  /// `EmbeddingService` is the only thing that knows which model
+  /// `TaskModelRouter` actually resolved for a given call.
+  final String? modelId;
   final EmbeddingUnavailable? unavailable;
   final String detail;
 
@@ -121,7 +129,7 @@ class EmbeddingService {
       }
 
       final vector = await _client.embed(text: text);
-      return EmbeddingResult.ready(vector);
+      return EmbeddingResult.ready(vector, resolved.id);
     } on Object catch (e) {
       return EmbeddingResult.unavailable(
         EmbeddingUnavailable.modelFailed,

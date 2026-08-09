@@ -78,6 +78,25 @@ void main() {
 
       expect(result.isReady, isTrue);
       expect(result.vector, [0.1, 0.2, 0.3]);
+      expect(
+        result.modelId,
+        'embed-model',
+        reason:
+            'callers that persist a vector need to know which model '
+            'produced it',
+      );
+    });
+
+    test('modelId is null when unavailable', () async {
+      final service = EmbeddingService(
+        client: _FakeEmbeddingClient(),
+        downloadService: _FakeModelDownloadService(downloaded: const {}),
+        catalog: [embedModel, tokenizerModel],
+      );
+
+      final result = await service.embed('hello');
+
+      expect(result.modelId, isNull);
     });
 
     test('only initializes the client once across repeated calls', () async {
