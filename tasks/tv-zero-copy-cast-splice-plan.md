@@ -204,10 +204,16 @@ visible interruption) but for TS.
 
 ## Open Questions
 
-- **Splice-1 (resolved):** `https://samples.ffmpeg.org/ts/01c56b0dc1.ts`
-  — ffmpeg's own public sample archive, no auth, H.264 + multi-track
-  audio + DVB subtitle broadcast capture, 10.7s/11MB, HTTP range
-  requests supported, verified via `curl`/`ffprobe` (not guessed).
+- **Splice-1 (resolved, with a correction):**
+  `https://samples.ffmpeg.org/ts/01c56b0dc1.ts` — ffmpeg's own public
+  sample archive, no auth, reachable and decodes cleanly (verified via
+  `curl`/`ffprobe`). Turned out during Task 4 to be MPEG-TS-over-RTP
+  (12-byte RTP header + 7×188-byte TS packets repeating), not raw TS
+  despite the extension/content-type — usable after stripping RTP
+  framing, but its encoder never emits spec-compliant IDR NALs at all.
+  Task 4's actual JVM fixture is a small locally-generated
+  ffmpeg/libx264 sample instead (real encoder, genuinely spec-compliant
+  IDR frames) — see Task 4's todo entry and commit `028949ec`.
 - **Splice-2:** Does this work belong in the public repo (like Wave C
   Task 1's mechanism) or does F8's "shadow failover" gating mean the
   *splice execution itself* should be pro-gated too, not just the

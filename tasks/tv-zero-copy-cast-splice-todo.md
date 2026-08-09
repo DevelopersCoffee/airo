@@ -54,19 +54,34 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
   public sample archive, no auth). Verified via `curl`/`ffprobe`: H.264
   video + 2x AAC + AC-3 audio + DVB subtitle, 10.7s, 11MB, HTTP range
   requests supported (`Accept-Ranges: bytes`), full file decodes
-  cleanly with no errors. Real broadcast-capture TS, not synthetic —
-  matches the plan's own note that real captured samples matter more
-  than synthetic fixtures. Unblocks Task 4 (JVM fixture bytes can be
-  extracted from this file directly, no device needed). **Not yet
-  played through the app's `AiroStreamingEngine` pipeline on-device** —
+  cleanly with no errors. **Correction (found during Task 4):** this
+  file is actually MPEG-TS-over-RTP (12-byte RTP header + 7×188-byte TS
+  packets repeating), not raw TS despite the `.ts` extension and
+  `video/MP2T` content-type — confirmed via byte-alignment analysis.
+  Usable after stripping the RTP framing (PAT/PMT still resolve
+  correctly post-strip, matches ffprobe exactly). Separately, this
+  encoder's output never emits spec-compliant NAL type 5 for keyframes
+  at all (confirmed scanning the full 11MB file) — a genuine real-world
+  encoder quirk, not a parser bug. Task 4's actual JVM fixture ended up
+  being a small locally-generated ffmpeg/libx264 sample instead (real
+  encoder output, genuinely spec-compliant IDR NALs) — see Task 4's
+  entry and commit `028949ec` for the full story. **Not yet played
+  through the app's `AiroStreamingEngine` pipeline on-device** —
   deferred along with Task 1/2's checkpoint device verification, same
   user request.
 - **Tier:** architect/research
 - **Dependencies:** None (parallel-safe with Tasks 0-2)
 
 ## Task 4: PAT/PMT/IDR parser (pure Kotlin, JVM-tested)
-- [ ] Not started — **flagged as likely the hardest task in this plan**,
-  break down further once started if needed
+- [x] Done — commit `028949ec`. `AiroTsPacketParser` +
+  `AiroTsPacketizer` + `AiroTsPsiParser` + `AiroH264IdrDetector` +
+  orchestrating `AiroTsSpliceParser`, all pure Kotlin (product/kotlin,
+  AD-P2B.4). 45/45 JVM tests total (20 new). Two real findings during
+  fixture prep: the Task 3 URL turned out to be RTP-wrapped (corrected
+  in Task 3's entry above), and its encoder never emits spec-compliant
+  IDR NALs — pivoted to a locally-generated libx264 fixture with real,
+  verified IDR frames. All 3 Gradle variants clean. JVM-only per this
+  task's own scope — no device verification needed (that's Task 5).
 - **Tier:** implement
 - **Verification:** JVM tests against TS byte fixtures
 - **Dependencies:** Task 3 (for real fixture data)
