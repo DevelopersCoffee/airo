@@ -13,7 +13,35 @@ other `ModelCatalog` entry.
 Likely 2-3 PRs: Phase 1 (new native plugin + dependency) first, its own
 checkpoint before Phase 2+3.
 
-## Phase 1 — embedding generation (core_ai + new native plugin) ✅ MOSTLY DONE
+## Phase 1 — embedding generation (core_ai + new native plugin)
+
+**Status: implementation-complete, environment-unverified.** Not "done."
+The Dart-provable half (interface, tests, Gradle/flavor wiring by
+inspection) is solid; the native half (does the AAR actually expose
+`computeEmbeddings`, does the Kotlin even compile) is unproven, and a
+plausible implementation is not evidence of a valid boundary. PR #1573
+holds here until it has a real Android build result:
+
+```text
+Phase 1
+├── Dart interface              PASS
+├── Tests                       PASS — 326/326
+├── Gradle/flavor wiring        PASS by inspection
+├── Native AAR API              UNVERIFIED
+└── Kotlin compilation          UNVERIFIED
+                 │
+                 ▼
+        #1573 Android build
+        │              │
+      GREEN            RED
+        │              │
+  proceed Phase 2   fix native contract, no Phase 2 yet
+```
+
+**Phase 2 stays unopened until the native contract is confirmed green.**
+Building `EmbeddingService`/`MeetingEmbeddingStore` on top of an unverified
+native call means any AAR-API mismatch becomes downstream rework across
+more files, not a one-line fix.
 
 - [x] **1.1** Add EmbeddingGemma
       (`embeddinggemma-300M_seq256_mixed-precision.tflite`, ~179 MB, generic
@@ -48,11 +76,8 @@ checkpoint before Phase 2+3.
       `app/android/build.gradle.kts`'s own comment) before replicating the
       mechanism, rather than assuming it transfers.
 
-**Checkpoint — human review required, and 1.4 is still open.** This phase
-adds a real new third-party native dependency and one unverified native API
-call. Do not proceed to Phase 2 assuming 1.4's contract shape is final —
-confirm it first (Android Studio decompiled sources, the SDK's own javadoc,
-or a real device build attempt).
+**Checkpoint — HOLDING here.** User-confirmed: do not open Phase 2 until
+#1573 has a real Android/Kotlin build result, not just Dart-side green.
 
 - [x] `flutter test` green in `core_ai` (326/326, all packages, zero
       regressions).
@@ -62,6 +87,12 @@ or a real device build attempt).
       environment.
 - [ ] 1.4's finding (real method signature) confirmed before Phase 2 assumes
       a contract shape.
+
+**Next action is external to this session**: run #1573 through a real
+Android build (CI, or a local machine with the Android SDK + this repo's
+`app/` set up). Feed the result back — green unblocks Phase 2 as planned;
+red means fixing `EmbeddingPlugin.kt`'s native call is the very next task,
+still inside Phase 1, before anything else touches this feature.
 
 ## Phase 2 — embedding service + storage
 
