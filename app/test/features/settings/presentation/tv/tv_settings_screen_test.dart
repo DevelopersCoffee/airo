@@ -95,4 +95,23 @@ void main() {
     );
     expect(find.byType(TvSourceManagementSection), findsNothing);
   });
+
+  testWidgets(
+    'tapping More Airo Apps shows sibling cards and app info, self excluded',
+    (tester) async {
+      await pumpScreen(tester);
+
+      await tester.tap(find.text('More Airo Apps'));
+      await tester.pump();
+
+      expect(find.text('Airo'), findsOneWidget);
+      expect(find.text('Airo Coins'), findsOneWidget);
+      expect(find.text('Airo Mind'), findsOneWidget);
+      expect(find.text('Airo TV'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('tv_settings_section_theme')),
+        findsNothing,
+      );
+    },
+  );
 }
