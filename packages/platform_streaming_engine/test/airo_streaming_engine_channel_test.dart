@@ -18,6 +18,8 @@ void main() {
           switch (call.method) {
             case 'ping':
               return pingResult;
+            case 'preWarm':
+              return null;
             default:
               return null;
           }
@@ -56,6 +58,41 @@ void main() {
           });
 
       expect(await AiroStreamingEngineChannel.ping(), isFalse);
+    });
+  });
+
+  group('AiroStreamingEngineChannel.preWarm', () {
+    test('forwards the host list to the platform', () async {
+      await AiroStreamingEngineChannel.preWarm(['a.example.com', 'b.example.com']);
+
+      expect(calls.single.method, 'preWarm');
+      expect(calls.single.arguments, {
+        'hosts': ['a.example.com', 'b.example.com'],
+      });
+    });
+
+    test('does not throw when no platform implementation is registered', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw MissingPluginException();
+          });
+
+      await AiroStreamingEngineChannel.preWarm(['example.com']);
+    });
+
+    test('does not throw on an unexpected platform error', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw PlatformException(code: 'boom');
+          });
+
+      await AiroStreamingEngineChannel.preWarm(['example.com']);
+    });
+
+    test('an empty host list is still forwarded (native no-ops on empty)', () async {
+      await AiroStreamingEngineChannel.preWarm([]);
+
+      expect(calls.single.arguments, {'hosts': <String>[]});
     });
   });
 }

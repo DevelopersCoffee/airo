@@ -31,6 +31,10 @@ class AiroStreamingEnginePlugin {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "ping" -> result.success(true)
+                "preWarm" -> {
+                    AiroStreamingEngine.preWarm(call.argument<List<String>>("hosts") ?: emptyList())
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

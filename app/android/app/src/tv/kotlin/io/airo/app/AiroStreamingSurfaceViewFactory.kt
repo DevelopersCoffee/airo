@@ -7,19 +7,23 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 
 /**
- * Wave A proof-of-concept receiver surface (SPEC.md AD-1/AD-5, Phase 2).
+ * Receiver surface (SPEC.md AD-1/AD-5, Phase 2). Started as a Wave A
+ * proof-of-concept with Media3's stock `DataSource`; now plays through
+ * [AiroStreamingEngine]'s custom `DataSource` (Wave B, F4.1/F4.2 --
+ * resolver cache + pooled/tuned connections) while still targeting one
+ * hardcoded public HLS test stream -- Wave C's failover/ranking is what
+ * turns "one hardcoded stream" into "the channel's ranked source list."
  *
- * Hosts a bare [SurfaceView] driven by a stock Media3 [ExoPlayer] playing
- * one hardcoded public HLS test stream -- proves the whole chain (Flutter
- * PlatformView -> Kotlin -> MediaCodec -> Surface) renders a frame before
- * any custom DataSource/DNS/pooling sophistication is built on top (plan's
- * AD-P2.2: risk-first vertical slice). SurfaceView, not TextureView, per
- * F5.5 -- this requires Hybrid Composition, which is Flutter's default for
+ * Hosts a bare [SurfaceView]; Flutter PlatformView -> Kotlin -> MediaCodec
+ * -> Surface is the chain this proves end to end (plan's AD-P2.2:
+ * risk-first vertical slice). SurfaceView, not TextureView, per F5.5 --
+ * this requires Hybrid Composition, which is Flutter's default for
  * `AndroidView` since 3.0, so no special Dart-side opt-in is needed.
  *
  * Registered via [io.flutter.plugin.platform.PlatformViewRegistry] in
@@ -64,7 +68,10 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
                 onPhase("failed")
             }
         }
-        private val player: ExoPlayer = ExoPlayer.Builder(context).build().apply {
+        private val player: ExoPlayer = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(AiroStreamingEngine.dataSourceFactory))
+            .build()
+            .apply {
             setVideoSurfaceView(surfaceView)
             addListener(listener)
             setMediaItem(MediaItem.fromUri(TEST_STREAM_URL))

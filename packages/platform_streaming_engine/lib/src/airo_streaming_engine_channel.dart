@@ -29,4 +29,18 @@ class AiroStreamingEngineChannel {
       return false;
     }
   }
+
+  /// F4.2.2 — open and hold connections to [hosts] while the user browses
+  /// the channel grid, before playback intent exists. Best-effort and
+  /// fire-and-forget from the caller's perspective: never throws on hosts
+  /// without a platform implementation or any other failure.
+  static Future<void> preWarm(List<String> hosts) async {
+    try {
+      await _channel.invokeMethod<void>('preWarm', {'hosts': hosts});
+    } on MissingPluginException {
+      debugPrint('Streaming engine channel is unavailable on this host');
+    } catch (error) {
+      debugPrint('Streaming engine preWarm error: $error');
+    }
+  }
 }
