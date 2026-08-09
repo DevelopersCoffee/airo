@@ -5,6 +5,8 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:go_router/go_router.dart';
 import 'audio_settings_screen.dart';
 import 'theme_settings_screen.dart';
+import '../widgets/app_info_tile.dart';
+import '../widgets/sibling_app_card.dart';
 
 /// Resolves a section descriptor from the shared
 /// [iptvSettingsSections] manifest by [id] — the same manifest
@@ -23,12 +25,23 @@ IptvSettingsSectionDescriptor _section(IptvSettingsSectionId id) =>
 /// this list's layout (single scrollable column vs. TV's rail/detail split)
 /// stays mobile-specific.
 class SettingsHubScreen extends ConsumerWidget {
-  const SettingsHubScreen({super.key, this.onRootBack});
+  const SettingsHubScreen({
+    super.key,
+    this.onRootBack,
+    this.shellId = ShellId.mobile,
+  });
 
   /// Optional fallback used when this screen is the root route of a compact
   /// host app (for example Airo TV on phones) and Android back should return
   /// to the app's primary surface instead of doing nothing.
   final VoidCallback? onRootBack;
+
+  /// The shell hosting this screen — determines which apps the "More Airo
+  /// Apps" section promotes (never the current one). Defaults to
+  /// [ShellId.mobile]; callers hosting this screen inside a different
+  /// binary (for example the TV build's compact-phone layout) must pass
+  /// their own shell explicitly.
+  final ShellId shellId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -168,6 +181,19 @@ class SettingsHubScreen extends ConsumerWidget {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => showXmltvSourceSheet(context),
             ),
+
+            const SizedBox(height: 24),
+
+            Text(
+              'More Airo Apps',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final app in siblingAppsFor(shellId)) SiblingAppCard(app: app),
+
+            const SizedBox(height: 24),
+
+            const AppInfoTile(),
           ],
         ),
       ),
