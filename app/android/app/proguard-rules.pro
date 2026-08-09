@@ -24,6 +24,21 @@
 }
 
 # ============================================
+# AI Edge RAG SDK (on-device embeddings / semantic search)
+# ============================================
+# The SDK's bundled proto classes (EmbedText and friends) reference
+# full-protobuf-only marker types -- com.google.protobuf.Internal$ProtoNonnullApi,
+# com.google.protobuf.ProtoPresenceBits -- that aren't on the classpath: the
+# SDK ships protobuf-lite at runtime and never actually executes the paths
+# that touch these annotation-only classes through the single
+# EmbeddingRequest/EmbedData/GeckoEmbeddingModel call surface this app uses.
+# R8 still fails hard on the reference (its own suggested fix, generated in
+# missing_rules.txt, is exactly this -dontwarn pair) because the AAR's
+# consumer rules keep the whole proto package regardless of reachability.
+-dontwarn com.google.protobuf.Internal$ProtoNonnullApi
+-dontwarn com.google.protobuf.ProtoPresenceBits
+
+# ============================================
 # Google ML Kit (Gemini Nano)
 # ============================================
 -keep class com.google.mlkit.** { *; }
