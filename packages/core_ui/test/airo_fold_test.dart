@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:airo_app/shared/widgets/responsive_center.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
