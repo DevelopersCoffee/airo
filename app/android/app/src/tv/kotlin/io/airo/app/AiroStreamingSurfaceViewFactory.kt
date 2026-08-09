@@ -1,6 +1,7 @@
 package io.airo.app
 
 import android.content.Context
+import android.util.Log
 import android.view.SurfaceView
 import android.view.View
 import androidx.media3.common.MediaItem
@@ -36,6 +37,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
     PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     companion object {
         const val VIEW_TYPE_ID = "com.airo.player/streaming_surface"
+        private const val TAG = "AiroStreamingSurface"
 
         // Apple's public bipbop HLS test asset -- stable, no auth, no
         // provider dependency. Replaced by a real channel source once Wave
@@ -55,32 +57,66 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         private val onPhase: (String) -> Unit,
     ) : PlatformView {
         private val surfaceView = SurfaceView(context)
+
+        // Tracked locally rather than read from `player` inside the
+        // listener: addListener() below can synchronously fire an initial
+        // callback before the `player` property itself has finished being
+        // assigned (its initializer is still running `.apply {}` at that
+        // point), which crashed with a NullPointerException on a real
+        // device -- confirmed by device testing, not a hypothetical.
+        private var lastPlaybackState = Player.STATE_IDLE
+        private var lastPlayWhenReady = false
         private val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                onPhase(mapPhase(playbackState, player.playWhenReady))
+                Log.d(TAG, "onPlaybackStateChanged: ${stateName(playbackState)}")
+                lastPlaybackState = playbackState
+                onPhase(mapPhase(lastPlaybackState, lastPlayWhenReady))
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                onPhase(mapPhase(player.playbackState, playWhenReady))
+                Log.d(TAG, "onPlayWhenReadyChanged: $playWhenReady (reason=$reason)")
+                lastPlayWhenReady = playWhenReady
+                onPhase(mapPhase(lastPlaybackState, lastPlayWhenReady))
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                Log.e(TAG, "onPlayerError: ${error.errorCodeName} - ${error.message}", error)
                 onPhase("failed")
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                Log.d(TAG, "onMediaItemTransition: ${mediaItem?.localConfiguration?.uri} (reason=$reason)")
+            }
+
+            override fun onRenderedFirstFrame() {
+                Log.d(TAG, "onRenderedFirstFrame")
+            }
         }
-        private val player: ExoPlayer = ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(AiroStreamingEngine.dataSourceFactory))
-            .build()
-            .apply {
-            setVideoSurfaceView(surfaceView)
-            addListener(listener)
-            setMediaItem(MediaItem.fromUri(TEST_STREAM_URL))
-            prepare()
-            playWhenReady = true
-        }
+        private val player: ExoPlayer
 
         init {
+            Log.d(TAG, "creating ExoPlayer, dataSourceFactory=${AiroStreamingEngine.dataSourceFactory}")
+            player = ExoPlayer.Builder(context)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(AiroStreamingEngine.dataSourceFactory))
+                .build()
+            Log.d(TAG, "ExoPlayer built, attaching surface + listener")
+            player.setVideoSurfaceView(surfaceView)
+            player.addListener(listener)
+            Log.d(TAG, "setting MediaItem: $TEST_STREAM_URL")
+            player.setMediaItem(MediaItem.fromUri(TEST_STREAM_URL))
+            Log.d(TAG, "calling prepare()")
+            player.prepare()
+            player.playWhenReady = true
+            Log.d(TAG, "prepare() returned, playWhenReady=true set, current state=${stateName(player.playbackState)}")
             AiroStreamingEngine.currentPlayer = player
+        }
+
+        private fun stateName(state: Int): String = when (state) {
+            Player.STATE_IDLE -> "IDLE"
+            Player.STATE_BUFFERING -> "BUFFERING"
+            Player.STATE_READY -> "READY"
+            Player.STATE_ENDED -> "ENDED"
+            else -> "UNKNOWN($state)"
         }
 
         private fun mapPhase(playbackState: Int, playWhenReady: Boolean): String {

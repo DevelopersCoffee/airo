@@ -1,5 +1,7 @@
 package io.airo.app
 
+import android.os.Handler
+import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -25,6 +27,7 @@ class AiroStreamingEnginePlugin {
 
     private var channel: MethodChannel? = null
     private var stateEventSink: EventChannel.EventSink? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun register(messenger: BinaryMessenger) {
         val channel = MethodChannel(messenger, CHANNEL_NAME)
@@ -40,7 +43,17 @@ class AiroStreamingEnginePlugin {
                     if (url == null) {
                         result.error("INVALID_ARGUMENT", "url is required", null)
                     } else {
-                        result.success(AiroStreamingEngine.shadowFetch(url))
+                        // AiroShadowFetch.probe() does a blocking OkHttp call --
+                        // Android forbids network I/O on the main thread
+                        // (NetworkOnMainThreadException, confirmed on a real
+                        // device, not hypothetical). MethodChannel.Result must
+                        // be resolved back on the main thread, so post the
+                        // result after the background call returns rather
+                        // than resolving from the background thread directly.
+                        Thread {
+                            val outcome = AiroStreamingEngine.shadowFetch(url)
+                            mainHandler.post { result.success(outcome) }
+                        }.start()
                     }
                 }
                 "switchSource" -> {

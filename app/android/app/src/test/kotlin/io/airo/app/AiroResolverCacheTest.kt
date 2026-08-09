@@ -34,6 +34,22 @@ class AiroResolverCacheTest {
         }
     }
 
+    /**
+     * [AiroResolverCache.resolve] only guarantees the *winning* resolver's
+     * closure has run by the time it returns -- the losing side is
+     * submitted to the same executor but has no ordering guarantee versus
+     * the caller. Asserting on the loser's callCount immediately after
+     * resolve() returns is inherently racy (confirmed: flaked under real
+     * system load, not a hypothetical), so wait for it with a short bound
+     * instead of asserting synchronously.
+     */
+    private fun awaitCallCount(resolver: FakeResolver, expected: Int, timeoutMs: Long = 2000) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (resolver.callCount < expected && System.currentTimeMillis() < deadline) {
+            Thread.sleep(5)
+        }
+    }
+
     private fun cacheWith(
         system: FakeResolver,
         doh: FakeResolver,
@@ -116,6 +132,7 @@ class AiroResolverCacheTest {
         val cache = cacheWith(system = system, doh = doh)
 
         cache.resolve("example.com")
+        awaitCallCount(system, 1)
         val callsAfterFirst = system.callCount
         cache.resolve("example.com")
 
@@ -130,10 +147,12 @@ class AiroResolverCacheTest {
         val cache = cacheWith(system = system, doh = doh, ttlMillis = 1000, clock = { now })
 
         cache.resolve("example.com")
+        awaitCallCount(system, 1)
         assertEquals(1, system.callCount)
 
         now += 2000 // past the 1000ms TTL
         cache.resolve("example.com")
+        awaitCallCount(system, 2)
 
         assertTrue("expected a second resolution after TTL expiry", system.callCount >= 2)
     }
@@ -146,6 +165,7 @@ class AiroResolverCacheTest {
 
         cache.resolve("a.example.com")
         cache.resolve("b.example.com")
+        awaitCallCount(system, 2)
 
         assertEquals(2, system.callCount)
     }
