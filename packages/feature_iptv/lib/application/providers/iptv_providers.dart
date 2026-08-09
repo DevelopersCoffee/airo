@@ -489,6 +489,7 @@ class PlaylistSourcesUnavailableException implements Exception {
 void invalidateChannelLibraries(WidgetRef ref) {
   ref.invalidate(configuredM3uChannelsProvider);
   ref.invalidate(configuredXtreamChannelsProvider);
+  ref.invalidate(configuredStalkerChannelsProvider);
   // The runtime family caches the composed result, so leaving it alone would
   // replay its stored error and Retry would never reach the source again.
   ref.invalidate(_runtimeChannelsProvider);
@@ -577,6 +578,35 @@ Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
   }
   return channels;
 }
+
+/// Loads every configured Stalker source, mirroring
+/// [configuredM3uChannelsProvider] and [configuredXtreamChannelsProvider]:
+/// one dead portal must not blank the others.
+final configuredStalkerChannelsProvider = FutureProvider<List<IPTVChannel>>((
+  ref,
+) async {
+  final configs = await ref.watch(configuredContentSourcesProvider.future);
+  final stalkerConfigs = configs
+      .where((source) => source.kind == ContentSourceKind.stalker)
+      .toList(growable: false);
+  if (stalkerConfigs.isEmpty) return const [];
+
+  final loader = ref.read(stalkerSourceLoaderProvider);
+  final channels = <IPTVChannel>[];
+  for (final config in stalkerConfigs) {
+    try {
+      channels.addAll(await loader(config));
+    } catch (_) {
+      // Stalker portal URLs and MAC addresses are not secrets by
+      // themselves, but keep diagnostics coarse for consistency with
+      // the M3U/Xtream loaders above.
+      debugPrint(
+        '[Provider] Stalker source ${config.id} could not be refreshed.',
+      );
+    }
+  }
+  return channels;
+});
 
 /// Refresh channels provider
 final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((

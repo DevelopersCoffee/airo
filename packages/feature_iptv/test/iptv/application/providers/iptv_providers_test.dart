@@ -467,7 +467,7 @@ void main() {
     });
   });
 
-  group('configured M3U sources', () {
+  group('configured multi-source loading', () {
     test(
       'migrates the legacy Pixel playlist once without deleting it',
       () async {
@@ -664,6 +664,56 @@ void main() {
           parsers.values.every((parser) => parser.fetchCalls == 1),
           isTrue,
         );
+      },
+    );
+
+    test(
+      'configuredStalkerChannelsProvider loads every configured Stalker '
+      'source and isolates a failing one',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final store = ContentSourceStore(PreferencesStore(prefs));
+        await store.replaceAll(const [
+          ContentSourceConfig(
+            id: 'stalker-home',
+            kind: ContentSourceKind.stalker,
+            label: 'Home Portal',
+            url: 'https://portal.example.com',
+            macAddress: 'AA:BB:CC:DD:EE:FF',
+          ),
+          ContentSourceConfig(
+            id: 'stalker-dead',
+            kind: ContentSourceKind.stalker,
+            label: 'Dead Portal',
+            url: 'https://dead.example.com',
+            macAddress: '11:22:33:44:55:66',
+          ),
+        ]);
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            stalkerSourceLoaderProvider.overrideWithValue((config) async {
+              if (config.id == 'stalker-dead') {
+                throw StateError('portal unreachable');
+              }
+              return const [
+                IPTVChannel(
+                  id: 'stalker-home-7',
+                  name: 'Portal Only',
+                  streamUrl: 'https://example.com/portal.m3u8',
+                ),
+              ];
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final channels = await container.read(
+          configuredStalkerChannelsProvider.future,
+        );
+
+        expect(channels.map((c) => c.id), ['stalker-home-7']);
       },
     );
   });
