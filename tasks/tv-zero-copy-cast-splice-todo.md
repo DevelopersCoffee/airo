@@ -4,7 +4,12 @@ Plan: `tasks/tv-zero-copy-cast-splice-plan.md` · Spec: `SPEC.md` (F4.4.5/F4.4.6
 Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 
 ## Task 0: Fallback path + splice outcome reporting
-- [ ] Not started — **do this first**, foundation for everything else
+- [x] Done — commit `a4012acd`. `AiroSpliceMode`/`AiroSplicePointFinder`/
+  `AiroSpliceDecision.decide()` in shared `src/product/kotlin`
+  (AD-P2B.4, zero Media3 dep). 5/5 new JVM tests + full suite 25/25
+  green. All 3 Gradle variants (default/tv/coins) verified clean. NOT
+  yet wired into live `switchSource` — waits on Task 1/2 or 4/5 for a
+  real finder.
 - **Tier:** implement
 - **Verification:** JVM tests (fakeable deadline/clock) + device check
   that fallback is reachable
