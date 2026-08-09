@@ -252,6 +252,16 @@ android {
                 )
             }
         }
+        // Wave B: classes that import androidx.media3.datasource.okhttp/OkHttp
+        // (isTvVariant-gated below) get their own conditional test source dir,
+        // same reasoning as main's tv/stub split -- src/test/kotlin is compiled
+        // for every variant's unit tests, so a test referencing an OkHttp type
+        // would fail to compile on non-tv variants if it lived there instead.
+        getByName("test") {
+            if (isTvVariant) {
+                kotlin.srcDir("src/testTv/kotlin")
+            }
+        }
     }
 
     packaging {
@@ -355,6 +365,13 @@ dependencies {
         implementation("androidx.media3:media3-common:1.11.0")
         implementation("androidx.media3:media3-datasource:1.11.0")
         implementation("androidx.media3:media3-exoplayer-hls:1.11.0")
+
+        // Wave B (F4.2): connection pooling, keepalive, custom DNS via
+        // okhttp3.Dns. See tasks/tv-zero-copy-cast-phase2-waveB-task1-okhttp-proposal.md
+        // for the full proposal this was confirmed against.
+        implementation("com.squareup.okhttp3:okhttp:5.4.0")
+        implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
+        testImplementation("com.squareup.okhttp3:okhttp:5.4.0")
     }
 
 }
