@@ -62,12 +62,21 @@ into a custom `DataSource` Media3 actually uses for playback.
   "unlikely" — e.g. a session object that captures the resolved address
   once and exposes no re-resolve path, rather than a cache with a TTL
   that could silently expire under a long-lived connection.
-- **AD-P2B.4 — Same tv-only source split as Wave A.** New classes go in
-  `src/tv/kotlin` (real) with parallel entries in
-  `src/streaming_engine_stub/kotlin` only where MainActivity or another
-  shared file needs a reference; pure internal classes only used by
-  Wave A/B's tv-only `DataSource`/`PlatformView` code don't need a stub at
-  all (they're never referenced from shared Kotlin).
+- **AD-P2B.4 — CORRECTED after Task 2: source placement follows
+  dependencies, not "Wave B-ness."** Originally assumed every new class
+  goes in `src/tv/kotlin`. Task 2 showed that's wrong for anything a JVM
+  unit test needs to reference: test files live in the always-compiled
+  `src/test/kotlin`, so a class under test must be visible on *every*
+  variant's unit-test compilation, not just tv's. The real rule: a class
+  goes in `src/tv/kotlin` only once it actually imports something
+  variant-gated (Media3, and once confirmed, OkHttp); pure logic with no
+  such dependency belongs in the shared `src/product/kotlin` (same home
+  as `MainActivity`, compiled for every variant except Coins) so it can
+  be unit-tested without a tv-flavored compile. `AiroResolverCache`
+  lives there. The real/stub split from Wave A remains correct for
+  classes MainActivity references directly by name across variants
+  (`AiroStreamingSurfaceViewFactory`); it was never needed for internal
+  logic that doesn't touch a variant-gated dependency.
 
 ## Task List
 
@@ -78,7 +87,10 @@ documented; user confirms before Task 3 touches `build.gradle.kts`.
 **Dependencies:** None.
 **Estimated scope:** XS.
 
-### Task 2: Resolver cache — pure Kotlin, JVM-tested
+### Task 2: Resolver cache — pure Kotlin, JVM-tested — DONE (e4f1ed4b)
+7/7 new tests green + 4 pre-existing app-module unit tests still green
+(11/11 total). All 3 Gradle variants compile clean. See AD-P2B.4 above
+for the source-placement correction this task surfaced.
 **Tier:** implement.
 **Description:** `AiroResolverCache` (or similar): given a hostname,
 races system `InetAddress.getAllByName` against a DoH HTTPS query

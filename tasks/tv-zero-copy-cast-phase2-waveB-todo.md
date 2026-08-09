@@ -17,7 +17,9 @@ GH issue, don't claim it from a passing unit test.
 - **Dependencies:** None
 
 ## Task 2: Resolver cache (pure Kotlin, JVM-tested)
-- [ ] Not started
+- [x] DONE (e4f1ed4b) — 7/7 new tests green, 11/11 total (incl. 4
+  pre-existing), all 3 variants compile. Lives in shared
+  src/product/kotlin, not src/tv/kotlin — see plan's corrected AD-P2B.4.
 - **Tier:** implement
 - **Verification:** `./gradlew :app:testDebugUnitTest` — real automated
   coverage, no device needed for this task
