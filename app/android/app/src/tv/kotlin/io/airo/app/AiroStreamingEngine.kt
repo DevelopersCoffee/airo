@@ -1,6 +1,8 @@
 package io.airo.app
 
+import androidx.media3.common.MediaItem
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
 import java.net.InetAddress
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,6 +34,47 @@ object AiroStreamingEngine {
 
     val dataSourceFactory: OkHttpDataSource.Factory by lazy {
         OkHttpDataSource.Factory(okHttpClient)
+    }
+
+    private val shadowFetchLimiter = AiroShadowFetchLimiter()
+
+    /** Set by the active `AiroStreamingPlatformView` on create, cleared on
+     * dispose -- Wave C's method-channel commands need a reference to the
+     * live player, which otherwise only the (private) PlatformView holds. */
+    var currentPlayer: ExoPlayer? = null
+
+    /** F4.3.2/F4.4.3 -- probe a candidate source without disturbing
+     * playback. Returns a Dart-codec-friendly map. */
+    fun shadowFetch(url: String): Map<String, Any?> {
+        return when (val result = AiroShadowFetch.probe(okHttpClient, url, shadowFetchLimiter)) {
+            is AiroShadowFetchResult.Measured ->
+                mapOf("status" to "measured", "throughputKbps" to result.throughputKbps)
+            is AiroShadowFetchResult.Failed ->
+                mapOf("status" to "failed", "reason" to result.reason)
+            AiroShadowFetchResult.Busy -> mapOf("status" to "busy")
+        }
+    }
+
+    /**
+     * v1 "basic swap" -- rebuilds the `MediaItem` for [url] and resumes at
+     * the current position. This is **not yet** the frame-accurate
+     * splice-on-keyframe F4.4.5 specifies (PAT/PMT+IDR boundary for TS,
+     * next-segment boundary for HLS) -- that is real, separately-scoped
+     * follow-up work; the requirements doc's own risk table calls
+     * artifact-free splicing the single biggest risk in this feature, and
+     * it isn't solved by this function. A basic swap can produce a brief
+     * visible glitch and does not yet meet F4.4.6's "no visible
+     * interruption" bar -- tracked as a known gap, not silently claimed
+     * complete.
+     */
+    fun switchSource(url: String): Boolean {
+        val player = currentPlayer ?: return false
+        val position = player.currentPosition
+        player.setMediaItem(MediaItem.fromUri(url))
+        player.prepare()
+        player.seekTo(position)
+        player.playWhenReady = true
+        return true
     }
 
     /** F4.2.2 -- open and hold connections while the user browses the

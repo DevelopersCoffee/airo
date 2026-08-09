@@ -8,10 +8,14 @@ void main() {
   const channel = MethodChannel('com.airo.player/streaming_engine');
   final calls = <MethodCall>[];
   bool pingResult = true;
+  Map<Object?, Object?> shadowFetchResult = {'status': 'measured', 'throughputKbps': 4200.0};
+  bool switchSourceResult = true;
 
   setUp(() {
     calls.clear();
     pingResult = true;
+    shadowFetchResult = {'status': 'measured', 'throughputKbps': 4200.0};
+    switchSourceResult = true;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
@@ -20,6 +24,10 @@ void main() {
               return pingResult;
             case 'preWarm':
               return null;
+            case 'shadowFetch':
+              return shadowFetchResult;
+            case 'switchSource':
+              return switchSourceResult;
             default:
               return null;
           }
@@ -93,6 +101,70 @@ void main() {
       await AiroStreamingEngineChannel.preWarm([]);
 
       expect(calls.single.arguments, {'hosts': <String>[]});
+    });
+  });
+
+  group('AiroStreamingEngineChannel.shadowFetch', () {
+    test('returns a measured outcome on success', () async {
+      final outcome = await AiroStreamingEngineChannel.shadowFetch('https://example.com/a.ts');
+
+      expect(calls.single.method, 'shadowFetch');
+      expect(calls.single.arguments, {'url': 'https://example.com/a.ts'});
+      expect(outcome, isA<AiroShadowFetchMeasured>());
+      expect((outcome as AiroShadowFetchMeasured).throughputKbps, 4200.0);
+    });
+
+    test('returns a failed outcome with the native reason', () async {
+      shadowFetchResult = {'status': 'failed', 'reason': 'HTTP 404'};
+
+      final outcome = await AiroStreamingEngineChannel.shadowFetch('https://example.com/a.ts');
+
+      expect(outcome, isA<AiroShadowFetchFailed>());
+      expect((outcome as AiroShadowFetchFailed).reason, 'HTTP 404');
+    });
+
+    test('returns busy when the native limiter rejects the probe', () async {
+      shadowFetchResult = {'status': 'busy'};
+
+      final outcome = await AiroStreamingEngineChannel.shadowFetch('https://example.com/a.ts');
+
+      expect(outcome, isA<AiroShadowFetchBusy>());
+    });
+
+    test('degrades to failed when no platform implementation is registered', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw MissingPluginException();
+          });
+
+      final outcome = await AiroStreamingEngineChannel.shadowFetch('https://example.com/a.ts');
+
+      expect(outcome, isA<AiroShadowFetchFailed>());
+    });
+  });
+
+  group('AiroStreamingEngineChannel.switchSource', () {
+    test('returns the platform result on success', () async {
+      final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
+
+      expect(calls.single.method, 'switchSource');
+      expect(calls.single.arguments, {'url': 'https://example.com/b.ts'});
+      expect(result, isTrue);
+    });
+
+    test('returns false when no active player exists on the native side', () async {
+      switchSourceResult = false;
+
+      expect(await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts'), isFalse);
+    });
+
+    test('degrades to false when no platform implementation is registered', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw MissingPluginException();
+          });
+
+      expect(await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts'), isFalse);
     });
   });
 }

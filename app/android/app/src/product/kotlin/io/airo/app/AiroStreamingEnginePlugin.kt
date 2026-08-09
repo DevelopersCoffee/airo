@@ -35,6 +35,22 @@ class AiroStreamingEnginePlugin {
                     AiroStreamingEngine.preWarm(call.argument<List<String>>("hosts") ?: emptyList())
                     result.success(null)
                 }
+                "shadowFetch" -> {
+                    val url = call.argument<String>("url")
+                    if (url == null) {
+                        result.error("INVALID_ARGUMENT", "url is required", null)
+                    } else {
+                        result.success(AiroStreamingEngine.shadowFetch(url))
+                    }
+                }
+                "switchSource" -> {
+                    val url = call.argument<String>("url")
+                    if (url == null) {
+                        result.error("INVALID_ARGUMENT", "url is required", null)
+                    } else {
+                        result.success(AiroStreamingEngine.switchSource(url))
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

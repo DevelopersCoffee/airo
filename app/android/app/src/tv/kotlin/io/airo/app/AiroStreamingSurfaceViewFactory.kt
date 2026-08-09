@@ -79,6 +79,10 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
             playWhenReady = true
         }
 
+        init {
+            AiroStreamingEngine.currentPlayer = player
+        }
+
         private fun mapPhase(playbackState: Int, playWhenReady: Boolean): String {
             return when (playbackState) {
                 Player.STATE_IDLE -> "idle"
@@ -92,6 +96,9 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         override fun getView(): View = surfaceView
 
         override fun dispose() {
+            if (AiroStreamingEngine.currentPlayer === player) {
+                AiroStreamingEngine.currentPlayer = null
+            }
             player.removeListener(listener)
             player.release()
         }

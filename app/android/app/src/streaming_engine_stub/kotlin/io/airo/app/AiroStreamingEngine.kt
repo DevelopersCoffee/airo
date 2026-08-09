@@ -12,4 +12,8 @@ package io.airo.app
  */
 object AiroStreamingEngine {
     fun preWarm(hosts: List<String>) {}
+
+    fun shadowFetch(url: String): Map<String, Any?> = mapOf("status" to "failed", "reason" to "unavailable")
+
+    fun switchSource(url: String): Boolean = false
 }
