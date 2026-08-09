@@ -2252,7 +2252,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   bool _usesCompactInlinePlayer(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return !_isFullscreen && size.shortestSide < 600;
+    if (!_isFullscreen && size.shortestSide < 600) return true;
+    // A hinge straddling the player's bounds must not split the expanded
+    // layout's controls (positioned near the corners) across the fold.
+    // The full window rect is an approximation of the player's real bounds,
+    // which aren't known before layout — acceptable since a straddling
+    // hinge always straddles the full window too when the player fills it.
+    final fold = AiroFold.of(context);
+    return AiroFold.straddles(Offset.zero & size, fold);
   }
 
   Widget _buildTimelineAndMoreButton(
