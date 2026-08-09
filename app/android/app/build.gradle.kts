@@ -83,7 +83,10 @@ if (hasGoogleServicesConfig) {
 
 android {
     namespace = "io.airo.app"
-    compileSdk = 36 // Android 16 (API level 36) for current Play target compatibility
+    // Sourced from gradle/libs.versions.toml (airo-compile-sdk). Package
+    // Android modules must stay at or above this baseline — see #1575 and
+    // scripts/check-android-sdk-baseline.sh.
+    compileSdk = libs.versions.airo.compile.sdk.get().toInt()
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -118,8 +121,8 @@ android {
 
     defaultConfig {
         applicationId = variantApplicationId
-        minSdk = 26 // Android 8.0 - broader device compatibility
-        targetSdk = 36 // Target latest Android for Pixel 9
+        minSdk = libs.versions.airo.min.sdk.get().toInt()
+        targetSdk = libs.versions.airo.target.sdk.get().toInt()
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = variantAppLabel
