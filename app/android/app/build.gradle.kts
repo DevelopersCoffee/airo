@@ -241,11 +241,19 @@ android {
             // Same mechanism as LiteRT-LM above, a separate flag and a
             // separate plugin (embeddings/semantic search -- see
             // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
-            // Excluded from the Coins variant for the same reason LiteRT-LM
-            // is: Coins is a stripped-down flavor with no Mind surface to
-            // search.
+            // Excluded from Coins entirely for the same reason LiteRT-LM is:
+            // Coins compiles its own `src/coins/kotlin` MainActivity that
+            // never references EmbeddingPlugin. TV shares `src/product/kotlin`
+            // with Mind and full (MainActivity registers EmbeddingPlugin
+            // unconditionally there), so TV still needs the stub compiled --
+            // it just must never get the real SDK. Unlike LiteRT-LM, the AI
+            // Edge RAG SDK's bundled protobuf classes fail R8 minification
+            // with "missing classes" (com.google.protobuf.Internal$ProtoNonnullApi)
+            // when nothing in the TV variant reaches them, so its Gradle
+            // dependency (below) cannot stay on TV's classpath the way
+            // LiteRT-LM's does; the stub keeps TV compiling without it.
             val embeddingAvailable =
-                rootProject.extra.get("embeddingAvailable") as Boolean
+                rootProject.extra.get("embeddingAvailable") as Boolean && !isTvVariant
             if (!isCoinsVariant) {
                 kotlin.srcDir(
                     if (embeddingAvailable) "src/withEmbedding/kotlin"
@@ -343,7 +351,14 @@ dependencies {
     // Engine/Conversation). Pinned explicitly, same reasoning as LiteRT-LM's
     // pin above — see this file's LiteRT-LM comment for the incident that
     // pin exists to prevent.
-    if (!isCoinsVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
+    //
+    // Excluded from TV as well as Coins, unlike LiteRT-LM: this SDK's bundled
+    // protobuf classes (com.google.ai.edge.localagents.rag.models.proto.*)
+    // fail R8 minification with "missing classes" on TV, where nothing
+    // reaches them, because the SDK doesn't ship its own protobuf runtime.
+    // LiteRT-LM's dependency has no such gap and can stay on TV's classpath
+    // unused; this one cannot.
+    if (!isCoinsVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
         implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
         implementation("com.google.mediapipe:tasks-genai:0.10.22")
     }
