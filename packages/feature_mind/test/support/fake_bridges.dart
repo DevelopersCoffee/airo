@@ -13,8 +13,14 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   var cancelCalls = 0;
   String? savedModel;
 
+  /// Set to make [loadLibrary] throw, simulating a platform with no native
+  /// library (`MindUnavailable.bridgeMissing`).
+  Object? loadLibraryError;
+
   @override
-  Future<void> loadLibrary() async {}
+  Future<void> loadLibrary() async {
+    if (loadLibraryError != null) throw loadLibraryError!;
+  }
 
   @override
   bool isReady() => true;
