@@ -46,9 +46,10 @@ Also fixed a pre-existing flaky JVM test found during re-verification
 (`AiroResolverCacheTest` — asserted on the losing race resolver's call
 count with no synchronization guarantee it had run yet).
 
-GH issue #1574 updated with full evidence.
-**Not yet exercised:** `preWarm`/`switchSource` interactive taps (UI
-coordinate miss, not a code issue), Fire TV Stick (only Pixel 9 tested).
+GH issue #1574 updated with full evidence. **All four controls now
+verified** (ping/preWarm/shadowFetch/switchSource all `ok`/`measured`),
+video ran stably 00:00:02→00:00:39+ in one continuous session.
+**Not yet exercised:** Fire TV Stick (only Pixel 9 tested).
 
 ## Task 1-follow-up (not yet scheduled): Frame-accurate splice-on-keyframe
 Real PAT/PMT + IDR boundary detection for TS (F4.4.5), next-segment
