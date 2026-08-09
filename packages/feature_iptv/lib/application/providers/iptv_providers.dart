@@ -305,44 +305,10 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
 
 final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
   (ref, forceRefresh) async {
-    final active = await ref.watch(activeContentSourceProvider.future);
-    if (active != null) {
-      switch (active.kind) {
-        case ContentSourceKind.m3u:
-          return _loadConfiguredM3uChannels(
-            [active],
-            ref.read(m3uSourceParserFactoryProvider),
-            forceRefresh: forceRefresh,
-            failFast: true,
-          );
-        case ContentSourceKind.xtream:
-          return _loadConfiguredXtreamChannels(
-            [active],
-            credentials: ref.read(contentSourceCredentialStoreProvider),
-            dio: ref.read(dioProvider),
-            epgRepository: ref.read(compactEpgRepositoryProvider),
-            healthTracker: ref.read(providerHealthTrackerProvider),
-            failFast: true,
-          );
-        case ContentSourceKind.stalker:
-          try {
-            return await ref.read(stalkerSourceLoaderProvider)(active);
-          } catch (_) {
-            throw const ContentSourceRuntimeException(
-              'Could not refresh the Stalker Portal source. '
-              'Check the portal and MAC address, then retry.',
-            );
-          }
-        case ContentSourceKind.jellyfin:
-          throw const ContentSourceRuntimeException(
-            'Jellyfin is saved but is not available in Live TV yet. '
-            'Select an M3U, Xtream, or Stalker source.',
-          );
-      }
-    }
-
-    // No active source: every configured library contributes, and the public
-    // catalog / legacy parser fills in behind them.
+    // Live TV never gates on a single "active" source — every configured
+    // library contributes, and the public catalog / legacy parser fills
+    // in behind them. See
+    // docs/superpowers/specs/2026-08-10-iptv-unified-playlist-merge-design.md.
     List<IPTVChannel> primaryChannels = const [];
     final channelDataService = ref.watch(channelDataServiceProvider);
     try {
@@ -382,10 +348,15 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
     final byocChannels = await ref.watch(
       configuredXtreamChannelsProvider.future,
     );
-    final merged = mergeChannelLibraries([
+    final stalkerChannels = await ref.watch(
+      configuredStalkerChannelsProvider.future,
+    );
+    final merge = ref.watch(channelLibraryMergerProvider);
+    final merged = merge([
       primaryChannels,
       configuredM3uChannels,
       byocChannels,
+      stalkerChannels,
     ]);
     if (merged.isEmpty && configuredM3uFailure != null) {
       Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);

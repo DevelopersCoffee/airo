@@ -499,7 +499,8 @@ void main() {
     );
 
     test(
-      'active source selection is exclusive across Stalker and M3U',
+      'merges Stalker and M3U simultaneously regardless of any selected '
+      'active source',
       () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
@@ -534,6 +535,7 @@ void main() {
         final sourceContainer = ProviderContainer(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            secureStoreProvider.overrideWithValue(InMemorySecureStore()),
             m3uSourceParserFactoryProvider.overrideWithValue((_) => m3uParser),
             stalkerSourceLoaderProvider.overrideWithValue(
               (_) async => const [
@@ -548,21 +550,17 @@ void main() {
         );
         addTearDown(sourceContainer.dispose);
 
+        // An active source is set (legacy VOD selection state) but Live TV
+        // must ignore it and show both sources merged. Every configured
+        // source is now watched unconditionally (including
+        // configuredXtreamChannelsProvider, which needs secureStoreProvider
+        // even when no Xtream sources are configured), so the container
+        // must override it too.
         expect(
           (await sourceContainer.read(
             iptvChannelsProvider.future,
           )).map((channel) => channel.id),
-          ['stalker-home-7'],
-        );
-
-        await sourceContainer.read(
-          selectContentSourceProvider('m3u-news').future,
-        );
-        expect(
-          (await sourceContainer.read(
-            iptvChannelsProvider.future,
-          )).map((channel) => channel.id),
-          ['m3u-only'],
+          containsAll(['stalker-home-7', 'm3u-only']),
         );
       },
     );
