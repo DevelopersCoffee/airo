@@ -1,9 +1,13 @@
 package io.airo.app
 
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import java.net.InetAddress
+import java.util.concurrent.Executors
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -17,6 +21,12 @@ import org.json.JSONObject
  * method channel handler calls [preWarm].
  */
 object AiroStreamingEngine {
+    private const val TAG = "AiroStreamingEngine"
+
+    /** F4.4.5/F4.4.6 (splice plan Task 0). */
+    private const val SPLICE_DEADLINE_MS = 3000L
+    private const val MUTE_CUT_DURATION_MS = 200L
+
     // Separate, minimal client for DoH lookups themselves -- it only ever
     // talks to a literal IP (Cloudflare's 1.1.1.1), so it needs no custom
     // Dns and must not depend on the resolver cache it exists to help
@@ -40,23 +50,41 @@ object AiroStreamingEngine {
 
     /** Set by the active `AiroStreamingPlatformView` on create, cleared on
      * dispose -- Wave C's method-channel commands need a reference to the
-     * live player, which otherwise only the (private) PlatformView holds. */
+     * live player, which otherwise only the (private) PlatformView holds.
+     * @Volatile: Task 2 reads this from `switchSource`'s splice-wait
+     * thread, not just the main thread that sets it. */
+    @Volatile
     var currentPlayer: ExoPlayer? = null
 
     /** Set/cleared alongside [currentPlayer] -- Task 1 of the splice plan.
      * Nullable rather than a no-op default: absence means "no boundary
      * data yet" (e.g. right after create, before any segment has loaded),
      * which must read the same as "unknown" to callers, not "zero". */
+    @Volatile
     var currentSegmentBoundaryTracker: AiroSegmentBoundaryTracker? = null
 
+    /** Thread-safe snapshot of playback position, refreshed on the main
+     * thread only (see `AiroStreamingSurfaceViewFactory`'s position
+     * poll). [msUntilNextHlsBoundary] reads this instead of
+     * `currentPlayer.currentPosition` directly -- Media3 requires all
+     * ExoPlayer access to happen on its own application thread, and
+     * Task 2's splice wait runs on a background executor. */
+    @Volatile
+    private var lastKnownPositionMs: Long = 0L
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val spliceExecutor = Executors.newCachedThreadPool()
+
+    /** Called from the main thread only, on every position poll tick. */
+    fun reportPlaybackPosition(positionMs: Long) {
+        lastKnownPositionMs = positionMs
+    }
+
     /** Task 1 -- how long until the next HLS segment boundary, or null if
-     * unknown (no player, no boundary tracked yet, or the tracked
-     * boundary is already stale). Task 2 will use this to time the
-     * splice swap; for now this is read for device-verification logging
-     * only. */
+     * unknown (no boundary tracked yet, or the tracked boundary is
+     * already stale). Safe to call from any thread. */
     fun msUntilNextHlsBoundary(): Long? {
-        val position = currentPlayer?.currentPosition ?: return null
-        return currentSegmentBoundaryTracker?.msUntilNextBoundary(position)
+        return currentSegmentBoundaryTracker?.msUntilNextBoundary(lastKnownPositionMs)
     }
 
     /** F4.3.2/F4.4.3 -- probe a candidate source without disturbing
@@ -72,25 +100,49 @@ object AiroStreamingEngine {
     }
 
     /**
-     * v1 "basic swap" -- rebuilds the `MediaItem` for [url] and resumes at
-     * the current position. This is **not yet** the frame-accurate
-     * splice-on-keyframe F4.4.5 specifies (PAT/PMT+IDR boundary for TS,
-     * next-segment boundary for HLS) -- that is real, separately-scoped
-     * follow-up work; the requirements doc's own risk table calls
-     * artifact-free splicing the single biggest risk in this feature, and
-     * it isn't solved by this function. A basic swap can produce a brief
-     * visible glitch and does not yet meet F4.4.6's "no visible
-     * interruption" bar -- tracked as a known gap, not silently claimed
-     * complete.
+     * Task 2 (splice plan) -- HLS frame-accurate splice-on-keyframe
+     * (F4.4.5/F4.4.6). Waits for the next tracked segment boundary
+     * (Task 1) via [AiroSpliceDecision]'s deadline-bounded fallback
+     * (Task 0) before swapping, instead of v1's immediate basic swap.
+     * TS sources (no [currentSegmentBoundaryTracker]) always take the
+     * mute-cut fallback path until Tasks 3-5 land.
+     *
+     * Must be called off the main thread -- [AiroSpliceDecision.decide]
+     * blocks the calling thread up to [SPLICE_DEADLINE_MS], and blocking
+     * the main thread that long risks an ANR. The actual `ExoPlayer`
+     * mutation is posted to [mainHandler] regardless of caller thread,
+     * since Media3 requires it.
      */
-    fun switchSource(url: String): Boolean {
-        val player = currentPlayer ?: return false
+    fun switchSource(url: String): AiroSpliceOutcome {
+        val player = currentPlayer ?: return AiroSpliceOutcome.FAILED
+        val finder = currentSegmentBoundaryTracker?.let {
+            AiroHlsSplicePointFinder(msUntilNextBoundary = ::msUntilNextHlsBoundary)
+        }
+        val mode = AiroSpliceDecision.decide(finder, SPLICE_DEADLINE_MS, spliceExecutor)
+        Log.d(TAG, "switchSource: mode=$mode url=$url")
+        mainHandler.post { performSwap(player, url, mode) }
+        return when (mode) {
+            AiroSpliceMode.SPLICE -> AiroSpliceOutcome.SPLICED
+            AiroSpliceMode.MUTE_CUT_FALLBACK -> AiroSpliceOutcome.FELL_BACK_TO_MUTE_CUT
+        }
+    }
+
+    /** Runs on the main thread (posted from [switchSource]). Mute-cut
+     * fallback silences audio for [MUTE_CUT_DURATION_MS] around the swap
+     * per the spec's own fallback (plan's AD-Splice.1); a clean splice
+     * swaps at full volume since it already landed on a boundary. */
+    private fun performSwap(player: ExoPlayer, url: String, mode: AiroSpliceMode) {
         val position = player.currentPosition
+        if (mode == AiroSpliceMode.MUTE_CUT_FALLBACK) player.volume = 0f
         player.setMediaItem(MediaItem.fromUri(url))
         player.prepare()
         player.seekTo(position)
         player.playWhenReady = true
-        return true
+        currentSegmentBoundaryTracker?.reset()
+        Log.d(TAG, "performSwap: mode=$mode position=$position")
+        if (mode == AiroSpliceMode.MUTE_CUT_FALLBACK) {
+            mainHandler.postDelayed({ player.volume = 1f }, MUTE_CUT_DURATION_MS)
+        }
     }
 
     /** F4.2.2 -- open and hold connections while the user browses the

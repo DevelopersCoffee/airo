@@ -21,6 +21,17 @@ import java.util.concurrent.TimeoutException
 enum class AiroSpliceMode { SPLICE, MUTE_CUT_FALLBACK }
 
 /**
+ * Task 2's richer outcome for `AiroStreamingEngine.switchSource` --
+ * distinguishes a clean splice from a mute-cut fallback from an outright
+ * failure (no live player), rather than collapsing all three into one
+ * boolean the way `switchSource`'s v1 basic swap did (AD-Splice.3). The
+ * method-channel boundary still maps this down to a `Boolean` for now --
+ * widening the Dart contract itself is the final splice-plan checkpoint's
+ * job, not this task's.
+ */
+enum class AiroSpliceOutcome { SPLICED, FELL_BACK_TO_MUTE_CUT, FAILED }
+
+/**
  * Reports whether a splice-safe point (PAT/PMT+IDR for TS, next segment
  * boundary for HLS) was found. Implementations do their own internal
  * work however long it takes -- [AiroSpliceDecision] is what enforces the

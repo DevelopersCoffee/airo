@@ -1,6 +1,8 @@
 package io.airo.app
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.SurfaceView
 import android.view.View
@@ -42,6 +44,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
     companion object {
         const val VIEW_TYPE_ID = "com.airo.player/streaming_surface"
         private const val TAG = "AiroStreamingSurface"
+        private const val POSITION_POLL_INTERVAL_MS = 200L
 
         // Apple's public bipbop HLS test asset -- stable, no auth, no
         // provider dependency. Replaced by a real channel source once Wave
@@ -128,6 +131,19 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         }
         private val player: ExoPlayer
 
+        // Task 2 (splice plan): keeps AiroStreamingEngine's thread-safe
+        // position cache fresh so switchSource's background splice-wait
+        // never has to touch this ExoPlayer instance directly (Media3
+        // confines player access to its own application thread -- this
+        // Handler is that thread, since PlatformView.create() runs on it).
+        private val positionPollHandler = Handler(Looper.getMainLooper())
+        private val positionPoll = object : Runnable {
+            override fun run() {
+                AiroStreamingEngine.reportPlaybackPosition(player.currentPosition)
+                positionPollHandler.postDelayed(this, POSITION_POLL_INTERVAL_MS)
+            }
+        }
+
         init {
             Log.d(TAG, "creating ExoPlayer, dataSourceFactory=${AiroStreamingEngine.dataSourceFactory}")
             player = ExoPlayer.Builder(context)
@@ -145,6 +161,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
             Log.d(TAG, "prepare() returned, playWhenReady=true set, current state=${stateName(player.playbackState)}")
             AiroStreamingEngine.currentPlayer = player
             AiroStreamingEngine.currentSegmentBoundaryTracker = boundaryTracker
+            positionPollHandler.post(positionPoll)
         }
 
         private fun stateName(state: Int): String = when (state) {
@@ -168,6 +185,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         override fun getView(): View = surfaceView
 
         override fun dispose() {
+            positionPollHandler.removeCallbacks(positionPoll)
             if (AiroStreamingEngine.currentPlayer === player) {
                 AiroStreamingEngine.currentPlayer = null
                 AiroStreamingEngine.currentSegmentBoundaryTracker = null

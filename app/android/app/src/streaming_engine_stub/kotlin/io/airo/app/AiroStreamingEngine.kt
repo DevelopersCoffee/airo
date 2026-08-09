@@ -15,5 +15,5 @@ object AiroStreamingEngine {
 
     fun shadowFetch(url: String): Map<String, Any?> = mapOf("status" to "failed", "reason" to "unavailable")
 
-    fun switchSource(url: String): Boolean = false
+    fun switchSource(url: String): AiroSpliceOutcome = AiroSpliceOutcome.FAILED
 }

@@ -61,7 +61,19 @@ class AiroStreamingEnginePlugin {
                     if (url == null) {
                         result.error("INVALID_ARGUMENT", "url is required", null)
                     } else {
-                        result.success(AiroStreamingEngine.switchSource(url))
+                        // AiroSpliceDecision.decide() (Task 0/2) blocks the
+                        // calling thread up to its 3s deadline while it
+                        // waits for a splice-safe boundary -- must not run
+                        // on the main thread, same reasoning as shadowFetch
+                        // above. Dart's contract is still a plain bool
+                        // (AD-Splice.3 defers the richer outcome shape to
+                        // the splice plan's final checkpoint); SPLICED and
+                        // FELL_BACK_TO_MUTE_CUT both count as "switched".
+                        Thread {
+                            val outcome = AiroStreamingEngine.switchSource(url)
+                            val switched = outcome != AiroSpliceOutcome.FAILED
+                            mainHandler.post { result.success(switched) }
+                        }.start()
                     }
                 }
                 else -> result.notImplemented()
