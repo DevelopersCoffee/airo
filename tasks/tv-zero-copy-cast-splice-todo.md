@@ -30,7 +30,14 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - **Dependencies:** None (parallel-safe with Task 0)
 
 ## Task 2: HLS splice execution at segment boundary
-- [ ] Not started
+- [~] Implemented, commit `450c6fb3` — `switchSource` waits for Task 1's
+  boundary via new `AiroHlsSplicePointFinder` (3/3 JVM tests) through
+  Task 0's `AiroSpliceDecision`; new `AiroSpliceOutcome` enum (Dart
+  contract stays bool, AD-Splice.3); thread-safe position-poll cache;
+  plugin call backgrounded. Full suite green (33/33), all 3 variants
+  clean. **Not yet device-verified** — F4.4.6 "no visible interruption"
+  needs a real splice watched on Pixel 9. That's the remaining
+  acceptance criterion.
 - **Tier:** implement
 - **Verification:** Device-verified, F4.4.6 "no visible interruption"
   checked by eye on Pixel 9
