@@ -43,6 +43,22 @@ object AiroStreamingEngine {
      * live player, which otherwise only the (private) PlatformView holds. */
     var currentPlayer: ExoPlayer? = null
 
+    /** Set/cleared alongside [currentPlayer] -- Task 1 of the splice plan.
+     * Nullable rather than a no-op default: absence means "no boundary
+     * data yet" (e.g. right after create, before any segment has loaded),
+     * which must read the same as "unknown" to callers, not "zero". */
+    var currentSegmentBoundaryTracker: AiroSegmentBoundaryTracker? = null
+
+    /** Task 1 -- how long until the next HLS segment boundary, or null if
+     * unknown (no player, no boundary tracked yet, or the tracked
+     * boundary is already stale). Task 2 will use this to time the
+     * splice swap; for now this is read for device-verification logging
+     * only. */
+    fun msUntilNextHlsBoundary(): Long? {
+        val position = currentPlayer?.currentPosition ?: return null
+        return currentSegmentBoundaryTracker?.msUntilNextBoundary(position)
+    }
+
     /** F4.3.2/F4.4.3 -- probe a candidate source without disturbing
      * playback. Returns a Dart-codec-friendly map. */
     fun shadowFetch(url: String): Map<String, Any?> {

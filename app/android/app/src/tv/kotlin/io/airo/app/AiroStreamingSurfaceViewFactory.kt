@@ -4,11 +4,15 @@ import android.content.Context
 import android.util.Log
 import android.view.SurfaceView
 import android.view.View
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
@@ -92,6 +96,26 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
                 Log.d(TAG, "onRenderedFirstFrame")
             }
         }
+
+        // Task 1 (splice plan): HLS segments are boundary-aligned on
+        // keyframes by spec, so onLoadCompleted's mediaEndTimeMs for the
+        // video track *is* a splice-safe point, detected for free.
+        // C.TIME_UNSET is filtered here (device-specific sentinel
+        // handling) so the pure tracker only ever sees valid timestamps.
+        private val boundaryTracker = AiroSegmentBoundaryTracker()
+        private val analyticsListener = object : AnalyticsListener {
+            override fun onLoadCompleted(
+                eventTime: AnalyticsListener.EventTime,
+                loadEventInfo: LoadEventInfo,
+                mediaLoadData: MediaLoadData,
+            ) {
+                if (mediaLoadData.trackType != C.TRACK_TYPE_VIDEO) return
+                val endMs = mediaLoadData.mediaEndTimeMs
+                if (endMs == C.TIME_UNSET) return
+                boundaryTracker.onSegmentLoaded(endMs)
+                Log.d(TAG, "segment boundary tracked: mediaEndTimeMs=$endMs")
+            }
+        }
         private val player: ExoPlayer
 
         init {
@@ -102,6 +126,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
             Log.d(TAG, "ExoPlayer built, attaching surface + listener")
             player.setVideoSurfaceView(surfaceView)
             player.addListener(listener)
+            player.addAnalyticsListener(analyticsListener)
             Log.d(TAG, "setting MediaItem: $TEST_STREAM_URL")
             player.setMediaItem(MediaItem.fromUri(TEST_STREAM_URL))
             Log.d(TAG, "calling prepare()")
@@ -109,6 +134,7 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
             player.playWhenReady = true
             Log.d(TAG, "prepare() returned, playWhenReady=true set, current state=${stateName(player.playbackState)}")
             AiroStreamingEngine.currentPlayer = player
+            AiroStreamingEngine.currentSegmentBoundaryTracker = boundaryTracker
         }
 
         private fun stateName(state: Int): String = when (state) {
@@ -134,8 +160,10 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
         override fun dispose() {
             if (AiroStreamingEngine.currentPlayer === player) {
                 AiroStreamingEngine.currentPlayer = null
+                AiroStreamingEngine.currentSegmentBoundaryTracker = null
             }
             player.removeListener(listener)
+            player.removeAnalyticsListener(analyticsListener)
             player.release()
         }
     }
