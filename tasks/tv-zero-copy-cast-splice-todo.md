@@ -16,7 +16,14 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - **Dependencies:** None
 
 ## Task 1: HLS segment-boundary detection
-- [ ] Not started
+- [~] Implemented, commit `0a4727ff` — `AiroSegmentBoundaryTracker`
+  (pure, product/kotlin, 5/5 JVM tests) wired via
+  `Player.addAnalyticsListener` in `AiroStreamingSurfaceViewFactory`;
+  `AiroStreamingEngine.msUntilNextHlsBoundary()` exposed for Task 2.
+  All 3 Gradle variants compile clean. **Not yet device-verified** —
+  boundary-tracked logs haven't been watched against real bipbop HLS
+  playback on Pixel 9. That's the remaining acceptance criterion before
+  this checks off.
 - **Tier:** implement
 - **Verification:** Device-verified (real HLS loading timing)
 - **Dependencies:** None (parallel-safe with Task 0)
