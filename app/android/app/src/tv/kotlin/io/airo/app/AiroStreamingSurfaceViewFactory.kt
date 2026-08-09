@@ -99,7 +99,13 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
 
         // Task 1 (splice plan): HLS segments are boundary-aligned on
         // keyframes by spec, so onLoadCompleted's mediaEndTimeMs for the
-        // video track *is* a splice-safe point, detected for free.
+        // primary track *is* a splice-safe point, detected for free.
+        // Device-confirmed on Pixel 9 against the bipbop test stream:
+        // single-rendition HLS (muxed audio+video TS chunks, no separate
+        // audio rendition) reports trackType=C.TRACK_TYPE_DEFAULT for
+        // segment loads, never C.TRACK_TYPE_VIDEO -- accepting both
+        // covers this stream and any future multi-rendition source where
+        // Media3 does tag the video-only track explicitly.
         // C.TIME_UNSET is filtered here (device-specific sentinel
         // handling) so the pure tracker only ever sees valid timestamps.
         private val boundaryTracker = AiroSegmentBoundaryTracker()
@@ -109,7 +115,11 @@ class AiroStreamingSurfaceViewFactory(private val onPhase: (String) -> Unit) :
                 loadEventInfo: LoadEventInfo,
                 mediaLoadData: MediaLoadData,
             ) {
-                if (mediaLoadData.trackType != C.TRACK_TYPE_VIDEO) return
+                if (mediaLoadData.trackType != C.TRACK_TYPE_VIDEO &&
+                    mediaLoadData.trackType != C.TRACK_TYPE_DEFAULT
+                ) {
+                    return
+                }
                 val endMs = mediaLoadData.mediaEndTimeMs
                 if (endMs == C.TIME_UNSET) return
                 boundaryTracker.onSegmentLoaded(endMs)
