@@ -38,6 +38,7 @@ export 'src/widgets/tv_overscan_safe_area.dart';
 
 // Adaptive UI
 export 'src/adaptive/adaptive_ui_models.dart';
+export 'src/adaptive/airo_fold.dart';
 export 'src/adaptive/airo_memory_pressure_observer.dart';
 
 // Voice
