@@ -164,6 +164,12 @@ void main() {
         find.byKey(const ValueKey('iptv-player-lock-button')),
         findsNothing,
       );
+      // issues/1025: the idle center play button and hover chrome (volume,
+      // buffer label, PiP/track/fullscreen) must never composite on top of
+      // the error overlay — not just be faded out.
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+      expect(find.byIcon(Icons.play_arrow), findsNothing);
+      expect(find.textContaining('Buffer:'), findsNothing);
     },
   );
 
