@@ -47,10 +47,9 @@ cargokit {
 
 android {
     namespace = "com.developerscoffee.airo.mind"
-    // Must track the app module's compileSdk (app/android/app/build.gradle.kts):
-    // flutter_local_notifications' AAR metadata requires compiling against 36+,
-    // and AGP's checkReleaseAarMetadata task fails the full-variant release
-    // build otherwise.
+    // Must track gradle/libs.versions.toml airo-compile-sdk (#1575). The app
+    // module's compileSdk does not override library modules — AGP validates
+    // AAR metadata per module. flutter_local_notifications requires 36+.
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 

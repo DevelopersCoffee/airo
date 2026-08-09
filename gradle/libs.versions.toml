@@ -1,0 +1,13 @@
+# Airo Android / toolchain version authority.
+#
+# One repository → one version authority → modules consume it → CI prevents drift.
+# Guard: scripts/check-android-sdk-baseline.sh (wired into PR Checks + CI analyze).
+#
+# compileSdk = API level used to compile (AAR metadata requirements apply here).
+# targetSdk  = Android behavior level the app declares it targets.
+# minSdk     = lowest Android API the product supports.
+
+[versions]
+airo-compile-sdk = "36"
+airo-target-sdk = "36"
+airo-min-sdk = "26"
