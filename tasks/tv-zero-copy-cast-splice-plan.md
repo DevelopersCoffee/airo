@@ -204,9 +204,10 @@ visible interruption) but for TS.
 
 ## Open Questions
 
-- **Splice-1:** Where does a stable, public raw-TS test URL come from?
-  Not solved by this plan — Task 3 is explicitly scoped as "go find or
-  produce one," not assumed to already exist.
+- **Splice-1 (resolved):** `https://samples.ffmpeg.org/ts/01c56b0dc1.ts`
+  — ffmpeg's own public sample archive, no auth, H.264 + multi-track
+  audio + DVB subtitle broadcast capture, 10.7s/11MB, HTTP range
+  requests supported, verified via `curl`/`ffprobe` (not guessed).
 - **Splice-2:** Does this work belong in the public repo (like Wave C
   Task 1's mechanism) or does F8's "shadow failover" gating mean the
   *splice execution itself* should be pro-gated too, not just the

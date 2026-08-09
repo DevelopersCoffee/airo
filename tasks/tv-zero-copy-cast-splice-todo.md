@@ -50,7 +50,17 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - [ ] Human review + decide whether to proceed to TS now
 
 ## Task 3: Raw MPEG-TS test asset
-- [ ] Not started — mostly research, find/produce a public raw .ts URL
+- [x] Done — `https://samples.ffmpeg.org/ts/01c56b0dc1.ts` (ffmpeg's own
+  public sample archive, no auth). Verified via `curl`/`ffprobe`: H.264
+  video + 2x AAC + AC-3 audio + DVB subtitle, 10.7s, 11MB, HTTP range
+  requests supported (`Accept-Ranges: bytes`), full file decodes
+  cleanly with no errors. Real broadcast-capture TS, not synthetic —
+  matches the plan's own note that real captured samples matter more
+  than synthetic fixtures. Unblocks Task 4 (JVM fixture bytes can be
+  extracted from this file directly, no device needed). **Not yet
+  played through the app's `AiroStreamingEngine` pipeline on-device** —
+  deferred along with Task 1/2's checkpoint device verification, same
+  user request.
 - **Tier:** architect/research
 - **Dependencies:** None (parallel-safe with Tasks 0-2)
 
