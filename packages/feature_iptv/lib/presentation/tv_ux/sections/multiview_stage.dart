@@ -51,6 +51,32 @@ class MultiviewStage extends StatelessWidget {
       );
     }
 
+    if (activeSessions.length == 3) {
+      // A 2-column grid leaves a dead fourth cell for exactly three tiles;
+      // two-over-one keeps every tile equally sized with no empty space.
+      Widget tileFor(IptvMultiviewSession session) => _PromotableSurface(
+        session: session,
+        featured: session.id == featuredChannelId,
+        onPromote: onPromote,
+        onSwap: onSwap,
+        featuredChannelId: featuredChannelId,
+      );
+      return Column(
+        key: const ValueKey('multiview-layout-triple'),
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: tileFor(activeSessions[0])),
+                Expanded(child: tileFor(activeSessions[1])),
+              ],
+            ),
+          ),
+          Expanded(child: tileFor(activeSessions[2])),
+        ],
+      );
+    }
+
     return GridView.count(
       key: ValueKey('multiview-layout-quad-${activeSessions.length}'),
       physics: const NeverScrollableScrollPhysics(),

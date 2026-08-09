@@ -67,26 +67,45 @@ void main() {
     expect(find.byKey(const ValueKey('player-two')), findsOneWidget);
   });
 
-  for (final count in [3, 4]) {
-    testWidgets('$count channels use a stable quad layout', (tester) async {
-      final sessions = [
-        for (var index = 1; index <= count; index++) session('$index'),
-      ];
-      addTearDown(() => Future.wait(sessions.map((item) => item.close())));
-      await pump(tester, sessions);
+  testWidgets('3 channels use the two-over-one layout, no dead grid cell', (
+    tester,
+  ) async {
+    final sessions = [session('1'), session('2'), session('3')];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
 
-      expect(
-        find.byKey(ValueKey('multiview-layout-quad-$count')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('multiview-thumbnail-strip')),
-        findsNothing,
-      );
-      expect(find.byIcon(Icons.volume_up), findsOneWidget);
-      expect(find.byIcon(Icons.volume_off), findsNWidgets(count - 1));
-    });
-  }
+    expect(
+      find.byKey(const ValueKey('multiview-layout-triple')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('multiview-layout-quad-3')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('multiview-thumbnail-strip')),
+      findsNothing,
+    );
+    expect(find.byIcon(Icons.volume_up), findsOneWidget);
+    expect(find.byIcon(Icons.volume_off), findsNWidgets(2));
+  });
+
+  testWidgets('4 channels use a stable quad layout', (tester) async {
+    const count = 4;
+    final sessions = [
+      for (var index = 1; index <= count; index++) session('$index'),
+    ];
+    addTearDown(() => Future.wait(sessions.map((item) => item.close())));
+    await pump(tester, sessions);
+
+    expect(
+      find.byKey(ValueKey('multiview-layout-quad-$count')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('multiview-thumbnail-strip')),
+      findsNothing,
+    );
+    expect(find.byIcon(Icons.volume_up), findsOneWidget);
+    expect(find.byIcon(Icons.volume_off), findsNWidgets(count - 1));
+  });
 
   testWidgets('D-pad focus promotes the focused tile for audio', (
     tester,
