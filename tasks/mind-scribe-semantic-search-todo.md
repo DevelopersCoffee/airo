@@ -99,18 +99,28 @@ evidence (not a second guess), rebuild succeeded.
 
 **Phase 2 is now unblocked.**
 
-## Phase 2 — embedding service + storage
+## Phase 2 — embedding service + storage ✅ DONE
 
-- [ ] **2.1** `EmbeddingService` in `core_ai` (`TaskModelRouter` +
-      `EmbeddingClient`, typed "no model installed" result, does not
-      download anything itself).
-- [ ] **2.2** `MeetingEmbeddingStore` in `feature_mind` — flat-file, keyed by
-      meeting id + producing model id, survives restart. No new db
-      dependency unless proven necessary.
+- [x] **2.1** `EmbeddingService` in `core_ai` (`TaskModelRouter` +
+      `EmbeddingClient`, typed `EmbeddingResult` — ready/noModelInstalled/
+      modelFailed — never downloads anything itself). Finds the paired
+      tokenizer via the tag convention Task 1's catalog entry was given
+      (`tags` containing both `'tokenizer'` and the resolved model's id).
+      6 tests, including a fake `ModelDownloadService` whose `downloadModel`
+      throws — proves "never downloads" by failing loudly, not by an
+      assertion that would pass either way.
+- [x] **2.2** `MeetingEmbeddingStore` in `feature_mind` — flat JSON file,
+      keyed by meeting id, stores the producing model id alongside each
+      vector (mirrors `MeetingRecord.model`). No new db dependency — not
+      proven necessary. 7 tests, including real temp-dir file I/O across
+      two store instances (genuine restart-survival, not mocked) and a
+      corrupt-file-degrades-to-empty case.
 
 **Checkpoint**
-- [ ] `flutter test` green in both packages.
-- [ ] `git diff packages/core_ai/lib/src/router` — empty.
+- [x] `flutter test` green in both packages (core_ai 331/331, feature_mind
+      372/372, zero regressions).
+- [x] `git diff origin/main -- packages/core_ai/lib/src/router` — confirmed
+      empty.
 
 ## Phase 3 — ranking + integration
 
