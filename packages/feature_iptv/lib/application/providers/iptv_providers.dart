@@ -345,12 +345,22 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
           .fetchPlaylist(forceRefresh: forceRefresh);
     }
 
-    final byocChannels = await ref.watch(
-      configuredXtreamChannelsProvider.future,
-    );
-    final stalkerChannels = await ref.watch(
-      configuredStalkerChannelsProvider.future,
-    );
+    List<IPTVChannel> byocChannels = const [];
+    try {
+      byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
+    } catch (e) {
+      debugPrint('[Provider] Xtream sources could not be refreshed: $e');
+    }
+
+    List<IPTVChannel> stalkerChannels = const [];
+    try {
+      stalkerChannels = await ref.watch(
+        configuredStalkerChannelsProvider.future,
+      );
+    } catch (e) {
+      debugPrint('[Provider] Stalker sources could not be refreshed: $e');
+    }
+
     final merge = ref.watch(channelLibraryMergerProvider);
     final merged = merge([
       primaryChannels,
