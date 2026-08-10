@@ -133,6 +133,11 @@ export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
 
+// Runtime — the ⌘K summon seam. #1455 lands the real OS-level global hotkey
+// separately; see the doc comment on MindGlobalShortcut for how the two
+// reconcile.
+export 'src/runtime/mind_global_shortcut.dart';
+
 // Widgets that carry the design rules. Every Mind surface uses these rather
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
@@ -141,3 +146,9 @@ export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
 export 'src/widgets/mind_projection_switcher.dart';
+
+// Surface 11 — the macOS Everything Browser (#1461): ⌘K palette, three
+// columns, native menu bar.
+export 'src/widgets/mind_everything_browser.dart';
+export 'src/widgets/mind_command_palette_scope.dart';
+export 'src/widgets/mind_native_menu_bar.dart';

@@ -51,9 +51,19 @@ class MindContextChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  context.label,
-                  style: TextStyle(fontSize: 12, color: colour),
+                // Flexible + ellipsis rather than a bare Text: a chip that
+                // sits in a narrow column (the Everything Browser's three
+                // panes, a phone in split view) gets a tight maxWidth from
+                // its ambient constraints even though this Row itself only
+                // asks for as much as its content needs, and a bare Text
+                // overflows the moment the label doesn't fit rather than
+                // truncating.
+                Flexible(
+                  child: Text(
+                    context.label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: colour),
+                  ),
                 ),
                 const SizedBox(width: 6),
                 Text(
