@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:feature_mind/src/services/voice_search_service.dart';
+import 'package:feature_mind/src/assistant/consent/jurisdiction_consent_rules.dart';
 import 'package:feature_mind/src/assistant/presentation/screens/audio_scribe_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,6 +85,7 @@ void main() {
     expect(find.text('Ready'), findsWidgets);
     expect(find.text('Transcript'), findsWidgets);
     expect(find.text('Empty'), findsOneWidget);
+    await _grantConsent(tester);
     await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
     await tester.pumpAndSettle();
 
@@ -109,6 +111,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _grantConsent(tester);
 
     await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
     await tester.pumpAndSettle();
@@ -133,6 +136,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _grantConsent(tester);
 
     await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
     await tester.pump();
@@ -159,6 +163,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _grantConsent(tester);
 
     await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
     await tester.pump();
@@ -301,11 +306,165 @@ void main() {
       expect(service.availabilityChecks, greaterThanOrEqualTo(2));
     },
   );
+
+  testWidgets('capture stays blocked until the consent banner is confirmed', (
+    tester,
+  ) async {
+    await _usePhoneSurface(tester);
+    final service = _FakeVoiceService();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+        child: const MaterialApp(home: AudioScribeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('audio_scribe_consent_request')),
+      findsOneWidget,
+    );
+    final capture = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_capture_button')),
+    );
+    expect(
+      capture.onPressed,
+      isNull,
+      reason: 'speech is available, but consent has not been granted',
+    );
+
+    await _grantConsent(tester);
+
+    expect(
+      find.byKey(const Key('audio_scribe_consent_granted')),
+      findsOneWidget,
+    );
+    final captureAfterConsent = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_capture_button')),
+    );
+    expect(captureAfterConsent.onPressed, isNotNull);
+  });
+
+  testWidgets('a two-party jurisdiction blocks confirm until all parties are '
+      'acknowledged as notified', (tester) async {
+    await _usePhoneSurface(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          voiceSearchServiceProvider.overrideWithValue(_FakeVoiceService()),
+        ],
+        child: const MaterialApp(home: AudioScribeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final california = jurisdictionByCode('US-CA');
+    await tester.tap(
+      find.byKey(const Key('audio_scribe_jurisdiction_dropdown')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(california.label).last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('audio_scribe_all_parties_checkbox')),
+      findsOneWidget,
+    );
+    final confirmBeforeAck = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_confirm_consent_button')),
+    );
+    expect(confirmBeforeAck.onPressed, isNull);
+
+    await tester.tap(
+      find.byKey(const Key('audio_scribe_all_parties_checkbox')),
+    );
+    await tester.pumpAndSettle();
+
+    final confirmAfterAck = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_confirm_consent_button')),
+    );
+    expect(confirmAfterAck.onPressed, isNotNull);
+
+    await tester.tap(
+      find.byKey(const Key('audio_scribe_confirm_consent_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('All parties were notified'), findsOneWidget);
+  });
+
+  testWidgets('revoking consent mid-recording stops the encoder and marks the '
+      'transcript partial', (tester) async {
+    await _usePhoneSurface(tester);
+    final pending = Completer<VoiceSearchResult>();
+    final service = _FakeVoiceService(pendingResult: pending);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+        child: const MaterialApp(home: AudioScribeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _grantConsent(tester);
+
+    await tester.tap(find.byKey(const Key('audio_scribe_capture_button')));
+    await tester.pump();
+    expect(find.text('Stop capture'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('audio_scribe_revoke_consent_button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      service.stopCount,
+      1,
+      reason: 'revoking mid-recording must stop the encoder',
+    );
+    expect(find.text('Start capture'), findsOneWidget);
+    expect(
+      find.byKey(const Key('audio_scribe_partial_notice')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('audio_scribe_consent_request')),
+      findsOneWidget,
+      reason: 'a fresh recording needs fresh consent',
+    );
+
+    final captureAfterRevoke = tester.widget<FilledButton>(
+      find.byKey(const Key('audio_scribe_capture_button')),
+    );
+    expect(captureAfterRevoke.onPressed, isNull);
+
+    pending.complete(VoiceSearchResult.success('Late transcript.'));
+    await tester.pumpAndSettle();
+    expect(find.text('Late transcript.'), findsNothing);
+  });
 }
 
 Future<void> _usePhoneSurface(WidgetTester tester) async {
   await tester.binding.setSurfaceSize(const Size(1080, 1800));
   addTearDown(() async => tester.binding.setSurfaceSize(null));
+}
+
+/// Grants consent through the blocking banner so a test can reach the
+/// capture button. Defaults to a one-party jurisdiction (no notification
+/// checkbox required) so existing capture-flow tests stay focused on
+/// capture, not consent.
+Future<void> _grantConsent(
+  WidgetTester tester, {
+  String jurisdictionCode = 'GB',
+}) async {
+  final jurisdiction = jurisdictionByCode(jurisdictionCode);
+  await tester.tap(find.byKey(const Key('audio_scribe_jurisdiction_dropdown')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(jurisdiction.label).last);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const Key('audio_scribe_confirm_consent_button')),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _scrollTo(WidgetTester tester, Finder finder) async {

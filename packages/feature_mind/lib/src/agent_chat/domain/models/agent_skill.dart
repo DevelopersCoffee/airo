@@ -1,5 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../runtime/models/capability_models.dart';
+import 'data_volume_measurement.dart';
+import 'grounded_citation.dart';
+
 enum SkillCapability {
   calendarRead('calendar.read', 'Calendar read'),
   calendarWrite('calendar.write', 'Calendar write'),
@@ -172,16 +176,28 @@ class AgentActionTrace extends Equatable {
   final bool success;
   final int? durationMs;
 
+  /// How much data this call measurably moved. Null when nothing was
+  /// measured — a failed call swallows nothing, but it also asserts nothing.
+  final DataVolumeMeasurement? dataVolume;
+
   const AgentActionTrace({
     required this.title,
     required this.detail,
     this.parameters = const {},
     this.success = true,
     this.durationMs,
+    this.dataVolume,
   });
 
   @override
-  List<Object?> get props => [title, detail, parameters, success, durationMs];
+  List<Object?> get props => [
+    title,
+    detail,
+    parameters,
+    success,
+    durationMs,
+    dataVolume,
+  ];
 }
 
 class AgentRunResult extends Equatable {
@@ -193,6 +209,18 @@ class AgentRunResult extends Equatable {
   final Map<String, dynamic> parameters;
   final Map<String, dynamic>? pendingCalendarEvent;
 
+  /// Ops the final answer was replayed from. Empty unless [groundingState]
+  /// is [GroundingState.grounded].
+  final List<GroundedCitation> citations;
+
+  /// Whether [message] is backed by a real op. Defaults to
+  /// [GroundingState.notApplicable]: a navigation result or an error carries
+  /// no factual claim to ground in the first place.
+  final GroundingState groundingState;
+
+  /// The safety banner this answer's capability requires, if any.
+  final CapabilitySafetyClass? safetyClass;
+
   const AgentRunResult({
     required this.handled,
     required this.message,
@@ -201,6 +229,9 @@ class AgentRunResult extends Equatable {
     this.route,
     this.parameters = const {},
     this.pendingCalendarEvent,
+    this.citations = const [],
+    this.groundingState = GroundingState.notApplicable,
+    this.safetyClass,
   });
 
   const AgentRunResult.notHandled()
@@ -210,7 +241,10 @@ class AgentRunResult extends Equatable {
       isError = false,
       route = null,
       parameters = const {},
-      pendingCalendarEvent = null;
+      pendingCalendarEvent = null,
+      citations = const [],
+      groundingState = GroundingState.notApplicable,
+      safetyClass = null;
 
   bool get shouldNavigate => route != null && route != '/agent';
 
@@ -223,5 +257,8 @@ class AgentRunResult extends Equatable {
     route,
     parameters,
     pendingCalendarEvent,
+    citations,
+    groundingState,
+    safetyClass,
   ];
 }

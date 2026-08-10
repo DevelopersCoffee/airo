@@ -47,7 +47,7 @@ void main() {
     // bridge; a check that exempted it file by file would be diluted one file
     // at a time until it enforced nothing.
     final offenders = <String>[];
-    const layers = ['lib/src/runtime', 'lib/src/widgets'];
+    const layers = ['lib/src/runtime', 'lib/src/widgets', 'lib/src/surfaces'];
 
     for (final layer in layers) {
       for (final entity in Directory(layer).listSync(recursive: true)) {

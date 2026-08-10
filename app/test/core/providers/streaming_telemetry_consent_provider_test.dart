@@ -59,35 +59,32 @@ void main() {
       expect(container.read(streamingTelemetryConsentProvider), isTrue);
     });
 
-    test(
-      'setEnabled(true) persists, updates state, and grants the live '
-      'service instance',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final service = AiroLocalDiagnosticsAnalyticsService();
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            streamingTelemetryServiceProvider.overrideWithValue(service),
-          ],
-        );
-        addTearDown(container.dispose);
+    test('setEnabled(true) persists, updates state, and grants the live '
+        'service instance', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = AiroLocalDiagnosticsAnalyticsService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamingTelemetryServiceProvider.overrideWithValue(service),
+        ],
+      );
+      addTearDown(container.dispose);
 
-        await container
-            .read(streamingTelemetryConsentProvider.notifier)
-            .setEnabled(true);
+      await container
+          .read(streamingTelemetryConsentProvider.notifier)
+          .setEnabled(true);
 
-        expect(container.read(streamingTelemetryConsentProvider), isTrue);
-        expect(prefs.getBool(streamingTelemetryConsentStorageKey), isTrue);
-        expect(service.consent.playbackQuality, isTrue);
-        expect(
-          service.consent.localOnly,
-          isFalse,
-          reason: 'granting must not route through the localOnly preset',
-        );
-      },
-    );
+      expect(container.read(streamingTelemetryConsentProvider), isTrue);
+      expect(prefs.getBool(streamingTelemetryConsentStorageKey), isTrue);
+      expect(service.consent.playbackQuality, isTrue);
+      expect(
+        service.consent.localOnly,
+        isFalse,
+        reason: 'granting must not route through the localOnly preset',
+      );
+    });
 
     test('setEnabled(false) revokes on the live service instance', () async {
       SharedPreferences.setMockInitialValues({
@@ -121,32 +118,35 @@ void main() {
       expect(service.consent.playbackQuality, isFalse);
     });
 
-    test('a granted event actually survives validateEvent (end to end)', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final service = AiroLocalDiagnosticsAnalyticsService();
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          streamingTelemetryServiceProvider.overrideWithValue(service),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'a granted event actually survives validateEvent (end to end)',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final service = AiroLocalDiagnosticsAnalyticsService();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            streamingTelemetryServiceProvider.overrideWithValue(service),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      await container
-          .read(streamingTelemetryConsentProvider.notifier)
-          .setEnabled(true);
+        await container
+            .read(streamingTelemetryConsentProvider.notifier)
+            .setEnabled(true);
 
-      final result = await service.track(
-        AiroAnalyticsEvent(
-          name: 'streaming_session_summary',
-          owner: 'test',
-          purpose: AiroAnalyticsPurpose.playbackQuality,
-          params: const {'sessionId': 'test'},
-        ),
-      );
+        final result = await service.track(
+          AiroAnalyticsEvent(
+            name: 'streaming_session_summary',
+            owner: 'test',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {'sessionId': 'test'},
+          ),
+        );
 
-      expect(result.status, AiroAnalyticsTrackStatus.accepted);
-    });
+        expect(result.status, AiroAnalyticsTrackStatus.accepted);
+      },
+    );
   });
 }

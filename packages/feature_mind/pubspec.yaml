@@ -46,6 +46,10 @@ dependencies:
   flutter_local_notifications: ^22.0.1
   timezone: ^0.11.1
   llama_flutter_android: ^0.2.6
+  # Metered-connection detection for the model download manager (#1457) --
+  # same package and version core_data, platform_player and feature_iptv
+  # already use for the same purpose.
+  connectivity_plus: ^7.2.0
 
 # An FFI plugin. Declaring the platforms is what makes the Flutter tool run
 # cargokit's podspec/gradle/cmake hooks during a normal build -- without this

@@ -22,6 +22,14 @@ abstract final class MindPalette {
   /// Ink on a filled surface.
   static const Color onFilled = Color(0xFF041C1C);
 
+  /// The screen itself. The design's phone body, distinct from the canvas
+  /// behind it (#020E0E), which no surface renders.
+  static const Color surface = Color(0xFF041C1C);
+
+  /// Grid lines and control borders. The design is built from flat surfaces
+  /// separated by hairlines rather than elevation.
+  static const Color grid = Color(0x33FFE6CB);
+
   /// A signature that did not verify. Loud on purpose: it is the one state a
   /// person must not scroll past.
   static const Color alarm = Color(0xFFFF6B6B);
