@@ -157,11 +157,11 @@ final configuredContentSourcesProvider =
       return List.unmodifiable([...sources, config]);
     });
 
-/// The one configured source whose channels own the browse/runtime surface.
+/// The one configured source that owns the VOD/on-demand browse surface.
 ///
-/// Existing installs are migrated deterministically to their first configured
-/// source. Once selected, no unrelated public catalog or legacy M3U state is
-/// merged into the active source's channels.
+/// Live TV merges every configured source (see [iptvChannelsProvider]) and no
+/// longer reads this provider. Existing installs are migrated deterministically
+/// to their first configured source.
 final activeContentSourceProvider = FutureProvider<ContentSourceConfig?>((
   ref,
 ) async {
@@ -293,14 +293,18 @@ Duration? surfaceChannelFailureInsteadOfRetrying(
   Object error,
 ) => null;
 
-/// All runtime channels. A configured active source is exclusive; the public
-/// catalog/legacy fallback is used only when no source is configured.
+/// All runtime channels. Live TV always merges every configured M3U, Xtream,
+/// and Stalker source together with the public catalog/legacy fallback -- no
+/// source is exclusive and none gates the others out.
 final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   final runtimeChannels = await ref.watch(
     _runtimeChannelsProvider(false).future,
   );
   final personalChannels = await ref.watch(personalChannelsProvider.future);
-  return mergeChannelLibraries([runtimeChannels, personalChannels]);
+  return ref.watch(channelLibraryMergerProvider)([
+    runtimeChannels,
+    personalChannels,
+  ]);
 }, retry: surfaceChannelFailureInsteadOfRetrying);
 
 final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
@@ -346,19 +350,25 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
     }
 
     List<IPTVChannel> byocChannels = const [];
+    Object? xtreamFailure;
+    StackTrace? xtreamTrace;
     try {
       byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
-    } catch (e) {
-      debugPrint('[Provider] Xtream sources could not be refreshed: $e');
+    } catch (error, stackTrace) {
+      xtreamFailure = error;
+      xtreamTrace = stackTrace;
     }
 
     List<IPTVChannel> stalkerChannels = const [];
+    Object? stalkerFailure;
+    StackTrace? stalkerTrace;
     try {
       stalkerChannels = await ref.watch(
         configuredStalkerChannelsProvider.future,
       );
-    } catch (e) {
-      debugPrint('[Provider] Stalker sources could not be refreshed: $e');
+    } catch (error, stackTrace) {
+      stalkerFailure = error;
+      stalkerTrace = stackTrace;
     }
 
     final merge = ref.watch(channelLibraryMergerProvider);
@@ -368,8 +378,16 @@ final _runtimeChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>(
       byocChannels,
       stalkerChannels,
     ]);
-    if (merged.isEmpty && configuredM3uFailure != null) {
-      Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);
+    if (merged.isEmpty) {
+      if (configuredM3uFailure != null) {
+        Error.throwWithStackTrace(configuredM3uFailure, configuredM3uTrace!);
+      }
+      if (xtreamFailure != null) {
+        Error.throwWithStackTrace(xtreamFailure, xtreamTrace!);
+      }
+      if (stalkerFailure != null) {
+        Error.throwWithStackTrace(stalkerFailure, stalkerTrace!);
+      }
     }
     return merged;
   },
@@ -396,7 +414,6 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
   List<ContentSourceConfig> configs,
   M3uSourceParserFactory parserFactory, {
   bool forceRefresh = false,
-  bool failFast = false,
 }) async {
   final m3uConfigs = configs
       .where((source) => source.kind == ContentSourceKind.m3u)
@@ -424,11 +441,6 @@ Future<List<IPTVChannel>> _loadConfiguredM3uChannels(
         );
       }
     } catch (_) {
-      if (failFast) {
-        throw const ContentSourceRuntimeException(
-          'Could not refresh the M3U playlist. Check the URL, then retry.',
-        );
-      }
       // Source URLs may contain private tokens. Keep diagnostics coarse and
       // continue loading the remaining configured sources.
       failedSources++;
@@ -481,14 +493,18 @@ final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
   ref,
 ) async {
   final configs = await ref.watch(configuredContentSourcesProvider.future);
+  final xtreamConfigs = configs
+      .where((source) => source.kind == ContentSourceKind.xtream)
+      .toList(growable: false);
+  if (xtreamConfigs.isEmpty) return const [];
   return _loadConfiguredXtreamChannels(
-    configs,
+    xtreamConfigs,
     credentials: ref.read(contentSourceCredentialStoreProvider),
     dio: ref.read(dioProvider),
     epgRepository: ref.read(compactEpgRepositoryProvider),
     healthTracker: ref.read(providerHealthTrackerProvider),
   );
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
   List<ContentSourceConfig> configs, {
@@ -496,23 +512,19 @@ Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
   required Dio dio,
   required CompactEpgRepository epgRepository,
   required ProviderHealthTracker healthTracker,
-  bool failFast = false,
 }) async {
   final xtreamConfigs = configs
       .where((source) => source.kind == ContentSourceKind.xtream)
       .toList(growable: false);
   if (xtreamConfigs.isEmpty) return const [];
   final channels = <IPTVChannel>[];
+  var failedSources = 0;
   for (final config in xtreamConfigs) {
     final secret = await credentials.read(
       ContentSourceCredentialRef(config.id),
     );
     if (secret == null) {
-      if (failFast) {
-        throw const ContentSourceRuntimeException(
-          'Xtream credentials are unavailable. Reconnect the source.',
-        );
-      }
+      failedSources++;
       continue;
     }
     try {
@@ -544,18 +556,16 @@ Future<List<IPTVChannel>> _loadConfiguredXtreamChannels(
         );
       }
     } catch (_) {
-      if (failFast) {
-        throw const ContentSourceRuntimeException(
-          'Could not refresh the Xtream source. '
-          'Check the server and credentials, then retry.',
-        );
-      }
       // Dio errors may contain a credential-bearing query URL. Keep
       // diagnostics deliberately coarse and continue with other sources.
+      failedSources++;
       debugPrint(
         '[Provider] Xtream source ${config.id} could not be refreshed.',
       );
     }
+  }
+  if (channels.isEmpty && failedSources == xtreamConfigs.length) {
+    throw PlaylistSourcesUnavailableException(failedSources);
   }
   return channels;
 }
@@ -574,6 +584,7 @@ final configuredStalkerChannelsProvider = FutureProvider<List<IPTVChannel>>((
 
   final loader = ref.read(stalkerSourceLoaderProvider);
   final channels = <IPTVChannel>[];
+  var failedSources = 0;
   for (final config in stalkerConfigs) {
     try {
       channels.addAll(await loader(config));
@@ -581,13 +592,17 @@ final configuredStalkerChannelsProvider = FutureProvider<List<IPTVChannel>>((
       // Stalker portal URLs and MAC addresses are not secrets by
       // themselves, but keep diagnostics coarse for consistency with
       // the M3U/Xtream loaders above.
+      failedSources++;
       debugPrint(
         '[Provider] Stalker source ${config.id} could not be refreshed.',
       );
     }
   }
+  if (channels.isEmpty && failedSources == stalkerConfigs.length) {
+    throw PlaylistSourcesUnavailableException(failedSources);
+  }
   return channels;
-});
+}, retry: surfaceChannelFailureInsteadOfRetrying);
 
 /// Refresh channels provider
 final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
@@ -604,7 +619,7 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
     _runtimeChannelsProvider(forceRefresh).future,
   );
   final personalChannels = await ref.watch(personalChannelsProvider.future);
-  final newChannels = mergeChannelLibraries([
+  final newChannels = ref.watch(channelLibraryMergerProvider)([
     runtimeChannels,
     personalChannels,
   ]);

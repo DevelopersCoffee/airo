@@ -1,7 +1,6 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_channels/platform_channels.dart';
 
 void main() {
   test(

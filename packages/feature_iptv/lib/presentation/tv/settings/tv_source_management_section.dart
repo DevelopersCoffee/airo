@@ -479,7 +479,8 @@ class _TvSourceManagementSectionState
                               config.kind != ContentSourceKind.jellyfin)
                             TvFocusable(
                               onSelect: () => _selectSource(config),
-                              semanticLabel: 'Use ${config.label} for Live TV',
+                              semanticLabel:
+                                  'Use ${config.label} for on-demand',
                               semanticButton: true,
                               child: TextButton(
                                 onPressed: () => _selectSource(config),
