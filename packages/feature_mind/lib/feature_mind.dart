@@ -203,3 +203,4 @@ export 'src/widgets/relative_time.dart';
 export 'src/surfaces/devices_surface.dart';
 export 'src/surfaces/memory_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
+export 'src/surfaces/context_workspace_surface.dart';
