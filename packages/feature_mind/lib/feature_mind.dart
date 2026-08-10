@@ -201,4 +201,5 @@ export 'src/widgets/relative_time.dart';
 
 // Surfaces — the phone screens of the device system.
 export 'src/surfaces/devices_surface.dart';
+export 'src/surfaces/memory_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
