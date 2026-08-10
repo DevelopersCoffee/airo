@@ -142,6 +142,12 @@ export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
 
+// Portability -- surface 08's ".airobackup" envelope-sealing flow: pick
+// contexts, set the phrase, choose a destination on your own network.
+export 'src/portability/backup_envelope_controller.dart';
+export 'src/portability/backup_envelope_state.dart';
+export 'src/portability/destination_validation.dart';
+
 // Widgets that carry the design rules. Every Mind surface uses these rather
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
