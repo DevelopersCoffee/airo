@@ -18,10 +18,12 @@ class AiroDisplayScale extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    final scaledTextTheme = AiroTypography.of(context);
+    final factor = AiroTypography.scaleFactorOf(context);
 
     return AnimatedTheme(
-      data: base.copyWith(textTheme: scaledTextTheme),
+      data: base.copyWith(
+        textTheme: base.textTheme.apply(fontSizeFactor: factor),
+      ),
       duration: AiroMotion.resolve(context, AiroMotion.standard),
       curve: AiroMotion.emphasis,
       child: child,

@@ -165,13 +165,22 @@ abstract final class AiroTypography {
     AiroDisplayProfile.highContrast: 1.0,
   };
 
-  /// Resolves [textTheme] scaled for the display environment of [context].
+  /// The font-size multiplier for the display environment of [context].
   ///
-  /// Apps read semantic levels off the result (`AiroTypography.of(context)
-  /// .displayMedium`) instead of hardcoding a device-specific `fontSize`.
-  static TextTheme of(BuildContext context) {
+  /// Apply to an *existing* [TextTheme] via `.apply(fontSizeFactor: ...)` so
+  /// the active theme's font family/colors are preserved — scaling is a
+  /// separate axis from theme identity. See [AiroDisplayScale].
+  static double scaleFactorOf(BuildContext context) {
     final profile = AiroDisplayProfile.resolve(context);
-    final factor = _scaleFactors[profile] ?? 1.0;
-    return textTheme.apply(fontSizeFactor: factor);
+    return _scaleFactors[profile] ?? 1.0;
+  }
+
+  /// Resolves Airo's own base [textTheme] scaled for the display environment
+  /// of [context]. Use this when a widget wants Airo's semantic type ramp
+  /// directly (no existing theme to preserve) — e.g.
+  /// `AiroTypography.of(context).displayMedium`. To scale an existing
+  /// theme's `TextTheme` in place instead, use [scaleFactorOf].
+  static TextTheme of(BuildContext context) {
+    return textTheme.apply(fontSizeFactor: scaleFactorOf(context));
   }
 }
