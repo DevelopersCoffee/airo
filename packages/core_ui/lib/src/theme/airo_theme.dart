@@ -12,7 +12,7 @@ import 'airo_typography.dart';
 import 'bedtime_theme.dart';
 
 /// Application theme configuration.
-abstract final class AppTheme {
+abstract final class AiroTheme {
   static const AppThemeId defaultThemeId = AppThemeId.cyber;
 
   static AppThemeDefinition get defaultTheme => byId(defaultThemeId);

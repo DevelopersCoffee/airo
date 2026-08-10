@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'airo_display_profile.dart';
+
 /// Application typography styles
 abstract final class AiroTypography {
   static const String _fontFamily = 'Roboto';
@@ -147,4 +149,29 @@ abstract final class AiroTypography {
     labelMedium: labelMedium,
     labelSmall: labelSmall,
   );
+
+  /// Per-[AiroDisplayProfile] uniform font-size multiplier, calibrated so
+  /// [TextTheme.headlineLarge] (the semantic "Display L" reference) lands on
+  /// the documented physical size: compact=32, tablet=42, tv=56,
+  /// largeDisplay=64. `standard`/`highContrast` keep the compact baseline;
+  /// `accessible` applies a flat floor bump independent of screen size.
+  static const Map<AiroDisplayProfile, double> _scaleFactors = {
+    AiroDisplayProfile.compact: 1.0,
+    AiroDisplayProfile.standard: 1.0,
+    AiroDisplayProfile.tablet: 1.3125,
+    AiroDisplayProfile.tv: 1.75,
+    AiroDisplayProfile.largeDisplay: 2.0,
+    AiroDisplayProfile.accessible: 1.2,
+    AiroDisplayProfile.highContrast: 1.0,
+  };
+
+  /// Resolves [textTheme] scaled for the display environment of [context].
+  ///
+  /// Apps read semantic levels off the result (`AiroTypography.of(context)
+  /// .displayMedium`) instead of hardcoding a device-specific `fontSize`.
+  static TextTheme of(BuildContext context) {
+    final profile = AiroDisplayProfile.resolve(context);
+    final factor = _scaleFactors[profile] ?? 1.0;
+    return textTheme.apply(fontSizeFactor: factor);
+  }
 }

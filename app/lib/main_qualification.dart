@@ -43,9 +43,9 @@ class AiroIptvQualificationApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Airo TV QA Qualification',
-      theme: AppTheme.defaultLight,
-      darkTheme: AppTheme.defaultDark,
-      themeMode: AppTheme.defaultThemeMode,
+      theme: AiroTheme.defaultLight,
+      darkTheme: AiroTheme.defaultDark,
+      themeMode: AiroTheme.defaultThemeMode,
       debugShowCheckedModeBanner: false,
       home: DeviceQualificationOverlay(
         defaultPlaylistUrl: _defaultPlaylistUrl,

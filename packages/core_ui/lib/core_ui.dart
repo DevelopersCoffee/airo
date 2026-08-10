@@ -11,11 +11,12 @@ export 'src/theme/airo_theme_tokens.dart';
 export 'src/theme/airo_visual_tokens.dart';
 export 'src/theme/airo_colors.dart';
 export 'src/theme/airo_display_profile.dart';
+export 'src/theme/airo_display_scale.dart';
 export 'src/theme/airo_spacing.dart';
 export 'src/theme/airo_typography.dart';
 export 'src/theme/app_theme_definition.dart';
 export 'src/theme/app_theme_id.dart';
-export 'src/theme/app_theme.dart';
+export 'src/theme/airo_theme.dart';
 export 'src/theme/bedtime_theme.dart';
 
 // Widgets

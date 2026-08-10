@@ -4,55 +4,55 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:core_ui/core_ui.dart';
 
 void main() {
-  group('AppTheme', () {
+  group('AiroTheme', () {
     test('defaults to Airo Living Console with stable cyber id', () {
-      final defaultTheme = AppTheme.defaultTheme;
+      final defaultTheme = AiroTheme.defaultTheme;
 
-      expect(AppTheme.defaultThemeId, AppThemeId.cyber);
+      expect(AiroTheme.defaultThemeId, AppThemeId.cyber);
       expect(defaultTheme.id, AppThemeId.cyber);
       expect(defaultTheme.name, 'Airo Living Console');
       expect(defaultTheme.themeMode, ThemeMode.dark);
       expect(
-        AppTheme.defaultLight.brightness,
+        AiroTheme.defaultLight.brightness,
         defaultTheme.lightTheme.brightness,
       );
       expect(
-        AppTheme.defaultDark.brightness,
+        AiroTheme.defaultDark.brightness,
         defaultTheme.darkTheme.brightness,
       );
       expect(
-        AppTheme.defaultLight.scaffoldBackgroundColor,
+        AiroTheme.defaultLight.scaffoldBackgroundColor,
         defaultTheme.lightTheme.scaffoldBackgroundColor,
       );
       expect(
-        AppTheme.defaultDark.scaffoldBackgroundColor,
+        AiroTheme.defaultDark.scaffoldBackgroundColor,
         defaultTheme.darkTheme.scaffoldBackgroundColor,
       );
       expect(
-        AppTheme.defaultLight.colorScheme.primary,
+        AiroTheme.defaultLight.colorScheme.primary,
         defaultTheme.lightTheme.colorScheme.primary,
       );
       expect(
-        AppTheme.defaultDark.colorScheme.primary,
+        AiroTheme.defaultDark.colorScheme.primary,
         defaultTheme.darkTheme.colorScheme.primary,
       );
-      expect(AppTheme.defaultThemeMode, defaultTheme.themeMode);
+      expect(AiroTheme.defaultThemeMode, defaultTheme.themeMode);
     });
 
     test('registry exposes all supported themes', () {
-      expect(AppTheme.themes.map((theme) => theme.id), [
+      expect(AiroTheme.themes.map((theme) => theme.id), [
         AppThemeId.cyber,
         AppThemeId.classic,
         AppThemeId.bedtime,
         AppThemeId.airoTv,
       ]);
-      expect(AppTheme.byId(AppThemeId.classic).name, 'Airo Classic');
-      expect(AppTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
-      expect(AppTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
+      expect(AiroTheme.byId(AppThemeId.classic).name, 'Airo Classic');
+      expect(AiroTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
+      expect(AiroTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
     });
 
     test('living console exposes ambient precision tokens', () {
-      final theme = AppTheme.byId(AppThemeId.cyber).darkTheme;
+      final theme = AiroTheme.byId(AppThemeId.cyber).darkTheme;
       final tokens = theme.extension<AiroThemeTokens>();
       final visual = theme.extension<AiroVisualTokens>();
       final domain = theme.extension<AiroDomainTokens>();
@@ -86,14 +86,14 @@ void main() {
     });
 
     test('light theme returns valid ThemeData', () {
-      final theme = AppTheme.light;
+      final theme = AiroTheme.light;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.light);
     });
 
     test('dark theme returns valid ThemeData', () {
-      final theme = AppTheme.dark;
+      final theme = AiroTheme.dark;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.dark);
@@ -208,7 +208,7 @@ void main() {
     testWidgets('domain theme applies its accessible accent', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.defaultDark,
+          theme: AiroTheme.defaultDark,
           home: const AiroDomainTheme(
             domain: AiroDomain.money,
             child: Builder(builder: _domainProbe),
@@ -229,7 +229,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.defaultDark,
+          theme: AiroTheme.defaultDark,
           home: Scaffold(
             body: AiroSurface(
               onTap: () {},
