@@ -1,7 +1,7 @@
 # Task 3 Proposal: Media3 dependency for the receiver streaming engine
 
 Status: awaiting explicit user confirmation before Task 4 touches
-`app/android/app/build.gradle.kts` (SPEC.md AD-P2.4 / plan boundary).
+`app/android/app/build.gradle.kts` (docs/specs/tv-zero-copy-cast.md AD-P2.4 / plan boundary).
 
 ## Proposed artifacts
 
@@ -92,5 +92,5 @@ dependency — that's a real number, this proposal's estimate is not.
 
 ## Confirmation needed
 
-Per SPEC.md AD-P2.4, Task 4 does not touch `build.gradle.kts` until this
+Per docs/specs/tv-zero-copy-cast.md AD-P2.4, Task 4 does not touch `build.gradle.kts` until this
 proposal is explicitly confirmed — not implied by a general "keep going."

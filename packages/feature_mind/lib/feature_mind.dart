@@ -16,11 +16,25 @@
 /// `MindService`, and the names exported here are unchanged.
 library;
 
+export 'src/mind_availability.dart';
+
 export 'src/whisper/api/meetings.dart' show MeetingRecord, SearchHit;
 export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
+
+// Path A of the STT/TTS half of task-based model routing
+// (`tasks/mind-stt-tts-routing-plan.md`): a truthful availability answer for
+// core_ai's AiTask.speechToText/textToSpeech, not a chooser -- there is
+// exactly one speech engine and no TTS engine to choose between.
+export 'src/speech_task_availability.dart';
+
+// Phase 2 of the Mind scribe semantic search plan
+// (`tasks/mind-scribe-semantic-search-plan.md`): persists one embedding
+// vector per meeting. Not yet wired to a real caller -- that's Phase 3's
+// SemanticSearchRanker.
+export 'src/search/meeting_embedding_store.dart';
 
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
@@ -88,6 +102,10 @@ export 'src/models/model_provider.dart'
         ModelAcquisitionProgress,
         ModelProvider,
         RequiredModel;
+// The pinned registry itself, for a shell that needs the same list a provider
+// needs — the Mind shell's model explorer reports install state per pinned
+// file (#1556) without going through a provider to get it.
+export 'src/models/pinned_models.dart' show pinnedRequiredModels;
 
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';

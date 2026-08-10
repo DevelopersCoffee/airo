@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
+SDK_CATALOG="$ROOT_DIR/gradle/libs.versions.toml"
 TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
 TV_PUBSPEC="$ROOT_DIR/app/pubspec_tv.yaml"
 RESOURCE_KEEP_FILE="${AIRO_TV_RESOURCE_KEEP_FILE:-$ROOT_DIR/app/android/app/src/main/res/raw/keep.xml}"
@@ -16,11 +17,23 @@ fail() {
   exit 1
 }
 
-target_sdk="$(sed -nE 's/^[[:space:]]*targetSdk[[:space:]]*=[[:space:]]*([0-9]+).*$/\1/p' "$GRADLE_FILE" | head -1)"
-compile_sdk="$(sed -nE 's/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*([0-9]+).*$/\1/p' "$GRADLE_FILE" | head -1)"
+read_catalog_version() {
+  local key="$1"
+  local value
+  value="$(sed -nE "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([0-9]+)\"[[:space:]]*$/\\1/p" "$SDK_CATALOG" | head -1)"
+  [[ -n "$value" ]] || fail "Unable to read $key from $SDK_CATALOG"
+  printf '%s' "$value"
+}
 
-[[ -n "$target_sdk" ]] || fail "Unable to read targetSdk from $GRADLE_FILE"
-[[ -n "$compile_sdk" ]] || fail "Unable to read compileSdk from $GRADLE_FILE"
+[[ -f "$SDK_CATALOG" ]] || fail "Android SDK catalog not found: $SDK_CATALOG"
+# App module must consume the catalog rather than re-pinning a lower literal.
+grep -q 'libs.versions.airo.compile.sdk' "$GRADLE_FILE" ||
+  fail "App module must set compileSdk from gradle/libs.versions.toml (airo-compile-sdk)"
+grep -q 'libs.versions.airo.target.sdk' "$GRADLE_FILE" ||
+  fail "App module must set targetSdk from gradle/libs.versions.toml (airo-target-sdk)"
+
+target_sdk="$(read_catalog_version 'airo-target-sdk')"
+compile_sdk="$(read_catalog_version 'airo-compile-sdk')"
 
 if [[ "$target_sdk" -lt "$MIN_TARGET_SDK" ]]; then
   fail "Android TV targetSdk $target_sdk is below Google Play minimum $MIN_TARGET_SDK"

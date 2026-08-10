@@ -1,6 +1,6 @@
 # Implementation Plan: Frame-Accurate Splice-on-Keyframe (F4.4.5/F4.4.6)
 
-Spec: `SPEC.md`. Requirements: F4.4.5 (splice on PAT/PMT+IDR for TS, next
+Spec: `docs/specs/tv-zero-copy-cast.md`. Requirements: F4.4.5 (splice on PAT/PMT+IDR for TS, next
 segment for HLS), F4.4.6 (completes within 4s, no visible interruption).
 Follows Wave C Task 1 (shadow-fetch + v1 basic-swap `switchSource`,
 device-verified on Pixel 9, commits `9c37d0f0`/`f42667c2`).

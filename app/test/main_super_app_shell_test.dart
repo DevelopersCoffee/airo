@@ -1,6 +1,7 @@
 import 'package:airo_app/main.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
+import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -24,8 +25,8 @@ void main() {
 
     expect(paths, [
       'vault',
-      '/assistant',
-      '/wellbeing',
+      AssistantRouteNames.assistant,
+      AssistantRouteNames.wellbeing,
       '/iptv',
       '/iptv/player',
       '/vod',

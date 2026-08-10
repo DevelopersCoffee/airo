@@ -80,6 +80,67 @@ if grep -qE '(^|[^_[:alnum:]])MindModule\(' "$web_entrypoint"; then
   fi
 fi
 
+if grep -q 'package:feature_mind/' "$web_entrypoint"; then
+  failed=true
+  echo "R05 violation: $web_entrypoint imports package:feature_mind, so a web" >&2
+  echo "build reaches the real module straight from the entrypoint." >&2
+fi
+
+# The entrypoint delegates registration to a `dart.library` seam, so the check
+# above now passes by the module simply not being named there. That is the
+# intended shape -- and on its own it would rot into the same "reported OK
+# having checked nothing" failure the app/web grep had, because the file the
+# WEB compile actually picks would go unexamined. So follow the seam.
+#
+# Two halves, and this gate cares about exactly one of them: the
+# `if (dart.library.html)` variant, which is what a web compile picks. The
+# default variant is the private-device build and is *supposed* to name
+# MindModule, so checking it would fail on a correct tree.
+#
+# CAVEAT, recorded rather than silently "fixed": `dart.library.html` is false
+# under dart2wasm, so `flutter build web --wasm` would resolve the DEFAULT
+# half -- the real module -- and link Mind into a shared surface. That is
+# latent today (the wasm dry run already reports dart:ffi blockers, so wasm
+# cannot build here at all) and this gate cannot observe it, because the
+# condition is resolved by the compiler, not by any text this script can read
+# on its own. Inverting the seam to `stub-by-default, if (dart.library.io)
+# real` closes it without changing either file's contents. See #1565.
+web_registration="app/lib/core/mind/mind_registration_stub.dart"
+
+# Positive control #1: the entrypoint must still route through the seam. A
+# `registerMind(` call that was deleted, renamed, or replaced by an
+# inline registration in some other file leaves this gate inspecting a file
+# nothing imports.
+if ! grep -q 'mind_registration_stub.dart' "$web_entrypoint" ||
+   ! grep -q 'registerMind(' "$web_entrypoint"; then
+  echo "FATAL: $web_entrypoint no longer registers Mind through the" >&2
+  echo "$web_registration seam, so this gate would be checking a file the" >&2
+  echo "web build does not use. Passing silently would be worse than" >&2
+  echo "failing." >&2
+  exit 127
+fi
+
+# Positive control #2: prove the search can read the seam's web half before
+# trusting it to find nothing there.
+if ! grep -q 'void registerMind(' "$web_registration" 2>/dev/null; then
+  echo "FATAL: could not find registerMind in $web_registration, so" >&2
+  echo "this gate cannot tell what a web build links. Passing silently would" >&2
+  echo "be worse than failing." >&2
+  exit 127
+fi
+
+if grep -q 'package:feature_mind/' "$web_registration"; then
+  failed=true
+  echo "R05 violation: $web_registration imports package:feature_mind, so a" >&2
+  echo "web build links the real module through the registration seam." >&2
+fi
+
+if grep -qE '(^|[^_[:alnum:]])MindModule\(' "$web_registration"; then
+  failed=true
+  echo "R05 violation: $web_registration constructs MindModule, so a web" >&2
+  echo "build composes Mind into a shared surface." >&2
+fi
+
 if [[ "$failed" == true ]]; then
   cat >&2 <<'EOF'
 

@@ -1,6 +1,6 @@
 # Phase 2 — Receiver Streaming Engine: Wave A Task List
 
-Plan: `tasks/tv-zero-copy-cast-phase2-plan.md` · Spec: `SPEC.md`
+Plan: `tasks/tv-zero-copy-cast-phase2-plan.md` · Spec: `docs/specs/tv-zero-copy-cast.md`
 Only Wave A is task-broken (see plan's AD-P2.3 for why). Waves B–D get
 their own todo list once Wave A's checkpoint passes.
 

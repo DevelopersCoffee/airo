@@ -61,10 +61,27 @@ typedef AssistantHostAdapterBuilder = AssistantHostAdapter Function(Ref ref);
 /// resolve identically everywhere — and the package's own screens navigate by
 /// those absolute paths, so a rebased mount would 404 its own hub tiles.
 class MindModule extends AppModule {
-  MindModule({required this.hostAdapterBuilder, this.createService});
+  MindModule({
+    required this.hostAdapterBuilder,
+    this.createService,
+    this.scribeOverrides,
+  });
 
   /// Builds the shell's implementation of the assistant's host seam.
   final AssistantHostAdapterBuilder hostAdapterBuilder;
+
+  /// Overrides the composing shell contributes about the scribe's models,
+  /// given the [service] whose directory says what is really installed.
+  ///
+  /// Supplied by the shell rather than built here because the provider they
+  /// override is an app-layer one this package cannot see: the Mind shell puts
+  /// the scribe's weights in its shared model explorer (#1556). Passing it
+  /// here rather than dropping the overrides straight into the shell's
+  /// `ProviderScope` keeps the registry the one thing that knows what a
+  /// module contributes — and keeps the rows off any shell that does not ask
+  /// for them, which is why the super app's model manager still lists only
+  /// its own chat models.
+  final List<Override> Function(MindService service)? scribeOverrides;
 
   /// The scribe's service factory. Null means this shell instance does not
   /// carry the scribe — [scribeRoutesFor] then contributes nothing, and
@@ -90,6 +107,10 @@ class MindModule extends AppModule {
   @override
   List<Override> providerOverridesFor(ShellId shell) => [
     assistantHostAdapterProvider.overrideWith(hostAdapterBuilder),
+    // Scribe-shaped overrides only exist where the scribe does: a shell with
+    // no [createService] has no models directory to report on.
+    if (createService != null && scribeOverrides != null)
+      ...scribeOverrides!(service),
   ];
 
   @override

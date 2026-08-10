@@ -9,8 +9,8 @@
   --red: oklch(0.6 0.18 25);
   --blue: #2196f3;
   --text: oklch(0.94 0.008 255);
-  --muted: oklch(0.72 0.012 255);
-  --quiet: oklch(0.59 0.012 255);
+  --muted: oklch(0.78 0.012 255);
+  --quiet: oklch(0.70 0.012 255);
   --max: 1184px;
   --header: 68px;
   --section-space: 88px;
@@ -87,13 +87,17 @@ img {
 }
 
 .band,
-.proof-strip,
 .screen-story,
 .guide-list,
 .trust-grid,
 .site-footer {
   content-visibility: auto;
   contain-intrinsic-size: 1px 400px;
+}
+
+.proof-strip {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 110px;
 }
 
 a {

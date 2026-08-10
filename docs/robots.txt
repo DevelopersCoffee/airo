@@ -1,4 +1,20 @@
 User-agent: *
 Allow: /
 
+# AI Agent / LLM Bot Access
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
 Sitemap: https://developerscoffee.github.io/airo/sitemap.xml

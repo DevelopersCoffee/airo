@@ -63,6 +63,9 @@ jobs:
 
       - name: Run code generation
         run: |
+          # feature_mind's *.freezed.dart is gitignored; the app depends on
+          # feature_mind since SSOT Phase 3, so its codegen must run first.
+          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
           cd app
           dart run build_runner build
 
@@ -99,6 +102,15 @@ jobs:
         run: |
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
+
+      # Library modules pin their own compileSdk; the app module's value does
+      # not override them. Catch SDK drift before Gradle's AAR metadata check
+      # fails a full-variant build (#1575).
+      - name: Enforce Android SDK baseline across modules
+        run: |
+          chmod +x scripts/check-android-sdk-baseline.sh scripts/test-check-android-sdk-baseline.sh
+          scripts/test-check-android-sdk-baseline.sh
+          scripts/check-android-sdk-baseline.sh
 
       # Scheduled notifications deserialize through Gson, so R8 renaming the
       # plugin's model fields breaks them in release builds only. No test layer
@@ -372,6 +384,10 @@ jobs:
 
       - name: Run code generation
         run: |
+          # feature_mind's *.freezed.dart is gitignored; the app depends on
+          # feature_mind since SSOT Phase 3, so its codegen must run before
+          # app tests compile.
+          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
           cd app
           dart run build_runner build
 
@@ -648,6 +664,9 @@ jobs:
       - name: Run code generation
         if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
         run: |
+          # feature_mind's *.freezed.dart is gitignored; the app depends on
+          # feature_mind since SSOT Phase 3, so its codegen must run first.
+          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
           cd app
           dart run build_runner build
 
@@ -975,6 +994,14 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          # feature_mind's *.freezed.dart is gitignored; the app depends on
+          # feature_mind since SSOT Phase 3, so its codegen must run first.
+          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
+          cd app
+          dart run build_runner build
 
       - name: Configure firebase_options.dart
         env:

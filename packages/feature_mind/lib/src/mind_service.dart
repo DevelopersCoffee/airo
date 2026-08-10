@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:core_ai/core_ai.dart' show EmbeddingService;
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +11,8 @@ import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'model_installer.dart';
 import 'models/model_provider.dart';
+import 'search/meeting_embedding_store.dart';
+import 'search/semantic_search_ranker.dart';
 import 'whisper/api/meetings.dart' as rust;
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
@@ -103,15 +106,30 @@ class MindService {
     ModelProvider? modelProvider,
     MindSpeechBridge? speechBridge,
     MindGenerationBridge? generationBridge,
+    SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
-       _generation = generationBridge ?? RustMindGenerationBridge();
+       _generation = generationBridge ?? RustMindGenerationBridge(),
+       _rankerBuilder =
+           rankerBuilder ??
+           ((dir) => SemanticSearchRanker(
+             embeddingService: EmbeddingService(),
+             embeddingStore: MeetingEmbeddingStore(dir),
+           ));
 
   final AudioRecorder _recorder;
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
+
+  /// Built lazily against [modelsDirectory] rather than in the constructor:
+  /// resolving that directory is async, and every other collaborator here is
+  /// a ready-made instance. [rankerBuilder] is the seam a test substitutes
+  /// to avoid touching `core_ai`'s real `EmbeddingService`/model download
+  /// pipeline (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+  final SemanticSearchRanker Function(Directory modelsDir) _rankerBuilder;
+  SemanticSearchRanker? _ranker;
   String? _recordingPath;
 
   /// Loads the native library and the models.
@@ -135,6 +153,19 @@ class MindService {
     // Not from the checkout: that made a developer machine work and a device
     // fail.
     if (!await _models.isInstalled(dir)) {
+      // A download is not started here. `acquiresWithoutNetwork` false means
+      // the models cost the user roughly 570 MB of their connection, and
+      // spending that unasked on first launch is not a decision this method
+      // gets to make. The screen offers it instead — [acquireModels] — and
+      // this returns the state that makes the offer visible (#1554).
+      if (!_models.acquiresWithoutNetwork) {
+        final missing = await missingModels();
+        return MindStatus.unavailable(
+          MindUnavailable.modelsMissing,
+          'Missing: ${missing.map((m) => m.fileName).join(', ')}.',
+        );
+      }
+
       final failed = <String>[];
       await for (final event in _models.acquire(dir)) {
         switch (event) {
@@ -189,6 +220,27 @@ class MindService {
   /// Reports asset-copy progress on first launch. Half a gigabyte takes long
   /// enough that a silent first launch reads as a hang.
   void Function(String fileName, int copied, int total)? onInstallProgress;
+
+  /// True when acquiring the models spends the user's network, so the UI has
+  /// to offer the download rather than assume it.
+  bool get modelsNeedDownload => !_models.acquiresWithoutNetwork;
+
+  /// The models the runtime needs and does not have, at their pinned sizes —
+  /// what the UI needs to say how large the download is before starting it.
+  ///
+  /// Answered by the provider, which owns what "installed" means for its own
+  /// layout, rather than by this class stat-ing the directory itself.
+  Future<List<RequiredModel>> missingModels() async =>
+      _models.missingModels(await modelsDirectory());
+
+  /// Puts the missing models on disk, streaming progress.
+  ///
+  /// Separate from [initialize] because it is the user's decision, not a
+  /// startup step: on the download provider this is ~570 MB. Call
+  /// [initialize] again once the stream ends without failures.
+  Stream<ModelAcquisitionEvent> acquireModels() async* {
+    yield* _models.acquire(await modelsDirectory());
+  }
 
   /// Hashes every installed model against the digest pinned in Rust source.
   Future<List<InstalledModel>> verifyModels() async =>
@@ -347,9 +399,29 @@ class MindService {
 
   Future<List<rust.MeetingRecord>> meetings() => _speech.meetings();
 
-  Future<List<rust.SearchHit>> search(String query) => _speech.search(query);
+  /// Step 7 of the journey, now ranked by keyword **and** meaning
+  /// (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+  /// Signature is unchanged from the keyword-only version this replaced —
+  /// [MindHomeScreen]'s search box needed no changes for this.
+  Future<List<rust.SearchHit>> search(String query) async {
+    final keywordHits = await _speech.search(query);
+    _ranker ??= _rankerBuilder(await modelsDirectory());
+    final allMeetings = await _speech.meetings();
+    return _ranker!.rank(
+      query: query,
+      keywordHits: keywordHits,
+      meetings: allMeetings,
+    );
+  }
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
 
-  Future<void> dispose() => _recorder.dispose();
+  /// Releases the microphone and the model provider. The provider matters
+  /// because the download-backed one holds a subscription to the platform
+  /// download stream, and the shell that composed it cannot reach it once it
+  /// is in here.
+  Future<void> dispose() async {
+    await _recorder.dispose();
+    await _models.dispose();
+  }
 }

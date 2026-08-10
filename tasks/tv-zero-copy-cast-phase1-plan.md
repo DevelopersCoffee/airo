@@ -1,6 +1,6 @@
 # Implementation Plan: Phase 1 — Instrumentation
 
-Spec: `SPEC.md` (this branch). Requirements: F7 (Telemetry & Connection
+Spec: `docs/specs/tv-zero-copy-cast.md` (this branch). Requirements: F7 (Telemetry & Connection
 Health), delivery Phase 1 of 6. Principle from spec: **nothing is optimised
 before it is measured** — Phases 2–6 are blocked on this landing.
 
@@ -87,7 +87,7 @@ network — the numbers every later phase is judged against.
 | BSSID access needs location permission on Android | Med | If permission absent, network key degrades to `wifi:unknown` — never prompt for location just for telemetry |
 | Consent default wrong way | High | Follow existing `core_analytics` consent model exactly — collection off until consent (F7.5). CSO reviews (module owner). |
 
-## Model & Agent Routing (per SPEC.md)
+## Model & Agent Routing (per docs/specs/tv-zero-copy-cast.md)
 
 Plan author: architect (this doc). Tasks 1–6: implement tier (Sonnet);
 export/barrel edits mechanical tier (Haiku). Reviewer floor:

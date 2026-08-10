@@ -54,6 +54,9 @@ void main() {
             if (methodCall.method == 'getApplicationDocumentsDirectory') {
               return tempDir.path;
             }
+            if (methodCall.method == 'getApplicationSupportDirectory') {
+              return path.join(tempDir.path, 'support');
+            }
             return null;
           },
         );
@@ -68,6 +71,30 @@ void main() {
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
+  });
+
+  // Application support is private and, on iOS, neither user-visible in Files
+  // nor backed up to iCloud. A caller that asks for it must not silently get
+  // documents instead.
+  test(
+    'applicationSupport keeps artifacts out of the documents root',
+    () async {
+      final manager = ModelStorageManager(
+        downloads: downloads,
+        location: ModelStorageLocation.applicationSupport,
+      );
+
+      final dir = await manager.getModelsDirectory();
+
+      expect(dir.path, path.join(tempDir.path, 'support', 'models'));
+      expect(dir.path, isNot(startsWith(path.join(tempDir.path, 'models'))));
+      expect(await dir.exists(), isTrue);
+    },
+  );
+
+  test('applicationDocuments remains the default root', () async {
+    final dir = await storageManager.getModelsDirectory();
+    expect(dir.path, path.join(tempDir.path, 'models'));
   });
 
   test('calculateSHA256 computes correct hash', () async {

@@ -6,12 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:feature_mind/feature_mind.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
-import 'core/assistant/app_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
+// Stub-by-default: dart.library.html is false under dart2wasm, so keying the
+// stub off html would link the real Mind module into a wasm web build — an
+// R05 violation the gate cannot see (the compiler resolves this condition).
+// Keying the REAL module off dart.library.io makes every non-native target
+// fall back to the stub.
+import 'core/mind/mind_registration_stub.dart'
+    if (dart.library.io) 'core/mind/mind_registration.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -131,8 +136,9 @@ void main() async {
 /// owns module inclusion, routes, lifecycle, and provider overrides.
 @visibleForTesting
 ModuleRegistry buildMainModuleRegistry() {
-  return ModuleRegistry(shell: ShellId.mobile)
-    ..register(CoinVaultModule())
-    ..register(MindModule(hostAdapterBuilder: AppAssistantHostAdapter.new))
-    ..register(IptvFeatureModule());
+  final registry = ModuleRegistry(shell: ShellId.mobile)
+    ..register(CoinVaultModule());
+  registerMind(registry);
+  registry.register(IptvFeatureModule());
+  return registry;
 }

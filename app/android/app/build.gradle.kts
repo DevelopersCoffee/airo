@@ -83,7 +83,10 @@ if (hasGoogleServicesConfig) {
 
 android {
     namespace = "io.airo.app"
-    compileSdk = 36 // Android 16 (API level 36) for current Play target compatibility
+    // Sourced from gradle/libs.versions.toml (airo-compile-sdk). Package
+    // Android modules must stay at or above this baseline — see #1575 and
+    // scripts/check-android-sdk-baseline.sh.
+    compileSdk = libs.versions.airo.compile.sdk.get().toInt()
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -118,8 +121,8 @@ android {
 
     defaultConfig {
         applicationId = variantApplicationId
-        minSdk = 26 // Android 8.0 - broader device compatibility
-        targetSdk = 36 // Target latest Android for Pixel 9
+        minSdk = libs.versions.airo.min.sdk.get().toInt()
+        targetSdk = libs.versions.airo.target.sdk.get().toInt()
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["appLabel"] = variantAppLabel
@@ -251,6 +254,28 @@ android {
                     else "src/streaming_engine_stub/kotlin",
                 )
             }
+            // Same mechanism as LiteRT-LM above, a separate flag and a
+            // separate plugin (embeddings/semantic search -- see
+            // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
+            // Excluded from Coins entirely for the same reason LiteRT-LM is:
+            // Coins compiles its own `src/coins/kotlin` MainActivity that
+            // never references EmbeddingPlugin. TV shares `src/product/kotlin`
+            // with Mind and full (MainActivity registers EmbeddingPlugin
+            // unconditionally there), so TV still needs the stub compiled --
+            // it just must never get the real SDK. Unlike LiteRT-LM, the AI
+            // Edge RAG SDK's bundled protobuf classes fail R8 minification
+            // with "missing classes" (com.google.protobuf.Internal$ProtoNonnullApi)
+            // when nothing in the TV variant reaches them, so its Gradle
+            // dependency (below) cannot stay on TV's classpath the way
+            // LiteRT-LM's does; the stub keeps TV compiling without it.
+            val embeddingAvailable =
+                rootProject.extra.get("embeddingAvailable") as Boolean && !isTvVariant
+            if (!isCoinsVariant) {
+                kotlin.srcDir(
+                    if (embeddingAvailable) "src/withEmbedding/kotlin"
+                    else "src/withoutEmbedding/kotlin",
+                )
+            }
         }
         // Wave B: classes that import androidx.media3.datasource.okhttp/OkHttp
         // (isTvVariant-gated below) get their own conditional test source dir,
@@ -345,6 +370,25 @@ dependencies {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.15.0")
     }
 
+    // AI Edge RAG SDK, for on-device text embeddings (semantic search --
+    // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md). A
+    // separate dependency from LiteRT-LM above: different Gradle coordinate,
+    // different native API (GeckoEmbeddingModel/Embedder<String>, not
+    // Engine/Conversation). Pinned explicitly, same reasoning as LiteRT-LM's
+    // pin above — see this file's LiteRT-LM comment for the incident that
+    // pin exists to prevent.
+    //
+    // Excluded from TV as well as Coins, unlike LiteRT-LM: this SDK's bundled
+    // protobuf classes (com.google.ai.edge.localagents.rag.models.proto.*)
+    // fail R8 minification with "missing classes" on TV, where nothing
+    // reaches them, because the SDK doesn't ship its own protobuf runtime.
+    // LiteRT-LM's dependency has no such gap and can stay on TV's classpath
+    // unused; this one cannot.
+    if (!isCoinsVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
+        implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
+        implementation("com.google.mediapipe:tasks-genai:0.10.22")
+    }
+
     if (!isCoinsVariant) {
         // Coroutines and lifecycle dependencies for async operations
         implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
@@ -355,7 +399,7 @@ dependencies {
         implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     }
 
-    // Receiver-side zero-copy streaming engine (SPEC.md AD-1/AD-5, Phase 2
+    // Receiver-side zero-copy streaming engine (docs/specs/tv-zero-copy-cast.md AD-1/AD-5, Phase 2
     // Wave A). TV-only: minSdk 23 is well under this project's minSdk 26, so
     // no compatibility gate is needed beyond the variant check itself. See
     // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full

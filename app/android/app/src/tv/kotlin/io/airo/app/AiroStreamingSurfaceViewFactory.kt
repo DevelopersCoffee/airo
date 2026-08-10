@@ -20,7 +20,7 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 
 /**
- * Receiver surface (SPEC.md AD-1/AD-5, Phase 2). Started as a Wave A
+ * Receiver surface (docs/specs/tv-zero-copy-cast.md AD-1/AD-5, Phase 2). Started as a Wave A
  * proof-of-concept with Media3's stock `DataSource`; now plays through
  * [AiroStreamingEngine]'s custom `DataSource` (Wave B, F4.1/F4.2 --
  * resolver cache + pooled/tuned connections) while still targeting one

@@ -6,6 +6,8 @@ import 'package:core_ui/core_ui.dart';
 
 import 'tv_privacy_section.dart';
 import 'tv_theme_section.dart';
+import '../widgets/app_info_tile.dart';
+import '../widgets/sibling_app_card.dart';
 
 /// TV Settings screen (CV-022): a left-hand section list, right-hand detail
 /// pane. `TvPlaybackSection` and `TvSourceManagementSection` are IPTV-module
@@ -25,6 +27,12 @@ class TvSettingsScreen extends ConsumerStatefulWidget {
 class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
   IptvSettingsSectionId _selected = IptvSettingsSectionId.theme;
 
+  /// True when the "More Airo Apps" rail entry is selected. This entry
+  /// isn't part of the shared `iptvSettingsSections` manifest (it's cross-
+  /// app promotion, not IPTV configuration), so it's tracked separately
+  /// rather than added as a manifest section.
+  bool _isAiroAppsSelected = false;
+
   /// The sections this screen renders, in shared-manifest order, filtered to
   /// those declared visible on the TV shell.
   static final _sections = iptvSettingsSections
@@ -34,6 +42,9 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
     for (final section in _sections)
       section.id: FocusNode(debugLabel: 'TV settings ${section.id.name}'),
   };
+  final _airoAppsFocusNode = FocusNode(
+    debugLabel: 'TV settings more airo apps',
+  );
 
   @override
   void initState() {
@@ -57,6 +68,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
     for (final node in _sectionFocusNodes.values) {
       node.dispose();
     }
+    _airoAppsFocusNode.dispose();
     super.dispose();
   }
 
@@ -80,7 +92,10 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                       child: TvFocusable(
                         focusNode: _sectionFocusNodes[section.id],
                         autofocus: section.id == IptvSettingsSectionId.theme,
-                        onSelect: () => setState(() => _selected = section.id),
+                        onSelect: () => setState(() {
+                          _selected = section.id;
+                          _isAiroAppsSelected = false;
+                        }),
                         semanticLabel: section.labelFor(ShellId.tv),
                         semanticButton: true,
                         child: DecoratedBox(
@@ -114,6 +129,42 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                         ),
                       ),
                     ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TvFocusable(
+                      focusNode: _airoAppsFocusNode,
+                      onSelect: () =>
+                          setState(() => _isAiroAppsSelected = true),
+                      semanticLabel: 'More Airo Apps',
+                      semanticButton: true,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: _isAiroAppsSelected
+                              ? colorScheme.primaryContainer
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.apps, color: colorScheme.onSurface),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'More Airo Apps',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -131,6 +182,18 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
   }
 
   Widget _buildDetail() {
+    if (_isAiroAppsSelected) {
+      return ListView(
+        key: const ValueKey('tv_settings_section_airo_apps'),
+        children: [
+          for (final app in siblingAppsFor(ShellId.tv))
+            SiblingAppCard(app: app),
+          const SizedBox(height: 24),
+          const AppInfoTile(),
+        ],
+      );
+    }
+
     switch (_selected) {
       case IptvSettingsSectionId.theme:
         return const TvThemeSection(key: ValueKey('tv_settings_section_theme'));

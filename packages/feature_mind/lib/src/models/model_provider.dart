@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 /// A model that must be on disk, and what proves it is the right one.
 ///
@@ -79,14 +80,74 @@ final class ModelAcquisitionDone extends ModelAcquisitionEvent {
 abstract interface class ModelProvider {
   Future<List<RequiredModel>> requiredModels();
 
+  /// True when [acquire] spends nothing but this device's own time — copying
+  /// a model that already shipped inside the app.
+  ///
+  /// False when it spends the user's network. Airo Mind's two models are about
+  /// 570 MB together, and starting that on first launch, unannounced, on
+  /// whatever connection happens to be up, is not a default anyone consented
+  /// to. `MindService.initialize` reads this to decide whether acquisition may
+  /// run by itself or has to be offered; it is on the provider because only
+  /// the provider knows what its own bytes cost.
+  bool get acquiresWithoutNetwork;
+
   /// True when every required model is on disk at its pinned size.
   ///
   /// Size, not digest — hashing half a gigabyte on every launch costs about a
   /// second. Full verification is [verify], run after an acquisition.
   Future<bool> isInstalled(Directory modelsDir);
 
+  /// The required models that are not installed.
+  ///
+  /// On the provider rather than on a caller stat-ing the directory itself: a
+  /// provider decides what "installed" means for its own layout, and a caller
+  /// that re-implements the check is a copy that goes stale the moment one
+  /// does something different.
+  Future<List<RequiredModel>> missingModels(Directory modelsDir);
+
   /// Puts missing models on disk, reporting progress as they arrive.
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir);
 
   Future<List<InstalledModel>> verify(Directory modelsDir);
+
+  /// Releases whatever acquiring models holds open, and is called by
+  /// `MindService.dispose`.
+  ///
+  /// On the bundled installer there is nothing to release. A download-backed
+  /// provider holds a subscription to the platform download stream and a
+  /// progress controller per model — invisible to the shell once the provider
+  /// is inside the service, so the service is what has to close it.
+  Future<void> dispose();
+}
+
+/// The disk half of a [ModelProvider] that keeps models as files in one
+/// directory, under the names the registry pins — which is every provider
+/// there is, because that is what the Rust engines are handed
+/// (`ADR-0018 §1`: a directory and a budget).
+///
+/// Exists so the pinned-size check is written once. It was previously three
+/// copies — one per provider, one in `MindService` — which is how "installed"
+/// quietly comes to mean three different things.
+mixin PinnedModelFiles implements ModelProvider {
+  /// Nothing to release by default: a provider that only reads files holds no
+  /// stream open. Overridden by the ones that do.
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) async => [
+    for (final model in await requiredModels())
+      if (!isPresent(modelsDir, model)) model,
+  ];
+
+  @override
+  Future<bool> isInstalled(Directory modelsDir) async =>
+      (await missingModels(modelsDir)).isEmpty;
+
+  /// Present at its pinned size. Not its pinned digest — see
+  /// [ModelProvider.isInstalled] for why hashing is not on the launch path.
+  static bool isPresent(Directory modelsDir, RequiredModel model) {
+    final file = File(p.join(modelsDir.path, model.fileName));
+    return file.existsSync() && file.lengthSync() == model.sizeBytes;
+  }
 }

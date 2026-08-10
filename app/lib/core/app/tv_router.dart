@@ -4,6 +4,7 @@
 /// No bottom navigation - uses grid/sidebar navigation patterns.
 library;
 
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
@@ -130,7 +131,10 @@ class AdaptiveTvSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
-      return SettingsHubScreen(onRootBack: () => context.go(TvRouteNames.live));
+      return SettingsHubScreen(
+        onRootBack: () => context.go(TvRouteNames.live),
+        shellId: ShellId.tv,
+      );
     }
 
     return const TvSettingsScreen();

@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 
 /**
  * Wraps the receiver-side streaming engine for the
- * com.airo.player/streaming_engine method and event channels (SPEC.md
+ * com.airo.player/streaming_engine method and event channels (docs/specs/tv-zero-copy-cast.md
  * AD-1/AD-5, Phase 2).
  *
  * `ping` proves the method channel round-trips. [notifyPhase] forwards

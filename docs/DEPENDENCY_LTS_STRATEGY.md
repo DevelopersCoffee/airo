@@ -222,14 +222,21 @@
 
 ### 1.6 Android Dependencies (Gradle)
 
+Android SDK levels are owned by **`gradle/libs.versions.toml`**
+(`airo-compile-sdk`, `airo-target-sdk`, `airo-min-sdk`). The app module reads
+those values via the Gradle version catalog; every in-repo Android library
+module must pin at or above the same baseline. CI enforces this with
+`scripts/check-android-sdk-baseline.sh` so a package cannot silently lag the
+app the way `feature_mind` did in #1575.
+
 #### Build Tools
 | Dependency | Current | Latest Stable | Recommendation |
 |-----------|---------|---------------|----------------|
 | Gradle | 8.13 | 8.13 | ✅ Pin to 8.13 |
 | Google Services Plugin | 4.4.4 | 4.4.4 | ✅ Pin to 4.4.4 |
-| compileSdk | 36 | 36 (Android 15) | ✅ Keep at 36 |
-| targetSdk | 36 | 36 | ✅ Keep at 36 |
-| minSdk | 26 | - | ✅ Keep at 26 |
+| compileSdk | 36 | 36 (Android 15) | ✅ Keep at 36 (catalog) |
+| targetSdk | 36 | 36 | ✅ Keep at 36 (catalog) |
+| minSdk | 26 | - | ✅ Keep at 26 (catalog) |
 
 #### Android Libraries
 | Dependency | Current | Latest Stable | Status | Recommendation |

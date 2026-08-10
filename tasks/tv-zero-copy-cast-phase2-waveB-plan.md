@@ -1,6 +1,6 @@
 # Implementation Plan: Phase 2 Wave B — DNS Resolver Cache + Connection Pool
 
-Spec: `SPEC.md` (this branch). Requirements: F4.1 (DNS resolution), F4.2
+Spec: `docs/specs/tv-zero-copy-cast.md` (this branch). Requirements: F4.1 (DNS resolution), F4.2
 (connection management). Follows Wave A (native bridge proof, code-complete,
 device verification tracked in
 [#1574](https://github.com/DevelopersCoffee/airo/issues/1574)).

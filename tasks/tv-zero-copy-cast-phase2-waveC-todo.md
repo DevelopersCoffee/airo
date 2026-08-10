@@ -1,6 +1,6 @@
 # Phase 2 Wave C — Source Ranking + Shadow Failover: Task List
 
-Plan: `tasks/tv-zero-copy-cast-phase2-waveC-plan.md` · Spec: `SPEC.md`
+Plan: `tasks/tv-zero-copy-cast-phase2-waveC-plan.md` · Spec: `docs/specs/tv-zero-copy-cast.md`
 **First pro-gated wave.** Task 1 is public repo; Tasks 2-3 are pro repo
 (`airo-pro/packages_pro/pro_streaming_engine`).
 

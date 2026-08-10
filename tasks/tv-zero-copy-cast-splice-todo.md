@@ -1,6 +1,6 @@
 # Frame-Accurate Splice-on-Keyframe: Task List
 
-Plan: `tasks/tv-zero-copy-cast-splice-plan.md` · Spec: `SPEC.md` (F4.4.5/F4.4.6)
+Plan: `tasks/tv-zero-copy-cast-splice-plan.md` · Spec: `docs/specs/tv-zero-copy-cast.md` (F4.4.5/F4.4.6)
 Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 
 ## Task 0: Fallback path + splice outcome reporting

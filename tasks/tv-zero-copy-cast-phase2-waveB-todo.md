@@ -1,6 +1,6 @@
 # Phase 2 Wave B — DNS Resolver Cache + Connection Pool: Task List
 
-Plan: `tasks/tv-zero-copy-cast-phase2-waveB-plan.md` · Spec: `SPEC.md`
+Plan: `tasks/tv-zero-copy-cast-phase2-waveB-plan.md` · Spec: `docs/specs/tv-zero-copy-cast.md`
 Public/free-tier work — confirmed against SPEC's package table, nothing
 here touches `packages_pro/`.
 

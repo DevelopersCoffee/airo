@@ -1,10 +1,10 @@
 # Implementation Plan: Phase 2 Wave C — Source Ranking + Shadow Failover
 
-Spec: `SPEC.md`. Requirements: F4.3 (source scoring), F4.4 (mid-stream
+Spec: `docs/specs/tv-zero-copy-cast.md`. Requirements: F4.3 (source scoring), F4.4 (mid-stream
 failover). Follows Wave B (code-complete, device verification tracked in
 [#1574](https://github.com/DevelopersCoffee/airo/issues/1574)).
 
-**This is the first pro-gated wave.** Per SPEC.md's package table and F8:
+**This is the first pro-gated wave.** Per docs/specs/tv-zero-copy-cast.md's package table and F8:
 "Multi-source shadow failover" (F8.4) and "per-network learned CDN
 ranking" (F8.5) are premium-only. `ProFeature.multiSourceFailover`
 already exists in `core_entitlements`, defined but unused — this wave is
@@ -52,7 +52,7 @@ site — the same pattern `pro_source_diagnostics` already uses via
 `ProModuleRegistry`. Free tier's engine simply never has anything call
 these commands.
 
-This mirrors AD-2 from SPEC.md (sender is a controller, not a media
+This mirrors AD-2 from docs/specs/tv-zero-copy-cast.md (sender is a controller, not a media
 socket owner) at a smaller scale: the pro package *controls*, the public
 engine *executes*. It avoids inventing new native-in-pro infrastructure
 this wave, keeps the connection pool as one shared instance (no split
@@ -61,7 +61,7 @@ in Dart.
 
 **This is a meaningful open-core boundary decision — flagging for
 explicit confirmation before Task 1, same weight as a new-dependency
-proposal, per SPEC.md's own routing rule ("open-core boundary" review
+proposal, per docs/specs/tv-zero-copy-cast.md's own routing rule ("open-core boundary" review
 listed under chief-architect for Phase 5, applies here a wave early
 since it's being decided now).**
 

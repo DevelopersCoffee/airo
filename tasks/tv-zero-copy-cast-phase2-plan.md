@@ -1,6 +1,6 @@
 # Implementation Plan: Phase 2 — Receiver Streaming Engine
 
-Spec: `SPEC.md` (this branch). Requirements: F4.1 (DNS), F4.2 (connections),
+Spec: `docs/specs/tv-zero-copy-cast.md` (this branch). Requirements: F4.1 (DNS), F4.2 (connections),
 F5 (zero-copy decode), F6 (adaptive buffer). Delivery Phase 2 of 6 — ships
 as a **receiver-only improvement, no cast protocol yet** (that's Phase 4).
 F4.3/F4.4 (source ranking, shadow failover) are Phase 3, out of scope here.
@@ -9,7 +9,7 @@ F4.3/F4.4 (source ranking, shadow failover) are Phase 3, out of scope here.
 
 Phase 1 shipped instrumentation on the *existing* Dart/`video_player`
 engine. Phase 2 replaces that engine on Android TV/Fire TV with a
-Media3-native Kotlin pipeline (AD-1, AD-5 in SPEC.md): custom `DataSource`,
+Media3-native Kotlin pipeline (AD-1, AD-5 in docs/specs/tv-zero-copy-cast.md): custom `DataSource`,
 DNS resolver cache, pre-warmed connection pool, and `MediaCodec`→`Surface`
 decode with zero heap copies, all exposed to Flutter through a
 `MethodChannel`/`EventChannel`/`PlatformView` bridge.
@@ -68,7 +68,7 @@ Checked before writing tasks, not assumed:
 ## Architecture Decisions
 
 - **AD-P2.1 — New package `platform_streaming_engine`, TV-flavor Kotlin
-  only.** Per SPEC.md's package table. Dart side holds the
+  only.** Per docs/specs/tv-zero-copy-cast.md's package table. Dart side holds the
   `MethodChannel`/`EventChannel` wrappers and the `PlatformView` widget;
   Kotlin side (`app/android/app/src/tv/kotlin/...`) holds Media3. This
   needs a new `module.yaml` — owner Playback Architect, reviewers per
@@ -115,7 +115,7 @@ and is unit-testable before any native code exists.
 
 **Acceptance criteria:**
 - [ ] `packages/platform_streaming_engine/module.yaml` exists, owner
-      Playback Architect, reviewers per SPEC.md's Phase 2 routing table
+      Playback Architect, reviewers per docs/specs/tv-zero-copy-cast.md's Phase 2 routing table
 - [ ] `AiroStreamingEngineChannel.ping()` returns `false`/degrades
       gracefully on a host with no platform implementation (provable in
       `flutter test` today, before Kotlin exists — mirrors how
@@ -140,7 +140,7 @@ and is unit-testable before any native code exists.
 ### Task 2: Kotlin plugin skeleton + `ping` implementation
 
 **Tier:** implement, with platform-architect review before merge (channel
-contract shape) per SPEC.md routing rule 1 ("contract-touching = architect").
+contract shape) per docs/specs/tv-zero-copy-cast.md routing rule 1 ("contract-touching = architect").
 
 **Description:** `AiroStreamingEnginePlugin.kt` under the *shared*
 `app/android/app/src/product/kotlin/io/airo/app/` (corrected — see
@@ -210,7 +210,7 @@ short doc if the user wants it recorded)
 ### Task 4: Media3 dependency + minimal `SurfaceView` `PlatformView`
 
 **Tier:** implement, chief-performance-officer + platform-architect
-review (SPEC.md Phase 2 reviewer floor).
+review (docs/specs/tv-zero-copy-cast.md Phase 2 reviewer floor).
 
 **Description:** Add the confirmed Media3 dependency (tv flavor only),
 create a `PlatformViewFactory` hosting a bare `SurfaceView`, and a Dart
@@ -314,7 +314,7 @@ naming them the same now avoids a rename later.
   machine) is the JVM-unit-testable part; the DNS/socket behavior itself
   needs device verification.
 - **Wave C — Adaptive buffer profiles + speed nudge (F6):** profile
-  table from SPEC.md, `NetworkCapabilities`-based signal reads (not the
+  table from docs/specs/tv-zero-copy-cast.md, `NetworkCapabilities`-based signal reads (not the
   deprecated `WifiManager.getConnectionInfo()` path), `LoadControl`
   tuning, 0.97× speed-nudge instead of rebuffering.
 - **Wave D — Zero-copy decode hardening (F5):** confirm no `ImageReader`/
@@ -344,6 +344,6 @@ naming them the same now avoids a rename later.
   device with `tv` flavor installable, or only the Fire TV Stick /
   Pixel 9 phone (per `physical-device-test-rig` memory)? Affects which
   device Wave A's checkpoint actually verifies against first.
-- **P2-3 (carried from SPEC.md):** Fire TV Appstore submission vs.
+- **P2-3 (carried from docs/specs/tv-zero-copy-cast.md):** Fire TV Appstore submission vs.
   sideload-only — doesn't block Wave A, but affects whether Wave A should
   also stand up a Fire OS-specific manual QA pass now or defer it.
