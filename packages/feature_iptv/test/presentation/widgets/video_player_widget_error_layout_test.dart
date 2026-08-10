@@ -251,7 +251,17 @@ void main() {
 
       final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await pointer.addPointer(location: const Offset(1100, 700));
-      await pointer.moveTo(const Offset(480, 270));
+      // (700, 400) is dead space in the expanded hover-chrome layout --
+      // clear of the top-left row, the center transport row, the trailing
+      // VOL/CH zone, and the bottom timeline bar. The video's exact
+      // geometric center (480, 270) now lands on the play/pause button
+      // itself (#1025/#1600 straightened out the center row so it's no
+      // longer skewed off-center by an inline VOL pillar), and hovering a
+      // TvFocusable focuses it on pointer-enter -- which is correct,
+      // deliberate behavior this test isn't exercising, and would otherwise
+      // hold the overlay open forever via the "never hide a focused
+      // control" rule this test doesn't want to invoke.
+      await pointer.moveTo(const Offset(700, 400));
       await tester.pump();
       expect(controls().opacity, 1);
 
