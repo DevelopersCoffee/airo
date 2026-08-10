@@ -193,6 +193,54 @@ acceptance.
 
 ---
 
+## Task 7: Settings UI + bootstrap wiring — DONE (5b809cf5)
+
+**Tier:** implement (Sonnet)
+
+**Description:** Resolves P1-2 (below) — a product decision, now made:
+opt-in consent default, `AiroLocalDiagnosticsAnalyticsService` ships
+first (no backend). Wires `AppLogger.setAnalyticsService()` at TV
+bootstrap and adds a Privacy settings toggle for `playbackQuality`
+consent.
+
+**Acceptance criteria:**
+- [x] `AiroLocalDiagnosticsAnalyticsService` constructed with the
+      persisted consent at `main_tv.dart` startup, wired via
+      `AppLogger.setAnalyticsService()`
+- [x] New `streamingTelemetryConsentProvider` (Riverpod) persists the
+      toggle via `SharedPreferences` and calls `.updateConsent()` on
+      the live service instance
+- [x] Granted consent state built explicitly, NOT from
+      `AiroAnalyticsConsentState.localOnly()` (that preset silently
+      blackholes `playbackQuality` regardless of the field itself —
+      proven wrong end to end by a new test, not just asserted)
+- [x] New TV Privacy settings section (`TvPrivacySection`), TV-only
+      scope this pass — flagged, not silently deferred
+
+**Verification:**
+- [x] `flutter analyze` clean across `app/`
+- [x] New provider test suite 7/7 green, including end-to-end
+      `validateEvent()` proof
+- [x] `packages/feature_iptv` full suite 865/865 green
+- [x] `flutter build web --release` passes
+- [x] `scripts/check-variant-pubspecs.sh` passes
+
+**Dependencies:** Task 5
+
+**Files touched:**
+- `app/lib/core/providers/streaming_telemetry_consent_provider.dart` (new)
+- `app/lib/features/settings/presentation/tv/tv_privacy_section.dart` (new)
+- `app/lib/features/settings/presentation/tv/tv_settings_screen.dart`
+- `app/lib/main_tv.dart`
+- `app/pubspec.yaml`, `app/pubspec_tv.yaml`
+- `packages/feature_iptv_core/lib/src/iptv_settings_manifest.dart`
+- `packages/feature_iptv/test/iptv/domain/iptv_settings_manifest_test.dart`
+- `app/test/core/providers/streaming_telemetry_consent_provider_test.dart` (new)
+
+**Estimated scope:** M
+
+---
+
 ## Checkpoints
 
 ### Checkpoint A (after Tasks 1–2) — DONE
@@ -210,8 +258,12 @@ acceptance.
       after Task 4's engine wiring; Tasks 5-6 were test-only, no lib/ change)
 - [x] Leak-scan test verified non-vacuous by mutation: temporarily fed a raw
       URL into activeSourceId, confirmed the test goes RED, reverted cleanly
+- [x] P1-2 resolved (Task 7, commit `5b809cf5`) — opt-in consent
+      default, local-diagnostics tier first, bootstrap + settings UI
+      shipped
 - [ ] Human review + PRs (cluster: core_analytics PR, platform_player PR,
-      platform_media PR) — not yet opened, pending user direction
+      platform_media PR, app PR for Task 7) — not yet opened, pending
+      user direction
 - [ ] CSO + QA council review recorded — not yet requested
 - [x] Phase 2 planning unblocked (baseline instrumentation ships; app-wide
       consent/backend wiring explicitly deferred, see note below)
