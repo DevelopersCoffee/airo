@@ -98,6 +98,15 @@ class _TraceRow extends StatelessWidget {
                   ),
                 const SizedBox(height: 2),
                 Text(trace.detail, style: theme.textTheme.bodySmall),
+                if (trace.dataVolume != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    trace.dataVolume!.summary,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
                 if (trace.parameters.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
