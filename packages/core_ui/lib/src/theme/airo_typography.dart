@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Application typography styles
-abstract final class AppTypography {
+abstract final class AiroTypography {
   static const String _fontFamily = 'Roboto';
 
   // Display styles

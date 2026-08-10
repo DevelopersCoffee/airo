@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/airo_domain.dart';
 import '../theme/airo_visual_tokens.dart';
-import '../theme/app_spacing.dart';
+import '../theme/airo_spacing.dart';
 
 enum AiroSurfaceLevel { base, raised, floating }
 
@@ -45,7 +45,7 @@ class AiroSurface extends StatelessWidget {
     required this.child,
     super.key,
     this.level = AiroSurfaceLevel.base,
-    this.padding = AppSpacing.paddingMd,
+    this.padding = AiroSpacing.paddingMd,
     this.onTap,
     this.semanticLabel,
     this.accented = false,
@@ -132,10 +132,10 @@ class AiroPageHeader extends StatelessWidget {
                 letterSpacing: 1.4,
               ),
             ),
-          if (eyebrow != null) const SizedBox(height: AppSpacing.sm),
+          if (eyebrow != null) const SizedBox(height: AiroSpacing.sm),
           Text(title, style: theme.textTheme.headlineLarge),
           if (subtitle case final subtitle?) ...[
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AiroSpacing.sm),
             Text(
               subtitle,
               style: theme.textTheme.bodyLarge?.copyWith(
@@ -155,10 +155,10 @@ class AiroPageHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               heading,
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AiroSpacing.md),
               Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
+                spacing: AiroSpacing.sm,
+                runSpacing: AiroSpacing.sm,
                 children: actions,
               ),
             ],
@@ -169,10 +169,10 @@ class AiroPageHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: heading),
-            const SizedBox(width: AppSpacing.lg),
+            const SizedBox(width: AiroSpacing.lg),
             Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
+              spacing: AiroSpacing.sm,
+              runSpacing: AiroSpacing.sm,
               children: actions,
             ),
           ],

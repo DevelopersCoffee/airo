@@ -100,47 +100,47 @@ void main() {
     });
 
     test('typography avoids negative letter spacing', () {
-      expect(AppTypography.displayLarge.letterSpacing, 0);
-      expect(AppTypography.displayMedium.letterSpacing, 0);
-      expect(AppTypography.displaySmall.letterSpacing, 0);
+      expect(AiroTypography.displayLarge.letterSpacing, 0);
+      expect(AiroTypography.displayMedium.letterSpacing, 0);
+      expect(AiroTypography.displaySmall.letterSpacing, 0);
     });
   });
 
-  group('AppColors', () {
+  group('AiroColors', () {
     test('color constants are defined', () {
-      expect(AppColors.primary, const Color(0xFF6750A4));
-      expect(AppColors.secondary, const Color(0xFF625B71));
-      expect(AppColors.error, const Color(0xFFB3261E));
-      expect(AppColors.surface, const Color(0xFFFFFBFE));
-      expect(AppColors.background, const Color(0xFFFFFBFE));
+      expect(AiroColors.primary, const Color(0xFF6750A4));
+      expect(AiroColors.secondary, const Color(0xFF625B71));
+      expect(AiroColors.error, const Color(0xFFB3261E));
+      expect(AiroColors.surface, const Color(0xFFFFFBFE));
+      expect(AiroColors.background, const Color(0xFFFFFBFE));
     });
   });
 
-  group('AppSpacing', () {
+  group('AiroSpacing', () {
     test('spacing values are correct', () {
-      expect(AppSpacing.unit, 4.0);
-      expect(AppSpacing.xxs, 2.0);
-      expect(AppSpacing.xs, 4.0);
-      expect(AppSpacing.sm, 8.0);
-      expect(AppSpacing.md, 16.0);
-      expect(AppSpacing.lg, 24.0);
-      expect(AppSpacing.xl, 32.0);
-      expect(AppSpacing.xxl, 48.0);
+      expect(AiroSpacing.unit, 4.0);
+      expect(AiroSpacing.xxs, 2.0);
+      expect(AiroSpacing.xs, 4.0);
+      expect(AiroSpacing.sm, 8.0);
+      expect(AiroSpacing.md, 16.0);
+      expect(AiroSpacing.lg, 24.0);
+      expect(AiroSpacing.xl, 32.0);
+      expect(AiroSpacing.xxl, 48.0);
     });
 
     test('padding presets have correct values', () {
-      expect(AppSpacing.paddingXs, const EdgeInsets.all(4.0));
-      expect(AppSpacing.paddingMd, const EdgeInsets.all(16.0));
-      expect(AppSpacing.paddingLg, const EdgeInsets.all(24.0));
+      expect(AiroSpacing.paddingXs, const EdgeInsets.all(4.0));
+      expect(AiroSpacing.paddingMd, const EdgeInsets.all(16.0));
+      expect(AiroSpacing.paddingLg, const EdgeInsets.all(24.0));
     });
 
     test('border radius values are defined', () {
-      expect(AppSpacing.radiusXs, 4.0);
-      expect(AppSpacing.radiusSm, 8.0);
-      expect(AppSpacing.radiusMd, 12.0);
-      expect(AppSpacing.radiusLg, 16.0);
-      expect(AppSpacing.radiusXl, 24.0);
-      expect(AppSpacing.radiusFull, 999.0);
+      expect(AiroSpacing.radiusXs, 4.0);
+      expect(AiroSpacing.radiusSm, 8.0);
+      expect(AiroSpacing.radiusMd, 12.0);
+      expect(AiroSpacing.radiusLg, 16.0);
+      expect(AiroSpacing.radiusXl, 24.0);
+      expect(AiroSpacing.radiusFull, 999.0);
     });
   });
 

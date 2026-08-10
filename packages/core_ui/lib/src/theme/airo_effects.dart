@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'airo_colors.dart';
 
 /// Design-system effects tokens: shadows, transitions, borders, gradients.
 @immutable
@@ -55,19 +55,19 @@ class AiroEffects extends ThemeExtension<AiroEffects> {
     shadowLg: [
       BoxShadow(offset: Offset(0, 8), blurRadius: 32, color: Color(0x80000000)),
     ],
-    shadowGlow: [BoxShadow(blurRadius: 16, color: AppColors.cyberGlow)],
+    shadowGlow: [BoxShadow(blurRadius: 16, color: AiroColors.cyberGlow)],
     shadowGlowPrimary: [BoxShadow(blurRadius: 24, color: Color(0x26FFE6CB))],
     shadowLive: [BoxShadow(blurRadius: 8, color: Color(0x66E53935))],
-    shadowFocus: [BoxShadow(spreadRadius: 3, color: AppColors.cyberPrimary)],
+    shadowFocus: [BoxShadow(spreadRadius: 3, color: AiroColors.cyberPrimary)],
     shadowFocusTv: [
-      BoxShadow(spreadRadius: 3, color: AppColors.cyberPrimary),
-      BoxShadow(blurRadius: 16, color: AppColors.cyberGlow),
+      BoxShadow(spreadRadius: 3, color: AiroColors.cyberPrimary),
+      BoxShadow(blurRadius: 16, color: AiroColors.cyberGlow),
     ],
     overlayDark: Color(0xD9041C1C),
     overlayLight: Color(0x14FFFFFF),
-    borderGrid: BorderSide(color: AppColors.cyberGridLine),
-    borderOutline: BorderSide(color: AppColors.cyberOutline),
-    borderPrimary: BorderSide(color: AppColors.cyberPrimary),
+    borderGrid: BorderSide(color: AiroColors.cyberGridLine),
+    borderOutline: BorderSide(color: AiroColors.cyberOutline),
+    borderPrimary: BorderSide(color: AiroColors.cyberPrimary),
     gradientPlayer: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/airo_colors.dart';
 
 class AiroTextField extends StatelessWidget {
   const AiroTextField({
@@ -53,7 +53,7 @@ class AiroTextField extends StatelessWidget {
             child: Text(
               label!.toUpperCase(),
               style: const TextStyle(
-                color: AppColors.cyberMutedText,
+                color: AiroColors.cyberMutedText,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 2,
@@ -71,7 +71,7 @@ class AiroTextField extends StatelessWidget {
           textInputAction: textInputAction,
           keyboardType: keyboardType,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.cyberText,
+            color: AiroColors.cyberText,
           ),
           decoration: InputDecoration(
             hintText: placeholder,
@@ -79,7 +79,7 @@ class AiroTextField extends StatelessWidget {
             suffixIcon: suffixIcon,
             errorText: hasError ? errorText : null,
             errorStyle: const TextStyle(
-              color: AppColors.cyberError,
+              color: AiroColors.cyberError,
               fontSize: 11,
             ),
           ),
@@ -90,7 +90,7 @@ class AiroTextField extends StatelessWidget {
             child: Text(
               hintText!,
               style: const TextStyle(
-                color: AppColors.cyberMutedText,
+                color: AiroColors.cyberMutedText,
                 fontSize: 11,
               ),
             ),

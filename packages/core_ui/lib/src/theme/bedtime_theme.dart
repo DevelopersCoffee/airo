@@ -4,7 +4,7 @@ import 'airo_effects.dart';
 import 'airo_domain.dart';
 import 'airo_theme_tokens.dart';
 import 'airo_visual_tokens.dart';
-import 'app_colors.dart';
+import 'airo_colors.dart';
 
 /// Bedtime mode theme with AMOLED black, warm tint, and reduced motion
 class BedtimeTheme {
@@ -221,8 +221,8 @@ class BedtimeTheme {
           gridLine: _mediumGray,
           chromeSurface: _darkGray,
           glow: Color(0x33FFE4B5),
-          success: AppColors.success,
-          warning: AppColors.warning,
+          success: AiroColors.success,
+          warning: AiroColors.warning,
         ),
         AiroEffects.bedtime,
         AiroVisualTokens(
