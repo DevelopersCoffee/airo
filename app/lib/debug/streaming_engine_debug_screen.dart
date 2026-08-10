@@ -12,15 +12,19 @@ class StreamingEngineDebugScreen extends StatefulWidget {
   const StreamingEngineDebugScreen({super.key});
 
   @override
-  State<StreamingEngineDebugScreen> createState() => _StreamingEngineDebugScreenState();
+  State<StreamingEngineDebugScreen> createState() =>
+      _StreamingEngineDebugScreenState();
 }
 
-class _StreamingEngineDebugScreenState extends State<StreamingEngineDebugScreen> {
+class _StreamingEngineDebugScreenState
+    extends State<StreamingEngineDebugScreen> {
   final _shadowFetchUrlController = TextEditingController(
-    text: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+    text:
+        'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
   );
   final _switchSourceUrlController = TextEditingController(
-    text: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+    text:
+        'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
   );
 
   String _pingStatus = 'not called yet';
@@ -54,15 +58,21 @@ class _StreamingEngineDebugScreenState extends State<StreamingEngineDebugScreen>
   Future<void> _callPreWarm() async {
     setState(() => _preWarmStatus = 'calling...');
     await AiroStreamingEngineChannel.preWarm(['devstreaming-cdn.apple.com']);
-    setState(() => _preWarmStatus = 'done (fire-and-forget, check logcat for native errors)');
+    setState(
+      () => _preWarmStatus =
+          'done (fire-and-forget, check logcat for native errors)',
+    );
   }
 
   Future<void> _callShadowFetch() async {
     setState(() => _shadowFetchStatus = 'calling...');
-    final outcome = await AiroStreamingEngineChannel.shadowFetch(_shadowFetchUrlController.text);
+    final outcome = await AiroStreamingEngineChannel.shadowFetch(
+      _shadowFetchUrlController.text,
+    );
     setState(() {
       _shadowFetchStatus = switch (outcome) {
-        AiroShadowFetchMeasured(:final throughputKbps) => 'measured: ${throughputKbps.toStringAsFixed(1)} kbps',
+        AiroShadowFetchMeasured(:final throughputKbps) =>
+          'measured: ${throughputKbps.toStringAsFixed(1)} kbps',
         AiroShadowFetchFailed(:final reason) => 'failed: $reason',
         AiroShadowFetchBusy() => 'busy (limiter rejected)',
       };
@@ -71,8 +81,14 @@ class _StreamingEngineDebugScreenState extends State<StreamingEngineDebugScreen>
 
   Future<void> _callSwitchSource() async {
     setState(() => _switchSourceStatus = 'calling...');
-    final result = await AiroStreamingEngineChannel.switchSource(_switchSourceUrlController.text);
-    setState(() => _switchSourceStatus = result ? 'ok: true' : 'ok: false (no active player?)');
+    final result = await AiroStreamingEngineChannel.switchSource(
+      _switchSourceUrlController.text,
+    );
+    setState(
+      () => _switchSourceStatus = result
+          ? 'ok: true'
+          : 'ok: false (no active player?)',
+    );
   }
 
   @override
@@ -96,15 +112,23 @@ class _StreamingEngineDebugScreenState extends State<StreamingEngineDebugScreen>
               ),
             ),
             const SizedBox(height: 8),
-            Text('Last phase (STATE stream, Task 5): ${_lastPhase?.stableId ?? "none yet"}'),
+            Text(
+              'Last phase (STATE stream, Task 5): ${_lastPhase?.stableId ?? "none yet"}',
+            ),
             const Divider(height: 32),
 
             Text('ping (Task 1): $_pingStatus'),
-            ElevatedButton(onPressed: _callPing, child: const Text('Call ping()')),
+            ElevatedButton(
+              onPressed: _callPing,
+              child: const Text('Call ping()'),
+            ),
             const Divider(height: 32),
 
             Text('preWarm (Wave B Task 4): $_preWarmStatus'),
-            ElevatedButton(onPressed: _callPreWarm, child: const Text('Call preWarm()')),
+            ElevatedButton(
+              onPressed: _callPreWarm,
+              child: const Text('Call preWarm()'),
+            ),
             const Divider(height: 32),
 
             Text('shadowFetch (Wave C Task 1): $_shadowFetchStatus'),
@@ -112,15 +136,23 @@ class _StreamingEngineDebugScreenState extends State<StreamingEngineDebugScreen>
               controller: _shadowFetchUrlController,
               decoration: const InputDecoration(labelText: 'Shadow-fetch URL'),
             ),
-            ElevatedButton(onPressed: _callShadowFetch, child: const Text('Call shadowFetch()')),
+            ElevatedButton(
+              onPressed: _callShadowFetch,
+              child: const Text('Call shadowFetch()'),
+            ),
             const Divider(height: 32),
 
-            Text('switchSource (Wave C Task 1, v1 basic swap): $_switchSourceStatus'),
+            Text(
+              'switchSource (Wave C Task 1, v1 basic swap): $_switchSourceStatus',
+            ),
             TextField(
               controller: _switchSourceUrlController,
               decoration: const InputDecoration(labelText: 'Switch-source URL'),
             ),
-            ElevatedButton(onPressed: _callSwitchSource, child: const Text('Call switchSource()')),
+            ElevatedButton(
+              onPressed: _callSwitchSource,
+              child: const Text('Call switchSource()'),
+            ),
           ],
         ),
       ),
