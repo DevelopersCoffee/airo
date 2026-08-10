@@ -28,6 +28,8 @@ dependencies:
     path: ../packages/core_app_shell
   core_entitlements:
     path: ../packages/core_entitlements
+  core_ui:
+    path: ../packages/core_ui
   core_product_shell:
     path: ../packages/core_product_shell
   feature_coin:
