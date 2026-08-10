@@ -133,6 +133,12 @@ export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
 
+// Surface 06 — Capability Packs. Installed list/detail bound to
+// CapabilityPort; the drafter (#1250) and marketplace (#1247, #1251) regions
+// render disabled — milestone 20 fills them in without a redesign.
+export 'src/capability_packs/presentation/screens/capability_detail_screen.dart';
+export 'src/capability_packs/presentation/screens/capability_packs_screen.dart';
+
 // Widgets that carry the design rules. Every Mind surface uses these rather
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
