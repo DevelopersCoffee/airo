@@ -26,7 +26,7 @@ import 'fixture_data.dart';
 /// ship that has never rendered a loading state.
 class FixtureMindRuntime implements MindRuntime {
   FixtureMindRuntime()
-    : _vault = const _FixtureVault(),
+    : _vault = _FixtureVault(),
       _log = _FixtureLog(),
       _contexts = _FixtureContexts(),
       _projections = _FixtureProjections(),
@@ -70,22 +70,56 @@ class FixtureMindRuntime implements MindRuntime {
 }
 
 class _FixtureVault implements VaultPort {
-  const _FixtureVault();
+  _FixtureVault();
+
+  /// Revocations made this session, keyed by the device's fingerprint.
+  ///
+  /// A revoked device is never removed from [fixtureDevices] -- it is
+  /// evidence -- so the mutation lives here as an overlay rather than as a
+  /// filter. `devices()` merges the two, which is what lets calling
+  /// [revokeDevice] on a device that was authorised when the fixture was
+  /// built actually change what the next `devices()` call reports, the same
+  /// "not a mock" guarantee `_FixtureLog._appended` and
+  /// `_FixtureCapabilities._removed` already hold elsewhere in this file.
+  final Map<DeviceFingerprint, int> _revokedThisSession = {};
 
   @override
-  Future<VaultState> state() async => const VaultState(
-    isSealed: true,
-    keyCount: 4,
-    revokedCount: 1,
-    revocationEpoch: 3,
-    onDiskBytes: 14200000000,
-  );
+  Future<VaultState> state() async {
+    final revokedCount =
+        fixtureDevices.where((d) => d.isRevoked).length +
+        _revokedThisSession.keys
+            .where(
+              (fp) => !fixtureDevices.any(
+                (d) => d.fingerprint == fp && d.isRevoked,
+              ),
+            )
+            .length;
+    return VaultState(
+      isSealed: true,
+      keyCount: 4,
+      revokedCount: revokedCount,
+      revocationEpoch: 3 + _revokedThisSession.length,
+      onDiskBytes: 14200000000,
+    );
+  }
 
   @override
-  Future<List<MindDevice>> devices() async => fixtureDevices;
+  Future<List<MindDevice>> devices() async => [
+    for (final device in fixtureDevices)
+      _revokedThisSession.containsKey(device.fingerprint) && !device.isRevoked
+          ? MindDevice(
+              name: device.name,
+              fingerprint: device.fingerprint,
+              isThisDevice: device.isThisDevice,
+              revokedAtMs: _revokedThisSession[device.fingerprint],
+            )
+          : device,
+  ];
 
   @override
-  Future<void> revokeDevice(DeviceFingerprint fingerprint) async {}
+  Future<void> revokeDevice(DeviceFingerprint fingerprint) async {
+    _revokedThisSession[fingerprint] = fixtureNowMs;
+  }
 }
 
 class _FixtureLog implements OperationLogPort {
