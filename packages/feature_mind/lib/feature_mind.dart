@@ -183,3 +183,10 @@ export 'src/widgets/mind_projection_switcher.dart';
 export 'src/widgets/mind_everything_browser.dart';
 export 'src/widgets/mind_command_palette_scope.dart';
 export 'src/widgets/mind_native_menu_bar.dart';
+
+// Provenance — on-device entity extraction and the Inspector (surfaces 09
+// and 11, issue #1463).
+export 'src/provenance/domain/models/extracted_entity.dart';
+export 'src/provenance/domain/services/entity_extractor.dart';
+export 'src/provenance/presentation/widgets/entity_chip.dart';
+export 'src/provenance/presentation/widgets/provenance_inspector.dart';
