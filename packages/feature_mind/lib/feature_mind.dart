@@ -196,3 +196,9 @@ export 'src/provenance/domain/models/extracted_entity.dart';
 export 'src/provenance/domain/services/entity_extractor.dart';
 export 'src/provenance/presentation/widgets/entity_chip.dart';
 export 'src/provenance/presentation/widgets/provenance_inspector.dart';
+
+export 'src/widgets/relative_time.dart';
+
+// Surfaces — the phone screens of the device system.
+export 'src/surfaces/devices_surface.dart';
+export 'src/surfaces/mind_surface_scaffold.dart';
