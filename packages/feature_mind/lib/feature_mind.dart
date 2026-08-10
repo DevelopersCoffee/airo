@@ -141,3 +141,6 @@ export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
 export 'src/widgets/mind_projection_switcher.dart';
+
+// Surfaces.
+export 'src/surfaces/context_workspace_surface.dart';
