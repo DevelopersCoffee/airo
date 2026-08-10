@@ -87,12 +87,21 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - **Dependencies:** Task 3 (for real fixture data)
 
 ## Task 5: TS splice execution
-- [ ] Not started
+- [~] Implemented, commit `3c0124cc`. New `AiroTsSplicePointFinder`
+  (tv/kotlin — OkHttp is variant-gated, per AD-P2B.4) probes the
+  incoming url via a bounded OkHttp GET, feeding Task 4's
+  `AiroTsSpliceParser`. `switchSource` picks HLS vs TS finder via a new
+  `isHlsUrl` check. 4 new JVM tests (49/49 total), all 3 variants
+  clean. **Not device-verified** — F4.4.6 bar for TS not checked on
+  hardware.
 - **Tier:** implement
 - **Verification:** Device-verified against Task 3's TS asset
 - **Dependencies:** Task 0, Task 3, Task 4
 
 ## Checkpoint: Splice-on-keyframe complete
-- [ ] Both HLS and TS paths device-verified
+- **All 6 implementation tasks (0–5) are code-complete and JVM-tested.**
+  Nothing left to implement — everything below is blocked on deferred
+  device access, not on missing code.
+- [ ] Both HLS and TS paths device-verified — deferred by user request
 - [ ] chief-performance-officer review (byte-level parsing on hot path)
 - [ ] Method-channel + Dart contract updated for the new outcome shape
