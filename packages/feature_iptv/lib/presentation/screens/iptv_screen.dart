@@ -1491,6 +1491,12 @@ class _StreamTabContent extends ConsumerWidget {
                     handleNativeFullscreen: false,
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
+                    // This screen already renders its own persistent
+                    // "Open full player" fullscreen button below, right on
+                    // top of this embedded preview -- suppress the widget's
+                    // own hover-chrome fullscreen button so the two don't
+                    // stack in the same top-left corner (#1025, #1600).
+                    showFullscreenButton: false,
                   ),
                   Positioned(
                     top: 8,
