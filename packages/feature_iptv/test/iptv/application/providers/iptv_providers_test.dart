@@ -467,7 +467,7 @@ void main() {
     });
   });
 
-  group('configured M3U sources', () {
+  group('configured multi-source loading', () {
     test(
       'migrates the legacy Pixel playlist once without deleting it',
       () async {
@@ -499,7 +499,8 @@ void main() {
     );
 
     test(
-      'active source selection is exclusive across Stalker and M3U',
+      'merges Stalker and M3U simultaneously regardless of any selected '
+      'active source',
       () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
@@ -534,6 +535,7 @@ void main() {
         final sourceContainer = ProviderContainer(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            secureStoreProvider.overrideWithValue(InMemorySecureStore()),
             m3uSourceParserFactoryProvider.overrideWithValue((_) => m3uParser),
             stalkerSourceLoaderProvider.overrideWithValue(
               (_) async => const [
@@ -548,21 +550,17 @@ void main() {
         );
         addTearDown(sourceContainer.dispose);
 
+        // An active source is set (legacy VOD selection state) but Live TV
+        // must ignore it and show both sources merged. Every configured
+        // source is now watched unconditionally (including
+        // configuredXtreamChannelsProvider, which needs secureStoreProvider
+        // even when no Xtream sources are configured), so the container
+        // must override it too.
         expect(
           (await sourceContainer.read(
             iptvChannelsProvider.future,
           )).map((channel) => channel.id),
-          ['stalker-home-7'],
-        );
-
-        await sourceContainer.read(
-          selectContentSourceProvider('m3u-news').future,
-        );
-        expect(
-          (await sourceContainer.read(
-            iptvChannelsProvider.future,
-          )).map((channel) => channel.id),
-          ['m3u-only'],
+          containsAll(['stalker-home-7', 'm3u-only']),
         );
       },
     );
@@ -664,6 +662,56 @@ void main() {
           parsers.values.every((parser) => parser.fetchCalls == 1),
           isTrue,
         );
+      },
+    );
+
+    test(
+      'configuredStalkerChannelsProvider loads every configured Stalker '
+      'source and isolates a failing one',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final store = ContentSourceStore(PreferencesStore(prefs));
+        await store.replaceAll(const [
+          ContentSourceConfig(
+            id: 'stalker-home',
+            kind: ContentSourceKind.stalker,
+            label: 'Home Portal',
+            url: 'https://portal.example.com',
+            macAddress: 'AA:BB:CC:DD:EE:FF',
+          ),
+          ContentSourceConfig(
+            id: 'stalker-dead',
+            kind: ContentSourceKind.stalker,
+            label: 'Dead Portal',
+            url: 'https://dead.example.com',
+            macAddress: '11:22:33:44:55:66',
+          ),
+        ]);
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            stalkerSourceLoaderProvider.overrideWithValue((config) async {
+              if (config.id == 'stalker-dead') {
+                throw StateError('portal unreachable');
+              }
+              return const [
+                IPTVChannel(
+                  id: 'stalker-home-7',
+                  name: 'Portal Only',
+                  streamUrl: 'https://example.com/portal.m3u8',
+                ),
+              ];
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final channels = await container.read(
+          configuredStalkerChannelsProvider.future,
+        );
+
+        expect(channels.map((c) => c.id), ['stalker-home-7']);
       },
     );
   });

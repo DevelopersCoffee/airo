@@ -408,9 +408,9 @@ class _TvSourceManagementSectionState
           ),
           const SizedBox(height: 4),
           Text(
-            'Choose one active source for Live TV. M3U supports external '
-            'XMLTV; Xtream supports Live TV, EPG, and VOD; Stalker supports '
-            'Live TV. Raw .m3u8 links remain playback URLs, not channel lists.',
+            'Every M3U, Xtream, and Stalker source you add merges into one '
+            'Live TV list. Xtream also supports EPG and VOD. Raw .m3u8 '
+            'links remain playback URLs, not channel lists.',
             style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -479,7 +479,8 @@ class _TvSourceManagementSectionState
                               config.kind != ContentSourceKind.jellyfin)
                             TvFocusable(
                               onSelect: () => _selectSource(config),
-                              semanticLabel: 'Use ${config.label} for Live TV',
+                              semanticLabel:
+                                  'Use ${config.label} for on-demand',
                               semanticButton: true,
                               child: TextButton(
                                 onPressed: () => _selectSource(config),
