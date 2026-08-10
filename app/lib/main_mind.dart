@@ -54,6 +54,7 @@ library;
 import 'dart:async';
 
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -271,8 +272,14 @@ class _AiroMindAppState extends State<AiroMindApp> {
       overrides: widget.registry.allProviderOverrides,
       child: MaterialApp.router(
         title: 'Airo Mind',
-        theme: ThemeData(useMaterial3: true),
+        theme: AiroTheme.defaultDark,
         routerConfig: _router,
+        builder: (context, child) => AiroDisplayScale(
+          child: AiroDomainTheme(
+            domain: AiroDomain.mind,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
       ),
     );
   }

@@ -20,7 +20,7 @@ class TvThemeSection extends ConsumerWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final id = AppThemeId.values[index];
-        final definition = AppTheme.byId(id);
+        final definition = AiroTheme.byId(id);
         final isSelected = id == current;
         return TvFocusable(
           autofocus: isSelected,

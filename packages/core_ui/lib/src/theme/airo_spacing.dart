@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 /// Standard spacing values for consistent layout
-abstract final class AppSpacing {
+abstract final class AiroSpacing {
   // Base spacing unit (4dp)
   static const double unit = 4.0;
 

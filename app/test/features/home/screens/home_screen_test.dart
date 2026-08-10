@@ -17,7 +17,7 @@ void main() {
       tester.view.physicalSize = Size(width, 1000);
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.defaultDark,
+          theme: AiroTheme.defaultDark,
           home: const AiroDomainTheme(
             domain: AiroDomain.airo,
             child: Scaffold(body: HomeScreen()),

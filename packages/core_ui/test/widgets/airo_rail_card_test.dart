@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(
-    theme: AppTheme.byId(AppThemeId.airoTv).darkTheme,
+    theme: AiroTheme.byId(AppThemeId.airoTv).darkTheme,
     home: Scaffold(body: Center(child: child)),
   );
 

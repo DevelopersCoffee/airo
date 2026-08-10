@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/airo_theme_tokens.dart';
-import '../theme/app_colors.dart';
+import '../theme/airo_colors.dart';
 import 'tv_focusable.dart';
 
 /// A horizontal-rail channel card: landscape thumbnail (172x104 in the
@@ -181,7 +181,7 @@ class _LiveBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.live,
+        color: AiroColors.live,
         borderRadius: BorderRadius.circular(100),
       ),
       child: const Row(

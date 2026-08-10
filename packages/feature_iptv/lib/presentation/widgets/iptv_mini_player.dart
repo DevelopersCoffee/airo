@@ -213,8 +213,8 @@ class _WatchButton extends StatelessWidget {
       key: const ValueKey('iptv-mini-player-watch'),
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        backgroundColor: AppColors.airoTvPrimary,
-        foregroundColor: AppColors.airoTvOnPrimary,
+        backgroundColor: AiroColors.airoTvPrimary,
+        foregroundColor: AiroColors.airoTvOnPrimary,
         minimumSize: const Size(0, 30),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

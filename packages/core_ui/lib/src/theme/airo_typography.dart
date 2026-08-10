@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'airo_display_profile.dart';
+
 /// Application typography styles
-abstract final class AppTypography {
+abstract final class AiroTypography {
   static const String _fontFamily = 'Roboto';
 
   // Display styles
@@ -147,4 +149,38 @@ abstract final class AppTypography {
     labelMedium: labelMedium,
     labelSmall: labelSmall,
   );
+
+  /// Per-[AiroDisplayProfile] uniform font-size multiplier, calibrated so
+  /// [TextTheme.headlineLarge] (the semantic "Display L" reference) lands on
+  /// the documented physical size: compact=32, tablet=42, tv=56,
+  /// largeDisplay=64. `standard`/`highContrast` keep the compact baseline;
+  /// `accessible` applies a flat floor bump independent of screen size.
+  static const Map<AiroDisplayProfile, double> _scaleFactors = {
+    AiroDisplayProfile.compact: 1.0,
+    AiroDisplayProfile.standard: 1.0,
+    AiroDisplayProfile.tablet: 1.3125,
+    AiroDisplayProfile.tv: 1.75,
+    AiroDisplayProfile.largeDisplay: 2.0,
+    AiroDisplayProfile.accessible: 1.2,
+    AiroDisplayProfile.highContrast: 1.0,
+  };
+
+  /// The font-size multiplier for the display environment of [context].
+  ///
+  /// Apply to an *existing* [TextTheme] via `.apply(fontSizeFactor: ...)` so
+  /// the active theme's font family/colors are preserved — scaling is a
+  /// separate axis from theme identity. See [AiroDisplayScale].
+  static double scaleFactorOf(BuildContext context) {
+    final profile = AiroDisplayProfile.resolve(context);
+    return _scaleFactors[profile] ?? 1.0;
+  }
+
+  /// Resolves Airo's own base [textTheme] scaled for the display environment
+  /// of [context]. Use this when a widget wants Airo's semantic type ramp
+  /// directly (no existing theme to preserve) — e.g.
+  /// `AiroTypography.of(context).displayMedium`. To scale an existing
+  /// theme's `TextTheme` in place instead, use [scaleFactorOf].
+  static TextTheme of(BuildContext context) {
+    return textTheme.apply(fontSizeFactor: scaleFactorOf(context));
+  }
 }
