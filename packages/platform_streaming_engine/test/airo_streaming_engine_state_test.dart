@@ -1,6 +1,5 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_player/platform_player.dart';
 import 'package:platform_streaming_engine/platform_streaming_engine.dart';
 
 void main() {
