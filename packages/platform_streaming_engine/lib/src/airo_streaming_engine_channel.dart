@@ -29,6 +29,36 @@ class AiroShadowFetchBusy extends AiroShadowFetchOutcome {
   const AiroShadowFetchBusy();
 }
 
+/// Outcome of a `switchSource` call (F4.4.5/F4.4.6, splice-on-keyframe) —
+/// mirrors the native `AiroSpliceOutcome` enum exactly, one Dart type
+/// per status. Replaces the v1 basic-swap's plain `bool` (which could
+/// only say "did a player exist," not "was the swap actually clean").
+sealed class AiroSwitchSourceOutcome {
+  const AiroSwitchSourceOutcome();
+}
+
+/// The swap landed on a splice-safe point (HLS segment boundary, or a
+/// confirmed PAT/PMT/IDR chain for raw TS) within the deadline.
+class AiroSwitchSourceSpliced extends AiroSwitchSourceOutcome {
+  const AiroSwitchSourceSpliced();
+}
+
+/// No splice-safe point was found within the 3s deadline; the native
+/// side fell back to a brief mute-and-cut swap instead (the spec's own
+/// fallback, not a failure).
+class AiroSwitchSourceFellBackToMuteCut extends AiroSwitchSourceOutcome {
+  const AiroSwitchSourceFellBackToMuteCut();
+}
+
+/// No live player existed on the native side to act on, no platform
+/// implementation is registered for this host, or the call otherwise
+/// failed. Also the safe default for any unrecognized status string —
+/// forward compatible with a native-side outcome this build doesn't
+/// know about yet, without throwing.
+class AiroSwitchSourceFailed extends AiroSwitchSourceOutcome {
+  const AiroSwitchSourceFailed();
+}
+
 /// Method-channel bridge to the receiver-side native streaming engine
 /// (Media3/Kotlin, `tv` flavor only — see SPEC.md AD-1/AD-5).
 ///
@@ -105,20 +135,34 @@ class AiroStreamingEngineChannel {
     }
   }
 
-  /// F4.4.5 — switch the active player to [url]. Returns whether the
-  /// native side had a live player to act on; never throws. **v1 "basic
-  /// swap"** — not yet the frame-accurate splice-on-keyframe F4.4.5
-  /// specifies (see `AiroStreamingEngine.switchSource`'s Kotlin doc for
-  /// the full caveat) — a known, tracked gap, not silently complete.
-  static Future<bool> switchSource(String url) async {
+  /// F4.4.5/F4.4.6 — switch the active player to [url], waiting for a
+  /// splice-safe point (bounded by the native side's 3s deadline) before
+  /// swapping. Never throws — any failure (network, no platform
+  /// implementation, unexpected error) degrades to
+  /// [AiroSwitchSourceFailed] rather than propagating an exception.
+  static Future<AiroSwitchSourceOutcome> switchSource(String url) async {
     try {
-      return await _channel.invokeMethod<bool>('switchSource', {'url': url}) ?? false;
+      final status = await _channel.invokeMethod<String>('switchSource', {
+        'url': url,
+      });
+      return _parseSwitchSourceOutcome(status);
     } on MissingPluginException {
       debugPrint('Streaming engine channel is unavailable on this host');
-      return false;
+      return const AiroSwitchSourceFailed();
     } catch (error) {
       debugPrint('Streaming engine switchSource error: $error');
-      return false;
+      return const AiroSwitchSourceFailed();
+    }
+  }
+
+  static AiroSwitchSourceOutcome _parseSwitchSourceOutcome(String? status) {
+    switch (status) {
+      case 'spliced':
+        return const AiroSwitchSourceSpliced();
+      case 'fellBackToMuteCut':
+        return const AiroSwitchSourceFellBackToMuteCut();
+      default:
+        return const AiroSwitchSourceFailed();
     }
   }
 }
