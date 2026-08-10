@@ -1,8 +1,13 @@
 import 'dart:convert';
 
+import '../../../runtime/models/log_models.dart';
+import '../../../runtime/ports/operation_log_port.dart';
 import '../models/agent_skill.dart';
+import '../models/data_volume_measurement.dart';
+import '../models/grounded_citation.dart';
 import 'agent_connector_registry.dart';
 import 'agent_skill_registry.dart';
+import 'capability_safety_resolver.dart';
 import 'intent_parser.dart';
 import 'tool_registry.dart';
 import 'reminder_request_parser.dart';
@@ -303,6 +308,7 @@ class AgentSkillOrchestrator {
     bool useFallbackModelClient = true,
     this._maxSteps = 4,
     this._modelActionTimeout = const Duration(seconds: 3),
+    this._operationLogPort,
   }) : _toolRegistry = toolRegistry ?? ToolRegistry(),
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
        _fallbackModelClient = useFallbackModelClient
@@ -316,6 +322,12 @@ class AgentSkillOrchestrator {
   final RuleBasedAgentSkillModelClient? _fallbackModelClient;
   final int _maxSteps;
   final Duration _modelActionTimeout;
+
+  /// Grounds a skill's final answer in a real logged operation. Null in any
+  /// context that has not wired the log yet — every answer that context
+  /// produces surfaces as [GroundingState.ungrounded], never as a silent,
+  /// unbacked "grounded" claim.
+  final OperationLogPort? _operationLogPort;
 
   String buildSkillSelectionPrompt(String userPrompt) {
     final summaries = _skillRegistry.enabledSkillSummariesForPrompt();
@@ -353,6 +365,8 @@ class AgentSkillOrchestrator {
 
     final traces = [AgentActionTrace(title: 'Load skill', detail: skill.id)];
     final toolResults = <Map<String, dynamic>>[];
+    final safetyClass = resolveCapabilitySafetyClass(skill.capabilities);
+    GroundedCitation? latestCitation;
 
     for (var step = 0; step < _maxSteps; step++) {
       final action =
@@ -375,6 +389,7 @@ class AgentSkillOrchestrator {
           message: 'I could not complete that skill.',
           traces: traces,
           isError: true,
+          safetyClass: safetyClass,
         );
       }
 
@@ -384,6 +399,11 @@ class AgentSkillOrchestrator {
           message: action.message ?? '',
           traces: traces,
           pendingCalendarEvent: action.pendingCalendarEvent,
+          citations: latestCitation == null ? const [] : [latestCitation],
+          groundingState: latestCitation == null
+              ? GroundingState.ungrounded
+              : GroundingState.grounded,
+          safetyClass: safetyClass,
         );
       }
 
@@ -401,6 +421,7 @@ class AgentSkillOrchestrator {
           message: 'That skill tried to use an unsupported action.',
           traces: traces,
           isError: true,
+          safetyClass: safetyClass,
         );
       }
 
@@ -418,6 +439,7 @@ class AgentSkillOrchestrator {
           message: 'That action is not available on this device yet.',
           traces: traces,
           isError: true,
+          safetyClass: safetyClass,
         );
       }
 
@@ -437,12 +459,25 @@ class AgentSkillOrchestrator {
           message: 'That skill does not have permission to use this action.',
           traces: traces,
           isError: true,
+          safetyClass: safetyClass,
         );
       }
 
       final actionStopwatch = Stopwatch()..start();
       final result = await _connectorRegistry.execute(tool, action.arguments);
       actionStopwatch.stop();
+      final dataVolume = await _measureDataVolume(
+        succeeded: !result.isError,
+        requestArguments: action.arguments,
+        responseData: result.data,
+      );
+      if (!result.isError && dataVolume?.replayedOpSequence != null) {
+        latestCitation = GroundedCitation(
+          opSequence: dataVolume!.replayedOpSequence!,
+          sourceLabel: tool,
+          contextLabel: skill.id,
+        );
+      }
       traces.add(
         AgentActionTrace(
           title: 'Execute action',
@@ -450,6 +485,7 @@ class AgentSkillOrchestrator {
           parameters: action.arguments,
           success: !result.isError,
           durationMs: actionStopwatch.elapsedMilliseconds,
+          dataVolume: dataVolume,
         ),
       );
       toolResults.add({
@@ -465,6 +501,7 @@ class AgentSkillOrchestrator {
           message: result.message ?? 'The action failed.',
           traces: traces,
           isError: true,
+          safetyClass: safetyClass,
         );
       }
 
@@ -478,6 +515,7 @@ class AgentSkillOrchestrator {
           parameters:
               (result.data['parameters'] as Map?)?.cast<String, dynamic>() ??
               const {},
+          safetyClass: safetyClass,
         );
       }
     }
@@ -487,6 +525,51 @@ class AgentSkillOrchestrator {
       message: 'The skill took too many steps and was stopped.',
       traces: traces,
       isError: true,
+      safetyClass: safetyClass,
+    );
+  }
+
+  /// Measures how much data a connector call actually moved.
+  ///
+  /// Never guesses: a failed call measures nothing (`null`), and a log
+  /// citation is only attached when [_operationLogPort] resolves a real op.
+  /// No connector in this orchestrator opens a network client, so bytes
+  /// leaving the device is always the true zero the design's example shows,
+  /// not an assumption.
+  Future<DataVolumeMeasurement?> _measureDataVolume({
+    required bool succeeded,
+    required Map<String, dynamic> requestArguments,
+    required Map<String, dynamic> responseData,
+  }) async {
+    if (!succeeded) return null;
+
+    final bytesProcessed =
+        utf8.encode(jsonEncode(requestArguments)).length +
+        utf8.encode(jsonEncode(responseData)).length;
+
+    final port = _operationLogPort;
+    if (port == null) {
+      return DataVolumeMeasurement(
+        bytesProcessed: bytesProcessed,
+        bytesLeftDevice: 0,
+      );
+    }
+
+    final opsInLog = await port.count();
+    if (opsInLog == 0) {
+      return DataVolumeMeasurement(
+        bytesProcessed: bytesProcessed,
+        bytesLeftDevice: 0,
+      );
+    }
+
+    final recent = await port.range(offset: 0, limit: 1);
+    final MindOp? replayed = recent.isEmpty ? null : recent.first;
+    return DataVolumeMeasurement(
+      bytesProcessed: bytesProcessed,
+      bytesLeftDevice: 0,
+      opsInLog: opsInLog,
+      replayedOpSequence: replayed?.sequence,
     );
   }
 

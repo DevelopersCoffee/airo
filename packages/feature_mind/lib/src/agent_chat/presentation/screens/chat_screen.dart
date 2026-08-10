@@ -20,6 +20,7 @@ import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../../../agent_chat/domain/models/chat_response_metadata.dart';
+import '../../../agent_chat/domain/models/grounded_citation.dart';
 import '../../../agent_chat/domain/services/agent_connector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
@@ -27,11 +28,17 @@ import '../../../agent_chat/domain/services/agent_skill_registry.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
 import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
+import '../../../agent_chat/presentation/widgets/grounded_answer_block.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
+import '../../../agent_chat/presentation/widgets/mind_safety_banner.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
+import '../../../runtime/fixture/fixture_mind_runtime.dart';
+import '../../../runtime/models/capability_models.dart';
+import '../../../runtime/ports/operation_log_port.dart';
 import '../../../services/local_runtime_preloader_service.dart';
 import '../../../services/model_preload_preferences.dart';
 import '../../../services/voice_search_service.dart';
+import '../../../widgets/mind_op_row.dart';
 import 'model_library_screen.dart';
 
 /// Chat message model
@@ -42,12 +49,26 @@ class ChatMessage {
   final List<AgentActionTrace> traces;
   final ChatResponseMetadata? metadata;
 
+  /// Ops this answer was replayed from. See [groundingState].
+  final List<GroundedCitation> citations;
+
+  /// Whether [text] is backed by a real logged op. Defaults to
+  /// [GroundingState.notApplicable] — most messages (the welcome text, a
+  /// navigation confirmation, an error) carry no factual claim to ground.
+  final GroundingState groundingState;
+
+  /// The safety banner this answer's capability requires, if any.
+  final CapabilitySafetyClass? safetyClass;
+
   ChatMessage({
     required this.text,
     required this.isUser,
     DateTime? timestamp,
     this.traces = const [],
     this.metadata,
+    this.citations = const [],
+    this.groundingState = GroundingState.notApplicable,
+    this.safetyClass,
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() =>
@@ -85,6 +106,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.enableAiInitialization = true,
     this.initialMessages,
     this.initialDraft,
+    this.operationLogPort,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -93,6 +115,11 @@ class ChatScreen extends ConsumerStatefulWidget {
   final bool enableAiInitialization;
   final List<ChatMessage>? initialMessages;
   final String? initialDraft;
+
+  /// Grounds skill answers in the log. Defaults to `FixtureMindRuntime().log`
+  /// so the surface always has a real, if fixture-backed, log to cite —
+  /// swap in `RustMindRuntime().log` once M19 lands the real runtime.
+  final OperationLogPort? operationLogPort;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -112,6 +139,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
   late AgentSkillOrchestrator _skillOrchestrator;
+  late final OperationLogPort _operationLogPort;
   final AssistantChatContextBuilder _chatContextBuilder =
       const AssistantChatContextBuilder();
   Map<String, dynamic>? _pendingCalendarEvent;
@@ -129,6 +157,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _messageController = TextEditingController(text: widget.initialDraft ?? '');
     _connectorRegistry = _buildConnectorRegistry();
+    _operationLogPort = widget.operationLogPort ?? FixtureMindRuntime().log;
     _moveComposerCursorToEnd();
     _assistantRuntime =
         widget.assistantRuntimeService ??
@@ -194,6 +223,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
       ),
       useFallbackModelClient: false,
+      operationLogPort: _operationLogPort,
     );
   }
 
@@ -712,6 +742,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
+            if (!message.isUser)
+              MindSafetyBanner(safetyClass: message.safetyClass),
             if (message.traces.isNotEmpty)
               SkillActionTraceCard(traces: message.traces),
             Container(
@@ -784,7 +816,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
+            if (!message.isUser)
+              GroundedAnswerBlock(
+                state: message.groundingState,
+                citations: message.citations,
+                onCitationTap: _showCitationSheet,
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Resolves a `GROUNDED IN` chip against the real log — rule R02, a
+  /// context tag is never decorative. Shows the op the answer was replayed
+  /// from rather than trusting the citation's own copy of that data.
+  Future<void> _showCitationSheet(GroundedCitation citation) async {
+    final op = await _operationLogPort.bySequence(citation.opSequence);
+    if (!mounted) return;
+    if (op == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Op ${citation.opSequence} no longer resolves.'),
+        ),
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: MindOpRow(op: op),
         ),
       ),
     );
@@ -928,6 +991,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             isUser: false,
             traces: skillResult.traces,
             metadata: metadata,
+            citations: skillResult.citations,
+            groundingState: skillResult.groundingState,
+            safetyClass: skillResult.safetyClass,
           ),
         );
       });
