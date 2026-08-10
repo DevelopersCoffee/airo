@@ -100,12 +100,20 @@ object AiroStreamingEngine {
     }
 
     /**
-     * Task 2 (splice plan) -- HLS frame-accurate splice-on-keyframe
-     * (F4.4.5/F4.4.6). Waits for the next tracked segment boundary
-     * (Task 1) via [AiroSpliceDecision]'s deadline-bounded fallback
-     * (Task 0) before swapping, instead of v1's immediate basic swap.
-     * TS sources (no [currentSegmentBoundaryTracker]) always take the
-     * mute-cut fallback path until Tasks 3-5 land.
+     * Task 2/5 (splice plan) -- frame-accurate splice-on-keyframe
+     * (F4.4.5/F4.4.6). Waits for a splice-safe point via
+     * [AiroSpliceDecision]'s deadline-bounded fallback (Task 0) before
+     * swapping, instead of v1's immediate basic swap.
+     *
+     * HLS (segment-boundary-aligned, Tasks 1/2) and TS (PAT/PMT/IDR
+     * byte parsing, Tasks 4/5) need genuinely different mechanisms --
+     * see the plan's investigation findings. HLS waits on the
+     * *outgoing* stream's tracked boundary (segments are pre-existing
+     * structure of what's already playing); TS has no such structure,
+     * so it instead probes the *incoming* [url] directly for a clean
+     * PAT->PMT->video-PID->IDR chain via [AiroTsSplicePointFinder].
+     * [isHlsUrl] decides which applies; a source with neither an HLS
+     * url nor an active HLS boundary tracker always takes the TS path.
      *
      * Must be called off the main thread -- [AiroSpliceDecision.decide]
      * blocks the calling thread up to [SPLICE_DEADLINE_MS], and blocking
@@ -115,8 +123,10 @@ object AiroStreamingEngine {
      */
     fun switchSource(url: String): AiroSpliceOutcome {
         val player = currentPlayer ?: return AiroSpliceOutcome.FAILED
-        val finder = currentSegmentBoundaryTracker?.let {
+        val finder = if (isHlsUrl(url) && currentSegmentBoundaryTracker != null) {
             AiroHlsSplicePointFinder(msUntilNextBoundary = ::msUntilNextHlsBoundary)
+        } else {
+            AiroTsSplicePointFinder(okHttpClient, url)
         }
         val mode = AiroSpliceDecision.decide(finder, SPLICE_DEADLINE_MS, spliceExecutor)
         Log.d(TAG, "switchSource: mode=$mode url=$url")
@@ -143,6 +153,15 @@ object AiroStreamingEngine {
         if (mode == AiroSpliceMode.MUTE_CUT_FALLBACK) {
             mainHandler.postDelayed({ player.volume = 1f }, MUTE_CUT_DURATION_MS)
         }
+    }
+
+    /** Extension-based, same check already used for [TEST_STREAM_URL]-
+     * shaped sources in `AiroStreamingSurfaceViewFactory`. Not a
+     * content-type sniff -- good enough for this app's own known
+     * source shapes (HLS variant playlists always end `.m3u8`), not a
+     * general-purpose media type detector. */
+    private fun isHlsUrl(url: String): Boolean {
+        return url.substringBefore('?').endsWith(".m3u8", ignoreCase = true)
     }
 
     /** F4.2.2 -- open and hold connections while the user browses the
