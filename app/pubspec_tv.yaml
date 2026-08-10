@@ -73,6 +73,14 @@ dependencies:
     path: ../packages/core_domain
   core_data:
     path: ../packages/core_data
+  # Phase 1 streaming telemetry consent (F7.5) -- app/lib wires
+  # AiroLocalDiagnosticsAnalyticsService + AiroAnalyticsConsentState
+  # directly, so both need to be direct deps here, not just transitive
+  # via feature_iptv -> platform_media -> core_analytics.
+  core_analytics:
+    path: ../packages/core_analytics
+  platform_media:
+    path: ../packages/platform_media
   core_ui:
     path: ../packages/core_ui
   core_ai:
@@ -93,6 +101,8 @@ dependencies:
     path: ../packages/airo
   feature_iptv:
     path: ../packages/feature_iptv
+  platform_streaming_engine:
+    path: ../packages/platform_streaming_engine
 
   # UI
   cupertino_icons: ^1.0.9

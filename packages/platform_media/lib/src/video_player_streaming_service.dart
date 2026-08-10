@@ -184,12 +184,24 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       )..start(preferredSourceId: _preferredSourceId(channel));
     }
 
+    // F7.1: preserveFailover means this call continues an in-progress
+    // session (stall-triggered switch, or retry() advancing to the next
+    // source) — the existing collector keeps accumulating. A fresh call
+    // starts a new session on the loop's first source below.
+    var metricsSessionStarted = preserveFailover;
+
     // Failover loop: a fatal (non-retry-eligible) open failure advances to
     // the channel's next source instead of landing on the error screen
     // immediately; recoverable failures keep the existing manual-retry
     // behavior (the retry button itself fails over first — see retry()).
     while (true) {
       final source = _failoverController!.state.currentSource!;
+      if (!metricsSessionStarted) {
+        _beginMetricsSession(channel.id, source.sourceId);
+        metricsSessionStarted = true;
+      } else {
+        _recordMetricsSource(source.sourceId);
+      }
       try {
         // Request video audio focus (pauses background music)
         _audioContext.requestFocus(AudioFocusType.video);
@@ -226,6 +238,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         await _engine.setPlaybackSpeed(1.0);
         await _engine.play();
         _lastWorkingSourceIdsByChannel[channel.id] = source.sourceId;
+        _metricsCollector?.firstFrameRendered();
 
         // Calculate load time
         final loadTime = DateTime.now().difference(_loadStartTime!);
@@ -506,12 +519,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// reaches the controller at all; only a continuous stall does.
   void _trackStall(bool isBuffering) {
     if (!isBuffering) {
+      if (_bufferingSince != null) _metricsCollector?.stallEnded();
       _bufferingSince = null;
       return;
     }
     final since = _bufferingSince;
     if (since == null) {
       _bufferingSince = DateTime.now();
+      _metricsCollector?.stallStarted();
       return;
     }
     if (_isHandlingStall) return;
@@ -626,6 +641,55 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// flight -- mirrors [_isHandlingError]'s reentrancy guard.
   bool _isHandlingStall = false;
 
+  /// F7.1 QoE metrics for the in-progress session. Lives for one logical
+  /// session: created on a fresh [playChannel], survives failover source
+  /// switches within that session, and is finalized (summary emitted, then
+  /// cleared) on stop, terminal error, or the next fresh [playChannel].
+  StreamingSessionMetricsCollector? _metricsCollector;
+  String? _metricsActiveSourceId;
+
+  /// Network key is not yet derived from a live connectivity/BSSID reading
+  /// (that provider lands with the cast/failover phases) -- constant
+  /// placeholder keeps every session's telemetry consistently keyed rather
+  /// than half-populated.
+  static const String _placeholderNetworkKey = 'wifi:unknown';
+
+  void _beginMetricsSession(String channelId, String sourceId) {
+    _finalizeMetricsSession();
+    _metricsActiveSourceId = sourceId;
+    _metricsCollector =
+        StreamingSessionMetricsCollector(
+          sessionId: '$channelId-${DateTime.now().microsecondsSinceEpoch}',
+          activeSourceId: sourceId,
+          networkKey: _placeholderNetworkKey,
+        )..sessionStarted();
+    AppLogger.analytics(
+      'streaming_session_started',
+      params: {'network_key': _placeholderNetworkKey},
+    );
+  }
+
+  void _recordMetricsSource(String sourceId) {
+    final collector = _metricsCollector;
+    if (collector == null) return;
+    if (_metricsActiveSourceId != sourceId) {
+      collector.sourceSwitched(sourceId);
+      _metricsActiveSourceId = sourceId;
+    }
+  }
+
+  void _finalizeMetricsSession() {
+    final collector = _metricsCollector;
+    _metricsCollector = null;
+    _metricsActiveSourceId = null;
+    if (collector == null) return;
+    final summary = collector.sessionStopped();
+    AppLogger.analytics(
+      'streaming_session_summary',
+      params: summary.toAnalyticsEvent().params,
+    );
+  }
+
   /// Maps a failure to its structured diagnostic. Shared by the playChannel
   /// failover loop (which needs `retryEligible` to decide whether to
   /// advance to the next source) and [_handleError] (which renders it).
@@ -723,6 +787,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _audioContext.releaseFocus(AudioFocusType.video);
     _liveEdgeDetector.detach();
     await _engine.stop();
+    _finalizeMetricsSession();
     _updateState(StreamingState());
     _notifyMediaSession((delegate) => delegate.onPlaybackStopped());
   }
@@ -946,6 +1011,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> dispose() async {
     _bufferMonitor?.cancel();
     _metricsTimer?.cancel();
+    _finalizeMetricsSession();
     _liveEdgeDetector.dispose();
     _audioContext.releaseFocus(AudioFocusType.video);
     await _engineSubscription?.cancel();

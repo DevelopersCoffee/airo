@@ -241,6 +241,19 @@ android {
                     else "src/withoutLitertlm/kotlin",
                 )
             }
+            // Same shape as the LiteRT-LM split above: AiroStreamingSurfaceViewFactory
+            // exists under both names with an identical public API, so
+            // MainActivity's reference always resolves regardless of variant.
+            // Only src/tv/kotlin imports androidx.media3.* -- that dependency is
+            // isTvVariant-gated above, so a non-tv build must never compile a
+            // file that references it. Coins has its own CoinsActivity and never
+            // registers this factory, so it's excluded like the LiteRT-LM split.
+            if (!isCoinsVariant) {
+                kotlin.srcDir(
+                    if (isTvVariant) "src/tv/kotlin"
+                    else "src/streaming_engine_stub/kotlin",
+                )
+            }
             // Same mechanism as LiteRT-LM above, a separate flag and a
             // separate plugin (embeddings/semantic search -- see
             // docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md).
@@ -262,6 +275,16 @@ android {
                     if (embeddingAvailable) "src/withEmbedding/kotlin"
                     else "src/withoutEmbedding/kotlin",
                 )
+            }
+        }
+        // Wave B: classes that import androidx.media3.datasource.okhttp/OkHttp
+        // (isTvVariant-gated below) get their own conditional test source dir,
+        // same reasoning as main's tv/stub split -- src/test/kotlin is compiled
+        // for every variant's unit tests, so a test referencing an OkHttp type
+        // would fail to compile on non-tv variants if it lived there instead.
+        getByName("test") {
+            if (isTvVariant) {
+                kotlin.srcDir("src/testTv/kotlin")
             }
         }
     }
@@ -374,6 +397,31 @@ dependencies {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
         implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    }
+
+    // Receiver-side zero-copy streaming engine (docs/specs/tv-zero-copy-cast.md AD-1/AD-5, Phase 2
+    // Wave A). TV-only: minSdk 23 is well under this project's minSdk 26, so
+    // no compatibility gate is needed beyond the variant check itself. See
+    // tasks/tv-zero-copy-cast-phase2-task3-media3-proposal.md for the full
+    // dependency proposal (versions, size, license) this was confirmed against.
+    if (isTvVariant) {
+        implementation("androidx.media3:media3-exoplayer:1.11.0")
+        implementation("androidx.media3:media3-common:1.11.0")
+        implementation("androidx.media3:media3-datasource:1.11.0")
+        implementation("androidx.media3:media3-exoplayer-hls:1.11.0")
+
+        // Wave B (F4.2): connection pooling, keepalive, custom DNS via
+        // okhttp3.Dns. See tasks/tv-zero-copy-cast-phase2-waveB-task1-okhttp-proposal.md
+        // for the full proposal this was confirmed against.
+        implementation("com.squareup.okhttp3:okhttp:5.4.0")
+        implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
+        testImplementation("com.squareup.okhttp3:okhttp:5.4.0")
+        // Test-only, never ships in the APK. Standard purpose-built local
+        // HTTP server for exercising OkHttp code -- switched to from
+        // com.sun.net.httpserver.HttpServer after that failed to resolve
+        // on the Android Gradle Plugin's unit-test classpath (confirmed by
+        // compile errors, not assumed).
+        testImplementation("com.squareup.okhttp3:mockwebserver3:5.4.0")
     }
 
 }
