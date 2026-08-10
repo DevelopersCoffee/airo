@@ -92,30 +92,73 @@ class _FixtureLog implements OperationLogPort {
   /// Ops appended during this session, oldest first.
   ///
   /// The 12,481 below them are implied rather than materialised: the fixture
-  /// reports the real count and serves the nine the design shows, which is
-  /// what every surface actually pages through.
+  /// reports the real count, serves the nine the design shows for the top of
+  /// the page, and — for #1460's Runtime Console, which pages meaningfully
+  /// past nine rows — synthesises the rest on demand in [_synthesize] rather
+  /// than ever building a 12,000-entry list.
   final List<MindOp> _appended = [];
 
   static const int _baseCount = 12481;
 
-  List<MindOp> get _all => [..._appended.reversed, ...fixtureOps];
+  List<MindOp> get _explicit => [..._appended.reversed, ...fixtureOps];
 
   @override
   Future<int> count() async => _baseCount + _appended.length;
 
   @override
   Future<List<MindOp>> range({required int offset, required int limit}) async {
-    final all = _all;
-    if (offset >= all.length) return const [];
-    return all.skip(offset).take(limit).toList(growable: false);
+    final total = await count();
+    if (offset >= total || limit <= 0) return const [];
+    final explicit = _explicit;
+    final end = (offset + limit).clamp(0, total);
+    return [
+      for (var i = offset; i < end; i++)
+        if (i < explicit.length) explicit[i] else _synthesize(i, explicit.length),
+    ];
+  }
+
+  /// A deterministic stand-in for a row this fixture does not name.
+  ///
+  /// [index] is the row's position in the log (0 is newest); [explicitCount]
+  /// is how many named rows come before it. Kind, device and signature cycle
+  /// on primes relative to each other so a table scanning hundreds of rows
+  /// sees every op type and every signature state rather than one repeating
+  /// combination.
+  MindOp _synthesize(int index, int explicitCount) {
+    final rank = index - explicitCount;
+    final kinds = MindOpKind.values;
+    final kind = kinds[rank % kinds.length];
+    const devices = ['Pixel 9 Pro', 'Desktop', 'iPad Air'];
+    final device = devices[rank % devices.length];
+    final signature = rank % 37 == 0
+        ? SignatureState.unverified
+        : rank % 53 == 0
+        ? SignatureState.unsigned
+        : SignatureState.verified;
+    // Descends from just below the last named op's sequence so it never
+    // collides with a real, named one.
+    final sequence = fixtureOps.last.sequence - 1 - rank;
+    return MindOp(
+      sequence: sequence,
+      kind: kind,
+      title: 'Op #$sequence',
+      contextId: fixtureContexts[rank % fixtureContexts.length].id,
+      deviceName: device,
+      signature: signature,
+      recordedAtMs: fixtureNowMs - (explicitCount + rank + 1) * 3600000,
+    );
   }
 
   @override
   Future<MindOp?> bySequence(int sequence) async {
-    for (final op in _all) {
+    final explicit = _explicit;
+    for (final op in explicit) {
       if (op.sequence == sequence) return op;
     }
-    return null;
+    final ceiling = fixtureOps.last.sequence - 1;
+    if (sequence < 1 || sequence > ceiling) return null;
+    final rank = ceiling - sequence;
+    return _synthesize(rank + explicit.length, explicit.length);
   }
 
   @override

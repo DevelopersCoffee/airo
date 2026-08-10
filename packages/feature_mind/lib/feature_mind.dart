@@ -158,6 +158,12 @@ export 'src/portability/backup_envelope_controller.dart';
 export 'src/portability/backup_envelope_state.dart';
 export 'src/portability/destination_validation.dart';
 
+// Surface 13 — Windows/Linux Runtime Console (#1460).
+export 'src/runtime_console/runtime_console_availability.dart';
+export 'src/runtime_console/runtime_console_controller.dart';
+export 'src/runtime_console/runtime_console_models.dart';
+export 'src/runtime_console/runtime_console_table.dart';
+
 // Widgets that carry the design rules. Every Mind surface uses these rather
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
