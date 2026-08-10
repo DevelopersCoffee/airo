@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:platform_streaming_engine/platform_streaming_engine.dart';
 
-/// QA/debug harness for the receiver streaming engine (SPEC.md AD-1/AD-5,
+/// QA/debug harness for the receiver streaming engine
+/// (docs/specs/tv-zero-copy-cast.md AD-1/AD-5,
 /// Phase 2 Waves A-C). Not the real "Play on TV" UX (that's Phase 4's
 /// cast protocol work, which decides which channel/source list this
 /// screen would eventually receive) — this exists purely so the native
@@ -84,11 +85,13 @@ class _StreamingEngineDebugScreenState
     final result = await AiroStreamingEngineChannel.switchSource(
       _switchSourceUrlController.text,
     );
-    setState(
-      () => _switchSourceStatus = result
-          ? 'ok: true'
-          : 'ok: false (no active player?)',
-    );
+    setState(() {
+      _switchSourceStatus = switch (result) {
+        AiroSwitchSourceSpliced() => 'spliced',
+        AiroSwitchSourceFellBackToMuteCut() => 'fell back to mute-cut',
+        AiroSwitchSourceFailed() => 'failed (no active player?)',
+      };
+    });
   }
 
   @override
@@ -142,9 +145,7 @@ class _StreamingEngineDebugScreenState
             ),
             const Divider(height: 32),
 
-            Text(
-              'switchSource (Wave C Task 1, v1 basic swap): $_switchSourceStatus',
-            ),
+            Text('switchSource (splice-on-keyframe): $_switchSourceStatus'),
             TextField(
               controller: _switchSourceUrlController,
               decoration: const InputDecoration(labelText: 'Switch-source URL'),

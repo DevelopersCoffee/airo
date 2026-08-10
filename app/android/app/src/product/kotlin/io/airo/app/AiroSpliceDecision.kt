@@ -25,9 +25,11 @@ enum class AiroSpliceMode { SPLICE, MUTE_CUT_FALLBACK }
  * distinguishes a clean splice from a mute-cut fallback from an outright
  * failure (no live player), rather than collapsing all three into one
  * boolean the way `switchSource`'s v1 basic swap did (AD-Splice.3). The
- * method-channel boundary still maps this down to a `Boolean` for now --
- * widening the Dart contract itself is the final splice-plan checkpoint's
- * job, not this task's.
+ * method-channel boundary carries this across as a status string --
+ * `AiroStreamingEnginePlugin` maps each value to `"spliced"` /
+ * `"fellBackToMuteCut"` / `"failed"`, and
+ * `platform_streaming_engine`'s `AiroSwitchSourceOutcome` sealed class
+ * mirrors it on the Dart side (splice-plan final checkpoint).
  */
 enum class AiroSpliceOutcome { SPLICED, FELL_BACK_TO_MUTE_CUT, FAILED }
 

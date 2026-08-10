@@ -65,14 +65,18 @@ class AiroStreamingEnginePlugin {
                         // calling thread up to its 3s deadline while it
                         // waits for a splice-safe boundary -- must not run
                         // on the main thread, same reasoning as shadowFetch
-                        // above. Dart's contract is still a plain bool
-                        // (AD-Splice.3 defers the richer outcome shape to
-                        // the splice plan's final checkpoint); SPLICED and
-                        // FELL_BACK_TO_MUTE_CUT both count as "switched".
+                        // above. Splice-plan final checkpoint: the Dart
+                        // contract now carries the full AiroSpliceOutcome
+                        // shape (as a status string) instead of collapsing
+                        // it to a bool.
                         Thread {
                             val outcome = AiroStreamingEngine.switchSource(url)
-                            val switched = outcome != AiroSpliceOutcome.FAILED
-                            mainHandler.post { result.success(switched) }
+                            val status = when (outcome) {
+                                AiroSpliceOutcome.SPLICED -> "spliced"
+                                AiroSpliceOutcome.FELL_BACK_TO_MUTE_CUT -> "fellBackToMuteCut"
+                                AiroSpliceOutcome.FAILED -> "failed"
+                            }
+                            mainHandler.post { result.success(status) }
                         }.start()
                     }
                 }

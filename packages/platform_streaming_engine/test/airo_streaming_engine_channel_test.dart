@@ -9,13 +9,13 @@ void main() {
   final calls = <MethodCall>[];
   bool pingResult = true;
   Map<Object?, Object?> shadowFetchResult = {'status': 'measured', 'throughputKbps': 4200.0};
-  bool switchSourceResult = true;
+  String switchSourceResult = 'spliced';
 
   setUp(() {
     calls.clear();
     pingResult = true;
     shadowFetchResult = {'status': 'measured', 'throughputKbps': 4200.0};
-    switchSourceResult = true;
+    switchSourceResult = 'spliced';
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
@@ -144,27 +144,47 @@ void main() {
   });
 
   group('AiroStreamingEngineChannel.switchSource', () {
-    test('returns the platform result on success', () async {
+    test('returns spliced on a clean splice', () async {
       final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
 
       expect(calls.single.method, 'switchSource');
       expect(calls.single.arguments, {'url': 'https://example.com/b.ts'});
-      expect(result, isTrue);
+      expect(result, isA<AiroSwitchSourceSpliced>());
     });
 
-    test('returns false when no active player exists on the native side', () async {
-      switchSourceResult = false;
+    test('returns fell-back-to-mute-cut when the deadline is hit', () async {
+      switchSourceResult = 'fellBackToMuteCut';
 
-      expect(await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts'), isFalse);
+      final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
+
+      expect(result, isA<AiroSwitchSourceFellBackToMuteCut>());
     });
 
-    test('degrades to false when no platform implementation is registered', () async {
+    test('returns failed when no active player exists on the native side', () async {
+      switchSourceResult = 'failed';
+
+      final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
+
+      expect(result, isA<AiroSwitchSourceFailed>());
+    });
+
+    test('an unrecognized status degrades to failed rather than throwing', () async {
+      switchSourceResult = 'some-future-status';
+
+      final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
+
+      expect(result, isA<AiroSwitchSourceFailed>());
+    });
+
+    test('degrades to failed when no platform implementation is registered', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
             throw MissingPluginException();
           });
 
-      expect(await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts'), isFalse);
+      final result = await AiroStreamingEngineChannel.switchSource('https://example.com/b.ts');
+
+      expect(result, isA<AiroSwitchSourceFailed>());
     });
   });
 }

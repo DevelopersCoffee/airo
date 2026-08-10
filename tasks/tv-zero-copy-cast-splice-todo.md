@@ -102,6 +102,10 @@ Follows Wave C Task 1 (`switchSource` v1 basic-swap, device-verified).
 - **All 6 implementation tasks (0–5) are code-complete and JVM-tested.**
   Nothing left to implement — everything below is blocked on deferred
   device access, not on missing code.
-- [ ] Both HLS and TS paths device-verified — deferred by user request
+- [ ] Both HLS and TS paths device-verified — deferred by user request,
+  tracked in GH issue #1574
 - [ ] chief-performance-officer review (byte-level parsing on hot path)
-- [ ] Method-channel + Dart contract updated for the new outcome shape
+- [x] Method-channel + Dart contract updated for the new outcome shape
+  — commit `9fe6efc5`. New `AiroSwitchSourceOutcome` sealed class
+  (spliced/fellBackToMuteCut/failed) replaces the collapsed bool.
+  17/17 Dart tests, analyzer clean, all 3 Gradle variants clean.
