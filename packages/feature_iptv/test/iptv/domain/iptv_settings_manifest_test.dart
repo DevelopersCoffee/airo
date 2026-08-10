@@ -19,13 +19,14 @@ void main() {
       });
     });
 
-    test('TV sees theme, playback, sources, accessibility — matching '
-        'tv_settings_screen.dart today', () {
+    test('TV sees theme, playback, sources, accessibility, privacy — '
+        'matching tv_settings_screen.dart today', () {
       expect(visibleOn(ShellId.tv).map((s) => s.id).toList(), const [
         IptvSettingsSectionId.theme,
         IptvSettingsSectionId.playback,
         IptvSettingsSectionId.sources,
         IptvSettingsSectionId.accessibility,
+        IptvSettingsSectionId.privacy,
       ]);
     });
 

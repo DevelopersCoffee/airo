@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 
+import 'tv_privacy_section.dart';
 import 'tv_theme_section.dart';
 import '../widgets/app_info_tile.dart';
 import '../widgets/sibling_app_card.dart';
@@ -206,6 +207,10 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
         );
       case IptvSettingsSectionId.accessibility:
         return const _AccessibilityComingSoon();
+      case IptvSettingsSectionId.privacy:
+        return const TvPrivacySection(
+          key: ValueKey('tv_settings_section_privacy'),
+        );
       case IptvSettingsSectionId.playlistSource:
       case IptvSettingsSectionId.epgGuideSource:
       case IptvSettingsSectionId.country:
