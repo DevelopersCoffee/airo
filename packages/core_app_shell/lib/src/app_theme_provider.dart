@@ -12,7 +12,7 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
   SharedPreferences? _preferences;
   final AppThemeId _defaultThemeId;
 
-  AppThemeNotifier({AppThemeId defaultThemeId = AppTheme.defaultThemeId})
+  AppThemeNotifier({AppThemeId defaultThemeId = AiroTheme.defaultThemeId})
     : _defaultThemeId = defaultThemeId,
       super(defaultThemeId) {
     _load();
@@ -20,12 +20,12 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
 
   AppThemeNotifier.withPreferences(
     SharedPreferences preferences, {
-    AppThemeId defaultThemeId = AppTheme.defaultThemeId,
+    AppThemeId defaultThemeId = AiroTheme.defaultThemeId,
   }) : _preferences = preferences,
        _defaultThemeId = defaultThemeId,
        super(_themeFromPreferences(preferences, fallback: defaultThemeId));
 
-  AppThemeDefinition get currentTheme => AppTheme.byId(state);
+  AppThemeDefinition get currentTheme => AiroTheme.byId(state);
 
   Future<void> setTheme(AppThemeId themeId) async {
     state = themeId;
@@ -70,5 +70,5 @@ final appThemeProvider = StateNotifierProvider<AppThemeNotifier, AppThemeId>((
 
 final appThemeDefinitionProvider = Provider<AppThemeDefinition>((ref) {
   final themeId = ref.watch(appThemeProvider);
-  return AppTheme.byId(themeId);
+  return AiroTheme.byId(themeId);
 });

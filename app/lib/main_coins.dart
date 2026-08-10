@@ -29,6 +29,7 @@ library;
 import 'dart:async';
 
 import 'package:core_product_shell/core_product_shell.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,14 +95,14 @@ class _AiroCoinsAppState extends State<AiroCoinsApp> {
       overrides: widget.registry.allProviderOverrides,
       child: MaterialApp.router(
         title: 'Airo Coins',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFB8860B),
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
+        theme: AiroTheme.defaultDark,
         routerConfig: _router,
+        builder: (context, child) => AiroDisplayScale(
+          child: AiroDomainTheme(
+            domain: AiroDomain.money,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
       ),
     );
   }

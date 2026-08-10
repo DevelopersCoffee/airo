@@ -8,7 +8,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.byId(AppThemeId.airoTv).darkTheme,
+        theme: AiroTheme.byId(AppThemeId.airoTv).darkTheme,
         home: Scaffold(
           body: AiroRail(
             title: 'Top 50 India',
@@ -39,7 +39,7 @@ void main() {
   }) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.byId(AppThemeId.airoTv).darkTheme,
+        theme: AiroTheme.byId(AppThemeId.airoTv).darkTheme,
         home: Scaffold(
           body: AiroRail(
             title: 'Rail',

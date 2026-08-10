@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_spacing.dart';
+import '../theme/airo_spacing.dart';
 
 /// Standard application button widget
 class AppButton extends StatelessWidget {
@@ -73,7 +73,7 @@ class AppButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: _getIconSize()),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AiroSpacing.sm),
           Text(label),
         ],
       );

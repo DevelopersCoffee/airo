@@ -222,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, 'Theme'), findsOneWidget);
-    for (final theme in AppTheme.themes) {
+    for (final theme in AiroTheme.themes) {
       expect(find.text(theme.name), findsOneWidget);
       expect(find.text(theme.description), findsOneWidget);
     }

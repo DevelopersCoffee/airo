@@ -2812,13 +2812,13 @@ Color _categoryColor(BuildContext context, ChannelCategory category) {
   final primary = Theme.of(context).colorScheme.primary;
   return switch (category) {
     ChannelCategory.all => primary,
-    ChannelCategory.news => AppColors.airoTvCategoryNews,
-    ChannelCategory.sports => AppColors.airoTvCategorySports,
-    ChannelCategory.movies => AppColors.airoTvCategoryMovies,
-    ChannelCategory.music => AppColors.airoTvCategoryMusic,
-    ChannelCategory.kids => AppColors.airoTvCategoryKids,
-    ChannelCategory.documentary => AppColors.airoTvCategoryDocumentary,
-    ChannelCategory.entertainment => AppColors.airoTvCategoryEntertainment,
-    _ => AppColors.airoTvCategoryDefault,
+    ChannelCategory.news => AiroColors.airoTvCategoryNews,
+    ChannelCategory.sports => AiroColors.airoTvCategorySports,
+    ChannelCategory.movies => AiroColors.airoTvCategoryMovies,
+    ChannelCategory.music => AiroColors.airoTvCategoryMusic,
+    ChannelCategory.kids => AiroColors.airoTvCategoryKids,
+    ChannelCategory.documentary => AiroColors.airoTvCategoryDocumentary,
+    ChannelCategory.entertainment => AiroColors.airoTvCategoryEntertainment,
+    _ => AiroColors.airoTvCategoryDefault,
   };
 }

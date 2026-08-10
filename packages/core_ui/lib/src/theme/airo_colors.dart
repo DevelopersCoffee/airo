@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Application color palette
-abstract final class AppColors {
+abstract final class AiroColors {
   // Primary colors
   static const Color primary = Color(0xFF6750A4);
   static const Color primaryContainer = Color(0xFFEADDFF);

@@ -2,7 +2,7 @@ import 'package:flutter/painting.dart';
 
 /// The Airo Mind device system's palette.
 ///
-/// Distinct from `AppColors.cyber*` in core_ui, which is the Living Console
+/// Distinct from `AiroColors.cyber*` in core_ui, which is the Living Console
 /// palette: that one is #5CE1E6 on #F4F1EA, this one is #7FE8DE on #FFE6CB.
 /// They are two visual languages, not one with drift, and collapsing them
 /// would change every Mind surface away from what the design specifies.

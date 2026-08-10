@@ -88,7 +88,7 @@ implementation detail — that's the domain agent's job.
 
 | Role | Owns (real packages) | Approves | Rejects |
 | --- | --- | --- | --- |
-| Flutter Architect | `core_ui`, `app/`, `template_feature` | Riverpod usage, widget structure, navigation, design-system packages | New state-management patterns that bypass Riverpod, ad-hoc design tokens |
+| Flutter Architect | `core_ui`, `app/`, `template_feature` | Riverpod usage, widget structure, navigation, design-system packages | New state-management patterns that bypass Riverpod, ad-hoc design tokens (a raw `fontSize`/`Color(0x..)`/`EdgeInsets.all()` instead of `AiroTypography`/`AiroColors`/`AiroSpacing`, or a flavor-local `ThemeData` instead of `core_ui`'s `AiroTheme`/`AiroDisplayScale`/`AiroDomainTheme`) |
 | Rust Architect | `rust/`, `core_workers` | `unsafe`, SIMD, Tokio/Rayon usage, FFI boundary shape | Unreviewed `unsafe`, blocking calls on async runtimes |
 | Playback Architect | `platform_player`, `platform_streams`, `platform_media`, `core_media_routing` | Decoder/renderer changes, DRM, subtitle/audio pipeline | Changes that bypass the media routing contract |
 | Media Intelligence Architect | `platform_epg`, `feature_iptv`, `platform_playlist`, `platform_playlist_export`, `platform_playlist_import`, `platform_favorites`, `platform_history` | Provider adapters, EPG parsing/normalization, ranking | Provider-specific hacks that leak into shared models |

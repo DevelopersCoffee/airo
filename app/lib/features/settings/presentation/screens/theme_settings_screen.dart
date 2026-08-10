@@ -22,7 +22,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            for (final theme in AppTheme.themes)
+            for (final theme in AiroTheme.themes)
               RadioListTile<AppThemeId>(
                 value: theme.id,
                 title: Text(theme.name),

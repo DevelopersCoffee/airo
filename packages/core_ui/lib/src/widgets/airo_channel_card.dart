@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
+import '../theme/airo_colors.dart';
+import '../theme/airo_spacing.dart';
 
 class AiroChannelCard extends StatefulWidget {
   const AiroChannelCard({
@@ -34,15 +34,15 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
 
   @override
   Widget build(BuildContext context) {
-    final w = widget.isTv ? AppSpacing.tvChannelCardW : 120.0;
-    final h = widget.isTv ? AppSpacing.tvChannelCardH : 92.0;
+    final w = widget.isTv ? AiroSpacing.tvChannelCardW : 120.0;
+    final h = widget.isTv ? AiroSpacing.tvChannelCardH : 92.0;
     final nameFontSize = widget.isTv ? 14.0 : 11.0;
 
     final borderColor = widget.isPlaying
-        ? AppColors.cyberTertiary
+        ? AiroColors.cyberTertiary
         : _focused
-        ? AppColors.cyberPrimary
-        : AppColors.cyberGridLine;
+        ? AiroColors.cyberPrimary
+        : AiroColors.cyberGridLine;
     final borderWidth = (widget.isPlaying || _focused) ? 2.0 : 1.0;
 
     return Focus(
@@ -60,14 +60,14 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
               : const EdgeInsets.fromLTRB(6, 8, 6, 8),
           decoration: BoxDecoration(
             color: widget.isPlaying
-                ? AppColors.cyberTertiary.withValues(alpha: 0.08)
-                : AppColors.cyberSurfaceSolid,
+                ? AiroColors.cyberTertiary.withValues(alpha: 0.08)
+                : AiroColors.cyberSurfaceSolid,
             border: Border.all(color: borderColor, width: borderWidth),
-            borderRadius: AppSpacing.borderRadiusSm,
+            borderRadius: AiroSpacing.borderRadiusSm,
             boxShadow: _focused
                 ? const [
-                    BoxShadow(spreadRadius: 3, color: AppColors.cyberPrimary),
-                    BoxShadow(blurRadius: 16, color: AppColors.cyberGlow),
+                    BoxShadow(spreadRadius: 3, color: AiroColors.cyberPrimary),
+                    BoxShadow(blurRadius: 16, color: AiroColors.cyberGlow),
                   ]
                 : null,
           ),
@@ -103,14 +103,14 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.cyberPrimary.withValues(alpha: 0.08),
+        color: AiroColors.cyberPrimary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
         child: Icon(
           widget.isAudioOnly ? Icons.music_note : Icons.play_arrow,
           size: iconSize,
-          color: AppColors.cyberMutedText,
+          color: AiroColors.cyberMutedText,
         ),
       ),
     );
@@ -126,7 +126,7 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: AppColors.cyberText,
+            color: AiroColors.cyberText,
             fontSize: fontSize,
             fontWeight: widget.isPlaying ? FontWeight.w600 : FontWeight.w400,
             height: 1.3,
@@ -138,7 +138,7 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
             child: Text(
               '● NOW PLAYING',
               style: TextStyle(
-                color: AppColors.cyberTertiary,
+                color: AiroColors.cyberTertiary,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,

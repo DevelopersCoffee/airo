@@ -33,14 +33,14 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+          const SliverToBoxAdapter(child: SizedBox(height: AiroSpacing.xl)),
           SliverToBoxAdapter(
             child: Text(
               'Continue',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+          const SliverToBoxAdapter(child: SizedBox(height: AiroSpacing.md)),
           SliverToBoxAdapter(
             child: _AdaptiveDestinationGrid(
               destinations: [
@@ -71,14 +71,14 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+          const SliverToBoxAdapter(child: SizedBox(height: AiroSpacing.xl)),
           SliverToBoxAdapter(
             child: Text(
               'Your spaces',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+          const SliverToBoxAdapter(child: SizedBox(height: AiroSpacing.md)),
           SliverToBoxAdapter(
             child: _AdaptiveDestinationGrid(
               destinations: [
@@ -104,7 +104,7 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+          const SliverToBoxAdapter(child: SizedBox(height: AiroSpacing.xl)),
         ],
       ),
     );
@@ -126,7 +126,7 @@ class _AdaptiveDestinationGrid extends StatelessWidget {
               for (var index = 0; index < destinations.length; index++) ...[
                 _DestinationCard(destination: destinations[index]),
                 if (index != destinations.length - 1)
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AiroSpacing.md),
               ],
             ],
           );
@@ -142,7 +142,7 @@ class _AdaptiveDestinationGrid extends StatelessWidget {
                 Expanded(
                   child: _DestinationCard(destination: destinations[index]),
                 ),
-                const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: AiroSpacing.md),
                 Expanded(
                   child: secondIndex < destinations.length
                       ? _DestinationCard(destination: destinations[secondIndex])
@@ -152,7 +152,7 @@ class _AdaptiveDestinationGrid extends StatelessWidget {
             ),
           );
           if (secondIndex < destinations.length - 1) {
-            rows.add(const SizedBox(height: AppSpacing.md));
+            rows.add(const SizedBox(height: AiroSpacing.md));
           }
         }
         return Column(children: rows);
@@ -184,17 +184,17 @@ class _DestinationCard extends StatelessWidget {
               borderRadius: AiroVisualTokens.of(context).smallRadius,
             ),
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm + AppSpacing.xs),
+              padding: const EdgeInsets.all(AiroSpacing.sm + AiroSpacing.xs),
               child: Icon(destination.icon, color: domain.accent),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AiroSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(destination.title, style: theme.textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AiroSpacing.xs),
                 Text(
                   destination.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -204,7 +204,7 @@ class _DestinationCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AiroSpacing.sm),
           Icon(
             Icons.arrow_forward_rounded,
             color: theme.colorScheme.onSurfaceVariant,

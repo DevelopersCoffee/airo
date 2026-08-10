@@ -9,6 +9,7 @@
 /// - Immersive fullscreen mode
 library;
 
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,8 +46,8 @@ class _AiroTvAppState extends ConsumerState<AiroTvApp> {
 
     return MaterialApp.router(
       title: 'Airo TV',
-      theme: _buildTvTheme(selectedTheme.lightTheme),
-      darkTheme: _buildTvTheme(selectedTheme.darkTheme),
+      theme: _buildTvTheme(context, selectedTheme.lightTheme),
+      darkTheme: _buildTvTheme(context, selectedTheme.darkTheme),
       themeMode: selectedTheme.themeMode,
       routerConfig: TvRouter.router,
       debugShowCheckedModeBanner: false,
@@ -90,13 +91,15 @@ class _AiroTvAppState extends ConsumerState<AiroTvApp> {
   }
 
   /// Build TV-optimized theme
-  ThemeData _buildTvTheme(ThemeData baseTheme) {
+  ThemeData _buildTvTheme(BuildContext context, ThemeData baseTheme) {
     final theme = PlatformConfig.adjustThemeForPlatform(baseTheme);
 
     return theme.copyWith(
-      // Larger text for 10-foot UI
+      // Resolution/distance-aware text scale (AiroDisplayProfile.tv/
+      // largeDisplay) instead of a flat 1.2x guess. Preserves this theme's
+      // own font family/colors — only the size axis is touched.
       textTheme: theme.textTheme.apply(
-        fontSizeFactor: 1.2, // 20% larger text for TV viewing distance
+        fontSizeFactor: AiroTypography.scaleFactorOf(context),
       ),
       // TV-specific component themes
       cardTheme: theme.cardTheme.copyWith(

@@ -48,12 +48,12 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     }
 
     return ListView.builder(
-      padding: AppSpacing.screenPadding,
+      padding: AiroSpacing.screenPadding,
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
         return AppCard(
-          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          margin: const EdgeInsets.only(bottom: AiroSpacing.sm),
           onTap: () {
             // Handle item tap
           },
@@ -62,7 +62,7 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
             children: [
               Text(item.name, style: Theme.of(context).textTheme.titleMedium),
               if (item.description != null) ...[
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AiroSpacing.xs),
                 Text(
                   item.description!,
                   style: Theme.of(context).textTheme.bodySmall,

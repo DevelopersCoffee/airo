@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_spacing.dart';
+import '../theme/airo_spacing.dart';
 
 /// Standard loading indicator widget
 class LoadingIndicator extends StatelessWidget {
@@ -33,7 +33,7 @@ class LoadingIndicator extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           indicator,
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AiroSpacing.md),
           Text(
             message!,
             style: Theme.of(context).textTheme.bodyMedium,
@@ -72,9 +72,9 @@ class LoadingOverlay extends StatelessWidget {
     color: Colors.black54,
     child: Center(
       child: Card(
-        margin: AppSpacing.paddingLg,
+        margin: AiroSpacing.paddingLg,
         child: Padding(
-          padding: AppSpacing.paddingLg,
+          padding: AiroSpacing.paddingLg,
           child: LoadingIndicator(
             size: LoadingIndicatorSize.large,
             message: message,

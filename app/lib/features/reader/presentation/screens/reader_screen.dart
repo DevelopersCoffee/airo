@@ -25,7 +25,7 @@ class ReaderScreen extends ConsumerWidget {
                   subtitle:
                       'Read, download, and look up words without clutter.',
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AiroSpacing.xl),
                 // Continue reading section
                 Text(
                   'Continue Reading',
