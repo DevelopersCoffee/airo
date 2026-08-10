@@ -15,6 +15,18 @@ enum MindOpKind {
   merge,
   revoke,
   import,
+
+  /// A person confirmed consent to record a conversation, before the encoder
+  /// was allowed to run.
+  ///
+  /// Distinct from [revoke], which is device-key revocation. This kind is the
+  /// legal record: it is what makes a transcript defensible later, in a
+  /// one-party jurisdiction as much as a two-party one.
+  consent,
+
+  /// Consent was withdrawn while a recording was in progress. The encoder
+  /// stops and the transcript it produced is marked partial.
+  consentRevoked,
 }
 
 /// Whether this operation's signature checked out.

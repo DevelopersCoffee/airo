@@ -33,8 +33,9 @@ class TvPrivacySection extends ConsumerWidget {
           label: 'Share streaming quality data',
           isSelected: enabled,
           autofocus: true,
-          onSelect: () =>
-              ref.read(streamingTelemetryConsentProvider.notifier).setEnabled(true),
+          onSelect: () => ref
+              .read(streamingTelemetryConsentProvider.notifier)
+              .setEnabled(true),
           colorScheme: colorScheme,
         ),
         const SizedBox(height: 8),
@@ -42,8 +43,9 @@ class TvPrivacySection extends ConsumerWidget {
           label: "Don't share",
           isSelected: !enabled,
           autofocus: false,
-          onSelect: () =>
-              ref.read(streamingTelemetryConsentProvider.notifier).setEnabled(false),
+          onSelect: () => ref
+              .read(streamingTelemetryConsentProvider.notifier)
+              .setEnabled(false),
           colorScheme: colorScheme,
         ),
       ],

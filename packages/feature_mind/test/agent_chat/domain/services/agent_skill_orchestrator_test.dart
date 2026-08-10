@@ -4,9 +4,13 @@ import 'package:feature_mind/src/agent_chat/data/connectors/life_track_status_co
 import 'package:feature_mind/src/agent_chat/data/connectors/notification_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/route_connector.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/grounded_citation.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_orchestrator.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_registry.dart';
+import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
+import 'package:feature_mind/src/runtime/models/capability_models.dart';
+import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -453,6 +457,125 @@ void main() {
         );
       },
     );
+
+    test('grounds a LifeTrack answer in the most recent logged op, and carries '
+        'the health safety class', () async {
+      final repository = _FakeLifeTrackRepository([
+        _track(
+          title: 'Flat purchase',
+          milestones: [
+            _milestone(
+              name: 'Documents',
+              items: [_item(summary: 'Upload sale agreement')],
+            ),
+          ],
+        ),
+      ]);
+      final orchestrator = _buildOrchestrator(
+        lifeTrackRepository: repository,
+        operationLogPort: FixtureMindRuntime().log,
+      );
+
+      final result = await orchestrator.run(
+        'What is pending on my flat track?',
+      );
+
+      expect(result.handled, true);
+      expect(result.groundingState, GroundingState.grounded);
+      expect(result.citations, hasLength(1));
+      expect(result.citations.single.opSequence, 12481);
+      expect(result.safetyClass, CapabilitySafetyClass.health);
+
+      // The citation must resolve: it names a real op the log can serve.
+      final citedOp = await FixtureMindRuntime().log.bySequence(
+        result.citations.single.opSequence,
+      );
+      expect(citedOp, isNotNull);
+
+      final executeTrace = result.traces.firstWhere(
+        (trace) => trace.title == 'Execute action',
+      );
+      expect(executeTrace.dataVolume, isNotNull);
+      expect(executeTrace.dataVolume!.bytesLeftDevice, 0);
+      expect(executeTrace.dataVolume!.opsInLog, 12481);
+      expect(executeTrace.dataVolume!.replayedOpSequence, 12481);
+    });
+
+    test(
+      'labels a LifeTrack answer as ungrounded when no operation log is wired',
+      () async {
+        final repository = _FakeLifeTrackRepository([
+          _track(
+            title: 'Flat purchase',
+            milestones: [
+              _milestone(
+                name: 'Documents',
+                items: [_item(summary: 'Upload sale agreement')],
+              ),
+            ],
+          ),
+        ]);
+        final orchestrator = _buildOrchestrator(
+          lifeTrackRepository: repository,
+        );
+
+        final result = await orchestrator.run(
+          'What is pending on my flat track?',
+        );
+
+        expect(result.handled, true);
+        expect(result.groundingState, GroundingState.ungrounded);
+        expect(result.citations, isEmpty);
+        // The safety class is driven by the capability, independent of
+        // whether the answer happened to resolve a citation.
+        expect(result.safetyClass, CapabilitySafetyClass.health);
+
+        final executeTrace = result.traces.firstWhere(
+          (trace) => trace.title == 'Execute action',
+        );
+        expect(executeTrace.dataVolume, isNotNull);
+        expect(executeTrace.dataVolume!.opsInLog, isNull);
+      },
+    );
+
+    test(
+      'a calendar answer carries no safety class and a navigation result carries no grounding claim',
+      () async {
+        final orchestrator = _buildOrchestrator();
+
+        final scheduleResult = await orchestrator.run(
+          'Check my schedule for today',
+        );
+        expect(scheduleResult.safetyClass, isNull);
+
+        final routeOrchestrator = _buildOrchestrator(
+          modelClient: _OpenRouteTypoModelClient(),
+        );
+        final routeResult = await routeOrchestrator.run('Open money');
+        expect(routeResult.groundingState, GroundingState.notApplicable);
+        expect(routeResult.citations, isEmpty);
+      },
+    );
+
+    test(
+      'a failed tool call is shown, not measured as if it succeeded',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          modelClient: _UnsupportedToolModelClient(),
+        );
+
+        final result = await orchestrator.run('Check my schedule for today');
+
+        expect(result.isError, true);
+        expect(
+          result.traces
+              .where((trace) => trace.title == 'Blocked action')
+              .single
+              .dataVolume,
+          isNull,
+        );
+      },
+    );
   });
 }
 
@@ -464,6 +587,7 @@ AgentSkillOrchestrator _buildOrchestrator({
   LifeTrackRepository? lifeTrackRepository,
   bool useFallbackModelClient = true,
   int maxSteps = 4,
+  OperationLogPort? operationLogPort,
 }) {
   return AgentSkillOrchestrator(
     skillRegistry: AgentSkillRegistry(skills: skills),
@@ -483,6 +607,7 @@ AgentSkillOrchestrator _buildOrchestrator({
     modelClient: modelClient,
     useFallbackModelClient: useFallbackModelClient,
     maxSteps: maxSteps,
+    operationLogPort: operationLogPort,
   );
 }
 

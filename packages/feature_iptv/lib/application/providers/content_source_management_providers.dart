@@ -301,8 +301,10 @@ final removeContentSourceProvider = FutureProvider.autoDispose
       }
     });
 
-/// Selects the exclusive runtime source. Unsupported saved source kinds stay
-/// visible for removal/migration but cannot become Live TV's active source.
+/// Selects the source that owns the VOD/on-demand browse surface. Live TV
+/// merges every configured source regardless of this selection. Unsupported
+/// saved source kinds stay visible for removal/migration but cannot become
+/// the on-demand source.
 final selectContentSourceProvider = FutureProvider.autoDispose
     .family<void, String>((ref, id) async {
       final keepAlive = ref.keepAlive();
@@ -316,7 +318,7 @@ final selectContentSourceProvider = FutureProvider.autoDispose
         }
         if (matches.single.kind == ContentSourceKind.jellyfin) {
           throw const ContentSourceRuntimeException(
-            'Jellyfin is not available in Live TV yet.',
+            'Jellyfin is not available for on-demand browsing yet.',
           );
         }
         await _activateSource(ref, id);
