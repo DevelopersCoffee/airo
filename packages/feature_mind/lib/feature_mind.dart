@@ -43,6 +43,16 @@ export 'src/mind_module.dart';
 export 'src/host/assistant_host_adapter.dart';
 export 'src/routing/assistant_route_names.dart';
 
+// Global hotkey registration + per-OS permission flow (#1455). Infrastructure
+// for Quick Capture (#1454) and the macOS Everything Browser (#1461); no
+// per-OS backend ships yet, see UnsupportedGlobalHotkeyPort's doc comment.
+export 'src/host/hotkey/global_hotkey_port.dart';
+export 'src/host/hotkey/global_hotkey_registrar.dart';
+export 'src/host/hotkey/hotkey_combination.dart';
+export 'src/host/hotkey/hotkey_permission_state.dart';
+export 'src/host/hotkey/hotkey_registration_outcome.dart';
+export 'src/host/hotkey/hotkey_request.dart';
+
 // Assistant hub + tools
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
