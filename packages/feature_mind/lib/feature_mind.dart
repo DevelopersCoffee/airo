@@ -43,6 +43,16 @@ export 'src/mind_module.dart';
 export 'src/host/assistant_host_adapter.dart';
 export 'src/routing/assistant_route_names.dart';
 
+// Global hotkey registration + per-OS permission flow (#1455). Infrastructure
+// for Quick Capture (#1454) and the macOS Everything Browser (#1461); no
+// per-OS backend ships yet, see UnsupportedGlobalHotkeyPort's doc comment.
+export 'src/host/hotkey/global_hotkey_port.dart';
+export 'src/host/hotkey/global_hotkey_registrar.dart';
+export 'src/host/hotkey/hotkey_combination.dart';
+export 'src/host/hotkey/hotkey_permission_state.dart';
+export 'src/host/hotkey/hotkey_registration_outcome.dart';
+export 'src/host/hotkey/hotkey_request.dart';
+
 // Assistant hub + tools
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
@@ -107,6 +117,15 @@ export 'src/models/model_provider.dart'
 // file (#1556) without going through a provider to get it.
 export 'src/models/pinned_models.dart' show pinnedRequiredModels;
 
+// Model download manager (#1457): progress in bytes, mobile-data pause,
+// storage budget — built on `ModelPort` rather than on `ModelProvider`
+// above, which is the older bundled/download acquisition path.
+export 'src/models/byte_format.dart';
+export 'src/models/model_download_connectivity.dart';
+export 'src/models/model_download_coordinator.dart';
+export 'src/models/model_download_state.dart';
+export 'src/models/model_management_panel.dart';
+
 // Runtime — models.
 export 'src/runtime/models/capability_models.dart';
 export 'src/runtime/models/context_models.dart';
@@ -133,6 +152,29 @@ export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
 
+// Portability -- surface 08's ".airobackup" envelope-sealing flow: pick
+// contexts, set the phrase, choose a destination on your own network.
+export 'src/portability/backup_envelope_controller.dart';
+export 'src/portability/backup_envelope_state.dart';
+export 'src/portability/destination_validation.dart';
+
+// Surface 13 — Windows/Linux Runtime Console (#1460).
+export 'src/runtime_console/runtime_console_availability.dart';
+export 'src/runtime_console/runtime_console_controller.dart';
+export 'src/runtime_console/runtime_console_models.dart';
+export 'src/runtime_console/runtime_console_table.dart';
+
+// Runtime — the ⌘K summon seam. #1455 lands the real OS-level global hotkey
+// separately; see the doc comment on MindGlobalShortcut for how the two
+// reconcile.
+export 'src/runtime/mind_global_shortcut.dart';
+
+// Surface 06 — Capability Packs. Installed list/detail bound to
+// CapabilityPort; the drafter (#1250) and marketplace (#1247, #1251) regions
+// render disabled — milestone 20 fills them in without a redesign.
+export 'src/capability_packs/presentation/screens/capability_detail_screen.dart';
+export 'src/capability_packs/presentation/screens/capability_packs_screen.dart';
+
 // Widgets that carry the design rules. Every Mind surface uses these rather
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
@@ -141,3 +183,24 @@ export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';
 export 'src/widgets/mind_projection_switcher.dart';
+
+// Surface 11 — the macOS Everything Browser (#1461): ⌘K palette, three
+// columns, native menu bar.
+export 'src/widgets/mind_everything_browser.dart';
+export 'src/widgets/mind_command_palette_scope.dart';
+export 'src/widgets/mind_native_menu_bar.dart';
+
+// Provenance — on-device entity extraction and the Inspector (surfaces 09
+// and 11, issue #1463).
+export 'src/provenance/domain/models/extracted_entity.dart';
+export 'src/provenance/domain/services/entity_extractor.dart';
+export 'src/provenance/presentation/widgets/entity_chip.dart';
+export 'src/provenance/presentation/widgets/provenance_inspector.dart';
+
+export 'src/widgets/relative_time.dart';
+
+// Surfaces — the phone screens of the device system.
+export 'src/surfaces/devices_surface.dart';
+export 'src/surfaces/memory_surface.dart';
+export 'src/surfaces/mind_surface_scaffold.dart';
+export 'src/surfaces/context_workspace_surface.dart';

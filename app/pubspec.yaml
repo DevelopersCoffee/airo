@@ -158,10 +158,14 @@ dependencies:
     path: ../packages/platform_player
   platform_media:
     path: ../packages/platform_media
+  core_analytics:
+    path: ../packages/core_analytics
   platform_history:
     path: ../packages/platform_history
   platform_streams:
     path: ../packages/platform_streams
+  platform_streaming_engine:
+    path: ../packages/platform_streaming_engine
   google_mlkit_image_labeling: ^0.15.0
 
 dev_dependencies:

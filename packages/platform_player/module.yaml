@@ -10,6 +10,7 @@ allowed_dependencies:
   - core_media_routing
   - platform_receiver_modes
   - product_capabilities
+  - core_analytics
 forbidden_dependencies:
   - app
 quality_gates: {}

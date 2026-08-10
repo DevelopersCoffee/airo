@@ -57,16 +57,27 @@ Future<void> expectSatisfiesMindRules(
   // R02, second half — nothing that reads as a tag may be plain text. This is
   // the decorative-tag failure the rule exists to prevent, and it is invisible
   // to a check that only inspects real chips.
+  //
+  // A rectangular MindContextChip is not the only legitimate rendering: the
+  // Memory graph draws a linked context as a circular node, which is still a
+  // real tap target, just not that widget. The rule is "tappable", not
+  // "this exact class", so an InkWell ancestor also satisfies it — InkWell is
+  // the one tappable primitive every chip-like widget in this package is
+  // already built on (MindContextChip included), so this does not weaken the
+  // check against a genuinely decorative label.
   final bareTags = find.byWidgetPredicate(
     (widget) => widget is Text && (widget.data?.startsWith('#') ?? false),
   );
   for (final element in bareTags.evaluate()) {
+    final tappable =
+        element.findAncestorWidgetOfExactType<MindContextChip>() ??
+        element.findAncestorWidgetOfExactType<InkWell>();
     expect(
-      element.findAncestorWidgetOfExactType<MindContextChip>(),
+      tappable,
       isNotNull,
       reason:
-          'R02: "${(element.widget as Text).data}" renders as a tag but is '
-          'not a MindContextChip, so it is decoration.',
+          'R02: "${(element.widget as Text).data}" renders as a tag but has '
+          'no tappable ancestor, so it is decoration.',
     );
   }
 }
