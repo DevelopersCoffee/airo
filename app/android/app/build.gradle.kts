@@ -386,7 +386,7 @@ dependencies {
     // unused; this one cannot.
     if (!isCoinsVariant && !isTvVariant && rootProject.extra.get("embeddingAvailable") as Boolean) {
         implementation("com.google.ai.edge.localagents:localagents-rag:0.1.0")
-        implementation("com.google.mediapipe:tasks-genai:0.10.22")
+        implementation("com.google.mediapipe:tasks-genai:0.10.35")
     }
 
     if (!isCoinsVariant) {
