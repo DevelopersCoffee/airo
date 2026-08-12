@@ -598,6 +598,119 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets(
+    'restores focus to the grid after the fullscreen player closes '
+    '(regression #1430: BACK swallowed on return from fullscreen)',
+    (tester) async {
+      // IptvTvScreen normally lives inside TvShell's *nested* Navigator,
+      // while the fullscreen player is pushed on the app's *root* Navigator
+      // (see the comment on _openTvFullscreenPlayer). Flutter only restores
+      // focus automatically to the previous route within the same
+      // Navigator/Overlay on pop, so reproducing the bug requires the same
+      // two-Navigator split -- a single implicit MaterialApp Navigator (as
+      // `pumpScreen` above uses) would let the default restoration succeed
+      // even without the fix and wouldn't catch the regression.
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1440, 900);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => channels),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  currentChannel: channels[2],
+                  playbackState: PlaybackState.playing,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            // The app's own (root) Navigator. IptvTvScreen is pushed into a
+            // second, nested Navigator below -- the same shape TvShell's
+            // nested routing gives it in production.
+            home: Navigator(
+              onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                builder: (_) => const IptvTvScreen(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsOneWidget,
+      );
+
+      // Close fullscreen the same way native macOS fullscreen exit (or the
+      // player's own raw-BACK handling) does: pop the root-navigator route.
+      AiroNativeFullscreen.debugNotifyMacosFullscreenExited();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        findsNothing,
+      );
+
+      // The regression: without restoring focus explicitly, primaryFocus is
+      // left null (or pinned to the now-disposed fullscreen route) after the
+      // cross-Navigator pop, so the next raw BACK key has no focused
+      // descendant to bubble from and is silently dropped.
+      final primaryFocus = FocusManager.instance.primaryFocus;
+      expect(
+        primaryFocus,
+        isNotNull,
+        reason:
+            'Returning from the fullscreen player must leave a live focus '
+            'target in the grid so the next BACK press is delivered '
+            'somewhere instead of being silently swallowed (#1430).',
+      );
+      // primaryFocus is almost never literally null -- Flutter falls back
+      // to the root FocusScopeNode -- but a fallback that lives outside
+      // IptvTvScreen's own subtree is exactly the dangling-focus bug: no
+      // TvInputHandler/PopScope inside the grid is an ancestor of it, so a
+      // raw BACK key bubbling from there never reaches anything the grid
+      // owns. The fix must land focus back *inside* IptvTvScreen.
+      final focusedContext = primaryFocus!.context;
+      expect(
+        focusedContext,
+        isNotNull,
+        reason: 'primaryFocus must be attached to a live element.',
+      );
+      expect(
+        focusedContext!.findAncestorWidgetOfExactType<IptvTvScreen>(),
+        isNotNull,
+        reason:
+            'primaryFocus landed outside IptvTvScreen after the fullscreen '
+            'route popped -- BACK has no grid-owned ancestor to bubble '
+            'through from here (#1430).',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
   testWidgets('mini-player Watch opens the root fullscreen player', (
     tester,
   ) async {
