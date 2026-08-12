@@ -39,6 +39,7 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val GEMINI_NANO_CHANNEL = "com.airo.gemini_nano"
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
+    private val EMBEDDING_CHANNEL = "com.airo.embedding"
     private val AGENT_CONNECTORS_CHANNEL = "com.airo.agent_connectors"
     private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
@@ -81,6 +82,9 @@ class MainActivity : AudioServiceFragmentActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LITERT_LM_CHANNEL)
             .setMethodCallHandler(LiteRtLmPlugin(this))
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EMBEDDING_CHANNEL)
+            .setMethodCallHandler(EmbeddingPlugin(this))
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_INFO_CHANNEL)
             .setMethodCallHandler { call, result ->

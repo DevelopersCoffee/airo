@@ -72,12 +72,15 @@ void main() {
     );
   });
 
-  test('migration does not touch a route that merely starts with mind', () {
-    expect(
-      routeFromNotificationPayload('/mindfulness/today'),
-      '/mindfulness/today',
-    );
-  });
+  test(
+    'migration does not touch a route that merely starts with assistant',
+    () {
+      expect(
+        routeFromNotificationPayload('/assistantship/today'),
+        '/assistantship/today',
+      );
+    },
+  );
 }
 
 final class _FakeNotificationRuntimeService

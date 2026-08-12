@@ -63,6 +63,12 @@ jobs:
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
 
+      - name: Enforce Android SDK baseline across modules
+        run: |
+          chmod +x scripts/check-android-sdk-baseline.sh scripts/test-check-android-sdk-baseline.sh
+          scripts/test-check-android-sdk-baseline.sh
+          scripts/check-android-sdk-baseline.sh
+
       - name: Validate platform build profiles
         run: |
           chmod +x scripts/check-ci-cache-policy.py scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh

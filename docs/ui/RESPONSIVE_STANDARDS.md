@@ -8,6 +8,10 @@ Extracted from `.augment/rules.md` on 2026-07-29, which was a third
 always-loaded context file carrying a stale product description alongside these
 still-accurate standards. The standards survived; the stale framing did not.
 
+> Note: `ResponsiveBreakpoints`/`AdaptiveLayout`/`ResponsiveGrid` below live in
+> `app/lib/shared/widgets/responsive_center.dart`, not `core_ui` — correcting
+> a stale reference from the original extraction.
+
 ## Mandatory practices
 
 1. **Never use fixed widths/heights** - Always use `Flexible`, `Expanded`, `AspectRatio`, or percentage-based constraints
@@ -231,6 +235,31 @@ AspectRatio(
 - [ ] Verify no content overflow
 - [ ] Verify text remains readable at all sizes
 - [ ] Verify touch targets are adequate (min 48x48dp)
+
+### Foldable / crease rule
+
+Never let primary content — video, forms, grids, anything the user is
+actively looking at or acting on — straddle a hinge while the device is in
+`halfOpened` posture. Prefer a single-pane/compact layout on one side of the
+fold instead of stretching content across it.
+
+`AiroFold` (`core_ui`) wraps `MediaQuery.displayFeatures` — Flutter's own
+hinge API, no extra package needed:
+
+```dart
+final fold = AiroFold.of(context);
+if (AiroFold.straddles(candidateContentBounds, fold)) {
+  // fall back to the compact/single-pane layout
+}
+```
+
+`FoldInfo.posture` is `FoldPosture.none` (flat, or no hinge — the case for
+every non-foldable device), `FoldPosture.halfOpened` (book-style, vertical
+hinge), or `FoldPosture.tabletop` (laptop-style, horizontal hinge) — inferred
+from the hinge's own bounds, since `DisplayFeatureState` itself only
+distinguishes flat vs. half-opened. Reference consumer:
+`packages/feature_iptv/lib/presentation/widgets/video_player_widget.dart`'s
+`_usesCompactInlinePlayer`.
 
 ### Migration Guide
 When updating existing screens:

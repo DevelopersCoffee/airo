@@ -24,6 +24,18 @@ export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
+// Path A of the STT/TTS half of task-based model routing
+// (`tasks/mind-stt-tts-routing-plan.md`): a truthful availability answer for
+// core_ai's AiTask.speechToText/textToSpeech, not a chooser -- there is
+// exactly one speech engine and no TTS engine to choose between.
+export 'src/speech_task_availability.dart';
+
+// Phase 2 of the Mind scribe semantic search plan
+// (`tasks/mind-scribe-semantic-search-plan.md`): persists one embedding
+// vector per meeting. Not yet wired to a real caller -- that's Phase 3's
+// SemanticSearchRanker.
+export 'src/search/meeting_embedding_store.dart';
+
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
 // Phase 2).
