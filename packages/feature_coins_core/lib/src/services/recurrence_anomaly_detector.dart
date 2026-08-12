@@ -2,6 +2,7 @@ import '../entities/transaction.dart';
 import '../models/detected_subscription.dart';
 import '../models/recurrence_cycle.dart';
 import '../models/spending_anomaly.dart';
+import 'merchant_key.dart';
 
 /// One billing cadence the detector knows how to recognize, expressed as a
 /// tolerance band on the gap (in days) between consecutive charges.
@@ -62,8 +63,6 @@ class RecurrenceAnomalyDetector {
     _CycleBand(RecurrenceCycle.yearly, 350, 380),
   ];
 
-  String _merchantKey(Transaction t) => t.description.trim().toLowerCase();
-
   List<Transaction> _activeExpenses(List<Transaction> transactions) {
     return transactions
         .where((t) => t.type == TransactionType.expense && !t.isDeleted)
@@ -73,7 +72,7 @@ class RecurrenceAnomalyDetector {
   Map<String, List<Transaction>> _groupByMerchant(List<Transaction> txs) {
     final groups = <String, List<Transaction>>{};
     for (final t in txs) {
-      groups.putIfAbsent(_merchantKey(t), () => []).add(t);
+      groups.putIfAbsent(normalizeMerchantKey(t.description), () => []).add(t);
     }
     for (final group in groups.values) {
       group.sort((a, b) => a.transactionDate.compareTo(b.transactionDate));
