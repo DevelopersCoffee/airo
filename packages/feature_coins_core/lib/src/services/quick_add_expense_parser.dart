@@ -1,3 +1,5 @@
+import 'regex_merchant_categorizer.dart';
+
 class QuickExpenseDraft {
   final String description;
   final int amountCents;
@@ -19,7 +21,11 @@ class QuickExpenseDraft {
 }
 
 class QuickAddExpenseParser {
-  const QuickAddExpenseParser();
+  const QuickAddExpenseParser({
+    this.categorizer = const RegexMerchantCategorizer(),
+  });
+
+  final RegexMerchantCategorizer categorizer;
 
   QuickExpenseDraft? parse(String input) {
     final normalized = input.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -45,7 +51,7 @@ class QuickAddExpenseParser {
         lowerCommand.contains('split with') || lowerCommand.contains('split ');
     final participants = _extractParticipants(commandText);
     final description = _cleanDescription(beforeAmount);
-    final category = _categoryFor('$description $commandText');
+    final category = categorizer.categorize('$description $commandText');
 
     return QuickExpenseDraft(
       description: description.isEmpty ? 'Expense' : description,
@@ -88,53 +94,4 @@ class QuickAddExpenseParser {
         .toList(growable: false);
   }
 
-  _QuickCategory _categoryFor(String text) {
-    final lower = text.toLowerCase();
-    if (_containsAny(lower, [
-      'uber',
-      'ola',
-      'cab',
-      'taxi',
-      'metro',
-      'flight',
-    ])) {
-      return const _QuickCategory('transport', 'Travel');
-    }
-    if (_containsAny(lower, [
-      'netflix',
-      'spotify',
-      'movie',
-      'cinema',
-      'game',
-    ])) {
-      return const _QuickCategory('shopping', 'Entertainment');
-    }
-    if (_containsAny(lower, ['salary', 'bonus', 'income'])) {
-      return const _QuickCategory('salary', 'Income');
-    }
-    if (_containsAny(lower, [
-      'pizza',
-      'dinner',
-      'lunch',
-      'coffee',
-      'food',
-      'restaurant',
-      'swiggy',
-      'zomato',
-    ])) {
-      return const _QuickCategory('food', 'Food');
-    }
-    return const _QuickCategory('shopping', 'Shopping');
-  }
-
-  bool _containsAny(String text, List<String> needles) {
-    return needles.any(text.contains);
-  }
-}
-
-class _QuickCategory {
-  final String categoryId;
-  final String budgetTag;
-
-  const _QuickCategory(this.categoryId, this.budgetTag);
 }
