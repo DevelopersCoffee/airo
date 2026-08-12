@@ -28,9 +28,6 @@ import '../services/expense_service.dart'
 // ignore: unused_import
 import '../services/insights_service.dart'
     if (dart.library.html) '../services/insights_service_stub.dart';
-// ignore: unused_import
-import '../services/sync_service.dart'
-    if (dart.library.html) '../services/sync_service_stub.dart';
 
 // ============================================================================
 // FAKE IMPLEMENTATIONS FOR DEVELOPMENT
@@ -512,22 +509,6 @@ final paginatedTransactionsProvider =
       return result.fold((_, _) => [], (txns) => txns);
     });
 
-/// Total transaction count for pagination info
-final transactionCountProvider = FutureProvider<int>((ref) async {
-  final repo = ref.watch(transactionsRepositoryProvider);
-  final filter = ref.watch(transactionFilterProvider);
-
-  // Fetch all to get count (in production, use COUNT query)
-  final query = FetchTransactionsQuery(
-    category: filter.category,
-    startDate: filter.startDate,
-    endDate: filter.endDate,
-  );
-
-  final result = await repo.fetch(query);
-  return result.fold((_, _) => 0, (txns) => txns.length);
-});
-
 /// Available categories for filtering
 final availableCategoriesProvider = Provider<List<String>>((ref) {
   return const [
@@ -579,24 +560,6 @@ final insightsServiceProvider = Provider<InsightsService>((ref) {
   );
 });
 
-/// Sync service provider
-final syncServiceProvider = Provider<SyncService>((ref) {
-  // On web, use stub service (stub accepts dynamic parameters)
-  if (kIsWeb) {
-    final service = SyncService(
-      (LocalTransactionsRepository as dynamic)(null)
-          as LocalTransactionsRepository,
-    );
-    ref.onDispose(() => service.dispose());
-    return service;
-  }
-  // On native, use real service
-  final db = ref.watch(appDatabaseProvider);
-  final service = SyncService(LocalTransactionsRepository(db));
-  ref.onDispose(() => service.dispose());
-  return service;
-});
-
 /// Spending summary provider (current month)
 final spendingSummaryProvider = FutureProvider<SpendingSummary>((ref) async {
   final service = ref.watch(insightsServiceProvider);
@@ -613,12 +576,6 @@ final budgetHealthProvider = FutureProvider<BudgetHealth>((ref) async {
 final spendingTrendProvider = FutureProvider<SpendingTrend>((ref) async {
   final service = ref.watch(insightsServiceProvider);
   return service.getSpendingTrend();
-});
-
-/// Sync status stream provider
-final syncStatusProvider = StreamProvider<SyncState>((ref) {
-  final service = ref.watch(syncServiceProvider);
-  return service.syncStatus;
 });
 
 /// Money controller provider
@@ -795,60 +752,4 @@ final formattedTotalBalanceProvider = FutureProvider<String>((ref) async {
   final balanceCents = await ref.watch(totalWalletBalanceProvider.future);
   final formatter = ref.watch(currencyFormatterProvider);
   return formatter.formatCents(balanceCents);
-});
-
-/// Wallet controller for managing wallet operations
-class WalletController {
-  final WalletRepository _repo;
-  final Ref _ref;
-
-  WalletController(this._repo, this._ref);
-
-  Future<Result<Wallet>> createWallet({
-    required String name,
-    String? description,
-    required int balanceCents,
-    required WalletType type,
-    required String currency,
-    String? bankName,
-    String? accountNumber,
-  }) async {
-    final result = await _repo.create(
-      name: name,
-      description: description,
-      balanceCents: balanceCents,
-      type: type,
-      currency: currency,
-      bankName: bankName,
-      accountNumber: accountNumber,
-    );
-    _ref.invalidate(walletsProvider);
-    _ref.invalidate(totalWalletBalanceProvider);
-    _ref.invalidate(formattedTotalBalanceProvider);
-    return result;
-  }
-
-  Future<Result<Wallet>> updateWalletBalance(
-    String id,
-    int newBalanceCents,
-  ) async {
-    final result = await _repo.updateBalance(id, newBalanceCents);
-    _ref.invalidate(walletsProvider);
-    _ref.invalidate(totalWalletBalanceProvider);
-    _ref.invalidate(formattedTotalBalanceProvider);
-    return result;
-  }
-
-  Future<Result<void>> deleteWallet(String id) async {
-    final result = await _repo.delete(id);
-    _ref.invalidate(walletsProvider);
-    _ref.invalidate(totalWalletBalanceProvider);
-    _ref.invalidate(formattedTotalBalanceProvider);
-    return result;
-  }
-}
-
-/// Wallet controller provider
-final walletControllerProvider = Provider<WalletController>((ref) {
-  return WalletController(ref.watch(walletRepositoryProvider), ref);
 });
