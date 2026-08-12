@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -175,6 +177,108 @@ void main() {
       throwsA(isA<PlaylistSourcesUnavailableException>()),
     );
   });
+
+  test(
+    'every configured Xtream source failing surfaces an error instead of an '
+    'empty channel list',
+    () async {
+      // Bind then immediately close so the client gets connection-refused --
+      // deterministic failure without keeping a live server around.
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final port = server.port;
+      await server.close(force: true);
+
+      const sourceId = 'xtream-dead';
+      await ContentSourceStore(PreferencesStore(prefs)).add(
+        ContentSourceConfig(
+          id: sourceId,
+          kind: ContentSourceKind.xtream,
+          label: 'Dead Provider',
+          url: 'http://127.0.0.1:$port',
+        ),
+      );
+      final secureStore = InMemorySecureStore();
+      await ContentSourceCredentialStore(secureStore).save(
+        const ContentSourceCredentialRef(sourceId),
+        const ContentSourceCredentials(username: 'user', password: 'pass'),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(secureStore),
+          dioProvider.overrideWithValue(Dio()),
+          compactEpgRepositoryProvider.overrideWithValue(
+            const EmptyCompactEpgRepository(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container.read(configuredXtreamChannelsProvider.future),
+        throwsA(isA<PlaylistSourcesUnavailableException>()),
+      );
+    },
+  );
+
+  test(
+    'every configured Stalker source failing surfaces an error instead of an '
+    'empty channel list',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          stalkerSourceLoaderProvider.overrideWithValue(
+            (config) async => throw StateError('portal down'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(contentSourceStoreProvider).replaceAll([
+        ContentSourceConfig(
+          id: 'stalker-dead',
+          kind: ContentSourceKind.stalker,
+          label: 'Dead Portal',
+          url: 'http://portal.example.com',
+          macAddress: '00:1A:79:00:00:00',
+        ),
+      ]);
+      container.invalidate(configuredContentSourcesProvider);
+
+      await expectLater(
+        container.read(configuredStalkerChannelsProvider.future),
+        throwsA(isA<PlaylistSourcesUnavailableException>()),
+      );
+    },
+  );
+
+  test(
+    'iptvChannelsProvider reports the failure when Xtream is the only '
+    'configured source and it is entirely unreachable',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          configuredM3uChannelsProvider.overrideWith(
+            (ref) async => const <IPTVChannel>[],
+          ),
+          configuredXtreamChannelsProvider.overrideWith(
+            (ref) async => throw const PlaylistSourcesUnavailableException(1),
+          ),
+          m3uParserProvider.overrideWithValue(
+            _FakeSourceParser(prefs: prefs, sourceId: 'legacy'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container.read(iptvChannelsProvider.future),
+        throwsA(isA<PlaylistSourcesUnavailableException>()),
+      );
+    },
+  );
 
   testWidgets('retrying after a failure re-runs the source loaders instead of '
       'replaying the cached error', (tester) async {
