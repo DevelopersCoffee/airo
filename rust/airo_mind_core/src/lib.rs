@@ -52,6 +52,11 @@ pub mod models;
 pub mod budget;
 pub mod cancel;
 pub mod engine;
+
+/// Engine lifecycle: state, dependency ordering, and graceful shutdown.
+/// `#1302`'s half of `C6` — see the module docs for why this is split from
+/// [`supervisor`], which owns `#1396`'s per-call job execution.
+pub mod lifecycle;
 pub mod search;
 pub mod store;
 pub mod supervisor;
@@ -67,6 +72,9 @@ pub use digest::file_digest;
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
     TranscriptSegment,
+};
+pub use lifecycle::{
+    EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
 };
 pub use search::{Hit, SearchIndex};
 pub use store::{Meeting, MeetingStore, StoreError};

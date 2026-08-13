@@ -2,15 +2,27 @@
 //!
 //! `C6`: *"every engine requests resources; the Supervisor grants them."*
 //!
-//! Scope is `#1396` — execute one pipeline. Two registration slots, not a
-//! registry; two run methods, not a job graph. A generic engine registry would
-//! not move the meeting pipeline this week, so it is backlog.
+//! Two concerns, both `C6`'s:
+//!
+//! - **Job execution** — `#1396`'s scope. Two registration slots (speech,
+//!   generation), admission against a memory budget, cooperative
+//!   cancellation. Unchanged by `#1302`.
+//! - **Engine lifecycle** — `#1302`'s scope. An arbitrary number of stateful
+//!   engines (Vault, Replay, Sync, Projection, ...) registered with
+//!   dependencies, started, stopped, restarted, and shut down in dependency
+//!   order. Delegated to [`crate::lifecycle::EngineRegistry`], which is where
+//!   the algorithms live; this module is the single point both concerns are
+//!   reached through, per `C6`'s *"one place"* framing.
 
 use crate::budget::ResourceBudget;
 use crate::cancel::CancelToken;
 use crate::engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
     TranscriptSegment,
+};
+use crate::lifecycle::{
+    ConcurrencyLimiter, EngineMetrics, EngineName, EngineRegistry, EngineState, GroupCommitBuffer,
+    LifecycleError, ManagedEngine,
 };
 
 /// Why the Supervisor refused or stopped a job.
@@ -22,8 +34,16 @@ pub enum RuntimeError {
     /// it allocates, which is the only point where this is recoverable —
     /// afterwards it is an OOM kill, and on Android that takes the whole app.
     OverBudget { needs_mb: u32, budget_mb: u32 },
+    /// The concurrency cap (`C6`: *"resource limits ... concurrency caps"*)
+    /// is already at capacity. Refused before the job starts, the same way
+    /// `OverBudget` is — a job admitted then torn down mid-flight has already
+    /// spent the CPU this cap exists to bound.
+    OverCapacity { active: u32, max: u32 },
     /// The engine stopped.
     Engine(EngineError),
+    /// A lifecycle operation (start/stop/restart on a managed engine)
+    /// failed. See [`LifecycleError`] for the specific reason.
+    Lifecycle(LifecycleError),
 }
 
 impl std::fmt::Display for RuntimeError {
@@ -34,7 +54,11 @@ impl std::fmt::Display for RuntimeError {
                 needs_mb,
                 budget_mb,
             } => write!(f, "engine needs {needs_mb} MB, budget is {budget_mb} MB"),
+            Self::OverCapacity { active, max } => {
+                write!(f, "{active} jobs already active, cap is {max}")
+            }
             Self::Engine(e) => write!(f, "{e}"),
+            Self::Lifecycle(e) => write!(f, "{e}"),
         }
     }
 }
@@ -44,6 +68,12 @@ impl std::error::Error for RuntimeError {}
 impl From<EngineError> for RuntimeError {
     fn from(e: EngineError) -> Self {
         Self::Engine(e)
+    }
+}
+
+impl From<LifecycleError> for RuntimeError {
+    fn from(e: LifecycleError) -> Self {
+        Self::Lifecycle(e)
     }
 }
 
@@ -57,6 +87,9 @@ pub struct Supervisor {
     speech: Option<Box<dyn SpeechEngine>>,
     generation: Option<Box<dyn GenerationEngine>>,
     budget: ResourceBudget,
+    concurrency: ConcurrencyLimiter,
+    engines: EngineRegistry,
+    shutdown_buffer: GroupCommitBuffer,
 }
 
 impl Supervisor {
@@ -65,7 +98,21 @@ impl Supervisor {
             speech: None,
             generation: None,
             budget,
+            // Unbounded by default: existing callers (`#1396`'s meeting
+            // pipeline) never set a cap, and a cap that appears under them
+            // without being asked for would be a silent behavior change.
+            concurrency: ConcurrencyLimiter::unbounded(),
+            engines: EngineRegistry::new(),
+            shutdown_buffer: GroupCommitBuffer::new(),
         }
+    }
+
+    /// Caps how many jobs (`run_speech` + `run_generation` combined) may run
+    /// at once. `C6` / `#1302`: *"resource limits — memory ceilings and
+    /// concurrency caps, enforced centrally."*
+    pub fn with_max_concurrent_jobs(mut self, max: u32) -> Self {
+        self.concurrency = ConcurrencyLimiter::new(max);
+        self
     }
 
     pub fn register_speech(&mut self, engine: Box<dyn SpeechEngine>) {
@@ -78,6 +125,11 @@ impl Supervisor {
 
     pub fn budget(&self) -> ResourceBudget {
         self.budget
+    }
+
+    /// How many jobs are currently admitted and running.
+    pub fn active_jobs(&self) -> u32 {
+        self.concurrency.active()
     }
 
     /// Runs one speech job.
@@ -97,6 +149,7 @@ impl Supervisor {
             .as_ref()
             .ok_or(RuntimeError::NoEngine("speech"))?;
         self.admit(engine.resource_request().memory_mb)?;
+        let _slot = self.admit_concurrency()?;
         engine.transcribe(audio, cancel, sink)?;
         Ok(())
     }
@@ -113,6 +166,7 @@ impl Supervisor {
             .as_ref()
             .ok_or(RuntimeError::NoEngine("generation"))?;
         self.admit(engine.resource_request().memory_mb)?;
+        let _slot = self.admit_concurrency()?;
         engine.generate(request, cancel, sink)?;
         Ok(())
     }
@@ -125,6 +179,103 @@ impl Supervisor {
             });
         }
         Ok(())
+    }
+
+    fn admit_concurrency(&self) -> Result<crate::lifecycle::ConcurrencySlot<'_>, RuntimeError> {
+        self.concurrency
+            .admit()
+            .map_err(|(active, max)| RuntimeError::OverCapacity { active, max })
+    }
+
+    // -- Engine lifecycle (`C6`, `#1302`) -----------------------------------
+    //
+    // A second, independent registry from `speech`/`generation` above: those
+    // are per-call job slots, these are long-lived stateful engines (Vault,
+    // Replay, Sync, Projection, ...) with a dependency order between them.
+    // See `crate::lifecycle` for why the two are not modeled the same way.
+
+    /// Registers a stateful engine with the dependencies it needs `Running`
+    /// before it may start. Panics on a duplicate name or an unregistered
+    /// dependency — see [`EngineRegistry::register`].
+    pub fn register_engine(
+        &mut self,
+        name: EngineName,
+        depends_on: &[EngineName],
+        engine: Box<dyn ManagedEngine>,
+    ) {
+        self.engines.register(name, depends_on, engine);
+    }
+
+    /// Starts one registered engine. Refuses with
+    /// [`LifecycleError::DependencyNotReady`] if any dependency has not
+    /// reached [`EngineState::Running`] — this is the enforcement point for
+    /// *"Vault before Replay before Projection."*
+    pub fn start_engine(&self, name: EngineName) -> Result<(), RuntimeError> {
+        Ok(self.engines.start(name)?)
+    }
+
+    /// Stops one registered engine, ignoring dependency order. For an
+    /// ordered stop of everything, use [`Self::shutdown`].
+    pub fn stop_engine(&self, name: EngineName) -> Result<(), RuntimeError> {
+        Ok(self.engines.stop(name)?)
+    }
+
+    /// Stops then starts one engine, touching no other engine's state. `C6` /
+    /// S4: *"a failed engine restarts without corrupting the state of the
+    /// engines around it."*
+    pub fn restart_engine(&self, name: EngineName) -> Result<(), RuntimeError> {
+        Ok(self.engines.restart(name)?)
+    }
+
+    pub fn engine_state(&self, name: EngineName) -> Option<EngineState> {
+        self.engines.state_of(name)
+    }
+
+    /// Every registered engine's lifecycle state. `C6`: *"health — which
+    /// engines are up, which are degraded."*
+    pub fn health(&self) -> Vec<(EngineName, EngineState)> {
+        self.engines.health()
+    }
+
+    /// Records one unit of work against an engine, feeding
+    /// [`Self::engine_metrics`]'s operations count.
+    pub fn record_op(&self, name: EngineName) {
+        self.engines.record_op(name);
+    }
+
+    pub fn engine_metrics(&self, name: EngineName) -> Option<EngineMetrics> {
+        self.engines.metrics_of(name)
+    }
+
+    /// Stops every running engine in reverse dependency order, then flushes
+    /// and seals the group-commit buffer. `C6`: *"shutdown is graceful: the
+    /// group-commit buffer flushes and the active segment seals."*
+    ///
+    /// The buffer here is [`crate::lifecycle::GroupCommitBuffer`], the stand-
+    /// in for the operation log's real buffer until `#1338` lands it — see
+    /// that type's docs for why the stand-in is where it is.
+    pub fn shutdown(&self) {
+        self.engines.shutdown_all();
+        self.shutdown_buffer.flush();
+        self.shutdown_buffer.seal();
+    }
+
+    /// Buffers a write the way the pending operation log would, ahead of its
+    /// bounded group-commit window. Exposed so a caller — or a conformance
+    /// test — can simulate pending work that [`Self::shutdown`] must not
+    /// lose.
+    pub fn buffer_write(&self, bytes: &[u8]) {
+        self.shutdown_buffer.write(bytes);
+    }
+
+    /// What is durable after [`Self::shutdown`] — everything that was
+    /// buffered via [`Self::buffer_write`], nothing more and nothing less.
+    pub fn durable_buffer(&self) -> Vec<u8> {
+        self.shutdown_buffer.durable()
+    }
+
+    pub fn buffer_sealed(&self) -> bool {
+        self.shutdown_buffer.is_sealed()
     }
 }
 
