@@ -1,6 +1,8 @@
 # V2 Human-In-Loop Blocker Index
 
-Last checked: 2026-07-15
+Last checked: 2026-08-13. v2 branch/tag strategy dropped this date — base
+branch is `main`, release line is `0.0.7-preview`; blockers below are
+unaffected by the rename.
 
 This index lists open v2 release blockers that cannot be completed by code
 alone. They require account ownership, credentials, store-console actions,
@@ -19,6 +21,7 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | — | Stable dogfood keystore | Without `DOGFOOD_KEYSTORE_BASE64` set, every non-production-signed RC build gets a fresh throwaway cert and RCs cannot upgrade over each other (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Generate a stable keystore reserved for dogfood/RC builds (separate from the production release keystore) and add it as a secret. |
 | #585 | Store automation credentials | Create/confirm Play Console service account, app access, upload permissions, first tracks, and App Store Connect credentials only if iOS/iPadOS enters scope. |
 | #682 | Firebase App Distribution | Create/confirm Firebase apps, app IDs, tester groups, and service account/token for internal QA uploads. |
+| #803 | macOS notarization | Provide Apple Developer ID application certificate + notarization credentials (`APPLE_ID`, app-specific password, Team ID) so `airo-macos-release.yml` can sign and notarize the Airo TV DMG. |
 
 ## Recently Resolved Release Setup
 
