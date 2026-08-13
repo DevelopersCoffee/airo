@@ -57,10 +57,10 @@ void main() {
 
   test('formatChatTranscript exports visible non-empty turns', () {
     final transcript = formatChatTranscript([
-      ChatMessage(text: 'Welcome', isUser: false),
-      ChatMessage(text: '  ', isUser: false),
-      ChatMessage(text: 'How many r?', isUser: true),
-      ChatMessage(text: 'Three.', isUser: false),
+      AgentChatMessage(text: 'Welcome', isUser: false),
+      AgentChatMessage(text: '  ', isUser: false),
+      AgentChatMessage(text: 'How many r?', isUser: true),
+      AgentChatMessage(text: 'Three.', isUser: false),
     ]);
 
     expect(
@@ -81,7 +81,7 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(
+        AgentChatMessage(
           text: 'Hello from Airo',
           isUser: false,
           metadata: buildRuntimeChatResponseMetadata(
@@ -135,7 +135,7 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(
+        AgentChatMessage(
           text: 'Scheduled it.',
           isUser: false,
           traces: const [
@@ -179,7 +179,7 @@ void main() {
       await _pumpChatScreen(
         tester,
         initialMessages: [
-          ChatMessage(text: geminiNanoUnavailableMessage, isUser: false),
+          AgentChatMessage(text: geminiNanoUnavailableMessage, isUser: false),
         ],
       );
 
@@ -193,7 +193,9 @@ void main() {
   ) async {
     await _pumpChatScreen(
       tester,
-      initialMessages: [ChatMessage(text: 'Hello from Airo', isUser: false)],
+      initialMessages: [
+        AgentChatMessage(text: 'Hello from Airo', isUser: false),
+      ],
       initialDraft: 'Follow up on my reminder',
     );
 
@@ -208,7 +210,7 @@ void main() {
   ) async {
     await _pumpChatScreen(
       tester,
-      initialMessages: [ChatMessage(text: 'Welcome', isUser: false)],
+      initialMessages: [AgentChatMessage(text: 'Welcome', isUser: false)],
     );
 
     expect(find.text('Try a prompt'), findsOneWidget);
@@ -245,8 +247,8 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(text: 'Assistant answer', isUser: false),
-        ChatMessage(text: 'User prompt', isUser: true),
+        AgentChatMessage(text: 'Assistant answer', isUser: false),
+        AgentChatMessage(text: 'User prompt', isUser: true),
       ],
     );
 
@@ -285,7 +287,9 @@ void main() {
     // host reports it is unusable rather than fail silently.
     await _pumpChatScreen(
       tester,
-      initialMessages: [ChatMessage(text: 'Assistant answer', isUser: false)],
+      initialMessages: [
+        AgentChatMessage(text: 'Assistant answer', isUser: false),
+      ],
       host: FakeAssistantHostAdapter(speakResult: false),
     );
 
@@ -322,8 +326,8 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(text: 'Assistant answer', isUser: false),
-        ChatMessage(text: 'User prompt', isUser: true),
+        AgentChatMessage(text: 'Assistant answer', isUser: false),
+        AgentChatMessage(text: 'User prompt', isUser: true),
       ],
     );
 
@@ -351,8 +355,8 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(text: 'Assistant answer', isUser: false),
-        ChatMessage(text: 'User prompt', isUser: true),
+        AgentChatMessage(text: 'Assistant answer', isUser: false),
+        AgentChatMessage(text: 'User prompt', isUser: true),
       ],
     );
 
@@ -389,7 +393,7 @@ void main() {
   testWidgets('empty streaming placeholder hides copy action', (tester) async {
     await _pumpChatScreen(
       tester,
-      initialMessages: [ChatMessage(text: '', isUser: false)],
+      initialMessages: [AgentChatMessage(text: '', isUser: false)],
     );
 
     expect(
@@ -422,7 +426,7 @@ void main() {
     await _pumpChatScreen(
       tester,
       initialMessages: [
-        ChatMessage(
+        AgentChatMessage(
           text: 'Use this:\n```dart\nfinal answer = true;\n```',
           isUser: false,
         ),
@@ -448,7 +452,7 @@ void main() {
 
 Future<void> _pumpChatScreen(
   WidgetTester tester, {
-  required List<ChatMessage> initialMessages,
+  required List<AgentChatMessage> initialMessages,
   String? initialDraft,
   FakeAssistantHostAdapter? host,
 }) async {

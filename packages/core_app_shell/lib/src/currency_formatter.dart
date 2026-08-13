@@ -282,38 +282,3 @@ class LocaleDateFormatter {
     return null;
   }
 }
-
-/// Date formatter for Indian locale
-/// @deprecated Use LocaleDateFormatter instead for global scalability
-@Deprecated('Use LocaleDateFormatter.india instead for global scalability')
-class IndianDateFormatter {
-  static LocaleDateFormatter? _formatter;
-
-  static LocaleDateFormatter get _instance =>
-      _formatter ??= LocaleDateFormatter.india;
-
-  /// Format date as dd/MM/yyyy
-  static String formatDate(DateTime date) => _instance.formatDate(date);
-
-  /// Format date and time as dd/MM/yyyy HH:mm
-  static String formatDateTime(DateTime date) => _instance.formatDateTime(date);
-
-  /// Format time as HH:mm
-  static String formatTime(DateTime date) => _instance.formatTime(date);
-
-  /// Format as Month Year (e.g., November 2025)
-  static String formatMonthYear(DateTime date) =>
-      _instance.formatMonthYear(date);
-
-  /// Format as short date (e.g., 30 Nov)
-  static String formatShortDate(DateTime date) =>
-      _instance.formatShortDate(date);
-
-  /// Parse dd/MM/yyyy string to DateTime
-  static DateTime? parseDate(String dateStr) => _instance.parseDate(dateStr);
-
-  /// Reset the cached formatter (useful for testing)
-  static void reset() {
-    _formatter = null;
-  }
-}

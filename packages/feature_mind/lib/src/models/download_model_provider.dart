@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:core_ai/core_ai.dart' as core_ai;
 import 'package:path/path.dart' as p;
 
+import 'model_descriptor_adapter.dart' as descriptors;
 import 'model_provider.dart';
 
 /// [ModelProvider] backed by `core_ai`'s existing download pipeline — the same
@@ -77,15 +78,15 @@ class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
       p.basenameWithoutExtension(required.fileName);
 
   core_ai.OfflineModelInfo _stagedInfo(RequiredModel required) {
-    return core_ai.OfflineModelInfo(
+    // Identity (file size, digest) is translated by the model-descriptor
+    // adapter (#1673); `family: other` says the download service does not
+    // act on it for a direct-URL fetch, rather than guessing one.
+    return descriptors.offlineModelInfoFromRequiredModel(
+      required,
       id: _stagedId(required),
       name: required.fileName,
-      // `family` is a catalog concern the download service does not act on
-      // for a direct-URL fetch; `other` says so rather than guessing one.
       family: core_ai.ModelFamily.other,
-      fileSizeBytes: required.sizeBytes,
       downloadUrl: _downloadUrlFor(required),
-      sha256: required.sha256,
     );
   }
 
