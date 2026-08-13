@@ -1,8 +1,10 @@
 # Coins AI UX surfaces — COINS-AI-10 design
 
 Date: 2026-08-13
-Status: Draft — awaiting chief-ux-officer + product-manager review (issue
-#1653's own acceptance criterion #1: no implementation before this passes)
+Status: **Approved with changes** — chief-ux-officer, product-manager, and
+chief-architect reviewed; this revision incorporates every required change.
+Issue #1653's acceptance criterion #1 (design doc reviewed before
+implementation) is satisfied as of this revision.
 Related: milestone 27 epic #1643, #1645 (NL split), #1646 (receipt LLM
 layer), #1647 (NL search), #1648 (auto-categorization, merged #1660), #1649
 (recurrence/anomaly detection, merged #1659), #1650 (eval harness, PR #1685),
@@ -44,11 +46,13 @@ affordance, digest card, trust cues, non-happy states. Phone + tablet only
 **Out:** the feature-specific extraction logic behind each surface
 (#1644–#1649's own work), the entitlement/tier gate itself (#1652 — this doc
 assumes it exists and specifies how surfaces *respond* to it), and any
-screen implementation. Per the issue: screens ship in the **pro** package;
-this doc, and the shared draft-confirm component if approved, are the
-candidate for public `core_ui`-style placement — a separate call for
-whoever reviews this against `docs/agents/COUNCIL.md`'s module-ownership
-rules, not decided here.
+screen implementation. Per the issue: screens ship in the **pro** package.
+The draft-confirm card is the one exception — chief-architect's review
+ruled it ships in `core_ui` (public), since it carries zero Coins-specific
+business logic (see Surface 2's "Component API" below) and `core_ui`'s
+`module.yaml` already forbids the dependencies that would let it leak
+domain types. Coins-specific screens adapt their draft models onto its
+generic API from the pro package.
 
 ## Surface 1 — Unified "Ask Coins" entry point
 
@@ -56,6 +60,16 @@ One field, reachable from two places: the Coins dashboard (replacing/
 absorbing `_QuickAddExpenseCard`'s spot) and the top of the splits screen.
 Same widget in both locations — not a dashboard-only feature that splits
 duplicates separately.
+
+**Bill-split gets explicit prominence, not just intent routing.**
+Product-manager review flagged that a generic "ask anything" field risks
+burying #1645 — the epic's own #1-ranked differentiator ("highest
+differentiation, Splitwise-class apps have nothing here") — as one intent
+indistinguishable from search. Resolution: the field's placeholder text and
+first-run hint default to a split example ("Pizza 420 split with Alex" —
+the existing quick-add placeholder, kept), not a neutral "Ask Coins
+anything" prompt. The unified field still routes by intent underneath, but
+what a user sees before typing anything signals "split a bill" first.
 
 **Routing by intent:** on submit, the utterance goes through #1644's
 extraction seam. Three outcomes:
@@ -73,9 +87,10 @@ extraction seam. Three outcomes:
 **Low-tier / model-unavailable path:** when #1652's gate says AI is
 unavailable (no model, entitlement absent, device tier too low), the field
 stays present and still works — it falls back to today's regex parser for
-expense/split intent, and search/digest features that need real extraction
-simply don't route (their entry points are hidden per this issue's
-acceptance criterion, not shown-then-broken).
+expense/split intent. Search/digest features that need real extraction are
+discoverable-but-locked rather than hidden (see Entitlement/tier gating,
+below — revised from this doc's original "hidden" draft per
+product-manager review), not shown-then-broken.
 
 ## Surface 2 — Draft-confirm card (the shared guardrail)
 
@@ -99,6 +114,38 @@ reusable, and adding what regex extraction never needed:
 - **Reject/redo**, not just accept: discard the draft, or edit the original
   utterance/receipt and re-extract, without navigating away and back.
 
+### Component API (core_ui, generic — chief-architect review)
+
+The widget operates on a generic `List<DraftField>` model it owns, never
+on `QuickExpenseDraft`/`SplitDraft`/any Coins type. Feature packages map
+their domain drafts onto this shape:
+
+- `DraftField`: a label, a value (rendered as the caller supplies — text,
+  amount, chip list), a `DraftFieldProvenance` (`userEntered` |
+  `aiExtracted`), and an `onEdit` callback. The provenance badge renders
+  from the enum, not a Coins-specific "auto-read" string baked into the
+  widget.
+- Confirm/reject/redo are generic `VoidCallback`/`ValueChanged` parameters
+  the caller wires to its own persistence and re-extraction logic. The
+  widget commits nothing itself — it only calls back.
+- **Loading state takes a required `String message` parameter, not
+  optional.** This is the change chief-ux-officer's review required: "no
+  bare spinner anywhere" is only true if the API makes a spinner without
+  copy impossible to construct, not just a convention every call site is
+  supposed to remember.
+
+### Accessibility (chief-ux-officer review — was missing, now required)
+
+- Provenance badge is never color/icon-only: it carries a text label (e.g.
+  "AI-drafted") in its semantics, so a screen reader announces it, not just
+  a visual dot.
+- The loading state's required message is exposed as a live-region
+  announcement, so a screen-reader user gets "Reading locally, a few
+  seconds" instead of silent time passing.
+- Suggestion chips (Surface 1's "can't answer" state) follow standard
+  reading-order focus — first chip focusable immediately after the input
+  field, not appended to the end of the screen's focus order.
+
 ## Surface 3 — Receipt itemization review
 
 Per-item assignment already exists (#257, production-hardening in review).
@@ -108,6 +155,14 @@ pipeline's own deterministic parse), it renders through Surface 2's
 provenance badge — "auto-read — check items" is this issue's own suggested
 copy, kept as the default. No new screen; #257's itemized split UI hosts
 the badge once #1646 exists.
+
+**In scope, flagged by chief-ux-officer review:** `add_expense_screen.dart`
+has two existing bare `CircularProgressIndicator()` calls with no
+accompanying text (receipt-scan/loading states, lines 342 and 700 as of
+this doc's writing). Since Surface 3 reuses this screen and this doc bans
+bare spinners everywhere it touches, fixing these two is in scope for
+whoever implements Surface 3 — not a pre-existing exception this doc
+quietly ignores.
 
 ## Surface 4 — Digest card
 
@@ -124,6 +179,15 @@ Non-happy states: no digest yet (new user, insufficient history) shows a
 plain "Not enough history yet" card, not an empty digest or a spinner that
 never resolves.
 
+**Product-manager note, for the copy pass, not a design change:** pure
+description ("your Netflix went up ₹100") is a real tension against
+competitors' prescriptive nudges — it's weaker as a marketing hook. The
+guardrail stands (#1649's AC and #1651's liability positioning both
+require it); the lever available without crossing into prescriptive
+language is tone and urgency framing within descriptive copy. Recorded
+here so chief-documentation-officer's copy pass doesn't lose this, not
+resolved in this doc.
+
 ## Trust cues
 
 Every AI-touched surface carries the same two signals, consistent with
@@ -134,8 +198,21 @@ Every AI-touched surface carries the same two signals, consistent with
 - **Honest loading state**: local inference on a 1-4B model takes seconds
   on mid-tier hardware, not milliseconds. The loading state names this
   ("Reading locally... a few seconds") rather than a generic spinner that
-  reads as broken when it doesn't resolve instantly. No bare spinner
-  anywhere in this doc's surfaces, per the issue's own requirement.
+  reads as broken when it doesn't resolve instantly. Enforced structurally,
+  not just by convention: Surface 2's `DraftConfirmCard` requires a
+  `message` string for its loading state (see Component API) — no bare
+  spinner is constructible through it.
+
+**Chief-security-officer review, required addition:** the on-device badge
+and this trust-cue claim are verified true today for COINS-AI-5/6's
+categorization and detection logic (`feature_coins_core`'s only dependency
+is `equatable` — no network client is even reachable), but not yet for the
+embedding computation itself: `MerchantEmbedder` is currently a bare
+interface with no wired implementation. The badge must be gated on #1651's
+automated egress test passing for whatever real extraction path ships
+behind it — this doc specs the badge's UI contract now (correctly
+sequenced against #1644 being gated), but whoever wires it to a real
+model must not treat the badge as already-validated positioning.
 
 ## Responsive behavior
 
@@ -152,31 +229,60 @@ wider screen. No TV surface, per scope.
 
 ## Entitlement/tier gating (#1652)
 
-Every entry point in this doc is **hidden**, not disabled-with-explanation,
-when #1652's gate says unavailable — matching this issue's acceptance
-criterion directly. The existing regex quick-add path is the exception: it
-is Coins' baseline behavior, not an AI feature, and stays visible
-regardless of AI entitlement/tier. This is the one place this doc
-distinguishes "AI-gated" from "always available."
+**Revised from the original draft's "hidden" default, per product-manager
+review.** Hiding every AI entry point entirely when #1652's gate says
+unavailable removes all upsell surface — a free user never learns the
+capability exists. That undersells an epic whose thesis is Pro
+differentiation.
 
-## Open questions for review
+Resolution: AI entry points are **discoverable-but-locked**, not hidden —
+visible with a small Pro badge, tapping through to an upsell/entitlement
+explanation rather than performing the action. This still satisfies the
+issue's underlying intent ("low-tier/manual paths reachable from every AI
+surface" — the manual/regex path stays the default action on tap) while
+giving Pro something to sell against. The one exception, unchanged from the
+original draft: the existing regex quick-add path itself is Coins'
+baseline behavior, not an AI feature, and needs no Pro badge — it already
+works today, gated or not.
 
-1. Should the draft-confirm card live in `core_ui` (public, reusable by
-   other AI-touched features outside Coins) or stay Coins-pro-scoped? This
-   doc's position is "public component, pro-scoped feature wiring around
-   it" — the same split #1652 already draws elsewhere — but that's a
-   module-ownership call for chief-architect/chief-ux-officer, not settled
-   here.
-2. Bottom sheet vs. full-screen push for the draft-confirm card on phone —
-   flagged above as an implementation choice; reviewers may want to settle
-   it now instead.
-3. Exact suggestion-chip copy for the "can't answer" state — placeholder
-   text above, not final copy; chief-documentation-officer's usual copy
-   pass applies once this doc is approved.
+This is a change to the issue's literal acceptance-criterion wording
+("hidden when entitlement/tier gate says unavailable") — flagging
+explicitly rather than silently reinterpreting it, so whoever closes #1653
+confirms this reading is what "unavailable" was meant to cover (no
+entry-point *action* available without Pro) versus the stricter reading
+(no entry-point *visible* at all). Product-manager review's position is the
+former; if #1652's owner disagrees, this section needs another pass before
+Surface 1 implementation starts.
+
+## Decisions from review (were open questions; now resolved)
+
+1. **Draft-confirm card placement — public, `core_ui`.** Chief-architect
+   ruled: the card carries zero Coins-specific business logic (generic
+   `DraftField`/provenance enum/callbacks, see Component API above), and
+   `core_ui`'s `module.yaml` already forbids the dependencies (`app`,
+   domain/data packages) that would let it leak Coins types even by
+   accident. Precedent: `airo_channel_card.dart`, `media_card.dart`,
+   `empty_state_widget.dart` are all `core_ui` widgets designed against one
+   feature first and generalized the same way. Not routed through the
+   `airo_pro_bootstrap` seam — that mechanism swaps business-logic
+   implementations, and this widget has no implementation to hide.
+2. **Bottom sheet vs. full-screen push on phone — left open, by design.**
+   Chief-ux-officer confirmed both preserve the no-auto-commit property
+   equally; this is an implementation choice for whoever builds Surface 2,
+   not a product/UX call that needed settling here.
+3. **Suggestion-chip copy — still placeholder, unchanged.** Chief-ux-officer
+   confirmed the "can't answer" state's *design* (chips over generic error)
+   is right; exact copy is chief-documentation-officer's pass, to happen
+   after this doc, as originally planned.
 
 ## Council
 
-chief-ux-officer + product-manager (required, issue's acceptance criterion
-#1) · chief-architect (open question 1, module ownership) · chief-security-
-officer (trust cues accuracy, per #1651's positioning claims) ·
-chief-documentation-officer (copy pass, once approved)
+chief-ux-officer (reviewed, APPROVE WITH CHANGES — accessibility subsection,
+required loading-message API, bare-spinner scope, all incorporated above) ·
+product-manager (reviewed, APPROVE WITH CHANGES — bill-split prominence and
+discoverable-but-locked entitlement gating, both incorporated above) ·
+chief-architect (reviewed, ruled `core_ui` placement, incorporated above) ·
+chief-security-officer (reviewed, APPROVE WITH CHANGES — egress-gate
+requirement on the trust-cue badge, incorporated above) ·
+chief-documentation-officer (copy pass — still required, after this doc,
+as planned)
