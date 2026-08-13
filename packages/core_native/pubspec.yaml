@@ -16,3 +16,26 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+flutter:
+  # Wired for #1677: airo_core was a phantom native path (real FRB bindings,
+  # 6 consuming Dart packages, no build wiring — RustLib.init() always threw
+  # and every call site silently took its Dart fallback). Mirrors
+  # feature_mind's cargokit pattern. Unlike feature_mind, iOS IS declared
+  # here — this is a single crate (`crate-type = ["cdylib", "staticlib",
+  # "rlib"]` in rust/airo_core/Cargo.toml), so it has none of feature_mind's
+  # whisper.cpp/llama.cpp duplicate-ggml-symbol conflict that forced iOS off
+  # there. There is still no iOS CI in this repo to catch a regression here
+  # (see #1704) — a device build is the only thing that will.
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      linux:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true
