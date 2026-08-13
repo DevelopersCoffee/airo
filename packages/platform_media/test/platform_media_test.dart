@@ -20,7 +20,7 @@ void main() {
     };
     addTearDown(() => debugPrint = previousDebugPrint);
 
-    AppLogger.analytics(
+    PlatformMediaLogger.analytics(
       'live_stream_seek',
       params: const {'channel': 'City News Live', 'delay': 5},
     );
