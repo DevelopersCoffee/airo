@@ -98,10 +98,3 @@ final dailyQuoteProvider = FutureProvider<Quote>((ref) async {
 
   return await quoteService.getDailyQuote(userId);
 });
-
-/// Quote refresh provider - allows manual refresh
-final refreshQuoteProvider = Provider<void Function()>((ref) {
-  return () {
-    ref.invalidate(dailyQuoteProvider);
-  };
-});

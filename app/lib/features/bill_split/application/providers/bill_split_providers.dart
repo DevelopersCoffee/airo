@@ -67,12 +67,6 @@ final contactsProvider = FutureProvider<List<Participant>>((ref) async {
   return await contactService.getContacts();
 });
 
-/// Recent contacts provider
-final recentContactsProvider = FutureProvider<List<Participant>>((ref) async {
-  final contactService = ref.watch(contactServiceProvider);
-  return await contactService.getRecentContacts();
-});
-
 /// Search contacts provider
 final searchContactsProvider = FutureProvider.family<List<Participant>, String>(
   (ref, query) async {

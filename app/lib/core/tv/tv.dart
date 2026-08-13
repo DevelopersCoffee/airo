@@ -24,9 +24,7 @@
 /// - [TvNavigationHintWidget] - Widget to display hints
 ///
 /// ### Providers
-/// - [isTvModeProvider] - Check if running on TV
-/// - [tvDimensionsProvider] - Get TV-specific dimensions
-/// - [tvDimensionsWithFireTvProvider] - Dimensions with Fire TV safe zones
+/// - `tvFocusManagerProvider` - Central focus manager for TV navigation
 ///
 /// ## Fire TV Support
 ///
@@ -40,11 +38,6 @@
 ///
 /// ```dart
 /// import 'package:app/core/tv/tv.dart';
-///
-/// // Check if running on TV
-/// if (ref.watch(isTvModeProvider(context))) {
-///   // Render TV UI
-/// }
 ///
 /// // Wrap focusable items
 /// TvFocusable(

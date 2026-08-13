@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_media/platform_media.dart';
 
 /// TV Audio Handler for background playback on Android TV/Fire TV
@@ -285,42 +284,6 @@ Future<TvAudioHandler> initTvAudioService() async {
 /// Check if TV audio service is initialized
 bool get isTvAudioServiceInitialized => _tvAudioHandler != null;
 
-/// Provider for TvAudioHandler
-/// This requires initTvAudioService() to be called before use on TV platforms
-final tvAudioHandlerProvider = Provider<TvAudioHandler?>((ref) {
-  return _tvAudioHandler;
-});
-
-/// Provider for TV playback state
-final tvPlaybackStateProvider = StreamProvider<PlaybackState>((ref) {
-  final handler = ref.watch(tvAudioHandlerProvider);
-  if (handler == null) {
-    return Stream.value(
-      PlaybackState(processingState: AudioProcessingState.idle, playing: false),
-    );
-  }
-  return handler.playbackState;
-});
-
-/// Provider for TV current media item (channel)
-final tvCurrentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
-  final handler = ref.watch(tvAudioHandlerProvider);
-  if (handler == null) {
-    return Stream.value(null);
-  }
-  return handler.mediaItem;
-});
-
-/// Provider for checking if TV is currently playing
-final isTvPlayingProvider = Provider<bool>((ref) {
-  final playbackState = ref.watch(tvPlaybackStateProvider);
-  return playbackState.when(
-    data: (state) => state.playing,
-    loading: () => false,
-    error: (_, _) => false,
-  );
-});
-
 /// Controller for TV audio playback
 class TvAudioController {
   final TvAudioHandler _handler;
@@ -360,10 +323,3 @@ class TvAudioController {
     _handler.onAudioFocusGained = callback;
   }
 }
-
-/// Provider for TvAudioController (only available when TV audio service is initialized)
-final tvAudioControllerProvider = Provider<TvAudioController?>((ref) {
-  final handler = ref.watch(tvAudioHandlerProvider);
-  if (handler == null) return null;
-  return TvAudioController(handler);
-});
