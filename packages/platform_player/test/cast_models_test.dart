@@ -1,5 +1,5 @@
-import 'package:airo_app/core/cast/cast.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_player/platform_player.dart';
 
 void main() {
   group('AiroCastDevice', () {
