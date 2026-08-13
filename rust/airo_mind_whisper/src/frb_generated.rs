@@ -503,6 +503,20 @@ impl SseDecode for Vec<crate::api::meetings::SearchHit> {
     }
 }
 
+impl SseDecode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::meetings::TranscriptSegmentRecord>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -586,12 +600,20 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::meetings::TranscriptEvent::Transcribing { text: var_text };
+                let mut var_segment =
+                    <crate::api::meetings::TranscriptSegmentRecord>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::Transcribing {
+                    segment: var_segment,
+                };
             }
             1 => {
                 let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::meetings::TranscriptEvent::TranscriptReady { text: var_text };
+                let mut var_segments =
+                    <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::TranscriptReady {
+                    text: var_text,
+                    segments: var_segments,
+                };
             }
             2 => {
                 return crate::api::meetings::TranscriptEvent::Cancelled;
@@ -600,6 +622,22 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseDecode for crate::api::meetings::TranscriptSegmentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_startMs = <u64>::sse_decode(deserializer);
+        let mut var_endMs = <u64>::sse_decode(deserializer);
+        let mut var_text = <String>::sse_decode(deserializer);
+        return crate::api::meetings::TranscriptSegmentRecord {
+            id: var_id,
+            start_ms: var_startMs,
+            end_ms: var_endMs,
+            text: var_text,
+        };
     }
 }
 
@@ -796,12 +834,15 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::SearchHit>
 impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
-                [0.into_dart(), text.into_into_dart().into_dart()].into_dart()
+            crate::api::meetings::TranscriptEvent::Transcribing { segment } => {
+                [0.into_dart(), segment.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
-                [1.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => [
+                1.into_dart(),
+                text.into_into_dart().into_dart(),
+                segments.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             crate::api::meetings::TranscriptEvent::Cancelled => [2.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
@@ -817,6 +858,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptEvent>
     for crate::api::meetings::TranscriptEvent
 {
     fn into_into_dart(self) -> crate::api::meetings::TranscriptEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptSegmentRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.start_ms.into_into_dart().into_dart(),
+            self.end_ms.into_into_dart().into_dart(),
+            self.text.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptSegmentRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptSegmentRecord>
+    for crate::api::meetings::TranscriptSegmentRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptSegmentRecord {
         self
     }
 }
@@ -914,6 +978,16 @@ impl SseEncode for Vec<crate::api::meetings::SearchHit> {
     }
 }
 
+impl SseEncode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::meetings::TranscriptSegmentRecord>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -968,13 +1042,16 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
+            crate::api::meetings::TranscriptEvent::Transcribing { segment } => {
                 <i32>::sse_encode(0, serializer);
-                <String>::sse_encode(text, serializer);
+                <crate::api::meetings::TranscriptSegmentRecord>::sse_encode(segment, serializer);
             }
-            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => {
                 <i32>::sse_encode(1, serializer);
                 <String>::sse_encode(text, serializer);
+                <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_encode(
+                    segments, serializer,
+                );
             }
             crate::api::meetings::TranscriptEvent::Cancelled => {
                 <i32>::sse_encode(2, serializer);
@@ -983,6 +1060,16 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseEncode for crate::api::meetings::TranscriptSegmentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <u64>::sse_encode(self.start_ms, serializer);
+        <u64>::sse_encode(self.end_ms, serializer);
+        <String>::sse_encode(self.text, serializer);
     }
 }
 

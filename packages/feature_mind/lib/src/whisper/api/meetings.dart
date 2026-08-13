@@ -10,7 +10,7 @@ part 'meetings.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `lock`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `eq`, `fmt`, `from`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -192,13 +192,57 @@ sealed class TranscriptEvent with _$TranscriptEvent {
   const TranscriptEvent._();
 
   /// One transcript segment, as whisper produced it.
-  const factory TranscriptEvent.transcribing({required String text}) =
-      TranscriptEvent_Transcribing;
+  const factory TranscriptEvent.transcribing({
+    required TranscriptSegmentRecord segment,
+  }) = TranscriptEvent_Transcribing;
 
-  /// The joined transcript. The UI can stop appending and start displaying.
-  const factory TranscriptEvent.transcriptReady({required String text}) =
-      TranscriptEvent_TranscriptReady;
+  /// The joined transcript, plus every segment that produced it, in order.
+  /// The flat `text` stays for callers that only want to display it; the UI
+  /// case that needs a fact to point back at an audio timestamp reads
+  /// `segments` instead of re-deriving them.
+  const factory TranscriptEvent.transcriptReady({
+    required String text,
+    required List<TranscriptSegmentRecord> segments,
+  }) = TranscriptEvent_TranscriptReady;
 
   /// The user navigated away. Nothing was saved.
   const factory TranscriptEvent.cancelled() = TranscriptEvent_Cancelled;
+}
+
+/// One transcript segment, with the evidence-grounding fields `#1657` needs:
+/// a stable id and the audio timestamps whisper produced.
+///
+/// `id` is a sequence number scoped to this recording (`"s0"`, `"s1"`, …)
+/// rather than a UUID — it is stable across the one transcription run that
+/// produced it (segment 3 is always segment 3 for this recording) and free to
+/// compute, which is all an evidence link back to an audio timestamp needs.
+/// `start_ms`/`end_ms` are whisper's own segment timestamps
+/// (`WhisperSpeechEngine`, `rust/airo_mind_whisper/src/whisper.rs`), carried
+/// through rather than recomputed here.
+class TranscriptSegmentRecord {
+  final String id;
+  final BigInt startMs;
+  final BigInt endMs;
+  final String text;
+
+  const TranscriptSegmentRecord({
+    required this.id,
+    required this.startMs,
+    required this.endMs,
+    required this.text,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ startMs.hashCode ^ endMs.hashCode ^ text.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptSegmentRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          startMs == other.startMs &&
+          endMs == other.endMs &&
+          text == other.text;
 }

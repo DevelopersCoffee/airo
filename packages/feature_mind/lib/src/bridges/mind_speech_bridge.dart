@@ -13,14 +13,72 @@ sealed class TranscriptEvent {
   const TranscriptEvent();
 }
 
-final class TranscriptEventTranscribing extends TranscriptEvent {
-  const TranscriptEventTranscribing(this.text);
+/// One transcript segment, with the evidence-grounding fields `#1657` needs:
+/// a stable id (scoped to the recording that produced it) and the audio
+/// timestamps whisper reported. Mirrors `rust.TranscriptSegmentRecord` for
+/// the same reason [TranscriptEvent] mirrors `rust.TranscriptEvent`.
+@immutable
+class TranscriptSegment {
+  const TranscriptSegment({
+    required this.id,
+    required this.startMs,
+    required this.endMs,
+    required this.text,
+  });
+
+  final String id;
+  final int startMs;
+  final int endMs;
   final String text;
+
+  @override
+  int get hashCode =>
+      Object.hash(id, startMs, endMs, text);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptSegment &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          startMs == other.startMs &&
+          endMs == other.endMs &&
+          text == other.text;
+}
+
+/// Converts the generated wire type to [TranscriptSegment].
+///
+/// A standalone, public function rather than inlined into
+/// [RustMindSpeechBridge.transcribe]: it is the one place `start_ms`/`end_ms`
+/// cross from Rust's `u64` (bridged as [BigInt], since `flutter_rust_bridge`
+/// has no unsigned 64-bit Dart integer) to Dart's `int`, and that narrowing is
+/// exactly the step #1629 found silently dropping data before this change —
+/// worth a name and a test of its own rather than being an anonymous closure.
+TranscriptSegment toTranscriptSegment(rust.TranscriptSegmentRecord segment) =>
+    TranscriptSegment(
+      id: segment.id,
+      startMs: segment.startMs.toInt(),
+      endMs: segment.endMs.toInt(),
+      text: segment.text,
+    );
+
+final class TranscriptEventTranscribing extends TranscriptEvent {
+  const TranscriptEventTranscribing(this.segment);
+  final TranscriptSegment segment;
+
+  /// Convenience for callers that only want the running text, same as before
+  /// this event carried a full segment.
+  String get text => segment.text;
 }
 
 final class TranscriptEventTranscriptReady extends TranscriptEvent {
-  const TranscriptEventTranscriptReady(this.text);
+  const TranscriptEventTranscriptReady(this.text, this.segments);
   final String text;
+
+  /// Every segment that produced [text], in order, each carrying the audio
+  /// timestamp it came from. This is the shape #1657's evidence links
+  /// (action item → transcript segment → audio timestamp) resolve against.
+  final List<TranscriptSegment> segments;
 }
 
 final class TranscriptEventCancelled extends TranscriptEvent {
@@ -108,10 +166,13 @@ class RustMindSpeechBridge implements MindSpeechBridge {
   Stream<TranscriptEvent> transcribe({required String wavPath}) =>
       rust.transcribeRecording(wavPath: wavPath).map((event) {
         return switch (event) {
-          rust.TranscriptEvent_Transcribing(:final text) =>
-            TranscriptEventTranscribing(text),
-          rust.TranscriptEvent_TranscriptReady(:final text) =>
-            TranscriptEventTranscriptReady(text),
+          rust.TranscriptEvent_Transcribing(:final segment) =>
+            TranscriptEventTranscribing(toTranscriptSegment(segment)),
+          rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
+            TranscriptEventTranscriptReady(
+              text,
+              segments.map(toTranscriptSegment).toList(growable: false),
+            ),
           rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
         };
       });

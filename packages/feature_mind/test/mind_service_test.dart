@@ -94,8 +94,12 @@ void main() {
     'T3: process emits transcribing, generating, saving, done in that order',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscribing('hello'),
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscribing(
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        ),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventGenerating('Min'),
@@ -126,7 +130,9 @@ void main() {
     'T4: cancelProcessing cancels the generation bridge once it has loaded',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventMinutesReady('Minutes.'),
@@ -179,7 +185,9 @@ void main() {
     'T6: TranscriptEventCancelled yields idle and skips generation entirely',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscribing('partial'),
+        TranscriptEventTranscribing(
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'partial'),
+        ),
         TranscriptEventCancelled(),
       ];
 
@@ -198,7 +206,9 @@ void main() {
   // is recorded with it.
   test('T7: save receives the generation bridge\'s model id', () async {
     speech.transcriptEvents = const [
-      TranscriptEventTranscriptReady('hello world'),
+      TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
     ];
     generation.generationEvents = const [
       GenerationEventMinutesReady('Minutes.'),
@@ -216,7 +226,9 @@ void main() {
     'T8: a save failure surfaces as MindStage.failed, not an exception',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventMinutesReady('Minutes.'),

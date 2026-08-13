@@ -45,6 +45,7 @@ use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
 use airo_mind_core::{
     AudioInput, CancelToken, Meeting, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    TranscriptSegment,
 };
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,23 @@ pub struct MeetingRecord {
     pub model: String,
 }
 
+/// Builds the `index`th [TranscriptSegmentRecord] for a recording from the
+/// engine's raw [TranscriptSegment].
+///
+/// Pulled out of `transcribe_recording` so the id scheme (`"s{index}"`) and
+/// the fact that `start_ms`/`end_ms`/`text` pass through unchanged can be
+/// tested without a loaded model or a live `StreamSink` — `#1629`'s gap was
+/// exactly this step silently dropping the timestamps, so it gets its own
+/// name and its own tests.
+fn transcript_segment_record(index: usize, segment: &TranscriptSegment) -> TranscriptSegmentRecord {
+    TranscriptSegmentRecord {
+        id: format!("s{index}"),
+        start_ms: segment.start_ms,
+        end_ms: segment.end_ms,
+        text: segment.text.trim().to_string(),
+    }
+}
+
 impl From<Meeting> for MeetingRecord {
     fn from(m: Meeting) -> Self {
         Self {
@@ -99,12 +117,36 @@ pub struct SearchHit {
     pub snippet: String,
 }
 
+/// One transcript segment, with the evidence-grounding fields `#1657` needs:
+/// a stable id and the audio timestamps whisper produced.
+///
+/// `id` is a sequence number scoped to this recording (`"s0"`, `"s1"`, …)
+/// rather than a UUID — it is stable across the one transcription run that
+/// produced it (segment 3 is always segment 3 for this recording) and free to
+/// compute, which is all an evidence link back to an audio timestamp needs.
+/// `start_ms`/`end_ms` are whisper's own segment timestamps
+/// (`WhisperSpeechEngine`, `rust/airo_mind_whisper/src/whisper.rs`), carried
+/// through rather than recomputed here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptSegmentRecord {
+    pub id: String,
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub text: String,
+}
+
 /// Transcription progress, as it happens.
 pub enum TranscriptEvent {
     /// One transcript segment, as whisper produced it.
-    Transcribing { text: String },
-    /// The joined transcript. The UI can stop appending and start displaying.
-    TranscriptReady { text: String },
+    Transcribing { segment: TranscriptSegmentRecord },
+    /// The joined transcript, plus every segment that produced it, in order.
+    /// The flat `text` stays for callers that only want to display it; the UI
+    /// case that needs a fact to point back at an audio timestamp reads
+    /// `segments` instead of re-deriving them.
+    TranscriptReady {
+        text: String,
+        segments: Vec<TranscriptSegmentRecord>,
+    },
     /// The user navigated away. Nothing was saved.
     Cancelled,
 }
@@ -208,6 +250,7 @@ pub fn transcribe_recording(
     *lock(&CANCEL) = Some(cancel.clone());
 
     let mut transcript = String::new();
+    let mut segments: Vec<TranscriptSegmentRecord> = Vec::new();
     {
         let mut engines = lock(&ENGINES);
         let supervisor = engines.as_mut().ok_or("Airo Mind is not initialised")?;
@@ -224,11 +267,14 @@ pub fn transcribe_recording(
                     transcript.push(' ');
                 }
                 transcript.push_str(segment.text.trim());
+                // The id is the segment's position in *this* recording, so it
+                // stays stable across the run that produced it without this
+                // capability inventing an id scheme the store does not have.
+                let record = transcript_segment_record(segments.len(), &segment);
+                segments.push(record.clone());
                 // Emitting per segment is the point: a ten-minute recording
                 // shows text within seconds instead of after the whole file.
-                let _ = sink.add(TranscriptEvent::Transcribing {
-                    text: segment.text.clone(),
-                });
+                let _ = sink.add(TranscriptEvent::Transcribing { segment: record });
                 Ok(())
             },
         );
@@ -242,7 +288,10 @@ pub fn transcribe_recording(
     if transcript.trim().is_empty() {
         return Err("No speech was found in the recording.".into());
     }
-    emit(TranscriptEvent::TranscriptReady { text: transcript })
+    emit(TranscriptEvent::TranscriptReady {
+        text: transcript,
+        segments,
+    })
 }
 
 /// Makes a meeting durable and searchable. Returns its id.
@@ -336,6 +385,84 @@ pub fn get_meeting(id: String) -> Result<Option<MeetingRecord>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `#1629`: `transcribe_recording` computed `start_ms`/`end_ms` correctly
+    /// at the engine layer (`WhisperSpeechEngine`) but discarded them before
+    /// they reached `TranscriptEvent`. This test pins the fix at the smallest
+    /// unit that can prove it without a loaded model: given raw engine
+    /// segments in the order whisper would produce them, the ids are
+    /// sequential and stable, and the timestamps/text survive unchanged.
+    #[test]
+    fn transcript_segment_record_preserves_timestamps_text_and_order() {
+        let raw = [
+            TranscriptSegment {
+                start_ms: 0,
+                end_ms: 1_200,
+                text: "  the deploy is blocked  ".into(),
+            },
+            TranscriptSegment {
+                start_ms: 1_200,
+                end_ms: 3_450,
+                text: "on the migration".into(),
+            },
+            TranscriptSegment {
+                start_ms: 3_450,
+                end_ms: 5_000,
+                text: "Raj is looking at it".into(),
+            },
+        ];
+
+        let records: Vec<TranscriptSegmentRecord> = raw
+            .iter()
+            .enumerate()
+            .map(|(i, s)| transcript_segment_record(i, s))
+            .collect();
+
+        assert_eq!(
+            records.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            ["s0", "s1", "s2"],
+            "ids are sequential and stable within one recording"
+        );
+        assert_eq!(
+            records.iter().map(|r| r.start_ms).collect::<Vec<_>>(),
+            [0, 1_200, 3_450],
+            "start_ms is not the field that goes missing any more"
+        );
+        assert_eq!(
+            records.iter().map(|r| r.end_ms).collect::<Vec<_>>(),
+            [1_200, 3_450, 5_000],
+            "end_ms is not the field that goes missing any more"
+        );
+        // Segment boundaries are contiguous and non-decreasing: this is the
+        // shape #1657's evidence links need to be trustworthy at all.
+        for pair in records.windows(2) {
+            assert!(
+                pair[0].end_ms <= pair[1].start_ms,
+                "segments must not overlap or reorder: {:?} then {:?}",
+                pair[0],
+                pair[1]
+            );
+        }
+        assert_eq!(records[0].text, "the deploy is blocked", "text is trimmed");
+        assert_eq!(records[1].text, "on the migration");
+        assert_eq!(records[2].text, "Raj is looking at it");
+    }
+
+    #[test]
+    fn transcript_segment_record_handles_a_single_segment_recording() {
+        let record = transcript_segment_record(
+            0,
+            &TranscriptSegment {
+                start_ms: 0,
+                end_ms: 900,
+                text: "hello".into(),
+            },
+        );
+        assert_eq!(record.id, "s0");
+        assert_eq!(record.start_ms, 0);
+        assert_eq!(record.end_ms, 900);
+        assert_eq!(record.text, "hello");
+    }
 
     /// Every call must say what is wrong rather than panicking on `None`, since
     /// on a device "the model did not load" is the common state, not the
