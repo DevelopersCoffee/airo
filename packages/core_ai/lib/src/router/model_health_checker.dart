@@ -1,4 +1,4 @@
-import '../client/llm_client.dart';
+import '../llm/chat_llm_client.dart';
 import '../provider/ai_provider.dart';
 
 class ModelHealthStatus {
@@ -19,7 +19,7 @@ class ModelHealthChecker {
 
   Future<ModelHealthStatus> check(
     AIProvider provider,
-    LLMClient? client,
+    ChatLLMClient? client,
   ) async {
     if (client == null) {
       return ModelHealthStatus(

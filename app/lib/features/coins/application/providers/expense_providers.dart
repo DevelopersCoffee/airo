@@ -172,20 +172,6 @@ final recentExpensesProvider = FutureProvider<List<Transaction>>((ref) async {
   return result.data ?? [];
 });
 
-/// Watch transactions for today
-final todayExpensesProvider = StreamProvider<List<Transaction>>((ref) {
-  final repo = ref.watch(transactionRepositoryProvider);
-  final today = DateTime.now();
-  return repo.watchByDate(today);
-});
-
-/// Watch transactions by category
-final expensesByCategoryProvider =
-    StreamProvider.family<List<Transaction>, String>((ref, categoryId) {
-      final repo = ref.watch(transactionRepositoryProvider);
-      return repo.watchByCategory(categoryId);
-    });
-
 /// Total spent today
 final spentTodayProvider = FutureProvider<int>((ref) async {
   final repo = ref.watch(transactionRepositoryProvider);
@@ -216,17 +202,6 @@ final monthlySpendingByCategoryProvider = FutureProvider<Map<String, int>>((
   final endOfMonth = DateTime(now.year, now.month + 1, 0);
   final result = await repo.getSpentByCategory(startOfMonth, endOfMonth);
   return result.data ?? {};
-});
-
-/// Search transactions
-final expenseSearchProvider = FutureProvider.family<List<Transaction>, String>((
-  ref,
-  query,
-) async {
-  if (query.isEmpty) return [];
-  final repo = ref.watch(transactionRepositoryProvider);
-  final result = await repo.search(query);
-  return result.data ?? [];
 });
 
 /// Add expense state notifier

@@ -21,7 +21,7 @@ export 'src/residency/model_residency_manager.dart';
 export 'src/preload/model_preloader.dart';
 export 'src/runtime/local_inference_runtime_adapter.dart';
 export 'src/runtime/gemini_api_service.dart';
-export 'src/runtime/gemini_nano_service.dart' hide DeviceInfo, GenerationResult;
+export 'src/runtime/gemini_nano_service.dart';
 export 'src/runtime/litert_lm_service.dart';
 export 'src/runtime/model_learn_more_launcher.dart';
 export 'src/litert/litert_lm_runtime_adapter.dart';

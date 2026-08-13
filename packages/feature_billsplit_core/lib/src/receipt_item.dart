@@ -95,19 +95,6 @@ class ReceiptItem extends Equatable {
     return formatter.formatCents(unitPricePaise);
   }
 
-  // ---- Deprecated getters for backward compatibility ----
-
-  /// Formatted price string
-  @Deprecated('Use formatPrice(CurrencyFormatter) for global locale support')
-  String get formattedPrice => '₹${(totalPricePaise / 100).toStringAsFixed(2)}';
-
-  /// Formatted unit price
-  @Deprecated(
-    'Use formatUnitPrice(CurrencyFormatter) for global locale support',
-  )
-  String get formattedUnitPrice =>
-      '₹${(unitPricePaise / 100).toStringAsFixed(2)}';
-
   @override
   List<Object?> get props => [
     id,
@@ -149,11 +136,6 @@ class ReceiptFee extends Equatable {
   String formatAmount(CurrencyFormatter formatter) {
     return isFree ? 'Free' : formatter.formatCents(amountPaise);
   }
-
-  /// @deprecated Use formatAmount(CurrencyFormatter) for global locale support
-  @Deprecated('Use formatAmount(CurrencyFormatter) for global locale support')
-  String get formattedAmount =>
-      isFree ? 'Free' : '₹${(amountPaise / 100).toStringAsFixed(2)}';
 
   @override
   List<Object?> get props => [type, amountPaise, isFree];
@@ -247,22 +229,6 @@ class ParsedReceipt extends Equatable {
   String formatItemTotal(CurrencyFormatter formatter) {
     return formatter.formatCents(itemTotalPaise);
   }
-
-  // ---- Deprecated getters for backward compatibility ----
-
-  /// Get formatted grand total
-  @Deprecated(
-    'Use formatGrandTotal(CurrencyFormatter) for global locale support',
-  )
-  String get formattedGrandTotal =>
-      '₹${(grandTotalPaise / 100).toStringAsFixed(2)}';
-
-  /// Get formatted item total
-  @Deprecated(
-    'Use formatItemTotal(CurrencyFormatter) for global locale support',
-  )
-  String get formattedItemTotal =>
-      '₹${(itemTotalPaise / 100).toStringAsFixed(2)}';
 
   @override
   List<Object?> get props => [

@@ -96,14 +96,15 @@ String? _installedPathIn(Directory directory, RequiredModel model) {
 OfflineModelInfo _scribeModel(RequiredModel model, {String? filePath}) {
   final descriptor =
       _scribeDescriptors[model.fileName] ?? _unknownScribeDescriptor(model);
-  return OfflineModelInfo(
+  // Identity (file size, digest) is translated by feature_mind's model
+  // -descriptor adapter (#1673); only presentation is supplied here.
+  return offlineModelInfoFromRequiredModel(
+    model,
     id: descriptor.id,
     name: descriptor.name,
     family: descriptor.family,
-    fileSizeBytes: model.sizeBytes,
     filePath: filePath,
     downloadUrl: mindModelDownloadUrls[model.fileName],
-    sha256: model.sha256,
     quantization: descriptor.quantization,
     parameterCount: descriptor.parameterCount,
     modalities: descriptor.modalities,

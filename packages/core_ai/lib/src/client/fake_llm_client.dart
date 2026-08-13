@@ -1,10 +1,10 @@
 import 'package:core_domain/core_domain.dart';
-import 'llm_client.dart';
+import '../llm/chat_llm_client.dart';
 
 /// Fake LLM client for testing and development.
 ///
 /// Returns configurable responses for testing different scenarios.
-class FakeLLMClient implements LLMClient {
+class FakeLLMClient implements ChatLLMClient {
   /// Default response for generateText.
   String defaultResponse;
 
