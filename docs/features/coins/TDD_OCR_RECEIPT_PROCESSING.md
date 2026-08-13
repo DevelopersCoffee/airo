@@ -33,6 +33,88 @@ The OCR Receipt Processing Pipeline enables users to scan physical receipts usin
 - Handwritten receipt recognition
 - Non-receipt document scanning (invoices, statements)
 
+### 1.4 Image-only PDF Fixture
+
+The PDF receipt integration test uses an image-only Urban Company invoice
+fixture so the parser must exercise the PDF renderer and OCR path. Generate it
+from the repository root:
+
+```bash
+python3 scripts/generate_receipt_pdf_fixture.py
+```
+
+The default output is:
+
+```text
+artifacts/fixtures/uc_invoice_image_only.pdf
+```
+
+Push it to an attached Android device or emulator before running the device
+test:
+
+```bash
+adb push artifacts/fixtures/uc_invoice_image_only.pdf /data/local/tmp/uc_invoice.pdf
+cd app
+flutter drive \
+  --driver=test_driver/integration_test.dart \
+  --target=integration_test/receipt_on_device_parser_test.dart \
+  -d emulator-5554 \
+  --dart-define=RECEIPT_PDF_PATH=/data/local/tmp/uc_invoice.pdf
+```
+
+The generator is dependency-free and writes PDF pages containing only raster
+image XObjects, not extractable PDF text.
+
+### 1.5 Android Shared Preferences Registration Guard
+
+Android builds currently keep a temporary Gradle shim that rewrites Flutter's
+generated `shared_preferences_android` registration from the DataStore-backed
+`SharedPreferencesPlugin` to `LegacySharedPreferencesPlugin`. This is scoped to
+Android Java compilation and preserves the legacy `package:shared_preferences`
+backend used by startup, settings, and Coins flows while v2 receipt hardening is
+being validated on emulator/device.
+
+Do not treat this as receipt business logic. It is a compatibility guard for
+existing preference reads and writes. Remove it only after the Android receipt
+parser integration test and a startup/preferences smoke test pass with the
+unmodified Flutter `GeneratedPluginRegistrant`.
+
+**Investigation (2026-08-13, issue #257):** checked whether a
+`shared_preferences_android` version pin/upgrade removes the need for the
+shim. The pinned version (2.4.27, per `pubspec.lock`) shows no Kotlin/Java
+build incompatibility — `SharedPreferencesPlugin`'s constructor is a plain
+no-arg Java-callable constructor, and `LegacySharedPreferencesPlugin` was
+itself migrated to Kotlin in the same 2.4.27 release. There is no dependency
+version to bump that fixes a compile error, because there isn't one; the
+shim exists solely to freeze behavior during the DataStore migration until
+emulator/device coverage proves parity. That validation still requires an
+Android SDK + emulator, which was not available in this session — the
+removal criteria above remain the tracking mechanism.
+
+### 1.6 CI Coverage Decision (issue #257)
+
+Unit-level receipt parser tests are already exercised in CI with no extra
+wiring needed:
+
+- `test/features/bill_split/receipt_pdf_pipeline_test.dart`
+- `test/features/bill_split/receipt_invoice_layout_parser_test.dart`
+- `test/features/bill_split/receipt_parser_fallback_hook_test.dart`
+- `test/features/coins/coins_split_workflow_test.dart`
+
+The `test-app` job in `.github/workflows/ci.yml` runs `flutter test
+--coverage --reporter=compact` from `app/`, which picks up the whole
+`app/test/` tree by default — these four files run on every push and every
+PR targeting `main`/`v2`.
+
+The Android device/emulator integration test
+(`integration_test/receipt_on_device_parser_test.dart`, driven via `flutter
+drive`) stays manual/gated. No workflow in this repo currently provisions an
+Android emulator (`grep -rn integration_test .github/workflows/` returns no
+hits), and adding one is a real cost/maintenance decision (emulator boot
+time, KVM/HAXM availability on GitHub-hosted runners, flakiness) that is out
+of scope for this hardening pass. Run it manually per the commands in
+section 1.4 before a release that touches the receipt OCR pipeline.
+
 ---
 
 ## 2. Architecture
@@ -875,4 +957,3 @@ app/lib/features/coins/
 |------|---------|--------|---------|
 | 2026-02-15 | 1.0 | Airo Team | Initial draft |
 ```
-
