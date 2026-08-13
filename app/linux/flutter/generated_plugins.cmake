@@ -13,6 +13,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  core_native
   feature_mind
   jni
   media_kit_native_event_loop

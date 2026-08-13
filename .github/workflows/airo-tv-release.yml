@@ -147,7 +147,7 @@ jobs:
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'workflow_call'
         run: echo "ref=${GITHUB_REF}" >> "$GITHUB_OUTPUT"
 
-      - name: Create release branch from v2 base
+      - name: Create release branch from main base
         id: release_ref
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
         env:
@@ -837,7 +837,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ needs.prepare-release-branch.outputs.release_ref || inputs.release_ref || github.event.inputs.release_ref || 'v2' }}
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || inputs.release_ref || github.event.inputs.release_ref || 'main' }}
 
       - name: Download release artifacts
         uses: actions/download-artifact@v8
