@@ -36,6 +36,16 @@ class ModelStorageManager {
     '.onnx',
   ];
 
+  /// Default on-device ceiling for downloaded model artifacts.
+  ///
+  /// A heuristic pending a dedicated device-tier storage policy (#1631
+  /// tracks device-tier gating more broadly) -- 8 GB accommodates two or
+  /// three mid-size quantized models without silently consuming a phone's
+  /// entire free space. [enforceStorageQuota] is what makes this a real
+  /// ceiling rather than a suggestion: it deletes files, not just evicts a
+  /// RAM-resident cache entry.
+  static const int defaultStorageBudgetBytes = 8 * 1024 * 1024 * 1024;
+
   final BackgroundDownloads _downloads;
   final ModelStorageLocation location;
 
@@ -260,6 +270,99 @@ class ModelStorageManager {
     return deletedPaths;
   }
 
+  /// Total bytes currently occupied by installed (fully written) model
+  /// artifacts -- the real, on-disk figure, not a catalog estimate.
+  ///
+  /// Excludes `.tmp`/`.part` staging files: an in-flight download is not
+  /// "installed" and must not count against the quota it is trying to fit
+  /// inside of.
+  Future<int> installedArtifactsTotalBytes() async {
+    var totalBytes = 0;
+    for (final artifact in await _installedArtifacts()) {
+      totalBytes += artifact.sizeBytes;
+    }
+    return totalBytes;
+  }
+
+  /// Deletes installed model artifacts, oldest first, until total on-disk
+  /// usage is at or under [maxTotalBytes].
+  ///
+  /// This is disk-level eviction: unlike [ModelResidencyManager] (which only
+  /// evicts a model from RAM so a new one fits in the memory budget), this
+  /// removes the file from storage, so a device's quota is an enforceable
+  /// ceiling instead of a cache that leaves every download on disk forever.
+  ///
+  /// Oldest is approximated by each artifact's filesystem modification time
+  /// (i.e. roughly "installed longest ago"), since `atime` is unreliable
+  /// across platforms (several mount models disable it). [protectedModelIds]
+  /// (typically the model about to be downloaded, or one a caller knows is
+  /// actively in use) is never evicted, even if it is the oldest artifact on
+  /// disk -- eviction does not delete a protected file to satisfy a quota it
+  /// never agreed to; if that leaves usage over [maxTotalBytes], the
+  /// remainder is left in place and reported as unreachable via the returned
+  /// list falling short of covering the shortfall.
+  ///
+  /// Returns the ids of every model actually deleted, oldest evicted first.
+  Future<List<String>> enforceStorageQuota({
+    int maxTotalBytes = defaultStorageBudgetBytes,
+    Set<String> protectedModelIds = const {},
+  }) async {
+    final artifacts = await _installedArtifacts();
+    var totalBytes = artifacts.fold<int>(0, (sum, a) => sum + a.sizeBytes);
+    if (totalBytes <= maxTotalBytes) return const [];
+
+    artifacts.sort((a, b) => a.modified.compareTo(b.modified));
+
+    final evictedIds = <String>[];
+    for (final artifact in artifacts) {
+      if (totalBytes <= maxTotalBytes) break;
+      if (protectedModelIds.contains(artifact.modelId)) continue;
+
+      final file = File(artifact.path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+      await deleteInstallReceipt(artifact.modelId);
+      totalBytes -= artifact.sizeBytes;
+      evictedIds.add(artifact.modelId);
+    }
+    return evictedIds;
+  }
+
+  /// Scans the models directory for completed (non-`.tmp`/`.part`) artifact
+  /// files, resolving each to the model id its file name encodes.
+  Future<List<_InstalledArtifact>> _installedArtifacts() async {
+    final dir = await getModelsDirectory();
+    if (!await dir.exists()) return [];
+
+    final artifacts = <_InstalledArtifact>[];
+    await for (final entity in dir.list()) {
+      if (entity is! File) continue;
+      final fileName = path.basename(entity.path);
+      if (fileName.endsWith('.tmp') || fileName.endsWith('.part')) continue;
+
+      String? modelId;
+      for (final extension in supportedArtifactExtensions) {
+        if (fileName.endsWith(extension)) {
+          modelId = fileName.substring(0, fileName.length - extension.length);
+          break;
+        }
+      }
+      if (modelId == null) continue;
+
+      final stat = await entity.stat();
+      artifacts.add(
+        _InstalledArtifact(
+          modelId: modelId,
+          path: entity.path,
+          sizeBytes: stat.size,
+          modified: stat.modified,
+        ),
+      );
+    }
+    return artifacts;
+  }
+
   String _artifactExtensionFor(OfflineModelInfo? model) {
     final explicitPath = model?.filePath?.trim().toLowerCase();
     if (explicitPath != null && explicitPath.isNotEmpty) {
@@ -279,4 +382,19 @@ class ModelStorageManager {
 
     return '.gguf';
   }
+}
+
+/// A completed model artifact found on disk during an eviction scan.
+class _InstalledArtifact {
+  const _InstalledArtifact({
+    required this.modelId,
+    required this.path,
+    required this.sizeBytes,
+    required this.modified,
+  });
+
+  final String modelId;
+  final String path;
+  final int sizeBytes;
+  final DateTime modified;
 }

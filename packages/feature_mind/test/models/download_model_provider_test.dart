@@ -73,6 +73,12 @@ void main() {
   setUp(() {
     downloads = FakeBackgroundDownloads();
     storage = MockModelStorageManager();
+    when(
+      () => storage.enforceStorageQuota(
+        maxTotalBytes: any(named: 'maxTotalBytes'),
+        protectedModelIds: any(named: 'protectedModelIds'),
+      ),
+    ).thenAnswer((_) async => <String>[]);
     service = ModelDownloadService(
       downloads: downloads,
       storageManager: storage,
