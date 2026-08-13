@@ -31,10 +31,44 @@ llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false }
 # Re-exported by llama-cpp-2 for token_to_piece; pinned to the version it uses.
 encoding_rs = { version = "0.8", optional = true }
 
+# Metal acceleration, macOS only.
+#
+# llama-cpp-sys-2's own CMake default (GGML_METAL_DEFAULT) is already ON for
+# every Apple target, so this crate has in practice been linking Metal on
+# macOS regardless of the Rust-level feature -- llama-cpp-sys-2's build.rs
+# never reads `cfg(feature = "metal")` at all (unlike whisper-rs-sys, which
+# hard-disables it without the feature; see airo_mind_whisper/Cargo.toml).
+# This entry is not fixing a missing capability so much as making the
+# capability an explicit, checked contract instead of an implicit upstream
+# default this crate happened to inherit: `cargo build --features
+# "llama,metal"` now says on the surface what the binary already did, and if
+# a future llama-cpp-2 release starts consuming the feature flag (its
+# Cargo.toml already declares `metal = ["llama-cpp-sys-2/metal"]`), this
+# crate keeps working without a silent regression to CPU-only.
+#
+# This is a target-specific *addition* to the `llama-cpp-2` optional
+# dependency above, not a second copy of it -- Cargo unifies the feature set
+# for a resolved target across every table naming the dependency, and this
+# table is gated on `cfg(target_os = "macos")` so it never reaches the
+# Android cargokit build (`android-arm64` only, see `android/build.gradle`)
+# or the default (no `llama` feature) boundary build. iOS is out of scope --
+# `packages/feature_mind/ios/feature_mind.podspec` documents iOS as not
+# building at all yet (#1546 phase 4).
+[target.'cfg(target_os = "macos")'.dependencies]
+llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false, features = [
+  "metal",
+] }
+
 [features]
 default = []
 # Real offline generation. Requires cmake and a C++ toolchain.
 llama = ["dep:llama-cpp-2", "dep:encoding_rs"]
+# Documents the macOS Metal contract explicitly (see the target-specific
+# dependency table above); does not change what gets linked, since Metal is
+# already unified in automatically for `cfg(target_os = "macos")` builds.
+# Kept as a real, buildable feature name so `cargo build --features
+# "llama,metal"` matches the milestone's stated acceptance check.
+metal = ["llama"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

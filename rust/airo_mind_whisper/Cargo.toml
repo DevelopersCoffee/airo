@@ -32,11 +32,39 @@ airo_mind_core = { path = "../airo_mind_core" }
 flutter_rust_bridge = "=2.11.1"
 whisper-rs = { version = "0.16", optional = true }
 
+# Metal (GPU matmul) + CoreML (Apple Neural Engine) acceleration, macOS only.
+#
+# Unlike llama.cpp, whisper.cpp's own CMakeLists does NOT default GGML_METAL
+# to ON -- whisper-rs-sys's build.rs explicitly sets `GGML_METAL OFF` unless
+# the `metal` cargo feature is present (see whisper-rs-sys/build.rs), and
+# `WHISPER_COREML` only turns on behind the `coreml` feature. So this crate
+# was CPU-only on macOS until this feature-unification entry.
+#
+# This is a target-specific *addition* to the `whisper-rs` optional dependency
+# above, not a second copy of it: Cargo unifies the feature set for a given
+# resolved target across every table that names the dependency, and a table
+# gated on `cfg(target_os = "macos")` simply does not apply when cargokit
+# cross-compiles this crate for Android (`android-arm64` only, see
+# `android/build.gradle`) or when the default (no `whisper` feature) boundary
+# build runs on any platform. iOS is out of scope here -- the podspec at
+# `packages/feature_mind/ios/feature_mind.podspec` documents iOS as not
+# building at all yet (#1546 phase 4), so there is nothing this entry could
+# regress there.
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.16", optional = true, features = ["metal", "coreml"] }
+
 [features]
 # CI keeps the default so a boundary check does not compile whisper.cpp.
 default = []
 # Real offline transcription. Requires cmake and a C++ toolchain.
 whisper = ["dep:whisper-rs"]
+# Documents the macOS Metal/CoreML contract explicitly (see the
+# target-specific dependency table above). On macOS the acceleration is
+# already unified in as soon as `whisper` is enabled; this feature exists so
+# `cargo build --features "whisper,metal"` matches the milestone's stated
+# acceptance check and so non-macOS builds have a named flag to reject if
+# someone ever tries to force it (see CI's default-features boundary build).
+metal = ["whisper"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
