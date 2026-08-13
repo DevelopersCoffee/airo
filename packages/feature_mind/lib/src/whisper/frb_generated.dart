@@ -452,6 +452,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TranscriptSegmentRecord dco_decode_box_autoadd_transcript_segment_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_transcript_segment_record(raw);
+  }
+
+  @protected
   InstalledModel dco_decode_installed_model(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -493,6 +501,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<SearchHit> dco_decode_list_search_hit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_search_hit).toList();
+  }
+
+  @protected
+  List<TranscriptSegmentRecord> dco_decode_list_transcript_segment_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_transcript_segment_record)
+        .toList();
   }
 
   @protected
@@ -562,14 +580,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return TranscriptEvent_Transcribing(text: dco_decode_String(raw[1]));
+        return TranscriptEvent_Transcribing(
+          segment: dco_decode_box_autoadd_transcript_segment_record(raw[1]),
+        );
       case 1:
-        return TranscriptEvent_TranscriptReady(text: dco_decode_String(raw[1]));
+        return TranscriptEvent_TranscriptReady(
+          text: dco_decode_String(raw[1]),
+          segments: dco_decode_list_transcript_segment_record(raw[2]),
+        );
       case 2:
         return TranscriptEvent_Cancelled();
       default:
         throw Exception("unreachable");
     }
+  }
+
+  @protected
+  TranscriptSegmentRecord dco_decode_transcript_segment_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return TranscriptSegmentRecord(
+      id: dco_decode_String(arr[0]),
+      startMs: dco_decode_u_64(arr[1]),
+      endMs: dco_decode_u_64(arr[2]),
+      text: dco_decode_String(arr[3]),
+    );
   }
 
   @protected
@@ -636,6 +673,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MindConfig sse_decode_box_autoadd_mind_config(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_mind_config(deserializer));
+  }
+
+  @protected
+  TranscriptSegmentRecord sse_decode_box_autoadd_transcript_segment_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_transcript_segment_record(deserializer));
   }
 
   @protected
@@ -710,6 +755,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <SearchHit>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_search_hit(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<TranscriptSegmentRecord> sse_decode_list_transcript_segment_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <TranscriptSegmentRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_transcript_segment_record(deserializer));
     }
     return ans_;
   }
@@ -794,16 +853,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var tag_ = sse_decode_i_32(deserializer);
     switch (tag_) {
       case 0:
-        var var_text = sse_decode_String(deserializer);
-        return TranscriptEvent_Transcribing(text: var_text);
+        var var_segment = sse_decode_box_autoadd_transcript_segment_record(
+          deserializer,
+        );
+        return TranscriptEvent_Transcribing(segment: var_segment);
       case 1:
         var var_text = sse_decode_String(deserializer);
-        return TranscriptEvent_TranscriptReady(text: var_text);
+        var var_segments = sse_decode_list_transcript_segment_record(
+          deserializer,
+        );
+        return TranscriptEvent_TranscriptReady(
+          text: var_text,
+          segments: var_segments,
+        );
       case 2:
         return TranscriptEvent_Cancelled();
       default:
         throw UnimplementedError('');
     }
+  }
+
+  @protected
+  TranscriptSegmentRecord sse_decode_transcript_segment_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_startMs = sse_decode_u_64(deserializer);
+    var var_endMs = sse_decode_u_64(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return TranscriptSegmentRecord(
+      id: var_id,
+      startMs: var_startMs,
+      endMs: var_endMs,
+      text: var_text,
+    );
   }
 
   @protected
@@ -892,6 +976,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_transcript_segment_record(
+    TranscriptSegmentRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_transcript_segment_record(self, serializer);
+  }
+
+  @protected
   void sse_encode_installed_model(
     InstalledModel self,
     SseSerializer serializer,
@@ -962,6 +1055,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_transcript_segment_record(
+    List<TranscriptSegmentRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_transcript_segment_record(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_meeting_record(MeetingRecord self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.id, serializer);
@@ -1017,15 +1122,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case TranscriptEvent_Transcribing(text: final text):
+      case TranscriptEvent_Transcribing(segment: final segment):
         sse_encode_i_32(0, serializer);
-        sse_encode_String(text, serializer);
-      case TranscriptEvent_TranscriptReady(text: final text):
+        sse_encode_box_autoadd_transcript_segment_record(segment, serializer);
+      case TranscriptEvent_TranscriptReady(
+        text: final text,
+        segments: final segments,
+      ):
         sse_encode_i_32(1, serializer);
         sse_encode_String(text, serializer);
+        sse_encode_list_transcript_segment_record(segments, serializer);
       case TranscriptEvent_Cancelled():
         sse_encode_i_32(2, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_transcript_segment_record(
+    TranscriptSegmentRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_u_64(self.startMs, serializer);
+    sse_encode_u_64(self.endMs, serializer);
+    sse_encode_String(self.text, serializer);
   }
 
   @protected

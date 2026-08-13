@@ -40,6 +40,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig dco_decode_box_autoadd_mind_config(dynamic raw);
 
   @protected
+  TranscriptSegmentRecord dco_decode_box_autoadd_transcript_segment_record(
+    dynamic raw,
+  );
+
+  @protected
   InstalledModel dco_decode_installed_model(dynamic raw);
 
   @protected
@@ -58,6 +63,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SearchHit> dco_decode_list_search_hit(dynamic raw);
 
   @protected
+  List<TranscriptSegmentRecord> dco_decode_list_transcript_segment_record(
+    dynamic raw,
+  );
+
+  @protected
   MeetingRecord dco_decode_meeting_record(dynamic raw);
 
   @protected
@@ -74,6 +84,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TranscriptEvent dco_decode_transcript_event(dynamic raw);
+
+  @protected
+  TranscriptSegmentRecord dco_decode_transcript_segment_record(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -110,6 +123,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig sse_decode_box_autoadd_mind_config(SseDeserializer deserializer);
 
   @protected
+  TranscriptSegmentRecord sse_decode_box_autoadd_transcript_segment_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   InstalledModel sse_decode_installed_model(SseDeserializer deserializer);
 
   @protected
@@ -134,6 +152,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SearchHit> sse_decode_list_search_hit(SseDeserializer deserializer);
 
   @protected
+  List<TranscriptSegmentRecord> sse_decode_list_transcript_segment_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MeetingRecord sse_decode_meeting_record(SseDeserializer deserializer);
 
   @protected
@@ -152,6 +175,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TranscriptEvent sse_decode_transcript_event(SseDeserializer deserializer);
+
+  @protected
+  TranscriptSegmentRecord sse_decode_transcript_segment_record(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -199,6 +227,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_transcript_segment_record(
+    TranscriptSegmentRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_installed_model(
     InstalledModel self,
     SseSerializer serializer,
@@ -235,6 +269,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_transcript_segment_record(
+    List<TranscriptSegmentRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_meeting_record(MeetingRecord self, SseSerializer serializer);
 
   @protected
@@ -255,6 +295,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_transcript_event(
     TranscriptEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_transcript_segment_record(
+    TranscriptSegmentRecord self,
     SseSerializer serializer,
   );
 
