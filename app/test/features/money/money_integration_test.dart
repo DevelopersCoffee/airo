@@ -1,8 +1,21 @@
+// ExpenseService/InsightsService's own conditional imports (see #1679)
+// analyzer-default to their web-safe stub types (AppDatabase/
+// LocalTransactionsRepository/LocalBudgetsRepository from *_stub.dart),
+// because the analyzer always resolves a conditional export/import to its
+// unconditioned/default branch regardless of the runtime condition. This
+// suite always runs on the native VM, where dart.library.io is genuinely
+// true and the real (non-stub) types below are what actually get
+// constructed at runtime, so the resulting argument-type mismatches on
+// `ExpenseService(...)` / `InsightsService(...)` are analyzer-only.
+// ignore_for_file: argument_type_not_assignable
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:airo_app/core/database/app_database.dart';
+// LocalTransactionsRepository/LocalBudgetsRepository (below) import
+// app_database_native.dart directly, so this suite must match rather than
+// go through the platform-conditional app_database.dart barrel.
+import 'package:airo_app/core/database/app_database_native.dart';
 import 'package:airo_app/features/money/data/repositories/local_transactions_repository.dart';
 import 'package:airo_app/features/money/data/repositories/local_budgets_repository.dart';
 import 'package:airo_app/features/money/application/services/expense_service.dart';
