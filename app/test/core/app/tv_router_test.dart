@@ -364,7 +364,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The 10-foot shell, not the older IptvTvScreen.
+      // The 10-foot shell.
       expect(
         find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
         findsOneWidget,

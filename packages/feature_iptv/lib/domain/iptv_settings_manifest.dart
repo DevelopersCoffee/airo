@@ -1,1 +1,2 @@
-export 'package:feature_iptv_core/src/iptv_settings_manifest.dart';
+export 'package:feature_iptv_core/feature_iptv_core.dart'
+    show IptvSettingsSectionId, IptvSettingsSectionDescriptor, iptvSettingsSections;

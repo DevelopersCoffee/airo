@@ -1,1 +1,2 @@
-export 'package:feature_iptv_core/src/vod_series_grouping.dart';
+export 'package:feature_iptv_core/feature_iptv_core.dart'
+    show VodSeriesGrouper, VodSeriesGroup, groupVodItemsBySeries;
