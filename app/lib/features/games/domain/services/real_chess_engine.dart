@@ -28,6 +28,16 @@ class RealChessEngine with ChessEngineAsync implements ChessEngine {
         _stockfishInstance = Stockfish();
         print('[CHESS] Stockfish instance created');
 
+        // The TV/no-engine build swaps in stockfish_stub, whose `state`
+        // reports `error` immediately since it has no native process to
+        // spawn and its stdout stream never emits. Skip straight to the
+        // fallback instead of burning the full uciok wait below on every
+        // game start.
+        if (_stockfishInstance!.state == StockfishState.error) {
+          print('[CHESS] Stockfish unavailable, skipping to fallback');
+          return;
+        }
+
         // Listen for Stockfish ready signal
         _stockfishInstance!.stdout.listen((line) {
           print('[STOCKFISH] $line');
