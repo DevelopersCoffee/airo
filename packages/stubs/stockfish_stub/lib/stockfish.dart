@@ -14,8 +14,11 @@ class Stockfish {
   /// Stub stdout - returns empty stream
   Stream<String> get stdout => const Stream.empty();
 
-  /// Stub state
-  StockfishState get state => StockfishState.ready;
+  /// Stub state. Reports `error` rather than `ready`: this build carries no
+  /// native engine, `stdout` never emits, and a caller polling for a UCI
+  /// handshake response would otherwise wait out its full timeout on every
+  /// game start before falling back (see issue #1407).
+  StockfishState get state => StockfishState.error;
 
   /// Dispose the engine
   void dispose() {

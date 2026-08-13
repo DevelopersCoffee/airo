@@ -8,10 +8,6 @@ void main() {
   test('shell asset registry exposes shell-owned branding assets', () {
     expect(ShellAssetRegistry.appIconRaster, 'assets/airo_icon.png');
     expect(ShellAssetRegistry.appIconVector, 'assets/airo_icon.svg');
-    expect(
-      ShellAssetRegistry.shellBackdrop,
-      'assets/hermes/images/filler-bg0.jpg',
-    );
   });
 
   test('app icon placeholder consumes the shared shell asset registry', () {

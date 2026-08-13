@@ -521,6 +521,13 @@ class _FixturePortability implements PortabilityPort {
   }) async* {
     final total = plan.totalBytes;
     for (var step = 1; step <= 5; step++) {
+      // A real scheduler turn between steps, not real wall-clock delay.
+      // Without it every yield lands in the same microtask flush a caller's
+      // single tester.pump() already drained, so a UI consuming this stream
+      // could never actually observe a mid-seal frame -- the same "reports
+      // real progress" principle ProjectionPort.rebuild and ModelPort.download
+      // already hold elsewhere in this file.
+      await Future<void>.delayed(Duration.zero);
       yield (written: total ~/ 5 * step, total: total);
     }
   }
