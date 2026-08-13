@@ -65,6 +65,7 @@ dependencies = [
  "airo_mind_core",
  "encoding_rs",
  "flutter_rust_bridge",
+ "libc",
  "llama-cpp-2",
 ]
 

@@ -157,6 +157,7 @@ artifacts/release/
 # Airo Mind model weights — 74 MB+, fetched by the Model Manager, never committed
 rust/airo_mind_runtime/models/*.bin
 rust/airo_mind_runtime/models/*.gguf
+rust/airo_mind_llama/models/*.gguf
 
 # `airo_mind_whisper`'s offline integration tests (tests/speech_offline.rs)
 # look for a real GGML model here and skip gracefully when it is absent — a

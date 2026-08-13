@@ -86,8 +86,18 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
 class FakeMindGenerationBridge implements MindGenerationBridge {
   List<GenerationEvent> generationEvents = const [];
   String modelIdValue = 'test-model@1';
+  GenerationStats statsValue = const GenerationStats(
+    prefillMs: 0,
+    prefillTokens: 0,
+    generationMs: 0,
+    generatedTokens: 0,
+    tokensPerSecond: 0,
+    peakRssBytes: 0,
+  );
   var ensureLoadedCalls = 0;
   var cancelCalls = 0;
+  var unloadCalls = 0;
+  String? lastGrammar;
   var _loaded = false;
 
   @override
@@ -103,11 +113,25 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   }
 
   @override
-  Stream<GenerationEvent> generate({required String transcript}) =>
-      Stream.fromIterable(generationEvents);
+  Stream<GenerationEvent> generate({
+    required String transcript,
+    String? grammar,
+  }) {
+    lastGrammar = grammar;
+    return Stream.fromIterable(generationEvents);
+  }
 
   @override
   String modelId() => modelIdValue;
+
+  @override
+  GenerationStats stats() => statsValue;
+
+  @override
+  void unload() {
+    unloadCalls++;
+    _loaded = false;
+  }
 
   @override
   void cancel() => cancelCalls++;

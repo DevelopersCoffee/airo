@@ -50,5 +50,5 @@ pub use llama::LlamaGenerationEngine;
 
 pub use airo_mind_core::{
     CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, ResourceBudget,
-    ResourceRequest, RuntimeError, Supervisor,
+    ResourceRequest, RuntimeError, RuntimeStats, Supervisor,
 };
