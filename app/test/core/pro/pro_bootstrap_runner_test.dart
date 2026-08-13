@@ -1,5 +1,4 @@
 import 'package:airo_app/core/pro/pro_bootstrap_runner.dart';
-import 'package:airo_app/core/startup/app_startup_tasks.dart';
 import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter_test/flutter_test.dart';
 
