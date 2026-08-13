@@ -128,7 +128,7 @@ final List<IptvSettingsSectionDescriptor> iptvSettingsSections = [
   ),
   // Phase 1 streaming telemetry consent (F7.5, tv-zero-copy-cast-phase1
   // Task 7). TV-only for now: only main_tv.dart bootstraps
-  // AppLogger.setAnalyticsService today, so a mobile toggle would
+  // PlatformMediaLogger.setAnalyticsService today, so a mobile toggle would
   // persist a preference with no live service to apply it to. Widen
   // visibleForShells once the phone entrypoint gets the same bootstrap.
   IptvSettingsSectionDescriptor(
