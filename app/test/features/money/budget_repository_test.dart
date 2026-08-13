@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 
-import 'package:airo_app/core/database/app_database.dart';
+// LocalBudgetsRepository (below) imports app_database_native.dart directly,
+// so this suite must match rather than go through the platform-conditional
+// app_database.dart barrel. See #1679: the analyzer resolves a conditional
+// export to its unconditioned/default branch regardless of the runtime
+// condition, so once that barrel's default is (correctly) the web-safe
+// stub, importing it here would produce a type the repository can't accept.
+import 'package:airo_app/core/database/app_database_native.dart';
 import 'package:airo_app/core/utils/result.dart';
 import 'package:airo_app/features/money/data/repositories/local_budgets_repository.dart';
 
