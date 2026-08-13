@@ -716,26 +716,6 @@ final channelsByFlavorProvider =
       return searchIndex?.channelsByFlavor(flavor) ?? const [];
     });
 
-/// Hindi music channels provider (convenience)
-final hindiMusicChannelsProvider = Provider<List<IPTVChannel>>((ref) {
-  return ref.watch(channelsByFlavorProvider(ChannelFlavor.hindiMusic));
-});
-
-/// English music channels provider (convenience)
-final englishMusicChannelsProvider = Provider<List<IPTVChannel>>((ref) {
-  return ref.watch(channelsByFlavorProvider(ChannelFlavor.englishMusic));
-});
-
-/// Hindi news channels provider (convenience)
-final hindiNewsChannelsProvider = Provider<List<IPTVChannel>>((ref) {
-  return ref.watch(channelsByFlavorProvider(ChannelFlavor.hindiNews));
-});
-
-/// English news channels provider (convenience)
-final englishNewsChannelsProvider = Provider<List<IPTVChannel>>((ref) {
-  return ref.watch(channelsByFlavorProvider(ChannelFlavor.englishNews));
-});
-
 /// Category counts provider - shows how many channels in each category
 final categoryCounts = Provider<Map<ChannelCategory, int>>((ref) {
   final searchIndex = ref.watch(channelSearchIndexProvider);
@@ -918,36 +898,6 @@ final playbackStateProvider = Provider<PlaybackState>((ref) {
     data: (s) => s.playbackState,
     loading: () => PlaybackState.idle,
     error: (_, _) => PlaybackState.error,
-  );
-});
-
-/// Buffer status provider
-final bufferStatusProvider = Provider<BufferStatus>((ref) {
-  final state = ref.watch(streamingStateProvider);
-  return state.when(
-    data: (s) => s.bufferStatus,
-    loading: () => const BufferStatus(),
-    error: (_, _) => const BufferStatus(),
-  );
-});
-
-/// Current quality provider
-final currentQualityProvider = Provider<VideoQuality>((ref) {
-  final state = ref.watch(streamingStateProvider);
-  return state.when(
-    data: (s) => s.currentQuality,
-    loading: () => VideoQuality.auto,
-    error: (_, _) => VideoQuality.auto,
-  );
-});
-
-/// Network quality provider
-final networkQualityProvider = Provider<NetworkQuality>((ref) {
-  final state = ref.watch(streamingStateProvider);
-  return state.when(
-    data: (s) => s.metrics?.networkQuality ?? NetworkQuality.good,
-    loading: () => NetworkQuality.good,
-    error: (_, _) => NetworkQuality.offline,
   );
 });
 
