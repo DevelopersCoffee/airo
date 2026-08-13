@@ -99,6 +99,21 @@ jobs:
           python3 scripts/test-check-edge-import-boundaries.py
           scripts/check-edge-import-boundaries.py
 
+      - name: Enforce package reachability (#1681)
+        run: |
+          chmod +x scripts/check-package-reachability.py
+          scripts/check-package-reachability.py
+
+      - name: Enforce private-src import ban (#1681)
+        run: |
+          chmod +x scripts/check-private-src-imports.py
+          scripts/check-private-src-imports.py
+
+      - name: Report dead providers (best-effort, non-blocking) (#1681)
+        run: |
+          chmod +x scripts/report-dead-providers.py
+          scripts/report-dead-providers.py || true
+
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
   # ============================================
