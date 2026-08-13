@@ -61,16 +61,6 @@ final groupExpensesProvider =
       return repo.watchExpenses(groupId);
     });
 
-/// Currently selected group (for navigation state)
-final selectedGroupIdProvider = StateProvider<String?>((ref) => null);
-
-/// Selected group details
-final selectedGroupProvider = Provider<AsyncValue<Group?>>((ref) {
-  final groupId = ref.watch(selectedGroupIdProvider);
-  if (groupId == null) return const AsyncValue.data(null);
-  return ref.watch(groupByIdProvider(groupId));
-});
-
 final createGroupUseCaseProvider = Provider<CreateGroupUseCase>((ref) {
   return CreateGroupUseCase(ref.watch(groupRepositoryProvider));
 });

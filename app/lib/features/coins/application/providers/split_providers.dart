@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import '../../domain/entities/shared_expense.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../domain/services/split_calculator.dart';
 import '../use_cases/add_split_use_case.dart';
@@ -80,59 +79,4 @@ class SplitPreviewParams {
     this.exactAmounts,
     this.shares,
   });
-}
-
-/// Add shared expense state notifier
-final addSharedExpenseProvider =
-    StateNotifierProvider.autoDispose<
-      AddSharedExpenseNotifier,
-      AsyncValue<SharedExpense?>
-    >((ref) => AddSharedExpenseNotifier(ref));
-
-class AddSharedExpenseNotifier
-    extends StateNotifier<AsyncValue<SharedExpense?>> {
-  final Ref _ref;
-
-  AddSharedExpenseNotifier(this._ref) : super(const AsyncValue.data(null));
-
-  Future<void> addExpense(SharedExpense expense) async {
-    state = const AsyncValue.loading();
-    try {
-      final repo = _ref.read(groupRepositoryProvider);
-      final result = await repo.addExpense(expense);
-      if (result.error != null) {
-        state = AsyncValue.error(result.error!, StackTrace.current);
-      } else {
-        state = AsyncValue.data(result.data);
-      }
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> updateExpense(SharedExpense expense) async {
-    state = const AsyncValue.loading();
-    try {
-      final repo = _ref.read(groupRepositoryProvider);
-      final result = await repo.updateExpense(expense);
-      if (result.error != null) {
-        state = AsyncValue.error(result.error!, StackTrace.current);
-      } else {
-        state = AsyncValue.data(result.data);
-      }
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> deleteExpense(String expenseId) async {
-    state = const AsyncValue.loading();
-    try {
-      final repo = _ref.read(groupRepositoryProvider);
-      await repo.deleteExpense(expenseId);
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
 }

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/repositories/budget_repository.dart';
-import '../../domain/services/budget_engine.dart';
 import '../../domain/models/safe_to_spend.dart';
 import '../../domain/models/budget_status.dart';
 import '../../data/repositories/budget_repository_impl.dart';
@@ -84,31 +83,10 @@ class WebEmptyBudgetRepository implements BudgetRepository {
   }
 }
 
-/// Budget engine provider
-final budgetEngineProvider = Provider<BudgetEngine>((ref) {
-  return BudgetEngineImpl();
-});
-
 /// Watch all active budgets
 final activeBudgetsProvider = StreamProvider<List<Budget>>((ref) {
   final repo = ref.watch(budgetRepositoryProvider);
   return repo.watchActive();
-});
-
-/// Watch a specific budget by ID
-final budgetByIdProvider = StreamProvider.family<Budget?, String>((ref, id) {
-  final repo = ref.watch(budgetRepositoryProvider);
-  return repo.watchById(id);
-});
-
-/// Budget for a specific category
-final budgetByCategoryProvider = FutureProvider.family<Budget?, String>((
-  ref,
-  categoryId,
-) async {
-  final repo = ref.watch(budgetRepositoryProvider);
-  final result = await repo.findByCategory(categoryId);
-  return result.data;
 });
 
 /// Safe to spend calculation
