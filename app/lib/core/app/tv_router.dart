@@ -175,8 +175,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
 
     // Wide layouts get the 10-foot AiroTvShell path with phone chrome
     // (app bar, drawer, cast entry) suppressed — the TvShell sidebar owns
-    // navigation. The older IptvTvScreen remains only as a reference until
-    // it is removed.
+    // navigation.
     return IPTVScreen(tenFootMode: true, deepLinkIntent: deepLinkIntent);
   }
 }

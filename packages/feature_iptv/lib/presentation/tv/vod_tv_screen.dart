@@ -9,9 +9,9 @@ import '../../application/providers/vod_providers.dart';
 import '../widgets/vod_grid.dart';
 
 /// A 10-foot VOD experience for Android TV and Fire TV: a "Continue
-/// Watching" row (when non-empty) above [VodGrid]. Mirrors
-/// [IptvTvScreen]'s dark, full-bleed layout since both screens live in the
-/// same TV shell.
+/// Watching" row (when non-empty) above [VodGrid]. Mirrors the live TV
+/// path's dark, full-bleed layout (`AiroTvShell` in `tv_ux/`) since both
+/// screens live in the same TV shell.
 class VodTvScreen extends ConsumerWidget {
   const VodTvScreen({super.key});
 
