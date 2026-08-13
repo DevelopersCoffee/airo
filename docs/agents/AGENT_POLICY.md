@@ -97,8 +97,9 @@ just an index:
   session packages) — supersedes the former generic "Media Agent" / "Mobile
   UI Agent" entries for all Airo TV work.
 - Brain / AI Agent — no packages yet; owns product-layer Brain/chat journeys
-  once built. `core_ai`, `core_ai_delegation`, `core_delegation` stay with
-  Framework Agent below (runtime/model-routing, not a product journey).
+  once built. `core_ai` stays with Framework Agent below (runtime/model-routing,
+  not a product journey). `core_ai_delegation` and `core_delegation` were
+  deleted as orphan leaves with zero consumers — #1676.
 - Coins / Finance Agent — `feature_coin`, `platform_coin_vault`, and future
   `platform_coin_*` / coin plugin packages. `packages/airomoney` is retired;
   `app/lib/features/coins` is a legacy extraction source, not the home for new
