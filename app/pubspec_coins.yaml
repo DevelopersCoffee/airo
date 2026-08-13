@@ -45,7 +45,7 @@ dev_dependencies:
 dependency_overrides:
   # The published Android plugin metadata omits its implementation class.
   screen_protector:
-    path: ../packages/third_party/screen_protector
+    path: ../packages/platform_player/third_party/screen_protector
 
 flutter:
   config:
