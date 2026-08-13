@@ -1,0 +1,305 @@
+/// This is copied from Cargokit (which is the official way to use it currently)
+/// Details: https://fzyzcjy.github.io/flutter_rust_bridge/manual/integrate/builtin
+
+import java.nio.file.Paths
+import javax.inject.Inject
+import org.apache.tools.ant.taskdefs.condition.Os
+// PATCHED for Gradle 9: `Project.exec` was removed in Gradle 9, so the build
+// task takes the injected `ExecOperations` service instead.
+import org.gradle.process.ExecOperations
+
+CargoKitPlugin.file = buildscript.sourceFile
+
+apply plugin: CargoKitPlugin
+
+// PATCHED: upstream cargokit builds exactly one library per Gradle module.
+// Airo Mind needs two -- whisper.cpp and llama.cpp each statically vendor their
+// own ggml and cannot share a linked image (#1546) -- and they belong to one
+// Flutter plugin, so splitting them across two Gradle modules would mean two
+// packages for one feature.
+//
+// The single-library form still works and is what every other cargokit
+// consumer uses. `library(manifestDir, libname)` is additive.
+class CargoKitLibrary {
+    String manifestDir; // Relative path to folder containing Cargo.toml
+    String libname; // Library name within Cargo.toml. Must be a cdylib
+    // Optional. When set, only these Flutter target platforms are built for
+    // this library; when null, whatever the build type asks for. Declared by
+    // the consumer rather than hardcoded here, so the reason lives with the
+    // package that has it.
+    List<String> platforms;
+}
+
+class CargoKitExtension {
+    String manifestDir;
+    String libname;
+
+    final List<CargoKitLibrary> libraries = []
+
+    void library(String manifestDir, String libname, List<String> platforms = null) {
+        def entry = new CargoKitLibrary()
+        entry.manifestDir = manifestDir
+        entry.libname = libname
+        entry.platforms = platforms
+        libraries.add(entry)
+    }
+
+    /// Every library to build: the explicit list when one was declared, and the
+    /// single-library properties otherwise. Never both -- declaring the list
+    /// and the properties would leave which one wins to reading order.
+    List<CargoKitLibrary> allLibraries() {
+        if (!libraries.isEmpty()) {
+            if (manifestDir != null || libname != null) {
+                throw new GradleException(
+                    "cargokit: use either library(...) entries or the " +
+                    "manifestDir/libname properties, not both.")
+            }
+            return libraries
+        }
+        def single = new CargoKitLibrary()
+        single.manifestDir = manifestDir
+        single.libname = libname
+        return [single]
+    }
+}
+
+abstract class CargoKitBuildTask extends DefaultTask {
+
+    @Input
+    String buildMode
+
+    @Input
+    String buildDir
+
+    @Input
+    String outputDir
+
+    @Input
+    String ndkVersion
+
+    @Input
+    String sdkDirectory
+
+    @Input
+    int compileSdkVersion;
+
+    @Input
+    int minSdkVersion;
+
+    @Input
+    String pluginFile
+
+    @Input
+    List<String> targetPlatforms
+
+    // PATCHED for Gradle 9: injected replacement for the removed `project.exec`.
+    @Inject
+    abstract ExecOperations getExecOperations()
+
+    // PATCHED: carried on the task rather than read back off the extension, so
+    // that one module can build several libraries -- each task knows its own.
+    @Input
+    String cargoManifestDir
+
+    @TaskAction
+    def build() {
+        if (cargoManifestDir == null) {
+            throw new GradleException("Property 'manifestDir' must be set on cargokit extension");
+        }
+
+        def executableName = Os.isFamily(Os.FAMILY_WINDOWS) ? "run_build_tool.cmd" : "run_build_tool.sh"
+        def path = Paths.get(new File(pluginFile).parent, "..", executableName);
+
+        def manifestDir = Paths.get(project.buildscript.sourceFile.parent, cargoManifestDir)
+
+        def rootProjectDir = project.rootProject.projectDir
+
+        if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
+            // PATCHED for Gradle 9: was `project.exec`.
+            execOperations.exec {
+                commandLine 'chmod', '+x', path
+            }
+        }
+
+        // PATCHED for Gradle 9: was `project.exec`.
+        execOperations.exec {
+            executable path
+            args "build-gradle"
+            environment "CARGOKIT_ROOT_PROJECT_DIR", rootProjectDir
+            environment "CARGOKIT_TOOL_TEMP_DIR", "${buildDir}/build_tool"
+            environment "CARGOKIT_MANIFEST_DIR", manifestDir
+            environment "CARGOKIT_CONFIGURATION", buildMode
+            environment "CARGOKIT_TARGET_TEMP_DIR", buildDir
+            environment "CARGOKIT_OUTPUT_DIR", outputDir
+            environment "CARGOKIT_NDK_VERSION", ndkVersion
+            environment "CARGOKIT_SDK_DIR", sdkDirectory
+            environment "CARGOKIT_COMPILE_SDK_VERSION", compileSdkVersion
+            environment "CARGOKIT_MIN_SDK_VERSION", minSdkVersion
+            environment "CARGOKIT_TARGET_PLATFORMS", targetPlatforms.join(",")
+            environment "CARGOKIT_JAVA_HOME", System.properties['java.home']
+        }
+
+        copyCxxSharedRuntime()
+    }
+
+    // PATCHED: ship the NDK's C++ runtime alongside the engines.
+    //
+    // whisper.cpp and llama.cpp are C++, and the Rust cdylibs link them against
+    // libc++_shared (see `get_cpp_link_stdlib` in whisper-rs-sys). Nothing else
+    // in this APK carries that library, so without this the app installs and
+    // launches and then fails the moment it opens the bridge:
+    //
+    //   dlopen failed: library "libc++_shared.so" not found:
+    //     needed by .../lib/arm64-v8a/libairo_mind_whisper.so
+    //
+    // It is taken from the SAME NDK cargokit just compiled with, rather than
+    // the one this Gradle module pins -- those two disagree in this repo, and
+    // pairing a C++ runtime with objects built by a different toolchain is the
+    // kind of mismatch that fails somewhere other than where it was caused.
+    private void copyCxxSharedRuntime() {
+        def hostTag = Os.isFamily(Os.FAMILY_MAC) ? "darwin-x86_64"
+            : (Os.isFamily(Os.FAMILY_WINDOWS) ? "windows-x86_64" : "linux-x86_64")
+
+        def abiForPlatform = [
+            "android-arm64": ["arm64-v8a", "aarch64-linux-android"],
+            "android-arm"  : ["armeabi-v7a", "arm-linux-androideabi"],
+            "android-x64"  : ["x86_64", "x86_64-linux-android"],
+            "android-x86"  : ["x86", "i686-linux-android"],
+        ]
+
+        targetPlatforms.each { platform ->
+            def entry = abiForPlatform[platform]
+            if (entry == null) {
+                return
+            }
+            def (abi, triple) = entry
+            def source = new File(
+                "$sdkDirectory/ndk/$ndkVersion/toolchains/llvm/prebuilt/$hostTag" +
+                "/sysroot/usr/lib/$triple/libc++_shared.so")
+            if (!source.exists()) {
+                throw new GradleException(
+                    "libc++_shared.so not found for $abi at $source. The engines " +
+                    "link it and will fail to dlopen without it.")
+            }
+            def destDir = new File("$outputDir/$abi")
+            destDir.mkdirs()
+            def dest = new File(destDir, "libc++_shared.so")
+            // Only when it changed: this runs per library, and the second copy
+            // would otherwise rewrite a file the packaging step already read.
+            if (!dest.exists() || dest.length() != source.length()) {
+                dest.bytes = source.bytes
+            }
+        }
+    }
+}
+
+class CargoKitPlugin implements Plugin<Project> {
+
+    static String file;
+
+    private Plugin findFlutterPlugin(Project rootProject) {
+        _findFlutterPlugin(rootProject.childProjects)
+    }
+
+   private Plugin _findFlutterPlugin(Map projects) {
+        for (project in projects) {
+            for (plugin in project.value.getPlugins()) {
+                if (plugin.class.name == "com.flutter.gradle.FlutterPlugin") {
+                    return plugin;
+                }
+            }
+            def plugin = _findFlutterPlugin(project.value.childProjects);
+            if (plugin != null) {
+                return plugin;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    void apply(Project project) {
+        def plugin = findFlutterPlugin(project.rootProject);
+
+        project.extensions.create("cargokit", CargoKitExtension)
+
+        if (plugin == null) {
+            print("Flutter plugin not found, CargoKit plugin will not be applied.")
+            return;
+        }
+
+        def cargoBuildDir = "${project.buildDir}/build"
+
+        // Determine if the project is an application or library
+        def isApplication = plugin.project.plugins.hasPlugin('com.android.application')
+        def variants = isApplication ? plugin.project.android.applicationVariants : plugin.project.android.libraryVariants
+
+        variants.all { variant ->
+
+            final buildType = variant.buildType.name
+
+            def cargoOutputDir = "${project.buildDir}/jniLibs/${buildType}";
+            def jniLibs = project.android.sourceSets.maybeCreate(buildType).jniLibs;
+            jniLibs.srcDir(new File(cargoOutputDir))
+
+            def platforms = com.flutter.gradle.FlutterPluginUtils.getTargetPlatforms(project).collect()
+
+            // Same thing addFlutterDependencies does in flutter.gradle
+            if (buildType == "debug") {
+                platforms.add("android-x86")
+                platforms.add("android-x64")
+            }
+
+            // The task name depends on plugin properties, which are not available
+            // at this point
+            project.getGradle().afterProject {
+                // PATCHED: one task per declared library. Each carries its own
+                // manifest directory, and the library name keeps the task names
+                // distinct.
+                project.cargokit.allLibraries().each { lib ->
+                    if (lib.libname == null) {
+                        throw new GradleException("Property 'libname' must be set on cargokit extension");
+                    }
+
+                    def taskName = "cargokitCargoBuild${lib.libname.capitalize()}${buildType.capitalize()}";
+
+                    if (project.tasks.findByName(taskName)) {
+                        return
+                    }
+
+                    if (plugin.project.android.ndkVersion == null) {
+                        throw new GradleException("Please set 'android.ndkVersion' in 'app/build.gradle'.")
+                    }
+
+                    // PATCHED: a library may narrow the ABI set. Intersected
+                    // rather than substituted, so declaring a platform the
+                    // build is not producing cannot conjure one.
+                    def libPlatforms = lib.platforms == null
+                        ? platforms
+                        : platforms.findAll { lib.platforms.contains(it) }
+
+                    def task = project.tasks.create(taskName, CargoKitBuildTask.class) {
+                        buildMode = variant.buildType.name
+                        buildDir = cargoBuildDir
+                        outputDir = cargoOutputDir
+                        ndkVersion = plugin.project.android.ndkVersion
+                        sdkDirectory = plugin.project.android.sdkDirectory
+                        minSdkVersion = plugin.project.android.defaultConfig.minSdkVersion.apiLevel as int
+                        compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8) as int
+                        targetPlatforms = libPlatforms
+                        pluginFile = CargoKitPlugin.file
+                        cargoManifestDir = lib.manifestDir
+                    }
+                    def onTask = { newTask ->
+                        if (newTask.name == "merge${buildType.capitalize()}NativeLibs") {
+                            newTask.dependsOn task
+                            // Fix gradle 7.4.2 not picking up JNI library changes
+                            newTask.outputs.upToDateWhen { false }
+                        }
+                    }
+                    project.tasks.each onTask
+                    project.tasks.whenTaskAdded onTask
+                }
+            }
+        }
+    }
+}

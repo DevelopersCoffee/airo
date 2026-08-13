@@ -13,21 +13,31 @@ import '../../domain/repositories/wallet_repository.dart';
 import '../services/audit_service.dart';
 
 // Native-only imports - these are only used when not on web
+//
+// Stub-by-default: dart.library.html is false under dart2wasm, so keying the
+// stub off html would link the real (dart:io/ffi-backed) implementation into
+// a wasm web build. Keying the REAL file off dart.library.io makes every
+// non-native target -- js web and wasm web alike -- fall back to the stub.
+//
+// Points at app_database_native.dart directly, not the app_database.dart
+// barrel: LocalTransactionsRepository/LocalBudgetsRepository (imported below)
+// already import app_database_native.dart directly, and appDatabaseProvider
+// hands its AppDatabase to both, so all three must resolve to the identical
+// declaration for the analyzer to see them as the same type.
+import '../../../../core/database/app_database_stub.dart'
+    if (dart.library.io) '../../../../core/database/app_database_native.dart';
 // ignore: unused_import
-import '../../../../core/database/app_database.dart'
-    if (dart.library.html) '../../../../core/database/app_database_stub.dart';
+import '../../data/repositories/local_budgets_repository_stub.dart'
+    if (dart.library.io) '../../data/repositories/local_budgets_repository.dart';
 // ignore: unused_import
-import '../../data/repositories/local_budgets_repository.dart'
-    if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
+import '../../data/repositories/local_transactions_repository_stub.dart'
+    if (dart.library.io) '../../data/repositories/local_transactions_repository.dart';
 // ignore: unused_import
-import '../../data/repositories/local_transactions_repository.dart'
-    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
+import '../services/expense_service_stub.dart'
+    if (dart.library.io) '../services/expense_service.dart';
 // ignore: unused_import
-import '../services/expense_service.dart'
-    if (dart.library.html) '../services/expense_service_stub.dart';
-// ignore: unused_import
-import '../services/insights_service.dart'
-    if (dart.library.html) '../services/insights_service_stub.dart';
+import '../services/insights_service_stub.dart'
+    if (dart.library.io) '../services/insights_service.dart';
 
 // ============================================================================
 // FAKE IMPLEMENTATIONS FOR DEVELOPMENT

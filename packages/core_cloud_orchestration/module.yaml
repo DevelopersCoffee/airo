@@ -9,3 +9,5 @@ allowed_dependencies:
 forbidden_dependencies:
   - app
 quality_gates: {}
+
+status: pre-wired  # unwired orchestration island (#1675) — built for Play Anywhere (milestone 10), no app flavor reaches it yet. Excluded from the #1681 reachability gate; do not delete without a Play Anywhere activation decision.

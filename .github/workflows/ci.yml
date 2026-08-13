@@ -103,6 +103,15 @@ jobs:
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
 
+      # `dart.library.html` is false under dart2wasm, so the inverted
+      # `import 'real.dart' if (dart.library.html) 'stub.dart'` shape leaks
+      # native/io code into wasm web builds instead of falling back to the
+      # web-safe stub (#1679).
+      - name: Reject unsafe dart.library.html conditional imports
+        run: |
+          chmod +x scripts/check-no-dart-library-html-imports.sh
+          scripts/check-no-dart-library-html-imports.sh
+
       # Library modules pin their own compileSdk; the app module's value does
       # not override them. Catch SDK drift before Gradle's AAR metadata check
       # fails a full-variant build (#1575).

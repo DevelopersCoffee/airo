@@ -1,0 +1,41 @@
+// Cargokit cross-compiles airo_core for each Android ABI using the NDK as
+// part of the ordinary Gradle build (#1677 — wiring the phantom native path
+// feature_mind already proved out; see that package's android/build.gradle
+// for the two-library variant this pattern is mirrored from).
+group = "com.developerscoffee.airo.core_native"
+version = "0.1.0"
+
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath("com.android.tools.build:gradle:8.7.3") }
+}
+
+rootProject.allprojects {
+    repositories { google(); mavenCentral() }
+}
+
+apply plugin: "com.android.library"
+apply from: "../cargokit/gradle/plugin.gradle"
+
+cargokit {
+    // The crate lives in the cargo workspace at <repo>/rust, not inside this
+    // package. Path is relative to this file.
+    manifestDir = "../../../rust/airo_core"
+    libname = "airo_core"
+}
+
+android {
+    namespace = "com.developerscoffee.airo.core_native"
+    // Must track gradle/libs.versions.toml airo-compile-sdk (#1575).
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+}

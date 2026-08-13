@@ -16,5 +16,10 @@ library;
 
 // Conditional export: use native SQLite by default and the web storage facade
 // on web.
-export 'app_database_native.dart'
-    if (dart.library.html) 'app_database_web.dart';
+//
+// Stub-by-default: dart.library.html is false under dart2wasm, so keying the
+// web facade off html would link the real (dart:io/ffi-backed) SQLite
+// implementation into a wasm web build. Keying the NATIVE file off
+// dart.library.io makes every non-native target -- js web and wasm web
+// alike -- fall back to the web facade.
+export 'app_database_web.dart' if (dart.library.io) 'app_database_native.dart';

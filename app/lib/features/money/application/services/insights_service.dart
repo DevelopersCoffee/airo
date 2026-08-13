@@ -1,8 +1,13 @@
 // Conditional imports for native platforms only
-import '../../data/repositories/local_transactions_repository.dart'
-    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
-import '../../data/repositories/local_budgets_repository.dart'
-    if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
+//
+// Stub-by-default: dart.library.html is false under dart2wasm, so keying the
+// stub off html would link the real (dart:io/ffi-backed) implementation into
+// a wasm web build. Keying the REAL file off dart.library.io makes every
+// non-native target -- js web and wasm web alike -- fall back to the stub.
+import '../../data/repositories/local_transactions_repository_stub.dart'
+    if (dart.library.io) '../../data/repositories/local_transactions_repository.dart';
+import '../../data/repositories/local_budgets_repository_stub.dart'
+    if (dart.library.io) '../../data/repositories/local_budgets_repository.dart';
 import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
 

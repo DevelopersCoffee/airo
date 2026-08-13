@@ -22,6 +22,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  core_native
   feature_mind
   flutter_local_notifications_windows
   jni
