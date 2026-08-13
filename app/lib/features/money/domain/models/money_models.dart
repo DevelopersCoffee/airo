@@ -35,16 +35,6 @@ class MoneyAccount extends Equatable {
     return formatter.formatCents(balanceCents);
   }
 
-  /// Get balance as formatted string with proper currency
-  ///
-  /// @Deprecated: Use [formatBalance] with a CurrencyFormatter for global locale support.
-  /// This method uses the account's currency but may not respect user's locale preferences.
-  @Deprecated('Use formatBalance(CurrencyFormatter) for global locale support')
-  String get balanceFormatted {
-    final formatter = CurrencyFormatter.fromCode(currency);
-    return formatter.formatCents(balanceCents);
-  }
-
   @override
   List<Object?> get props => [
     id,
@@ -93,15 +83,6 @@ class Transaction extends Equatable {
   /// Pass the formatter from the user's locale settings.
   String formatAmount(CurrencyFormatter formatter) {
     return formatter.formatCentsWithSign(amountCents);
-  }
-
-  /// Get amount as formatted string
-  ///
-  /// @Deprecated: Use [formatAmount] with a CurrencyFormatter for global locale support.
-  /// This method defaults to INR formatting.
-  @Deprecated('Use formatAmount(CurrencyFormatter) for global locale support')
-  String get amountFormatted {
-    return CurrencyFormatter.inr.formatCentsWithSign(amountCents);
   }
 
   @override
@@ -230,38 +211,6 @@ class Budget extends Equatable {
   /// Format remaining amount using locale-aware CurrencyFormatter
   String formatRemaining(CurrencyFormatter formatter) =>
       formatter.formatCents(remainingCents);
-
-  // ---- Deprecated getters for backward compatibility ----
-
-  /// Get limit as formatted string
-  ///
-  /// @Deprecated: Use [formatLimit] with a CurrencyFormatter for global locale support.
-  @Deprecated('Use formatLimit(CurrencyFormatter) for global locale support')
-  String get limitFormatted => CurrencyFormatter.inr.formatCents(limitCents);
-
-  /// Get effective limit as formatted string
-  ///
-  /// @Deprecated: Use [formatEffectiveLimit] with a CurrencyFormatter for global locale support.
-  @Deprecated(
-    'Use formatEffectiveLimit(CurrencyFormatter) for global locale support',
-  )
-  String get effectiveLimitFormatted =>
-      CurrencyFormatter.inr.formatCents(effectiveLimitCents);
-
-  /// Get used as formatted string
-  ///
-  /// @Deprecated: Use [formatUsed] with a CurrencyFormatter for global locale support.
-  @Deprecated('Use formatUsed(CurrencyFormatter) for global locale support')
-  String get usedFormatted => CurrencyFormatter.inr.formatCents(usedCents);
-
-  /// Get remaining as formatted string
-  ///
-  /// @Deprecated: Use [formatRemaining] with a CurrencyFormatter for global locale support.
-  @Deprecated(
-    'Use formatRemaining(CurrencyFormatter) for global locale support',
-  )
-  String get remainingFormatted =>
-      CurrencyFormatter.inr.formatCents(remainingCents);
 
   /// Create a copy with updated fields
   Budget copyWith({

@@ -73,10 +73,24 @@ class GenerationResult {
   });
 }
 
-/// Abstract LLM client interface.
+/// Abstract LLM client interface for the conversational (chat/classify/
+/// summarize) surface used by [AIRouter] and its supporting router
+/// utilities (`ModelHealthChecker`, `PromptExecutor`).
+///
+/// This is a deliberately distinct contract from [LLMClient] (declared in
+/// `llm_client.dart` in this same directory): that interface is the one
+/// implemented by the concrete provider clients (`GeminiApiClient`,
+/// `GeminiNanoClient`, `GGUFModelClient`, `OpenAICompatibleClient`) and
+/// routed by [LLMRouterImpl] via the public [LLMRouter] contract. `core_ai`
+/// historically grew two independent client abstractions that never got
+/// reconciled into one shape; unifying their method signatures is a larger,
+/// higher-risk behavioral change than this refactor covers; see
+/// https://github.com/DevelopersCoffee/airo/issues/1671 for the scoped fix
+/// (relocate both stacks under `src/llm/`, remove the naming collision, and
+/// dedupe their shared data types) that keeps both call sites working.
 ///
 /// Implementations can be swapped between on-device (Nano) and cloud (API).
-abstract interface class LLMClient {
+abstract interface class ChatLLMClient {
   /// Check if the client is available and ready.
   Future<bool> isAvailable();
 
