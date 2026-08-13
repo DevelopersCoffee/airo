@@ -1,1 +1,5 @@
-export 'package:feature_iptv_core/src/favorite_reimport_coordinator.dart';
+export 'package:feature_iptv_core/feature_iptv_core.dart'
+    show
+        FavoriteReviewCandidate,
+        FavoriteReimportResult,
+        FavoriteReimportCoordinator;

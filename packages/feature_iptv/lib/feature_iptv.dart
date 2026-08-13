@@ -60,7 +60,6 @@ export 'presentation/widgets/richer_context_prototype.dart';
 export "presentation/screens/settings/playback_settings_screen.dart";
 export "presentation/screens/vod_screen.dart";
 export "presentation/tv/iptv_guide_screen.dart";
-export "presentation/tv/iptv_tv_screen.dart";
 export "presentation/tv/settings/tv_playback_section.dart";
 export "presentation/tv/settings/tv_source_management_section.dart";
 export "presentation/tv_ux/iptv_resume_gate.dart";

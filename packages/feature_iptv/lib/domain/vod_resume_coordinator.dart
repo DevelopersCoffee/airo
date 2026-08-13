@@ -1,1 +1,1 @@
-export 'package:feature_iptv_core/src/vod_resume_coordinator.dart';
+export 'package:feature_iptv_core/feature_iptv_core.dart' show VodResumeCoordinator;
