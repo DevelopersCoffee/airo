@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
-import 'package:core_ai/core_ai.dart' hide ReceiptItem;
+import 'package:core_ai/core_ai.dart';
 
 import '../models/receipt_item.dart';
 

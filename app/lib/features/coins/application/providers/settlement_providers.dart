@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/entities/settlement.dart';
 import '../../domain/repositories/settlement_repository.dart';
 import '../../domain/services/balance_engine.dart';
-import '../../domain/services/debt_simplifier.dart';
 import '../../domain/models/balance_summary.dart';
 import '../../data/repositories/settlement_repository_impl.dart';
 import '../../data/mappers/settlement_mapper.dart';
@@ -28,11 +27,6 @@ final settlementRepositoryProvider = Provider<SettlementRepository>((ref) {
 /// Balance engine provider
 final balanceEngineProvider = Provider<BalanceEngine>((ref) {
   return BalanceEngineImpl();
-});
-
-/// Debt simplifier provider
-final debtSimplifierProvider = Provider<DebtSimplifier>((ref) {
-  return DebtSimplifierImpl();
 });
 
 /// Watch settlements for a group
@@ -66,19 +60,6 @@ final groupBalanceSummaryProvider =
         settlements: settlementsResult.data ?? [],
       );
     });
-
-/// Simplified debts for a group
-final simplifiedDebtsProvider = FutureProvider.family<BalanceSummary, String>((
-  ref,
-  groupId,
-) async {
-  final summary = await ref.watch(groupBalanceSummaryProvider(groupId).future);
-  final simplifier = ref.watch(debtSimplifierProvider);
-
-  final simplifiedDebts = simplifier.fromNetBalances(summary.netBalances);
-
-  return summary.copyWith(simplifiedDebts: simplifiedDebts);
-});
 
 /// Record settlement state notifier
 final recordSettlementProvider =

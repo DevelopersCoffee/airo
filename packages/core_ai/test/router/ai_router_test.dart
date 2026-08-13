@@ -1,5 +1,5 @@
 import 'package:core_ai/src/client/fake_llm_client.dart';
-import 'package:core_ai/src/client/llm_client.dart';
+import 'package:core_ai/src/llm/chat_llm_client.dart';
 import 'package:core_ai/src/provider/ai_provider.dart';
 import 'package:core_ai/src/router/ai_router.dart';
 import 'package:core_domain/core_domain.dart';

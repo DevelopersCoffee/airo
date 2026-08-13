@@ -174,7 +174,7 @@ class ReceiptData {
 
   factory ReceiptData.fromJson(Map<String, dynamic> json) => ReceiptData(
     items: (json['items'] as List)
-        .map((e) => ReceiptItem.fromJson(e as Map<String, dynamic>))
+        .map((e) => ParsedReceiptItem.fromJson(e as Map<String, dynamic>))
         .toList(),
     total: (json['total'] as num).toDouble(),
     vendor: json['vendor'] as String?,
@@ -183,7 +183,7 @@ class ReceiptData {
     tax: (json['tax'] as num?)?.toDouble(),
   );
 
-  final List<ReceiptItem> items;
+  final List<ParsedReceiptItem> items;
   final double total;
   final String? vendor;
   final String? date;
@@ -191,19 +191,24 @@ class ReceiptData {
   final double? tax;
 }
 
-/// Single item from a receipt.
-class ReceiptItem {
-  const ReceiptItem({
+/// Single item parsed out of an LLM's receipt-extraction response.
+///
+/// Named `Parsed...` (#1673) rather than `ReceiptItem`: the latter collides
+/// with `feature_billsplit_core`'s domain `ReceiptItem`, which forced every
+/// importer of both packages into a defensive `hide ReceiptItem`.
+class ParsedReceiptItem {
+  const ParsedReceiptItem({
     required this.name,
     required this.price,
     this.quantity = 1,
   });
 
-  factory ReceiptItem.fromJson(Map<String, dynamic> json) => ReceiptItem(
-    name: json['name'] as String,
-    price: (json['price'] as num).toDouble(),
-    quantity: json['quantity'] as int? ?? 1,
-  );
+  factory ParsedReceiptItem.fromJson(Map<String, dynamic> json) =>
+      ParsedReceiptItem(
+        name: json['name'] as String,
+        price: (json['price'] as num).toDouble(),
+        quantity: json['quantity'] as int? ?? 1,
+      );
 
   final String name;
   final double price;

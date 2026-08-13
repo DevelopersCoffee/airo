@@ -72,7 +72,7 @@ export 'src/agent_chat/domain/models/chat_models.dart';
 export 'src/agent_chat/domain/models/chat_response_metadata.dart';
 export 'src/agent_chat/domain/services/agent_skill_registry.dart';
 export 'src/agent_chat/presentation/screens/agent_skills_screen.dart';
-export 'src/agent_chat/presentation/screens/chat_screen.dart' hide ChatMessage;
+export 'src/agent_chat/presentation/screens/chat_screen.dart';
 export 'src/agent_chat/presentation/screens/device_capability_report_screen.dart';
 export 'src/agent_chat/presentation/screens/model_advisor_screen.dart';
 export 'src/agent_chat/presentation/screens/model_health_center_screen.dart';
@@ -114,8 +114,11 @@ export 'src/models/model_provider.dart'
         RequiredModel;
 // The pinned registry itself, for a shell that needs the same list a provider
 // needs — the Mind shell's model explorer reports install state per pinned
-// file (#1556) without going through a provider to get it.
-export 'src/models/pinned_models.dart' show pinnedRequiredModels;
+// file (#1556) without going through a provider to get it. Lives in the
+// model-descriptor boundary adapter (#1673) alongside the rest of the
+// bridge <-> RequiredModel/InstalledModel/OfflineModelInfo translation.
+export 'src/models/model_descriptor_adapter.dart'
+    show pinnedRequiredModels, offlineModelInfoFromRequiredModel;
 
 // Model download manager (#1457): progress in bytes, mobile-data pause,
 // storage budget — built on `ModelPort` rather than on `ModelProvider`
@@ -179,7 +182,12 @@ export 'src/capability_packs/presentation/screens/capability_packs_screen.dart';
 // than re-implementing a pip or a number strip that drifts from the rule.
 export 'src/widgets/mind_context_chip.dart';
 export 'src/widgets/mind_number_strip.dart';
-export 'src/widgets/format_bytes.dart';
+// `formatBytes` here collides with `src/models/byte_format.dart`'s function
+// of the same name (pre-existing, unrelated to #1673 — fixed only because it
+// broke `flutter analyze`'s ambiguous_export gate this issue's acceptance
+// criteria require clean). Neither name is used unqualified through this
+// barrel today; every in-package caller imports its specific file directly.
+export 'src/widgets/format_bytes.dart' hide formatBytes;
 export 'src/widgets/mind_op_row.dart';
 export 'src/widgets/mind_palette.dart';
 export 'src/widgets/mind_presence_pip.dart';

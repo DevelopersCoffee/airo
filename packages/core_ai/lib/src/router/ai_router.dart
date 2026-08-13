@@ -1,6 +1,6 @@
 import 'package:core_domain/core_domain.dart';
 
-import '../client/llm_client.dart';
+import '../llm/chat_llm_client.dart';
 import '../provider/ai_provider.dart';
 import 'fallback_chain.dart';
 import 'model_health_checker.dart';
@@ -83,9 +83,9 @@ class AIRouterConfig {
 }
 
 /// Routes AI requests to appropriate provider based on strategy.
-class AIRouter implements LLMClient {
-  final LLMClient? onDeviceClient;
-  final LLMClient? cloudClient;
+class AIRouter implements ChatLLMClient {
+  final ChatLLMClient? onDeviceClient;
+  final ChatLLMClient? cloudClient;
   final AIRouterConfig config;
 
   AIRouter({
@@ -148,7 +148,7 @@ class AIRouter implements LLMClient {
     return null;
   }
 
-  LLMClient? _clientForProvider(AIProvider? provider) {
+  ChatLLMClient? _clientForProvider(AIProvider? provider) {
     if (provider == null) {
       return null;
     }
@@ -173,7 +173,7 @@ class AIRouter implements LLMClient {
 
   Future<Result<T>> _executeWithFallback<T>(
     String prompt,
-    Future<Result<T>> Function(LLMClient client) request,
+    Future<Result<T>> Function(ChatLLMClient client) request,
   ) async {
     final primaryProvider = await _selectProvider(prompt: prompt);
     final primaryClient = _clientForProvider(primaryProvider);
@@ -202,7 +202,7 @@ class AIRouter implements LLMClient {
   }
 
   /// Get the appropriate client based on strategy and availability.
-  Future<LLMClient?> _selectClient({String? prompt}) async {
+  Future<ChatLLMClient?> _selectClient({String? prompt}) async {
     final provider = await _selectProvider(prompt: prompt);
     return _clientForProvider(provider);
   }

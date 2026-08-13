@@ -4,9 +4,8 @@ import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
+import 'models/model_descriptor_adapter.dart' as descriptors;
 import 'models/model_provider.dart';
-import 'models/pinned_models.dart';
-import 'whisper/api/setup.dart' as rust;
 
 /// Puts the bundled models on disk. `ADR-0018 §2`, the **Bundled** strategy.
 ///
@@ -32,7 +31,8 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
   static const String assetPrefix = 'packages/feature_mind/assets/models/';
 
   @override
-  Future<List<RequiredModel>> requiredModels() => pinnedRequiredModels();
+  Future<List<RequiredModel>> requiredModels() =>
+      descriptors.pinnedRequiredModels();
 
   /// The assets are already inside the app. Copying them costs no network, so
   /// `MindService` may run this acquisition without asking first.
@@ -78,9 +78,9 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
   }) async {
     final failed = <String>[];
 
-    for (final required in await rust.requiredModels()) {
+    for (final required in await descriptors.pinnedRequiredModels()) {
       final target = File(p.join(modelsDir.path, required.fileName));
-      final expected = required.sizeBytes.toInt();
+      final expected = required.sizeBytes;
       if (target.existsSync() && target.lengthSync() == expected) continue;
 
       try {
@@ -164,15 +164,6 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
   /// Off the launch path deliberately — see `models::resolve`, which documents
   /// the trade.
   @override
-  Future<List<InstalledModel>> verify(Directory modelsDir) async => [
-    for (final status in await rust.verifyInstalledModels(
-      modelsDir: modelsDir.path,
-    ))
-      InstalledModel(
-        fileName: status.fileName,
-        present: status.present,
-        verified: status.verified,
-        detail: status.detail,
-      ),
-  ];
+  Future<List<InstalledModel>> verify(Directory modelsDir) =>
+      descriptors.verifyInstalledModels(modelsDir: modelsDir.path);
 }

@@ -1,19 +1,19 @@
 import 'package:core_domain/core_domain.dart';
-import 'llm_client.dart';
+import '../llm/chat_llm_client.dart';
 import 'safety_guardrails.dart';
 
 /// LLM client wrapper that applies safety guardrails to inputs and outputs.
 ///
-/// Wraps any LLMClient and filters both prompts and responses through
+/// Wraps any ChatLLMClient and filters both prompts and responses through
 /// safety rules before processing.
-class SafetyFilteredClient implements LLMClient {
-  final LLMClient _delegate;
+class SafetyFilteredClient implements ChatLLMClient {
+  final ChatLLMClient _delegate;
   final SafetyGuardrails _guardrails;
 
   SafetyFilteredClient({required this._delegate, required this._guardrails});
 
   /// Create with default safety guardrails.
-  factory SafetyFilteredClient.withDefaults(LLMClient delegate) {
+  factory SafetyFilteredClient.withDefaults(ChatLLMClient delegate) {
     return SafetyFilteredClient(
       delegate: delegate,
       guardrails: SafetyGuardrails.withDefaults(),

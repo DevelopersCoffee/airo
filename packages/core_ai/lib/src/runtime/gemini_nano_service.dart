@@ -1,32 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Device information model
-class DeviceInfo {
-  final String manufacturer;
-  final String model;
-  final String androidVersion;
-  final bool isPixel9Series;
-  final bool isAiCoreAvailable;
-  final String compatibilityStatus;
-
-  DeviceInfo({
-    required this.manufacturer,
-    required this.model,
-    required this.androidVersion,
-    required this.isPixel9Series,
-    required this.isAiCoreAvailable,
-    required this.compatibilityStatus,
-  });
-}
-
-/// Generation result model
-class GenerationResult {
-  final String content;
-  final List<String> chunks;
-
-  GenerationResult({required this.content, this.chunks = const []});
-}
+import '../device/device_capability_service.dart' show DeviceInfo;
 
 /// Wrapper service for Google's AI Edge SDK (Gemini Nano)
 /// Provides on-device AI inference for Pixel 9 devices
