@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:core_analytics/core_analytics.dart';
 import 'package:flutter/foundation.dart';
 
-class AppLogger {
+class PlatformMediaLogger {
   static AiroAnalyticsService _analyticsService =
       const AiroNoOpAnalyticsService();
 
