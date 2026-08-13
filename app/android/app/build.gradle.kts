@@ -440,6 +440,16 @@ tasks.withType<JavaCompile>().configureEach {
         // Removal criteria: delete this rewrite only after the Android receipt
         // parser integration test and a startup/preferences smoke test pass with
         // the unmodified Flutter GeneratedPluginRegistrant.
+        //
+        // Investigated 2026-08-13 (issue #257): shared_preferences_android 2.4.27
+        // (pinned via pubspec.lock) has no Kotlin/Java constructor mismatch --
+        // SharedPreferencesPlugin's no-arg constructor is plain Java-callable, and
+        // LegacySharedPreferencesPlugin was itself converted to Kotlin in 2.4.27.
+        // There is no compiler-level bug left to fix by bumping/pinning the
+        // dependency; this is purely a behavior-parity guard (DataStore-backed
+        // reads/writes vs. the legacy SharedPreferences file) that only an
+        // emulator/device run can retire. No Android SDK/emulator was available on
+        // this host to perform that validation, so the shim stays.
         val registrant = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
         if (!registrant.exists()) return@doFirst
 

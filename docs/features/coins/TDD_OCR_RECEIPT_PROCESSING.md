@@ -79,6 +79,42 @@ existing preference reads and writes. Remove it only after the Android receipt
 parser integration test and a startup/preferences smoke test pass with the
 unmodified Flutter `GeneratedPluginRegistrant`.
 
+**Investigation (2026-08-13, issue #257):** checked whether a
+`shared_preferences_android` version pin/upgrade removes the need for the
+shim. The pinned version (2.4.27, per `pubspec.lock`) shows no Kotlin/Java
+build incompatibility — `SharedPreferencesPlugin`'s constructor is a plain
+no-arg Java-callable constructor, and `LegacySharedPreferencesPlugin` was
+itself migrated to Kotlin in the same 2.4.27 release. There is no dependency
+version to bump that fixes a compile error, because there isn't one; the
+shim exists solely to freeze behavior during the DataStore migration until
+emulator/device coverage proves parity. That validation still requires an
+Android SDK + emulator, which was not available in this session — the
+removal criteria above remain the tracking mechanism.
+
+### 1.6 CI Coverage Decision (issue #257)
+
+Unit-level receipt parser tests are already exercised in CI with no extra
+wiring needed:
+
+- `test/features/bill_split/receipt_pdf_pipeline_test.dart`
+- `test/features/bill_split/receipt_invoice_layout_parser_test.dart`
+- `test/features/bill_split/receipt_parser_fallback_hook_test.dart`
+- `test/features/coins/coins_split_workflow_test.dart`
+
+The `test-app` job in `.github/workflows/ci.yml` runs `flutter test
+--coverage --reporter=compact` from `app/`, which picks up the whole
+`app/test/` tree by default — these four files run on every push and every
+PR targeting `main`/`v2`.
+
+The Android device/emulator integration test
+(`integration_test/receipt_on_device_parser_test.dart`, driven via `flutter
+drive`) stays manual/gated. No workflow in this repo currently provisions an
+Android emulator (`grep -rn integration_test .github/workflows/` returns no
+hits), and adding one is a real cost/maintenance decision (emulator boot
+time, KVM/HAXM availability on GitHub-hosted runners, flakiness) that is out
+of scope for this hardening pass. Run it manually per the commands in
+section 1.4 before a release that touches the receipt OCR pipeline.
+
 ---
 
 ## 2. Architecture
