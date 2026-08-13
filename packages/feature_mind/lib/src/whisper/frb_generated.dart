@@ -65,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 77687079;
+  int get rustContentHash => 191481972;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +79,10 @@ abstract class RustLibApi extends BaseApi {
   void crateApiMeetingsCancelProcessing();
 
   Future<MeetingRecord?> crateApiMeetingsGetMeeting({required String id});
+
+  Future<TranscriptDocumentRecord?> crateApiMeetingsGetTranscript({
+    required String meetingId,
+  });
 
   Future<void> crateApiMeetingsInitialize({required MindConfig config});
 
@@ -94,11 +98,15 @@ abstract class RustLibApi extends BaseApi {
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegmentRecord> segments,
+    required String audioPath,
   });
 
   Future<List<SearchHit>> crateApiMeetingsSearchMeetings({
     required String query,
   });
+
+  Future<SpeechLanguage> crateApiMeetingsSpeechLanguageDefault();
 
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
@@ -168,6 +176,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_meeting", argNames: ["id"]);
 
   @override
+  Future<TranscriptDocumentRecord?> crateApiMeetingsGetTranscript({
+    required String meetingId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(meetingId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_opt_box_autoadd_transcript_document_record,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMeetingsGetTranscriptConstMeta,
+        argValues: [meetingId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsGetTranscriptConstMeta =>
+      const TaskConstMeta(debugName: "get_transcript", argNames: ["meetingId"]);
+
+  @override
   Future<void> crateApiMeetingsInitialize({required MindConfig config}) {
     return handler.executeNormal(
       NormalTask(
@@ -177,7 +216,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -201,7 +240,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -226,7 +265,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -253,7 +292,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -278,6 +317,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegmentRecord> segments,
+    required String audioPath,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -288,10 +329,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(transcript, serializer);
           sse_encode_String(minutes, serializer);
           sse_encode_String(model, serializer);
+          sse_encode_list_transcript_segment_record(segments, serializer);
+          sse_encode_String(audioPath, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -300,7 +343,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiMeetingsSaveMeetingConstMeta,
-        argValues: [title, recordedAtMs, transcript, minutes, model],
+        argValues: [
+          title,
+          recordedAtMs,
+          transcript,
+          minutes,
+          model,
+          segments,
+          audioPath,
+        ],
         apiImpl: this,
       ),
     );
@@ -309,7 +360,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMeetingsSaveMeetingConstMeta =>
       const TaskConstMeta(
         debugName: "save_meeting",
-        argNames: ["title", "recordedAtMs", "transcript", "minutes", "model"],
+        argNames: [
+          "title",
+          "recordedAtMs",
+          "transcript",
+          "minutes",
+          "model",
+          "segments",
+          "audioPath",
+        ],
       );
 
   @override
@@ -324,7 +383,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -343,6 +402,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "search_meetings", argNames: ["query"]);
 
   @override
+  Future<SpeechLanguage> crateApiMeetingsSpeechLanguageDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_speech_language,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSpeechLanguageDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSpeechLanguageDefaultConstMeta =>
+      const TaskConstMeta(debugName: "speech_language_default", argNames: []);
+
+  @override
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
   }) {
@@ -357,7 +443,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 9,
+              funcId: 11,
               port: port_,
             );
           },
@@ -392,7 +478,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -452,11 +538,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TranscriptDocumentRecord dco_decode_box_autoadd_transcript_document_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_transcript_document_record(raw);
+  }
+
+  @protected
   TranscriptSegmentRecord dco_decode_box_autoadd_transcript_segment_record(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_transcript_segment_record(raw);
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -533,12 +633,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MindConfig dco_decode_mind_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return MindConfig(
       modelsDir: dco_decode_String(arr[0]),
       storePath: dco_decode_String(arr[1]),
       memoryBudgetMb: dco_decode_u_32(arr[2]),
+      speechLanguage: dco_decode_speech_language(arr[3]),
     );
   }
 
@@ -546,6 +647,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MeetingRecord? dco_decode_opt_box_autoadd_meeting_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_meeting_record(raw);
+  }
+
+  @protected
+  TranscriptDocumentRecord?
+  dco_decode_opt_box_autoadd_transcript_document_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_transcript_document_record(raw);
   }
 
   @protected
@@ -572,6 +682,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       title: dco_decode_String(arr[1]),
       recordedAt: dco_decode_u_64(arr[2]),
       snippet: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  SpeechLanguage dco_decode_speech_language(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SpeechLanguage.values[raw as int];
+  }
+
+  @protected
+  TranscriptDocumentRecord dco_decode_transcript_document_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return TranscriptDocumentRecord(
+      meetingId: dco_decode_String(arr[0]),
+      audioPath: dco_decode_String(arr[1]),
+      modelVersion: dco_decode_String(arr[2]),
+      segments: dco_decode_list_transcript_segment_record(arr[3]),
     );
   }
 
@@ -676,11 +806,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TranscriptDocumentRecord sse_decode_box_autoadd_transcript_document_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_transcript_document_record(deserializer));
+  }
+
+  @protected
   TranscriptSegmentRecord sse_decode_box_autoadd_transcript_segment_record(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_transcript_segment_record(deserializer));
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -798,10 +942,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_modelsDir = sse_decode_String(deserializer);
     var var_storePath = sse_decode_String(deserializer);
     var var_memoryBudgetMb = sse_decode_u_32(deserializer);
+    var var_speechLanguage = sse_decode_speech_language(deserializer);
     return MindConfig(
       modelsDir: var_modelsDir,
       storePath: var_storePath,
       memoryBudgetMb: var_memoryBudgetMb,
+      speechLanguage: var_speechLanguage,
     );
   }
 
@@ -813,6 +959,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_meeting_record(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  TranscriptDocumentRecord?
+  sse_decode_opt_box_autoadd_transcript_document_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_transcript_document_record(deserializer));
     } else {
       return null;
     }
@@ -843,6 +1003,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       title: var_title,
       recordedAt: var_recordedAt,
       snippet: var_snippet,
+    );
+  }
+
+  @protected
+  SpeechLanguage sse_decode_speech_language(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SpeechLanguage.values[inner];
+  }
+
+  @protected
+  TranscriptDocumentRecord sse_decode_transcript_document_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_meetingId = sse_decode_String(deserializer);
+    var var_audioPath = sse_decode_String(deserializer);
+    var var_modelVersion = sse_decode_String(deserializer);
+    var var_segments = sse_decode_list_transcript_segment_record(deserializer);
+    return TranscriptDocumentRecord(
+      meetingId: var_meetingId,
+      audioPath: var_audioPath,
+      modelVersion: var_modelVersion,
+      segments: var_segments,
     );
   }
 
@@ -914,12 +1098,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -976,12 +1154,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_transcript_document_record(
+    TranscriptDocumentRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_transcript_document_record(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_transcript_segment_record(
     TranscriptSegmentRecord self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_transcript_segment_record(self, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -1083,6 +1276,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.modelsDir, serializer);
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
+    sse_encode_speech_language(self.speechLanguage, serializer);
   }
 
   @protected
@@ -1095,6 +1289,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_meeting_record(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_transcript_document_record(
+    TranscriptDocumentRecord? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_transcript_document_record(self, serializer);
     }
   }
 
@@ -1113,6 +1320,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.title, serializer);
     sse_encode_u_64(self.recordedAt, serializer);
     sse_encode_String(self.snippet, serializer);
+  }
+
+  @protected
+  void sse_encode_speech_language(
+    SpeechLanguage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_transcript_document_record(
+    TranscriptDocumentRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.meetingId, serializer);
+    sse_encode_String(self.audioPath, serializer);
+    sse_encode_String(self.modelVersion, serializer);
+    sse_encode_list_transcript_segment_record(self.segments, serializer);
   }
 
   @protected
@@ -1170,11 +1398,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 }

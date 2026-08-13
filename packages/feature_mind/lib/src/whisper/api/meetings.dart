@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `lock`
+// These functions are ignored because they are not marked as `pub`: `lock`, `transcript_segment_record`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `eq`, `fmt`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -33,7 +33,8 @@ bool isReady() => RustLib.instance.api.crateApiMeetingsIsReady();
 Stream<TranscriptEvent> transcribeRecording({required String wavPath}) =>
     RustLib.instance.api.crateApiMeetingsTranscribeRecording(wavPath: wavPath);
 
-/// Makes a meeting durable and searchable. Returns its id.
+/// Makes a meeting durable and searchable, and persists its structured
+/// transcript document. Returns the meeting's id.
 ///
 /// Separate from transcription because the minutes come from the other library.
 /// The ordering below is a contract, not an implementation detail: an index
@@ -45,19 +46,35 @@ Stream<TranscriptEvent> transcribeRecording({required String wavPath}) =>
 /// (`ADR-0018 §5`), supplied by the generation library. An LLM is not
 /// deterministic across versions, so what produced a summary is stored, not
 /// inferred later.
+///
+/// `segments` and `audio_path` are `#1629` Gap D: written to a per-meeting
+/// `transcript.json` (`transcript_store`) after the flat `Meeting` record is
+/// durable, so the ASR step is reproducible — which model produced these
+/// segments, from which recording — independent of the append-only log's flat
+/// string.
 Future<String> saveMeeting({
   required String title,
   required BigInt recordedAtMs,
   required String transcript,
   required String minutes,
   required String model,
+  required List<TranscriptSegmentRecord> segments,
+  required String audioPath,
 }) => RustLib.instance.api.crateApiMeetingsSaveMeeting(
   title: title,
   recordedAtMs: recordedAtMs,
   transcript: transcript,
   minutes: minutes,
   model: model,
+  segments: segments,
+  audioPath: audioPath,
 );
+
+/// Reopens a meeting's structured transcript document — the segments, model
+/// version and audio reference `save_meeting` persisted. `Ok(None)` for a
+/// meeting saved before this feature shipped, or one with no matching id.
+Future<TranscriptDocumentRecord?> getTranscript({required String meetingId}) =>
+    RustLib.instance.api.crateApiMeetingsGetTranscript(meetingId: meetingId);
 
 /// Stops the in-flight transcription at the next segment.
 ///
@@ -135,15 +152,23 @@ class MindConfig {
   /// the model is told so before anything allocates.
   final int memoryBudgetMb;
 
+  /// `#1629`. Defaults to `EnglishOnly` on the Dart side, so every existing
+  /// caller keeps today's behaviour unchanged.
+  final SpeechLanguage speechLanguage;
+
   const MindConfig({
     required this.modelsDir,
     required this.storePath,
     required this.memoryBudgetMb,
+    required this.speechLanguage,
   });
 
   @override
   int get hashCode =>
-      modelsDir.hashCode ^ storePath.hashCode ^ memoryBudgetMb.hashCode;
+      modelsDir.hashCode ^
+      storePath.hashCode ^
+      memoryBudgetMb.hashCode ^
+      speechLanguage.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -152,7 +177,8 @@ class MindConfig {
           runtimeType == other.runtimeType &&
           modelsDir == other.modelsDir &&
           storePath == other.storePath &&
-          memoryBudgetMb == other.memoryBudgetMb;
+          memoryBudgetMb == other.memoryBudgetMb &&
+          speechLanguage == other.speechLanguage;
 }
 
 /// A search result, with the line that matched.
@@ -185,6 +211,61 @@ class SearchHit {
           title == other.title &&
           recordedAt == other.recordedAt &&
           snippet == other.snippet;
+}
+
+/// Which speech model to resolve. Mirrors `airo_mind_core::models::
+/// ModelLanguage` rather than re-exporting it: that type lives below the
+/// Model Manager boundary (`ADR-0018 §4`), and the wire contract is allowed to
+/// diverge from the storage/resolution type the same way `MeetingRecord`
+/// already diverges from `Meeting`.
+///
+/// `#1629`: Hindi+English code-switching needs the multilingual weights: the
+/// bundled `.en` model is architecturally incapable of any language but
+/// English. Choosing `Multilingual` here only resolves a different registry
+/// row — it does not download anything by itself, and `initialize` reports
+/// `NotInstalled` naming `ggml-tiny.bin` the same way it would for any other
+/// unresolved model. Wiring an install/preference flow for this is #1664's
+/// job; this is the mechanism it selects through.
+enum SpeechLanguage {
+  englishOnly,
+  multilingual;
+
+  static Future<SpeechLanguage> default_() =>
+      RustLib.instance.api.crateApiMeetingsSpeechLanguageDefault();
+}
+
+/// A meeting's transcript, in the reproducible shape `#1629` Gap D asks for:
+/// the segments that produced the flat transcript string, which speech model
+/// produced them, and which audio file they came from.
+class TranscriptDocumentRecord {
+  final String meetingId;
+  final String audioPath;
+  final String modelVersion;
+  final List<TranscriptSegmentRecord> segments;
+
+  const TranscriptDocumentRecord({
+    required this.meetingId,
+    required this.audioPath,
+    required this.modelVersion,
+    required this.segments,
+  });
+
+  @override
+  int get hashCode =>
+      meetingId.hashCode ^
+      audioPath.hashCode ^
+      modelVersion.hashCode ^
+      segments.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptDocumentRecord &&
+          runtimeType == other.runtimeType &&
+          meetingId == other.meetingId &&
+          audioPath == other.audioPath &&
+          modelVersion == other.modelVersion &&
+          segments == other.segments;
 }
 
 @freezed

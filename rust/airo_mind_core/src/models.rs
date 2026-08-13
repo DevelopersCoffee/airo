@@ -50,6 +50,29 @@ pub enum ModelQuality {
     High,
 }
 
+/// Which speech a model can transcribe. `#1629`: Hindi+English code-switching
+/// is a stated acceptance criterion, and whisper's `.en` weights are
+/// architecturally incapable of it — not a quality gap, a hard `NoModelForTask`
+/// for any language other than English. This is a dimension of the
+/// requirement, not a quality tier: a multilingual model is not "better", it
+/// serves a request an English-only model cannot serve at all.
+///
+/// Defaults to `EnglishOnly` so every existing caller (and the one bundled
+/// model most devices will ever install) keeps today's behaviour without
+/// writing `language: ModelLanguage::EnglishOnly` at every call site by hand —
+/// they still do, explicitly, because `ModelRequirement` has no `Default` impl
+/// of its own; this is what that explicit value is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ModelLanguage {
+    /// Whisper's `.en` weights. Smaller, faster, English transcription only.
+    #[default]
+    EnglishOnly,
+    /// Whisper's multilingual weights (no `.en` suffix) — required for
+    /// Hindi+English code-switching. Selecting this is issue #1664's job; this
+    /// enum only makes the choice expressible and resolvable.
+    Multilingual,
+}
+
 /// `ADR-0018 §2`. Present in full because the three are **not** interchangeable
 /// and their verification must not be conflated.
 #[allow(dead_code)]
@@ -69,6 +92,11 @@ pub struct ModelRequirement {
     pub task: ModelTask,
     pub memory_budget_mb: u32,
     pub minimum_quality: ModelQuality,
+    /// Only meaningful for `ModelTask::Speech`; a `Generation` requirement
+    /// carries it because the field lives on the shared type, not because
+    /// generation cares. `ModelLanguage::default()` (`EnglishOnly`) for every
+    /// caller that has not asked otherwise.
+    pub language: ModelLanguage,
 }
 
 /// Why no model could be resolved. Every variant names something actionable —
@@ -135,11 +163,22 @@ struct Bundled {
     version: &'static str,
     task: ModelTask,
     quality: ModelQuality,
+    /// `ModelLanguage::EnglishOnly` for every non-speech row too — the field
+    /// is only consulted when `task == ModelTask::Speech`, but every entry
+    /// states it rather than leaving it implicit.
+    language: ModelLanguage,
     file_name: &'static str,
     /// Admission cost, not file size. What the Supervisor charges the budget.
     memory_mb: u32,
     size_bytes: u64,
     sha256: &'static str,
+    /// Whether `required_files()` — the first-run "must install this" list —
+    /// includes this row. `false` for a model that is only ever installed
+    /// because a caller explicitly asked for it (`#1629`: shipping a second,
+    /// larger speech model to every device by default would double the
+    /// install size of the common English-only case for a capability most
+    /// installs will never use).
+    required_by_default: bool,
 }
 
 /// Everything Milestone 2 ships.
@@ -153,20 +192,43 @@ const REGISTRY: &[Bundled] = &[
         version: "1",
         task: ModelTask::Speech,
         quality: ModelQuality::Draft,
+        language: ModelLanguage::EnglishOnly,
         file_name: "ggml-tiny.en.bin",
         memory_mb: 512,
         size_bytes: 77_704_715,
         sha256: "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f",
+        required_by_default: true,
+    },
+    // `#1629`: Hindi+English code-switching needs a multilingual model — the
+    // `.en` weights above are architecturally incapable of it, not just lower
+    // quality at it. Same quality tier and memory class as the English-only
+    // row on purpose: this is the same model family's multilingual weights,
+    // not an upgrade. `required_by_default: false` — installed only when a
+    // caller resolves with `ModelLanguage::Multilingual` (issue #1664 is
+    // where a user gets to ask for that), not pushed onto every device.
+    Bundled {
+        logical_id: "airo.speech.multilingual",
+        version: "1",
+        task: ModelTask::Speech,
+        quality: ModelQuality::Draft,
+        language: ModelLanguage::Multilingual,
+        file_name: "ggml-tiny.bin",
+        memory_mb: 512,
+        size_bytes: 77_691_713,
+        sha256: "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
+        required_by_default: false,
     },
     Bundled {
         logical_id: "airo.generation.compact",
         version: "1",
         task: ModelTask::Generation,
         quality: ModelQuality::Draft,
+        language: ModelLanguage::EnglishOnly,
         file_name: "qwen2.5-0.5b-instruct-q4_k_m.gguf",
         memory_mb: 1024,
         size_bytes: 491_400_032,
         sha256: "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+        required_by_default: true,
     },
 ];
 
@@ -190,6 +252,15 @@ pub fn resolve(
 
     for entry in REGISTRY {
         if entry.task != requirement.task || entry.quality < requirement.minimum_quality {
+            continue;
+        }
+        // Only a `Speech` requirement's language is meaningful (see the field
+        // doc on `ModelRequirement::language`); every non-speech row is tagged
+        // `EnglishOnly` and every non-speech requirement defaults to it too, so
+        // this comparison is a no-op for `Generation` and an exact match is
+        // still required for `Speech` — a `.en` model must never resolve for a
+        // caller that explicitly asked for `Multilingual`, and vice versa.
+        if entry.task == ModelTask::Speech && entry.language != requirement.language {
             continue;
         }
         if entry.memory_mb > requirement.memory_budget_mb {
@@ -258,12 +329,31 @@ pub fn resolve(
     })
 }
 
-/// What the app must have on disk. Named by **file**, because installing is the
-/// one place a file name is legitimate — everything above the Manager names a
-/// logical model (`ADR-0018 §4`).
+/// What the app must have on disk before first use. Named by **file**, because
+/// installing is the one place a file name is legitimate — everything above
+/// the Manager names a logical model (`ADR-0018 §4`).
+///
+/// Only `required_by_default` rows — a model that resolves solely because a
+/// caller asked for a non-default dimension (`#1629`: `ModelLanguage::
+/// Multilingual`) is not something every install should pay to download. See
+/// `optional_files` for the rest of the catalog.
 pub fn required_files() -> Vec<(String, u64, String)> {
     REGISTRY
         .iter()
+        .filter(|e| e.required_by_default)
+        .map(|e| (e.file_name.to_string(), e.size_bytes, e.sha256.to_string()))
+        .collect()
+}
+
+/// Everything in the registry that is *not* installed by default — today,
+/// just the multilingual speech model. Named files, same reasoning as
+/// `required_files`: a caller offering "download Hindi+English support" needs
+/// the file name and pinned size/digest to do it, and the Manager is where
+/// that pin lives.
+pub fn optional_files() -> Vec<(String, u64, String)> {
+    REGISTRY
+        .iter()
+        .filter(|e| !e.required_by_default)
         .map(|e| (e.file_name.to_string(), e.size_bytes, e.sha256.to_string()))
         .collect()
 }
@@ -288,6 +378,14 @@ mod tests {
             task: ModelTask::Speech,
             memory_budget_mb: budget,
             minimum_quality: ModelQuality::Draft,
+            language: ModelLanguage::EnglishOnly,
+        }
+    }
+
+    fn speech_language(budget: u32, language: ModelLanguage) -> ModelRequirement {
+        ModelRequirement {
+            language,
+            ..speech(budget)
         }
     }
 
@@ -347,6 +445,7 @@ mod tests {
                 task: ModelTask::Speech,
                 memory_budget_mb: 4096,
                 minimum_quality: ModelQuality::High,
+                language: ModelLanguage::EnglishOnly,
             },
             &d,
             &[],
@@ -441,9 +540,93 @@ mod tests {
     }
 
     #[test]
-    fn required_files_lists_everything_the_app_must_install() {
+    fn required_files_lists_only_what_every_install_needs_by_default() {
         let files = required_files();
-        assert_eq!(files.len(), REGISTRY.len());
         assert!(files.iter().any(|(n, _, _)| n == "ggml-tiny.en.bin"));
+        assert!(files
+            .iter()
+            .any(|(n, _, _)| n == "qwen2.5-0.5b-instruct-q4_k_m.gguf"));
+        // `#1629`: the multilingual model is selectable, not force-installed —
+        // a device that only ever needs English pays for one speech model, not
+        // two.
+        assert!(!files.iter().any(|(n, _, _)| n == "ggml-tiny.bin"));
+    }
+
+    #[test]
+    fn optional_files_holds_the_multilingual_model_and_nothing_required() {
+        let files = optional_files();
+        assert!(files.iter().any(|(n, _, _)| n == "ggml-tiny.bin"));
+        let required = required_files();
+        assert!(
+            files
+                .iter()
+                .all(|(n, _, _)| !required.iter().any(|(r, _, _)| r == n)),
+            "a file must not be both required and optional"
+        );
+    }
+
+    /// `#1629`: Hindi+English code-switching cannot work with the English-only
+    /// bundled model. A caller that asks for `Multilingual` must resolve to
+    /// the multilingual row, not the `.en` one — this is the mechanism issue
+    /// #1664's language control sits on top of.
+    #[test]
+    fn a_multilingual_requirement_resolves_the_multilingual_model_not_the_english_only_one() {
+        let entry = REGISTRY
+            .iter()
+            .find(|e| e.language == ModelLanguage::Multilingual)
+            .expect("a multilingual speech row must exist in the registry");
+        let d = dir("multilingual");
+        install(&d, entry, entry.size_bytes);
+
+        let resolved = resolve(
+            &speech_language(4096, ModelLanguage::Multilingual),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.multilingual");
+        assert!(resolved.path.ends_with("ggml-tiny.bin"));
+        assert!(!resolved.path.ends_with("ggml-tiny.en.bin"));
+    }
+
+    /// The default (`EnglishOnly`) requirement must keep resolving the `.en`
+    /// model even once a multilingual row exists in the registry and is
+    /// installed alongside it — adding a language dimension must not change
+    /// which model an unmodified caller gets.
+    #[test]
+    fn an_english_only_requirement_ignores_an_installed_multilingual_model() {
+        let d = dir("multilingual-present");
+        install(&d, &REGISTRY[0], REGISTRY[0].size_bytes);
+        let multilingual = REGISTRY
+            .iter()
+            .find(|e| e.language == ModelLanguage::Multilingual)
+            .unwrap();
+        install(&d, multilingual, multilingual.size_bytes);
+
+        let resolved = resolve(&speech(4096), &d, &[], false).unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.compact");
+    }
+
+    /// Asking for a language nothing installed serves reports `NotInstalled`
+    /// for the multilingual file, not a silent English-only fallback — a
+    /// fallback here would make the language request a no-op.
+    #[test]
+    fn a_multilingual_requirement_with_nothing_installed_names_the_multilingual_file() {
+        let d = dir("multilingual-missing");
+        let err = resolve(
+            &speech_language(4096, ModelLanguage::Multilingual),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ModelUnavailable::NotInstalled {
+                logical_id: "airo.speech.multilingual".into(),
+                file_name: "ggml-tiny.bin".into(),
+            }
+        );
     }
 }

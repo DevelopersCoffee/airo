@@ -13,6 +13,14 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   var cancelCalls = 0;
   String? savedModel;
 
+  /// What the last `save` call carried — `#1629` Gap D: lets a test assert
+  /// the segments and audio path that reached `process()` are exactly what
+  /// gets threaded to the bridge, without a real Rust store.
+  List<TranscriptSegment>? savedSegments;
+  String? savedWavPath;
+  rust.SpeechLanguage? initializedSpeechLanguage;
+  rust.TranscriptDocumentRecord? transcriptDocumentToReturn;
+
   /// Set to make [loadLibrary] throw, simulating a platform with no native
   /// library (`MindUnavailable.bridgeMissing`).
   Object? loadLibraryError;
@@ -30,7 +38,10 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     required String modelsDir,
     required String storePath,
     required int memoryBudgetMb,
-  }) async {}
+    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
+  }) async {
+    initializedSpeechLanguage = speechLanguage;
+  }
 
   @override
   Stream<TranscriptEvent> transcribe({required String wavPath}) =>
@@ -43,11 +54,19 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegment> segments,
+    required String wavPath,
   }) async {
     if (saveError != null) throw saveError!;
     savedModel = model;
+    savedSegments = segments;
+    savedWavPath = wavPath;
     return 'meeting-1';
   }
+
+  @override
+  Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId) async =>
+      transcriptDocumentToReturn;
 
   @override
   void cancel() => cancelCalls++;
