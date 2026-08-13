@@ -70,8 +70,16 @@ flutter:
     platforms:
       android:
         ffiPlugin: true
-      ios:
-        ffiPlugin: true
+      # iOS is deliberately NOT declared here. The podspec
+      # (ios/feature_mind.podspec) has never built -- whisper.cpp and
+      # llama.cpp each statically vendor their own copy of ggml under the
+      # same symbol names, so the app link fails with 592 duplicate symbols
+      # (measured, not predicted). There is no iOS CI to catch a regression
+      # here, so leaving `ios:` declared would let `flutter build ios` claim
+      # support it cannot deliver, and fail deep in the Xcode link stage
+      # instead of cleanly at plugin resolution. Restore once #1546 phase 4
+      # (two dynamic frameworks + a non-static-linking library_loader.dart
+      # path) lands.
       macos:
         ffiPlugin: true
       linux:

@@ -180,6 +180,21 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # This workflow only ever builds the `tv` profile (pubspec_tv.yaml),
+      # which does NOT depend on feature_mind today -- so cargokit isn't
+      # actually invoked here right now. Installed anyway, matching
+      # airo-mobile-tablet-release.yml's case-statement idiom (which already
+      # supports more than one profile): if a `full`/other macOS profile is
+      # ever added to the case statement below, it would pick up
+      # feature_mind's macOS cargokit build with no CI signal that Rust is
+      # missing. Same toolchain as `rust-core.yml`'s Apple job; macos-latest
+      # runners are Apple Silicon, so aarch64-apple-darwin is the host
+      # target and x86_64-apple-darwin is the cross target for Intel Macs.
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
