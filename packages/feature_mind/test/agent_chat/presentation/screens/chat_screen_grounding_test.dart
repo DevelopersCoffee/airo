@@ -21,7 +21,7 @@ void main() {
       await _pumpChatScreen(
         tester,
         initialMessages: [
-          ChatMessage(
+          AgentChatMessage(
             text: 'You logged Ibuprofen 400 mg for this recovery.',
             isUser: false,
             groundingState: GroundingState.grounded,
@@ -55,7 +55,7 @@ void main() {
       await _pumpChatScreen(
         tester,
         initialMessages: [
-          ChatMessage(
+          AgentChatMessage(
             text: 'Here is a general answer with no logged operation.',
             isUser: false,
             groundingState: GroundingState.ungrounded,
@@ -74,7 +74,9 @@ void main() {
   ) async {
     await _pumpChatScreen(
       tester,
-      initialMessages: [ChatMessage(text: 'Opening Money.', isUser: false)],
+      initialMessages: [
+        AgentChatMessage(text: 'Opening Money.', isUser: false),
+      ],
     );
 
     expect(find.textContaining('UNGROUNDED'), findsNothing);
@@ -84,7 +86,7 @@ void main() {
 
 Future<void> _pumpChatScreen(
   WidgetTester tester, {
-  required List<ChatMessage> initialMessages,
+  required List<AgentChatMessage> initialMessages,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
