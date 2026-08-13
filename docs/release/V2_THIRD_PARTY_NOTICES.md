@@ -124,6 +124,8 @@ hive_flutter
 image_picker
 intl
 just_audio
+media_kit
+media_kit_libs_video
 package_info_plus
 path
 path_provider
