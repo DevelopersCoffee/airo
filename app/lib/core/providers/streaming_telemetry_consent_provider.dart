@@ -41,7 +41,7 @@ const _consentWithheld = AiroAnalyticsConsentState(
 );
 
 /// Builds the initial consent state for
-/// `AppLogger.setAnalyticsService` at startup, before the
+/// `PlatformMediaLogger.setAnalyticsService` at startup, before the
 /// `ProviderScope` (and therefore [streamingTelemetryConsentProvider])
 /// exists.
 AiroAnalyticsConsentState loadStreamingTelemetryConsent(

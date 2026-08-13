@@ -86,7 +86,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     try {
       await call(delegate);
     } catch (e) {
-      AppLogger.info('Media session delegate error: $e', tag: 'MEDIA_SESSION');
+      PlatformMediaLogger.info('Media session delegate error: $e', tag: 'MEDIA_SESSION');
     }
   }
 
@@ -113,11 +113,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   /// M2: Handle drift warning before auto-resync
   void _handleDriftWarning(Duration delay) {
-    AppLogger.info(
+    PlatformMediaLogger.info(
       'Drift detected: ${delay.inSeconds}s behind live edge',
       tag: 'LIVE_DVR',
     );
-    AppLogger.analytics(
+    PlatformMediaLogger.analytics(
       'live_stream_drift_detected',
       params: {
         'channel': _state.currentChannel?.name,
@@ -130,7 +130,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // Auto-resync to live edge when drift exceeds threshold
     // Only auto-resync if not paused by user
     if (_state.playbackState == PlaybackState.playing) {
-      AppLogger.analytics(
+      PlatformMediaLogger.analytics(
         'live_stream_auto_resync',
         params: {
           'channel': _state.currentChannel?.name,
@@ -663,7 +663,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
           activeSourceId: sourceId,
           networkKey: _placeholderNetworkKey,
         )..sessionStarted();
-    AppLogger.analytics(
+    PlatformMediaLogger.analytics(
       'streaming_session_started',
       params: {'network_key': _placeholderNetworkKey},
     );
@@ -684,7 +684,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _metricsActiveSourceId = null;
     if (collector == null) return;
     final summary = collector.sessionStopped();
-    AppLogger.analytics(
+    PlatformMediaLogger.analytics(
       'streaming_session_summary',
       params: summary.toAnalyticsEvent().params,
     );
@@ -804,13 +804,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
       if (position < dvrStart) {
         clampedPosition = dvrStart;
-        AppLogger.info(
+        PlatformMediaLogger.info(
           'Seek clamped to DVR start: ${dvrStart.inSeconds}s',
           tag: 'LIVE_DVR',
         );
       } else if (position > liveEdge) {
         clampedPosition = liveEdge;
-        AppLogger.info(
+        PlatformMediaLogger.info(
           'Seek clamped to live edge: ${liveEdge.inSeconds}s',
           tag: 'LIVE_DVR',
         );
@@ -821,7 +821,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _updateState(_state.copyWith(position: clampedPosition));
 
     if (_state.isLiveStream) {
-      AppLogger.analytics(
+      PlatformMediaLogger.analytics(
         'live_stream_seek',
         params: {
           'channel': _state.currentChannel?.name,
@@ -856,7 +856,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ),
     );
 
-    AppLogger.analytics(
+    PlatformMediaLogger.analytics(
       'go_live_tapped',
       params: {
         'channel': _state.currentChannel?.name,
