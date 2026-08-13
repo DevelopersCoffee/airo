@@ -49,6 +49,14 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// `false`. Defaults to `true` for phone/tablet callers.
   final bool showPictureInPicture;
 
+  /// Whether to render this widget's own fullscreen toggle button in the
+  /// hover/reveal chrome's top-left row. Defaults to `true`. Callers that
+  /// already show their own persistent "open full player" affordance next
+  /// to an embedded, non-fullscreen preview of this widget (see
+  /// `iptv_screen.dart`) pass `false` so the two fullscreen buttons don't
+  /// stack on top of each other (#1025, #1600).
+  final bool showFullscreenButton;
+
   /// Renders the AiroTV D-pad design's TRANSPORT control bar (metadata row
   /// + Play/Pause, Restart, Audio, Subtitles, Favourite, Info) instead of
   /// the touch-oriented VOL/CH pillar layout. TV callers pass `true`; phone
@@ -93,6 +101,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableTouchGestures = true,
     this.handleNativeFullscreen = true,
     this.showPictureInPicture = true,
+    this.showFullscreenButton = true,
     this.useTvTransportBar = false,
     this.brightnessController,
     this.onBack,
@@ -1692,6 +1701,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         // the PlayerOverlay layer mounted above this one now owns the
         // title/subtitle chrome, built from the same StreamingState via
         // _toPlayerViewState.
+        // Top-left zone: fullscreen (unless a host screen already renders
+        // its own persistent fullscreen affordance next to an embedded,
+        // non-fullscreen preview of this widget -- see showFullscreenButton
+        // doc), PiP, random channel. Kept as a single row, deliberately
+        // separate from the center transport zone and the side VOL/CH zone
+        // below so hover chrome never crowds into one cluster (#1025,
+        // #1600).
         Positioned(
           top: 76,
           left: 16,
@@ -1700,19 +1716,21 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _PlayerRoundControlButton(
-                  key: const ValueKey('iptv-player-fullscreen-button'),
-                  icon: _isFullscreen
-                      ? Icons.fullscreen_exit
-                      : Icons.fullscreen,
-                  tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
-                  onPressed: _toggleFullscreen,
-                  diameter: 44,
-                  iconSize: 24,
-                  backgroundAlpha: 0.48,
-                ),
-                if (widget.showPictureInPicture) ...[
+                if (widget.showFullscreenButton) ...[
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-fullscreen-button'),
+                    icon: _isFullscreen
+                        ? Icons.fullscreen_exit
+                        : Icons.fullscreen,
+                    tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                    onPressed: _toggleFullscreen,
+                    diameter: 44,
+                    iconSize: 24,
+                    backgroundAlpha: 0.48,
+                  ),
                   const SizedBox(width: 10),
+                ],
+                if (widget.showPictureInPicture) ...[
                   _PlayerRoundControlButton(
                     key: const ValueKey('iptv-player-pip-button'),
                     icon: Icons.picture_in_picture_alt_outlined,
@@ -1722,8 +1740,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     iconSize: 22,
                     backgroundAlpha: 0.48,
                   ),
+                  const SizedBox(width: 10),
                 ],
-                const SizedBox(width: 10),
                 _PlayerRoundControlButton(
                   key: const ValueKey('iptv-player-random-channel-button'),
                   icon: Icons.casino_outlined,
@@ -1737,6 +1755,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             ),
           ),
         ),
+        // Center zone: primary transport controls only (rewind, play/pause,
+        // mute). The VOL/CH remote-hint pillars used to live in this same
+        // row, where they crowded and visually overlapped the transport
+        // buttons (#1025, #1600) -- they now live in their own zone, pinned
+        // to the trailing edge, below.
         Center(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -1779,7 +1802,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         ? Colors.green
                         : null,
                   ),
-                  const SizedBox(width: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Trailing-edge zone: VOL/CH remote-hint pillars, vertically
+        // centered and pinned to the trailing edge -- clear of both the
+        // center transport row above and the top-left row's SafeArea
+        // padding, so it never overlaps either (#1025, #1600).
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 16,
+          child: SafeArea(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   _PlayerStepperPillar(
                     label: 'VOL',
                     topKey: const ValueKey('iptv-player-volume-up-button'),
@@ -1792,7 +1832,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     onBottomPressed: () => _stepVolume(service, state, -0.1),
                   ),
                   if (widget.enableSwipeChannelChange) ...[
-                    const SizedBox(width: 22),
+                    const SizedBox(width: 16),
                     _PlayerStepperPillar(
                       label: 'CH',
                       topKey: const ValueKey('iptv-player-channel-next-button'),

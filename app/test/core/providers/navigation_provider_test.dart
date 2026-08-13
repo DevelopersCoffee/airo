@@ -166,10 +166,7 @@ void main() {
         appShellHeaderModeForLocation('/assistant/models'),
         AppShellHeaderMode.shell,
       );
-      expect(
-        appShellHeaderModeForLocation('/mind'),
-        AppShellHeaderMode.shell,
-      );
+      expect(appShellHeaderModeForLocation('/mind'), AppShellHeaderMode.shell);
       expect(
         appShellHeaderModeForLocation('/mind/chat'),
         AppShellHeaderMode.shell,

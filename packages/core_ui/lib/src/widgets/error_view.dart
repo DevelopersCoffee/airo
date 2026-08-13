@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
+import '../theme/airo_colors.dart';
+import '../theme/airo_spacing.dart';
 import 'app_button.dart';
 
 /// Standard error view widget
@@ -24,19 +24,19 @@ class ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: AppSpacing.screenPadding,
+      padding: AiroSpacing.screenPadding,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon ?? Icons.error_outline, size: 64, color: AppColors.error),
-          const SizedBox(height: AppSpacing.md),
+          Icon(icon ?? Icons.error_outline, size: 64, color: AiroColors.error),
+          const SizedBox(height: AiroSpacing.md),
           if (title != null) ...[
             Text(
               title!,
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AiroSpacing.sm),
           ],
           Text(
             message,
@@ -46,7 +46,7 @@ class ErrorView extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AiroSpacing.lg),
             AppButton(
               label: retryLabel,
               onPressed: onRetry,
@@ -75,7 +75,7 @@ class InlineError extends StatelessWidget {
         size: 20,
         color: Theme.of(context).colorScheme.error,
       ),
-      const SizedBox(width: AppSpacing.sm),
+      const SizedBox(width: AiroSpacing.sm),
       Expanded(
         child: Text(
           message,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_spacing.dart';
+import '../theme/airo_spacing.dart';
 
 /// Standard card widget with consistent styling
 class AppCard extends StatelessWidget {
@@ -22,14 +22,14 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = Padding(
-      padding: padding ?? AppSpacing.cardPadding,
+      padding: padding ?? AiroSpacing.cardPadding,
       child: child,
     );
 
     if (onTap != null) {
       content = InkWell(
         onTap: onTap,
-        borderRadius: AppSpacing.borderRadiusMd,
+        borderRadius: AiroSpacing.borderRadiusMd,
         child: content,
       );
     }

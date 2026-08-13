@@ -29,11 +29,32 @@ void _openTvFullscreenPlayer(BuildContext context) {
   // The TV screen sits inside TvShell's nested navigator. The root navigator
   // is the only route that covers the permanent rail and the whole macOS
   // window.
-  Navigator.of(context, rootNavigator: true).push<void>(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => const _TvFullscreenPlayerPage(),
-    ),
+  //
+  // Because the fullscreen page is pushed on the *root* navigator while the
+  // grid lives in a nested one, Flutter's normal per-Navigator focus
+  // restoration on pop never fires here -- that mechanism only hands focus
+  // back to the previous route within the same Navigator/Overlay, and the
+  // grid's FocusScope isn't part of the root navigator's focus history.
+  // Left alone, primary focus stays null (or pinned on the now-gone
+  // fullscreen route) after the pop, so the very next raw BACK key -- which
+  // Fire OS delivers to whichever node currently holds focus -- has nothing
+  // to bubble from and is silently dropped (#1430). Capture the grid's
+  // FocusScope before the push and explicitly reclaim it once the route is
+  // gone so BACK keeps working the instant the grid is back on screen.
+  final gridFocusScope = FocusScope.of(context);
+  unawaited(
+    Navigator.of(context, rootNavigator: true)
+        .push<void>(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => const _TvFullscreenPlayerPage(),
+          ),
+        )
+        .then((_) {
+          if (gridFocusScope.canRequestFocus) {
+            gridFocusScope.requestFocus();
+          }
+        }),
   );
 }
 
@@ -2812,13 +2833,13 @@ Color _categoryColor(BuildContext context, ChannelCategory category) {
   final primary = Theme.of(context).colorScheme.primary;
   return switch (category) {
     ChannelCategory.all => primary,
-    ChannelCategory.news => AppColors.airoTvCategoryNews,
-    ChannelCategory.sports => AppColors.airoTvCategorySports,
-    ChannelCategory.movies => AppColors.airoTvCategoryMovies,
-    ChannelCategory.music => AppColors.airoTvCategoryMusic,
-    ChannelCategory.kids => AppColors.airoTvCategoryKids,
-    ChannelCategory.documentary => AppColors.airoTvCategoryDocumentary,
-    ChannelCategory.entertainment => AppColors.airoTvCategoryEntertainment,
-    _ => AppColors.airoTvCategoryDefault,
+    ChannelCategory.news => AiroColors.airoTvCategoryNews,
+    ChannelCategory.sports => AiroColors.airoTvCategorySports,
+    ChannelCategory.movies => AiroColors.airoTvCategoryMovies,
+    ChannelCategory.music => AiroColors.airoTvCategoryMusic,
+    ChannelCategory.kids => AiroColors.airoTvCategoryKids,
+    ChannelCategory.documentary => AiroColors.airoTvCategoryDocumentary,
+    ChannelCategory.entertainment => AiroColors.airoTvCategoryEntertainment,
+    _ => AiroColors.airoTvCategoryDefault,
   };
 }

@@ -16,6 +16,7 @@ library;
 import 'dart:io';
 
 import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
+import 'package:core_analytics/core_analytics.dart';
 import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
@@ -31,10 +32,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app/airo_tv_app.dart';
 import 'core/audio/tv_audio_service.dart';
+import 'core/config/firebase_status.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/platform/device_form_factor.dart';
 import 'core/providers/app_theme_provider.dart';
+import 'core/providers/streaming_telemetry_consent_provider.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
@@ -42,8 +45,6 @@ import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
-/// Global flag to track if Firebase is available
-bool isFirebaseInitialized = false;
 typedef TvFirebaseInitializer = Future<void> Function();
 typedef TvDebugPlaylistLoader =
     Future<List<IPTVChannel>> Function(
@@ -87,6 +88,19 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+
+  // Phase 1 streaming telemetry (F7.1/F7.5) -- opt-in only, nothing
+  // recorded until the user grants it in Settings. Constructed with
+  // whatever was last persisted (withheld on a fresh install) and
+  // wired into PlatformMediaLogger before anything else can call
+  // PlatformMediaLogger.analytics(); the settings toggle later calls
+  // .updateConsent() on this exact instance via
+  // streamingTelemetryServiceProvider's override below.
+  final streamingTelemetryService = AiroLocalDiagnosticsAnalyticsService(
+    consent: loadStreamingTelemetryConsent(prefs),
+  );
+  PlatformMediaLogger.setAnalyticsService(streamingTelemetryService);
+
   final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
   final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
   final compactEpgRepository = createTvCompactEpgRepository(
@@ -126,6 +140,7 @@ void main() async {
         mutableXmltvRepository: mutableXmltvRepository,
         tvAudioHandler: tvAudioHandler,
         moduleRegistry: moduleRegistry,
+        streamingTelemetryService: streamingTelemetryService,
       ),
       child: const AiroTvApp(),
     ),
@@ -171,11 +186,16 @@ List<Override> buildTvProviderOverrides({
   List<Override>? proProviderOverrides,
   String debugPlaylistUrl = _debugDefaultPlaylistUrl,
   TvDebugPlaylistLoader? debugPlaylistLoader,
+  AiroLocalDiagnosticsAnalyticsService? streamingTelemetryService,
 }) {
   final registry = moduleRegistry ?? buildTvModuleRegistry();
   final handler = tvAudioHandler;
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
+    if (streamingTelemetryService != null)
+      streamingTelemetryServiceProvider.overrideWithValue(
+        streamingTelemetryService,
+      ),
     // Airo TV defaults to the design handoff's dedicated theme unless
     // the user has explicitly picked a different one in Settings.
     appThemeProvider.overrideWith(

@@ -22,6 +22,8 @@ class ModelBench {
     required this.batteryPercentPerHour,
     required this.measuredUnder,
     required this.measuredAtMs,
+    this.cpuUtilizationPercent,
+    this.npuUtilizationPercent,
   });
 
   final double tokensPerSecond;
@@ -31,6 +33,14 @@ class ModelBench {
   final ThermalState measuredUnder;
   final int measuredAtMs;
 
+  /// Windows-only (MIND-DS-3, #1456). Null on platforms without a CPU
+  /// utilisation API wired, and until measured — never a guess.
+  final double? cpuUtilizationPercent;
+
+  /// Windows-only (MIND-DS-3, #1456). Null off-Windows, or on Windows
+  /// hardware with no NPU, or until measured.
+  final double? npuUtilizationPercent;
+
   @override
   bool operator ==(Object other) =>
       other is ModelBench &&
@@ -39,7 +49,9 @@ class ModelBench {
       other.residentBytes == residentBytes &&
       other.batteryPercentPerHour == batteryPercentPerHour &&
       other.measuredUnder == measuredUnder &&
-      other.measuredAtMs == measuredAtMs;
+      other.measuredAtMs == measuredAtMs &&
+      other.cpuUtilizationPercent == cpuUtilizationPercent &&
+      other.npuUtilizationPercent == npuUtilizationPercent;
 
   @override
   int get hashCode => Object.hash(
@@ -49,6 +61,8 @@ class ModelBench {
     batteryPercentPerHour,
     measuredUnder,
     measuredAtMs,
+    cpuUtilizationPercent,
+    npuUtilizationPercent,
   );
 }
 

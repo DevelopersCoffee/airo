@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/airo_colors.dart';
 
 enum AiroBadgeVariant { live, pro, success, warning, error, neutral, recent }
 
@@ -73,7 +73,7 @@ class _AiroBadgeState extends State<AiroBadge>
         color: bg,
         borderRadius: BorderRadius.circular(radius),
         boxShadow: widget.variant == AiroBadgeVariant.live && widget.pulse
-            ? const [BoxShadow(blurRadius: 8, color: AppColors.liveGlow)]
+            ? const [BoxShadow(blurRadius: 8, color: AiroColors.liveGlow)]
             : null,
       ),
       child: Row(
@@ -99,27 +99,27 @@ class _AiroBadgeState extends State<AiroBadge>
 
   (Color bg, Color fg) _colors() {
     return switch (widget.variant) {
-      AiroBadgeVariant.live => (AppColors.live, Colors.white),
+      AiroBadgeVariant.live => (AiroColors.live, Colors.white),
       AiroBadgeVariant.success => (
-        AppColors.cyberTertiary,
-        AppColors.cyberOnPrimary,
+        AiroColors.cyberTertiary,
+        AiroColors.cyberOnPrimary,
       ),
       AiroBadgeVariant.warning => (
         const Color(0xFFFF9800),
-        AppColors.cyberOnPrimary,
+        AiroColors.cyberOnPrimary,
       ),
-      AiroBadgeVariant.error => (AppColors.cyberError, Colors.white),
+      AiroBadgeVariant.error => (AiroColors.cyberError, Colors.white),
       AiroBadgeVariant.pro => (
-        AppColors.cyberSecondary,
-        AppColors.cyberOnPrimary,
+        AiroColors.cyberSecondary,
+        AiroColors.cyberOnPrimary,
       ),
       AiroBadgeVariant.neutral => (
-        AppColors.cyberPrimary.withValues(alpha: 0.15),
-        AppColors.cyberText,
+        AiroColors.cyberPrimary.withValues(alpha: 0.15),
+        AiroColors.cyberText,
       ),
       AiroBadgeVariant.recent => (
-        AppColors.cyberTertiary.withValues(alpha: 0.15),
-        AppColors.cyberTertiary,
+        AiroColors.cyberTertiary.withValues(alpha: 0.15),
+        AiroColors.cyberTertiary,
       ),
     };
   }

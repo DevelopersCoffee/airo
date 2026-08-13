@@ -58,10 +58,10 @@ class VaultHomeScreen extends ConsumerWidget {
                 onRefresh: () async =>
                     ref.refresh(vaultSummariesProvider.future),
                 child: ListView(
-                  padding: AppSpacing.paddingMd,
+                  padding: AiroSpacing.paddingMd,
                   children: [
                     _SummaryHeader(count: data.count),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AiroSpacing.md),
                     _BankAccountsSection(
                       summaries: data.bankAccounts,
                       onOpen: (summary) => _openDetail(
@@ -166,7 +166,7 @@ class _SummaryHeader extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.security_outlined, color: theme.colorScheme.primary),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AiroSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,12 +341,12 @@ class _VaultSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AiroSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: AppSpacing.paddingHorizontalSm,
+            padding: AiroSpacing.paddingHorizontalSm,
             child: Text(
               title,
               style: theme.textTheme.titleSmall?.copyWith(
@@ -354,7 +354,7 @@ class _VaultSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AiroSpacing.sm),
           AppCard(
             padding: EdgeInsets.zero,
             elevation: 0,

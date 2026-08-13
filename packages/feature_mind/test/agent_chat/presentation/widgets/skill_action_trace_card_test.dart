@@ -1,4 +1,5 @@
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/data_volume_measurement.dart';
 import 'package:feature_mind/src/agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,4 +63,55 @@ void main() {
       expect(find.text('Performed action'), findsNothing);
     },
   );
+
+  testWidgets(
+    'renders a measured data-movement figure, and omits it when nothing was measured',
+    (tester) async {
+      const traces = [
+        AgentActionTrace(
+          title: 'Execute action',
+          detail: 'query_lifetrack_status',
+          dataVolume: DataVolumeMeasurement(
+            bytesProcessed: 640,
+            bytesLeftDevice: 0,
+            opsInLog: 412,
+            replayedOpSequence: 407,
+          ),
+        ),
+        AgentActionTrace(title: 'Load skill', detail: 'query-lifetrack-status'),
+      ];
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: SkillActionTraceCard(traces: traces)),
+        ),
+      );
+
+      expect(
+        find.text(
+          '412 ops in log · replayed op 407 · 0 bytes left this device',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('a failed tool call is shown, not swallowed', (tester) async {
+    const traces = [
+      AgentActionTrace(
+        title: 'Execute action',
+        detail: 'read_calendar_events',
+        success: false,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: SkillActionTraceCard(traces: traces)),
+      ),
+    );
+
+    expect(find.text('read_calendar_events'), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+  });
 }

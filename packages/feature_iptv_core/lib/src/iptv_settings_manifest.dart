@@ -31,6 +31,7 @@ enum IptvSettingsSectionId {
   country,
   audio,
   accessibility,
+  privacy,
 }
 
 /// One IPTV settings-section descriptor, shared across shells.
@@ -123,6 +124,17 @@ final List<IptvSettingsSectionDescriptor> iptvSettingsSections = [
     id: IptvSettingsSectionId.accessibility,
     label: 'Accessibility',
     icon: Icons.accessibility_new_outlined,
+    visibleForShells: {ShellId.tv},
+  ),
+  // Phase 1 streaming telemetry consent (F7.5, tv-zero-copy-cast-phase1
+  // Task 7). TV-only for now: only main_tv.dart bootstraps
+  // PlatformMediaLogger.setAnalyticsService today, so a mobile toggle would
+  // persist a preference with no live service to apply it to. Widen
+  // visibleForShells once the phone entrypoint gets the same bootstrap.
+  IptvSettingsSectionDescriptor(
+    id: IptvSettingsSectionId.privacy,
+    label: 'Privacy',
+    icon: Icons.privacy_tip_outlined,
     visibleForShells: {ShellId.tv},
   ),
 ];

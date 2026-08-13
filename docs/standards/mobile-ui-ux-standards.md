@@ -119,6 +119,12 @@ roles unless the shared token contract is updated first.
 
 Do not hardcode shell typography sizes or spacing values in screen files.
 Platform typography should be used by role, not by ad hoc number selection.
+Concretely: `AiroTypography`, `AiroColors`, `AiroSpacing`
+(`packages/core_ui/lib/src/theme/`) are the shared tokens; a flavor that
+needs resolution/distance-aware type scaling wraps its `MaterialApp.builder`
+in `AiroDisplayScale`, and a flavor that needs its own accent wraps in
+`AiroDomainTheme(domain: ...)` rather than defining a new `ThemeData` from
+scratch — see `docs/superpowers/specs/2026-08-11-airo-design-system.md`.
 
 Minimum shared hierarchy:
 

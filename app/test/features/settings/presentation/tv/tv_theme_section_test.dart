@@ -21,7 +21,7 @@ void main() {
     await tester.pump();
 
     for (final id in AppThemeId.values) {
-      expect(find.text(AppTheme.byId(id).name), findsOneWidget);
+      expect(find.text(AiroTheme.byId(id).name), findsOneWidget);
     }
   });
 
@@ -47,7 +47,7 @@ void main() {
     final targetId = AppThemeId.values.firstWhere(
       (id) => id != container.read(appThemeProvider),
     );
-    await tester.tap(find.text(AppTheme.byId(targetId).name));
+    await tester.tap(find.text(AiroTheme.byId(targetId).name));
     await tester.pump();
 
     expect(container.read(appThemeProvider), targetId);

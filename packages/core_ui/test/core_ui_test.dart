@@ -4,55 +4,55 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:core_ui/core_ui.dart';
 
 void main() {
-  group('AppTheme', () {
+  group('AiroTheme', () {
     test('defaults to Airo Living Console with stable cyber id', () {
-      final defaultTheme = AppTheme.defaultTheme;
+      final defaultTheme = AiroTheme.defaultTheme;
 
-      expect(AppTheme.defaultThemeId, AppThemeId.cyber);
+      expect(AiroTheme.defaultThemeId, AppThemeId.cyber);
       expect(defaultTheme.id, AppThemeId.cyber);
       expect(defaultTheme.name, 'Airo Living Console');
       expect(defaultTheme.themeMode, ThemeMode.dark);
       expect(
-        AppTheme.defaultLight.brightness,
+        AiroTheme.defaultLight.brightness,
         defaultTheme.lightTheme.brightness,
       );
       expect(
-        AppTheme.defaultDark.brightness,
+        AiroTheme.defaultDark.brightness,
         defaultTheme.darkTheme.brightness,
       );
       expect(
-        AppTheme.defaultLight.scaffoldBackgroundColor,
+        AiroTheme.defaultLight.scaffoldBackgroundColor,
         defaultTheme.lightTheme.scaffoldBackgroundColor,
       );
       expect(
-        AppTheme.defaultDark.scaffoldBackgroundColor,
+        AiroTheme.defaultDark.scaffoldBackgroundColor,
         defaultTheme.darkTheme.scaffoldBackgroundColor,
       );
       expect(
-        AppTheme.defaultLight.colorScheme.primary,
+        AiroTheme.defaultLight.colorScheme.primary,
         defaultTheme.lightTheme.colorScheme.primary,
       );
       expect(
-        AppTheme.defaultDark.colorScheme.primary,
+        AiroTheme.defaultDark.colorScheme.primary,
         defaultTheme.darkTheme.colorScheme.primary,
       );
-      expect(AppTheme.defaultThemeMode, defaultTheme.themeMode);
+      expect(AiroTheme.defaultThemeMode, defaultTheme.themeMode);
     });
 
     test('registry exposes all supported themes', () {
-      expect(AppTheme.themes.map((theme) => theme.id), [
+      expect(AiroTheme.themes.map((theme) => theme.id), [
         AppThemeId.cyber,
         AppThemeId.classic,
         AppThemeId.bedtime,
         AppThemeId.airoTv,
       ]);
-      expect(AppTheme.byId(AppThemeId.classic).name, 'Airo Classic');
-      expect(AppTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
-      expect(AppTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
+      expect(AiroTheme.byId(AppThemeId.classic).name, 'Airo Classic');
+      expect(AiroTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
+      expect(AiroTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
     });
 
     test('living console exposes ambient precision tokens', () {
-      final theme = AppTheme.byId(AppThemeId.cyber).darkTheme;
+      final theme = AiroTheme.byId(AppThemeId.cyber).darkTheme;
       final tokens = theme.extension<AiroThemeTokens>();
       final visual = theme.extension<AiroVisualTokens>();
       final domain = theme.extension<AiroDomainTokens>();
@@ -86,61 +86,61 @@ void main() {
     });
 
     test('light theme returns valid ThemeData', () {
-      final theme = AppTheme.light;
+      final theme = AiroTheme.light;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.light);
     });
 
     test('dark theme returns valid ThemeData', () {
-      final theme = AppTheme.dark;
+      final theme = AiroTheme.dark;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.dark);
     });
 
     test('typography avoids negative letter spacing', () {
-      expect(AppTypography.displayLarge.letterSpacing, 0);
-      expect(AppTypography.displayMedium.letterSpacing, 0);
-      expect(AppTypography.displaySmall.letterSpacing, 0);
+      expect(AiroTypography.displayLarge.letterSpacing, 0);
+      expect(AiroTypography.displayMedium.letterSpacing, 0);
+      expect(AiroTypography.displaySmall.letterSpacing, 0);
     });
   });
 
-  group('AppColors', () {
+  group('AiroColors', () {
     test('color constants are defined', () {
-      expect(AppColors.primary, const Color(0xFF6750A4));
-      expect(AppColors.secondary, const Color(0xFF625B71));
-      expect(AppColors.error, const Color(0xFFB3261E));
-      expect(AppColors.surface, const Color(0xFFFFFBFE));
-      expect(AppColors.background, const Color(0xFFFFFBFE));
+      expect(AiroColors.primary, const Color(0xFF6750A4));
+      expect(AiroColors.secondary, const Color(0xFF625B71));
+      expect(AiroColors.error, const Color(0xFFB3261E));
+      expect(AiroColors.surface, const Color(0xFFFFFBFE));
+      expect(AiroColors.background, const Color(0xFFFFFBFE));
     });
   });
 
-  group('AppSpacing', () {
+  group('AiroSpacing', () {
     test('spacing values are correct', () {
-      expect(AppSpacing.unit, 4.0);
-      expect(AppSpacing.xxs, 2.0);
-      expect(AppSpacing.xs, 4.0);
-      expect(AppSpacing.sm, 8.0);
-      expect(AppSpacing.md, 16.0);
-      expect(AppSpacing.lg, 24.0);
-      expect(AppSpacing.xl, 32.0);
-      expect(AppSpacing.xxl, 48.0);
+      expect(AiroSpacing.unit, 4.0);
+      expect(AiroSpacing.xxs, 2.0);
+      expect(AiroSpacing.xs, 4.0);
+      expect(AiroSpacing.sm, 8.0);
+      expect(AiroSpacing.md, 16.0);
+      expect(AiroSpacing.lg, 24.0);
+      expect(AiroSpacing.xl, 32.0);
+      expect(AiroSpacing.xxl, 48.0);
     });
 
     test('padding presets have correct values', () {
-      expect(AppSpacing.paddingXs, const EdgeInsets.all(4.0));
-      expect(AppSpacing.paddingMd, const EdgeInsets.all(16.0));
-      expect(AppSpacing.paddingLg, const EdgeInsets.all(24.0));
+      expect(AiroSpacing.paddingXs, const EdgeInsets.all(4.0));
+      expect(AiroSpacing.paddingMd, const EdgeInsets.all(16.0));
+      expect(AiroSpacing.paddingLg, const EdgeInsets.all(24.0));
     });
 
     test('border radius values are defined', () {
-      expect(AppSpacing.radiusXs, 4.0);
-      expect(AppSpacing.radiusSm, 8.0);
-      expect(AppSpacing.radiusMd, 12.0);
-      expect(AppSpacing.radiusLg, 16.0);
-      expect(AppSpacing.radiusXl, 24.0);
-      expect(AppSpacing.radiusFull, 999.0);
+      expect(AiroSpacing.radiusXs, 4.0);
+      expect(AiroSpacing.radiusSm, 8.0);
+      expect(AiroSpacing.radiusMd, 12.0);
+      expect(AiroSpacing.radiusLg, 16.0);
+      expect(AiroSpacing.radiusXl, 24.0);
+      expect(AiroSpacing.radiusFull, 999.0);
     });
   });
 
@@ -208,7 +208,7 @@ void main() {
     testWidgets('domain theme applies its accessible accent', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.defaultDark,
+          theme: AiroTheme.defaultDark,
           home: const AiroDomainTheme(
             domain: AiroDomain.money,
             child: Builder(builder: _domainProbe),
@@ -229,7 +229,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.defaultDark,
+          theme: AiroTheme.defaultDark,
           home: Scaffold(
             body: AiroSurface(
               onTap: () {},
