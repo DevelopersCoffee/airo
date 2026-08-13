@@ -159,6 +159,8 @@ forbidden_dependencies:
   - <packages this module must never depend on>
 quality_gates:
   test_coverage: ">NN%"   # omit fields with no measured baseline
+status: <optional; e.g. "pre-wired" for a package built ahead of the app
+  flavor that reaches it (#1675) — omit entirely once a package is reachable>
 ```
 
 Reference examples: `packages/platform_epg/module.yaml`,
