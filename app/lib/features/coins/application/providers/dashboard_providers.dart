@@ -120,4 +120,3 @@ final dashboardRefreshProvider = FutureProvider<void>((ref) async {
   ref.invalidate(spentThisMonthProvider);
   ref.invalidate(pendingTransactionReviewsProvider);
 });
-

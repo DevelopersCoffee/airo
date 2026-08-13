@@ -132,4 +132,3 @@ class SleepTimerNotifier extends StateNotifier<int> {
     super.dispose();
   }
 }
-

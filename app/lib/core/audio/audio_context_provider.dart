@@ -22,4 +22,3 @@ final currentAudioFocusProvider = Provider<AudioFocusType?>((ref) {
   ref.watch(audioContextChangesProvider);
   return manager.currentFocus;
 });
-
