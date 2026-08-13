@@ -132,6 +132,7 @@ impl Supervisor {
 mod tests {
     use super::*;
     use crate::budget::ResourceRequest;
+    use crate::engine::LlmBackend;
 
     /// A deterministic speech engine. Splits a fixed number of segments so a
     /// test can assert exactly what a cancelled job produced, which a real
@@ -172,7 +173,14 @@ mod tests {
         memory_mb: u32,
     }
 
-    impl GenerationEngine for FakeGeneration {
+    // Implements `LlmBackend` directly (not `GenerationEngine`) so this fake
+    // doubles as the `#1628` proof that the extracted trait is real and
+    // callable, not only satisfied by the blanket impl reached through
+    // `GenerationEngine`. `Supervisor::register_generation` still takes
+    // `Box<dyn GenerationEngine>`, and `FakeGeneration` reaches it via the
+    // blanket `impl<T: LlmBackend + ?Sized> GenerationEngine for T` in
+    // `engine.rs` -- unchanged Supervisor wiring, formalized trait beneath it.
+    impl LlmBackend for FakeGeneration {
         fn resource_request(&self) -> ResourceRequest {
             ResourceRequest::new(self.memory_mb)
         }

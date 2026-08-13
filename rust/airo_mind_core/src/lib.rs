@@ -65,8 +65,8 @@ pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
 pub use digest::file_digest;
 pub use engine::{
-    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
-    TranscriptSegment,
+    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, LlmBackend,
+    SpeechEngine, TranscriptSegment,
 };
 pub use search::{Hit, SearchIndex};
 pub use store::{Meeting, MeetingStore, StoreError};

@@ -89,14 +89,163 @@ pub trait SpeechEngine: Send + Sync {
     ) -> Result<(), EngineError>;
 }
 
-/// Prompt to text.
-pub trait GenerationEngine: Send + Sync {
+/// Prompt to text: the contract every on-device LLM backend implements.
+///
+/// Formalized per `#1628` by extracting it from `GenerationEngine`, which
+/// already had exactly this shape — `LlamaGenerationEngine` (llama.cpp,
+/// `rust/airo_mind_llama`) is the first implementation, and this trait is
+/// what a second one (LiteRT-LM's `LiteRtLmPlugin.kt`/
+/// `LiteRtLmRuntimeAdapter` today sit outside the Supervisor entirely, per
+/// the `#1628` audit; a future Apple Foundation Models backend) would
+/// implement to register with the same [`crate::Supervisor`] slot.
+///
+/// # Why `load` and `unload` are not here
+///
+/// The issue's sketch (`fn load(model, params) -> Result<Self>` /
+/// `fn unload(&mut self)`) does not survive contact with this trait being a
+/// trait *object*: `Supervisor` holds `Box<dyn GenerationEngine>` (see
+/// `resource_request`'s doc on [`crate::Supervisor::register_generation`]),
+/// and a method returning `Self` by value is not object-safe — a
+/// `dyn LlmBackend` cannot construct another `dyn LlmBackend`. Every real
+/// backend already expresses "load" as its own inherent constructor instead
+/// (`LlamaGenerationEngine::load`, and `WhisperSpeechEngine::load` on the
+/// speech side, both returning `Result<Self, EngineError>` for their
+/// concrete type), which is the pattern this trait keeps: `LlmBackend` is
+/// what the Supervisor drives once a backend exists, not how one is
+/// constructed. "Unload" is simply dropping the `Box` — there is no
+/// GPU-resident state a `Drop` impl cannot already release, so a trait
+/// method for it would be a method that only ever calls `Drop::drop`.
+///
+/// # What is deliberately not in this pass
+///
+/// - **Schema-constrained (GBNF) generation** — `#1628`'s AC asks for a
+///   JSON-schema-constrained generation mode for Meeting IR extraction. No
+///   grammar-constrained sampler is wired anywhere in `airo_mind_llama`
+///   today (`LlamaSampler::greedy()` is the only sampler in use); adding one
+///   is real, unstarted design work — which sampler API, how a JSON Schema
+///   becomes a GBNF grammar, whether it is a parameter on `generate` or a
+///   separate method — not something an extraction pass should improvise.
+/// - **`RuntimeStats`** (tok/s, prefill latency, peak RSS) — nothing in
+///   `airo_mind_llama` or the bridge measures any of these today. A `stats()`
+///   method returning a placeholder would be worse than no method: callers
+///   would compile against a contract that lies.
+///
+/// Both are real `#1628` acceptance criteria and are left as named,
+/// documented follow-up rather than half-implemented here.
+pub trait LlmBackend: Send + Sync {
+    /// What this backend needs before it allocates.
     fn resource_request(&self) -> ResourceRequest;
 
+    /// Generates, streaming chunks through `sink` as they are produced.
+    ///
+    /// Checks `cancel` between chunks and returns `EngineError::Cancelled`
+    /// when asked to stop. A `sink` returning `Err` stops the job — that is
+    /// how backpressure reaches the backend.
     fn generate(
         &self,
         request: &GenerationRequest,
         cancel: &CancelToken,
         sink: &mut dyn FnMut(GenerationChunk) -> Result<(), EngineError>,
     ) -> Result<(), EngineError>;
+}
+
+/// Prompt to text.
+///
+/// Kept as the name `Supervisor` and every call site already type against —
+/// this is a refactor, not a rewrite (`#1628`). Every `LlmBackend` is a
+/// `GenerationEngine` and vice versa; the two names now describe the same
+/// contract, and new backend implementations should implement
+/// [`LlmBackend`] directly, since that is the formalized name going forward.
+pub trait GenerationEngine: LlmBackend {}
+
+impl<T: LlmBackend + ?Sized> GenerationEngine for T {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cancel::CancelToken;
+
+    /// A second, independent `LlmBackend` implementation — deliberately not
+    /// `LlamaGenerationEngine` and not `supervisor::tests::FakeGeneration` —
+    /// so this module proves the trait is real and directly implementable
+    /// rather than only satisfied by one crate's fake.
+    struct EchoBackend {
+        memory_mb: u32,
+    }
+
+    impl LlmBackend for EchoBackend {
+        fn resource_request(&self) -> ResourceRequest {
+            ResourceRequest::new(self.memory_mb)
+        }
+
+        fn generate(
+            &self,
+            request: &GenerationRequest,
+            cancel: &CancelToken,
+            sink: &mut dyn FnMut(GenerationChunk) -> Result<(), EngineError>,
+        ) -> Result<(), EngineError> {
+            for word in request.prompt.split_whitespace() {
+                if cancel.is_cancelled() {
+                    return Err(EngineError::Cancelled);
+                }
+                sink(GenerationChunk {
+                    text: word.to_string(),
+                })?;
+            }
+            Ok(())
+        }
+    }
+
+    /// `#1628`: `LlmBackend` compiles, is callable through `&dyn LlmBackend`
+    /// (the object-safety `#1628`'s sketch could not have had with `fn load`
+    /// returning `Self` as a trait method), and streams in order.
+    #[test]
+    fn llm_backend_is_object_safe_and_streams_chunks_in_order() {
+        let backend = EchoBackend { memory_mb: 64 };
+        let dyn_backend: &dyn LlmBackend = &backend;
+
+        assert_eq!(dyn_backend.resource_request().memory_mb, 64);
+
+        let mut chunks = Vec::new();
+        dyn_backend
+            .generate(
+                &GenerationRequest {
+                    prompt: "the deploy is blocked".into(),
+                    max_output_tokens: 10,
+                },
+                &CancelToken::new(),
+                &mut |chunk| {
+                    chunks.push(chunk.text);
+                    Ok(())
+                },
+            )
+            .expect("generation succeeds");
+
+        assert_eq!(chunks, ["the", "deploy", "is", "blocked"]);
+    }
+
+    /// The extraction's central claim: a type that implements only
+    /// `LlmBackend` (not `GenerationEngine` — `EchoBackend` above never
+    /// mentions that name) is automatically usable everywhere a
+    /// `GenerationEngine` was required before, via the blanket
+    /// `impl<T: LlmBackend + ?Sized> GenerationEngine for T`. This is what
+    /// lets `Supervisor::register_generation` keep taking
+    /// `Box<dyn GenerationEngine>` (`rust/airo_mind_core/src/supervisor.rs`)
+    /// unchanged while every backend implements the newly-formalized trait
+    /// directly, same as `LlamaGenerationEngine` now does
+    /// (`rust/airo_mind_llama/src/llama.rs`).
+    #[test]
+    fn an_llm_backend_implementation_is_usable_wherever_a_generation_engine_is_expected() {
+        fn accepts_generation_engine(engine: Box<dyn GenerationEngine>) -> ResourceRequest {
+            engine.resource_request()
+        }
+
+        // `EchoBackend` is `Sized` and implements `LlmBackend`; the blanket
+        // impl gives it `GenerationEngine` too, so this is an ordinary
+        // unsized coercion at the call site below -- no cast needed, and
+        // none would be needed at any real `register_generation` call site
+        // either.
+        let request = accepts_generation_engine(Box::new(EchoBackend { memory_mb: 128 }));
+        assert_eq!(request.memory_mb, 128);
+    }
 }

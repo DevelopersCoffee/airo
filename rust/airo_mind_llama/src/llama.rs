@@ -25,7 +25,7 @@ use llama_cpp_2::sampling::LlamaSampler;
 
 use crate::budget::ResourceRequest;
 use crate::cancel::CancelToken;
-use crate::engine::{EngineError, GenerationChunk, GenerationEngine, GenerationRequest};
+use crate::engine::{EngineError, GenerationChunk, GenerationRequest, LlmBackend};
 
 /// llama.cpp's backend is **process-global** — `init` returns
 /// `BackendAlreadyInitialized` on a second call, and it is not per-model state.
@@ -72,7 +72,10 @@ impl LlamaGenerationEngine {
     }
 }
 
-impl GenerationEngine for LlamaGenerationEngine {
+/// `#1628`: the formalized backend contract, implemented directly rather than
+/// via the `GenerationEngine` name — see `LlmBackend`'s doc in
+/// `airo_mind_core::engine` for why `load` is not a trait method.
+impl LlmBackend for LlamaGenerationEngine {
     fn resource_request(&self) -> ResourceRequest {
         ResourceRequest::new(self.memory_mb)
     }
