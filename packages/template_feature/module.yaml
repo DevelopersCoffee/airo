@@ -11,3 +11,5 @@ allowed_dependencies:
 forbidden_dependencies:
   - app
 quality_gates: {}
+
+status: template  # scaffold for new packages, not reachable from any app flavor by design (#1681)

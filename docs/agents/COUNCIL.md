@@ -159,8 +159,14 @@ forbidden_dependencies:
   - <packages this module must never depend on>
 quality_gates:
   test_coverage: ">NN%"   # omit fields with no measured baseline
-status: <optional; e.g. "pre-wired" for a package built ahead of the app
-  flavor that reaches it (#1675) — omit entirely once a package is reachable>
+status: <optional, one of pre-wired | tool-only | template — omit entirely
+  for the default, active (reachable from an app flavor's dependency
+  graph). "pre-wired": built ahead of the app flavor that will reach it
+  (#1675, #1677). "tool-only": intentionally never reachable — release
+  scripting, benchmarking. "template": a scaffold, not a real module.
+  `scripts/check-package-reachability.py` (#1681) treats any non-active
+  status as its own allowlist; a package outside the reachable graph with
+  no status set is a real gate failure, not a declaration gap.>
 ```
 
 Reference examples: `packages/platform_epg/module.yaml`,
