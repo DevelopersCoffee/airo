@@ -57,6 +57,15 @@ pub mod engine;
 /// `#1302`'s half of `C6` — see the module docs for why this is split from
 /// [`supervisor`], which owns `#1396`'s per-call job execution.
 pub mod lifecycle;
+
+/// The Notes capability (`#1338`) — the one capability the runtime skeleton
+/// exercises. Emits operations, reads a projection, holds nothing durable of
+/// its own.
+pub mod notes;
+
+/// The `#1338` runtime skeleton: `Operation → Persist → Replay → Projection`,
+/// wired through [`lifecycle::EngineRegistry`] rather than around it.
+pub mod runtime;
 pub mod search;
 pub mod store;
 pub mod supervisor;
@@ -75,6 +84,10 @@ pub use engine::{
 };
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
+};
+pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
+pub use runtime::{
+    Operation, OperationLog, OperationLogError, Projection, Runtime, RuntimeApiError,
 };
 pub use search::{Hit, SearchIndex};
 pub use store::{Meeting, MeetingStore, StoreError};

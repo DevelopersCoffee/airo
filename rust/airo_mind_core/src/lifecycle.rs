@@ -22,11 +22,15 @@
 //!
 //! # What this deliberately does not do
 //!
-//! It does not implement Vault, Replay, Sync, or Projection -- those are
-//! `#1338`'s vertical slice, greenfield today. This module is the contract
-//! shape they will register into: a real dependency graph, real state
-//! transitions, and a real graceful-shutdown path, proven here against fake
-//! engines the same way [`supervisor`]'s job tests use `FakeSpeech`.
+//! It does not implement Sync -- that is still future work. `#1338`'s
+//! runtime skeleton (`crate::runtime`) registers Vault, Replay, and the
+//! (deliberately empty) Projection engine into this registry -- a minimal
+//! lifecycle placeholder for Vault, a real file-backed operation log for
+//! Replay, nothing at all for Projection but the lifecycle slot itself. This
+//! module is the contract shape they register into: a real dependency graph,
+//! real state transitions, and a real graceful-shutdown path, proven here
+//! against fake engines the same way [`supervisor`]'s job tests use
+//! `FakeSpeech`.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
