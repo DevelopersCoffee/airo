@@ -50,7 +50,7 @@ android {
     // Must track gradle/libs.versions.toml airo-compile-sdk (#1575). The app
     // module's compileSdk does not override library modules — AGP validates
     // AAR metadata per module. flutter_local_notifications requires 36+.
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = "27.0.12077973"
 
     compileOptions {

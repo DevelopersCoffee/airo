@@ -20,7 +20,7 @@ group 'com.prongbang.screen_protector'
 
 android {
     namespace 'com.prongbang.screen_protector'
-    compileSdk 36
+    compileSdk 37
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

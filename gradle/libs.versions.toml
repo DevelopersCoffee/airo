@@ -8,6 +8,6 @@
 # minSdk     = lowest Android API the product supports.
 
 [versions]
-airo-compile-sdk = "36"
+airo-compile-sdk = "37"
 airo-target-sdk = "36"
 airo-min-sdk = "26"

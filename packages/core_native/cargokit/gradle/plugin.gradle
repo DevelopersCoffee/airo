@@ -284,7 +284,12 @@ class CargoKitPlugin implements Plugin<Project> {
                         ndkVersion = plugin.project.android.ndkVersion
                         sdkDirectory = plugin.project.android.sdkDirectory
                         minSdkVersion = plugin.project.android.defaultConfig.minSdkVersion.apiLevel as int
-                        compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8) as int
+                        // PATCHED: AGP reports compileSdkVersion as "android-37.0" for
+                        // platforms that use minor-version notation (e.g. android-37.0,
+                        // installed as `platforms;android-37.0`), not just plain
+                        // "android-37". Naive `as int` on "37.0" throws
+                        // NumberFormatException, so take the leading integer segment.
+                        compileSdkVersion = plugin.project.android.compileSdkVersion.substring(8).split('\\.')[0] as int
                         targetPlatforms = libPlatforms
                         pluginFile = CargoKitPlugin.file
                         cargoManifestDir = lib.manifestDir
