@@ -171,7 +171,7 @@
       ],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
-        "screen_protector": "../packages/third_party/screen_protector"
+        "screen_protector": "../packages/platform_player/third_party/screen_protector"
       },
       "assetAllowlist": [],
       "android": {
@@ -229,7 +229,7 @@
         "flame": "../packages/stubs/flame_stub",
         "google_mlkit_text_recognition": "../packages/stubs/mlkit_stub",
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast",
-        "screen_protector": "../packages/third_party/screen_protector"
+        "screen_protector": "../packages/platform_player/third_party/screen_protector"
       },
       "assetAllowlist": [],
       "android": {

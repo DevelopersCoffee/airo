@@ -153,7 +153,7 @@ dependency_overrides:
   flutter_chrome_cast:
     path: ../packages/platform_player/third_party/flutter_chrome_cast
   screen_protector:
-    path: ../packages/third_party/screen_protector
+    path: ../packages/platform_player/third_party/screen_protector
 
   # Stubs. Airo Mind ships no games, no OCR and no IPTV playback; these edges
   # arrive transitively through feature_coin / feature_iptv and are replaced

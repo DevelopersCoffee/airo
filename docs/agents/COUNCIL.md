@@ -64,8 +64,9 @@ enforces a version of this).
 
 ### Chief Open Source Officer
 Owns: dependency scoring — license, maintenance, security, binary impact,
-bus factor. Primary owner of `platform_dependency_governance`. Required
-reviewer for every new dependency in any package.
+bus factor. Required reviewer for every new dependency in any package.
+(`platform_dependency_governance`, its former primary-owned package, was
+deleted as an orphan leaf with zero consumers — #1676.)
 
 ### Chief Release/DevOps Officer
 Owns: CI, build/release workflows, versioning, branching, signing, artifacts.
@@ -92,7 +93,7 @@ implementation detail — that's the domain agent's job.
 | Rust Architect | `rust/`, `core_workers` | `unsafe`, SIMD, Tokio/Rayon usage, FFI boundary shape | Unreviewed `unsafe`, blocking calls on async runtimes |
 | Playback Architect | `platform_player`, `platform_streams`, `platform_media`, `core_media_routing` | Decoder/renderer changes, DRM, subtitle/audio pipeline | Changes that bypass the media routing contract |
 | Media Intelligence Architect | `platform_epg`, `feature_iptv`, `platform_playlist`, `platform_playlist_export`, `platform_playlist_import`, `platform_favorites`, `platform_history` | Provider adapters, EPG parsing/normalization, ranking | Provider-specific hacks that leak into shared models |
-| TV Experience Architect | `core_remote_control`, `core_remote_views`, `platform_receiver_modes` | Focus engine, remote input mapping, overscan handling | Focus traversal that breaks 10-foot navigation |
+| TV Experience Architect | `core_remote_control`, `platform_receiver_modes` | Focus engine, remote input mapping, overscan handling | Focus traversal that breaks 10-foot navigation |
 | Platform Architect | `core_native`, `platform_channels`, `core_device_identity`, `core_pairing`, `core_protocol`, `platform_device_profile`, `platform_device_qualification` | Native bridge/FFI shape, platform channel contracts | Direct native calls bypassing the channel contract |
 | Edge Architect | `core_orchestration_storage`, `core_watch_progress`, `core_presence` | Offline/caching/sync design, background workers | Sync logic duplicated outside these packages |
 
@@ -101,7 +102,7 @@ implementation detail — that's the domain agent's job.
 | Role | Owns | Notes |
 | --- | --- | --- |
 | Coins / Finance Agent | `feature_coin`, `platform_coin_vault`, future `platform_coin_*` and coin plugin packages | Airo Coin is package-first. `packages/airomoney` is retired; `app/lib/features/coins` is legacy super-app code to extract or delete, not a target for new behavior. |
-| AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai`, `core_ai_delegation`, `core_delegation` — those runtime/model-routing packages stay with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. |
+| AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai` — that runtime/model-routing package stays with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. (`core_ai_delegation` and `core_delegation` were deleted as orphan leaves with zero consumers — #1676.) |
 | Meeting Intelligence Agent | (none yet) | Dormant — no packages exist for this sub-app yet |
 
 ### Package ownership — full retrofit (phase 2)
@@ -114,11 +115,13 @@ of 21 independent third-party-compatibility shims, not itself a package (no
 
 Packages assigned to `Chief Architect` as primary owner (no dedicated domain
 fits): `airo` (super-app host/routing), `airo_pro_bootstrap`, `core_data`,
-`core_domain`, `core_experimentation`, `core_media_data` (data/benchmark
+`core_domain`, `core_media_data` (data/benchmark
 models, not decoder/DRM/subtitle logic — not a real Playback fit),
 `platform_worker_jobs` (generic resource-scheduler contracts, no UI —
 not a real Flutter fit). These stay Chief-Architect-owned until a future
 pass finds a better-fitting domain, not because they're unimportant.
+(`core_experimentation` was deleted as an orphan leaf with zero consumers
+and no feature-flag call site anywhere in the repo — #1676.)
 
 ## Decision Matrix
 
@@ -159,8 +162,7 @@ quality_gates:
 ```
 
 Reference examples: `packages/platform_epg/module.yaml`,
-`packages/platform_player/module.yaml`,
-`packages/platform_dependency_governance/module.yaml`.
+`packages/platform_player/module.yaml`.
 
 ## Release Gate
 

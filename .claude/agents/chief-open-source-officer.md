@@ -1,6 +1,6 @@
 ---
 name: chief-open-source-officer
-description: Reviews dependency scoring: license, maintenance, security, binary impact, bus factor. Use for every new dependency in any package. Primary owner of platform_dependency_governance.
+description: Reviews dependency scoring: license, maintenance, security, binary impact, bus factor. Use for every new dependency in any package.
 tools: Read, Grep, Glob, Bash
 ---
 

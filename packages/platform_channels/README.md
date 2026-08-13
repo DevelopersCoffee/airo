@@ -1,5 +1,10 @@
 # Platform Channels
 
+> **Naming note:** "channels" here means IPTV channels (`IPTVChannel`), not
+> Flutter platform `MethodChannel`s. This package has no native-bridge code;
+> native/FFI method-channel contracts live in `core_native` and
+> `core_protocol` instead.
+
 Reusable IPTV channel models, source helpers, and playlist-derived URL policy
 for Airo products.
 
