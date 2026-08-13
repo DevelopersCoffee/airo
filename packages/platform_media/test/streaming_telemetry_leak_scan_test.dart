@@ -22,7 +22,7 @@ class _RecordingAnalyticsService extends AiroNoOpAnalyticsService {
 /// Xtream-style path, or a query-string token never survives into an
 /// emitted analytics event -- run through the *real* wired path
 /// (VideoPlayerStreamingService -> StreamingSessionMetricsCollector ->
-/// AppLogger.analytics), not just the isolated model.
+/// PlatformMediaLogger.analytics), not just the isolated model.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -37,12 +37,12 @@ void main() {
     engine = VideoPlayerAiroPlaybackEngine();
     service = VideoPlayerStreamingService(engine: engine);
     recordedEvents = [];
-    AppLogger.setAnalyticsService(_RecordingAnalyticsService(recordedEvents));
+    PlatformMediaLogger.setAnalyticsService(_RecordingAnalyticsService(recordedEvents));
   });
 
   tearDown(() async {
     await service.dispose();
-    AppLogger.setAnalyticsService(const AiroNoOpAnalyticsService());
+    PlatformMediaLogger.setAnalyticsService(const AiroNoOpAnalyticsService());
   });
 
   const hostileUrls = {

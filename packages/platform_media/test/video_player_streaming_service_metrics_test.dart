@@ -38,12 +38,12 @@ void main() {
     engine = VideoPlayerAiroPlaybackEngine();
     service = VideoPlayerStreamingService(engine: engine);
     recordedEvents = [];
-    AppLogger.setAnalyticsService(_RecordingAnalyticsService(recordedEvents));
+    PlatformMediaLogger.setAnalyticsService(_RecordingAnalyticsService(recordedEvents));
   });
 
   tearDown(() async {
     await service.dispose();
-    AppLogger.setAnalyticsService(const AiroNoOpAnalyticsService());
+    PlatformMediaLogger.setAnalyticsService(const AiroNoOpAnalyticsService());
   });
 
   group('VideoPlayerStreamingService streaming QoE telemetry (F7.1)', () {
@@ -143,7 +143,7 @@ void main() {
 
         // The session started when the loop first attempted a source but
         // was never handed a first frame; it's only finalized -- and only
-        // then does the summary reach AppLogger -- once something ends it.
+        // then does the summary reach PlatformMediaLogger -- once something ends it.
         recordedEvents.clear();
         await service.stop();
 
