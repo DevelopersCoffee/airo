@@ -111,7 +111,7 @@ class FilterRow extends ConsumerWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth >= 760 && chips.length >= 4) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
                 Expanded(flex: 12, child: _expandChip(chips[0])),
@@ -128,7 +128,7 @@ class FilterRow extends ConsumerWidget {
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
               for (final chip in chips) ...[chip, const SizedBox(width: 8)],
