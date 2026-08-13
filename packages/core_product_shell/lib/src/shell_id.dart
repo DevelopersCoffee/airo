@@ -27,6 +27,13 @@ class ShellId {
   /// the assistant on its own without the super app's other tabs.
   static const mind = ShellId('mind');
 
+  /// The iPad Air QA/UX qualification harness
+  /// (`app/lib/main_qualification.dart`). Not a shippable product shell —
+  /// exists so device-qualification testing goes through the same
+  /// `AiroBootstrap`/`ModuleRegistry` contract as every real shell instead
+  /// of its own bespoke prologue (#1680).
+  static const qualification = ShellId('qualification');
+
   /// Stable, lowercase identifier for this shell (used for equality, logs,
   /// and any future serialization — never for display).
   final String value;

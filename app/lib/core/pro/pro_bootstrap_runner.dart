@@ -1,4 +1,5 @@
 import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter/foundation.dart';
 
@@ -35,4 +36,28 @@ Future<List<String>> runProBootstrap({
     logger('⚠️ Pro bootstrap failed; continuing with baseline: $e');
     return const [];
   }
+}
+
+/// Runs the open-core pro bootstrap seam after the first frame.
+///
+/// No-op cost in open-source builds; in `airo-pro` overlay builds this is
+/// where entitled pro modules initialize. Never blocks or breaks startup.
+///
+/// Lives alongside [runProBootstrap] (rather than in
+/// `core/startup/app_startup_tasks.dart`, which also imports
+/// `AuthService`/`FeatureRegistry`) so every shell — including the lean
+/// standalone shells (Airo Mind, Airo Coins) whose pubspecs don't carry
+/// those app-shell dependencies — can schedule pro bootstrap through this
+/// one call (#1680: previously two spellings existed, this one and a raw
+/// `addPostFrameCallback`).
+void scheduleDeferredProBootstrap({
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'pro_bootstrap',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => runProBootstrap(log: log),
+  );
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_app_shell/core_app_shell.dart';
-import 'package:airo_app/core/config/firebase_status.dart';
 import 'package:airo_app/main_tv.dart';
 import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
@@ -618,55 +617,12 @@ https://cdn.example.com/live/news.m3u8
     );
   });
 
-  test('initializes TV Firebase through deferred startup task', () async {
-    isFirebaseInitialized = false;
-    var initialized = false;
-    final logs = <String>[];
-    void Function(Duration timestamp)? frameCallback;
-
-    scheduleTvFirebaseInitialization(
-      isConfigured: true,
-      variantName: 'tvTest',
-      initializeApp: () async {
-        initialized = true;
-      },
-      addPostFrameCallback: (callback) {
-        frameCallback = callback;
-      },
-      log: logs.add,
-    );
-
-    expect(initialized, isFalse);
-    expect(isFirebaseInitialized, isFalse);
-
-    frameCallback!(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(initialized, isTrue);
-    expect(isFirebaseInitialized, isTrue);
-    expect(logs, contains('✅ Firebase initialized (TV variant: tvTest)'));
-    expect(
-      logs,
-      contains('✅ Deferred startup task completed: tv_firebase_initialization'),
-    );
-  });
-
-  test('skips TV Firebase when platform options are not configured', () async {
-    isFirebaseInitialized = true;
-    final logs = <String>[];
-
-    final initialized = await initializeTvFirebase(
-      isConfigured: false,
-      log: logs.add,
-    );
-
-    expect(initialized, isFalse);
-    expect(isFirebaseInitialized, isFalse);
-    expect(
-      logs,
-      contains('⚠️ Firebase not configured for this platform; skipping init'),
-    );
-  });
+  // TV Firebase initialization now runs through the shared
+  // `AiroBootstrap`/`FirebasePolicy.deferred` prologue (#1680) instead of
+  // this file's own `scheduleTvFirebaseInitialization`/`initializeTvFirebase`
+  // — see `packages/core_product_shell/test/airo_bootstrap_test.dart` for the
+  // equivalent coverage (deferred scheduling, "not configured" skip path,
+  // "already initialized" and web-amnesty success paths, failure logging).
 
   test('does not lock orientation on mobile devices', () async {
     List<DeviceOrientation>? orientations;

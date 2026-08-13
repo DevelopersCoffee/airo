@@ -53,16 +53,17 @@ library;
 
 import 'dart:async';
 
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/assistant/app_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
+import 'core/error/global_error_handler.dart';
 import 'core/mind/mind_model_catalog.dart';
 import 'core/mind/mind_model_sources.dart';
 import 'core/mind/mind_shell.dart';
@@ -73,44 +74,36 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'firebase_options.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() {
+  late ModuleRegistry registry;
 
-  await _initializeFirebase();
-
-  final registry = buildMindModuleRegistry();
-  runApp(AiroMindApp(registry: registry));
-
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(registry.initializeAll());
-    unawaited(runProBootstrap());
-  });
-}
-
-/// Firebase, for auth parity with the super app: the assistant's profile
-/// screen signs in and out through the same [AppAssistantHostAdapter], and
-/// Google Sign-In needs Firebase. Deliberately only the initialization block
-/// from `main.dart` — none of its EPG or notification wiring, which belongs
-/// to features this shell does not ship.
-Future<void> _initializeFirebase() async {
-  try {
-    if (Firebase.apps.isNotEmpty) {
-      isFirebaseInitialized = true;
-      return;
-    }
-    final options = DefaultFirebaseOptions.currentPlatform;
-    if (!DefaultFirebaseOptions.isCurrentPlatformConfigured ||
-        !DefaultFirebaseOptions.isConfigured(options)) {
-      isFirebaseInitialized = false;
-      debugPrint('⚠️ Firebase not configured for this platform; skipping init');
-      return;
-    }
-    await Firebase.initializeApp(options: options);
-    isFirebaseInitialized = true;
-  } catch (e) {
-    isFirebaseInitialized = Firebase.apps.isNotEmpty;
-    debugPrint('⚠️ Firebase initialization failed: $e');
-  }
+  return AiroBootstrap.run(
+    shell: ShellId.mind,
+    errorHandler: ErrorHandlerPolicy.enabled(GlobalErrorHandler.initialize),
+    // Auth parity with the super app: the assistant's profile screen signs
+    // in and out through the same [AppAssistantHostAdapter], and Google
+    // Sign-In needs Firebase before the first frame.
+    firebase: FirebasePolicy.blocking(
+      options: DefaultFirebaseOptions.currentPlatform,
+      isConfigured:
+          DefaultFirebaseOptions.isCurrentPlatformConfigured &&
+          DefaultFirebaseOptions.isConfigured(
+            DefaultFirebaseOptions.currentPlatform,
+          ),
+      onResult: (initialized) => isFirebaseInitialized = initialized,
+    ),
+    composeApp: () {
+      registry = buildMindModuleRegistry();
+      return AiroMindApp(registry: registry);
+    },
+    afterRunApp: () {
+      scheduleDeferredStartupTask(
+        debugName: 'mind_feature_initialization',
+        task: registry.initializeAll,
+      );
+      scheduleDeferredProBootstrap();
+    },
+  );
 }
 
 /// Builds the Airo Mind shell's module registry. Split out (and returning a

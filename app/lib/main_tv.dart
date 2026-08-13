@@ -21,10 +21,8 @@ import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -45,7 +43,6 @@ import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
-typedef TvFirebaseInitializer = Future<void> Function();
 typedef TvDebugPlaylistLoader =
     Future<List<IPTVChannel>> Function(
       String playlistUrl,
@@ -64,107 +61,122 @@ const _bundledGuideCountry = String.fromEnvironment(
   defaultValue: 'IN',
 );
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  AiroImageCacheBudget.configureAndroidTv();
-  AiroMemoryPressureObserver();
+void main() {
+  late SharedPreferences prefs;
+  late ModuleRegistry moduleRegistry;
+  late SnapshotBackedCompactEpgRepository compactEpgRepository;
+  late MutableXmltvCompactEpgRepository mutableXmltvRepository;
+  late bool shouldWarmDebugPlaylist;
 
-  // Initialize global error handler for unhandled exceptions
-  GlobalErrorHandler.initialize();
-
-  // Enable semantics for browser release-audit automation and accessibility
-  // inspection. This mirrors the main web entrypoint behavior.
-  if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
-    debugPrint('Semantics enabled for Airo TV web testing');
-  }
-
-  await configureTvSystemChrome();
-
-  debugPrint('🖥️ Starting Airo TV (${PlatformFeatures.platformName})');
-  debugPrint(
-    '📺 Features: ${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
-  );
-
-  // Initialize SharedPreferences for IPTV caching
-  final prefs = await SharedPreferences.getInstance();
-
-  // Phase 1 streaming telemetry (F7.1/F7.5) -- opt-in only, nothing
-  // recorded until the user grants it in Settings. Constructed with
-  // whatever was last persisted (withheld on a fresh install) and
-  // wired into PlatformMediaLogger before anything else can call
-  // PlatformMediaLogger.analytics(); the settings toggle later calls
-  // .updateConsent() on this exact instance via
-  // streamingTelemetryServiceProvider's override below.
-  final streamingTelemetryService = AiroLocalDiagnosticsAnalyticsService(
-    consent: loadStreamingTelemetryConsent(prefs),
-  );
-  PlatformMediaLogger.setAnalyticsService(streamingTelemetryService);
-
-  final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
-  final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
-  final compactEpgRepository = createTvCompactEpgRepository(
-    fallback: mutableXmltvRepository,
-  );
-
-  // Compose the focused TV product through the shared shell contract.
-  final moduleRegistry = buildTvModuleRegistry();
-
-  debugPrint('📦 Registered features: ${moduleRegistry.moduleIds.join(', ')}');
-
-  // Initialize the OS media session (media notification + lock-screen
-  // controls) on Android, where audio_service's foreground service is what
-  // keeps live audio alive — and controllable — after a Home press (#980).
-  // Skipped elsewhere: web has no audio_service host, and desktop dev
-  // builds don't run the Android foreground service.
-  //
-  // Bounded: a misbehaving OS media service must never block app startup —
-  // on a timeout/failure the app boots normally without media-session
-  // controls (the pre-#980 behavior).
-  TvAudioHandler? tvAudioHandler;
-  if (!kIsWeb && Platform.isAndroid) {
-    try {
-      tvAudioHandler = await initTvAudioService().timeout(
-        const Duration(seconds: 5),
-      );
-    } catch (e) {
-      debugPrint('📺 TV audio service init skipped: $e');
-    }
-  }
-
-  runApp(
-    ProviderScope(
-      overrides: buildTvProviderOverrides(
-        prefs: prefs,
-        compactEpgRepository: compactEpgRepository,
-        mutableXmltvRepository: mutableXmltvRepository,
-        tvAudioHandler: tvAudioHandler,
-        moduleRegistry: moduleRegistry,
-        streamingTelemetryService: streamingTelemetryService,
-      ),
-      child: const AiroTvApp(),
+  AiroBootstrap.run(
+    shell: ShellId.tv,
+    // Must run before anything else can allocate images (load-bearing
+    // ordering, #1680).
+    earlyPhase: () {
+      AiroImageCacheBudget.configureAndroidTv();
+      AiroMemoryPressureObserver();
+    },
+    errorHandler: ErrorHandlerPolicy.enabled(GlobalErrorHandler.initialize),
+    // Deferred: a slow or unreachable Firebase backend must never delay a TV
+    // boot straight to the guide.
+    firebase: FirebasePolicy.deferred(
+      options: DefaultFirebaseOptions.currentPlatform,
+      isConfigured: DefaultFirebaseOptions.isCurrentPlatformConfigured,
+      variantName: DefaultFirebaseOptions.currentVariant.name,
+      onResult: (initialized) => isFirebaseInitialized = initialized,
     ),
-  );
+    // Load-bearing ordering (#1680): image-cache budget (above, earlyPhase)
+    // → system chrome → prefs → audio service → runApp. Preserved exactly by
+    // keeping every step inside this one hook, in this order.
+    composeApp: () async {
+      await configureTvSystemChrome();
 
-  scheduleTvFirebaseInitialization();
-  scheduleTvFeatureInitialization(moduleRegistry: moduleRegistry);
-  scheduleDeferredProBootstrap();
-  if (shouldWarmDebugPlaylist) {
-    scheduleTvDebugDefaultPlaylistWarmup(prefs);
-  }
-  scheduleTvDebugDefaultEpgWarmup(
-    prefs,
-    repository: compactEpgRepository,
-    windowRepository: mutableXmltvRepository,
+      debugPrint('🖥️ Starting Airo TV (${PlatformFeatures.platformName})');
+      debugPrint(
+        '📺 Features: '
+        '${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
+      );
+
+      // Initialize SharedPreferences for IPTV caching
+      prefs = await SharedPreferences.getInstance();
+
+      // Phase 1 streaming telemetry (F7.1/F7.5) -- opt-in only, nothing
+      // recorded until the user grants it in Settings. Constructed with
+      // whatever was last persisted (withheld on a fresh install) and wired
+      // into PlatformMediaLogger before anything else can call
+      // PlatformMediaLogger.analytics(); the settings toggle later calls
+      // .updateConsent() on this exact instance via
+      // streamingTelemetryServiceProvider's override below.
+      final streamingTelemetryService = AiroLocalDiagnosticsAnalyticsService(
+        consent: loadStreamingTelemetryConsent(prefs),
+      );
+      PlatformMediaLogger.setAnalyticsService(streamingTelemetryService);
+
+      shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
+      mutableXmltvRepository = MutableXmltvCompactEpgRepository();
+      compactEpgRepository = createTvCompactEpgRepository(
+        fallback: mutableXmltvRepository,
+      );
+
+      // Compose the focused TV product through the shared shell contract.
+      moduleRegistry = buildTvModuleRegistry();
+      debugPrint(
+        '📦 Registered features: ${moduleRegistry.moduleIds.join(', ')}',
+      );
+
+      // Initialize the OS media session (media notification + lock-screen
+      // controls) on Android, where audio_service's foreground service is
+      // what keeps live audio alive — and controllable — after a Home press
+      // (#980). Skipped elsewhere: web has no audio_service host, and
+      // desktop dev builds don't run the Android foreground service.
+      //
+      // Bounded: a misbehaving OS media service must never block app
+      // startup — on a timeout/failure the app boots normally without
+      // media-session controls (the pre-#980 behavior).
+      TvAudioHandler? tvAudioHandler;
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          tvAudioHandler = await initTvAudioService().timeout(
+            const Duration(seconds: 5),
+          );
+        } catch (e) {
+          debugPrint('📺 TV audio service init skipped: $e');
+        }
+      }
+
+      return ProviderScope(
+        overrides: buildTvProviderOverrides(
+          prefs: prefs,
+          compactEpgRepository: compactEpgRepository,
+          mutableXmltvRepository: mutableXmltvRepository,
+          tvAudioHandler: tvAudioHandler,
+          moduleRegistry: moduleRegistry,
+          streamingTelemetryService: streamingTelemetryService,
+        ),
+        child: const AiroTvApp(),
+      );
+    },
+    afterRunApp: () {
+      scheduleTvFeatureInitialization(moduleRegistry: moduleRegistry);
+      scheduleDeferredProBootstrap();
+      if (shouldWarmDebugPlaylist) {
+        scheduleTvDebugDefaultPlaylistWarmup(prefs);
+      }
+      scheduleTvDebugDefaultEpgWarmup(
+        prefs,
+        repository: compactEpgRepository,
+        windowRepository: mutableXmltvRepository,
+      );
+      if (_bundledPlaylistUrl.isNotEmpty && _bundledManifestUrl.isNotEmpty) {
+        scheduleTvBundledSystemGuideRefresh(
+          prefs,
+          repository: mutableXmltvRepository,
+        );
+      } else {
+        scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
+      }
+    },
   );
-  if (_bundledPlaylistUrl.isNotEmpty && _bundledManifestUrl.isNotEmpty) {
-    scheduleTvBundledSystemGuideRefresh(
-      prefs,
-      repository: mutableXmltvRepository,
-    );
-  } else {
-    scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
-  }
 }
 
 /// Builds the exact module composition shipped by the focused TV entrypoint.
@@ -320,62 +332,6 @@ Future<void> configureTvSystemChrome({
 
   await applyOrientations([]);
   await applySystemUiMode(SystemUiMode.edgeToEdge);
-}
-
-@visibleForTesting
-void scheduleTvFirebaseInitialization({
-  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
-  void Function(String message)? log,
-  TvFirebaseInitializer? initializeApp,
-  bool? isConfigured,
-  String variantName = '',
-}) {
-  scheduleDeferredStartupTask(
-    debugName: 'tv_firebase_initialization',
-    addPostFrameCallback: addPostFrameCallback,
-    log: log,
-    task: () => initializeTvFirebase(
-      initializeApp: initializeApp,
-      isConfigured: isConfigured,
-      variantName: variantName.isEmpty
-          ? DefaultFirebaseOptions.currentVariant.name
-          : variantName,
-      log: log,
-    ),
-  );
-}
-
-@visibleForTesting
-Future<bool> initializeTvFirebase({
-  TvFirebaseInitializer? initializeApp,
-  bool? isConfigured,
-  String variantName = '',
-  void Function(String message)? log,
-}) async {
-  final logger = log ?? debugPrint;
-  final configured =
-      isConfigured ?? DefaultFirebaseOptions.isCurrentPlatformConfigured;
-  try {
-    if (!configured) {
-      isFirebaseInitialized = false;
-      logger('⚠️ Firebase not configured for this platform; skipping init');
-      return false;
-    }
-
-    await (initializeApp ??
-        () {
-          return Firebase.initializeApp(
-            options: DefaultFirebaseOptions.currentPlatform,
-          );
-        })();
-    isFirebaseInitialized = true;
-    logger('✅ Firebase initialized (TV variant: $variantName)');
-    return true;
-  } catch (e) {
-    isFirebaseInitialized = false;
-    logger('⚠️ Firebase initialization failed: $e');
-    return false;
-  }
 }
 
 @visibleForTesting

@@ -26,8 +26,7 @@
 /// ```
 library;
 
-import 'dart:async';
-
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_coin/feature_coin.dart';
@@ -39,11 +38,40 @@ import 'core/coins/coins_standalone_home.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(AiroCoinsApp(registry: buildCoinsModuleRegistry()));
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(runProBootstrap());
-  });
+  late ModuleRegistry registry;
+
+  AiroBootstrap.run(
+    shell: ShellId.coins,
+    // `pubspec_coins.yaml` carries no `firebase_core` — the standalone
+    // vault has no auth surface that needs it — and no `image_picker` /
+    // `package_info_plus` / `url_launcher` / `core_data`, the dependencies
+    // `GlobalErrorHandler` needs for its bug-report dialog. Wiring either in
+    // for this shell alone would be a dependency-footprint change beyond
+    // #1680's scope, so both are explicit, documented opt-outs rather than
+    // silent gaps.
+    errorHandler: ErrorHandlerPolicy.disabled(
+      reason:
+          'lean standalone shell; GlobalErrorHandler needs image_picker/'
+          'package_info_plus/url_launcher/core_data, none of which '
+          'pubspec_coins.yaml carries today (#1680)',
+    ),
+    firebase: FirebasePolicy.skip(
+      reason:
+          'pubspec_coins.yaml carries no firebase_core dependency; '
+          'the standalone vault has no auth surface today',
+    ),
+    composeApp: () {
+      registry = buildCoinsModuleRegistry();
+      return AiroCoinsApp(registry: registry);
+    },
+    afterRunApp: () {
+      scheduleDeferredStartupTask(
+        debugName: 'coins_feature_initialization',
+        task: registry.initializeAll,
+      );
+      scheduleDeferredProBootstrap();
+    },
+  );
 }
 
 /// Builds the Airo Coins shell's module registry. Split out (and returning
