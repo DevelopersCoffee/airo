@@ -247,6 +247,19 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # feature_mind is an FFI plugin (packages/feature_mind/pubspec.yaml);
+      # its Android build wires in cargokit, which shells out to `cargo` for
+      # whichever Android ABI(s) the build targets. The APK build below is
+      # arm64-only, but the AAB build ships all three ABIs, so all three
+      # Android targets need to be present -- otherwise cargokit fails deep
+      # inside the Gradle build rather than with a clear "target not
+      # installed" message. Same toolchain/targets as `rust-core.yml`'s
+      # Android job.
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:

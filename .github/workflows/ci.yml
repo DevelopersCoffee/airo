@@ -543,6 +543,20 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # Only the `full` matrix leg builds from app/pubspec.yaml unmodified,
+      # which depends on feature_mind (an FFI plugin -> cargokit -> cargo).
+      # `tv` and `coins` swap in a stub pubspec (matrix.platform.use_stubs)
+      # that drops feature_mind entirely, so they don't need this -- skip it
+      # there to avoid burning CI minutes on an unused toolchain install
+      # (see the "Run code generation" step below, gated the same way).
+      # Same toolchain/target as `rust-core.yml`'s Android job (arm64-only,
+      # matching this job's --target-platform=android-arm64 build).
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
       # ===========================================
       # Firebase Configuration Setup
       # ===========================================

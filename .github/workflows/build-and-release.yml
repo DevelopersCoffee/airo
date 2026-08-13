@@ -109,6 +109,17 @@ jobs:
           key: gradle-${{ runner.os }}-arm64-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # app/pubspec.yaml (the full profile, used unmodified in this job)
+      # depends on feature_mind, an FFI plugin whose Android build wires in
+      # cargokit -- it shells out to `cargo` for the ABI(s) being built. This
+      # job builds an arm64 APK and an "all ABIs" AAB, so all three Android
+      # targets are needed. Same toolchain/targets as `rust-core.yml`'s
+      # Android job.
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
       # ===========================================
       # Firebase Configuration Setup
       # ===========================================
@@ -281,6 +292,14 @@ jobs:
           key: gradle-${{ runner.os }}-arm32-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # This job builds an armeabi-v7a-only APK from the full profile
+      # (feature_mind in the dependency graph -> cargokit -> cargo). See the
+      # arm64 job above for the full rationale.
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-linux-androideabi
+
       - name: Create Firebase Config
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -419,6 +438,14 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-x64-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
+
+      # This job builds an x86_64-only APK from the full profile
+      # (feature_mind in the dependency graph -> cargokit -> cargo). See the
+      # arm64 job above for the full rationale.
+      - name: Install Rust toolchain (for cargokit / feature_mind)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
 
       - name: Create Firebase Config
         env:
