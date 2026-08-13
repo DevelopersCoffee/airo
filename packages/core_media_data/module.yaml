@@ -8,3 +8,4 @@ allowed_dependencies:
 forbidden_dependencies:
   - app
 quality_gates: {}
+status: pre-wired  # relational-store models for core_native's native path (#1677); only reached today via platform_benchmarks (tool-only), no app flavor consumes it yet. Not archived — it's what exercises the native path this issue just wired.

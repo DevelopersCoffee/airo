@@ -1,4 +1,11 @@
-import 'package:airo_app/core/database/app_database.dart';
+// coins_local_datasource_impl.dart (below) imports app_database_native.dart
+// directly, so this suite must match rather than go through the
+// platform-conditional app_database.dart barrel. See #1679: the analyzer
+// resolves a conditional export to its unconditioned/default branch
+// regardless of the runtime condition, so once that barrel's default is
+// (correctly) the web-safe stub, importing it here would produce a type
+// the datasource can't accept.
+import 'package:airo_app/core/database/app_database_native.dart';
 import 'package:feature_coins_core/src/application/use_cases/add_split_use_case.dart';
 import 'package:feature_coins_core/src/application/use_cases/create_group_use_case.dart';
 import 'package:airo_app/features/coins/data/datasources/coins_local_datasource_impl.dart';

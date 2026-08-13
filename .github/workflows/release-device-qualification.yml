@@ -58,9 +58,9 @@ jobs:
 
       - name: Verify release-line base context
         run: |
-          git fetch origin main v2
+          git fetch origin main
           git merge-base --is-ancestor origin/main HEAD || {
-            echo "::warning::This qualification run is not based on origin/main. Use origin/v2 only for explicit v2 releases."
+            echo "::warning::This qualification run is not based on origin/main."
           }
 
       - name: Setup Flutter

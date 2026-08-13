@@ -67,4 +67,3 @@ final beatsAudioHandlerProvider = Provider<BeatsAudioHandler>((ref) {
   }
   return _audioHandler!;
 });
-

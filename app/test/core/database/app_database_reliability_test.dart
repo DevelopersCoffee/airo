@@ -1,6 +1,15 @@
 import 'dart:io';
 
-import 'package:airo_app/core/database/app_database.dart';
+// This suite exercises Drift-only APIs (customSelect, exportDatabase,
+// restoreBackup, databasePath) that only exist on the native
+// implementation, and always runs on the native VM (flutter test never
+// targets web/wasm) -- so it imports app_database_native.dart directly
+// rather than the platform-conditional app_database.dart barrel. See #1679:
+// the analyzer resolves a conditional export to its unconditioned/default
+// branch regardless of the runtime condition, so once that barrel's default
+// is (correctly) the web-safe stub, importing it here would type this
+// suite against the stub instead of the real Drift database.
+import 'package:airo_app/core/database/app_database_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

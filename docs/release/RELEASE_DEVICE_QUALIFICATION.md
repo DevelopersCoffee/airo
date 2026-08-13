@@ -26,8 +26,9 @@ change.
 Patrol E2E tests, artifact smoke scripts, release device matrix, and release
 checklist.
 
-**Base branch/worktree:** Confirmed from latest `origin/main` for v1/full app
-release work. Use `origin/v2` only for explicit v2 modular/TV issues.
+**Base branch/worktree:** Confirmed from latest `origin/main` for all release
+work (v2 branch/tag strategy dropped 2026-08-13; current release line is
+`0.0.7-preview`).
 
 **Decision:** Ready.
 
