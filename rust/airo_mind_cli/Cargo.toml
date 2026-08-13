@@ -1,0 +1,19 @@
+[package]
+name = "airo_mind_cli"
+version = "0.1.0"
+edition = "2021"
+description = "macOS dev-loop smoke test: real .m4a -> ASR transcript (with timestamps) -> LLM generation, both engines Metal-accelerated. Not shipped product code -- see README.md in this crate."
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "airo_mind_cli"
+path = "src/main.rs"
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+airo_mind_whisper = { path = "../airo_mind_whisper", features = ["whisper", "metal"] }
+airo_mind_llama = { path = "../airo_mind_llama", features = ["llama", "metal"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
