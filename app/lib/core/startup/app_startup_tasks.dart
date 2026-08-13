@@ -2,8 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import '../auth/auth_service.dart';
 import '../features/feature_registry.dart';
-import '../pro/pro_bootstrap_runner.dart';
 import 'deferred_startup_task.dart';
+
+// scheduleDeferredProBootstrap now lives in ../pro/pro_bootstrap_runner.dart
+// (#1680) so shells that don't carry AuthService/FeatureRegistry's
+// dependencies (Airo Mind, Airo Coins) can still reach it without importing
+// this file. Re-exported here so `main.dart`/`main_tv.dart`'s existing
+// unqualified call sites keep working unchanged.
+export '../pro/pro_bootstrap_runner.dart' show scheduleDeferredProBootstrap;
 
 typedef AppStartupInitializer = Future<void> Function();
 
@@ -53,21 +59,5 @@ void scheduleDeferredAudioInitialization({
     addPostFrameCallback: addPostFrameCallback,
     log: log,
     task: initializeAudio,
-  );
-}
-
-/// Runs the open-core pro bootstrap seam after the first frame.
-///
-/// No-op cost in open-source builds; in `airo-pro` overlay builds this is
-/// where entitled pro modules initialize. Never blocks or breaks startup.
-void scheduleDeferredProBootstrap({
-  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
-  void Function(String message)? log,
-}) {
-  scheduleDeferredStartupTask(
-    debugName: 'pro_bootstrap',
-    addPostFrameCallback: addPostFrameCallback,
-    log: log,
-    task: () => runProBootstrap(log: log),
   );
 }

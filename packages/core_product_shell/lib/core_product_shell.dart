@@ -5,6 +5,7 @@
 /// architecture this package is phase 1 of.
 library;
 
+export 'src/airo_bootstrap.dart';
 export 'src/app_module.dart';
 export 'src/module_registry.dart';
 export 'src/shell_id.dart';

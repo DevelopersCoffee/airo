@@ -1,10 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:core_data/core_data.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
@@ -26,107 +25,69 @@ import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 import 'package:feature_coin/feature_coin.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() {
+  late SharedPreferences prefs;
+  late ModuleRegistry moduleRegistry;
+  late GoRouter router;
+  late FlutterLocalNotificationsEpgReminderGateway epgReminderGateway;
 
-  // Initialize global error handler for unhandled exceptions
-  GlobalErrorHandler.initialize();
-
-  // Enable semantics for web testing (Playwright/Selenium/accessibility)
-  // This creates DOM elements from Flutter's semantic tree
-  if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
-    debugPrint('🔧 Semantics enabled for web testing');
-  }
-
-  // Initialize Firebase with platform-specific options
-  try {
-    if (kIsWeb) {
-      // On web, check if Firebase is already initialized from index.html
-      if (Firebase.apps.isNotEmpty) {
-        isFirebaseInitialized = true;
-        debugPrint('✅ Firebase already initialized (from index.html)');
-      } else {
-        // Try to initialize if not already done
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-        isFirebaseInitialized = true;
-        debugPrint('✅ Firebase initialized successfully (web)');
-      }
-    } else if (!DefaultFirebaseOptions.isCurrentPlatformConfigured) {
-      isFirebaseInitialized = false;
-      debugPrint('⚠️ Firebase not configured for this platform; skipping init');
-      debugPrint(
-        '📝 Demo login (admin/admin) available. Google Sign-In needs Firebase.',
-      );
-    } else {
-      // Native platforms
-      final options = DefaultFirebaseOptions.currentPlatform;
-      if (DefaultFirebaseOptions.isConfigured(options)) {
-        await Firebase.initializeApp(options: options);
-        isFirebaseInitialized = true;
-        debugPrint('✅ Firebase initialized successfully');
-      } else {
-        isFirebaseInitialized = false;
-        debugPrint('⚠️ Firebase skipped: platform options are placeholders.');
-      }
-    }
-  } catch (e) {
-    // On web, Firebase might already be initialized from index.html
-    if (kIsWeb && Firebase.apps.isNotEmpty) {
-      isFirebaseInitialized = true;
-      debugPrint('✅ Firebase available (initialized from index.html)');
-    } else {
-      isFirebaseInitialized = false;
-      debugPrint('⚠️ Firebase initialization failed: $e');
-      debugPrint(
-        '📝 Demo login (admin/admin) available. Google Sign-In needs Firebase.',
-      );
-    }
-  }
-
-  // Initialize SharedPreferences for IPTV caching
-  final prefs = await SharedPreferences.getInstance();
-  final moduleRegistry = buildMainModuleRegistry();
-  final router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
-  final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
-    onNotificationRoute: router.go,
-  );
-  await epgReminderGateway.initialize();
-
-  runApp(
-    ProviderScope(
-      overrides: buildMainProviderOverrides(
-        prefs: prefs,
-        epgReminderGateway: epgReminderGateway,
-        moduleRegistry: moduleRegistry,
-      ),
-      child: AiroApp(router: router),
+  return AiroBootstrap.run(
+    shell: ShellId.mobile,
+    errorHandler: ErrorHandlerPolicy.enabled(GlobalErrorHandler.initialize),
+    firebase: FirebasePolicy.blocking(
+      options: DefaultFirebaseOptions.currentPlatform,
+      // Web trusts index.html's own config (or the amnesty branch below) and
+      // never gates on the generated placeholder check; native platforms do.
+      isConfigured:
+          kIsWeb ||
+          (DefaultFirebaseOptions.isCurrentPlatformConfigured &&
+              DefaultFirebaseOptions.isConfigured(
+                DefaultFirebaseOptions.currentPlatform,
+              )),
+      onResult: (initialized) => isFirebaseInitialized = initialized,
     ),
-  );
+    composeApp: () async {
+      prefs = await SharedPreferences.getInstance();
+      moduleRegistry = buildMainModuleRegistry();
+      router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
+      epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
+        onNotificationRoute: router.go,
+      );
+      await epgReminderGateway.initialize();
 
-  AppLifecycleListener(
-    onResume: () async {
-      try {
-        await EpgReminderScheduler(
-          store: EpgReminderStore(PreferencesStore(prefs)),
-          gateway: epgReminderGateway,
-        ).pruneElapsed();
-      } catch (error) {
-        debugPrint('[EpgReminderGateway] pruneElapsed failed: $error');
-      }
+      return ProviderScope(
+        overrides: buildMainProviderOverrides(
+          prefs: prefs,
+          epgReminderGateway: epgReminderGateway,
+          moduleRegistry: moduleRegistry,
+        ),
+        child: AiroApp(router: router),
+      );
     },
-  );
+    afterRunApp: () {
+      AppLifecycleListener(
+        onResume: () async {
+          try {
+            await EpgReminderScheduler(
+              store: EpgReminderStore(PreferencesStore(prefs)),
+              gateway: epgReminderGateway,
+            ).pruneElapsed();
+          } catch (error) {
+            debugPrint('[EpgReminderGateway] pruneElapsed failed: $error');
+          }
+        },
+      );
 
-  scheduleDeferredAuthInitialization();
-  scheduleDeferredFeatureInitialization(
-    initializeFeatures: moduleRegistry.initializeAll,
-  );
-  scheduleDeferredProBootstrap();
-  scheduleDeferredAudioInitialization(
-    initializeAudio: initAudioService,
-    skipOnWeb: true,
+      scheduleDeferredAuthInitialization();
+      scheduleDeferredFeatureInitialization(
+        initializeFeatures: moduleRegistry.initializeAll,
+      );
+      scheduleDeferredProBootstrap();
+      scheduleDeferredAudioInitialization(
+        initializeAudio: initAudioService,
+        skipOnWeb: true,
+      );
+    },
   );
 }
 
