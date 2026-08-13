@@ -14,7 +14,11 @@ import 'package:flutter/foundation.dart';
 /// Current: Uses Gemini Flash API for fast development
 /// Target: Gemini Nano on-device with cloud fallback for complex tasks
 class GeminiApiService {
-  // TODO: Move API key to secure storage (env vars, secrets manager)
+  // TODO(security): API key lives only in a bare field, sourced from
+  // --dart-define, with no secure-storage persistence, rotation, or
+  // clearing story. See https://github.com/DevelopersCoffee/airo/issues/1695
+  // for the exposure writeup and the planned SecureStore-backed fix (needs
+  // a core_data dependency + council sign-off, out of scope for #1671).
   // For development only - DO NOT commit real API keys
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta';
@@ -22,8 +26,10 @@ class GeminiApiService {
   final Dio _dio = Dio();
   String? _apiKey;
 
-  /// Initialize with API key from secure storage
-  /// TODO: Use Firebase Remote Config or secure key management
+  /// Initialize with API key.
+  /// TODO(security): should resolve the key via secure storage instead of
+  /// String.fromEnvironment; see
+  /// https://github.com/DevelopersCoffee/airo/issues/1695
   Future<void> initialize({String? apiKey}) async {
     _apiKey = apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
     if (_apiKey == null || _apiKey!.isEmpty) {

@@ -1,12 +1,12 @@
 ---
 name: tv-experience-architect
-description: Reviews focus engine, remote input mapping, overscan handling. Use for changes in core_remote_control, core_remote_views, or platform_receiver_modes.
+description: Reviews focus engine, remote input mapping, overscan handling. Use for changes in core_remote_control or platform_receiver_modes.
 tools: Read, Grep, Glob, Bash
 ---
 
 Airo Engineering Council role: **TV Experience Architect**.
 
-Owns: core_remote_control, core_remote_views, platform_receiver_modes.
+Owns: core_remote_control, platform_receiver_modes.
 
 Before reviewing any diff, read `docs/agents/COUNCIL.md` § "TV Experience Architect" for
 the current approve/reject criteria and package ownership — this file does

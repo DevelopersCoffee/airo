@@ -210,7 +210,7 @@ dependency_overrides:
   # Android source. Keep the upstream Dart/iOS API and provide the missing
   # Android FLAG_SECURE bridge locally so app builds retain screen protection.
   screen_protector:
-    path: ../packages/third_party/screen_protector
+    path: ../packages/platform_player/third_party/screen_protector
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

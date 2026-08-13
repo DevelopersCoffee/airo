@@ -267,7 +267,10 @@ class ActiveModelService {
 
     try {
       // Simulate model loading (actual implementation will use FFI)
-      // TODO: Replace with actual llama.cpp FFI loading
+      // TODO: Replace with actual llama.cpp FFI loading. Tracked as its own
+      // FFI-integration effort (too large for the core_ai LLM-stack
+      // unification refactor): see
+      // https://github.com/DevelopersCoffee/airo/issues/1696
       onProgress?.call(0.3, 'Loading model weights...');
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -341,7 +344,8 @@ class ActiveModelService {
       if (_activeRuntimeDispose != null) {
         await _activeRuntimeDispose!.call();
       }
-      // TODO: Replace with actual llama.cpp FFI cleanup
+      // TODO: Replace with actual llama.cpp FFI cleanup. See
+      // https://github.com/DevelopersCoffee/airo/issues/1696
       await Future.delayed(const Duration(milliseconds: 50));
 
       _activeModel = null;

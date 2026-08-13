@@ -41,8 +41,16 @@ import '../../../services/voice_search_service.dart';
 import '../../../widgets/mind_op_row.dart';
 import 'model_library_screen.dart';
 
-/// Chat message model
-class ChatMessage {
+/// A single bubble in [ChatScreen]'s transcript — the UI-rendering shape
+/// (text/isUser/traces/metadata/citations/groundingState/safetyClass), not
+/// the persistence shape in `domain/models/chat_models.dart`'s `ChatMessage`
+/// (id/conversationId/role/content/toolCalls). The two used to share the name
+/// `ChatMessage`, forced apart only by a `hide ChatMessage` in the package
+/// barrel. Renamed here (#1673) rather than merged: the fields don't map
+/// 1:1, and `chat_models.dart`'s `ChatMessage`/`ChatConversation` have no
+/// other caller today, so folding this screen's live, well-tested model into
+/// that one would have been a blind, lossy swap.
+class AgentChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
@@ -60,7 +68,7 @@ class ChatMessage {
   /// The safety banner this answer's capability requires, if any.
   final CapabilitySafetyClass? safetyClass;
 
-  ChatMessage({
+  AgentChatMessage({
     required this.text,
     required this.isUser,
     DateTime? timestamp,
@@ -74,14 +82,15 @@ class ChatMessage {
   ChatHistoryEntry toHistoryEntry() =>
       ChatHistoryEntry(text: text, isUser: isUser, timestamp: timestamp);
 
-  static ChatMessage fromHistoryEntry(ChatHistoryEntry entry) => ChatMessage(
-    text: entry.text,
-    isUser: entry.isUser,
-    timestamp: entry.timestamp,
-  );
+  static AgentChatMessage fromHistoryEntry(ChatHistoryEntry entry) =>
+      AgentChatMessage(
+        text: entry.text,
+        isUser: entry.isUser,
+        timestamp: entry.timestamp,
+      );
 }
 
-String formatChatTranscript(Iterable<ChatMessage> messages) {
+String formatChatTranscript(Iterable<AgentChatMessage> messages) {
   final buffer = StringBuffer('Airo chat transcript');
   for (final message in messages) {
     final text = message.text.trimRight();
@@ -113,7 +122,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   final LocalRuntimePreloaderService? localRuntimePreloader;
   final AgentSkillOrchestrator? skillOrchestrator;
   final bool enableAiInitialization;
-  final List<ChatMessage>? initialMessages;
+  final List<AgentChatMessage>? initialMessages;
   final String? initialDraft;
 
   /// Grounds skill answers in the log. Defaults to `FixtureMindRuntime().log`
@@ -127,7 +136,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
-  final List<ChatMessage> _messages = [];
+  final List<AgentChatMessage> _messages = [];
   final ChatHistoryStore _chatHistoryStore = ChatHistoryStore();
   Timer? _historyPersistTimer;
   bool _historyRestored = false;
@@ -182,7 +191,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messages.addAll(
       widget.initialMessages ??
           [
-            ChatMessage(
+            AgentChatMessage(
               text:
                   'Hi! I can chat, use enabled skills, check your schedule, split bills, draft diet plans, plan routines, and open Airo tools from here.',
               isUser: false,
@@ -360,7 +369,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (history.isNotEmpty) {
         _messages
           ..clear()
-          ..addAll(history.map(ChatMessage.fromHistoryEntry));
+          ..addAll(history.map(AgentChatMessage.fromHistoryEntry));
       }
     });
   }
@@ -717,7 +726,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     setState(() {
-      _messages.add(ChatMessage(text: toolResult.message, isUser: false));
+      _messages.add(AgentChatMessage(text: toolResult.message, isUser: false));
     });
 
     if (toolResult.shouldNavigate && mounted) {
@@ -726,7 +735,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return true;
   }
 
-  Widget _buildMessage(ChatMessage message, int index) {
+  Widget _buildMessage(AgentChatMessage message, int index) {
     final colorScheme = Theme.of(context).colorScheme;
     final maxWidth =
         MediaQuery.of(context).size.width *
@@ -928,7 +937,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (safetyResult.isErr) {
       setState(() {
         _messages.add(
-          ChatMessage(
+          AgentChatMessage(
             text:
                 safetyResult.getErrorOrNull()?.toString() ??
                 'This request was blocked by the selected safety profile.',
@@ -943,7 +952,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // Add user message
     setState(() {
-      _messages.add(ChatMessage(text: message, isUser: true));
+      _messages.add(AgentChatMessage(text: message, isUser: true));
     });
 
     final pendingCalendarEvent = _pendingCalendarEvent;
@@ -956,7 +965,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _pendingCalendarEvent = null;
       setState(() {
         _messages.add(
-          ChatMessage(
+          AgentChatMessage(
             text:
                 'Okay, I will keep it as an Airo notification and will not add it to Calendar.',
             isUser: false,
@@ -986,7 +995,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       setState(() {
         _messages.add(
-          ChatMessage(
+          AgentChatMessage(
             text: skillResult.message,
             isUser: false,
             traces: skillResult.traces,
@@ -1007,7 +1016,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (selectedModelId == null) {
       setState(() {
         _messages.add(
-          ChatMessage(
+          AgentChatMessage(
             text: 'Choose a project category before starting chat.',
             isUser: false,
           ),
@@ -1019,7 +1028,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // For all other queries, use the selected AI runtime to generate response.
     setState(() {
       _messages.add(
-        ChatMessage(text: '', isUser: false), // Placeholder for streaming
+        AgentChatMessage(text: '', isUser: false), // Placeholder for streaming
       );
       _isGenerating = true;
     });
@@ -1035,7 +1044,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       // If AI fails, show error message
       setState(() {
-        _messages[_messages.length - 1] = ChatMessage(
+        _messages[_messages.length - 1] = AgentChatMessage(
           text: 'Sorry, I encountered an error: ${e.toString()}',
           isUser: false,
         );
@@ -1061,7 +1070,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final title = calendarEvent['title'] as String? ?? 'reminder';
     setState(() {
       _messages.add(
-        ChatMessage(
+        AgentChatMessage(
           text: result.isError
               ? result.message ??
                     'I could not add "$title" to Calendar on this device yet.'
@@ -1117,7 +1126,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted) return true;
 
     setState(() {
-      _messages.add(ChatMessage(text: outcome!.responseText, isUser: false));
+      _messages.add(
+        AgentChatMessage(text: outcome!.responseText, isUser: false),
+      );
     });
 
     final undoLabel = outcome.undoLabel;
@@ -1132,7 +1143,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               final confirmation = await onUndo();
               if (confirmation == null || !mounted) return;
               setState(() {
-                _messages.add(ChatMessage(text: confirmation, isUser: false));
+                _messages.add(
+                  AgentChatMessage(text: confirmation, isUser: false),
+                );
               });
             },
           ),
@@ -1218,7 +1231,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
       final current = _messages.last;
-      _messages[_messages.length - 1] = ChatMessage(
+      _messages[_messages.length - 1] = AgentChatMessage(
         text: text,
         isUser: false,
         timestamp: current.timestamp,
@@ -1307,7 +1320,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
       final current = _messages.last;
-      _messages[_messages.length - 1] = ChatMessage(
+      _messages[_messages.length - 1] = AgentChatMessage(
         text: current.text,
         isUser: current.isUser,
         timestamp: current.timestamp,
@@ -1326,7 +1339,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return '${metadata.title} · $duration';
   }
 
-  void _showMetadataSheet(ChatMessage message) {
+  void _showMetadataSheet(AgentChatMessage message) {
     final metadata = message.metadata;
     if (metadata == null) return;
 
@@ -1416,7 +1429,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted) return;
     setState(() {
       _messages.add(
-        ChatMessage(
+        AgentChatMessage(
           text:
               'Project ready. I picked ${candidate.name} for this category. ${candidate.local ? 'It runs on this device when available.' : 'This category uses the configured cloud fallback.'}',
           isUser: false,
@@ -1502,7 +1515,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Add agent response asking if user wants to play games
     setState(() {
       _messages.add(
-        ChatMessage(
+        AgentChatMessage(
           text: 'Want to play some games? I can open Chess for you!',
           isUser: false,
         ),

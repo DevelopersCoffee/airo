@@ -193,30 +193,3 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
   }
 }
 
-/// Voice search overlay controller for managing overlay state
-class VoiceSearchOverlayController extends ChangeNotifier {
-  bool _isVisible = false;
-
-  bool get isVisible => _isVisible;
-
-  void show() {
-    _isVisible = true;
-    notifyListeners();
-  }
-
-  void hide() {
-    _isVisible = false;
-    notifyListeners();
-  }
-
-  void toggle() {
-    _isVisible = !_isVisible;
-    notifyListeners();
-  }
-}
-
-/// Provider for voice search overlay controller
-final voiceSearchOverlayControllerProvider =
-    ChangeNotifierProvider<VoiceSearchOverlayController>((ref) {
-      return VoiceSearchOverlayController();
-    });
