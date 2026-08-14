@@ -319,6 +319,40 @@ impl<'a> CapabilityApi<'a> {
         });
     }
 
+    /// Physically and durably destroys a piece of content — condition 8 of
+    /// `#1311` (`#1217`). Deliberately **not** one of `#1295`'s original five
+    /// functions: [`Self::create_operation`] alone cannot honestly implement
+    /// this (see [`Runtime::destroy_content`]'s doc for why an append-only
+    /// log cannot make its own past bytes disappear by appending to itself),
+    /// so per `C5`'s own governing question this is the generic primitive the
+    /// runtime was missing, added once here rather than worked around by any
+    /// one capability.
+    ///
+    /// **Guarantee**: on `Ok`, the content's bytes have already been
+    /// overwritten and removed from disk, and a `DestroyContent` operation
+    /// naming the (now-destroyed) content id is durable in the log — both
+    /// steps completed, in that order, before this call returns. A capability
+    /// never sees a file path or key material to do this itself; this is the
+    /// only door.
+    pub fn destroy_content(
+        &self,
+        content_id: ContentId,
+        entity_id: &str,
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op = self.runtime.destroy_content(
+            &self.capability_id,
+            content_id,
+            entity_id,
+            recorded_at_ms,
+        )?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
     /// **Stubbed.** `#1295` is blocked by `#1197` (Context Runtime), and the
     /// substrate `#1197` actually requires — the context hypergraph,
     /// `LinkContent`/`UnlinkContent`/`DestroyContent` end-to-end semantics,
