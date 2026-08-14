@@ -24,10 +24,10 @@
 #   bash docs/superpowers/plans/g0-claim-assertions.sh [crate-src-dir]
 #   bash docs/superpowers/plans/g0-claim-assertions.sh --list
 set -u
-SP=/private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad
+HERE="$(cd "$(dirname "$0")" && pwd)"
 LIST=0
 if [ "${1:-}" = "--list" ]; then LIST=1; shift; fi
-SRC="${1:-$SP/rev7/src}"
+SRC="${1:-$HERE/../../../rust/airo_mind/src}"
 PASS=0
 FAIL=0
 
