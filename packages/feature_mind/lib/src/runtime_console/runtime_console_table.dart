@@ -239,6 +239,7 @@ class _RuntimeConsoleRow extends StatelessWidget {
     MindOpKind.import: 'import',
     MindOpKind.consent: 'consent',
     MindOpKind.consentRevoked: 'consent revoked',
+    MindOpKind.meetingIrExtracted: 'meeting IR extracted',
   };
 
   static const Map<SignatureState, String> _signatureLabels = {

@@ -18,6 +18,9 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   /// gets threaded to the bridge, without a real Rust store.
   List<TranscriptSegment>? savedSegments;
   String? savedWavPath;
+  List<rust.MeetingDecisionRecord>? savedDecisions;
+  List<rust.MeetingActionItemRecord>? savedActionItems;
+  List<rust.MeetingMetricRecord>? savedMetrics;
   rust.SpeechLanguage? initializedSpeechLanguage;
   rust.TranscriptDocumentRecord? transcriptDocumentToReturn;
 
@@ -56,11 +59,17 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     required String model,
     required List<TranscriptSegment> segments,
     required String wavPath,
+    List<rust.MeetingDecisionRecord> decisions = const [],
+    List<rust.MeetingActionItemRecord> actionItems = const [],
+    List<rust.MeetingMetricRecord> metrics = const [],
   }) async {
     if (saveError != null) throw saveError!;
     savedModel = model;
     savedSegments = segments;
     savedWavPath = wavPath;
+    savedDecisions = decisions;
+    savedActionItems = actionItems;
+    savedMetrics = metrics;
     return 'meeting-1';
   }
 

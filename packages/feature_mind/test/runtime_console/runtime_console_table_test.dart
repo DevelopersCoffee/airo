@@ -150,6 +150,30 @@ void main() {
       }
       expect(labels.length, citedKinds.length, reason: 'every kind renders a distinct label');
     });
+
+    testWidgets('every MindOpKind renders a label rather than crashing', (
+      tester,
+    ) async {
+      // `_kindLabels[op.kind]!` force-unwraps: a `MindOpKind` value with no
+      // entry throws at render time rather than rendering blank. Round-trips
+      // every value (`FakeOperationLogPort` round-robins over
+      // `MindOpKind.values`), so a future addition that forgets the table
+      // entry fails this test instead of shipping a console crash.
+      final port = FakeOperationLogPort(opCount: MindOpKind.values.length * 3);
+      final controller = RuntimeConsoleController(
+        log: port,
+        pageSize: MindOpKind.values.length * 3,
+      );
+      await _pumpConsole(tester, controller);
+
+      for (final kind in MindOpKind.values) {
+        final op = controller.rows.firstWhere((op) => op.kind == kind);
+        final text = tester.widget<Text>(
+          find.byKey(Key('mind.console.type.${op.sequence}')),
+        );
+        expect(text.data, isNotEmpty, reason: '$kind has no console label');
+      }
+    });
   });
 
   group('sorting', () {

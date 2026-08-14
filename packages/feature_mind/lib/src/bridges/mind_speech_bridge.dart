@@ -147,6 +147,13 @@ abstract interface class MindSpeechBridge {
   /// `transcript.json` alongside the flat `Meeting` record, so the ASR step —
   /// which segments, which model, which recording — is reproducible
   /// independent of the flat transcript string.
+  ///
+  /// `decisions`/`actionItems`/`metrics` are `ADR-0022 §1`: the Meeting IR's
+  /// facts, flattened onto the same `Meeting` record. Default to empty --
+  /// nothing in this codebase extracts a `MeetingIr` yet (that pipeline is
+  /// `rust/airo_mind_meeting`, not wired to this bridge), so every caller
+  /// today saves a meeting with no IR, exactly as before this parameter
+  /// existed.
   Future<String> save({
     required String title,
     required int recordedAtMs,
@@ -155,6 +162,9 @@ abstract interface class MindSpeechBridge {
     required String model,
     required List<TranscriptSegment> segments,
     required String wavPath,
+    List<rust.MeetingDecisionRecord> decisions = const [],
+    List<rust.MeetingActionItemRecord> actionItems = const [],
+    List<rust.MeetingMetricRecord> metrics = const [],
   });
 
   /// Reopens a meeting's structured transcript document. `#1629` Gap D's
@@ -223,6 +233,9 @@ class RustMindSpeechBridge implements MindSpeechBridge {
     required String model,
     required List<TranscriptSegment> segments,
     required String wavPath,
+    List<rust.MeetingDecisionRecord> decisions = const [],
+    List<rust.MeetingActionItemRecord> actionItems = const [],
+    List<rust.MeetingMetricRecord> metrics = const [],
   }) => rust.saveMeeting(
     title: title,
     recordedAtMs: BigInt.from(recordedAtMs),
@@ -231,6 +244,9 @@ class RustMindSpeechBridge implements MindSpeechBridge {
     model: model,
     segments: segments.map(fromTranscriptSegment).toList(growable: false),
     audioPath: wavPath,
+    decisions: decisions,
+    actionItems: actionItems,
+    metrics: metrics,
   );
 
   @override
