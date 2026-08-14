@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'whisper/api/meetings.dart' as rust;
+import 'export/application/meeting_export_service.dart';
+import 'export/data/meeting_export_gateway.dart';
 import 'meeting_screen.dart';
 import 'mind_service.dart';
 import 'models/model_provider.dart';
@@ -21,6 +23,11 @@ class MindHomeScreen extends StatefulWidget {
 
 class _MindHomeScreenState extends State<MindHomeScreen> {
   final _query = TextEditingController();
+
+  // #1663: batch markdown export of every meeting currently listed.
+  late final _exportService = MeetingExportService(widget.service);
+  final _exportGateway = const PlatformMeetingExportGateway();
+  bool _exportingAll = false;
 
   MindStatus? _status;
   List<rust.MeetingRecord> _meetings = const [];
@@ -127,6 +134,44 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     if (mounted) setState(() => _recording = true);
   }
 
+  /// Exports every meeting in [_meetings] as markdown in one action (#1663
+  /// batch export). Shares rather than saves-to-folder by default — the
+  /// share sheet is one prompt regardless of how many meetings are in the
+  /// batch, where a folder picker still needs the caller to have somewhere
+  /// in mind to put it. Long-pressing offers the folder instead.
+  Future<void> _exportAll({required bool share}) async {
+    if (_meetings.isEmpty || _exportingAll) return;
+    setState(() => _exportingAll = true);
+    try {
+      final bundles = await _exportService.exportMeetings(
+        _meetings.map((m) => m.id).toList(),
+      );
+      if (bundles.isEmpty) return;
+      final ok = share
+          ? await _exportGateway.share(bundles)
+          : await _exportGateway.saveToFolder(bundles);
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              share
+                  ? 'Shared ${bundles.length} meetings as markdown.'
+                  : 'Saved ${bundles.length} meetings as markdown.',
+            ),
+          ),
+        );
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _exportingAll = false);
+    }
+  }
+
   Future<void> _open(String id) async {
     final meeting = await widget.service.meeting(id);
     if (!mounted || meeting == null) return;
@@ -142,7 +187,27 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   Widget build(BuildContext context) {
     final status = _status;
     return Scaffold(
-      appBar: AppBar(title: const Text('Airo Mind')),
+      appBar: AppBar(
+        title: const Text('Airo Mind'),
+        actions: [
+          if (status != null && status.isReady && _meetings.isNotEmpty)
+            PopupMenuButton<bool>(
+              icon: _exportingAll
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.ios_share),
+              tooltip: 'Export all as markdown',
+              onSelected: (share) => _exportAll(share: share),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: true, child: Text('Share all')),
+                PopupMenuItem(value: false, child: Text('Save all to folder')),
+              ],
+            ),
+        ],
+      ),
       body: switch (status) {
         // Startup. A provider that installs on its own (the bundled copy, or
         // a resumed download) reports through `onInstallProgress`, and
