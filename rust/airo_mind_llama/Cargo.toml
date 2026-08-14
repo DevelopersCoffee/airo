@@ -31,10 +31,42 @@ llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false }
 # Re-exported by llama-cpp-2 for token_to_piece; pinned to the version it uses.
 encoding_rs = { version = "0.8", optional = true }
 
+# Metal acceleration, macOS only.
+#
+# llama-cpp-sys-2's build.rs does not read a Rust-level `metal` feature at
+# all -- llama.cpp's own CMakeLists.txt defaults GGML_METAL to ON for every
+# Apple target, so this crate has in practice already been linking Metal on
+# macOS regardless of any Cargo feature. This entry makes that an explicit,
+# checked contract instead of an implicit upstream default, and future-proofs
+# against llama-cpp-2 someday consuming its own declared
+# `metal = ["llama-cpp-sys-2/metal"]` feature (present in its Cargo.toml but
+# currently unread by the sys crate's build script).
+#
+# This is a target-specific *addition* to the `llama-cpp-2` dependency above,
+# not a second copy of it -- Cargo unifies the feature set for a resolved
+# target across every table naming the dependency, and this table is gated on
+# `cfg(target_os = "macos")` so it never reaches the Android cargokit build
+# (`android-arm64` only, see `android/build.gradle`) or the default (no
+# `llama` feature) boundary build. iOS is out of scope --
+# `packages/feature_mind/ios/feature_mind.podspec` documents iOS as not
+# building at all yet (#1546 phase 4).
+[target.'cfg(target_os = "macos")'.dependencies]
+llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false, features = [
+  "metal",
+] }
+
 [features]
 default = []
 # Real offline generation. Requires cmake and a C++ toolchain.
 llama = ["dep:llama-cpp-2", "dep:encoding_rs"]
+# Documents the macOS Metal contract explicitly (see the target-specific
+# dependency table above); does not change what gets linked on macOS, since
+# Metal is already unified in automatically for `cfg(target_os = "macos")`
+# builds. Kept as a real, buildable feature name so `cargo build --features
+# "llama,metal"` matches this milestone's stated acceptance check, and so a
+# non-macOS build has a named flag available (a no-op there, since the
+# target-specific table above simply does not apply).
+metal = ["llama"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
