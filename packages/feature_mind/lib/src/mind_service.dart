@@ -313,9 +313,17 @@ class MindService {
   /// The emitted [MindStage] sequence is unchanged from when Rust drove the
   /// whole pipeline: transcribing → generating → saving → done. Widgets cannot
   /// tell the difference, which is the point.
+  /// [language] is `#1664`'s per-recording pin, forwarded to
+  /// [MindSpeechBridge.transcribe] unchanged: a whisper.cpp language code, or
+  /// `null` to leave the engine on auto-detect. A Settings screen choosing a
+  /// primary language calls `process` with that code on every recording —
+  /// there is no separate global toggle this service tracks, and pinning two
+  /// languages for one pass is not offered because whisper.cpp itself has no
+  /// such mode.
   Stream<MindProgress> process({
     required String wavPath,
     required String title,
+    String? language,
   }) async* {
     var progress = const MindProgress(stage: MindStage.transcribing);
     yield progress;
@@ -327,7 +335,10 @@ class MindService {
 
     try {
       // ── 1. Audio → transcript, in the speech library ───────────────────────
-      await for (final event in _speech.transcribe(wavPath: wavPath)) {
+      await for (final event in _speech.transcribe(
+        wavPath: wavPath,
+        language: language,
+      )) {
         switch (event) {
           case TranscriptEventTranscribing(:final text):
             progress = progress.copyWith(

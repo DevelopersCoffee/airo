@@ -21,6 +21,10 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   rust.SpeechLanguage? initializedSpeechLanguage;
   rust.TranscriptDocumentRecord? transcriptDocumentToReturn;
 
+  /// `#1664`: what the last `transcribe` call was asked to pin, so a test can
+  /// assert a Settings-chosen language reaches the bridge unchanged.
+  String? transcribeLanguage;
+
   /// Set to make [loadLibrary] throw, simulating a platform with no native
   /// library (`MindUnavailable.bridgeMissing`).
   Object? loadLibraryError;
@@ -44,8 +48,10 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   }
 
   @override
-  Stream<TranscriptEvent> transcribe({required String wavPath}) =>
-      Stream.fromIterable(transcriptEvents);
+  Stream<TranscriptEvent> transcribe({required String wavPath, String? language}) {
+    transcribeLanguage = language;
+    return Stream.fromIterable(transcriptEvents);
+  }
 
   @override
   Future<String> save({

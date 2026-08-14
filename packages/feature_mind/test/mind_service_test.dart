@@ -292,4 +292,40 @@ void main() {
       expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
     });
   });
+
+  // `#1664`: Settings pins a per-recording language, and `process()` is the
+  // one place that pin has to reach the speech bridge -- everything below it
+  // (the Rust `TranscriptionOptions` plumbing) is covered on the Rust side;
+  // this is the Dart half of the same guarantee.
+  group('process threads a language pin to the speech bridge (#1664)', () {
+    test('a chosen language reaches transcribe() unchanged', () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('namaste', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'namaste'),
+        ]),
+      ];
+      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+
+      await service.process(wavPath: 'x.wav', title: 't', language: 'hi').drain<void>();
+
+      expect(speech.transcribeLanguage, 'hi');
+    });
+
+    test('no language chosen leaves the bridge on auto-detect (null)', () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
+      ];
+      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+
+      await service.process(wavPath: 'x.wav', title: 't').drain<void>();
+
+      expect(
+        speech.transcribeLanguage,
+        isNull,
+        reason: 'omitting language must not silently pin one -- auto-detect stays the default',
+      );
+    });
+  });
 }
