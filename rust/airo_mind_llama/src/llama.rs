@@ -26,9 +26,7 @@ use llama_cpp_2::sampling::LlamaSampler;
 
 use crate::budget::ResourceRequest;
 use crate::cancel::CancelToken;
-use crate::engine::{
-    EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-};
+use crate::engine::{EngineError, GenerationChunk, GenerationRequest, LlmBackend, RuntimeStats};
 
 /// The start symbol every `GenerationRequest::grammar` is expected to define.
 /// Documented once, here, rather than as a magic string at each call site.
@@ -138,7 +136,7 @@ impl LlamaGenerationEngine {
     }
 }
 
-impl GenerationEngine for LlamaGenerationEngine {
+impl LlmBackend for LlamaGenerationEngine {
     fn resource_request(&self) -> ResourceRequest {
         ResourceRequest::new(self.memory_mb)
     }

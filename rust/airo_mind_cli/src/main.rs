@@ -225,6 +225,7 @@ fn main() {
             &GenerationRequest {
                 prompt: summarize_prompt(&transcript),
                 max_output_tokens: 160,
+                grammar: None,
             },
             &LlamaCancelToken::new(),
             &mut |chunk| {

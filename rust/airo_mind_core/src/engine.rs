@@ -242,6 +242,10 @@ mod tests {
             }
             Ok(())
         }
+
+        fn stats(&self) -> RuntimeStats {
+            RuntimeStats::default()
+        }
     }
 
     /// `#1628`: `LlmBackend` compiles, is callable through `&dyn LlmBackend`
@@ -260,6 +264,7 @@ mod tests {
                 &GenerationRequest {
                     prompt: "the deploy is blocked".into(),
                     max_output_tokens: 10,
+                    grammar: None,
                 },
                 &CancelToken::new(),
                 &mut |chunk| {
