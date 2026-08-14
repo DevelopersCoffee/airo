@@ -1,3 +1,9 @@
 [workspace]
-members = ["airo_core", "airo_mind_core", "airo_mind_llama", "airo_mind_whisper"]
+members = [
+  "airo_core",
+  "airo_mind_core",
+  "airo_mind_llama",
+  "airo_mind_transcript",
+  "airo_mind_whisper",
+]
 resolver = "2"
