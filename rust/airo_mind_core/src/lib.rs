@@ -51,6 +51,10 @@ pub mod models;
 
 pub mod budget;
 pub mod cancel;
+
+/// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
+/// held out of line, addressed by [`content::ContentId`].
+pub mod content;
 pub mod engine;
 
 /// Engine lifecycle: state, dependency ordering, and graceful shutdown.
@@ -63,12 +67,26 @@ pub mod lifecycle;
 /// its own.
 pub mod notes;
 
-/// The `#1338` runtime skeleton: `Operation → Persist → Replay → Projection`,
-/// wired through [`lifecycle::EngineRegistry`] rather than around it.
+/// The generalized projection engine. `#1195`'s condition-5 machinery:
+/// [`projection::EntityGraphProjection`], the multi-capability projection
+/// that proves delete-and-rebuild is a property of the engine, not an
+/// accident of Notes' own shape.
+pub mod projection;
+
+/// The `Operation → Persist → Replay → Projection` substrate, formalized
+/// against `C1`/`C2` for `#1194`/`#1195`, wired through
+/// [`lifecycle::EngineRegistry`] rather than around it.
 pub mod runtime;
 pub mod search;
+
+/// Operation signing. `#1194`'s `signature` header field — see the module
+/// doc for exactly what this proves today and what it does not.
+pub mod signing;
 pub mod store;
 pub mod supervisor;
+
+/// The fixed, nineteen-verb runtime vocabulary `#1194`'s scope table names.
+pub mod verb;
 
 /// WAV decoding for the capability layer. A container format is an input
 /// detail, not part of the runtime's surface, so it is reachable only from the
@@ -77,6 +95,7 @@ pub mod wav;
 
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
+pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
@@ -86,9 +105,15 @@ pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
 };
 pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
+pub use projection::{
+    encode_relation, encode_set_property, rebuild_from_scratch, EntityGraphProjection, EntityRecord,
+};
 pub use runtime::{
-    Operation, OperationLog, OperationLogError, Projection, Runtime, RuntimeApiError,
+    AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
+    ReplayVerifyError, Runtime, RuntimeApiError,
 };
 pub use search::{Hit, SearchIndex};
+pub use signing::{DeviceKeySigner, Signer, SignerVerifier, Verifier};
 pub use store::{Meeting, MeetingStore, StoreError};
 pub use supervisor::{RuntimeError, Supervisor};
+pub use verb::{Verb, VerbPrimitive};
