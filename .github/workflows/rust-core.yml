@@ -47,6 +47,36 @@ jobs:
       # which reads like a broken checkout rather than a missing flag.
       - run: cargo fmt --manifest-path rust/Cargo.toml --all --check
 
+      # Runtime v1 condition 9 (#1311, tracked on #1340): "every runtime
+      # contract has automated conformance tests." `cargo test --all` above
+      # already runs these as ordinary tests -- this step is the mechanical
+      # gate on top of that: it *discovers* every `tests/*conformance*.rs`
+      # file in the workspace structurally (so a new one lands covered
+      # without editing this workflow) and reports which of the spec's S1-S5
+      # suites currently have a tagged test, so a suite silently having zero
+      # coverage is a build artifact a human can see, not something only a
+      # council review would catch. See
+      # docs/superpowers/specs/2026-07-28-airo-mind-conformance-suite.md.
+      - name: Airo Mind runtime conformance suite (#1311 condition 9)
+        run: scripts/run-mind-conformance-suite.sh
+
+      # Condition 10 (#1311): "every performance contract has benchmark gates
+      # in CI." `benchmark_gate_conformance.rs` (discovered and run above as
+      # part of the conformance suite, since its filename matches
+      # `*conformance*.rs`) asserts operation-log append and projection
+      # rebuild cost scale linearly, not worse, with input size -- a
+      # relative, scale-invariant claim chosen specifically because it is
+      # reliable on a shared runner, unlike an absolute wall-clock budget.
+      # This step exists only to name the gate explicitly in the job log; the
+      # test itself already ran and already failed the step above if it
+      # regressed.
+      - name: Benchmark gate — scaling regression check (#1311 condition 10)
+        run: |
+          echo "Verified above by scripts/run-mind-conformance-suite.sh:"
+          echo "  operation_log_append_scales_linearly_not_worse"
+          echo "  projection_rebuild_from_scratch_scales_linearly_not_worse"
+          echo "See rust/airo_mind_core/tests/benchmark_gate_conformance.rs for the threshold and why it is ratio-based rather than absolute."
+
   # ── Android cross-compile ──────────────────────────────────────────────────
   build-android:
     name: Android (${{ matrix.target }})
