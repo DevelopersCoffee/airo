@@ -69,6 +69,7 @@ use std::sync::Mutex;
 use crate::content::{ContentId, ContentStore, ContentStoreError};
 use crate::digest::Sha256;
 use crate::engine::EngineError;
+use crate::event::{CapabilityEvent, EventBus};
 use crate::lifecycle::{EngineName, ManagedEngine};
 use crate::signing::{DeviceKeySigner, SignerVerifier};
 use crate::supervisor::Supervisor;
@@ -845,6 +846,12 @@ pub struct Runtime {
     supervisor: Supervisor,
     log: Arc<OperationLog>,
     content: Arc<ContentStore>,
+    /// The in-process, non-durable event bus `#1295`'s `emit_event` publishes
+    /// to. Not a lifecycle engine (`ProjectionEngine`'s reasoning applies
+    /// here too — no durable state for a Supervisor slot to own or restart)
+    /// and not reachable from a capability except through
+    /// [`crate::capability_api::CapabilityApi::emit_event`].
+    event_bus: Arc<EventBus>,
 }
 
 impl Runtime {
@@ -889,6 +896,7 @@ impl Runtime {
             supervisor,
             log,
             content,
+            event_bus: Arc::new(EventBus::new()),
         })
     }
 
@@ -1019,6 +1027,26 @@ impl Runtime {
     /// Out of scope for this phase. Contexts are Phase 5.
     pub fn instantiate_context(&self) -> Result<(), RuntimeApiError> {
         Err(RuntimeApiError::OutOfScope("instantiate_context"))
+    }
+
+    /// Registers a new listener on the in-process event bus. Not part of
+    /// `#1295`'s five-function capability surface (that surface only exposes
+    /// the write side, `emit_event`, via
+    /// [`crate::capability_api::CapabilityApi`]) — this is the runtime-level
+    /// read side something outside a capability (a UI layer, a test) uses to
+    /// observe what capabilities publish. See [`crate::event`]'s module doc
+    /// for exactly what this does and does not guarantee.
+    pub fn subscribe_events(&self) -> std::sync::mpsc::Receiver<CapabilityEvent> {
+        self.event_bus.subscribe()
+    }
+
+    /// Publishes one event to every live subscriber. `pub(crate)`, not
+    /// `pub`: the only intended caller is
+    /// [`crate::capability_api::CapabilityApi::emit_event`] — a capability
+    /// reaches this exclusively through that narrower surface, never
+    /// [`Runtime`] directly.
+    pub(crate) fn publish_event(&self, event: CapabilityEvent) {
+        self.event_bus.publish(event);
     }
 
     /// Out of scope for this phase. Both `#1194` and `#1195` name Sync as

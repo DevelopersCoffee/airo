@@ -52,10 +52,21 @@ pub mod models;
 pub mod budget;
 pub mod cancel;
 
+/// `#1295`'s capability-facing runtime API surface: `create_operation`,
+/// `attach_content`, `query_projection`, `instantiate_context`, `emit_event`.
+/// The only door a capability built after `#1338`'s [`notes`] should use —
+/// see the module doc for what is real and what is honestly stubbed.
+pub mod capability_api;
+
 /// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
 /// held out of line, addressed by [`content::ContentId`].
 pub mod content;
 pub mod engine;
+
+/// The in-process, non-durable event bus behind
+/// [`capability_api::CapabilityApi::emit_event`]. See the module doc for
+/// exactly what "non-durable" means mechanically.
+pub mod event;
 
 /// Engine lifecycle: state, dependency ordering, and graceful shutdown.
 /// `#1302`'s half of `C6` — see the module docs for why this is split from
@@ -95,12 +106,17 @@ pub mod wav;
 
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
+pub use capability_api::{
+    CapabilityApi, CapabilityApiError, ContextId, CreateOperationRequest, OperationKind,
+    OperationReceipt,
+};
 pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
     SpeechEngine, TranscriptSegment,
 };
+pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
 };
