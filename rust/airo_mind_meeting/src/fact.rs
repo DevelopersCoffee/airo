@@ -22,6 +22,15 @@ pub(crate) trait Fact: Sized {
     fn evidence(&self) -> &[String];
     fn evidence_mut(&mut self) -> &mut Vec<String>;
 
+    /// Any other natural-language field besides `text()` that a validator also
+    /// needs to check for numeric grounding. Most categories have none —
+    /// `Metric::value`, `ActionItem::due` and `Question::answer` are the
+    /// exceptions, and the issue's own hallucination examples ("200 TPS",
+    /// "16 cores") live in exactly that field, not in `text()`.
+    fn extra_text(&self) -> Vec<&str> {
+        Vec::new()
+    }
+
     /// Folds a later near-duplicate into this item.
     ///
     /// Evidence is always unioned. Everything else is category-specific and
@@ -184,6 +193,13 @@ impl Fact for ActionItem {
             self.status = other.status;
         }
     }
+
+    fn extra_text(&self) -> Vec<&str> {
+        match &self.due {
+            Some(due) => vec![due.as_str()],
+            None => Vec::new(),
+        }
+    }
 }
 
 impl Fact for Metric {
@@ -199,6 +215,10 @@ impl Fact for Metric {
     }
     fn evidence_mut(&mut self) -> &mut Vec<String> {
         &mut self.evidence
+    }
+
+    fn extra_text(&self) -> Vec<&str> {
+        vec![self.value.as_str()]
     }
 }
 
@@ -245,6 +265,13 @@ impl Fact for Question {
             "answer",
             diagnostics,
         );
+    }
+
+    fn extra_text(&self) -> Vec<&str> {
+        match &self.answer {
+            Some(answer) => vec![answer.as_str()],
+            None => Vec::new(),
+        }
     }
 }
 
