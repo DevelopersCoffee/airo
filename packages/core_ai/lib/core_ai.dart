@@ -17,6 +17,18 @@ export 'src/device/device_capability_service.dart';
 export 'src/device/device_capability_report.dart';
 export 'src/device/memory_budget_manager.dart';
 export 'src/device/memory_severity.dart';
+
+// Device-tier gating + local/cloud routing (#1631, MIND-LLM-4)
+export 'src/device_tier/llm_cloud_consent.dart';
+export 'src/device_tier/llm_device_signals.dart';
+export 'src/device_tier/llm_device_tier.dart';
+export 'src/device_tier/llm_device_tier_policy.dart';
+export 'src/device_tier/llm_local_cloud_router.dart';
+export 'src/device_tier/llm_routing_decision.dart';
+export 'src/device_tier/llm_routing_log.dart';
+export 'src/device_tier/llm_thermal_policy.dart';
+export 'src/device_tier/real_llm_device_signals_probe.dart';
+
 export 'src/residency/model_residency_manager.dart';
 export 'src/preload/model_preloader.dart';
 export 'src/runtime/local_inference_runtime_adapter.dart';
