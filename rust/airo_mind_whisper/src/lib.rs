@@ -75,4 +75,5 @@ pub use whisper::WhisperSpeechEngine;
 pub use airo_mind_core::{
     AudioInput, CancelToken, EngineError, Hit, Meeting, MeetingStore, ResourceBudget,
     ResourceRequest, RuntimeError, SearchIndex, SpeechEngine, Supervisor, TranscriptSegment,
+    TranscriptionOptions,
 };

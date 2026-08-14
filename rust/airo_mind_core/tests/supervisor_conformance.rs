@@ -28,7 +28,7 @@ use std::sync::{Arc, Barrier};
 
 use airo_mind_core::{
     AudioInput, CancelToken, EngineError, EngineState, ManagedEngine, ResourceBudget, RuntimeError,
-    Supervisor, TranscriptSegment,
+    Supervisor, TranscriptSegment, TranscriptionOptions,
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +85,7 @@ impl airo_mind_core::SpeechEngine for BlockingSpeech {
     fn transcribe(
         &self,
         _audio: AudioInput<'_>,
+        _options: &TranscriptionOptions,
         _cancel: &CancelToken,
         sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
     ) -> Result<(), EngineError> {
@@ -197,6 +198,7 @@ fn a_cancelled_job_leaves_no_torn_state() {
             sample_rate_hz: 16_000,
             channels: 1,
         },
+        &TranscriptionOptions::default(),
         &cancel,
         &mut |_| {
             applied = true;
@@ -228,6 +230,7 @@ fn a_cancelled_job_leaves_no_torn_state() {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &second_cancel,
             &mut |_| {
                 second_applied = true;
@@ -267,6 +270,7 @@ fn a_job_over_the_concurrency_cap_is_refused_while_another_is_in_flight() {
                     sample_rate_hz: 16_000,
                     channels: 1,
                 },
+                &TranscriptionOptions::default(),
                 &CancelToken::new(),
                 &mut |_| Ok(()),
             )
@@ -286,6 +290,7 @@ fn a_job_over_the_concurrency_cap_is_refused_while_another_is_in_flight() {
             sample_rate_hz: 16_000,
             channels: 1,
         },
+        &TranscriptionOptions::default(),
         &CancelToken::new(),
         &mut |_| Ok(()),
     );
@@ -320,6 +325,7 @@ fn an_engine_over_the_memory_budget_is_refused_before_it_allocates() {
             sample_rate_hz: 16_000,
             channels: 1,
         },
+        &TranscriptionOptions::default(),
         &CancelToken::new(),
         &mut |_| {
             called = true;

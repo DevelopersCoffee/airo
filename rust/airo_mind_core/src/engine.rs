@@ -107,6 +107,33 @@ pub struct RuntimeStats {
     pub peak_rss_bytes: u64,
 }
 
+/// Language control for one transcription. `#1664`: Reddit-sourced trust
+/// research on whisper.cpp found auto-detect mislabelling short bilingual
+/// utterances, and *silently* translating the result to English rather than
+/// transcribing it verbatim. This is the caller's way to pin a language
+/// instead of leaving every call on auto-detect.
+///
+/// whisper.cpp's C API (`whisper_full_params.language`) accepts exactly one
+/// language per run — there is no "try these two at once" mode, and no
+/// engine below this crate invents one. The Settings-level "pin one or two
+/// expected languages" UX (`#1664`'s scope) maps to a single primary
+/// language chosen here; a second candidate is a capability-level retry
+/// (transcribe again with candidate #2 if the first looks wrong), never two
+/// languages honoured within the same pass.
+///
+/// Deliberately does **not** carry a `translate` field. Translation is a
+/// distinct, explicit user action the issue asks to *never* happen silently
+/// — `WhisperSpeechEngine` hardcodes `translate = false` on every call
+/// rather than exposing a flag here that some future caller could flip by
+/// accident.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TranscriptionOptions {
+    /// A whisper.cpp language code (`"en"`, `"hi"`, ...). `None` — the
+    /// default — leaves the engine on whisper.cpp's own auto-detection;
+    /// nothing pins a language unless a caller asks.
+    pub language: Option<String>,
+}
+
 /// Audio to transcript.
 pub trait SpeechEngine: Send + Sync {
     /// What this engine needs before it allocates.
@@ -114,12 +141,14 @@ pub trait SpeechEngine: Send + Sync {
 
     /// Transcribes, yielding segments through `sink` as they are produced.
     ///
-    /// Checks `cancel` between segments and returns `EngineError::Cancelled`
-    /// when asked to stop. A `sink` returning `Err` stops the job — that is how
-    /// backpressure reaches the engine.
+    /// `options` pins the spoken language, or leaves it on auto-detect
+    /// (`#1664`). Checks `cancel` between segments and returns
+    /// `EngineError::Cancelled` when asked to stop. A `sink` returning `Err`
+    /// stops the job — that is how backpressure reaches the engine.
     fn transcribe(
         &self,
         audio: AudioInput<'_>,
+        options: &TranscriptionOptions,
         cancel: &CancelToken,
         sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
     ) -> Result<(), EngineError>;

@@ -405,6 +405,7 @@ fn wire__crate__api__meetings__transcribe_recording_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_wav_path = <String>::sse_decode(&mut deserializer);
+            let api_language = <Option<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::meetings::TranscriptEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -412,8 +413,11 @@ fn wire__crate__api__meetings__transcribe_recording_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok =
-                        crate::api::meetings::transcribe_recording(api_wav_path, api_sink)?;
+                    let output_ok = crate::api::meetings::transcribe_recording(
+                        api_wav_path,
+                        api_language,
+                        api_sink,
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -629,6 +633,17 @@ impl SseDecode for crate::api::meetings::MindConfig {
             memory_budget_mb: var_memoryBudgetMb,
             speech_language: var_speechLanguage,
         };
+    }
+}
+
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
     }
 }
 
@@ -1182,6 +1197,16 @@ impl SseEncode for crate::api::meetings::MindConfig {
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
         <crate::api::meetings::SpeechLanguage>::sse_encode(self.speech_language, serializer);
+    }
+}
+
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
     }
 }
 

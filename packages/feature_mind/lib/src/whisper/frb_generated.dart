@@ -110,6 +110,7 @@ abstract class RustLibApi extends BaseApi {
 
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
+    String? language,
   });
 
   Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
@@ -431,6 +432,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
+    String? language,
   }) {
     final sink = RustStreamSink<TranscriptEvent>();
     unawaited(
@@ -439,6 +441,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           callFfi: (port_) {
             final serializer = SseSerializer(generalizedFrbRustBinding);
             sse_encode_String(wavPath, serializer);
+            sse_encode_opt_String(language, serializer);
             sse_encode_StreamSink_transcript_event_Sse(sink, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
@@ -452,7 +455,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: sse_decode_String,
           ),
           constMeta: kCrateApiMeetingsTranscribeRecordingConstMeta,
-          argValues: [wavPath, sink],
+          argValues: [wavPath, language, sink],
           apiImpl: this,
         ),
       ),
@@ -463,7 +466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMeetingsTranscribeRecordingConstMeta =>
       const TaskConstMeta(
         debugName: "transcribe_recording",
-        argNames: ["wavPath", "sink"],
+        argNames: ["wavPath", "language", "sink"],
       );
 
   @override
@@ -641,6 +644,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       memoryBudgetMb: dco_decode_u_32(arr[2]),
       speechLanguage: dco_decode_speech_language(arr[3]),
     );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -949,6 +958,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       memoryBudgetMb: var_memoryBudgetMb,
       speechLanguage: var_speechLanguage,
     );
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -1277,6 +1297,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
     sse_encode_speech_language(self.speechLanguage, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
   }
 
   @protected
