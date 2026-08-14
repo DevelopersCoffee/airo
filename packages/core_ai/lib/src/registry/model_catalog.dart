@@ -246,53 +246,17 @@ class ModelCatalog {
       tags: ['chat', 'instruction', 'reasoning', 'mobile-friendly'],
     ),
 
-    // Llama 3.2 1B (Meta's smallest Llama)
-    const OfflineModelInfo(
-      id: 'llama-3.2-1b-q4',
-      name: 'Llama 3.2 1B',
-      family: ModelFamily.llama,
-      fileSizeBytes: 700000000, // ~700 MB
-      downloadUrl:
-          'https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-      quantization: ModelQuantization.q4,
-      parameterCount: 1000000000,
-      contextLength: 8192,
-      credibility: ModelCredibility.official,
-      provider: AIProvider.llama,
-      description: 'Meta Llama 3.2 1B. Ultra-compact for mobile.',
-      author: 'Meta',
-      license: 'Llama 3.2 Community',
-      huggingFaceId: 'meta-llama/Llama-3.2-1B-Instruct-GGUF',
-      modalities: [ModelModality.text],
-      capabilities: [ModelCapability.chat, ModelCapability.promptLab],
-      tags: ['chat', 'instruction', 'ultra-small', 'mobile-friendly'],
-    ),
-
-    // Llama 3.2 3B (balanced option)
-    const OfflineModelInfo(
-      id: 'llama-3.2-3b-q4',
-      name: 'Llama 3.2 3B',
-      family: ModelFamily.llama,
-      fileSizeBytes: 2000000000, // ~2 GB
-      downloadUrl:
-          'https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
-      quantization: ModelQuantization.q4,
-      parameterCount: 3000000000,
-      contextLength: 8192,
-      credibility: ModelCredibility.official,
-      provider: AIProvider.llama,
-      description: 'Meta Llama 3.2 3B. Good balance of size and capability.',
-      author: 'Meta',
-      license: 'Llama 3.2 Community',
-      huggingFaceId: 'meta-llama/Llama-3.2-3B-Instruct-GGUF',
-      modalities: [ModelModality.text],
-      capabilities: [
-        ModelCapability.chat,
-        ModelCapability.reasoning,
-        ModelCapability.promptLab,
-      ],
-      tags: ['chat', 'instruction', 'balanced', 'mobile-friendly'],
-    ),
+    // Llama 3.2 1B/3B (#1718): deliberately not in the default catalog.
+    // Meta's Llama 3.2 Community License carries redistribution and
+    // attribution terms (including a use-based restriction and a naming
+    // requirement for derivatives) that do not fit an unconditional default
+    // registry the way the Apache-2.0/MIT/Gemma-licensed entries above do
+    // (#1630's "no Llama-licensed model in default registry" acceptance
+    // criterion). No opt-in/advanced-config surface exists in this codebase
+    // to gate a licensed-but-not-default entry behind, and building one for
+    // two models with no other consumer is out of scope here -- if a real
+    // use case shows up, reintroduce them through such a mechanism rather
+    // than back in this list.
 
     // Qwen2 1.5B (Alibaba's compact model)
     const OfflineModelInfo(

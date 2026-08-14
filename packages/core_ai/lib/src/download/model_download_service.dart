@@ -14,17 +14,29 @@ class ModelDownloadService {
     ModelStorageManager? storageManager,
     ModelStorageLocation storageLocation =
         ModelStorageLocation.applicationDocuments,
+    int storageBudgetBytes = ModelStorageManager.defaultStorageBudgetBytes,
   }) : this._from(
          _resolveDependencies(
            downloads: downloads,
            storageManager: storageManager,
            storageLocation: storageLocation,
          ),
+         storageBudgetBytes,
        );
 
-  ModelDownloadService._from(_ResolvedDependencies dependencies)
-    : _downloads = dependencies.downloads,
+  ModelDownloadService._from(
+    _ResolvedDependencies dependencies,
+    this.storageBudgetBytes,
+  ) : _downloads = dependencies.downloads,
       _storageManager = dependencies.storageManager;
+
+  /// The enforced on-device ceiling for downloaded model artifacts.
+  ///
+  /// Checked -- and enforced by deleting the least-recently-installed models
+  /// that are not [model] itself -- before every new download starts, so the
+  /// quota is a real disk limit rather than a number the storage UI merely
+  /// displays.
+  final int storageBudgetBytes;
 
   static _ResolvedDependencies _resolveDependencies({
     BackgroundDownloads? downloads,
@@ -45,6 +57,11 @@ class ModelDownloadService {
 
   final BackgroundDownloads _downloads;
   final ModelStorageManager _storageManager;
+
+  /// The storage manager backing this service, for callers (e.g.
+  /// `ModelPort` implementations) that need real on-disk usage/quota figures
+  /// without duplicating a second manager pointed at a different directory.
+  ModelStorageManager get storageManager => _storageManager;
   StreamSubscription<DownloadProgress>? _progressSubscription;
   final Map<String, StreamController<ModelDownloadProgress>> _progressStreams =
       {};
@@ -85,6 +102,18 @@ class ModelDownloadService {
       _scheduledIds.remove(model.id);
       return;
     }
+
+    // Real disk-level eviction: free room within the storage budget before
+    // a new download starts, rather than letting every past download
+    // accumulate on disk forever. Never evicts the model about to be
+    // fetched, even if a stale artifact for it happens to be the oldest.
+    final roomForIncoming = (storageBudgetBytes - model.fileSizeBytes) < 0
+        ? 0
+        : storageBudgetBytes - model.fileSizeBytes;
+    await _storageManager.enforceStorageQuota(
+      maxTotalBytes: roomForIncoming,
+      protectedModelIds: {model.id},
+    );
 
     final source = Uri.tryParse(model.downloadUrl ?? '');
     if (source == null || source.scheme != 'https' || source.host.isEmpty) {

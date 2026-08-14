@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:core_ai/core_ai.dart' as core_ai;
+
 import '../mind_runtime.dart';
 import '../models/capability_models.dart';
 import '../models/context_models.dart';
@@ -26,7 +30,7 @@ import '../ports/vault_port.dart';
 /// This is the only file in the module allowed to import the generated bridge.
 /// Nothing else may reach `src/api/` or `frb_generated`.
 class RustMindRuntime implements MindRuntime {
-  RustMindRuntime();
+  RustMindRuntime({ModelPort? models}) : models = models ?? _RustModels();
 
   @override
   final VaultPort vault = const _RustVault();
@@ -47,7 +51,7 @@ class RustMindRuntime implements MindRuntime {
   final CapabilityPort capabilities = const _RustCapabilities();
 
   @override
-  final ModelPort models = const _RustModels();
+  final ModelPort models;
 
   @override
   final PortabilityPort portability = const _RustPortability();
@@ -217,34 +221,146 @@ class _RustCapabilities implements CapabilityPort {
   Future<void> remove(String id) async => _pending('CapabilityPort', _issue);
 }
 
+/// Real (non-fixture) [ModelPort], backed by `core_ai`'s already-proven
+/// download/storage pipeline -- the same `ModelDownloadService` and
+/// `ModelStorageManager` `model_provider.dart`'s `DownloadModelProvider`
+/// already uses for Mind's own whisper models.
+///
+/// # What is real here, and what still is not
+///
+/// [all], [storage], and [download] only need a catalog and a disk, so they
+/// are implemented for real: resumable, checksum-verified, atomically
+/// installed downloads, and an on-disk storage budget [core_ai]'s
+/// `ModelStorageManager.enforceStorageQuota` actually enforces by deleting
+/// files, not merely a RAM-residency cache that leaves every past download
+/// on disk forever. [ModelManagementPanel] no longer has to run against
+/// [FixtureMindRuntime] to exercise that behavior.
+///
+/// [load], [unload], [benchmark], and [thermal] all require a model running
+/// in real inference memory, which needs the Rust engine bindings tracked by
+/// #1628 (`LlmBackend` trait + llama.cpp GGUF backend) and #1638 (the Flutter
+/// plugin seam over that FFI) -- neither has landed, so these four stay
+/// honest [MindPortUnavailable] stubs naming those issues. (The blanket
+/// "#1260" every method here used to cite is Vault/Operation-Log FFI, not
+/// model management -- it never actually gated this port; #1628/#1638 are
+/// the issues that do.)
+///
+/// [ModelResidency] has three states -- `loaded` (in inference memory),
+/// `resident` (held on disk by a specific capability), and `available` (not
+/// on disk). Without a wired inference engine or a [CapabilityPort] that
+/// tracks which capability holds which model (#1222, also unimplemented),
+/// this class can only tell the true two-state story disk access gives it:
+/// a downloaded, verified model reports as `resident` with an empty
+/// [MindModel.heldBy] (nothing artificially blocks unloading it), never as
+/// `loaded`.
 class _RustModels implements ModelPort {
-  const _RustModels();
+  _RustModels({
+    core_ai.ModelDownloadService? downloadService,
+    List<core_ai.OfflineModelInfo>? catalog,
+  }) : _downloadService = downloadService ?? core_ai.ModelDownloadService(),
+       _catalog = catalog ?? core_ai.ModelCatalog.bundledModels;
 
-  static const String _issue = '#1260';
+  static const String _runtimeIssue = '#1628, #1638';
+
+  final core_ai.ModelDownloadService _downloadService;
+  final List<core_ai.OfflineModelInfo> _catalog;
+
+  core_ai.OfflineModelInfo? _findCatalogModel(String modelId) {
+    for (final model in _catalog) {
+      if (model.id == modelId) return model;
+    }
+    return null;
+  }
 
   @override
-  Future<List<MindModel>> all() async => _pending('ModelPort', _issue);
+  Future<List<MindModel>> all() async {
+    final results = await Future.wait(
+      _catalog.map((model) async {
+        final downloaded = await _downloadService.isModelDownloaded(
+          model.id,
+          model: model,
+        );
+        return MindModel(
+          id: model.id,
+          name: model.name,
+          sizeBytes: model.fileSizeBytes,
+          residency: downloaded
+              ? ModelResidency.resident
+              : ModelResidency.available,
+        );
+      }),
+    );
+    return results;
+  }
 
   @override
-  Future<({int budgetBytes, int usedBytes})> storage() async =>
-      _pending('ModelPort', _issue);
+  Future<({int budgetBytes, int usedBytes})> storage() async {
+    final usedBytes = await _downloadService.storageManager
+        .installedArtifactsTotalBytes();
+    return (
+      usedBytes: usedBytes,
+      budgetBytes: _downloadService.storageBudgetBytes,
+    );
+  }
 
   @override
-  Future<void> load(String modelId) async => _pending('ModelPort', _issue);
+  Future<void> load(String modelId) async =>
+      _pending('ModelPort', _runtimeIssue);
 
   @override
-  Future<void> unload(String modelId) async => _pending('ModelPort', _issue);
+  Future<void> unload(String modelId) async =>
+      _pending('ModelPort', _runtimeIssue);
 
   @override
-  Stream<({int received, int total})> download(String modelId) =>
-      _pendingStream('ModelPort', _issue);
+  Stream<({int received, int total})> download(String modelId) {
+    final model = _findCatalogModel(modelId);
+    if (model == null) {
+      return _pendingStream(
+        'ModelPort',
+        'unknown model id "$modelId" -- not in the catalog',
+      );
+    }
+    return _downloadService
+        .downloadModel(model)
+        .transform(
+          StreamTransformer<
+            core_ai.ModelDownloadProgress,
+            ({int received, int total})
+          >.fromHandlers(
+            handleData: (progress, sink) {
+              sink.add((
+                received: progress.downloadedBytes,
+                total: progress.totalBytes,
+              ));
+              switch (progress.status) {
+                case core_ai.ModelDownloadStatus.completed:
+                  sink.close();
+                case core_ai.ModelDownloadStatus.failed:
+                case core_ai.ModelDownloadStatus.cancelled:
+                  sink.addError(
+                    MindPortUnavailable(
+                      'ModelPort',
+                      progress.error ?? 'download did not complete',
+                    ),
+                  );
+                  sink.close();
+                case core_ai.ModelDownloadStatus.pending:
+                case core_ai.ModelDownloadStatus.downloading:
+                case core_ai.ModelDownloadStatus.paused:
+                case core_ai.ModelDownloadStatus.verifying:
+                  break;
+              }
+            },
+          ),
+        );
+  }
 
   @override
   Future<ModelBench> benchmark(String modelId) async =>
-      _pending('ModelPort', _issue);
+      _pending('ModelPort', _runtimeIssue);
 
   @override
-  Stream<ThermalState> thermal() => _pendingStream('ModelPort', _issue);
+  Stream<ThermalState> thermal() => _pendingStream('ModelPort', _runtimeIssue);
 }
 
 class _RustPortability implements PortabilityPort {

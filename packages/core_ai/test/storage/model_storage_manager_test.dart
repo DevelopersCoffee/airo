@@ -267,4 +267,115 @@ void main() {
       expect(await orphanedTmpFile.exists(), isFalse);
     },
   );
+
+  group('enforceStorageQuota (disk-level eviction, #1630)', () {
+    Future<File> writeArtifact(
+      Directory modelsDir,
+      String id,
+      int sizeBytes,
+      DateTime modified,
+    ) async {
+      final file = File(path.join(modelsDir.path, '$id.gguf'));
+      await file.writeAsBytes(List<int>.filled(sizeBytes, 0));
+      await file.setLastModified(modified);
+      return file;
+    }
+
+    test('does nothing while usage is within budget', () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
+      await writeArtifact(modelsDir, 'a', 100, DateTime(2026));
+
+      final evicted = await storageManager.enforceStorageQuota(
+        maxTotalBytes: 1000,
+      );
+
+      expect(evicted, isEmpty);
+    });
+
+    test(
+      'deletes the oldest-installed artifacts first until under budget',
+      () async {
+        final modelsDir = Directory(path.join(tempDir.path, 'models'));
+        await modelsDir.create(recursive: true);
+        await writeArtifact(modelsDir, 'oldest', 100, DateTime(2026, 1, 1));
+        await writeArtifact(modelsDir, 'middle', 100, DateTime(2026, 1, 2));
+        final newestFile = await writeArtifact(
+          modelsDir,
+          'newest',
+          100,
+          DateTime(2026, 1, 3),
+        );
+
+        final evicted = await storageManager.enforceStorageQuota(
+          maxTotalBytes: 150,
+        );
+
+        expect(evicted, ['oldest', 'middle']);
+        expect(await newestFile.exists(), isTrue);
+        expect(
+          await File(path.join(modelsDir.path, 'oldest.gguf')).exists(),
+          isFalse,
+        );
+        expect(
+          await File(path.join(modelsDir.path, 'middle.gguf')).exists(),
+          isFalse,
+        );
+      },
+    );
+
+    test('never evicts a protected model even if it is oldest', () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
+      final protectedFile = await writeArtifact(
+        modelsDir,
+        'in-use',
+        100,
+        DateTime(2026, 1, 1),
+      );
+      await writeArtifact(modelsDir, 'newer', 100, DateTime(2026, 1, 2));
+
+      final evicted = await storageManager.enforceStorageQuota(
+        maxTotalBytes: 50,
+        protectedModelIds: {'in-use'},
+      );
+
+      expect(evicted, ['newer']);
+      expect(await protectedFile.exists(), isTrue);
+    });
+
+    test('deletes the install receipt alongside an evicted artifact', () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
+      await writeArtifact(modelsDir, 'evict-me', 100, DateTime(2026, 1, 1));
+      await storageManager.writeInstallReceipt(
+        const OfflineModelInfo(
+          id: 'evict-me',
+          name: 'Evict Me',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 100,
+        ),
+      );
+
+      await storageManager.enforceStorageQuota(maxTotalBytes: 0);
+
+      expect(await storageManager.readInstallReceipt('evict-me'), isNull);
+    });
+
+    test('ignores in-flight .tmp/.part staging files', () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
+      final staging = File(path.join(modelsDir.path, 'downloading.gguf.tmp'));
+      await staging.writeAsBytes(List<int>.filled(500, 0));
+
+      final total = await storageManager.installedArtifactsTotalBytes();
+      final evicted = await storageManager.enforceStorageQuota(
+        maxTotalBytes: 0,
+      );
+
+      expect(total, 0);
+      expect(evicted, isEmpty);
+      expect(await staging.exists(), isTrue);
+    });
+  });
 }
