@@ -13,6 +13,14 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   var cancelCalls = 0;
   String? savedModel;
 
+  /// What the last `save` call carried — `#1629` Gap D: lets a test assert
+  /// the segments and audio path that reached `process()` are exactly what
+  /// gets threaded to the bridge, without a real Rust store.
+  List<TranscriptSegment>? savedSegments;
+  String? savedWavPath;
+  rust.SpeechLanguage? initializedSpeechLanguage;
+  rust.TranscriptDocumentRecord? transcriptDocumentToReturn;
+
   /// Set to make [loadLibrary] throw, simulating a platform with no native
   /// library (`MindUnavailable.bridgeMissing`).
   Object? loadLibraryError;
@@ -30,7 +38,10 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     required String modelsDir,
     required String storePath,
     required int memoryBudgetMb,
-  }) async {}
+    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
+  }) async {
+    initializedSpeechLanguage = speechLanguage;
+  }
 
   @override
   Stream<TranscriptEvent> transcribe({required String wavPath}) =>
@@ -43,11 +54,19 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegment> segments,
+    required String wavPath,
   }) async {
     if (saveError != null) throw saveError!;
     savedModel = model;
+    savedSegments = segments;
+    savedWavPath = wavPath;
     return 'meeting-1';
   }
+
+  @override
+  Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId) async =>
+      transcriptDocumentToReturn;
 
   @override
   void cancel() => cancelCalls++;
@@ -67,8 +86,18 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
 class FakeMindGenerationBridge implements MindGenerationBridge {
   List<GenerationEvent> generationEvents = const [];
   String modelIdValue = 'test-model@1';
+  GenerationStats statsValue = const GenerationStats(
+    prefillMs: 0,
+    prefillTokens: 0,
+    generationMs: 0,
+    generatedTokens: 0,
+    tokensPerSecond: 0,
+    peakRssBytes: 0,
+  );
   var ensureLoadedCalls = 0;
   var cancelCalls = 0;
+  var unloadCalls = 0;
+  String? lastGrammar;
   var _loaded = false;
 
   @override
@@ -84,11 +113,25 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   }
 
   @override
-  Stream<GenerationEvent> generate({required String transcript}) =>
-      Stream.fromIterable(generationEvents);
+  Stream<GenerationEvent> generate({
+    required String transcript,
+    String? grammar,
+  }) {
+    lastGrammar = grammar;
+    return Stream.fromIterable(generationEvents);
+  }
 
   @override
   String modelId() => modelIdValue;
+
+  @override
+  GenerationStats stats() => statsValue;
+
+  @override
+  void unload() {
+    unloadCalls++;
+    _loaded = false;
+  }
 
   @override
   void cancel() => cancelCalls++;

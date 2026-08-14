@@ -24,7 +24,7 @@ use crate::frb_generated::StreamSink;
 
 use crate::LlamaGenerationEngine;
 use airo_mind_core::models;
-use airo_mind_core::{CancelToken, GenerationRequest, ResourceBudget, Supervisor};
+use airo_mind_core::{CancelToken, GenerationRequest, ResourceBudget, RuntimeStats, Supervisor};
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -49,6 +49,33 @@ pub enum GenerationEvent {
     },
     /// The user navigated away. Nothing was saved.
     Cancelled,
+}
+
+/// `RuntimeStats`, crossing the FFI boundary. A separate wire type rather
+/// than deriving FRB bindings directly on `airo_mind_core::RuntimeStats`:
+/// that type lives in the domain-free runtime crate, and this crate's `api`
+/// module is the one place a Dart-shaped mirror of a core type is expected to
+/// live (same pattern `GenerationEvent` already follows for `GenerationChunk`).
+pub struct GenerationStats {
+    pub prefill_ms: u64,
+    pub prefill_tokens: u32,
+    pub generation_ms: u64,
+    pub generated_tokens: u32,
+    pub tokens_per_second: f64,
+    pub peak_rss_bytes: u64,
+}
+
+impl From<RuntimeStats> for GenerationStats {
+    fn from(s: RuntimeStats) -> Self {
+        Self {
+            prefill_ms: s.prefill_ms,
+            prefill_tokens: s.prefill_tokens,
+            generation_ms: s.generation_ms,
+            generated_tokens: s.generated_tokens,
+            tokens_per_second: s.tokens_per_second,
+            peak_rss_bytes: s.peak_rss_bytes,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +123,10 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
             task: models::ModelTask::Generation,
             memory_budget_mb: config.memory_budget_mb,
             minimum_quality: models::ModelQuality::Draft,
+            // Not meaningful for `Generation` — `resolve` only compares
+            // language for `Speech` — stated explicitly rather than relying on
+            // that fact silently, in case that ever changes.
+            language: models::ModelLanguage::default(),
         },
         models_dir,
         &[],
@@ -139,8 +170,16 @@ pub fn generation_model_id() -> String {
 }
 
 /// Transcript → minutes, streaming throughout.
+///
+/// `grammar` is a GBNF grammar (start symbol `root`) constraining the token
+/// stream to a caller-chosen shape, or `None` for the model's normal
+/// unconstrained Markdown output. It is plumbing, not policy: this function
+/// does not know or care what the grammar encodes -- turning "Meeting IR as
+/// JSON" into a concrete GBNF string is a capability decision for whichever
+/// caller passes one in, not something minutes.rs decides.
 pub fn generate_minutes(
     transcript: String,
+    grammar: Option<String>,
     sink: StreamSink<GenerationEvent>,
 ) -> Result<(), String> {
     let emit = |event: GenerationEvent| -> Result<(), String> {
@@ -159,6 +198,7 @@ pub fn generate_minutes(
             &GenerationRequest {
                 prompt: minutes_prompt(&transcript),
                 max_output_tokens: 320,
+                grammar,
             },
             &cancel,
             &mut |chunk| {
@@ -184,6 +224,30 @@ pub fn generate_minutes(
 pub fn cancel_generation() {
     if let Some(token) = lock(&CANCEL).as_ref() {
         token.cancel();
+    }
+}
+
+/// Timing and memory from the most recently completed `generate_minutes`
+/// call. All zero before anything has generated, or if `initialize` was
+/// never called — a state the caller can act on rather than an error.
+#[frb(sync)]
+pub fn generation_stats() -> GenerationStats {
+    lock(&ENGINE)
+        .as_ref()
+        .and_then(Supervisor::generation_stats)
+        .unwrap_or_default()
+        .into()
+}
+
+/// Releases the loaded generation model. Safe to call when nothing is
+/// loaded, and safe to call again after `initialize` reloads a model — this
+/// only clears the Supervisor's generation slot, not the speech one (there
+/// is none here) or the recorded `MODEL_ID`, so `generation_model_id`
+/// continues to describe whatever was last generated until something new is.
+#[frb(sync)]
+pub fn unload_generation() {
+    if let Some(supervisor) = lock(&ENGINE).as_mut() {
+        supervisor.unregister_generation();
     }
 }
 

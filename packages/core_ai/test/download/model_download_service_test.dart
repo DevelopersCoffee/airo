@@ -89,6 +89,12 @@ void main() {
       ),
     );
     when(() => storage.deleteInstallReceipt(any())).thenAnswer((_) async {});
+    when(
+      () => storage.enforceStorageQuota(
+        maxTotalBytes: any(named: 'maxTotalBytes'),
+        protectedModelIds: any(named: 'protectedModelIds'),
+      ),
+    ).thenAnswer((_) async => <String>[]);
     downloadService = ModelDownloadService(
       downloads: downloads,
       storageManager: storage,
@@ -332,6 +338,43 @@ void main() {
     expect(progress.status, ModelDownloadStatus.failed);
     expect(progress.error, contains('Insufficient disk space'));
     expect(downloads.requests, isEmpty);
+  });
+
+  test('downloadModel enforces the storage quota, protecting the incoming '
+      'model, before enqueuing', () async {
+    downloadService.downloadModel(model);
+    await Future<void>.delayed(Duration.zero);
+
+    final captured = verify(
+      () => storage.enforceStorageQuota(
+        maxTotalBytes: any(named: 'maxTotalBytes'),
+        protectedModelIds: captureAny(named: 'protectedModelIds'),
+      ),
+    ).captured;
+
+    expect(captured.single, {model.id});
+    expect(downloads.requests, hasLength(1));
+  });
+
+  test('a quota-exceeding model still fails cleanly if eviction cannot make '
+      'room', () async {
+    // Even after enforceStorageQuota runs, disk space can still be short
+    // (e.g. every other artifact was protected). hasEnoughDiskSpace is the
+    // final gate and must still fail the download rather than silently
+    // downloading over budget.
+    when(
+      () => storage.hasEnoughDiskSpace(model.fileSizeBytes),
+    ).thenAnswer((_) async => false);
+
+    final progress = await downloadService.downloadModel(model).first;
+
+    expect(progress.status, ModelDownloadStatus.failed);
+    verifyNever(
+      () => storage.enforceStorageQuota(
+        maxTotalBytes: any(named: 'maxTotalBytes'),
+        protectedModelIds: any(named: 'protectedModelIds'),
+      ),
+    );
   });
 
   test('downloadModel preserves LiteRT destination extension', () async {

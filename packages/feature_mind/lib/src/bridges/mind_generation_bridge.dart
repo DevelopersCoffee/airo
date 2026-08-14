@@ -3,6 +3,29 @@ import 'package:flutter/foundation.dart';
 import '../library_loader.dart';
 import '../llama/api/minutes.dart' as llama;
 
+/// Timing and memory from the most recently completed [MindGenerationBridge.
+/// generate] call. All zero before anything has generated -- a state the
+/// caller can act on (nothing to show yet) rather than a lie about a
+/// generation that never happened.
+@immutable
+class GenerationStats {
+  const GenerationStats({
+    required this.prefillMs,
+    required this.prefillTokens,
+    required this.generationMs,
+    required this.generatedTokens,
+    required this.tokensPerSecond,
+    required this.peakRssBytes,
+  });
+
+  final int prefillMs;
+  final int prefillTokens;
+  final int generationMs;
+  final int generatedTokens;
+  final double tokensPerSecond;
+  final int peakRssBytes;
+}
+
 @immutable
 sealed class GenerationEvent {
   const GenerationEvent();
@@ -37,11 +60,22 @@ abstract interface class MindGenerationBridge {
     required int memoryBudgetMb,
   });
 
-  Stream<GenerationEvent> generate({required String transcript});
+  /// [grammar] is a GBNF grammar (start symbol `root`) constraining the
+  /// token stream, or `null` for the model's normal unconstrained output.
+  /// Plumbing only -- this bridge does not know or care what the grammar
+  /// encodes.
+  Stream<GenerationEvent> generate({required String transcript, String? grammar});
 
   /// What produced the last minutes, for [MindSpeechBridge.save] to record
   /// (`ADR-0018 §5`). Empty before anything has been generated.
   String modelId();
+
+  /// Timing and memory from the most recently completed [generate] call.
+  GenerationStats stats();
+
+  /// Releases the loaded generation model. Safe to call when nothing is
+  /// loaded.
+  void unload();
 
   void cancel();
 }
@@ -76,19 +110,41 @@ class RustMindGenerationBridge implements MindGenerationBridge {
   }
 
   @override
-  Stream<GenerationEvent> generate({required String transcript}) =>
-      llama.generateMinutes(transcript: transcript).map((event) {
-        return switch (event) {
-          llama.GenerationEvent_Generating(:final text) =>
-            GenerationEventGenerating(text),
-          llama.GenerationEvent_MinutesReady(:final text) =>
-            GenerationEventMinutesReady(text),
-          llama.GenerationEvent_Cancelled() => const GenerationEventCancelled(),
-        };
-      });
+  Stream<GenerationEvent> generate({
+    required String transcript,
+    String? grammar,
+  }) =>
+      llama
+          .generateMinutes(transcript: transcript, grammar: grammar)
+          .map((event) {
+            return switch (event) {
+              llama.GenerationEvent_Generating(:final text) =>
+                GenerationEventGenerating(text),
+              llama.GenerationEvent_MinutesReady(:final text) =>
+                GenerationEventMinutesReady(text),
+              llama.GenerationEvent_Cancelled() =>
+                const GenerationEventCancelled(),
+            };
+          });
 
   @override
   String modelId() => llama.generationModelId();
+
+  @override
+  GenerationStats stats() {
+    final s = llama.generationStats();
+    return GenerationStats(
+      prefillMs: s.prefillMs.toInt(),
+      prefillTokens: s.prefillTokens,
+      generationMs: s.generationMs.toInt(),
+      generatedTokens: s.generatedTokens,
+      tokensPerSecond: s.tokensPerSecond,
+      peakRssBytes: s.peakRssBytes.toInt(),
+    );
+  }
+
+  @override
+  void unload() => llama.unloadGeneration();
 
   @override
   void cancel() => llama.cancelGeneration();

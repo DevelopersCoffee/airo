@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -650311619;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1593969673;
 
 // Section: executor
 
@@ -99,6 +99,7 @@ fn wire__crate__api__minutes__generate_minutes_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_transcript = <String>::sse_decode(&mut deserializer);
+            let api_grammar = <Option<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::minutes::GenerationEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -106,8 +107,11 @@ fn wire__crate__api__minutes__generate_minutes_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok =
-                        crate::api::minutes::generate_minutes(api_transcript, api_sink)?;
+                    let output_ok = crate::api::minutes::generate_minutes(
+                        api_transcript,
+                        api_grammar,
+                        api_sink,
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -138,6 +142,35 @@ fn wire__crate__api__minutes__generation_model_id_impl(
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok(crate::api::minutes::generation_model_id())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__minutes__generation_stats_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "generation_stats",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(crate::api::minutes::generation_stats())?;
                 Ok(output_ok)
             })())
         },
@@ -205,6 +238,37 @@ fn wire__crate__api__minutes__is_ready_impl(
         },
     )
 }
+fn wire__crate__api__minutes__unload_generation_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "unload_generation",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    crate::api::minutes::unload_generation();
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 
 // Section: dart2rust
 
@@ -244,6 +308,13 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for crate::api::minutes::GenerationConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -279,6 +350,26 @@ impl SseDecode for crate::api::minutes::GenerationEvent {
     }
 }
 
+impl SseDecode for crate::api::minutes::GenerationStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_prefillMs = <u64>::sse_decode(deserializer);
+        let mut var_prefillTokens = <u32>::sse_decode(deserializer);
+        let mut var_generationMs = <u64>::sse_decode(deserializer);
+        let mut var_generatedTokens = <u32>::sse_decode(deserializer);
+        let mut var_tokensPerSecond = <f64>::sse_decode(deserializer);
+        let mut var_peakRssBytes = <u64>::sse_decode(deserializer);
+        return crate::api::minutes::GenerationStats {
+            prefill_ms: var_prefillMs,
+            prefill_tokens: var_prefillTokens,
+            generation_ms: var_generationMs,
+            generated_tokens: var_generatedTokens,
+            tokens_per_second: var_tokensPerSecond,
+            peak_rss_bytes: var_peakRssBytes,
+        };
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -291,10 +382,28 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap()
     }
 }
 
@@ -327,7 +436,7 @@ fn pde_ffi_dispatcher_primary_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         2 => wire__crate__api__minutes__generate_minutes_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__minutes__initialize_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__minutes__initialize_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -342,7 +451,9 @@ fn pde_ffi_dispatcher_sync_impl(
     match func_id {
         1 => wire__crate__api__minutes__cancel_generation_impl(ptr, rust_vec_len, data_len),
         3 => wire__crate__api__minutes__generation_model_id_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__minutes__is_ready_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__minutes__generation_stats_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__minutes__is_ready_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__minutes__unload_generation_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -398,6 +509,31 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::minutes::GenerationEvent>
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::minutes::GenerationStats {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.prefill_ms.into_into_dart().into_dart(),
+            self.prefill_tokens.into_into_dart().into_dart(),
+            self.generation_ms.into_into_dart().into_dart(),
+            self.generated_tokens.into_into_dart().into_dart(),
+            self.tokens_per_second.into_into_dart().into_dart(),
+            self.peak_rss_bytes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::minutes::GenerationStats
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::minutes::GenerationStats>
+    for crate::api::minutes::GenerationStats
+{
+    fn into_into_dart(self) -> crate::api::minutes::GenerationStats {
+        self
+    }
+}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -432,6 +568,13 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for crate::api::minutes::GenerationConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -462,6 +605,18 @@ impl SseEncode for crate::api::minutes::GenerationEvent {
     }
 }
 
+impl SseEncode for crate::api::minutes::GenerationStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.prefill_ms, serializer);
+        <u32>::sse_encode(self.prefill_tokens, serializer);
+        <u64>::sse_encode(self.generation_ms, serializer);
+        <u32>::sse_encode(self.generated_tokens, serializer);
+        <f64>::sse_encode(self.tokens_per_second, serializer);
+        <u64>::sse_encode(self.peak_rss_bytes, serializer);
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -472,10 +627,27 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u64::<NativeEndian>(self).unwrap();
     }
 }
 

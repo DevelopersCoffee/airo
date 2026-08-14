@@ -122,4 +122,72 @@ void main() {
       },
     );
   });
+
+  // `#1629` Gap D: `MindSpeechBridge.save` carries segments back across the
+  // FFI boundary so `save_meeting` can persist `transcript.json`. That is a
+  // second `int` <-> `BigInt` crossing, in the opposite direction from
+  // `toTranscriptSegment` -- this pins that it is also exact, including near
+  // the same overflow-prone magnitude the narrowing test above checks.
+  group('fromTranscriptSegment', () {
+    test('carries id, start/end timestamps and text through unchanged', () {
+      const segment = TranscriptSegment(
+        id: 's4',
+        startMs: 12345,
+        endMs: 67890,
+        text: 'Raj owns the rollout',
+      );
+
+      final wire = fromTranscriptSegment(segment);
+
+      expect(wire.id, 's4');
+      expect(wire.startMs, BigInt.from(12345));
+      expect(wire.endMs, BigInt.from(67890));
+      expect(wire.text, 'Raj owns the rollout');
+    });
+
+    test('round-trips through toTranscriptSegment unchanged', () {
+      const original = TranscriptSegment(
+        id: 's7',
+        startMs: 3000000,
+        endMs: 3005000,
+        text: 'long meeting, near-overflow timestamp',
+      );
+
+      final roundTripped = toTranscriptSegment(
+        fromTranscriptSegment(original),
+      );
+
+      expect(roundTripped, original);
+    });
+  });
+
+  // `#1629` Gap C: the multilingual model is selectable through
+  // `rust.SpeechLanguage`, not just present in the Rust registry. This test
+  // proves the enum reaches the wire type `RustMindSpeechBridge.initialize`
+  // builds, without needing a loaded native library -- `rust.MindConfig` is a
+  // plain constructible Dart class, so the wire shape itself is what is
+  // checked here.
+  group('SpeechLanguage selection reaches MindConfig', () {
+    test('englishOnly is the default and multilingual is a real alternative', () {
+      final defaultConfig = rust.MindConfig(
+        modelsDir: '/models',
+        storePath: '/models/meetings.log',
+        memoryBudgetMb: 4096,
+        speechLanguage: rust.SpeechLanguage.englishOnly,
+      );
+      final multilingualConfig = rust.MindConfig(
+        modelsDir: '/models',
+        storePath: '/models/meetings.log',
+        memoryBudgetMb: 4096,
+        speechLanguage: rust.SpeechLanguage.multilingual,
+      );
+
+      expect(defaultConfig.speechLanguage, rust.SpeechLanguage.englishOnly);
+      expect(
+        multilingualConfig.speechLanguage,
+        rust.SpeechLanguage.multilingual,
+      );
+      expect(defaultConfig, isNot(equals(multilingualConfig)));
+    });
+  });
 }

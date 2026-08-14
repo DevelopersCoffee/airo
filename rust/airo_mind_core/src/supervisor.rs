@@ -9,8 +9,8 @@
 use crate::budget::ResourceBudget;
 use crate::cancel::CancelToken;
 use crate::engine::{
-    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
-    TranscriptSegment,
+    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
+    SpeechEngine, TranscriptSegment,
 };
 
 /// Why the Supervisor refused or stopped a job.
@@ -74,6 +74,22 @@ impl Supervisor {
 
     pub fn register_generation(&mut self, engine: Box<dyn GenerationEngine>) {
         self.generation = Some(engine);
+    }
+
+    /// Drops the registered generation engine, releasing whatever memory it
+    /// holds. There is no separate "unload" verb on the Supervisor: the
+    /// engine's own `Drop` (and, on `LlamaGenerationEngine`, its explicit
+    /// `unload`) does the real free either way, and a `Box<dyn _>` cannot be
+    /// asked to unload itself through the trait without widening
+    /// `GenerationEngine` for every implementor just to serve one caller.
+    pub fn unregister_generation(&mut self) {
+        self.generation = None;
+    }
+
+    /// Stats from the registered generation engine's most recent `generate`
+    /// call, or `None` if no generation engine is registered.
+    pub fn generation_stats(&self) -> Option<RuntimeStats> {
+        self.generation.as_ref().map(|e| e.stats())
     }
 
     pub fn budget(&self) -> ResourceBudget {
@@ -201,6 +217,12 @@ mod tests {
             }
             Ok(())
         }
+
+        fn stats(&self) -> RuntimeStats {
+            // Deterministic and cheap to construct is the point of a fake --
+            // this fixture does not measure anything real.
+            RuntimeStats::default()
+        }
     }
 
     fn audio() -> [i16; 4] {
@@ -251,6 +273,7 @@ mod tests {
             &GenerationRequest {
                 prompt: "agenda decisions actions owners".into(),
                 max_output_tokens: 256,
+                grammar: None,
             },
             &CancelToken::new(),
             &mut |chunk| {
@@ -370,5 +393,40 @@ mod tests {
             Err(RuntimeError::Engine(EngineError::Backend(_)))
         ));
         assert_eq!(seen, 1, "the engine must stop on the first refusal");
+    }
+
+    #[test]
+    fn generation_stats_is_reachable_through_the_supervisor_and_none_when_unregistered() {
+        let mut s = Supervisor::new(ResourceBudget::new(2048));
+        assert_eq!(
+            s.generation_stats(),
+            None,
+            "nothing registered yet -- there is nothing to report"
+        );
+
+        s.register_generation(Box::new(FakeGeneration { memory_mb: 512 }));
+        assert_eq!(
+            s.generation_stats(),
+            Some(RuntimeStats::default()),
+            "the fake does not measure itself, so its answer is the zero value"
+        );
+    }
+
+    #[test]
+    fn unregister_generation_drops_the_engine_and_the_next_run_is_refused() {
+        let mut s = supervisor(2048, 512);
+        s.unregister_generation();
+
+        let r = s.run_generation(
+            &GenerationRequest {
+                prompt: "anything".into(),
+                max_output_tokens: 8,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |_| Ok(()),
+        );
+        assert_eq!(r, Err(RuntimeError::NoEngine("generation")));
+        assert_eq!(s.generation_stats(), None);
     }
 }

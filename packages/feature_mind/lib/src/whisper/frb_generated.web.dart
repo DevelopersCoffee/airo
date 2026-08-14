@@ -42,9 +42,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig dco_decode_box_autoadd_mind_config(dynamic raw);
 
   @protected
+  TranscriptDocumentRecord dco_decode_box_autoadd_transcript_document_record(
+    dynamic raw,
+  );
+
+  @protected
   TranscriptSegmentRecord dco_decode_box_autoadd_transcript_segment_record(
     dynamic raw,
   );
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   InstalledModel dco_decode_installed_model(dynamic raw);
@@ -79,10 +87,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MeetingRecord? dco_decode_opt_box_autoadd_meeting_record(dynamic raw);
 
   @protected
+  TranscriptDocumentRecord?
+  dco_decode_opt_box_autoadd_transcript_document_record(dynamic raw);
+
+  @protected
   RequiredModel dco_decode_required_model(dynamic raw);
 
   @protected
   SearchHit dco_decode_search_hit(dynamic raw);
+
+  @protected
+  SpeechLanguage dco_decode_speech_language(dynamic raw);
+
+  @protected
+  TranscriptDocumentRecord dco_decode_transcript_document_record(dynamic raw);
 
   @protected
   TranscriptEvent dco_decode_transcript_event(dynamic raw);
@@ -125,9 +143,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig sse_decode_box_autoadd_mind_config(SseDeserializer deserializer);
 
   @protected
+  TranscriptDocumentRecord sse_decode_box_autoadd_transcript_document_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TranscriptSegmentRecord sse_decode_box_autoadd_transcript_segment_record(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   InstalledModel sse_decode_installed_model(SseDeserializer deserializer);
@@ -170,10 +196,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  TranscriptDocumentRecord?
+  sse_decode_opt_box_autoadd_transcript_document_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RequiredModel sse_decode_required_model(SseDeserializer deserializer);
 
   @protected
   SearchHit sse_decode_search_hit(SseDeserializer deserializer);
+
+  @protected
+  SpeechLanguage sse_decode_speech_language(SseDeserializer deserializer);
+
+  @protected
+  TranscriptDocumentRecord sse_decode_transcript_document_record(
+    SseDeserializer deserializer,
+  );
 
   @protected
   TranscriptEvent sse_decode_transcript_event(SseDeserializer deserializer);
@@ -194,9 +234,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -229,10 +266,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_transcript_document_record(
+    TranscriptDocumentRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_transcript_segment_record(
     TranscriptSegmentRecord self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_installed_model(
@@ -289,10 +335,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_transcript_document_record(
+    TranscriptDocumentRecord? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_required_model(RequiredModel self, SseSerializer serializer);
 
   @protected
   void sse_encode_search_hit(SearchHit self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_speech_language(
+    SpeechLanguage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_transcript_document_record(
+    TranscriptDocumentRecord self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_transcript_event(
@@ -317,9 +381,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

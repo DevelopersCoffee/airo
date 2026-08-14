@@ -41,6 +41,7 @@ use flutter_rust_bridge::frb;
 // compile.
 use crate::frb_generated::StreamSink;
 
+use crate::transcript_store;
 use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
 use airo_mind_core::{
@@ -51,6 +52,37 @@ use airo_mind_core::{
 // ---------------------------------------------------------------------------
 // Wire types
 // ---------------------------------------------------------------------------
+
+/// Which speech model to resolve. Mirrors `airo_mind_core::models::
+/// ModelLanguage` rather than re-exporting it: that type lives below the
+/// Model Manager boundary (`ADR-0018 §4`), and the wire contract is allowed to
+/// diverge from the storage/resolution type the same way `MeetingRecord`
+/// already diverges from `Meeting`.
+///
+/// `#1629`: Hindi+English code-switching needs the multilingual weights: the
+/// bundled `.en` model is architecturally incapable of any language but
+/// English. Choosing `Multilingual` here only resolves a different registry
+/// row — it does not download anything by itself, and `initialize` reports
+/// `NotInstalled` naming the missing multilingual weight file the same way it
+/// would for any other unresolved model (`ADR-0018 §4`: that name is the
+/// Model Manager's to know, not this capability's). Wiring an install/
+/// preference flow for this is #1664's job; this is the mechanism it selects
+/// through.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SpeechLanguage {
+    #[default]
+    EnglishOnly,
+    Multilingual,
+}
+
+impl From<SpeechLanguage> for models::ModelLanguage {
+    fn from(language: SpeechLanguage) -> Self {
+        match language {
+            SpeechLanguage::EnglishOnly => Self::EnglishOnly,
+            SpeechLanguage::Multilingual => Self::Multilingual,
+        }
+    }
+}
 
 /// Where the models and the store live. Supplied by Dart, which owns the
 /// platform's notion of an application directory.
@@ -63,6 +95,9 @@ pub struct MindConfig {
     /// Admission ceiling for the Supervisor (`C6`). A device that cannot afford
     /// the model is told so before anything allocates.
     pub memory_budget_mb: u32,
+    /// `#1629`. Defaults to `EnglishOnly` on the Dart side, so every existing
+    /// caller keeps today's behaviour unchanged.
+    pub speech_language: SpeechLanguage,
 }
 
 /// A stored meeting, flattened for the bridge.
@@ -160,6 +195,12 @@ pub enum TranscriptEvent {
 /// not queue behind it.
 static ENGINES: Mutex<Option<Supervisor>> = Mutex::new(None);
 
+/// `logical_id@version` of whichever speech model `initialize` resolved.
+/// `#1629` Gap D: `transcript.json` records which model produced a transcript
+/// for reproducibility, and this is the only place that identity is known —
+/// `WhisperSpeechEngine` itself is handed a path, never a logical id.
+static SPEECH_MODEL_VERSION: Mutex<Option<String>> = Mutex::new(None);
+
 /// The store and its projection.
 static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
 
@@ -199,6 +240,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
             task: models::ModelTask::Speech,
             memory_budget_mb: config.memory_budget_mb,
             minimum_quality: models::ModelQuality::Draft,
+            language: config.speech_language.into(),
         },
         models_dir,
         &[],
@@ -219,6 +261,10 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     let index = SearchIndex::rebuild(&store.all().map_err(|e| e.to_string())?);
 
     *lock(&ENGINES) = Some(supervisor);
+    *lock(&SPEECH_MODEL_VERSION) = Some(format!(
+        "{}@{}",
+        speech_model.logical_id, speech_model.version
+    ));
     *lock(&LIBRARY) = Some(Library { store, index });
     Ok(())
 }
@@ -294,7 +340,39 @@ pub fn transcribe_recording(
     })
 }
 
-/// Makes a meeting durable and searchable. Returns its id.
+/// A meeting's transcript, in the reproducible shape `#1629` Gap D asks for:
+/// the segments that produced the flat transcript string, which speech model
+/// produced them, and which audio file they came from.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptDocumentRecord {
+    pub meeting_id: String,
+    pub audio_path: String,
+    pub model_version: String,
+    pub segments: Vec<TranscriptSegmentRecord>,
+}
+
+impl From<transcript_store::TranscriptDocument> for TranscriptDocumentRecord {
+    fn from(doc: transcript_store::TranscriptDocument) -> Self {
+        Self {
+            meeting_id: doc.meeting_id,
+            audio_path: doc.audio_path,
+            model_version: doc.model_version,
+            segments: doc
+                .segments
+                .into_iter()
+                .map(|s| TranscriptSegmentRecord {
+                    id: s.id,
+                    start_ms: s.start_ms,
+                    end_ms: s.end_ms,
+                    text: s.text,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// Makes a meeting durable and searchable, and persists its structured
+/// transcript document. Returns the meeting's id.
 ///
 /// Separate from transcription because the minutes come from the other library.
 /// The ordering below is a contract, not an implementation detail: an index
@@ -306,12 +384,20 @@ pub fn transcribe_recording(
 /// (`ADR-0018 §5`), supplied by the generation library. An LLM is not
 /// deterministic across versions, so what produced a summary is stored, not
 /// inferred later.
+///
+/// `segments` and `audio_path` are `#1629` Gap D: written to a per-meeting
+/// `transcript.json` (`transcript_store`) after the flat `Meeting` record is
+/// durable, so the ASR step is reproducible — which model produced these
+/// segments, from which recording — independent of the append-only log's flat
+/// string.
 pub fn save_meeting(
     title: String,
     recorded_at_ms: u64,
     transcript: String,
     minutes: String,
     model: String,
+    segments: Vec<TranscriptSegmentRecord>,
+    audio_path: String,
 ) -> Result<String, String> {
     let meeting = Meeting {
         id: format!("m{recorded_at_ms}"),
@@ -327,7 +413,36 @@ pub fn save_meeting(
     // Durable before the projection.
     library.store.save(&meeting).map_err(|e| e.to_string())?;
     library.index.insert(&meeting);
+
+    let model_version = lock(&SPEECH_MODEL_VERSION)
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
+    let doc = transcript_store::TranscriptDocument {
+        meeting_id: meeting.id.clone(),
+        audio_path,
+        model_version,
+        segments: segments
+            .into_iter()
+            .map(|s| transcript_store::StoredSegment {
+                id: s.id,
+                start_ms: s.start_ms,
+                end_ms: s.end_ms,
+                text: s.text,
+            })
+            .collect(),
+    };
+    transcript_store::write(library.store.path(), &doc)?;
+
     Ok(meeting.id)
+}
+
+/// Reopens a meeting's structured transcript document — the segments, model
+/// version and audio reference `save_meeting` persisted. `Ok(None)` for a
+/// meeting saved before this feature shipped, or one with no matching id.
+pub fn get_transcript(meeting_id: String) -> Result<Option<TranscriptDocumentRecord>, String> {
+    let library = lock(&LIBRARY);
+    let library = library.as_ref().ok_or("Airo Mind is not initialised")?;
+    Ok(transcript_store::read(library.store.path(), &meeting_id)?.map(Into::into))
 }
 
 /// Stops the in-flight transcription at the next segment.
@@ -477,7 +592,17 @@ mod tests {
         assert!(list_meetings().is_err());
         assert!(search_meetings("anything".into()).is_err());
         assert!(get_meeting("nope".into()).is_err());
-        assert!(save_meeting("t".into(), 0, "x".into(), "y".into(), "m".into()).is_err());
+        assert!(save_meeting(
+            "t".into(),
+            0,
+            "x".into(),
+            "y".into(),
+            "m".into(),
+            Vec::new(),
+            "rec.wav".into(),
+        )
+        .is_err());
+        assert!(get_transcript("nope".into()).is_err());
         // Cancelling with nothing in flight is a no-op, not a crash: the user
         // can press Stop on a screen whose job already finished.
         cancel_processing();

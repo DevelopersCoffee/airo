@@ -52,6 +52,11 @@ mod frb_generated;
 #[cfg(feature = "whisper")]
 mod whisper;
 
+/// `transcript.json` persistence (`#1629` Gap D). Only used by `api::meetings`,
+/// gated the same way.
+#[cfg(feature = "whisper")]
+mod transcript_store;
+
 // `use`, not `mod`: the engine and the setup surface moved here from the old
 // combined crate unchanged, and `crate::engine::…` / `crate::models::…` keep
 // resolving. The definitions live in `airo_mind_core`.

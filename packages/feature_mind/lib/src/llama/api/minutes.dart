@@ -9,6 +9,7 @@ import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'minutes.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `lock`, `minutes_prompt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// Loads the generation model. Called on first use, not at startup: this
 /// library is large and only minutes need it.
@@ -28,12 +29,38 @@ String generationModelId() =>
     RustLib.instance.api.crateApiMinutesGenerationModelId();
 
 /// Transcript → minutes, streaming throughout.
-Stream<GenerationEvent> generateMinutes({required String transcript}) =>
-    RustLib.instance.api.crateApiMinutesGenerateMinutes(transcript: transcript);
+///
+/// `grammar` is a GBNF grammar (start symbol `root`) constraining the token
+/// stream to a caller-chosen shape, or `None` for the model's normal
+/// unconstrained Markdown output. It is plumbing, not policy: this function
+/// does not know or care what the grammar encodes -- turning "Meeting IR as
+/// JSON" into a concrete GBNF string is a capability decision for whichever
+/// caller passes one in, not something minutes.rs decides.
+Stream<GenerationEvent> generateMinutes({
+  required String transcript,
+  String? grammar,
+}) => RustLib.instance.api.crateApiMinutesGenerateMinutes(
+  transcript: transcript,
+  grammar: grammar,
+);
 
 /// Stops the in-flight generation at the next token.
 void cancelGeneration() =>
     RustLib.instance.api.crateApiMinutesCancelGeneration();
+
+/// Timing and memory from the most recently completed `generate_minutes`
+/// call. All zero before anything has generated, or if `initialize` was
+/// never called — a state the caller can act on rather than an error.
+GenerationStats generationStats() =>
+    RustLib.instance.api.crateApiMinutesGenerationStats();
+
+/// Releases the loaded generation model. Safe to call when nothing is
+/// loaded, and safe to call again after `initialize` reloads a model — this
+/// only clears the Supervisor's generation slot, not the speech one (there
+/// is none here) or the recorded `MODEL_ID`, so `generation_model_id`
+/// continues to describe whatever was last generated until something new is.
+void unloadGeneration() =>
+    RustLib.instance.api.crateApiMinutesUnloadGeneration();
 
 /// Where the models live and what the engine may spend.
 class GenerationConfig {
@@ -72,4 +99,48 @@ sealed class GenerationEvent with _$GenerationEvent {
 
   /// The user navigated away. Nothing was saved.
   const factory GenerationEvent.cancelled() = GenerationEvent_Cancelled;
+}
+
+/// `RuntimeStats`, crossing the FFI boundary. A separate wire type rather
+/// than deriving FRB bindings directly on `airo_mind_core::RuntimeStats`:
+/// that type lives in the domain-free runtime crate, and this crate's `api`
+/// module is the one place a Dart-shaped mirror of a core type is expected to
+/// live (same pattern `GenerationEvent` already follows for `GenerationChunk`).
+class GenerationStats {
+  final BigInt prefillMs;
+  final int prefillTokens;
+  final BigInt generationMs;
+  final int generatedTokens;
+  final double tokensPerSecond;
+  final BigInt peakRssBytes;
+
+  const GenerationStats({
+    required this.prefillMs,
+    required this.prefillTokens,
+    required this.generationMs,
+    required this.generatedTokens,
+    required this.tokensPerSecond,
+    required this.peakRssBytes,
+  });
+
+  @override
+  int get hashCode =>
+      prefillMs.hashCode ^
+      prefillTokens.hashCode ^
+      generationMs.hashCode ^
+      generatedTokens.hashCode ^
+      tokensPerSecond.hashCode ^
+      peakRssBytes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GenerationStats &&
+          runtimeType == other.runtimeType &&
+          prefillMs == other.prefillMs &&
+          prefillTokens == other.prefillTokens &&
+          generationMs == other.generationMs &&
+          generatedTokens == other.generatedTokens &&
+          tokensPerSecond == other.tokensPerSecond &&
+          peakRssBytes == other.peakRssBytes;
 }

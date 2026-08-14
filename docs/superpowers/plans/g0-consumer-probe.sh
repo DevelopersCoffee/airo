@@ -21,9 +21,9 @@
 #
 # Usage: bash docs/superpowers/plans/g0-consumer-probe.sh [crate-dir]
 set -u
-SP=/private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad
-CRATE="${1:-$SP/rev7}"
-WORK="$SP/g08probe"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+CRATE="${1:-$HERE/../../../rust/airo_mind}"
+WORK="${TMPDIR:-/tmp}/airo-mind-g08probe"
 PASS=0
 FAIL=0
 

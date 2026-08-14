@@ -1,0 +1,26 @@
+[package]
+name = "airo_mind_transcript"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind transcript processor — raw/normalized text and evidence-linked semantic chunking. #1632."
+license = "MIT"
+
+[lib]
+name = "airo_mind_transcript"
+# rlib only. This crate has no FFI surface of its own -- it is pure
+# transformation logic (string in, structured chunks out) meant to be called
+# from whichever engine crate drives the extraction pipeline (`#1633`), the
+# same way `airo_mind_core` is linked rather than loaded standalone. No
+# native dependency, no `unsafe`, so unlike `airo_mind_whisper`/
+# `airo_mind_llama` there is no vendored-ggml conflict to isolate it from.
+crate-type = ["rlib"]
+
+# Deliberately nothing beyond std. This crate is pure text/timestamp
+# transformation -- the same "safe to link anywhere" property
+# `airo_mind_core`'s doc comment asks for, kept here on purpose since a future
+# engine crate may want to call it from inside its own cdylib without pulling
+# in anything extra.
+[dependencies]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

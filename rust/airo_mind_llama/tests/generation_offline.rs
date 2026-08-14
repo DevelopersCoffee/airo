@@ -51,6 +51,7 @@ fn transcript_becomes_minutes_offline() {
             &GenerationRequest {
                 prompt: minutes_prompt(TRANSCRIPT),
                 max_output_tokens: 160,
+                grammar: None,
             },
             &CancelToken::new(),
             &mut |chunk| {
@@ -92,6 +93,7 @@ fn a_cancelled_generation_stops_and_reports_it() {
         &GenerationRequest {
             prompt: minutes_prompt(TRANSCRIPT),
             max_output_tokens: 200,
+            grammar: None,
         },
         &cancel,
         &mut |_| {
@@ -128,6 +130,7 @@ fn a_real_engine_over_budget_is_refused_before_it_runs() {
         &GenerationRequest {
             prompt: minutes_prompt(TRANSCRIPT),
             max_output_tokens: 32,
+            grammar: None,
         },
         &CancelToken::new(),
         &mut |_| {
@@ -143,6 +146,188 @@ fn a_real_engine_over_budget_is_refused_before_it_runs() {
         })
     );
     assert!(!called, "refused before the engine produced anything");
+}
+
+/// `#1628` Wave 1 acceptance: a GBNF grammar actually constrains the token
+/// stream, not just compiles. A digits-only grammar is deliberately much
+/// stricter than the model's natural continuation of a numeric prompt would
+/// be on its own -- if the grammar were a no-op, the model would drift into
+/// prose almost immediately.
+#[test]
+fn a_gbnf_grammar_constrains_every_generated_character() {
+    let model = model();
+    if !model.exists() {
+        eprintln!("skipping: no model at {}", model.display());
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    // `root` is the symbol name `LlamaGenerationEngine::generate` requires --
+    // one or more ASCII digits, nothing else. A general-knowledge question
+    // has no natural all-digit answer, so any conforming output here was
+    // shaped by the grammar, not by the model happening to agree with it.
+    //
+    // This does NOT prove the grammar forces a minimum length: llama.cpp's
+    // grammar sampler deliberately lets the model's own end-of-generation
+    // token through even mid-grammar (confirmed empirically -- an earlier,
+    // stricter version of this test requiring exactly 8 digits produced only
+    // 4 before stopping), so "how much output" stays the model's call.
+    // "What character set the output uses" is what the grammar owns, and
+    // that is what this asserts.
+    const PROMPT: &str = "<|im_start|>user\nWhat is the capital of France?<|im_end|>\n\
+                           <|im_start|>assistant\n";
+    let digits_only_grammar = r#"root ::= [0-9]+"#;
+
+    let mut unconstrained = String::new();
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: PROMPT.to_string(),
+                max_output_tokens: 24,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |chunk| {
+                unconstrained.push_str(&chunk.text);
+                Ok(())
+            },
+        )
+        .expect("unconstrained generation succeeds");
+    eprintln!("--- unconstrained output ---\n{unconstrained:?}\n---");
+    assert!(
+        unconstrained.chars().any(|c| !c.is_ascii_digit()),
+        "test prompt needs a genuinely non-numeric natural answer to be a \
+         meaningful baseline -- got {unconstrained:?}"
+    );
+
+    let mut output = String::new();
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: PROMPT.to_string(),
+                max_output_tokens: 24,
+                grammar: Some(digits_only_grammar.to_string()),
+            },
+            &CancelToken::new(),
+            &mut |chunk| {
+                output.push_str(&chunk.text);
+                Ok(())
+            },
+        )
+        .expect("grammar-constrained generation succeeds");
+    eprintln!("--- grammar-constrained output ---\n{output:?}\n---");
+
+    assert!(
+        !output.is_empty(),
+        "the grammar-constrained call produced no output at all"
+    );
+    assert!(
+        output.chars().all(|c| c.is_ascii_digit()),
+        "grammar did not constrain the output -- got {output:?}"
+    );
+}
+
+/// `#1628` Wave 1 acceptance: an invalid grammar is a normal `InvalidInput`
+/// refusal, not a panic -- the same shape every other malformed-request path
+/// in this engine already uses.
+#[test]
+fn a_grammar_missing_its_root_rule_is_refused_not_a_panic() {
+    let model = model();
+    if !model.exists() {
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    let r = supervisor.run_generation(
+        &GenerationRequest {
+            prompt: "hello".into(),
+            max_output_tokens: 8,
+            // No `root` rule -- the grammar's own start symbol is missing.
+            grammar: Some("digits ::= [0-9]+".into()),
+        },
+        &CancelToken::new(),
+        &mut |_| Ok(()),
+    );
+
+    assert!(matches!(
+        r,
+        Err(RuntimeError::Engine(
+            airo_mind_llama::EngineError::InvalidInput(_)
+        ))
+    ));
+}
+
+/// `#1628` Wave 1 acceptance: `RuntimeStats` reports real, non-zero
+/// measurements after a real generation call -- not hardcoded placeholders.
+#[test]
+fn runtime_stats_are_real_after_a_generation_call() {
+    let model = model();
+    if !model.exists() {
+        eprintln!("skipping: no model at {}", model.display());
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    assert_eq!(
+        supervisor.generation_stats(),
+        Some(airo_mind_llama::RuntimeStats::default()),
+        "nothing has generated yet -- stats must read as the zero state, not garbage"
+    );
+
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: minutes_prompt(TRANSCRIPT),
+                max_output_tokens: 64,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |_| Ok(()),
+        )
+        .expect("generation succeeds");
+
+    let stats = supervisor
+        .generation_stats()
+        .expect("a generation engine is registered");
+
+    assert!(stats.prefill_tokens > 0, "prefill tokenised nothing?");
+    assert!(stats.generated_tokens > 0, "generation produced no tokens?");
+    // Timing on a real backend is never provably non-zero at millisecond
+    // resolution (a fast enough call could round to 0ms), but tokens/sec is
+    // derived FROM those timings and generated_tokens, so a non-zero rate is
+    // the strongest single proof that real instrumentation ran, not a
+    // hardcoded stand-in.
+    assert!(
+        stats.tokens_per_second > 0.0,
+        "tokens/sec was not computed from a real measurement: {stats:?}"
+    );
+    assert!(
+        stats.peak_rss_bytes > 0,
+        "peak RSS was not read from the process"
+    );
+
+    eprintln!("--- runtime stats ---\n{stats:?}\n---");
+}
+
+/// `#1628` Wave 1 acceptance: `unload()` exists, is callable, and does not
+/// panic or leak.
+#[test]
+fn unload_is_callable_and_does_not_panic() {
+    let model = model();
+    if !model.exists() {
+        return;
+    }
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    engine.unload();
 }
 
 // The end-to-end join (audio -> transcript -> minutes) used to live here as

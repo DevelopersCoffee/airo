@@ -63,12 +63,48 @@ pub struct TranscriptSegment {
 pub struct GenerationRequest {
     pub prompt: String,
     pub max_output_tokens: u32,
+    /// A GBNF grammar constraining the token stream, or `None` for
+    /// unconstrained (greedy) sampling. The grammar's start symbol must be a
+    /// rule named `root` — that is the convention every caller of this field
+    /// is expected to follow, and the one the engine assumes when building
+    /// the constrained sampler.
+    ///
+    /// The runtime knows no domains (`C5`): this carries a grammar TEXT, not
+    /// a schema or a capability name. Turning "Meeting IR as JSON" into a
+    /// GBNF string is the capability's job, not this crate's.
+    pub grammar: Option<String>,
 }
 
 /// One piece of generated output.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GenerationChunk {
     pub text: String,
+}
+
+/// Timing and memory measurements from the most recently completed
+/// generation. Zeroed before anything has run — that is a state callers can
+/// act on (nothing to show yet), not a lie about a generation that never
+/// happened.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct RuntimeStats {
+    /// Wall-clock time to decode the prompt (prefill), before the first
+    /// output token.
+    pub prefill_ms: u64,
+    /// Tokens the prompt tokenised to.
+    pub prefill_tokens: u32,
+    /// Wall-clock time spent producing output tokens, excluding prefill.
+    pub generation_ms: u64,
+    /// Output tokens produced.
+    pub generated_tokens: u32,
+    /// `generated_tokens / (generation_ms / 1000)`. `0.0` when nothing has
+    /// been generated yet or generation completed in under a millisecond.
+    pub tokens_per_second: f64,
+    /// Peak resident set size of the whole process, in bytes, sampled at the
+    /// end of the generation call. Process-wide, not model-only — no API in
+    /// the platforms this targets (`getrusage`, `/proc/self/status`) reports
+    /// per-allocation attribution, and a whole-process reading is still the
+    /// number that determines whether the device survives the call.
+    pub peak_rss_bytes: u64,
 }
 
 /// Audio to transcript.
@@ -147,6 +183,18 @@ pub trait LlmBackend: Send + Sync {
         cancel: &CancelToken,
         sink: &mut dyn FnMut(GenerationChunk) -> Result<(), EngineError>,
     ) -> Result<(), EngineError>;
+
+    /// Measurements from the most recently completed `generate` call.
+    /// `RuntimeStats::default()` before anything has run.
+    ///
+    /// Widening the trait rather than bolting this onto `LlamaGenerationEngine`
+    /// alone: `Supervisor` holds `Box<dyn GenerationEngine>`, and a stats
+    /// surface reachable only on the concrete type would be unreachable
+    /// through the one handle the Dart bridge actually has. The cost is that
+    /// every implementor (today: `LlamaGenerationEngine` and the test fixture
+    /// in `supervisor.rs`) must answer this — `RuntimeStats::default()` is a
+    /// legitimate answer for one that does not measure itself.
+    fn stats(&self) -> RuntimeStats;
 }
 
 /// Prompt to text.

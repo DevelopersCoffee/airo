@@ -14,7 +14,8 @@
 
 use std::num::NonZeroU32;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
@@ -25,7 +26,49 @@ use llama_cpp_2::sampling::LlamaSampler;
 
 use crate::budget::ResourceRequest;
 use crate::cancel::CancelToken;
-use crate::engine::{EngineError, GenerationChunk, GenerationRequest, LlmBackend};
+use crate::engine::{
+    EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
+};
+
+/// The start symbol every `GenerationRequest::grammar` is expected to define.
+/// Documented once, here, rather than as a magic string at each call site.
+const GRAMMAR_ROOT: &str = "root";
+
+/// Peak resident set size of the whole process, in bytes.
+///
+/// `getrusage` is the second point of `unsafe` in this crate (the first is
+/// the FFI the generated bridge dereferences into) -- worth calling out
+/// explicitly rather than letting `#[allow(unsafe_code)]` pass unremarked.
+/// `ru_maxrss` is bytes on Darwin and kibibytes on Linux; POSIX does not fix
+/// the unit, so the two platforms are converted to the same one here rather
+/// than leaving the caller to guess which build produced a given number.
+#[cfg(unix)]
+#[allow(unsafe_code)]
+fn peak_rss_bytes() -> u64 {
+    use std::mem::MaybeUninit;
+
+    let mut usage = MaybeUninit::<libc::rusage>::zeroed();
+    let ok = unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) } == 0;
+    if !ok {
+        return 0;
+    }
+    // SAFETY: `getrusage` returning `0` means it filled `usage` completely.
+    let maxrss = unsafe { usage.assume_init() }.ru_maxrss;
+    let maxrss = u64::try_from(maxrss).unwrap_or(0);
+    if cfg!(target_os = "macos") || cfg!(target_os = "ios") {
+        maxrss
+    } else {
+        maxrss * 1024
+    }
+}
+
+/// No `getrusage` off `unix` (e.g. Windows). `0` is the same "nothing
+/// measured yet" state `RuntimeStats::default()` already uses elsewhere, not
+/// a fabricated number.
+#[cfg(not(unix))]
+fn peak_rss_bytes() -> u64 {
+    0
+}
 
 /// llama.cpp's backend is **process-global** — `init` returns
 /// `BackendAlreadyInitialized` on a second call, and it is not per-model state.
@@ -46,6 +89,14 @@ pub struct LlamaGenerationEngine {
     model: LlamaModel,
     memory_mb: u32,
     context_tokens: u32,
+    /// Measurements from the most recently completed `generate` call.
+    /// `generate` takes `&self` (the trait requires it, and `Supervisor`
+    /// holds this behind a shared reference), so recording anything requires
+    /// interior mutability. A `Mutex` over a `Copy` struct rather than an
+    /// atomic-per-field: `RuntimeStats` is written and read as one unit, and
+    /// splitting it into five atomics would let a reader observe a torn
+    /// mix of two different generations' numbers.
+    stats: Mutex<RuntimeStats>,
 }
 
 impl LlamaGenerationEngine {
@@ -68,14 +119,26 @@ impl LlamaGenerationEngine {
             model,
             memory_mb,
             context_tokens,
+            stats: Mutex::new(RuntimeStats::default()),
         })
+    }
+
+    /// Releases the loaded model explicitly.
+    ///
+    /// `LlamaModel`'s own `Drop` already frees the underlying `llama_model`
+    /// when this value goes out of scope, so on its own this method does no
+    /// more than that. It exists as a named, callable step anyway: the target
+    /// `LlmBackend` shape calls for an explicit `unload`, and a caller
+    /// choosing the moment memory is released -- rather than however long the
+    /// last `Box`/`Arc`/stack frame happens to live -- is a real property to
+    /// be able to name, even when today's implementation is "drop it now
+    /// instead of later."
+    pub fn unload(self) {
+        drop(self);
     }
 }
 
-/// `#1628`: the formalized backend contract, implemented directly rather than
-/// via the `GenerationEngine` name — see `LlmBackend`'s doc in
-/// `airo_mind_core::engine` for why `load` is not a trait method.
-impl LlmBackend for LlamaGenerationEngine {
+impl GenerationEngine for LlamaGenerationEngine {
     fn resource_request(&self) -> ResourceRequest {
         ResourceRequest::new(self.memory_mb)
     }
@@ -123,17 +186,37 @@ impl LlmBackend for LlamaGenerationEngine {
                 .add(*token, i as i32, &[0], i == last)
                 .map_err(|e| EngineError::Backend(format!("batch add: {e}")))?;
         }
+
+        // Prefill: decoding the whole prompt before the first output token.
+        // Timed separately from generation because the two have very
+        // different cost profiles -- prefill is one batched decode over the
+        // full prompt, generation is one decode per output token -- and a
+        // combined number would hide which half a regression came from.
+        let prefill_started = Instant::now();
         ctx.decode(&mut batch)
             .map_err(|e| EngineError::Backend(format!("decode: {e}")))?;
+        let prefill_ms = elapsed_ms(prefill_started);
 
         // The decoder carries UTF-8 continuation state across tokens: a
         // multi-byte character can straddle a token boundary, and decoding each
         // token independently would emit replacement characters mid-word.
         let mut decoder = encoding_rs::UTF_8.new_decoder();
-        let mut sampler = LlamaSampler::greedy();
+        let mut sampler = match &request.grammar {
+            // The chain must end in a token-selecting sampler (`greedy`,
+            // `dist`, ...) per `LlamaSampler::chain`'s own contract -- the
+            // grammar sampler only narrows the candidate set, it does not
+            // pick from it.
+            Some(grammar) => LlamaSampler::chain_simple([
+                LlamaSampler::grammar(&self.model, grammar, GRAMMAR_ROOT)
+                    .map_err(|e| EngineError::InvalidInput(format!("invalid GBNF grammar: {e}")))?,
+                LlamaSampler::greedy(),
+            ]),
+            None => LlamaSampler::greedy(),
+        };
         let mut position = batch.n_tokens();
         let mut produced = 0u32;
 
+        let generation_started = Instant::now();
         while produced < request.max_output_tokens {
             // Between tokens, per `C6`: generation is the long-running half of
             // the pipeline and must stop when the user navigates away.
@@ -167,8 +250,38 @@ impl LlmBackend for LlamaGenerationEngine {
             position += 1;
             produced += 1;
         }
+        let generation_ms = elapsed_ms(generation_started);
+
+        let tokens_per_second = if generation_ms > 0 {
+            f64::from(produced) / (generation_ms as f64 / 1000.0)
+        } else {
+            0.0
+        };
+        *self
+            .stats
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = RuntimeStats {
+            prefill_ms,
+            prefill_tokens: u32::try_from(tokens.len()).unwrap_or(u32::MAX),
+            generation_ms,
+            generated_tokens: produced,
+            tokens_per_second,
+            peak_rss_bytes: peak_rss_bytes(),
+        };
+
         Ok(())
     }
+
+    fn stats(&self) -> RuntimeStats {
+        *self
+            .stats
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+fn elapsed_ms(started: Instant) -> u64 {
+    u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
 #[cfg(test)]
