@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use airo_mind_whisper::{
     AudioInput, CancelToken, EngineError, ResourceBudget, Supervisor, TranscriptSegment,
-    WhisperSpeechEngine,
+    TranscriptionOptions, WhisperSpeechEngine,
 };
 
 fn model_path() -> PathBuf {
@@ -82,6 +82,7 @@ fn wav_becomes_a_transcript_offline() {
                 sample_rate_hz: rate,
                 channels,
             },
+            &TranscriptionOptions::default(),
             &CancelToken::new(),
             &mut |seg| {
                 segments.push(seg);
@@ -140,6 +141,7 @@ fn a_cancelled_transcription_stops_and_reports_it() {
             sample_rate_hz: rate,
             channels,
         },
+        &TranscriptionOptions::default(),
         &cancel,
         &mut |_| Ok(()),
     );
@@ -177,6 +179,7 @@ fn transcription_writes_no_files() {
             sample_rate_hz: rate,
             channels,
         },
+        &TranscriptionOptions::default(),
         &CancelToken::new(),
         &mut |_| Ok(()),
     );
@@ -189,5 +192,62 @@ fn transcription_writes_no_files() {
         before.len(),
         after.len(),
         "transcription created a file -- meeting audio is `secret` class"
+    );
+}
+
+/// `#1664` AC1/AC3: a pinned language hint reaches the real backend through
+/// `Supervisor::run_speech` -> `WhisperSpeechEngine::transcribe` and does not
+/// break transcription. `whisper-rs`'s `FullParams` has no getter, so this
+/// cannot assert whisper.cpp actually decoded in English rather than
+/// auto-detecting it (the model's `.en` weights only speak English anyway) --
+/// that stronger claim, on real bilingual audio, is the golden-set's job
+/// (`#1636`, not yet built). What this proves is the plumbing: a caller that
+/// pins a language still gets a correct transcript back, not a silently
+/// dropped hint or a broken pipeline.
+#[test]
+fn a_pinned_language_hint_does_not_break_transcription() {
+    let model = model_path();
+    if !model.exists() {
+        eprintln!("skipping: no model at {}", model.display());
+        return;
+    }
+
+    let (samples, rate, channels) = read_wav_16k_mono(&fixture());
+    let engine = WhisperSpeechEngine::load(&model, 512).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(2048));
+    supervisor.register_speech(Box::new(engine));
+
+    let mut segments: Vec<TranscriptSegment> = Vec::new();
+    supervisor
+        .run_speech(
+            AudioInput {
+                samples: &samples,
+                sample_rate_hz: rate,
+                channels,
+            },
+            &TranscriptionOptions {
+                language: Some("en".to_string()),
+            },
+            &CancelToken::new(),
+            &mut |seg| {
+                segments.push(seg);
+                Ok(())
+            },
+        )
+        .expect("transcription succeeds with a pinned language");
+
+    assert!(
+        !segments.is_empty(),
+        "a pinned language hint must not silently produce an empty transcript"
+    );
+    let transcript = segments
+        .iter()
+        .map(|s| s.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    assert!(
+        transcript.contains("country"),
+        "expected recognisable speech, got: {transcript}"
     );
 }

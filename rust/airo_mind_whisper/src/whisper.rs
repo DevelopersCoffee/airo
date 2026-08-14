@@ -20,7 +20,9 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use crate::budget::ResourceRequest;
 use crate::cancel::CancelToken;
-use crate::engine::{AudioInput, EngineError, SpeechEngine, TranscriptSegment};
+use crate::engine::{
+    AudioInput, EngineError, SpeechEngine, TranscriptSegment, TranscriptionOptions,
+};
 
 /// A loaded Whisper model.
 pub struct WhisperSpeechEngine {
@@ -81,6 +83,7 @@ impl SpeechEngine for WhisperSpeechEngine {
     fn transcribe(
         &self,
         audio: AudioInput<'_>,
+        options: &TranscriptionOptions,
         cancel: &CancelToken,
         sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
     ) -> Result<(), EngineError> {
@@ -103,6 +106,21 @@ impl SpeechEngine for WhisperSpeechEngine {
         // (`C6`), and an engine that spawns its own pool is an engine whose
         // CPU use nobody can cap.
         params.set_n_threads(1);
+
+        // `#1664`: never translate. This is the fix for the "silent
+        // auto-translate" bug the issue is about -- whisper.cpp's own
+        // default is already `false`, so this call changes nothing at
+        // runtime, but it makes the guarantee an explicit, greppable fact
+        // about this file rather than an inherited default that a future
+        // edit could flip without anyone noticing. `translate_is_never_set_true`
+        // below pins it: exactly one call, exactly this literal.
+        params.set_translate(false);
+
+        // `#1664`: pin the spoken language when the caller asked for one.
+        // `None` leaves whisper.cpp on its own auto-detection -- see
+        // `TranscriptionOptions` for why this crate never tries to honour
+        // more than one language in a single call.
+        params.set_language(options.language.as_deref());
 
         state
             .full(params, &pcm)
@@ -165,5 +183,59 @@ mod tests {
             channels: 1,
         });
         assert!(matches!(r, Err(EngineError::InvalidInput(_))));
+    }
+
+    /// `#1664` acceptance: "never emit translation when transcription was
+    /// intended". Every real call site's params come from `transcribe`
+    /// above, and `whisper-rs`'s `FullParams` gives no way to read a value
+    /// back out once set -- so the guarantee is pinned at the source level,
+    /// the same way `meetings.rs`'s `the_capability_never_names_a_model_file`
+    /// pins its own no-leak property: `set_translate` may appear exactly
+    /// once in this file, and it must be the literal `false`. A future edit
+    /// that adds a second call, or flips this one, fails this test before it
+    /// ships.
+    #[test]
+    fn translate_is_never_set_true() {
+        let source = include_str!("whisper.rs");
+        // Only the production code above the test module -- this test's own
+        // source necessarily quotes the pattern it looks for, which would
+        // otherwise inflate its own count.
+        let production_code = source
+            .split("#[cfg(test)]")
+            .next()
+            .expect("this file has a #[cfg(test)] module");
+        let occurrences = production_code.matches("set_translate(").count();
+        assert_eq!(
+            occurrences, 1,
+            "`set_translate` appears {occurrences} times in production code -- there must be \
+             exactly one call, hardcoded, so no path can silently flip it true"
+        );
+        assert!(
+            production_code.contains("params.set_translate(false)"),
+            "the one `set_translate` call must be hardcoded `false` -- translation is only \
+             ever an explicit, separate user action, never a side effect of transcribing"
+        );
+    }
+
+    /// `#1664` AC1: a language hint is a real, distinct value this crate
+    /// accepts and forwards -- not a field that exists but nothing reads.
+    /// `FullParams` has no getter, so the strongest test reachable from here
+    /// (without a loaded model, matching this module's existing style) is
+    /// that the type carries the hint through unchanged; `whisper_rs_full_params`
+    /// integration is exercised end-to-end by
+    /// `tests/speech_offline.rs::a_pinned_language_hint_does_not_break_transcription`
+    /// when a model is present.
+    #[test]
+    fn transcription_options_carries_a_language_hint_unchanged() {
+        let hint = TranscriptionOptions {
+            language: Some("hi".to_string()),
+        };
+        assert_eq!(hint.language.as_deref(), Some("hi"));
+
+        let auto = TranscriptionOptions::default();
+        assert_eq!(
+            auto.language, None,
+            "no hint pinned is auto-detect, not a hidden default language"
+        );
     }
 }
