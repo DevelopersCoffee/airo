@@ -10,7 +10,7 @@ part 'meetings.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `lock`, `transcript_segment_record`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -60,6 +60,9 @@ Future<String> saveMeeting({
   required String model,
   required List<TranscriptSegmentRecord> segments,
   required String audioPath,
+  required List<MeetingDecisionRecord> decisions,
+  required List<MeetingActionItemRecord> actionItems,
+  required List<MeetingMetricRecord> metrics,
 }) => RustLib.instance.api.crateApiMeetingsSaveMeeting(
   title: title,
   recordedAtMs: recordedAtMs,
@@ -68,6 +71,9 @@ Future<String> saveMeeting({
   model: model,
   segments: segments,
   audioPath: audioPath,
+  decisions: decisions,
+  actionItems: actionItems,
+  metrics: metrics,
 );
 
 /// Reopens a meeting's structured transcript document — the segments, model
@@ -95,6 +101,123 @@ Future<List<SearchHit>> searchMeetings({required String query}) =>
 Future<MeetingRecord?> getMeeting({required String id}) =>
     RustLib.instance.api.crateApiMeetingsGetMeeting(id: id);
 
+/// Wire mirror of `airo_mind_core::MeetingActionItem`.
+class MeetingActionItemRecord {
+  final String id;
+  final String task;
+
+  /// `None` when the transcript named nobody -- never inferred, mirrored
+  /// unchanged from `airo_mind_meeting::ir::ActionItem::owner`.
+  final String? owner;
+  final String? due;
+  final MeetingActionStatus status;
+  final List<String> evidenceSegmentIds;
+
+  const MeetingActionItemRecord({
+    required this.id,
+    required this.task,
+    this.owner,
+    this.due,
+    required this.status,
+    required this.evidenceSegmentIds,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      task.hashCode ^
+      owner.hashCode ^
+      due.hashCode ^
+      status.hashCode ^
+      evidenceSegmentIds.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MeetingActionItemRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          task == other.task &&
+          owner == other.owner &&
+          due == other.due &&
+          status == other.status &&
+          evidenceSegmentIds == other.evidenceSegmentIds;
+}
+
+/// Wire mirror of `airo_mind_core::ActionStatus`.
+enum MeetingActionStatus { open, inProgress, done, blocked }
+
+/// Wire mirror of `airo_mind_core::MeetingDecision`. `evidence_segment_ids`
+/// resolves against `transcript.json` per `ADR-0022 §4` -- this record
+/// carries only the ids, never the words, matching the IR's own privacy
+/// discipline (`rust/airo_mind_meeting/src/ir.rs`'s "evidence is segment ids,
+/// not snippets").
+class MeetingDecisionRecord {
+  final String id;
+  final String statement;
+  final MeetingDecisionStatus status;
+  final List<String> evidenceSegmentIds;
+
+  const MeetingDecisionRecord({
+    required this.id,
+    required this.statement,
+    required this.status,
+    required this.evidenceSegmentIds,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      statement.hashCode ^
+      status.hashCode ^
+      evidenceSegmentIds.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MeetingDecisionRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          statement == other.statement &&
+          status == other.status &&
+          evidenceSegmentIds == other.evidenceSegmentIds;
+}
+
+/// Wire mirror of `airo_mind_core::DecisionStatus`.
+enum MeetingDecisionStatus { proposed, agreed, rejected, deferred_ }
+
+/// Wire mirror of `airo_mind_core::MeetingMetric`.
+class MeetingMetricRecord {
+  final String id;
+  final String name;
+  final String value;
+  final List<String> evidenceSegmentIds;
+
+  const MeetingMetricRecord({
+    required this.id,
+    required this.name,
+    required this.value,
+    required this.evidenceSegmentIds,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      value.hashCode ^
+      evidenceSegmentIds.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MeetingMetricRecord &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          value == other.value &&
+          evidenceSegmentIds == other.evidenceSegmentIds;
+}
+
 /// A stored meeting, flattened for the bridge.
 ///
 /// Deliberately not `Meeting` re-exported: the wire contract and the storage
@@ -108,6 +231,14 @@ class MeetingRecord {
   final String minutes;
   final String model;
 
+  /// `ADR-0022 §1`: the Meeting IR's decisions, action items and metrics,
+  /// flattened onto the meeting record the same way every other field on
+  /// this struct already is -- IR is not a sibling record with its own
+  /// lifecycle, it rides `Meeting`'s.
+  final List<MeetingDecisionRecord> decisions;
+  final List<MeetingActionItemRecord> actionItems;
+  final List<MeetingMetricRecord> metrics;
+
   const MeetingRecord({
     required this.id,
     required this.title,
@@ -115,6 +246,9 @@ class MeetingRecord {
     required this.transcript,
     required this.minutes,
     required this.model,
+    required this.decisions,
+    required this.actionItems,
+    required this.metrics,
   });
 
   @override
@@ -124,7 +258,10 @@ class MeetingRecord {
       recordedAt.hashCode ^
       transcript.hashCode ^
       minutes.hashCode ^
-      model.hashCode;
+      model.hashCode ^
+      decisions.hashCode ^
+      actionItems.hashCode ^
+      metrics.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -136,7 +273,10 @@ class MeetingRecord {
           recordedAt == other.recordedAt &&
           transcript == other.transcript &&
           minutes == other.minutes &&
-          model == other.model;
+          model == other.model &&
+          decisions == other.decisions &&
+          actionItems == other.actionItems &&
+          metrics == other.metrics;
 }
 
 /// Where the models and the store live. Supplied by Dart, which owns the
@@ -223,9 +363,11 @@ class SearchHit {
 /// bundled `.en` model is architecturally incapable of any language but
 /// English. Choosing `Multilingual` here only resolves a different registry
 /// row — it does not download anything by itself, and `initialize` reports
-/// `NotInstalled` naming `ggml-tiny.bin` the same way it would for any other
-/// unresolved model. Wiring an install/preference flow for this is #1664's
-/// job; this is the mechanism it selects through.
+/// `NotInstalled` naming the missing multilingual weight file the same way it
+/// would for any other unresolved model (`ADR-0018 §4`: that name is the
+/// Model Manager's to know, not this capability's). Wiring an install/
+/// preference flow for this is #1664's job; this is the mechanism it selects
+/// through.
 enum SpeechLanguage {
   englishOnly,
   multilingual;

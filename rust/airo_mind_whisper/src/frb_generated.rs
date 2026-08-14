@@ -298,6 +298,12 @@ fn wire__crate__api__meetings__save_meeting_impl(
             let api_segments =
                 <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(&mut deserializer);
             let api_audio_path = <String>::sse_decode(&mut deserializer);
+            let api_decisions =
+                <Vec<crate::api::meetings::MeetingDecisionRecord>>::sse_decode(&mut deserializer);
+            let api_action_items =
+                <Vec<crate::api::meetings::MeetingActionItemRecord>>::sse_decode(&mut deserializer);
+            let api_metrics =
+                <Vec<crate::api::meetings::MeetingMetricRecord>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
@@ -309,6 +315,9 @@ fn wire__crate__api__meetings__save_meeting_impl(
                         api_model,
                         api_segments,
                         api_audio_path,
+                        api_decisions,
+                        api_action_items,
+                        api_metrics,
                     )?;
                     Ok(output_ok)
                 })())
@@ -517,6 +526,18 @@ impl SseDecode for crate::api::setup::InstalledModel {
     }
 }
 
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::setup::InstalledModel> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -524,6 +545,48 @@ impl SseDecode for Vec<crate::api::setup::InstalledModel> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<crate::api::setup::InstalledModel>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::meetings::MeetingActionItemRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::meetings::MeetingActionItemRecord>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::meetings::MeetingDecisionRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::meetings::MeetingDecisionRecord>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::meetings::MeetingMetricRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::meetings::MeetingMetricRecord>::sse_decode(
                 deserializer,
             ));
         }
@@ -595,6 +658,87 @@ impl SseDecode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
     }
 }
 
+impl SseDecode for crate::api::meetings::MeetingActionItemRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_task = <String>::sse_decode(deserializer);
+        let mut var_owner = <Option<String>>::sse_decode(deserializer);
+        let mut var_due = <Option<String>>::sse_decode(deserializer);
+        let mut var_status = <crate::api::meetings::MeetingActionStatus>::sse_decode(deserializer);
+        let mut var_evidenceSegmentIds = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::meetings::MeetingActionItemRecord {
+            id: var_id,
+            task: var_task,
+            owner: var_owner,
+            due: var_due,
+            status: var_status,
+            evidence_segment_ids: var_evidenceSegmentIds,
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::MeetingActionStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::meetings::MeetingActionStatus::Open,
+            1 => crate::api::meetings::MeetingActionStatus::InProgress,
+            2 => crate::api::meetings::MeetingActionStatus::Done,
+            3 => crate::api::meetings::MeetingActionStatus::Blocked,
+            _ => unreachable!("Invalid variant for MeetingActionStatus: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::MeetingDecisionRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_statement = <String>::sse_decode(deserializer);
+        let mut var_status =
+            <crate::api::meetings::MeetingDecisionStatus>::sse_decode(deserializer);
+        let mut var_evidenceSegmentIds = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::meetings::MeetingDecisionRecord {
+            id: var_id,
+            statement: var_statement,
+            status: var_status,
+            evidence_segment_ids: var_evidenceSegmentIds,
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::MeetingDecisionStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::meetings::MeetingDecisionStatus::Proposed,
+            1 => crate::api::meetings::MeetingDecisionStatus::Agreed,
+            2 => crate::api::meetings::MeetingDecisionStatus::Rejected,
+            3 => crate::api::meetings::MeetingDecisionStatus::Deferred,
+            _ => unreachable!("Invalid variant for MeetingDecisionStatus: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::MeetingMetricRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_value = <String>::sse_decode(deserializer);
+        let mut var_evidenceSegmentIds = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::meetings::MeetingMetricRecord {
+            id: var_id,
+            name: var_name,
+            value: var_value,
+            evidence_segment_ids: var_evidenceSegmentIds,
+        };
+    }
+}
+
 impl SseDecode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -604,6 +748,12 @@ impl SseDecode for crate::api::meetings::MeetingRecord {
         let mut var_transcript = <String>::sse_decode(deserializer);
         let mut var_minutes = <String>::sse_decode(deserializer);
         let mut var_model = <String>::sse_decode(deserializer);
+        let mut var_decisions =
+            <Vec<crate::api::meetings::MeetingDecisionRecord>>::sse_decode(deserializer);
+        let mut var_actionItems =
+            <Vec<crate::api::meetings::MeetingActionItemRecord>>::sse_decode(deserializer);
+        let mut var_metrics =
+            <Vec<crate::api::meetings::MeetingMetricRecord>>::sse_decode(deserializer);
         return crate::api::meetings::MeetingRecord {
             id: var_id,
             title: var_title,
@@ -611,6 +761,9 @@ impl SseDecode for crate::api::meetings::MeetingRecord {
             transcript: var_transcript,
             minutes: var_minutes,
             model: var_model,
+            decisions: var_decisions,
+            action_items: var_actionItems,
+            metrics: var_metrics,
         };
     }
 }
@@ -629,6 +782,17 @@ impl SseDecode for crate::api::meetings::MindConfig {
             memory_budget_mb: var_memoryBudgetMb,
             speech_language: var_speechLanguage,
         };
+    }
+}
+
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
     }
 }
 
@@ -862,6 +1026,123 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::setup::InstalledModel>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingActionItemRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.task.into_into_dart().into_dart(),
+            self.owner.into_into_dart().into_dart(),
+            self.due.into_into_dart().into_dart(),
+            self.status.into_into_dart().into_dart(),
+            self.evidence_segment_ids.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::MeetingActionItemRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingActionItemRecord>
+    for crate::api::meetings::MeetingActionItemRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::MeetingActionItemRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingActionStatus {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Open => 0.into_dart(),
+            Self::InProgress => 1.into_dart(),
+            Self::Done => 2.into_dart(),
+            Self::Blocked => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::MeetingActionStatus
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingActionStatus>
+    for crate::api::meetings::MeetingActionStatus
+{
+    fn into_into_dart(self) -> crate::api::meetings::MeetingActionStatus {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingDecisionRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.statement.into_into_dart().into_dart(),
+            self.status.into_into_dart().into_dart(),
+            self.evidence_segment_ids.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::MeetingDecisionRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingDecisionRecord>
+    for crate::api::meetings::MeetingDecisionRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::MeetingDecisionRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingDecisionStatus {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Proposed => 0.into_dart(),
+            Self::Agreed => 1.into_dart(),
+            Self::Rejected => 2.into_dart(),
+            Self::Deferred => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::MeetingDecisionStatus
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingDecisionStatus>
+    for crate::api::meetings::MeetingDecisionStatus
+{
+    fn into_into_dart(self) -> crate::api::meetings::MeetingDecisionStatus {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingMetricRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.value.into_into_dart().into_dart(),
+            self.evidence_segment_ids.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::MeetingMetricRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MeetingMetricRecord>
+    for crate::api::meetings::MeetingMetricRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::MeetingMetricRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingRecord {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -871,6 +1152,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::MeetingRecord {
             self.transcript.into_into_dart().into_dart(),
             self.minutes.into_into_dart().into_dart(),
             self.model.into_into_dart().into_dart(),
+            self.decisions.into_into_dart().into_dart(),
+            self.action_items.into_into_dart().into_dart(),
+            self.metrics.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1103,12 +1387,52 @@ impl SseEncode for crate::api::setup::InstalledModel {
     }
 }
 
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::setup::InstalledModel> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::api::setup::InstalledModel>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::meetings::MeetingActionItemRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::meetings::MeetingActionItemRecord>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::meetings::MeetingDecisionRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::meetings::MeetingDecisionRecord>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::meetings::MeetingMetricRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::meetings::MeetingMetricRecord>::sse_encode(item, serializer);
         }
     }
 }
@@ -1163,6 +1487,74 @@ impl SseEncode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
     }
 }
 
+impl SseEncode for crate::api::meetings::MeetingActionItemRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.task, serializer);
+        <Option<String>>::sse_encode(self.owner, serializer);
+        <Option<String>>::sse_encode(self.due, serializer);
+        <crate::api::meetings::MeetingActionStatus>::sse_encode(self.status, serializer);
+        <Vec<String>>::sse_encode(self.evidence_segment_ids, serializer);
+    }
+}
+
+impl SseEncode for crate::api::meetings::MeetingActionStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::meetings::MeetingActionStatus::Open => 0,
+                crate::api::meetings::MeetingActionStatus::InProgress => 1,
+                crate::api::meetings::MeetingActionStatus::Done => 2,
+                crate::api::meetings::MeetingActionStatus::Blocked => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::meetings::MeetingDecisionRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.statement, serializer);
+        <crate::api::meetings::MeetingDecisionStatus>::sse_encode(self.status, serializer);
+        <Vec<String>>::sse_encode(self.evidence_segment_ids, serializer);
+    }
+}
+
+impl SseEncode for crate::api::meetings::MeetingDecisionStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::meetings::MeetingDecisionStatus::Proposed => 0,
+                crate::api::meetings::MeetingDecisionStatus::Agreed => 1,
+                crate::api::meetings::MeetingDecisionStatus::Rejected => 2,
+                crate::api::meetings::MeetingDecisionStatus::Deferred => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::meetings::MeetingMetricRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.value, serializer);
+        <Vec<String>>::sse_encode(self.evidence_segment_ids, serializer);
+    }
+}
+
 impl SseEncode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1172,6 +1564,12 @@ impl SseEncode for crate::api::meetings::MeetingRecord {
         <String>::sse_encode(self.transcript, serializer);
         <String>::sse_encode(self.minutes, serializer);
         <String>::sse_encode(self.model, serializer);
+        <Vec<crate::api::meetings::MeetingDecisionRecord>>::sse_encode(self.decisions, serializer);
+        <Vec<crate::api::meetings::MeetingActionItemRecord>>::sse_encode(
+            self.action_items,
+            serializer,
+        );
+        <Vec<crate::api::meetings::MeetingMetricRecord>>::sse_encode(self.metrics, serializer);
     }
 }
 
@@ -1182,6 +1580,16 @@ impl SseEncode for crate::api::meetings::MindConfig {
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
         <crate::api::meetings::SpeechLanguage>::sse_encode(self.speech_language, serializer);
+    }
+}
+
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
     }
 }
 

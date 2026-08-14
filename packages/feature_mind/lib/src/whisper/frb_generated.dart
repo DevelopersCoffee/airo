@@ -100,6 +100,9 @@ abstract class RustLibApi extends BaseApi {
     required String model,
     required List<TranscriptSegmentRecord> segments,
     required String audioPath,
+    required List<MeetingDecisionRecord> decisions,
+    required List<MeetingActionItemRecord> actionItems,
+    required List<MeetingMetricRecord> metrics,
   });
 
   Future<List<SearchHit>> crateApiMeetingsSearchMeetings({
@@ -319,6 +322,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String model,
     required List<TranscriptSegmentRecord> segments,
     required String audioPath,
+    required List<MeetingDecisionRecord> decisions,
+    required List<MeetingActionItemRecord> actionItems,
+    required List<MeetingMetricRecord> metrics,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -331,6 +337,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(model, serializer);
           sse_encode_list_transcript_segment_record(segments, serializer);
           sse_encode_String(audioPath, serializer);
+          sse_encode_list_meeting_decision_record(decisions, serializer);
+          sse_encode_list_meeting_action_item_record(actionItems, serializer);
+          sse_encode_list_meeting_metric_record(metrics, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -351,6 +360,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           model,
           segments,
           audioPath,
+          decisions,
+          actionItems,
+          metrics,
         ],
         apiImpl: this,
       ),
@@ -368,6 +380,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           "model",
           "segments",
           "audioPath",
+          "decisions",
+          "actionItems",
+          "metrics",
         ],
       );
 
@@ -574,9 +589,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<InstalledModel> dco_decode_list_installed_model(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_installed_model).toList();
+  }
+
+  @protected
+  List<MeetingActionItemRecord> dco_decode_list_meeting_action_item_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_action_item_record)
+        .toList();
+  }
+
+  @protected
+  List<MeetingDecisionRecord> dco_decode_list_meeting_decision_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_decision_record)
+        .toList();
+  }
+
+  @protected
+  List<MeetingMetricRecord> dco_decode_list_meeting_metric_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_metric_record)
+        .toList();
   }
 
   @protected
@@ -614,11 +663,67 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  MeetingRecord dco_decode_meeting_record(dynamic raw) {
+  MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 6)
       throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return MeetingActionItemRecord(
+      id: dco_decode_String(arr[0]),
+      task: dco_decode_String(arr[1]),
+      owner: dco_decode_opt_String(arr[2]),
+      due: dco_decode_opt_String(arr[3]),
+      status: dco_decode_meeting_action_status(arr[4]),
+      evidenceSegmentIds: dco_decode_list_String(arr[5]),
+    );
+  }
+
+  @protected
+  MeetingActionStatus dco_decode_meeting_action_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MeetingActionStatus.values[raw as int];
+  }
+
+  @protected
+  MeetingDecisionRecord dco_decode_meeting_decision_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MeetingDecisionRecord(
+      id: dco_decode_String(arr[0]),
+      statement: dco_decode_String(arr[1]),
+      status: dco_decode_meeting_decision_status(arr[2]),
+      evidenceSegmentIds: dco_decode_list_String(arr[3]),
+    );
+  }
+
+  @protected
+  MeetingDecisionStatus dco_decode_meeting_decision_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MeetingDecisionStatus.values[raw as int];
+  }
+
+  @protected
+  MeetingMetricRecord dco_decode_meeting_metric_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MeetingMetricRecord(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      value: dco_decode_String(arr[2]),
+      evidenceSegmentIds: dco_decode_list_String(arr[3]),
+    );
+  }
+
+  @protected
+  MeetingRecord dco_decode_meeting_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return MeetingRecord(
       id: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
@@ -626,6 +731,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       transcript: dco_decode_String(arr[3]),
       minutes: dco_decode_String(arr[4]),
       model: dco_decode_String(arr[5]),
+      decisions: dco_decode_list_meeting_decision_record(arr[6]),
+      actionItems: dco_decode_list_meeting_action_item_record(arr[7]),
+      metrics: dco_decode_list_meeting_metric_record(arr[8]),
     );
   }
 
@@ -641,6 +749,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       memoryBudgetMb: dco_decode_u_32(arr[2]),
       speechLanguage: dco_decode_speech_language(arr[3]),
     );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -843,6 +957,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<InstalledModel> sse_decode_list_installed_model(
     SseDeserializer deserializer,
   ) {
@@ -852,6 +978,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <InstalledModel>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_installed_model(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingActionItemRecord> sse_decode_list_meeting_action_item_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingActionItemRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_action_item_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingDecisionRecord> sse_decode_list_meeting_decision_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingDecisionRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_decision_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingMetricRecord> sse_decode_list_meeting_metric_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingMetricRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_metric_record(deserializer));
     }
     return ans_;
   }
@@ -918,6 +1086,79 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MeetingActionItemRecord sse_decode_meeting_action_item_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_task = sse_decode_String(deserializer);
+    var var_owner = sse_decode_opt_String(deserializer);
+    var var_due = sse_decode_opt_String(deserializer);
+    var var_status = sse_decode_meeting_action_status(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingActionItemRecord(
+      id: var_id,
+      task: var_task,
+      owner: var_owner,
+      due: var_due,
+      status: var_status,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
+  }
+
+  @protected
+  MeetingActionStatus sse_decode_meeting_action_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return MeetingActionStatus.values[inner];
+  }
+
+  @protected
+  MeetingDecisionRecord sse_decode_meeting_decision_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_statement = sse_decode_String(deserializer);
+    var var_status = sse_decode_meeting_decision_status(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingDecisionRecord(
+      id: var_id,
+      statement: var_statement,
+      status: var_status,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
+  }
+
+  @protected
+  MeetingDecisionStatus sse_decode_meeting_decision_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return MeetingDecisionStatus.values[inner];
+  }
+
+  @protected
+  MeetingMetricRecord sse_decode_meeting_metric_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingMetricRecord(
+      id: var_id,
+      name: var_name,
+      value: var_value,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
+  }
+
+  @protected
   MeetingRecord sse_decode_meeting_record(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_String(deserializer);
@@ -926,6 +1167,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_transcript = sse_decode_String(deserializer);
     var var_minutes = sse_decode_String(deserializer);
     var var_model = sse_decode_String(deserializer);
+    var var_decisions = sse_decode_list_meeting_decision_record(deserializer);
+    var var_actionItems = sse_decode_list_meeting_action_item_record(
+      deserializer,
+    );
+    var var_metrics = sse_decode_list_meeting_metric_record(deserializer);
     return MeetingRecord(
       id: var_id,
       title: var_title,
@@ -933,6 +1179,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       transcript: var_transcript,
       minutes: var_minutes,
       model: var_model,
+      decisions: var_decisions,
+      actionItems: var_actionItems,
+      metrics: var_metrics,
     );
   }
 
@@ -949,6 +1198,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       memoryBudgetMb: var_memoryBudgetMb,
       speechLanguage: var_speechLanguage,
     );
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -1190,6 +1450,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_installed_model(
     List<InstalledModel> self,
     SseSerializer serializer,
@@ -1198,6 +1467,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_installed_model(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_action_item_record(
+    List<MeetingActionItemRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_action_item_record(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_decision_record(
+    List<MeetingDecisionRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_decision_record(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_metric_record(
+    List<MeetingMetricRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_metric_record(item, serializer);
     }
   }
 
@@ -1260,6 +1565,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_meeting_action_item_record(
+    MeetingActionItemRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.task, serializer);
+    sse_encode_opt_String(self.owner, serializer);
+    sse_encode_opt_String(self.due, serializer);
+    sse_encode_meeting_action_status(self.status, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_action_status(
+    MeetingActionStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_decision_record(
+    MeetingDecisionRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.statement, serializer);
+    sse_encode_meeting_decision_status(self.status, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_decision_status(
+    MeetingDecisionStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_metric_record(
+    MeetingMetricRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.value, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
+  }
+
+  @protected
   void sse_encode_meeting_record(MeetingRecord self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.id, serializer);
@@ -1268,6 +1629,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.transcript, serializer);
     sse_encode_String(self.minutes, serializer);
     sse_encode_String(self.model, serializer);
+    sse_encode_list_meeting_decision_record(self.decisions, serializer);
+    sse_encode_list_meeting_action_item_record(self.actionItems, serializer);
+    sse_encode_list_meeting_metric_record(self.metrics, serializer);
   }
 
   @protected
@@ -1277,6 +1641,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
     sse_encode_speech_language(self.speechLanguage, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
   }
 
   @protected
