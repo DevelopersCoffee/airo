@@ -99,7 +99,7 @@ pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-    SpeechEngine, TranscriptSegment,
+    SpeechEngine, TranscriptSegment, TranscriptionOptions,
 };
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
