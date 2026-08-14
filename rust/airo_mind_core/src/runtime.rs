@@ -69,6 +69,7 @@ use std::sync::Mutex;
 use crate::content::{ContentId, ContentStore, ContentStoreError};
 use crate::digest::Sha256;
 use crate::engine::EngineError;
+use crate::event::{CapabilityEvent, EventBus};
 use crate::lifecycle::{EngineName, ManagedEngine};
 use crate::signing::{DeviceKeySigner, SignerVerifier};
 use crate::supervisor::Supervisor;
@@ -845,6 +846,12 @@ pub struct Runtime {
     supervisor: Supervisor,
     log: Arc<OperationLog>,
     content: Arc<ContentStore>,
+    /// The in-process, non-durable event bus `#1295`'s `emit_event` publishes
+    /// to. Not a lifecycle engine (`ProjectionEngine`'s reasoning applies
+    /// here too — no durable state for a Supervisor slot to own or restart)
+    /// and not reachable from a capability except through
+    /// [`crate::capability_api::CapabilityApi::emit_event`].
+    event_bus: Arc<EventBus>,
 }
 
 impl Runtime {
@@ -889,6 +896,7 @@ impl Runtime {
             supervisor,
             log,
             content,
+            event_bus: Arc::new(EventBus::new()),
         })
     }
 
@@ -1016,9 +1024,109 @@ impl Runtime {
         Ok(self.content.get(id)?)
     }
 
+    /// Condition 8 of `#1311` (`#1217`): *"`DestroyContent` removes every
+    /// reachable representation of user content, except immutable structural
+    /// metadata intentionally retained by design."*
+    ///
+    /// # Why this cannot be `emit_verb_operation(Verb::DestroyContent, ...)`
+    ///
+    /// `C5`'s governing question: *"can it be implemented entirely by
+    /// emitting operations and consuming projections? If no, either the
+    /// runtime is missing a generic primitive that should be added once for
+    /// everyone, or the capability is bypassing the runtime."* An append-only
+    /// operation log cannot make its own past payload bytes disappear by
+    /// appending a new operation — the physical erasure this condition
+    /// requires happens in [`ContentStore`], which no operation, by itself,
+    /// touches. This method is that missing generic primitive: the one seam
+    /// that reaches both the content store and the log in one durability
+    /// boundary, so no capability needs (or is able) to reach the content
+    /// store directly to get real destruction.
+    ///
+    /// # What actually happens, in order, and why the order is load-bearing
+    ///
+    /// 1. **The bytes are physically erased first**
+    ///    ([`ContentStore::remove`]'s secure overwrite-then-unlink — see its
+    ///    doc). Before anything durable records that this happened.
+    /// 2. **Only then** is a `DestroyContent` operation appended, carrying
+    ///    `content_id` (already-public content-addressed metadata — the hash
+    ///    of bytes that no longer exist proves nothing about them, which is
+    ///    exactly the "immutable structural metadata intentionally retained"
+    ///    this condition's own carve-out names) but **no payload**: nothing
+    ///    about the destroyed bytes is copied into the log by the act of
+    ///    destroying them.
+    ///
+    ///    Reversing this order would mean a crash between the two steps could
+    ///    leave a log that *claims* content is destroyed while the bytes are
+    ///    still fully readable on disk — a false guarantee is worse than a
+    ///    missing one. This order's failure mode is the opposite and
+    ///    safe-by-default: a crash after step 1 but before step 2 leaves the
+    ///    bytes gone and the log not yet reflecting it, which a caller can
+    ///    safely retry (removing already-absent bytes is idempotent).
+    ///
+    /// # What this does not (yet) do
+    ///
+    /// `#1217`'s eight steps assume Phase 1's Vault (crypto-shredding a
+    /// content key, `RevokeContentKey` on a revocation ledger) and Phase 3's
+    /// derived-state sweep (embeddings, search index, AI caches) — neither
+    /// exists in this crate yet (see [`crate::content`]'s and this module's
+    /// own "still explicitly deferred" notes). What this method provides
+    /// instead, conservatively, for what *does* exist here: the content
+    /// store's bytes are genuinely gone from disk (not merely logically
+    /// deleted), and [`crate::projection::ContentLedgerProjection`] — the one
+    /// derived-state projection this phase's substrate has — reflects the
+    /// destruction on every rebuild.
+    pub fn destroy_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        // Step 1: physically unrecoverable first (idempotent if already
+        // gone — see `ContentStore::remove`'s doc).
+        self.content.remove(&content_id)?;
+
+        // Step 2: the tombstone. No payload, no bytes -- only the id of what
+        // was destroyed, which is exactly the structural metadata condition
+        // 8's carve-out names.
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::DestroyContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids: &[],
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
     /// Out of scope for this phase. Contexts are Phase 5.
     pub fn instantiate_context(&self) -> Result<(), RuntimeApiError> {
         Err(RuntimeApiError::OutOfScope("instantiate_context"))
+    }
+
+    /// Registers a new listener on the in-process event bus. Not part of
+    /// `#1295`'s five-function capability surface (that surface only exposes
+    /// the write side, `emit_event`, via
+    /// [`crate::capability_api::CapabilityApi`]) — this is the runtime-level
+    /// read side something outside a capability (a UI layer, a test) uses to
+    /// observe what capabilities publish. See [`crate::event`]'s module doc
+    /// for exactly what this does and does not guarantee.
+    pub fn subscribe_events(&self) -> std::sync::mpsc::Receiver<CapabilityEvent> {
+        self.event_bus.subscribe()
+    }
+
+    /// Publishes one event to every live subscriber. `pub(crate)`, not
+    /// `pub`: the only intended caller is
+    /// [`crate::capability_api::CapabilityApi::emit_event`] — a capability
+    /// reaches this exclusively through that narrower surface, never
+    /// [`Runtime`] directly.
+    pub(crate) fn publish_event(&self, event: CapabilityEvent) {
+        self.event_bus.publish(event);
     }
 
     /// Out of scope for this phase. Both `#1194` and `#1195` name Sync as

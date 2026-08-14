@@ -263,7 +263,7 @@ fn ground_items<F: Fact>(
 /// "device". It is a containment test, not a name parser — its whole job is to
 /// make an invented owner impossible to keep, and an owner it wrongly rejects
 /// becomes `None`, which is the safe direction to be wrong in.
-fn names_appear_in(owner: &str, text: &str) -> bool {
+pub(crate) fn names_appear_in(owner: &str, text: &str) -> bool {
     let words = |s: &str| -> Vec<String> {
         s.split(|c: char| !c.is_alphanumeric())
             .filter(|w| !w.is_empty())

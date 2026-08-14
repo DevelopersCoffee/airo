@@ -33,10 +33,30 @@
 //! missed twice.
 
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use crate::digest::Sha256;
+
+/// Overwrites every byte of the file at `path` with `fill`, then `fsync`s.
+/// Used by [`ContentStore::remove`]'s secure-erase pass — see its doc for why
+/// a plain unlink is not enough. Writes in fixed-size chunks rather than
+/// building one `len`-sized buffer, so destroying a large object does not
+/// require allocating a same-sized scratch buffer.
+fn overwrite_in_place(path: &Path, len: u64, fill: u8) -> Result<(), ContentStoreError> {
+    const CHUNK: usize = 64 * 1024;
+    let mut f = File::options().write(true).open(path)?;
+    f.seek(SeekFrom::Start(0))?;
+    let buf = [fill; CHUNK];
+    let mut remaining = len;
+    while remaining > 0 {
+        let n = remaining.min(CHUNK as u64) as usize;
+        f.write_all(&buf[..n])?;
+        remaining -= n as u64;
+    }
+    f.sync_data()?;
+    Ok(())
+}
 
 /// A content-addressed identifier: lowercase hex SHA-256 of the object's
 /// bytes as stored (plaintext today; ciphertext once Vault lands — see the
@@ -185,11 +205,44 @@ impl ContentStore {
     /// is relying on convention, exactly as `crate::runtime`'s module doc and
     /// design §4.3's own closing paragraph already say plainly.
     ///
+    /// `#1217` closed the honesty gap this left: a plain `fs::remove_file`
+    /// only unlinks a directory entry — the bytes themselves can still sit on
+    /// disk until the filesystem reuses the blocks, readable by anything that
+    /// walks raw disk sectors or an undelete tool. This now overwrites the
+    /// object's bytes in place (twice — once with zeros, once with `0xFF`,
+    /// each `fsync`'d) and truncates to zero length *before* unlinking, so a
+    /// reader who reopens the path a moment later, or recovers the inode
+    /// after the unlink, finds no trace of the original content. This is a
+    /// best-effort software erasure, not a cryptographic guarantee — it does
+    /// not defend against flash-storage wear-leveling relocating a block
+    /// before the overwrite reaches it, filesystem snapshots, or a backup
+    /// taken before this ran. `#1193` (Vault, crypto-shredding) is what makes
+    /// destruction unconditional regardless of medium; this is the
+    /// conservative, real thing this crate can do without it.
+    ///
     /// Idempotent: removing an already-absent object is not an error, the
     /// same "no file yet is empty, not broken" discipline
     /// [`crate::store::MeetingStore`] uses.
     pub fn remove(&self, id: &ContentId) -> Result<(), ContentStoreError> {
-        match fs::remove_file(self.path_for(id)) {
+        let path = self.path_for(id);
+        let len = match fs::metadata(&path) {
+            Ok(meta) => meta.len(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => return Err(e.into()),
+        };
+        if len > 0 {
+            overwrite_in_place(&path, len, 0x00)?;
+            overwrite_in_place(&path, len, 0xFF)?;
+        }
+        // Truncate to zero length before unlinking: on a filesystem where the
+        // unlink alone leaves a recoverable inode (a still-open handle
+        // elsewhere, a crash between overwrite and unlink), a zero-length
+        // file has nothing left to recover from that path either.
+        if let Ok(f) = File::options().write(true).open(&path) {
+            let _ = f.set_len(0);
+            let _ = f.sync_data();
+        }
+        match fs::remove_file(&path) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
             Err(e) => Err(e.into()),
