@@ -225,6 +225,11 @@ fn main() {
             &GenerationRequest {
                 prompt: summarize_prompt(&transcript),
                 max_output_tokens: 160,
+                // Unconstrained sampling -- this CLI is a free-text
+                // dev-loop smoke test, not a capability building a
+                // schema-constrained prompt like Meeting IR's extraction
+                // pass (`airo_mind_meeting`, `#1633`).
+                grammar: None,
             },
             &LlamaCancelToken::new(),
             &mut |chunk| {

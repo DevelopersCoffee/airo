@@ -36,8 +36,20 @@ Metal rather than falling back to CPU:
 
 ```sh
 cd rust
-cargo run --release -p airo_mind_cli
+cargo run -p airo_mind_cli
 ```
+
+Dev profile, not `--release`: the workspace's `[profile.release]` sets
+`lto = "fat"` (tuned for `airo_core`'s single-cdylib case — see the comment
+above that block), and full LTO across two rlibs that each carry their own
+`flutter_rust_bridge`-generated `frb_generated` module (`airo_mind_whisper`
+and `airo_mind_llama`, both cdylib-shaped by design, statically linked into
+one bin here) fails at the bitcode-merge step with a duplicate-symbol error
+on `frb_dart_fn_deliver_output`. Not a regression from anything this crate
+does — the two libraries were never meant to share a link unit — and not
+worth chasing for a dev-only tool: `cargo build -p airo_mind_cli` (dev
+profile) links them fine and every model-load/inference cost dominates the
+missing optimization anyway.
 
 By default it uses:
 
@@ -99,7 +111,7 @@ the OS's own tool) without adding a dependency to the workspace.
 ## Sample run
 
 ```
-$ cargo run --release -p airo_mind_cli
+$ cargo run -p airo_mind_cli
 == Airo Mind macOS dev loop ==
 ...
 -- transcript (3 segment(s)) --
