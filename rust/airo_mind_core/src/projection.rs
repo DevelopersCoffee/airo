@@ -43,6 +43,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::content::ContentId;
 use crate::runtime::{Operation, Projection};
 use crate::verb::Verb;
 
@@ -217,6 +218,102 @@ impl EntityGraphProjection {
         }
 
         (Self { entities }, visits)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Content ledger — condition 8 (`#1217`): `DestroyContent` invalidates every
+// projection derived from that content.
+// ---------------------------------------------------------------------------
+
+/// Which content ids the log currently considers reachable, folded from
+/// `CreateContent` and `DestroyContent` operations alone. `C4`: *"`DestroyContent`
+/// invalidates every projection derived from that content"* — this is the
+/// projection that statement is about at the Content primitive's own level,
+/// underneath any capability-specific view built on top of it.
+///
+/// A content id present here is *reachable* — `Runtime::read_content` is
+/// expected to return `Some` for it (assuming the bytes are actually still on
+/// disk, which [`crate::content::ContentStore`] guarantees for anything not
+/// yet destroyed). A content id in [`Self::destroyed`] is exactly the
+/// opposite: [`crate::runtime::Runtime::destroy_content`] already erased the
+/// bytes before this operation was even appended (see that method's doc for
+/// why that ordering, not the reverse, is what makes the guarantee real
+/// rather than a race), so this projection is confirming a fact that is
+/// already true on disk, not the thing that makes it true.
+///
+/// `DestroyContent` is terminal: once a content id is destroyed, a later
+/// `CreateContent` bearing the *same* id cannot resurrect it — the bytes it
+/// would need to re-derive that id from are gone, so nothing can actually
+/// produce them again. Order in the log still matters for what this
+/// projection reports, which is why `destroyed` always wins regardless of
+/// which operation comes first structurally.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ContentLedgerProjection {
+    live: BTreeSet<ContentId>,
+    destroyed: BTreeSet<ContentId>,
+}
+
+impl ContentLedgerProjection {
+    /// `true` only for a content id this log has seen created and never seen
+    /// destroyed. A content id this projection never heard of at all (never
+    /// created through the verb-based path) is also `false` here — this
+    /// projection can only speak to what it was told.
+    pub fn is_live(&self, id: &ContentId) -> bool {
+        self.live.contains(id)
+    }
+
+    /// `true` for a content id this log has recorded a `DestroyContent` for.
+    pub fn is_destroyed(&self, id: &ContentId) -> bool {
+        self.destroyed.contains(id)
+    }
+
+    pub fn live_content_ids(&self) -> impl Iterator<Item = &ContentId> {
+        self.live.iter()
+    }
+
+    pub fn destroyed_content_ids(&self) -> impl Iterator<Item = &ContentId> {
+        self.destroyed.iter()
+    }
+
+    pub fn live_count(&self) -> usize {
+        self.live.len()
+    }
+
+    pub fn destroyed_count(&self) -> usize {
+        self.destroyed.len()
+    }
+}
+
+impl Projection for ContentLedgerProjection {
+    /// Single pass, `C2`: visits `CreateContent` and `DestroyContent`
+    /// operations only, in log order, and nothing else — a mixed-capability
+    /// log folds correctly the same way [`EntityGraphProjection::rebuild`]
+    /// does.
+    fn rebuild(ops: &[Operation]) -> Self {
+        let mut live = BTreeSet::new();
+        let mut destroyed = BTreeSet::new();
+
+        for op in ops {
+            let Some(verb) = op.verb() else { continue };
+            let Some(content_id) = &op.content_id else {
+                continue;
+            };
+            match verb {
+                Verb::CreateContent => {
+                    if !destroyed.contains(content_id) {
+                        live.insert(content_id.clone());
+                    }
+                }
+                Verb::DestroyContent => {
+                    live.remove(content_id);
+                    destroyed.insert(content_id.clone());
+                }
+                _ => {}
+            }
+        }
+
+        Self { live, destroyed }
     }
 }
 

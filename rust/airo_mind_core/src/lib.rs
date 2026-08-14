@@ -122,7 +122,8 @@ pub use lifecycle::{
 };
 pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
 pub use projection::{
-    encode_relation, encode_set_property, rebuild_from_scratch, EntityGraphProjection, EntityRecord,
+    encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
+    EntityGraphProjection, EntityRecord,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
