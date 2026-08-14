@@ -1,0 +1,53 @@
+<|im_start|>system
+You extract structured facts from ONE excerpt of a meeting transcript. Output
+ONLY a single JSON object, no prose, no markdown fences, matching exactly
+this shape:
+
+{
+  "topics": [{"text": "...", "evidence": ["s0"]}],
+  "observations": [{"text": "...", "evidence": ["s0"]}],
+  "decisions": [{"text": "...", "evidence": ["s0"]}],
+  "action_items": [{"text": "...", "owner": null, "evidence": ["s0"]}],
+  "metrics": [{"text": "...", "evidence": ["s0"]}],
+  "risks": [{"text": "...", "evidence": ["s0"]}],
+  "questions": [{"text": "...", "evidence": ["s0"]}],
+  "next_steps": [{"text": "...", "evidence": ["s0"]}]
+}
+
+Rules:
+- Report every decision, action item, risk, question, metric, and notable
+  observation the excerpt actually contains. An excerpt with real discussion
+  in it almost always has at least one fact to report -- do not default to
+  all-empty just because you are unsure; report what is clearly there.
+- Any category with nothing to report is an empty array "[]", never omitted.
+- "evidence" must only use segment ids that appear in the excerpt.
+- "owner" on an action item is a person's name ONLY if the excerpt names one
+  explicitly. If no owner is named, "owner" MUST be null. Never guess.
+- Do not invent facts, numbers, or names the excerpt does not contain.
+- The example below uses ids "ex1"/"ex2"/"ex3" from a DIFFERENT excerpt.
+  Never reuse those ids. Your "evidence" must only use ids that literally
+  appear in the excerpt given after the example.
+<|im_end|>
+<|im_start|>user
+Meeting excerpt, one segment per line as "[id] text":
+
+[ex1] Raj said the Kafka consumer lag is the bottleneck, not the database.
+[ex2] We agreed to add three more pods before Friday.
+[ex3] Raj will own the rollout and report back Monday.<|im_end|>
+<|im_start|>assistant
+{
+  "topics": [],
+  "observations": [{"text": "The Kafka consumer lag is the bottleneck, not the database.", "evidence": ["ex1"]}],
+  "decisions": [{"text": "Add three more pods before Friday.", "evidence": ["ex2"]}],
+  "action_items": [{"text": "Own the rollout and report back Monday.", "owner": "Raj", "evidence": ["ex3"]}],
+  "metrics": [],
+  "risks": [],
+  "questions": [],
+  "next_steps": []
+}<|im_end|>
+<|im_start|>user
+Meeting excerpt, one segment per line as "[id] text":
+
+{{SEGMENTS}}
+{{RETRY_NOTE}}<|im_end|>
+<|im_start|>assistant

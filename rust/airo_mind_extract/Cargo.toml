@@ -1,0 +1,43 @@
+[package]
+name = "airo_mind_extract"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind Meeting IR schema + two-pass extraction (per-chunk facts -> consolidation)."
+license = "MIT"
+
+[lib]
+name = "airo_mind_extract"
+# rlib only, same reasoning as airo_mind_transcript: no FFI surface of its
+# own, and it must not become a second copy of either engine's ggml. It calls
+# an engine only through `airo_mind_core::LlmBackend` (a trait object), never
+# through a concrete `airo_mind_llama` type, so this crate never links llama.cpp
+# or whisper.cpp itself -- see the crate-level doc comment in src/lib.rs.
+crate-type = ["rlib"]
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+airo_mind_transcript = { path = "../airo_mind_transcript" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# Integration test only (`tests/extraction_offline.rs`, gated
+# `#[cfg(feature = "llama")]` the same way
+# `airo_mind_llama/tests/generation_offline.rs` is) -- real model, real
+# inference, proving pass 1 + pass 2 against `airo_mind_llama`'s concrete
+# `LlmBackend`. Not a dependency of the library itself.
+airo_mind_llama = { path = "../airo_mind_llama", features = ["llama"] }
+airo_mind_whisper = { path = "../airo_mind_whisper", features = ["whisper"] }
+
+[features]
+default = []
+# Mirrors airo_mind_llama/airo_mind_whisper's own `llama`/`whisper` features:
+# this crate's library code never needs them, but its integration test does,
+# and cargo requires the feature to exist on *this* crate for
+# `--features airo_mind_extract/llama` at the workspace level to resolve.
+llama = ["airo_mind_llama/llama"]
+whisper = ["airo_mind_whisper/whisper"]
+metal = ["airo_mind_llama/metal", "airo_mind_whisper/metal"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

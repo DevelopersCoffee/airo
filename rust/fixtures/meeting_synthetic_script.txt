@@ -1,0 +1,67 @@
+Priya: Okay, let's get started. This is the weekly platform sync. Today we need to cover the Kafka consumer lag issue, the pod scaling decision, the billing database migration, and the Q3 budget numbers. Raj, can you kick us off with the Kafka situation.
+
+Raj: Sure. So we spent most of yesterday digging into the checkout latency spike. I want to be really clear about this: the Kafka consumer lag is the bottleneck, not the database. We looked at the Postgres query plans first because that's usually where we find problems, but the query times were completely normal, under twenty milliseconds for the checkout path. When we looked at the consumer group metrics, the lag on the orders topic was sitting at almost four hundred thousand messages during peak traffic yesterday afternoon.
+
+Priya: Four hundred thousand. That is a lot. What's driving that.
+
+Raj: Two things. First, we only have three consumer pods running against a topic with twelve partitions, so we're leaving most of the parallelism on the table. Second, the consumer is doing a synchronous call out to the pricing service for every single message, and that call has been averaging one hundred and eighty milliseconds under load. So even with all twelve partitions consumed, we'd still be slow because of that synchronous call.
+
+Priya: Okay so there are really two separate fixes here. Scaling the consumers and fixing the synchronous pricing call.
+
+Raj: Right. For the immediate fix, we should add three more pods before Friday, so we're running six total instead of three. That gets us to one pod per two partitions, which should cut the lag significantly even with the pricing call still being slow. The pricing call fix is a bigger piece of work, we'd want to batch those calls or cache pricing data locally, and that's probably a two week project, not something we do this week.
+
+Priya: Agreed. Let's not try to boil the ocean this sprint. So to confirm the decision: we will add three more Kafka consumer pods before Friday to bring us to six pods total. Raj, can you own that rollout.
+
+Raj: Yeah, I'll own the pod rollout. I'll have the updated deployment manifest ready by Wednesday and we can roll it out Thursday so we have a full day of buffer before Friday in case anything goes wrong.
+
+Priya: Perfect. And just to close the loop on the root cause, so everyone has it clearly, again: the Kafka consumer lag is the bottleneck, not the database, and it comes from under provisioned consumer pods combined with a slow synchronous pricing call inside the message handler. The pod scaling is the short term mitigation, and the pricing call batching is the follow up.
+
+Devesh: Quick question on that. Do we know if the pricing service itself is healthy, or is it also under load and that's why the calls are slow.
+
+Raj: Good question. We checked, the pricing service p50 latency is fine, it's about twenty milliseconds. The one hundred and eighty millisecond number I mentioned is p99 during our peak traffic window specifically, so it does look correlated with our own load pattern hitting them, not a general health problem on their side. But we should ask the pricing team to confirm they're not seeing elevated error rates from us specifically, just to be safe.
+
+Priya: Okay, let's put that down as an open question. Can someone follow up with the pricing team about whether they're seeing elevated error rates from our consumer during peak hours.
+
+Devesh: I can send that message after this call.
+
+Priya: Great, thanks Devesh. Let's move on to the billing database migration. Where are we with that.
+
+Devesh: We made the decision two weeks ago to migrate the billing database from MySQL to Postgres, and the migration itself is going well. We've completed the schema conversion and we're now running the dual write phase, where every write goes to both databases so we can compare consistency before we cut over reads.
+
+Priya: How long has dual write been running.
+
+Devesh: About five days now. We've had zero consistency mismatches so far, which is a good sign. The plan is to run dual write for two weeks total before we cut over, so that's roughly nine more days.
+
+Priya: Any risks we should be tracking on that.
+
+Devesh: One risk. The dual write adds about fifteen milliseconds of latency to every billing write because we're waiting on both databases to acknowledge. That's acceptable for now, but if it becomes a customer facing problem before we cut over, we may need to switch to an asynchronous replication approach instead of synchronous dual write, which would be a bigger change.
+
+Priya: Let's note that as a risk to watch, not something we act on today, since it hasn't caused customer impact yet. Let's move to the budget numbers. I know finance sent something over.
+
+Priya: The finance team confirmed our Q3 infrastructure budget touched about five hundred thousand dollars in cloud spend, primarily driven by the consumer pod scaling we've been doing across services this quarter, not just the Kafka change we're discussing today. That's up from around three hundred and twenty thousand dollars in Q2, so it's a meaningful increase and finance wants us to have a rationale ready before the quarterly review.
+
+Raj: That tracks. We've scaled consumer pods across four different services this quarter, this Kafka fix being one more example of the same pattern. I think the rationale is straightforward, we're handling roughly sixty percent more transaction volume than a year ago, and infrastructure scaled with it, but we should still write that up properly.
+
+Priya: Agreed, let's make sure someone writes up the cost rationale before the quarterly review. I'll take that as a next step since I already have most of the context from the planning doc.
+
+Priya: Let's also talk about the on call rotation change we discussed briefly last week. We had proposed moving from a weekly rotation to a two week rotation to reduce fatigue. Has anyone gathered feedback on that.
+
+Devesh: I talked to about half the team. The general feeling was positive, people like the idea of fewer handoffs, but a couple of people were worried that two weeks is a long time to be on call if it's a bad week. One suggestion was a two week rotation but with a mid week check-in where the on call person can ask for help if things have been rough.
+
+Priya: I like that. Let's decide: we will move to a two week on call rotation with a mandatory mid week check-in for support. That addresses the burnout concern while still reducing handoff overhead. Raj, can you update the on call schedule template with the new rotation length.
+
+Raj: I can do that, I'll have the updated template ready by early next week.
+
+Priya: Great. Let's also flag a next step that isn't urgent but shouldn't be forgotten. We agreed a while back that we want to add distributed tracing to the checkout path so issues like today's Kafka lag are easier to diagnose without this much manual digging through consumer group metrics. That's not scheduled yet, but let's put it down as a next step for next quarter's planning.
+
+Devesh: Agreed, that would have made today's investigation a lot faster. Honestly if we'd had tracing on the pricing call specifically, we probably would have found the one hundred and eighty millisecond p99 within the first ten minutes instead of most of a day.
+
+Priya: Good point, let's make sure that's in the writeup as motivation for the tracing work. Anything else before we close out.
+
+Raj: One last thing. I want to restate the pod scaling plan one more time so it's unambiguous in the notes: we are adding three additional Kafka consumer pods, bringing the total from three to six, and the target date is Friday, with the rollout itself happening Thursday. I am the owner of that rollout.
+
+Priya: Perfect, that matches what we agreed. Let's also restate the billing migration status for the notes. The MySQL to Postgres migration for billing is in the dual write validation phase, we're five days into a planned two week validation window with zero mismatches so far, and the known risk is the fifteen millisecond latency overhead from synchronous dual writes, which we are monitoring rather than acting on today.
+
+Devesh: Sounds right to me.
+
+Priya: Great, thanks everyone, that's a wrap for today. I'll send out the summary afterward.

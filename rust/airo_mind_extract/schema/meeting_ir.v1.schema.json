@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/DevelopersCoffee/airo/rust/airo_mind_extract/schema/meeting_ir.v1.schema.json",
+  "title": "Airo Mind Meeting IR",
+  "description": "Milestone 26 (#1627), issue #1633. The product of two-pass extraction: structured facts/decisions/action-items with per-item evidence (segment ids from #1632's chunks). MoM, action-item lists, and search are projections of this document, never of raw transcript text.",
+  "type": "object",
+  "required": ["schema_version", "meeting", "topics", "observations", "decisions", "action_items", "metrics", "risks", "questions", "next_steps"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "meeting": {
+      "type": "object",
+      "required": ["chunk_count"],
+      "properties": {
+        "title": { "type": ["string", "null"] },
+        "chunk_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "topics": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "observations": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "decisions": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "action_items": { "type": "array", "items": { "$ref": "#/definitions/actionItem" } },
+    "metrics": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "risks": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "questions": { "type": "array", "items": { "$ref": "#/definitions/fact" } },
+    "next_steps": { "type": "array", "items": { "$ref": "#/definitions/fact" } }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "fact": {
+      "type": "object",
+      "required": ["id", "text", "evidence"],
+      "properties": {
+        "id": { "type": "string", "description": "Stable per-category id, e.g. \"d0\" for the first decision. Assigned during pass 2 consolidation, not by the LLM." },
+        "text": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Segment ids (e.g. \"s4\") from #1629's ASR output via #1632's chunks. Never empty -- a fact with no evidence is not emitted."
+        }
+      },
+      "additionalProperties": false
+    },
+    "actionItem": {
+      "type": "object",
+      "required": ["id", "text", "owner", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "A person's name ONLY if the transcript names one explicitly. null when no owner is named -- never a guess (the milestone's no-invented-owners rule, #1634)."
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
