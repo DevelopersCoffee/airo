@@ -28,12 +28,12 @@
 #   bash docs/superpowers/plans/g0-enumerable.sh [crate-src-dir]
 #   bash docs/superpowers/plans/g0-enumerable.sh --record
 set -u
-SP=/private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad
+HERE="$(cd "$(dirname "$0")" && pwd)"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ALLOW_DIR="$HERE/enumerable"
 RECORD=0
 if [ "${1:-}" = "--record" ]; then RECORD=1; shift; fi
-SRC="${1:-$SP/rev7/src}"
+SRC="${1:-$HERE/../../../rust/airo_mind/src}"
 
 # L0 preconditions. Without these every scan returns empty and passes.
 if [ ! -d "$SRC" ]; then

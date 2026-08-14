@@ -824,6 +824,11 @@ is the exception, and "a future phase will want it" is a reason to keep it
 Add to `rust/airo_mind/src/lib.rs`:
 
 ```rust
+// The grouping and the comments below ARE the curated surface (`RA-18`): each
+// line records the external consumer that justifies the export. rustfmt sorts
+// the list alphabetically and re-attaches every comment to whatever ends up
+// beneath it, which turns the rationale into noise. Skipped deliberately.
+#[rustfmt::skip]
 pub use vault::{
     // Onboarding and recovery journey — #1234 / #1235
     generate_mnemonic, seed_from_mnemonic, Seed,     // Seed is opaque: no as_bytes
@@ -1384,8 +1389,9 @@ mod tests {
         );
     }
 
+    // No `#[ignore]`: Step 3's fixture is vendored and committed as of #1731,
+    // so the vector set runs on every `cargo test`.
     #[test]
-    #[ignore = "requires the vendored fixture from Task 2 Step 3"]
     fn official_vectors_encode_and_derive_correctly() {
         // Drives the COMPLETE Trezor reference vector set from a checked-in
         // fixture. Do not transcribe vectors by hand into this file: a
@@ -2539,32 +2545,39 @@ keys inside `VaultPayload` keep serializing as decimal arrays.
 crate.**
 
 Three tests, all required (`I5` — a property with no failing form is a
-description):
+description). They append to `rust/airo_mind/src/vault/encoding.rs`; the
+enclosing `mod tests` is written out because a bare `#[test]` fence carries no
+file header and `G0.1` therefore dropped all three (#1731):
 
 ```rust
-#[test]
-fn hex_rejects_multibyte_at_an_even_offset_instead_of_panicking() {
-    // RA-20: 64 bytes, 63 chars, 'é' straddling offset 61..63.
-    let hostile = "a".repeat(61) + "é" + "a";
-    assert_eq!(hostile.len(), 64);
-    let mut out = [0u8; 32];
-    assert!(hex_from(&hostile, &mut out).is_err());
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn base64_round_trips_every_length_class() {
-    for n in 0..=64 {
-        let bytes: Vec<u8> = (0..n).map(|i| (i * 7 + 3) as u8).collect();
-        let text = base64_bytes::encode(&bytes);
-        assert_eq!(base64_bytes::decode(&text).unwrap(), bytes, "n = {n}");
+    #[test]
+    fn hex_rejects_multibyte_at_an_even_offset_instead_of_panicking() {
+        // RA-20: 64 bytes, 63 chars, 'é' straddling offset 61..63.
+        let hostile = "a".repeat(61) + "é" + "a";
+        assert_eq!(hostile.len(), 64);
+        let mut out = [0u8; 32];
+        assert!(hex_from(&hostile, &mut out).is_err());
     }
-}
 
-#[test]
-fn base64_rejects_misplaced_padding() {
-    assert!(base64_bytes::decode("A=BC").is_err());
-    assert!(base64_bytes::decode("AB=C").is_err());
-    assert!(base64_bytes::decode("ABC").is_err());
+    #[test]
+    fn base64_round_trips_every_length_class() {
+        for n in 0..=64 {
+            let bytes: Vec<u8> = (0..n).map(|i| (i * 7 + 3) as u8).collect();
+            let text = base64_bytes::encode(&bytes);
+            assert_eq!(base64_bytes::decode(&text).unwrap(), bytes, "n = {n}");
+        }
+    }
+
+    #[test]
+    fn base64_rejects_misplaced_padding() {
+        assert!(base64_bytes::decode("A=BC").is_err());
+        assert!(base64_bytes::decode("AB=C").is_err());
+        assert!(base64_bytes::decode("ABC").is_err());
+    }
 }
 ```
 

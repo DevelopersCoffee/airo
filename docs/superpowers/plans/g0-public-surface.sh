@@ -35,12 +35,17 @@
 #   bash docs/superpowers/plans/g0-public-surface.sh [crate-src-dir]
 #   bash docs/superpowers/plans/g0-public-surface.sh --record   # regenerate
 set -u
-SP=/private/tmp/claude-501/-Users-udaychauhan-workspace-airo/e1fc7091-9136-4c43-b3e5-8187b71864a4/scratchpad
+# Byte-order collation, not the caller's locale. The allowlist was recorded
+# under a locale that orders `RevocationSource` before `RevocationsApplied`;
+# under en_US.UTF-8 the two swap, and `comm` then reports the SAME item as both
+# added and removed. A gate whose verdict depends on `LANG` is not a gate.
+export LC_ALL=C
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ALLOW="$HERE/PUBLIC_SURFACE.txt"
 RECORD=0
 if [ "${1:-}" = "--record" ]; then RECORD=1; shift; fi
-SRC="${1:-$SP/rev7/src}"
+# The crate is committed as of #1731; default to it rather than a scratch tree.
+SRC="${1:-$HERE/../../../rust/airo_mind/src}"
 
 # Same precondition as G0.7, and it was found here first: this script recorded
 # ZERO public items and reported PASS against a scratch tree that had been
@@ -81,8 +86,15 @@ fi
 actual=$(mktemp)
 surface > "$actual"
 
-added=$(comm -13 "$ALLOW" "$actual")
-removed=$(comm -23 "$ALLOW" "$actual")
+# `comm` requires both sides sorted under the SAME collation. Re-sort the
+# recorded allowlist rather than rewriting it, so the reviewed artifact is
+# untouched by a locale change.
+allow_sorted=$(mktemp)
+sort "$ALLOW" > "$allow_sorted"
+
+added=$(comm -13 "$allow_sorted" "$actual")
+removed=$(comm -23 "$allow_sorted" "$actual")
+rm -f "$allow_sorted"
 
 echo "G0.9 public surface -- $SRC"
 echo
