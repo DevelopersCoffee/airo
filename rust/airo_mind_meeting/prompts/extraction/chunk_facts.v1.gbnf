@@ -1,0 +1,66 @@
+# Airo Meeting IR — Pass 1 chunk-facts grammar, v1. `#1633`.
+#
+# GBNF, consumed by `LlamaSampler::grammar` through
+# `GenerationRequest::grammar` (start symbol `root`, per that field's contract).
+# Constraining the sampler is what makes Pass 1 output schema-valid by
+# construction rather than by hope: an unparseable object is not a token
+# sequence this grammar can produce.
+#
+# Two things this grammar enforces that the prompt only asks for:
+#
+#   * `evidence` is a NON-EMPTY array. An uncited fact is not expressible.
+#   * Every key is present and in a fixed order, so `serde` sees all eight
+#     categories and the model spends no tokens deciding what to emit next.
+#
+# It deliberately does NOT offer an `id` field: item identity is assigned by
+# `airo_mind_meeting`, never by the model (see `ir.rs`).
+#
+# Keep in step with `crate::ir::Facts`. `tests/contracts.rs` checks that every
+# rule referenced here is defined and that `root` exists; the F1 harness
+# (MIND-LLM-11) is what checks it against a real model.
+
+root ::= "{" ws
+  "\"topics\":" ws topic-array "," ws
+  "\"observations\":" ws observation-array "," ws
+  "\"decisions\":" ws decision-array "," ws
+  "\"action_items\":" ws action-item-array "," ws
+  "\"metrics\":" ws metric-array "," ws
+  "\"risks\":" ws risk-array "," ws
+  "\"questions\":" ws question-array "," ws
+  "\"next_steps\":" ws next-step-array ws
+"}"
+
+topic-array ::= "[" ws (topic (ws "," ws topic)*)? ws "]"
+topic ::= "{" ws "\"title\":" ws string "," ws "\"evidence\":" ws evidence ws "}"
+
+observation-array ::= "[" ws (observation (ws "," ws observation)*)? ws "]"
+observation ::= "{" ws "\"statement\":" ws string "," ws "\"evidence\":" ws evidence ws "}"
+
+decision-array ::= "[" ws (decision (ws "," ws decision)*)? ws "]"
+decision ::= "{" ws "\"statement\":" ws string "," ws "\"status\":" ws decision-status "," ws "\"evidence\":" ws evidence ws "}"
+decision-status ::= "\"proposed\"" | "\"agreed\"" | "\"rejected\"" | "\"deferred\""
+
+action-item-array ::= "[" ws (action-item (ws "," ws action-item)*)? ws "]"
+action-item ::= "{" ws "\"task\":" ws string "," ws "\"owner\":" ws nullable-string "," ws "\"due\":" ws nullable-string "," ws "\"status\":" ws action-status "," ws "\"evidence\":" ws evidence ws "}"
+action-status ::= "\"open\"" | "\"in_progress\"" | "\"done\"" | "\"blocked\""
+
+metric-array ::= "[" ws (metric (ws "," ws metric)*)? ws "]"
+metric ::= "{" ws "\"name\":" ws string "," ws "\"value\":" ws string "," ws "\"evidence\":" ws evidence ws "}"
+
+risk-array ::= "[" ws (risk (ws "," ws risk)*)? ws "]"
+risk ::= "{" ws "\"statement\":" ws string "," ws "\"evidence\":" ws evidence ws "}"
+
+question-array ::= "[" ws (question (ws "," ws question)*)? ws "]"
+question ::= "{" ws "\"question\":" ws string "," ws "\"answer\":" ws nullable-string "," ws "\"evidence\":" ws evidence ws "}"
+
+next-step-array ::= "[" ws (next-step (ws "," ws next-step)*)? ws "]"
+next-step ::= "{" ws "\"statement\":" ws string "," ws "\"evidence\":" ws evidence ws "}"
+
+# Non-empty by construction: at least one segment id, always.
+evidence ::= "[" ws string (ws "," ws string)* ws "]"
+
+nullable-string ::= "null" | string
+string ::= "\"" char* "\""
+char ::= [^"\\\x00-\x1F] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
+hex ::= [0-9a-fA-F]
+ws ::= [ \t\n]*

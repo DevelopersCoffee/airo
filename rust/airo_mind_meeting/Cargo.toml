@@ -1,0 +1,36 @@
+[package]
+name = "airo_mind_meeting"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind Meeting capability — Meeting IR schema and two-pass evidence-grounded extraction. #1633."
+license = "MIT"
+
+[lib]
+name = "airo_mind_meeting"
+# rlib only, and deliberately no FFI surface. This crate is the *capability*
+# above the runtime's engine boundary (`C5`): it owns the prompt, the grammar,
+# the output schema and the meeting vocabulary, and it drives a
+# `&dyn GenerationEngine` it does not construct. Whichever cdylib owns a real
+# engine (`airo_mind_llama`) links this and exposes it to Dart; nothing here
+# needs its own bridge, and declaring one would link a second empty artifact
+# on every CI push (same reasoning as `airo_mind`'s Cargo.toml).
+crate-type = ["rlib"]
+
+[dependencies]
+# The engine boundary only. NOT `airo_mind_llama`: depending on the llama
+# cdylib would drag cmake and a vendored ggml into every build of this crate,
+# including the ones that only want to parse an IR. Extraction is written
+# against `GenerationEngine`, so the real engine and the test double are the
+# same shape to it.
+airo_mind_core = { path = "../airo_mind_core" }
+# `Chunk` and `ProcessedTranscript` (#1632). Pass 1 consumes chunks as
+# produced; this crate never re-chunks.
+airo_mind_transcript = { path = "../airo_mind_transcript" }
+# Already in the workspace lockfile via `airo_core` and `airo_mind`; no new
+# tree. The IR is a wire format with a published JSON Schema, so it is
+# serde-shaped rather than hand-written.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

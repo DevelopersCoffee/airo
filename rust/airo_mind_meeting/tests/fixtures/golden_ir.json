@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "meeting": {
+    "id": "meeting-1633-reference",
+    "title": "Signaling capacity review",
+    "started_at_ms": 0,
+    "ended_at_ms": 59500,
+    "chunk_count": 4,
+    "segment_count": 12,
+    "model_id": "model-under-test@0.0.0",
+    "prompt_version": "chunk_facts.v1"
+  },
+  "topics": [
+    { "id": "topic-0", "title": "Temporal signaling limit", "evidence": ["s0"] }
+  ],
+  "observations": [],
+  "decisions": [
+    {
+      "id": "decision-0",
+      "statement": "move signaling onto the queue before the release",
+      "status": "agreed",
+      "evidence": ["s4"]
+    }
+  ],
+  "action_items": [
+    {
+      "id": "action_item-0",
+      "task": "check the Temporal signaling limit",
+      "owner": null,
+      "due": "Friday",
+      "status": "open",
+      "evidence": ["s3", "s6", "s9"]
+    },
+    {
+      "id": "action_item-1",
+      "task": "update the runbook",
+      "owner": "Dev",
+      "due": "Friday",
+      "status": "done",
+      "evidence": ["s7", "s10"]
+    }
+  ],
+  "metrics": [
+    {
+      "id": "metric-0",
+      "name": "signals per day",
+      "value": "about 500,000",
+      "evidence": ["s1"]
+    }
+  ],
+  "risks": [
+    {
+      "id": "risk-0",
+      "statement": "the migration doubles the event volume",
+      "evidence": ["s8"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "question-0",
+      "question": "What is the documented Temporal signaling limit?",
+      "answer": null,
+      "evidence": ["s2"]
+    }
+  ],
+  "next_steps": [
+    {
+      "id": "next_step-0",
+      "statement": "review the rollout plan",
+      "evidence": ["s11"]
+    }
+  ]
+}

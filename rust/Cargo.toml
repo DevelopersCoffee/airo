@@ -4,6 +4,7 @@ members = [
   "airo_mind",
   "airo_mind_core",
   "airo_mind_llama",
+  "airo_mind_meeting",
   "airo_mind_transcript",
   "airo_mind_whisper",
 ]
