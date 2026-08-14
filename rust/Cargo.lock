@@ -98,6 +98,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "airo_mind_meeting"
+version = "0.1.0"
+dependencies = [
+ "airo_mind_core",
+ "airo_mind_transcript",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "airo_mind_transcript"
 version = "0.1.0"
 

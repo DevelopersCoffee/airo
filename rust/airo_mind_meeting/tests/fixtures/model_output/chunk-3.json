@@ -1,0 +1,14 @@
+{
+  "topics": [],
+  "observations": [],
+  "decisions": [],
+  "action_items": [
+    { "task": "ask the Temporal team about signaling", "owner": "Sameer", "due": null, "status": "open", "evidence": ["s9"] }
+  ],
+  "metrics": [],
+  "risks": [],
+  "questions": [],
+  "next_steps": [
+    { "statement": "review the rollout plan", "evidence": ["s11"] }
+  ]
+}

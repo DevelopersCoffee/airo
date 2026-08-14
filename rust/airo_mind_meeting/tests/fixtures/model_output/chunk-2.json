@@ -1,0 +1,17 @@
+{
+  "topics": [],
+  "observations": [
+    { "statement": "the runbook update was finished off-camera", "evidence": ["s42"] }
+  ],
+  "decisions": [],
+  "action_items": [
+    { "task": "confirm the Temporal signaling capacity", "owner": null, "due": "Friday", "status": "open", "evidence": ["s6"] },
+    { "task": "update the runbook", "owner": "Dev", "due": "Friday", "status": "done", "evidence": ["s7", "s10"] }
+  ],
+  "metrics": [],
+  "risks": [
+    { "statement": "the migration doubles the event volume", "evidence": ["s8"] }
+  ],
+  "questions": [],
+  "next_steps": []
+}

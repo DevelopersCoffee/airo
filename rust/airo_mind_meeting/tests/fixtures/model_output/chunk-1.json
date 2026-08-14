@@ -1,0 +1,16 @@
+{
+  "topics": [],
+  "observations": [],
+  "decisions": [
+    { "statement": "move signaling onto the queue before the release", "status": "agreed", "evidence": ["s4"] }
+  ],
+  "action_items": [
+    { "task": "check the Temporal signaling limit", "owner": null, "due": null, "status": "open", "evidence": ["s3"] },
+    { "task": "confirm the Temporal signaling capacity", "owner": null, "due": "Friday", "status": "open", "evidence": ["s6"] },
+    { "task": "update the runbook", "owner": "Dev", "due": "Friday", "status": "open", "evidence": ["s7"] }
+  ],
+  "metrics": [],
+  "risks": [],
+  "questions": [],
+  "next_steps": []
+}
