@@ -8,8 +8,10 @@
 //! from one chunk at a time, each citing the segment ids it came from. Pass 2
 //! consolidates those facts into one meeting IR. Neither pass produces prose.
 //! Minutes, action-item lists and meeting search are *projections* of the IR,
-//! built elsewhere (`#1634` onward) — a projection can be regenerated, argued
+//! built elsewhere (`#1635` onward) — a projection can be regenerated, argued
 //! with, and traced back to a timestamp in the recording. A summary cannot.
+//! [`validate`] (`#1634`) is the gate every IR passes through before any
+//! projection is allowed to read it, still with no model in the loop.
 //!
 //! # Where this sits
 //!
@@ -17,7 +19,8 @@
 //! airo_mind_whisper  #1629   audio        -> segments
 //! airo_mind_transcript #1632 segments     -> normalized text + chunks (segment_ids)
 //! airo_mind_meeting  #1633   chunks       -> MeetingIr          <- this crate
-//! (projections)      #1634+  MeetingIr    -> minutes / actions / search
+//! airo_mind_meeting  #1634   MeetingIr    -> ValidationReport   <- this crate
+//! (projections)      #1635+  MeetingIr    -> minutes / actions / search
 //! ```
 //!
 //! It is the **capability**, above the runtime's engine boundary. `C5` keeps
@@ -48,6 +51,7 @@ pub mod ir;
 pub mod pass1;
 pub mod pass2;
 pub mod prompt;
+pub mod validate;
 
 use std::collections::BTreeMap;
 
@@ -63,6 +67,7 @@ pub use ir::{
 pub use pass1::{extract_chunk, ExtractionConfig};
 pub use pass2::consolidate;
 pub use prompt::{CHUNK_FACTS_GRAMMAR, PROMPT_VERSION};
+pub use validate::{validate, Severity, ValidationReport, Violation};
 
 /// Why extraction could not finish at all.
 ///
