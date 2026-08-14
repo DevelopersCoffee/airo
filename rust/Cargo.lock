@@ -70,6 +70,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "airo_mind_transcript"
+version = "0.1.0"
+
+[[package]]
 name = "airo_mind_whisper"
 version = "0.1.0"
 dependencies = [
