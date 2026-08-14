@@ -74,6 +74,8 @@ version = "0.1.0"
 dependencies = [
  "airo_mind_core",
  "flutter_rust_bridge",
+ "serde",
+ "serde_json",
  "whisper-rs",
 ]
 

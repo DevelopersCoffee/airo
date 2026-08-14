@@ -41,15 +41,48 @@ use flutter_rust_bridge::frb;
 // compile.
 use crate::frb_generated::StreamSink;
 
+use crate::transcript_store;
 use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
 use airo_mind_core::{
     AudioInput, CancelToken, Meeting, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    TranscriptSegment,
 };
 
 // ---------------------------------------------------------------------------
 // Wire types
 // ---------------------------------------------------------------------------
+
+/// Which speech model to resolve. Mirrors `airo_mind_core::models::
+/// ModelLanguage` rather than re-exporting it: that type lives below the
+/// Model Manager boundary (`ADR-0018 §4`), and the wire contract is allowed to
+/// diverge from the storage/resolution type the same way `MeetingRecord`
+/// already diverges from `Meeting`.
+///
+/// `#1629`: Hindi+English code-switching needs the multilingual weights: the
+/// bundled `.en` model is architecturally incapable of any language but
+/// English. Choosing `Multilingual` here only resolves a different registry
+/// row — it does not download anything by itself, and `initialize` reports
+/// `NotInstalled` naming the missing multilingual weight file the same way it
+/// would for any other unresolved model (`ADR-0018 §4`: that name is the
+/// Model Manager's to know, not this capability's). Wiring an install/
+/// preference flow for this is #1664's job; this is the mechanism it selects
+/// through.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SpeechLanguage {
+    #[default]
+    EnglishOnly,
+    Multilingual,
+}
+
+impl From<SpeechLanguage> for models::ModelLanguage {
+    fn from(language: SpeechLanguage) -> Self {
+        match language {
+            SpeechLanguage::EnglishOnly => Self::EnglishOnly,
+            SpeechLanguage::Multilingual => Self::Multilingual,
+        }
+    }
+}
 
 /// Where the models and the store live. Supplied by Dart, which owns the
 /// platform's notion of an application directory.
@@ -62,6 +95,9 @@ pub struct MindConfig {
     /// Admission ceiling for the Supervisor (`C6`). A device that cannot afford
     /// the model is told so before anything allocates.
     pub memory_budget_mb: u32,
+    /// `#1629`. Defaults to `EnglishOnly` on the Dart side, so every existing
+    /// caller keeps today's behaviour unchanged.
+    pub speech_language: SpeechLanguage,
 }
 
 /// A stored meeting, flattened for the bridge.
@@ -76,6 +112,23 @@ pub struct MeetingRecord {
     pub transcript: String,
     pub minutes: String,
     pub model: String,
+}
+
+/// Builds the `index`th [TranscriptSegmentRecord] for a recording from the
+/// engine's raw [TranscriptSegment].
+///
+/// Pulled out of `transcribe_recording` so the id scheme (`"s{index}"`) and
+/// the fact that `start_ms`/`end_ms`/`text` pass through unchanged can be
+/// tested without a loaded model or a live `StreamSink` — `#1629`'s gap was
+/// exactly this step silently dropping the timestamps, so it gets its own
+/// name and its own tests.
+fn transcript_segment_record(index: usize, segment: &TranscriptSegment) -> TranscriptSegmentRecord {
+    TranscriptSegmentRecord {
+        id: format!("s{index}"),
+        start_ms: segment.start_ms,
+        end_ms: segment.end_ms,
+        text: segment.text.trim().to_string(),
+    }
 }
 
 impl From<Meeting> for MeetingRecord {
@@ -99,12 +152,36 @@ pub struct SearchHit {
     pub snippet: String,
 }
 
+/// One transcript segment, with the evidence-grounding fields `#1657` needs:
+/// a stable id and the audio timestamps whisper produced.
+///
+/// `id` is a sequence number scoped to this recording (`"s0"`, `"s1"`, …)
+/// rather than a UUID — it is stable across the one transcription run that
+/// produced it (segment 3 is always segment 3 for this recording) and free to
+/// compute, which is all an evidence link back to an audio timestamp needs.
+/// `start_ms`/`end_ms` are whisper's own segment timestamps
+/// (`WhisperSpeechEngine`, `rust/airo_mind_whisper/src/whisper.rs`), carried
+/// through rather than recomputed here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptSegmentRecord {
+    pub id: String,
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub text: String,
+}
+
 /// Transcription progress, as it happens.
 pub enum TranscriptEvent {
     /// One transcript segment, as whisper produced it.
-    Transcribing { text: String },
-    /// The joined transcript. The UI can stop appending and start displaying.
-    TranscriptReady { text: String },
+    Transcribing { segment: TranscriptSegmentRecord },
+    /// The joined transcript, plus every segment that produced it, in order.
+    /// The flat `text` stays for callers that only want to display it; the UI
+    /// case that needs a fact to point back at an audio timestamp reads
+    /// `segments` instead of re-deriving them.
+    TranscriptReady {
+        text: String,
+        segments: Vec<TranscriptSegmentRecord>,
+    },
     /// The user navigated away. Nothing was saved.
     Cancelled,
 }
@@ -117,6 +194,12 @@ pub enum TranscriptEvent {
 /// transcription holds this lock for the length of a recording, and search must
 /// not queue behind it.
 static ENGINES: Mutex<Option<Supervisor>> = Mutex::new(None);
+
+/// `logical_id@version` of whichever speech model `initialize` resolved.
+/// `#1629` Gap D: `transcript.json` records which model produced a transcript
+/// for reproducibility, and this is the only place that identity is known —
+/// `WhisperSpeechEngine` itself is handed a path, never a logical id.
+static SPEECH_MODEL_VERSION: Mutex<Option<String>> = Mutex::new(None);
 
 /// The store and its projection.
 static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
@@ -157,6 +240,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
             task: models::ModelTask::Speech,
             memory_budget_mb: config.memory_budget_mb,
             minimum_quality: models::ModelQuality::Draft,
+            language: config.speech_language.into(),
         },
         models_dir,
         &[],
@@ -177,6 +261,10 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     let index = SearchIndex::rebuild(&store.all().map_err(|e| e.to_string())?);
 
     *lock(&ENGINES) = Some(supervisor);
+    *lock(&SPEECH_MODEL_VERSION) = Some(format!(
+        "{}@{}",
+        speech_model.logical_id, speech_model.version
+    ));
     *lock(&LIBRARY) = Some(Library { store, index });
     Ok(())
 }
@@ -208,6 +296,7 @@ pub fn transcribe_recording(
     *lock(&CANCEL) = Some(cancel.clone());
 
     let mut transcript = String::new();
+    let mut segments: Vec<TranscriptSegmentRecord> = Vec::new();
     {
         let mut engines = lock(&ENGINES);
         let supervisor = engines.as_mut().ok_or("Airo Mind is not initialised")?;
@@ -224,11 +313,14 @@ pub fn transcribe_recording(
                     transcript.push(' ');
                 }
                 transcript.push_str(segment.text.trim());
+                // The id is the segment's position in *this* recording, so it
+                // stays stable across the run that produced it without this
+                // capability inventing an id scheme the store does not have.
+                let record = transcript_segment_record(segments.len(), &segment);
+                segments.push(record.clone());
                 // Emitting per segment is the point: a ten-minute recording
                 // shows text within seconds instead of after the whole file.
-                let _ = sink.add(TranscriptEvent::Transcribing {
-                    text: segment.text.clone(),
-                });
+                let _ = sink.add(TranscriptEvent::Transcribing { segment: record });
                 Ok(())
             },
         );
@@ -242,10 +334,45 @@ pub fn transcribe_recording(
     if transcript.trim().is_empty() {
         return Err("No speech was found in the recording.".into());
     }
-    emit(TranscriptEvent::TranscriptReady { text: transcript })
+    emit(TranscriptEvent::TranscriptReady {
+        text: transcript,
+        segments,
+    })
 }
 
-/// Makes a meeting durable and searchable. Returns its id.
+/// A meeting's transcript, in the reproducible shape `#1629` Gap D asks for:
+/// the segments that produced the flat transcript string, which speech model
+/// produced them, and which audio file they came from.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptDocumentRecord {
+    pub meeting_id: String,
+    pub audio_path: String,
+    pub model_version: String,
+    pub segments: Vec<TranscriptSegmentRecord>,
+}
+
+impl From<transcript_store::TranscriptDocument> for TranscriptDocumentRecord {
+    fn from(doc: transcript_store::TranscriptDocument) -> Self {
+        Self {
+            meeting_id: doc.meeting_id,
+            audio_path: doc.audio_path,
+            model_version: doc.model_version,
+            segments: doc
+                .segments
+                .into_iter()
+                .map(|s| TranscriptSegmentRecord {
+                    id: s.id,
+                    start_ms: s.start_ms,
+                    end_ms: s.end_ms,
+                    text: s.text,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// Makes a meeting durable and searchable, and persists its structured
+/// transcript document. Returns the meeting's id.
 ///
 /// Separate from transcription because the minutes come from the other library.
 /// The ordering below is a contract, not an implementation detail: an index
@@ -257,12 +384,20 @@ pub fn transcribe_recording(
 /// (`ADR-0018 §5`), supplied by the generation library. An LLM is not
 /// deterministic across versions, so what produced a summary is stored, not
 /// inferred later.
+///
+/// `segments` and `audio_path` are `#1629` Gap D: written to a per-meeting
+/// `transcript.json` (`transcript_store`) after the flat `Meeting` record is
+/// durable, so the ASR step is reproducible — which model produced these
+/// segments, from which recording — independent of the append-only log's flat
+/// string.
 pub fn save_meeting(
     title: String,
     recorded_at_ms: u64,
     transcript: String,
     minutes: String,
     model: String,
+    segments: Vec<TranscriptSegmentRecord>,
+    audio_path: String,
 ) -> Result<String, String> {
     let meeting = Meeting {
         id: format!("m{recorded_at_ms}"),
@@ -278,7 +413,36 @@ pub fn save_meeting(
     // Durable before the projection.
     library.store.save(&meeting).map_err(|e| e.to_string())?;
     library.index.insert(&meeting);
+
+    let model_version = lock(&SPEECH_MODEL_VERSION)
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
+    let doc = transcript_store::TranscriptDocument {
+        meeting_id: meeting.id.clone(),
+        audio_path,
+        model_version,
+        segments: segments
+            .into_iter()
+            .map(|s| transcript_store::StoredSegment {
+                id: s.id,
+                start_ms: s.start_ms,
+                end_ms: s.end_ms,
+                text: s.text,
+            })
+            .collect(),
+    };
+    transcript_store::write(library.store.path(), &doc)?;
+
     Ok(meeting.id)
+}
+
+/// Reopens a meeting's structured transcript document — the segments, model
+/// version and audio reference `save_meeting` persisted. `Ok(None)` for a
+/// meeting saved before this feature shipped, or one with no matching id.
+pub fn get_transcript(meeting_id: String) -> Result<Option<TranscriptDocumentRecord>, String> {
+    let library = lock(&LIBRARY);
+    let library = library.as_ref().ok_or("Airo Mind is not initialised")?;
+    Ok(transcript_store::read(library.store.path(), &meeting_id)?.map(Into::into))
 }
 
 /// Stops the in-flight transcription at the next segment.
@@ -337,6 +501,84 @@ pub fn get_meeting(id: String) -> Result<Option<MeetingRecord>, String> {
 mod tests {
     use super::*;
 
+    /// `#1629`: `transcribe_recording` computed `start_ms`/`end_ms` correctly
+    /// at the engine layer (`WhisperSpeechEngine`) but discarded them before
+    /// they reached `TranscriptEvent`. This test pins the fix at the smallest
+    /// unit that can prove it without a loaded model: given raw engine
+    /// segments in the order whisper would produce them, the ids are
+    /// sequential and stable, and the timestamps/text survive unchanged.
+    #[test]
+    fn transcript_segment_record_preserves_timestamps_text_and_order() {
+        let raw = [
+            TranscriptSegment {
+                start_ms: 0,
+                end_ms: 1_200,
+                text: "  the deploy is blocked  ".into(),
+            },
+            TranscriptSegment {
+                start_ms: 1_200,
+                end_ms: 3_450,
+                text: "on the migration".into(),
+            },
+            TranscriptSegment {
+                start_ms: 3_450,
+                end_ms: 5_000,
+                text: "Raj is looking at it".into(),
+            },
+        ];
+
+        let records: Vec<TranscriptSegmentRecord> = raw
+            .iter()
+            .enumerate()
+            .map(|(i, s)| transcript_segment_record(i, s))
+            .collect();
+
+        assert_eq!(
+            records.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            ["s0", "s1", "s2"],
+            "ids are sequential and stable within one recording"
+        );
+        assert_eq!(
+            records.iter().map(|r| r.start_ms).collect::<Vec<_>>(),
+            [0, 1_200, 3_450],
+            "start_ms is not the field that goes missing any more"
+        );
+        assert_eq!(
+            records.iter().map(|r| r.end_ms).collect::<Vec<_>>(),
+            [1_200, 3_450, 5_000],
+            "end_ms is not the field that goes missing any more"
+        );
+        // Segment boundaries are contiguous and non-decreasing: this is the
+        // shape #1657's evidence links need to be trustworthy at all.
+        for pair in records.windows(2) {
+            assert!(
+                pair[0].end_ms <= pair[1].start_ms,
+                "segments must not overlap or reorder: {:?} then {:?}",
+                pair[0],
+                pair[1]
+            );
+        }
+        assert_eq!(records[0].text, "the deploy is blocked", "text is trimmed");
+        assert_eq!(records[1].text, "on the migration");
+        assert_eq!(records[2].text, "Raj is looking at it");
+    }
+
+    #[test]
+    fn transcript_segment_record_handles_a_single_segment_recording() {
+        let record = transcript_segment_record(
+            0,
+            &TranscriptSegment {
+                start_ms: 0,
+                end_ms: 900,
+                text: "hello".into(),
+            },
+        );
+        assert_eq!(record.id, "s0");
+        assert_eq!(record.start_ms, 0);
+        assert_eq!(record.end_ms, 900);
+        assert_eq!(record.text, "hello");
+    }
+
     /// Every call must say what is wrong rather than panicking on `None`, since
     /// on a device "the model did not load" is the common state, not the
     /// exceptional one.
@@ -350,7 +592,17 @@ mod tests {
         assert!(list_meetings().is_err());
         assert!(search_meetings("anything".into()).is_err());
         assert!(get_meeting("nope".into()).is_err());
-        assert!(save_meeting("t".into(), 0, "x".into(), "y".into(), "m".into()).is_err());
+        assert!(save_meeting(
+            "t".into(),
+            0,
+            "x".into(),
+            "y".into(),
+            "m".into(),
+            Vec::new(),
+            "rec.wav".into(),
+        )
+        .is_err());
+        assert!(get_transcript("nope".into()).is_err());
         // Cancelling with nothing in flight is a no-op, not a crash: the user
         // can press Stop on a screen whose job already finished.
         cancel_processing();

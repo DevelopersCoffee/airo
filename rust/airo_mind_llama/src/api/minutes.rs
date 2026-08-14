@@ -96,6 +96,10 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
             task: models::ModelTask::Generation,
             memory_budget_mb: config.memory_budget_mb,
             minimum_quality: models::ModelQuality::Draft,
+            // Not meaningful for `Generation` — `resolve` only compares
+            // language for `Speech` — stated explicitly rather than relying on
+            // that fact silently, in case that ever changes.
+            language: models::ModelLanguage::default(),
         },
         models_dir,
         &[],

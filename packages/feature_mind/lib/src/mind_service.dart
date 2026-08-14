@@ -61,6 +61,7 @@ class MindProgress {
     required this.stage,
     this.transcript = '',
     this.minutes = '',
+    this.segments = const [],
     this.meetingId,
     this.error,
   });
@@ -68,6 +69,12 @@ class MindProgress {
   final MindStage stage;
   final String transcript;
   final String minutes;
+
+  /// The segments behind [transcript], each carrying the audio timestamp it
+  /// came from. `#1629` Gap D: carried through `process()` so `saveMeeting`
+  /// can persist them into `transcript.json`, not just accumulated into the
+  /// flat string for the UI.
+  final List<TranscriptSegment> segments;
   final String? meetingId;
   final String? error;
 
@@ -75,6 +82,7 @@ class MindProgress {
     MindStage? stage,
     String? transcript,
     String? minutes,
+    List<TranscriptSegment>? segments,
     String? meetingId,
     String? error,
   }) {
@@ -82,6 +90,7 @@ class MindProgress {
       stage: stage ?? this.stage,
       transcript: transcript ?? this.transcript,
       minutes: minutes ?? this.minutes,
+      segments: segments ?? this.segments,
       meetingId: meetingId ?? this.meetingId,
       error: error ?? this.error,
     );
@@ -137,7 +146,14 @@ class MindService {
   /// Returns a status rather than throwing: on a real device "the models are
   /// not downloaded yet" is the ordinary first-run state, and an exception
   /// would make the app's normal opening move look like a crash.
-  Future<MindStatus> initialize() async {
+  /// [speechLanguage] is `#1629`: defaults to the bundled English-only model,
+  /// unchanged from before this parameter existed. Passing `multilingual`
+  /// requires the multilingual weights to already be installed — this method
+  /// does not acquire them; it only asks the Model Manager to resolve against
+  /// them. Choosing this per user is #1664's job.
+  Future<MindStatus> initialize({
+    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
+  }) async {
     try {
       // Only the speech library. Generation is loaded on first use — see
       // `process`.
@@ -200,6 +216,7 @@ class MindService {
         // Admission ceiling, not an allocation. The Supervisor refuses a
         // model it cannot afford before anything is loaded.
         memoryBudgetMb: 4096,
+        speechLanguage: speechLanguage,
       );
       return const MindStatus.ready();
     } on Object catch (e) {
@@ -317,12 +334,15 @@ class MindService {
               stage: MindStage.transcribing,
               transcript: _append(progress.transcript, text),
             );
-          // The joined transcript from Rust replaces what was accumulated, so a
-          // dropped segment cannot leave the two out of step.
-          case TranscriptEventTranscriptReady(:final text):
+          // The joined transcript AND segment list from Rust replace what was
+          // accumulated, so a dropped segment cannot leave transcript,
+          // segments and the eventual transcript.json out of step (`#1629`
+          // Gap D needs `segments` to reach `saveMeeting` intact).
+          case TranscriptEventTranscriptReady(:final text, :final segments):
             progress = progress.copyWith(
               stage: MindStage.generating,
               transcript: text,
+              segments: segments,
             );
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
@@ -371,6 +391,8 @@ class MindService {
         transcript: progress.transcript,
         minutes: progress.minutes,
         model: _generation.modelId(),
+        segments: progress.segments,
+        wavPath: wavPath,
       );
       yield progress.copyWith(stage: MindStage.done, meetingId: meetingId);
     } on Object catch (e) {
@@ -415,6 +437,12 @@ class MindService {
   }
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
+
+  /// `#1629` Gap D's reload half — the structured transcript document a prior
+  /// `process()` call persisted for [meetingId], or `null` if none exists
+  /// (a meeting saved before this feature shipped, or an unknown id).
+  Future<rust.TranscriptDocumentRecord?> transcriptDocument(String meetingId) =>
+      _speech.getTranscript(meetingId);
 
   /// Releases the microphone and the model provider. The provider matters
   /// because the download-backed one holds a subscription to the platform
