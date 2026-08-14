@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 77687079;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 191481972;
 
 // Section: executor
 
@@ -103,6 +103,39 @@ fn wire__crate__api__meetings__get_meeting_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::meetings::get_meeting(api_id)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__get_transcript_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_transcript",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_meeting_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::meetings::get_transcript(api_meeting_id)?;
                     Ok(output_ok)
                 })())
             }
@@ -262,6 +295,9 @@ fn wire__crate__api__meetings__save_meeting_impl(
             let api_transcript = <String>::sse_decode(&mut deserializer);
             let api_minutes = <String>::sse_decode(&mut deserializer);
             let api_model = <String>::sse_decode(&mut deserializer);
+            let api_segments =
+                <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(&mut deserializer);
+            let api_audio_path = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
@@ -271,6 +307,8 @@ fn wire__crate__api__meetings__save_meeting_impl(
                         api_transcript,
                         api_minutes,
                         api_model,
+                        api_segments,
+                        api_audio_path,
                     )?;
                     Ok(output_ok)
                 })())
@@ -305,6 +343,39 @@ fn wire__crate__api__meetings__search_meetings_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::meetings::search_meetings(api_query)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__speech_language_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "speech_language_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::meetings::SpeechLanguage::default())?;
                     Ok(output_ok)
                 })())
             }
@@ -423,6 +494,13 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for crate::api::setup::InstalledModel {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -503,6 +581,20 @@ impl SseDecode for Vec<crate::api::meetings::SearchHit> {
     }
 }
 
+impl SseDecode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::meetings::TranscriptSegmentRecord>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -529,10 +621,13 @@ impl SseDecode for crate::api::meetings::MindConfig {
         let mut var_modelsDir = <String>::sse_decode(deserializer);
         let mut var_storePath = <String>::sse_decode(deserializer);
         let mut var_memoryBudgetMb = <u32>::sse_decode(deserializer);
+        let mut var_speechLanguage =
+            <crate::api::meetings::SpeechLanguage>::sse_decode(deserializer);
         return crate::api::meetings::MindConfig {
             models_dir: var_modelsDir,
             store_path: var_storePath,
             memory_budget_mb: var_memoryBudgetMb,
+            speech_language: var_speechLanguage,
         };
     }
 }
@@ -544,6 +639,19 @@ impl SseDecode for Option<crate::api::meetings::MeetingRecord> {
             return Some(<crate::api::meetings::MeetingRecord>::sse_decode(
                 deserializer,
             ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::meetings::TranscriptDocumentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(
+                <crate::api::meetings::TranscriptDocumentRecord>::sse_decode(deserializer),
+            );
         } else {
             return None;
         }
@@ -580,18 +688,55 @@ impl SseDecode for crate::api::meetings::SearchHit {
     }
 }
 
+impl SseDecode for crate::api::meetings::SpeechLanguage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::meetings::SpeechLanguage::EnglishOnly,
+            1 => crate::api::meetings::SpeechLanguage::Multilingual,
+            _ => unreachable!("Invalid variant for SpeechLanguage: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::TranscriptDocumentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_meetingId = <String>::sse_decode(deserializer);
+        let mut var_audioPath = <String>::sse_decode(deserializer);
+        let mut var_modelVersion = <String>::sse_decode(deserializer);
+        let mut var_segments =
+            <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(deserializer);
+        return crate::api::meetings::TranscriptDocumentRecord {
+            meeting_id: var_meetingId,
+            audio_path: var_audioPath,
+            model_version: var_modelVersion,
+            segments: var_segments,
+        };
+    }
+}
+
 impl SseDecode for crate::api::meetings::TranscriptEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
-                let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::meetings::TranscriptEvent::Transcribing { text: var_text };
+                let mut var_segment =
+                    <crate::api::meetings::TranscriptSegmentRecord>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::Transcribing {
+                    segment: var_segment,
+                };
             }
             1 => {
                 let mut var_text = <String>::sse_decode(deserializer);
-                return crate::api::meetings::TranscriptEvent::TranscriptReady { text: var_text };
+                let mut var_segments =
+                    <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::TranscriptReady {
+                    text: var_text,
+                    segments: var_segments,
+                };
             }
             2 => {
                 return crate::api::meetings::TranscriptEvent::Cancelled;
@@ -600,6 +745,22 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseDecode for crate::api::meetings::TranscriptSegmentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_startMs = <u64>::sse_decode(deserializer);
+        let mut var_endMs = <u64>::sse_decode(deserializer);
+        let mut var_text = <String>::sse_decode(deserializer);
+        return crate::api::meetings::TranscriptSegmentRecord {
+            id: var_id,
+            start_ms: var_startMs,
+            end_ms: var_endMs,
+            text: var_text,
+        };
     }
 }
 
@@ -629,13 +790,6 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
-impl SseDecode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
-    }
-}
-
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -646,15 +800,22 @@ fn pde_ffi_dispatcher_primary_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         2 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        9 => {
+        3 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__meetings__speech_language_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        11 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        10 => {
+        12 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -670,7 +831,7 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         1 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -732,6 +893,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::MindConfig {
             self.models_dir.into_into_dart().into_dart(),
             self.store_path.into_into_dart().into_dart(),
             self.memory_budget_mb.into_into_dart().into_dart(),
+            self.speech_language.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -793,15 +955,62 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::SearchHit>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::SpeechLanguage {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::EnglishOnly => 0.into_dart(),
+            Self::Multilingual => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::SpeechLanguage
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::SpeechLanguage>
+    for crate::api::meetings::SpeechLanguage
+{
+    fn into_into_dart(self) -> crate::api::meetings::SpeechLanguage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptDocumentRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.meeting_id.into_into_dart().into_dart(),
+            self.audio_path.into_into_dart().into_dart(),
+            self.model_version.into_into_dart().into_dart(),
+            self.segments.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptDocumentRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptDocumentRecord>
+    for crate::api::meetings::TranscriptDocumentRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptDocumentRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
-                [0.into_dart(), text.into_into_dart().into_dart()].into_dart()
+            crate::api::meetings::TranscriptEvent::Transcribing { segment } => {
+                [0.into_dart(), segment.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
-                [1.into_dart(), text.into_into_dart().into_dart()].into_dart()
-            }
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => [
+                1.into_dart(),
+                text.into_into_dart().into_dart(),
+                segments.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             crate::api::meetings::TranscriptEvent::Cancelled => [2.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
@@ -817,6 +1026,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptEvent>
     for crate::api::meetings::TranscriptEvent
 {
     fn into_into_dart(self) -> crate::api::meetings::TranscriptEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptSegmentRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.start_ms.into_into_dart().into_dart(),
+            self.end_ms.into_into_dart().into_dart(),
+            self.text.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptSegmentRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptSegmentRecord>
+    for crate::api::meetings::TranscriptSegmentRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptSegmentRecord {
         self
     }
 }
@@ -851,6 +1083,13 @@ impl SseEncode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -914,6 +1153,16 @@ impl SseEncode for Vec<crate::api::meetings::SearchHit> {
     }
 }
 
+impl SseEncode for Vec<crate::api::meetings::TranscriptSegmentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::meetings::TranscriptSegmentRecord>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::meetings::MeetingRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -932,6 +1181,7 @@ impl SseEncode for crate::api::meetings::MindConfig {
         <String>::sse_encode(self.models_dir, serializer);
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
+        <crate::api::meetings::SpeechLanguage>::sse_encode(self.speech_language, serializer);
     }
 }
 
@@ -941,6 +1191,16 @@ impl SseEncode for Option<crate::api::meetings::MeetingRecord> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::api::meetings::MeetingRecord>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::meetings::TranscriptDocumentRecord> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::meetings::TranscriptDocumentRecord>::sse_encode(value, serializer);
         }
     }
 }
@@ -964,17 +1224,46 @@ impl SseEncode for crate::api::meetings::SearchHit {
     }
 }
 
+impl SseEncode for crate::api::meetings::SpeechLanguage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::meetings::SpeechLanguage::EnglishOnly => 0,
+                crate::api::meetings::SpeechLanguage::Multilingual => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::meetings::TranscriptDocumentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.meeting_id, serializer);
+        <String>::sse_encode(self.audio_path, serializer);
+        <String>::sse_encode(self.model_version, serializer);
+        <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_encode(self.segments, serializer);
+    }
+}
+
 impl SseEncode for crate::api::meetings::TranscriptEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::meetings::TranscriptEvent::Transcribing { text } => {
+            crate::api::meetings::TranscriptEvent::Transcribing { segment } => {
                 <i32>::sse_encode(0, serializer);
-                <String>::sse_encode(text, serializer);
+                <crate::api::meetings::TranscriptSegmentRecord>::sse_encode(segment, serializer);
             }
-            crate::api::meetings::TranscriptEvent::TranscriptReady { text } => {
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => {
                 <i32>::sse_encode(1, serializer);
                 <String>::sse_encode(text, serializer);
+                <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_encode(
+                    segments, serializer,
+                );
             }
             crate::api::meetings::TranscriptEvent::Cancelled => {
                 <i32>::sse_encode(2, serializer);
@@ -983,6 +1272,16 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
                 unimplemented!("");
             }
         }
+    }
+}
+
+impl SseEncode for crate::api::meetings::TranscriptSegmentRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <u64>::sse_encode(self.start_ms, serializer);
+        <u64>::sse_encode(self.end_ms, serializer);
+        <String>::sse_encode(self.text, serializer);
     }
 }
 
@@ -1010,13 +1309,6 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
-}
-
-impl SseEncode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
-    }
 }
 
 #[cfg(not(target_family = "wasm"))]

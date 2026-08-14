@@ -634,6 +634,15 @@ jobs:
           cd ../core_auth; flutter pub get
           cd ../../app; flutter pub get
 
+      # app/pubspec.yaml (used unmodified in this job) depends on feature_mind
+      # and core_native, both FFI plugins whose Windows build wires in
+      # cargokit -- it shells out to `cargo` for the host target. Same gap
+      # #1678/#1704 fixed for the Android/macOS jobs (#1705), no explicit
+      # `targets:` needed here since cargokit builds for the host triple on
+      # desktop, matching rust-core.yml's build-desktop job.
+      - name: Install Rust toolchain (for cargokit / feature_mind / core_native)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Run code generation
         run: |
           cd app
@@ -695,6 +704,15 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      # app/pubspec.yaml (used unmodified in this job) depends on feature_mind
+      # and core_native, both FFI plugins whose Linux build wires in cargokit
+      # -- it shells out to `cargo` for the host target. Same gap #1678/#1704
+      # fixed for the Android/macOS jobs (#1705), no explicit `targets:`
+      # needed here since cargokit builds for the host triple on desktop,
+      # matching rust-core.yml's build-desktop job.
+      - name: Install Rust toolchain (for cargokit / feature_mind / core_native)
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Run code generation
         run: |

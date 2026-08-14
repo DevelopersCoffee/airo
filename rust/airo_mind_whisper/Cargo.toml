@@ -31,12 +31,66 @@ airo_mind_core = { path = "../airo_mind_core" }
 # versions in one Flutter app is a link-time conflict, not a warning.
 flutter_rust_bridge = "=2.11.1"
 whisper-rs = { version = "0.16", optional = true }
+# `#1629` Gap D: `transcript.json` persistence. Not added to `airo_mind_core`
+# -- that crate is deliberately std-only so it stays safe to link into both
+# engine cdylibs (see its doc comment); this dependency lives only in the
+# crate that actually writes the file.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Metal acceleration, macOS only.
+#
+# Unlike llama.cpp (whose CMakeLists.txt defaults GGML_METAL to ON for every
+# Apple target regardless of any Rust-level feature), whisper.cpp's build does
+# NOT default it on: `whisper-rs-sys`'s build.rs explicitly sets
+# `GGML_METAL OFF` unless the crate's `metal` feature is present. So this
+# crate was genuinely CPU-only on macOS until this entry.
+#
+# This is a target-specific *addition* to the `whisper-rs` dependency above,
+# not a second copy of it -- Cargo unifies the feature set for a resolved
+# target across every table naming the dependency, and this table is gated on
+# `cfg(target_os = "macos")` so it never reaches the Android cargokit build
+# (`android-arm64` only, see `android/build.gradle`) or the default (no
+# `whisper` feature) boundary build. `whisper-rs`'s `WhisperContextParameters`
+# defaults `use_gpu` to `cfg!(feature = "_gpu")` (see
+# `whisper-rs-0.16.0/src/whisper_ctx.rs`), and both `metal`/`coreml` alias
+# that internal `_gpu` feature -- so enabling `metal` here is sufficient for
+# `WhisperContext::new_with_params(..., WhisperContextParameters::default())`
+# in `src/whisper.rs` to request GPU offload without any code change. iOS is
+# out of scope -- `packages/feature_mind/ios/feature_mind.podspec` documents
+# iOS as not building at all yet (#1546 phase 4).
+#
+# CoreML (`whisper-rs`'s `coreml` feature) is deliberately NOT enabled here.
+# `whisper-rs-sys`'s build.rs turns on `WHISPER_COREML` behind that feature
+# cleanly enough, but whisper.cpp's CoreML path needs a SECOND model artifact
+# alongside the GGML `.bin` weights -- a CoreML-compiled encoder
+# (`ggml-<model>-encoder.mlmodelc`, a directory, produced by whisper.cpp's
+# `generate-coreml-model.sh`) -- and this repo's model registry/download
+# pipeline (`airo_mind_core::models::Bundled`, the FRB `RequiredModel` bridge
+# struct, `packages/feature_mind/lib/src/models/download_model_provider.dart`)
+# is a strict one-file-per-model design with no slot for it. Turning the
+# feature on today would compile and link cleanly (`WHISPER_COREML_ALLOW_FALLBACK`
+# means a missing `.mlmodelc` falls back to Metal/CPU instead of crashing) but
+# would be permanently dead weight: nothing in the repo ever produces or
+# distributes that companion file. Tracked as a distinctly-scoped follow-up:
+# https://github.com/DevelopersCoffee/airo/issues/1723
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.16", optional = true, features = ["metal"] }
 
 [features]
 # CI keeps the default so a boundary check does not compile whisper.cpp.
 default = []
 # Real offline transcription. Requires cmake and a C++ toolchain.
 whisper = ["dep:whisper-rs"]
+# Documents the macOS Metal contract explicitly (see the target-specific
+# dependency table above); does not change what gets linked on macOS, since
+# Metal is already unified in automatically for `cfg(target_os = "macos")`
+# builds. Kept as a real, buildable feature name so `cargo build --features
+# "whisper,metal"` matches this milestone's stated acceptance check, and so a
+# non-macOS build has a named flag available (a no-op there, since the
+# target-specific table above simply does not apply). CoreML is intentionally
+# not exposed as a feature here -- see the comment above and issue #1723.
+metal = ["whisper"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

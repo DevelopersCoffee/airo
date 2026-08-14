@@ -58,6 +58,33 @@ void main() {
     });
   });
 
+  group('License compliance (#1630, #1718)', () {
+    test('the default catalog contains no Llama-licensed model', () {
+      expect(
+        ModelCatalog.bundledModels.where(
+          (m) =>
+              m.family == ModelFamily.llama ||
+              (m.license ?? '').toLowerCase().contains('llama'),
+        ),
+        isEmpty,
+        reason:
+            'Llama 3.2 Community License terms do not fit an unconditional '
+            'default registry -- see #1718.',
+      );
+    });
+
+    test('every bundled model declares a structured license string', () {
+      for (final model in ModelCatalog.bundledModels) {
+        expect(
+          model.license,
+          isNotNull,
+          reason: '${model.id} is missing structured license metadata.',
+        );
+        expect(model.license, isNotEmpty);
+      }
+    });
+  });
+
   group('EmbeddingGemma catalog entry', () {
     test('declares only the embeddings capability', () {
       final model = ModelCatalog.bundledModels.firstWhere(

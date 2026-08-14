@@ -4,6 +4,7 @@ import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/mind_service.dart';
 import 'package:feature_mind/src/models/model_provider.dart';
+import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -94,8 +95,12 @@ void main() {
     'T3: process emits transcribing, generating, saving, done in that order',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscribing('hello'),
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscribing(
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        ),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventGenerating('Min'),
@@ -126,7 +131,9 @@ void main() {
     'T4: cancelProcessing cancels the generation bridge once it has loaded',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventMinutesReady('Minutes.'),
@@ -179,7 +186,9 @@ void main() {
     'T6: TranscriptEventCancelled yields idle and skips generation entirely',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscribing('partial'),
+        TranscriptEventTranscribing(
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'partial'),
+        ),
         TranscriptEventCancelled(),
       ];
 
@@ -198,7 +207,9 @@ void main() {
   // is recorded with it.
   test('T7: save receives the generation bridge\'s model id', () async {
     speech.transcriptEvents = const [
-      TranscriptEventTranscriptReady('hello world'),
+      TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
     ];
     generation.generationEvents = const [
       GenerationEventMinutesReady('Minutes.'),
@@ -210,13 +221,44 @@ void main() {
     expect(speech.savedModel, 'airo.generation.compact@1');
   });
 
+  // `#1629` Gap D — the segments `TranscriptEventTranscriptReady` carried and
+  // the wav path `process()` was given must both reach `save`, unchanged, so
+  // `save_meeting` can persist them into `transcript.json`. Without this,
+  // "reproducible" would be a Rust-only property that Dart quietly drops on
+  // its way to the store, the same failure mode `#1629` found in the ASR
+  // segment IDs themselves.
+  test(
+    'T7b: save receives the transcript segments and the wav path unchanged',
+    () async {
+      const segments = [
+        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
+      ];
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', segments),
+      ];
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
+
+      await service
+          .process(wavPath: 'recording-1.wav', title: 't')
+          .drain<void>();
+
+      expect(speech.savedSegments, segments);
+      expect(speech.savedWavPath, 'recording-1.wav');
+    },
+  );
+
   // T8 — a bridge that throws surfaces as MindStage.failed with the message,
   // not an unhandled exception reaching the widget layer.
   test(
     'T8: a save failure surfaces as MindStage.failed, not an exception',
     () async {
       speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world'),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        ]),
       ];
       generation.generationEvents = const [
         GenerationEventMinutesReady('Minutes.'),
@@ -231,4 +273,23 @@ void main() {
       expect(progresses.last.error, contains('disk full'));
     },
   );
+
+  // `#1629` Gap C — `MindService.initialize` defaults to the English-only
+  // model (today's behaviour, unchanged) and threads an explicit multilingual
+  // request through to the bridge unchanged. This is the Dart-facing end of
+  // the language-selection mechanism `models.rs`'s `resolve` tests prove on
+  // the Rust side.
+  group('initialize threads speechLanguage to the bridge', () {
+    test('defaults to englishOnly when not specified', () async {
+      await service.initialize();
+
+      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.englishOnly);
+    });
+
+    test('passes multilingual through unchanged when requested', () async {
+      await service.initialize(speechLanguage: rust.SpeechLanguage.multilingual);
+
+      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+    });
+  });
 }

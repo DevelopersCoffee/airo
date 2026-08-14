@@ -13,14 +13,85 @@ sealed class TranscriptEvent {
   const TranscriptEvent();
 }
 
-final class TranscriptEventTranscribing extends TranscriptEvent {
-  const TranscriptEventTranscribing(this.text);
+/// One transcript segment, with the evidence-grounding fields `#1657` needs:
+/// a stable id (scoped to the recording that produced it) and the audio
+/// timestamps whisper reported. Mirrors `rust.TranscriptSegmentRecord` for
+/// the same reason [TranscriptEvent] mirrors `rust.TranscriptEvent`.
+@immutable
+class TranscriptSegment {
+  const TranscriptSegment({
+    required this.id,
+    required this.startMs,
+    required this.endMs,
+    required this.text,
+  });
+
+  final String id;
+  final int startMs;
+  final int endMs;
   final String text;
+
+  @override
+  int get hashCode =>
+      Object.hash(id, startMs, endMs, text);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptSegment &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          startMs == other.startMs &&
+          endMs == other.endMs &&
+          text == other.text;
+}
+
+/// Converts the generated wire type to [TranscriptSegment].
+///
+/// A standalone, public function rather than inlined into
+/// [RustMindSpeechBridge.transcribe]: it is the one place `start_ms`/`end_ms`
+/// cross from Rust's `u64` (bridged as [BigInt], since `flutter_rust_bridge`
+/// has no unsigned 64-bit Dart integer) to Dart's `int`, and that narrowing is
+/// exactly the step #1629 found silently dropping data before this change —
+/// worth a name and a test of its own rather than being an anonymous closure.
+TranscriptSegment toTranscriptSegment(rust.TranscriptSegmentRecord segment) =>
+    TranscriptSegment(
+      id: segment.id,
+      startMs: segment.startMs.toInt(),
+      endMs: segment.endMs.toInt(),
+      text: segment.text,
+    );
+
+/// The reverse of [toTranscriptSegment] — `#1629` Gap D: [MindSpeechBridge.
+/// save] carries the segments back across the bridge so `save_meeting` can
+/// persist them into `transcript.json`, which means the `int` → `u64` widening
+/// has to happen exactly once here too, symmetrically with the narrowing
+/// above.
+rust.TranscriptSegmentRecord fromTranscriptSegment(TranscriptSegment segment) =>
+    rust.TranscriptSegmentRecord(
+      id: segment.id,
+      startMs: BigInt.from(segment.startMs),
+      endMs: BigInt.from(segment.endMs),
+      text: segment.text,
+    );
+
+final class TranscriptEventTranscribing extends TranscriptEvent {
+  const TranscriptEventTranscribing(this.segment);
+  final TranscriptSegment segment;
+
+  /// Convenience for callers that only want the running text, same as before
+  /// this event carried a full segment.
+  String get text => segment.text;
 }
 
 final class TranscriptEventTranscriptReady extends TranscriptEvent {
-  const TranscriptEventTranscriptReady(this.text);
+  const TranscriptEventTranscriptReady(this.text, this.segments);
   final String text;
+
+  /// Every segment that produced [text], in order, each carrying the audio
+  /// timestamp it came from. This is the shape #1657's evidence links
+  /// (action item → transcript segment → audio timestamp) resolve against.
+  final List<TranscriptSegment> segments;
 }
 
 final class TranscriptEventCancelled extends TranscriptEvent {
@@ -48,26 +119,48 @@ abstract interface class MindSpeechBridge {
 
   /// Loads the speech model and opens the store. Requires [loadLibrary] to
   /// have already succeeded.
+  ///
+  /// [speechLanguage] is `#1629`: `rust.SpeechLanguage.englishOnly` (the
+  /// default) resolves the bundled `.en` model; `multilingual` resolves the
+  /// multilingual weights Hindi+English code-switching needs, which is only
+  /// installed when a caller has explicitly acquired it — a build with only
+  /// the default model on disk gets `MindUnavailable.loadFailed` naming the
+  /// missing file, the same as any other unresolved model. Choosing this per
+  /// user is #1664's job; this parameter is the mechanism it calls into.
   Future<void> initialize({
     required String modelsDir,
     required String storePath,
     required int memoryBudgetMb,
+    rust.SpeechLanguage speechLanguage,
   });
 
   Stream<TranscriptEvent> transcribe({required String wavPath});
 
-  /// Makes a meeting durable and searchable. Returns its id.
+  /// Makes a meeting durable and searchable, and persists its structured
+  /// transcript document. Returns the meeting's id.
   ///
   /// `model` is the logical identity of whatever produced `minutes`
   /// (`ADR-0018 §5`) — it comes from [MindGenerationBridge.modelId], not from
   /// this bridge, because only the generation library knows it.
+  ///
+  /// `segments` and `wavPath` are `#1629` Gap D: written to a per-meeting
+  /// `transcript.json` alongside the flat `Meeting` record, so the ASR step —
+  /// which segments, which model, which recording — is reproducible
+  /// independent of the flat transcript string.
   Future<String> save({
     required String title,
     required int recordedAtMs,
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegment> segments,
+    required String wavPath,
   });
+
+  /// Reopens a meeting's structured transcript document. `#1629` Gap D's
+  /// reload half — `null` for a meeting saved before this feature shipped, or
+  /// one with no matching id.
+  Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId);
 
   void cancel();
 
@@ -96,11 +189,13 @@ class RustMindSpeechBridge implements MindSpeechBridge {
     required String modelsDir,
     required String storePath,
     required int memoryBudgetMb,
+    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
   }) => rust.initialize(
     config: rust.MindConfig(
       modelsDir: modelsDir,
       storePath: storePath,
       memoryBudgetMb: memoryBudgetMb,
+      speechLanguage: speechLanguage,
     ),
   );
 
@@ -108,10 +203,13 @@ class RustMindSpeechBridge implements MindSpeechBridge {
   Stream<TranscriptEvent> transcribe({required String wavPath}) =>
       rust.transcribeRecording(wavPath: wavPath).map((event) {
         return switch (event) {
-          rust.TranscriptEvent_Transcribing(:final text) =>
-            TranscriptEventTranscribing(text),
-          rust.TranscriptEvent_TranscriptReady(:final text) =>
-            TranscriptEventTranscriptReady(text),
+          rust.TranscriptEvent_Transcribing(:final segment) =>
+            TranscriptEventTranscribing(toTranscriptSegment(segment)),
+          rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
+            TranscriptEventTranscriptReady(
+              text,
+              segments.map(toTranscriptSegment).toList(growable: false),
+            ),
           rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
         };
       });
@@ -123,13 +221,21 @@ class RustMindSpeechBridge implements MindSpeechBridge {
     required String transcript,
     required String minutes,
     required String model,
+    required List<TranscriptSegment> segments,
+    required String wavPath,
   }) => rust.saveMeeting(
     title: title,
     recordedAtMs: BigInt.from(recordedAtMs),
     transcript: transcript,
     minutes: minutes,
     model: model,
+    segments: segments.map(fromTranscriptSegment).toList(growable: false),
+    audioPath: wavPath,
   );
+
+  @override
+  Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId) =>
+      rust.getTranscript(meetingId: meetingId);
 
   @override
   void cancel() => rust.cancelProcessing();

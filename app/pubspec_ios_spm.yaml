@@ -88,8 +88,8 @@ dependencies:
   google_mlkit_image_labeling: 0.15.0
   video_player: ^2.13.0
   flutter_chrome_cast: ^1.4.6
-  wakelock_plus: 1.5.2
-  package_info_plus: 9.0.1
+  wakelock_plus: 1.6.1
+  package_info_plus: 10.2.0
   screenshot: 3.0.0
   flutter_image_compress: 2.4.0
   llama_flutter_android: ^0.2.6

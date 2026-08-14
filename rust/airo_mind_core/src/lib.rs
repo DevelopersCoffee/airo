@@ -123,8 +123,8 @@ pub use capability_api::{
 pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
-    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
-    TranscriptSegment,
+    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
+    SpeechEngine, TranscriptSegment,
 };
 pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{

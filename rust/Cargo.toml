@@ -1,3 +1,32 @@
 [workspace]
-members = ["airo_core", "airo_mind_core", "airo_mind_llama", "airo_mind_whisper"]
+members = [
+  "airo_core",
+  "airo_mind",
+  "airo_mind_core",
+  "airo_mind_llama",
+  "airo_mind_transcript",
+  "airo_mind_whisper",
+]
 resolver = "2"
+
+# Measured by chief-performance-officer on Apple Silicon against the real
+# iptv-org fixture. Do not relitigate without new measurements.
+#
+#   lto="fat" + codegen-units=1 : airo_core 7-11% FASTER, dylib -474 KB (-32%)
+#   opt-level="z" on airo_core  : 45-58% SLOWER on the M3U parser. REJECTED.
+#   panic="abort"               : REJECTED. airo_core is a cdylib whose
+#                                 flutter_rust_bridge handler relies on
+#                                 catch_unwind to turn panics into Dart errors
+#                                 (handler.rs:95, executor.rs:69). Setting it
+#                                 aborts the whole app on any recoverable error.
+#
+# Costs +22% clean build across eight release jobs in rust-core.yml. If CI time
+# becomes the constraint, evaluate lto="thin" before reverting.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+# opt-level is scoped: airo_mind optimizes for size, airo_core for throughput.
+[profile.release.package.airo_mind]
+opt-level = "z"
