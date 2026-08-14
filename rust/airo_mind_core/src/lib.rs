@@ -52,10 +52,21 @@ pub mod models;
 pub mod budget;
 pub mod cancel;
 
+/// `#1295`'s capability-facing runtime API surface: `create_operation`,
+/// `attach_content`, `query_projection`, `instantiate_context`, `emit_event`.
+/// The only door a capability built after `#1338`'s [`notes`] should use —
+/// see the module doc for what is real and what is honestly stubbed.
+pub mod capability_api;
+
 /// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
 /// held out of line, addressed by [`content::ContentId`].
 pub mod content;
 pub mod engine;
+
+/// The in-process, non-durable event bus behind
+/// [`capability_api::CapabilityApi::emit_event`]. See the module doc for
+/// exactly what "non-durable" means mechanically.
+pub mod event;
 
 /// Engine lifecycle: state, dependency ordering, and graceful shutdown.
 /// `#1302`'s half of `C6` — see the module docs for why this is split from
@@ -66,6 +77,16 @@ pub mod lifecycle;
 /// exercises. Emits operations, reads a projection, holds nothing durable of
 /// its own.
 pub mod notes;
+
+/// `#1223`'s type system: [`ontology::Primitive`] (the nine leaf value
+/// types and their default merge), [`ontology::Archetype`] (the twelve
+/// abstract shapes, never in user data), [`ontology::CoreEntityType`] (the
+/// twelve concrete types a capability actually extends), and
+/// [`ontology::EntityTypeDef`] (what a capability declares). Additive: it
+/// encodes into the same `&[u8]` [`projection::encode_set_property`] already
+/// accepts, and does not change [`verb::Verb`] or
+/// [`projection::EntityGraphProjection`]'s wire shape — see the module doc.
+pub mod ontology;
 
 /// The generalized projection engine. `#1195`'s condition-5 machinery:
 /// [`projection::EntityGraphProjection`], the multi-capability projection
@@ -95,18 +116,28 @@ pub mod wav;
 
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
+pub use capability_api::{
+    CapabilityApi, CapabilityApiError, ContextId, CreateOperationRequest, OperationKind,
+    OperationReceipt,
+};
 pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
     SpeechEngine, TranscriptSegment,
 };
+pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
 };
 pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
+pub use ontology::{
+    parse_extends, validate_relation_endpoints, validate_user_facing_label, Archetype,
+    CoreEntityType, EntityTypeDef, MergeStrategy, OntologyError, Primitive, Value,
+};
 pub use projection::{
-    encode_relation, encode_set_property, rebuild_from_scratch, EntityGraphProjection, EntityRecord,
+    encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
+    EntityGraphProjection, EntityRecord,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
