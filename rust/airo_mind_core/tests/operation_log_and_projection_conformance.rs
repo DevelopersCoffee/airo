@@ -1,5 +1,5 @@
 //! Operation log and projection conformance — contract `C1`/`C2`/`C4`,
-//! `#1194` and `#1195`.
+//! checklist `S1`/`S2`, `#1194` and `#1195`.
 //!
 //! Black-box, against `airo_mind_core`'s public API only, the same style as
 //! `tests/supervisor_conformance.rs`. Written against the contracts, not the
@@ -8,12 +8,24 @@
 //! construction they start from.
 //!
 //! Two groups:
-//! - **Operation log** (`#1194`, condition 4): the full header exists, is
+//! - **Operation log** (`#1194`, condition 4, part of `S1` — "every durable
+//!   object is reachable from a log replay"): the full header exists, is
 //!   signed, is content-addressed for out-of-line content, and survives
 //!   concurrent writers.
-//! - **Projection engine** (`#1195`, condition 5): the delete-and-rebuild,
-//!   zero-data-loss proof, generalized across two independent projections
-//!   fed by a mixed-capability log — not just Notes.
+//! - **Projection engine** (`#1195`, condition 5, `S2` — "replay is
+//!   deterministic" and "any permutation of concurrent operations
+//!   converges"): the delete-and-rebuild, zero-data-loss proof, generalized
+//!   across two independent projections fed by a mixed-capability log — not
+//!   just Notes.
+//!
+//! This file does not attempt the rest of `S1` (Vault-owned properties —
+//! recovery, retention-class expiry, export memory bounds) or the rest of
+//! `S2` (peak-RSS-is-O(1), snapshot-equals-full-replay) — those need
+//! surfaces (`Vault`, snapshotting) this branch does not have yet. Per
+//! `docs/superpowers/specs/2026-07-28-airo-mind-conformance-suite.md`, a
+//! suite is a checklist of independent bullets, not a single pass/fail; this
+//! file covers a strict subset of `S1`/`S2` today, honestly, rather than
+//! claiming the whole suite.
 
 use std::sync::Arc;
 
