@@ -57,6 +57,23 @@ class MeetingEmbeddingStore {
     return _decode(data[meetingId]);
   }
 
+  /// Drops the stored embedding for [meetingId], if any. A no-op when none
+  /// is stored.
+  ///
+  /// `ADR-0022 §5/§6`: unlike [SearchIndex] (`rust/airo_mind_core/src/
+  /// search.rs`), this store is not rebuilt from `MeetingStore` on boot --
+  /// it is a plain read/write-through cache, so once IR text (decision
+  /// statements, action-item owners) flows into it via
+  /// `SemanticSearchRanker`, that vector persists indefinitely unless
+  /// something explicitly clears it. Nothing calls this yet: no meeting
+  /// deletion mechanism exists today (#1719). It exists so that mechanism,
+  /// whenever it lands, only has to call [remove], not build it.
+  Future<void> remove(String meetingId) async {
+    final data = await _readAll();
+    if (data.remove(meetingId) == null) return;
+    await _writeAll(data);
+  }
+
   /// Every stored embedding, keyed by meeting id.
   Future<Map<String, StoredEmbedding>> all() async {
     final data = await _readAll();
