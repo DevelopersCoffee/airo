@@ -56,9 +56,7 @@ class MeetingIrUserEdits {
   final Map<String, MeetingActionUserEdit> byActionId;
 
   MeetingIrUserEdits upsert(String actionId, MeetingActionUserEdit edit) =>
-      MeetingIrUserEdits(
-        byActionId: {...byActionId, actionId: edit},
-      );
+      MeetingIrUserEdits(byActionId: {...byActionId, actionId: edit});
 
   MeetingActionUserEdit? operator [](String actionId) => byActionId[actionId];
 
@@ -105,8 +103,7 @@ class MeetingIrUserEdits {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MeetingIrUserEdits &&
-          mapEquals(byActionId, other.byActionId);
+      other is MeetingIrUserEdits && mapEquals(byActionId, other.byActionId);
 
   @override
   int get hashCode => Object.hashAll(byActionId.entries);

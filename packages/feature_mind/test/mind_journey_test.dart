@@ -27,9 +27,8 @@ class _FakeMind extends MindService {
   String? searched;
 
   @override
-  Future<MindStatus> initialize({
-    rust.SpeechLanguage? speechLanguage,
-  }) async => status;
+  Future<MindStatus> initialize({rust.SpeechLanguage? speechLanguage}) async =>
+      status;
 
   @override
   Future<List<rust.MeetingRecord>> meetings() async => library;

@@ -29,9 +29,7 @@ class EvidenceResolver {
     rust.TranscriptDocumentRecord? doc,
   ) {
     if (doc == null) return const {};
-    return {
-      for (final s in doc.segments) s.id: toTranscriptSegment(s),
-    };
+    return {for (final s in doc.segments) s.id: toTranscriptSegment(s)};
   }
 
   /// Builds an id → segment index from in-memory [TranscriptSegment]s
@@ -66,10 +64,7 @@ class EvidenceResolver {
     required List<String> evidenceSegmentIds,
     required Map<String, TranscriptSegment> byId,
   }) {
-    final hits = resolve(
-      evidenceSegmentIds: evidenceSegmentIds,
-      byId: byId,
-    );
+    final hits = resolve(evidenceSegmentIds: evidenceSegmentIds, byId: byId);
     return hits.isEmpty ? null : hits.first.startMs;
   }
 }

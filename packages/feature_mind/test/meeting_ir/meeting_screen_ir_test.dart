@@ -14,9 +14,8 @@ class _FakeMind extends MindService {
   rust.MeetingRecord? lastStatusUpdate;
 
   @override
-  Future<MindStatus> initialize({
-    rust.SpeechLanguage? speechLanguage,
-  }) async => const MindStatus.ready();
+  Future<MindStatus> initialize({rust.SpeechLanguage? speechLanguage}) async =>
+      const MindStatus.ready();
 
   @override
   Future<List<rust.MeetingRecord>> meetings() async => library;
@@ -233,13 +232,9 @@ void main() {
   testWidgets('user edit overlay wins over IR task text', (tester) async {
     final meeting = _irMeeting();
     SharedPreferences.setMockInitialValues({
-      'mind.meeting_ir.user_edits.m1700000000123':
-          const MeetingIrUserEdits()
-              .upsert(
-                'a1',
-                const MeetingActionUserEdit(task: 'Ship four pods'),
-              )
-              .encode(),
+      'mind.meeting_ir.user_edits.m1700000000123': const MeetingIrUserEdits()
+          .upsert('a1', const MeetingActionUserEdit(task: 'Ship four pods'))
+          .encode(),
     });
     await tester.pumpWidget(
       _app(

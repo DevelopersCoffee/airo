@@ -142,39 +142,36 @@ void main() {
       expect(bundle!.files.keys, ['transcript.md']);
     });
 
-    test(
-      'includes structured action items in mom.md when minutes have no '
-      'Action Items section',
-      () async {
-        when(() => mind.meeting('m5')).thenAnswer(
-          (_) async => _meeting(
-            id: 'm5',
-            minutes: '## Summary\n\nShip the IR UI.',
-            actionItems: const [
-              rust.MeetingActionItemRecord(
-                id: 'a0',
-                task: 'Wire evidence timestamps',
-                owner: 'Priya',
-                due: 'Friday',
-                status: rust.MeetingActionStatus.open,
-                evidenceSegmentIds: ['s2'],
-              ),
-            ],
-          ),
-        );
-        when(() => mind.transcriptDocument('m5')).thenAnswer((_) async => null);
+    test('includes structured action items in mom.md when minutes have no '
+        'Action Items section', () async {
+      when(() => mind.meeting('m5')).thenAnswer(
+        (_) async => _meeting(
+          id: 'm5',
+          minutes: '## Summary\n\nShip the IR UI.',
+          actionItems: const [
+            rust.MeetingActionItemRecord(
+              id: 'a0',
+              task: 'Wire evidence timestamps',
+              owner: 'Priya',
+              due: 'Friday',
+              status: rust.MeetingActionStatus.open,
+              evidenceSegmentIds: ['s2'],
+            ),
+          ],
+        ),
+      );
+      when(() => mind.transcriptDocument('m5')).thenAnswer((_) async => null);
 
-        final bundle = await service.exportMeeting('m5');
+      final bundle = await service.exportMeeting('m5');
 
-        expect(bundle!.files.keys, containsAll(['transcript.md', 'mom.md']));
-        final mom = bundle.files['mom.md']!;
-        expect(mom, contains('## Action Items'));
-        expect(mom, contains('Wire evidence timestamps'));
-        expect(mom, contains('Priya'));
-        expect(mom, contains('Friday'));
-        expect(mom, contains('Open'));
-      },
-    );
+      expect(bundle!.files.keys, containsAll(['transcript.md', 'mom.md']));
+      final mom = bundle.files['mom.md']!;
+      expect(mom, contains('## Action Items'));
+      expect(mom, contains('Wire evidence timestamps'));
+      expect(mom, contains('Priya'));
+      expect(mom, contains('Friday'));
+      expect(mom, contains('Open'));
+    });
 
     test(
       'writes action-items.md when minutes are empty but IR actions exist',

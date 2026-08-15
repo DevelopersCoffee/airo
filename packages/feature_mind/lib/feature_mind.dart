@@ -18,7 +18,8 @@ library;
 
 export 'src/mind_availability.dart';
 
-export 'src/whisper/api/meetings.dart' show MeetingRecord, SearchHit;
+export 'src/whisper/api/meetings.dart'
+    show MeetingRecord, SearchHit, SpeechLanguage;
 export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen;
 export 'src/mind_service.dart'

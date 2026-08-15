@@ -161,10 +161,7 @@ class _DecisionTile extends StatelessWidget {
                 children: [
                   Text(decision.statement),
                   const SizedBox(height: 4),
-                  Text(
-                    status,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
+                  Text(status, style: Theme.of(context).textTheme.labelMedium),
                 ],
               ),
             ),
@@ -291,8 +288,7 @@ class _MetricTile extends StatelessWidget {
     return AiroSurface(
       level: AiroSurfaceLevel.raised,
       onTap: onTap,
-      semanticLabel:
-          'Number: ${metric.name} ${metric.value}. Show evidence.',
+      semanticLabel: 'Number: ${metric.name} ${metric.value}. Show evidence.',
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -303,9 +299,7 @@ class _MetricTile extends StatelessWidget {
               color: AiroDomainTokens.of(context).accent,
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text('${metric.name}: ${metric.value}'),
-            ),
+            Expanded(child: Text('${metric.name}: ${metric.value}')),
             const Icon(Icons.link, size: 18),
           ],
         ),

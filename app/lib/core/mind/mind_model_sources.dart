@@ -1,6 +1,5 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
-import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.
@@ -67,7 +66,7 @@ MindService buildMindDownloadService() {
     // whisper weights and auto-detect per recording (`#1629`, `#1664`).
     // Settings can opt into English-only; [requiredModelsLookup] re-reads
     // that preference so the multilingual file is not forced on download.
-    defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
+    defaultSpeechLanguage: SpeechLanguage.multilingual,
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
       // app's support directory on purpose (`MindService.modelsDirectory`) —
