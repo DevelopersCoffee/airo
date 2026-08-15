@@ -4,6 +4,7 @@ import 'package:feature_mind/feature_mind.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// A [MindService] with the native library removed.
 ///
@@ -44,6 +45,11 @@ class _FakeMind extends MindService {
       library.where((m) => m.id == id).firstOrNull;
 
   @override
+  Future<rust.TranscriptDocumentRecord?> transcriptDocument(
+    String meetingId,
+  ) async => null;
+
+  @override
   void cancelProcessing() => cancelled = true;
 
   @override
@@ -79,6 +85,10 @@ rust.MeetingRecord _meeting({
 Widget _app(Widget home) => MaterialApp(home: home);
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('the library', () {
     testWidgets('an empty library says how to start one', (tester) async {
       await tester.pumpWidget(_app(MindHomeScreen(service: _FakeMind())));
