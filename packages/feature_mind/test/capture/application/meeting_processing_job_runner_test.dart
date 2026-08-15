@@ -5,7 +5,9 @@ import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/capture/application/meeting_processing_job_runner.dart';
 import 'package:feature_mind/src/capture/domain/audio_retention_policy.dart';
 import 'package:feature_mind/src/capture/domain/meeting_processing_job.dart';
+import 'package:feature_mind/src/capture/domain/speech_language_mode.dart';
 import 'package:feature_mind/src/mind_service.dart';
+import 'package:feature_mind/src/models/model_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -19,6 +21,31 @@ import '../../support/fake_bridges.dart';
 /// already uses -- this runner never calls `MindService.start/stopRecording`,
 /// so nothing on the mock needs stubbing.
 class _MockAudioRecorder extends Mock implements AudioRecorder {}
+
+/// Models already on disk — avoids `ModelInstaller` hitting FRB in host tests.
+class _FakeReadyModelProvider implements ModelProvider {
+  @override
+  bool get acquiresWithoutNetwork => true;
+
+  @override
+  Future<List<RequiredModel>> requiredModels() async => const [];
+
+  @override
+  Future<List<RequiredModel>> missingModels(Directory modelsDir) async =>
+      const [];
+
+  @override
+  Future<bool> isInstalled(Directory modelsDir) async => true;
+
+  @override
+  Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) async* {}
+
+  @override
+  Future<List<InstalledModel>> verify(Directory modelsDir) async => const [];
+
+  @override
+  Future<void> dispose() async {}
+}
 
 /// Minimal fake so `MindService.modelsDirectory()` resolves without a real
 /// platform channel -- same shape `mind_service_test.dart` already uses.
@@ -47,6 +74,7 @@ void main() {
     generation = FakeMindGenerationBridge();
     mindService = MindService(
       recorder: _MockAudioRecorder(),
+      modelProvider: _FakeReadyModelProvider(),
       speechBridge: speech,
       generationBridge: generation,
     );
@@ -210,6 +238,46 @@ void main() {
       );
 
       expect(audioFile.existsSync(), isTrue);
+    },
+  );
+
+  test(
+    'threads Settings language mode to ensureReady + process (#1664)',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
+      ];
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.keepAfterTranscript,
+        languageMode: () => SpeechLanguageMode.english,
+      );
+
+      await runner.call(
+        MeetingProcessingJob(
+          id: 'm1',
+          audioPath: audioFile.path,
+          title: 'Standup',
+          enqueuedAtMs: 0,
+        ),
+      );
+
+      // ensureReady now re-inits when Settings picks a new speechLanguage;
+      // with FakeReadyModelProvider that reaches the fake bridge.
+      expect(speech.initializedSpeechLanguage, isNotNull);
+      expect(speech.transcribeLanguage, 'en');
     },
   );
 }

@@ -13,6 +13,7 @@ import 'model_installer.dart';
 import 'models/model_provider.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
+import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
@@ -135,6 +136,28 @@ class MindService {
   final MindGenerationBridge _generation;
   final rust.SpeechLanguage _defaultSpeechLanguage;
 
+  /// Last language mode handed to [MindSpeechBridge.initialize], or the
+  /// constructor default before the first successful init. Read-only seam
+  /// for #1774 trust badges — not the #1664 pin UI.
+  rust.SpeechLanguage? _activeSpeechLanguage;
+
+  /// Speech-model language mode the pipeline is configured for (#1629).
+  ///
+  /// Thin read-only seam for multilingual / language badges (#1774). Does
+  /// not expose or set a per-recording whisper.cpp pin — that remains #1664.
+  rust.SpeechLanguage get speechLanguage =>
+      _activeSpeechLanguage ?? _defaultSpeechLanguage;
+
+  /// Trust UX snapshot for scribe/meeting surfaces (#1774).
+  ScribeTrustState scribeTrustState({
+    bool modelMissing = false,
+    String? pinnedLanguageCode,
+  }) => ScribeTrustState.forSpeechModel(
+    multilingual: speechLanguage == rust.SpeechLanguage.multilingual,
+    modelMissing: modelMissing,
+    pinnedLanguageCode: pinnedLanguageCode,
+  );
+
   /// Built lazily against [modelsDirectory] rather than in the constructor:
   /// resolving that directory is async, and every other collaborator here is
   /// a ready-made instance. [rankerBuilder] is the seam a test substitutes
@@ -149,21 +172,26 @@ class MindService {
   /// Returns a status rather than throwing: on a real device "the models are
   /// not downloaded yet" is the ordinary first-run state, and an exception
   /// would make the app's normal opening move look like a crash.
-  /// [speechLanguage] is `#1629`: defaults to the bundled English-only model,
-  /// unchanged from before this parameter existed. Passing `multilingual`
-  /// requires the multilingual weights to already be installed — this method
-  /// does not acquire them; it only asks the Model Manager to resolve against
-  /// them. Choosing this per user is #1664's job.
-  /// Loads speech if needed. Safe to call before every pipeline run — a no-op
-  /// when [initialize] already succeeded.
-  Future<MindStatus> ensureReady() async {
-    if (_speech.isReady()) return const MindStatus.ready();
-    return initialize();
+  ///
+  /// [speechLanguage] is `#1629` / `#1664`: defaults to
+  /// [_defaultSpeechLanguage] (English-only unless the shell overrides).
+  /// Passing `multilingual` requires the multilingual weights to already be
+  /// installed — this method does not acquire them; it only asks the Model
+  /// Manager to resolve against them.
+  ///
+  /// [ensureReady] is safe to call before every pipeline run — a no-op when
+  /// [initialize] already succeeded for the same [speechLanguage]. A Settings
+  /// change (#1664) that picks a different mode re-runs initialize so the
+  /// speech bridge sees the new weights / pin.
+  Future<MindStatus> ensureReady({rust.SpeechLanguage? speechLanguage}) async {
+    final desired = speechLanguage ?? _defaultSpeechLanguage;
+    if (_speech.isReady() && _activeSpeechLanguage == desired) {
+      return const MindStatus.ready();
+    }
+    return initialize(speechLanguage: desired);
   }
 
-  Future<MindStatus> initialize({
-    rust.SpeechLanguage? speechLanguage,
-  }) async {
+  Future<MindStatus> initialize({rust.SpeechLanguage? speechLanguage}) async {
     final language = speechLanguage ?? _defaultSpeechLanguage;
     try {
       // Only the speech library. Generation is loaded on first use — see
@@ -229,6 +257,7 @@ class MindService {
         memoryBudgetMb: 4096,
         speechLanguage: language,
       );
+      _activeSpeechLanguage = language;
       return const MindStatus.ready();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.loadFailed, '$e');

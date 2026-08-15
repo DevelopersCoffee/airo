@@ -65,6 +65,8 @@ MindService buildMindDownloadService() {
   return MindService(
     // Hindi/Marathi/English code-switching in meetings needs multilingual
     // whisper weights and auto-detect per recording (`#1629`, `#1664`).
+    // Settings can opt into English-only; [requiredModelsLookup] re-reads
+    // that preference so the multilingual file is not forced on download.
     defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
@@ -76,9 +78,15 @@ MindService buildMindDownloadService() {
       downloadService: ModelDownloadService(
         storageLocation: ModelStorageLocation.applicationSupport,
       ),
-      // Default weights plus the optional multilingual speech model Mind
-      // always ships (`mindScribeRequiredModels`).
-      requiredModelsLookup: mindScribeRequiredModels,
+      // Default weights plus multilingual when Settings is on Auto (mixed).
+      // English opt-in (#1774) drops the multilingual row so first-run never
+      // spends ~78 MB the user did not ask for.
+      requiredModelsLookup: () async {
+        final mode = await loadSpeechLanguageMode();
+        return mindScribeRequiredModels(
+          includeMultilingual: mode.includesMultilingualModel,
+        );
+      },
       downloadUrlFor: mindModelDownloadUrlFor,
     ),
   );

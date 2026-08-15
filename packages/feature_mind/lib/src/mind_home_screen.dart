@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'whisper/api/meetings.dart' as rust;
+import 'capture/application/speech_language_preference.dart';
 import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
 import 'meeting_screen.dart';
 import 'mind_service.dart';
 import 'models/model_provider.dart';
+import 'trust/scribe_trust_signals.dart';
 
 /// The whole app. Record, search, open.
 ///
@@ -65,7 +67,10 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   }
 
   Future<void> _start() async {
-    final status = await widget.service.initialize();
+    final mode = await loadSpeechLanguageMode();
+    final status = await widget.service.initialize(
+      speechLanguage: mode.speechLanguage,
+    );
     if (!mounted) return;
     setState(() {
       _status = status;
@@ -109,7 +114,13 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       if (path == null) return;
 
       final title = 'Meeting ${_meetings.length + 1}';
-      final progress = widget.service.process(wavPath: path, title: title);
+      final mode = await loadSpeechLanguageMode();
+      if (!mounted) return;
+      final progress = widget.service.process(
+        wavPath: path,
+        title: title,
+        language: mode.processLanguageCode,
+      );
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MeetingScreen.live(
@@ -250,6 +261,12 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     final hits = _hits;
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: ScribeTrustSignals(
+            state: widget.service.scribeTrustState(),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
@@ -500,6 +517,10 @@ class _ModelDownloadState extends State<_ModelDownload> {
               'and writing models on disk before it can record. They are '
               'downloaded once and never leave this device.',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ScribeTrustSignals(
+              state: widget.service.scribeTrustState(modelMissing: true),
             ),
             const SizedBox(height: 8),
             const Text(
