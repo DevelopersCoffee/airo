@@ -61,6 +61,12 @@ pub mod capability_api;
 /// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
 /// held out of line, addressed by [`content::ContentId`].
 pub mod content;
+
+/// `#1225`'s four capability DSLs — Graph, Workflow, View, Automation. Parse
+/// and validate declarative capability data (design doc §5.1 Tier 1); does
+/// not execute anything. See the module doc for the shared diagnostic type
+/// and why Graph gets the deepest treatment.
+pub mod dsl;
 pub mod engine;
 
 /// The in-process, non-durable event bus behind
@@ -122,6 +128,16 @@ pub use capability_api::{
 };
 pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
+pub use dsl::{
+    automation::{
+        ActionDef, ActionKind, AutomationDef, AutomationDsl, ConditionDef, ConditionOperator,
+        TriggerDef, TriggerKind,
+    },
+    graph::{Cardinality, GraphDsl, RelationDef},
+    view::{ViewDef, ViewDsl, ViewKind},
+    workflow::{TransitionDef, WorkflowDsl},
+    DslError,
+};
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
     SpeechEngine, TranscriptSegment, TranscriptionOptions,
