@@ -28,7 +28,7 @@ class _FakeMind extends MindService {
 
   @override
   Future<MindStatus> initialize({
-    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
+    rust.SpeechLanguage? speechLanguage,
   }) async => status;
 
   @override

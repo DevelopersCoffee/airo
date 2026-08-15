@@ -87,47 +87,49 @@ class ModelDownloadCoordinator {
 
     void startDownload() {
       armStallWatchdog();
-      downloadSub = models.download(modelId).listen(
-        (progress) {
-          if (progress.received > received) {
-            lastByteAt = DateTime.now();
-            stalled = false;
-          }
-          received = progress.received;
-          if (progress.total > 0) total = progress.total;
-          if (metered && !allowMetered) {
-            emit(
-              ModelDownloadPausedForMetered(
-                received: progress.received,
-                total: progress.total,
-              ),
-            );
-            return;
-          }
-          if (progress.total > 0 && progress.received >= progress.total) {
-            emit(const ModelDownloadCompleted());
-            unawaited(close());
-            return;
-          }
-          emit(
-            ModelDownloadInProgress(
-              received: progress.received,
-              total: progress.total,
-            ),
+      downloadSub = models
+          .download(modelId)
+          .listen(
+            (progress) {
+              if (progress.received > received) {
+                lastByteAt = DateTime.now();
+                stalled = false;
+              }
+              received = progress.received;
+              if (progress.total > 0) total = progress.total;
+              if (metered && !allowMetered) {
+                emit(
+                  ModelDownloadPausedForMetered(
+                    received: progress.received,
+                    total: progress.total,
+                  ),
+                );
+                return;
+              }
+              if (progress.total > 0 && progress.received >= progress.total) {
+                emit(const ModelDownloadCompleted());
+                unawaited(close());
+                return;
+              }
+              emit(
+                ModelDownloadInProgress(
+                  received: progress.received,
+                  total: progress.total,
+                ),
+              );
+              armStallWatchdog();
+            },
+            onError: (Object error, StackTrace _) {
+              emit(ModelDownloadFailed(error.toString()));
+              unawaited(close());
+            },
+            onDone: () {
+              if (!closed) {
+                emit(const ModelDownloadCompleted());
+                unawaited(close());
+              }
+            },
           );
-          armStallWatchdog();
-        },
-        onError: (Object error, StackTrace _) {
-          emit(ModelDownloadFailed(error.toString()));
-          unawaited(close());
-        },
-        onDone: () {
-          if (!closed) {
-            emit(const ModelDownloadCompleted());
-            unawaited(close());
-          }
-        },
-      );
     }
 
     controller = StreamController<ModelDownloadState>(
@@ -185,9 +187,7 @@ class ModelDownloadCoordinator {
           });
 
           if (metered) {
-            emit(
-              ModelDownloadPausedForMetered(received: 0, total: sizeBytes),
-            );
+            emit(ModelDownloadPausedForMetered(received: 0, total: sizeBytes));
           }
           startDownload();
         }());
