@@ -1,0 +1,5 @@
+# Run artifacts (#1636). Each `cargo run -p airo_mind_eval` invocation writes
+# its own run-NNN.json here -- these are local eval outputs, not fixtures,
+# and are not meant to be committed or diffed in review.
+*.json
+!.gitignore
