@@ -420,9 +420,9 @@ class AssistantModelLibraryState {
     final package = packages[task];
     final preferredIds = switch (task) {
       AssistantTask.chat => [
+        if (package != null) assistantModelIdForOfflineModel(package.id),
         litertGemmaAssistantModelId,
         geminiNanoAssistantModelId,
-        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.actions => [
         geminiNanoAssistantModelId,
@@ -504,6 +504,9 @@ class AssistantModelLibraryState {
     final gemma4E2b = await liteRtService.hydrateDownloadedModel(
       byId('gemma-4-e2b-it-litertlm'),
     );
+    final qwen25 = await liteRtService.hydrateDownloadedModel(
+      byId('qwen2.5-1.5b-it-litert'),
+    );
     final gemma3n = await liteRtService.hydrateDownloadedModel(
       byId('gemma-3n-e2b-it-litertlm'),
     );
@@ -512,8 +515,8 @@ class AssistantModelLibraryState {
     );
 
     return {
-      AssistantTask.chat: gemma4E2b,
-      AssistantTask.reasoning: gemma4E2b,
+      AssistantTask.chat: qwen25,
+      AssistantTask.reasoning: qwen25,
       AssistantTask.documents: gemma4E2b,
       AssistantTask.image: gemma3n,
       AssistantTask.audio: gemma3n,
@@ -961,8 +964,8 @@ class _ModelLibraryContent extends ConsumerWidget {
           children: [
             Text(
               selectedPackage == null
-                  ? 'Airo recommends ${candidate.name} for this category.'
-                  : 'Airo recommends ${selectedPackage.name} for this category.',
+                  ? 'Suggested for this device: ${candidate.name}. Tap to choose.'
+                  : 'Suggested download: ${selectedPackage.name}. You pick what runs.',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),

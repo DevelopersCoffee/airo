@@ -188,10 +188,14 @@ class MindModule extends AppModule {
         GoRoute(
           path: AssistantRouteNames.modelsSegment,
           name: AssistantRouteNames.modelsName,
-          builder: (context, state) => ModelLibraryScreen(
-            onModelSelected: (candidate) =>
-                context.go(AssistantRouteNames.assistant),
-            onOpenModelManager: () => context.push(AssistantRouteNames.profile),
+          builder: (context, state) => Consumer(
+            builder: (context, ref, _) => ModelLibraryScreen(
+              onModelSelected: (candidate) =>
+                  context.go(AssistantRouteNames.assistant),
+              onOpenModelManager: () => ref
+                  .read(assistantHostAdapterProvider)
+                  .openModelManager(context),
+            ),
           ),
         ),
         GoRoute(

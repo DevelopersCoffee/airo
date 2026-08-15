@@ -61,6 +61,7 @@ export 'src/assistant/presentation/screens/prompt_lab_screen.dart';
 
 // Agent chat + model management
 export 'src/agent_chat/application/assistant_model_preferences.dart';
+export 'src/agent_chat/application/assistant_runtime_readiness.dart';
 export 'src/agent_chat/data/services/agent_notification_scheduler.dart';
 export 'src/agent_chat/data/services/assistant_runtime_service.dart';
 export 'src/agent_chat/data/services/chat_history_store.dart';
