@@ -135,6 +135,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Device journey (#1771 / mind_journey_device_test.dart). Host/CI never
+  # executes it; the Mind shell job only analyses the file.
+  integration_test:
+    sdk: flutter
   flutter_lints: 6.0.0
 
 dependency_overrides:
