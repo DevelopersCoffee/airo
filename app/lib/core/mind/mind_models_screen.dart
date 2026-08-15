@@ -26,16 +26,14 @@ class MindModelsScreen extends ConsumerWidget {
     final activeDownloads = ref.watch(activeDownloadsProvider);
 
     return AiroResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('On-device models'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('On-device models'), centerTitle: false),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           Text(
-            'Choose a model from Hugging Face, download it, then warm it before '
-            'chatting. Nothing runs until you pick one.',
+            'Browse curated packages, litert-community releases, and public GGUF '
+            'models from Hugging Face. Download one, warm it, then chat — '
+            'nothing runs until you pick a model.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -61,7 +59,7 @@ class MindModelsScreen extends ConsumerWidget {
             icon: Icons.cloud_download_outlined,
             title: 'Browse Hugging Face catalog',
             subtitle:
-                'Curated packages plus the latest public litert-community releases',
+                'Curated, litert-community, and public GGUF — cached for offline browse',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AIModelsScreen()),
             ),
@@ -102,7 +100,8 @@ class _ActiveModelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = catalogModel?.name ?? assistantRuntimeId ?? 'No model selected';
+    final name =
+        catalogModel?.name ?? assistantRuntimeId ?? 'No model selected';
     final statusLabel = switch (readiness.phase) {
       AssistantRuntimeReadinessPhase.idle => 'Choose a model to begin',
       AssistantRuntimeReadinessPhase.loading => 'Loading weights…',
@@ -158,7 +157,10 @@ class _ProgressCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(readiness.label, style: theme.textTheme.titleSmall),
+                  child: Text(
+                    readiness.label,
+                    style: theme.textTheme.titleSmall,
+                  ),
                 ),
                 Text('$percent%', style: theme.textTheme.titleSmall),
               ],
