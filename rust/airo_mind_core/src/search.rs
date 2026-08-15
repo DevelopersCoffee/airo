@@ -76,10 +76,27 @@ impl SearchIndex {
 
     pub fn insert(&mut self, meeting: &Meeting) {
         self.remove(&meeting.id);
-        let text = format!(
+        let mut text = format!(
             "{}\n{}\n{}",
             meeting.title, meeting.transcript, meeting.minutes
         );
+        // `ADR-0022 §2`: the IR's decision statements and action-item
+        // task/owner text feed the same FTS blob -- same tokeniser, same AND
+        // semantics, no second index. Metrics/risks/etc. are not indexed
+        // here; the ADR scopes the FTS extension to decisions and action
+        // items only.
+        for decision in &meeting.decisions {
+            text.push('\n');
+            text.push_str(&decision.statement);
+        }
+        for item in &meeting.action_items {
+            text.push('\n');
+            text.push_str(&item.task);
+            if let Some(owner) = &item.owner {
+                text.push(' ');
+                text.push_str(owner);
+            }
+        }
         for term in tokenise(&text) {
             self.terms
                 .entry(term)
@@ -170,6 +187,7 @@ impl SearchIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::{ActionStatus, DecisionStatus, MeetingActionItem, MeetingDecision};
 
     fn meeting(id: &str, at: u64, transcript: &str, minutes: &str) -> Meeting {
         Meeting {
@@ -179,6 +197,9 @@ mod tests {
             transcript: transcript.into(),
             minutes: minutes.into(),
             model: "qwen2.5-0.5b".into(),
+            decisions: Vec::new(),
+            action_items: Vec::new(),
+            metrics: Vec::new(),
         }
     }
 
@@ -281,6 +302,79 @@ mod tests {
         assert_eq!(index.len(), 2);
         // The term is gone entirely, not merely orphaned.
         assert!(!index.terms.contains_key("kafka"));
+    }
+
+    /// `ADR-0022 §2`: a decision statement is findable through the same FTS
+    /// index the transcript/minutes already feed.
+    #[test]
+    fn a_decision_statement_is_findable() {
+        let mut m = meeting(
+            "retro",
+            400,
+            "General retro chat, nothing quotable.",
+            "- See decisions",
+        );
+        m.decisions = vec![MeetingDecision {
+            id: "d0".into(),
+            statement: "Adopt Rust for the new ingestion pipeline".into(),
+            status: DecisionStatus::Agreed,
+            evidence_segment_ids: vec!["s9".into()],
+        }];
+        let index = SearchIndex::rebuild(&[m]);
+
+        let hits = index.search("ingestion");
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].meeting_id, "retro");
+    }
+
+    /// `ADR-0022 §2`: an action item's task text and owner name are both
+    /// findable -- "who owns the migration" is a real search a person types.
+    #[test]
+    fn an_action_items_task_and_owner_are_findable() {
+        let mut m = meeting(
+            "planning",
+            500,
+            "Discussed the migration timeline.",
+            "- See action items",
+        );
+        m.action_items = vec![MeetingActionItem {
+            id: "a0".into(),
+            task: "Finish the database migration".into(),
+            owner: Some("Priya".into()),
+            due: None,
+            status: ActionStatus::Open,
+            evidence_segment_ids: vec!["s2".into()],
+        }];
+        let index = SearchIndex::rebuild(&[m]);
+
+        assert_eq!(index.search("Priya").len(), 1, "owner name is indexed");
+        assert_eq!(
+            index.search("migration Priya").len(),
+            1,
+            "task text and owner are indexed together"
+        );
+    }
+
+    /// `C4`'s crypto-shred contract extends to IR text: a destroyed meeting's
+    /// decisions and action items must be as unfindable as its transcript.
+    #[test]
+    fn removing_a_meeting_makes_its_ir_text_unfindable_too() {
+        let mut m = meeting("standup", 600, "routine chat", "- see below");
+        m.decisions = vec![MeetingDecision {
+            id: "d0".into(),
+            statement: "Adopt Kubernetes for staging".into(),
+            status: DecisionStatus::Agreed,
+            evidence_segment_ids: vec!["s1".into()],
+        }];
+        let mut index = SearchIndex::rebuild(&[m]);
+        assert_eq!(index.search("Kubernetes").len(), 1);
+
+        index.remove("standup");
+
+        assert!(
+            index.search("Kubernetes").is_empty(),
+            "a destroyed meeting's decision text is still findable"
+        );
     }
 
     #[test]

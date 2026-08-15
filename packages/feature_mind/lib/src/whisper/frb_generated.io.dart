@@ -56,7 +56,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   InstalledModel dco_decode_installed_model(dynamic raw);
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
   List<InstalledModel> dco_decode_list_installed_model(dynamic raw);
+
+  @protected
+  List<MeetingActionItemRecord> dco_decode_list_meeting_action_item_record(
+    dynamic raw,
+  );
+
+  @protected
+  List<MeetingDecisionRecord> dco_decode_list_meeting_decision_record(
+    dynamic raw,
+  );
+
+  @protected
+  List<MeetingMetricRecord> dco_decode_list_meeting_metric_record(dynamic raw);
 
   @protected
   List<MeetingRecord> dco_decode_list_meeting_record(dynamic raw);
@@ -74,6 +90,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<TranscriptSegmentRecord> dco_decode_list_transcript_segment_record(
     dynamic raw,
   );
+
+  @protected
+  MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw);
+
+  @protected
+  MeetingActionStatus dco_decode_meeting_action_status(dynamic raw);
+
+  @protected
+  MeetingDecisionRecord dco_decode_meeting_decision_record(dynamic raw);
+
+  @protected
+  MeetingDecisionStatus dco_decode_meeting_decision_status(dynamic raw);
+
+  @protected
+  MeetingMetricRecord dco_decode_meeting_metric_record(dynamic raw);
 
   @protected
   MeetingRecord dco_decode_meeting_record(dynamic raw);
@@ -160,7 +191,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   InstalledModel sse_decode_installed_model(SseDeserializer deserializer);
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
   List<InstalledModel> sse_decode_list_installed_model(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingActionItemRecord> sse_decode_list_meeting_action_item_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingDecisionRecord> sse_decode_list_meeting_decision_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingMetricRecord> sse_decode_list_meeting_metric_record(
     SseDeserializer deserializer,
   );
 
@@ -182,6 +231,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<TranscriptSegmentRecord> sse_decode_list_transcript_segment_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingActionItemRecord sse_decode_meeting_action_item_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingActionStatus sse_decode_meeting_action_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingDecisionRecord sse_decode_meeting_decision_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingDecisionStatus sse_decode_meeting_decision_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingMetricRecord sse_decode_meeting_metric_record(
     SseDeserializer deserializer,
   );
 
@@ -291,8 +365,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_installed_model(
     List<InstalledModel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_action_item_record(
+    List<MeetingActionItemRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_decision_record(
+    List<MeetingDecisionRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_metric_record(
+    List<MeetingMetricRecord> self,
     SseSerializer serializer,
   );
 
@@ -323,6 +418,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_transcript_segment_record(
     List<TranscriptSegmentRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_action_item_record(
+    MeetingActionItemRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_action_status(
+    MeetingActionStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_decision_record(
+    MeetingDecisionRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_decision_status(
+    MeetingDecisionStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_metric_record(
+    MeetingMetricRecord self,
     SseSerializer serializer,
   );
 

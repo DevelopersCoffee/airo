@@ -90,5 +90,48 @@ void main() {
 
       expect(await store.get('meeting-1'), isNotNull);
     });
+
+    // `ADR-0022 §5/§6`: nothing calls `remove` yet -- it exists so a future
+    // meeting-deletion mechanism (#1719) only has to call it, not build it.
+    group('remove', () {
+      test('drops a stored embedding, leaving other meetings untouched', () async {
+        final store = MeetingEmbeddingStore(tempDir);
+        await store.put('meeting-1', 'embed-model', [0.1]);
+        await store.put('meeting-2', 'embed-model', [0.2]);
+
+        await store.remove('meeting-1');
+
+        expect(await store.get('meeting-1'), isNull);
+        expect((await store.get('meeting-2'))?.vector, [0.2]);
+        expect(await store.all(), hasLength(1));
+      });
+
+      test('is a no-op for a meeting that was never stored', () async {
+        final store = MeetingEmbeddingStore(tempDir);
+        await store.put('meeting-2', 'embed-model', [0.2]);
+
+        await store.remove('unknown');
+
+        expect(await store.all(), hasLength(1));
+      });
+
+      test('the removal survives a process restart', () async {
+        final first = MeetingEmbeddingStore(tempDir);
+        await first.put('meeting-1', 'embed-model', [0.4, 0.5]);
+        await first.remove('meeting-1');
+
+        final second = MeetingEmbeddingStore(tempDir);
+
+        expect(await second.get('meeting-1'), isNull);
+      });
+
+      test('on an empty store is a no-op rather than throwing', () async {
+        final store = MeetingEmbeddingStore(tempDir);
+
+        await store.remove('unknown');
+
+        expect(await store.all(), isEmpty);
+      });
+    });
   });
 }

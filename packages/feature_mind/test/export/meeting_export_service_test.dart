@@ -15,6 +15,9 @@ rust.MeetingRecord _meeting({
   int recordedAtMs = 1755000000000,
   String transcript = 'the flat transcript',
   String minutes = '',
+  List<rust.MeetingDecisionRecord> decisions = const [],
+  List<rust.MeetingActionItemRecord> actionItems = const [],
+  List<rust.MeetingMetricRecord> metrics = const [],
 }) => rust.MeetingRecord(
   id: id,
   title: title,
@@ -22,6 +25,9 @@ rust.MeetingRecord _meeting({
   transcript: transcript,
   minutes: minutes,
   model: 'qwen',
+  decisions: decisions,
+  actionItems: actionItems,
+  metrics: metrics,
 );
 
 rust.TranscriptDocumentRecord _doc({

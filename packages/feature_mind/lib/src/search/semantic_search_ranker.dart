@@ -76,7 +76,7 @@ class SemanticSearchRanker {
     final stored = await _embeddingStore.get(meeting.id);
     if (stored != null) return stored.vector;
 
-    final text = '${meeting.transcript} ${meeting.minutes}'.trim();
+    final text = _embeddableText(meeting);
     if (text.isEmpty) return null;
 
     final result = await _embeddingService.embed(text);
@@ -84,6 +84,26 @@ class SemanticSearchRanker {
 
     await _embeddingStore.put(meeting.id, result.modelId!, result.vector!);
     return result.vector;
+  }
+
+  /// The text embedded and cached per meeting.
+  ///
+  /// `ADR-0022 §3`: extends `'${transcript} ${minutes}'` with the same IR
+  /// text `SearchIndex::insert` (`rust/airo_mind_core/src/search.rs`) feeds
+  /// its lexical index -- decision statements and action-item task/owner
+  /// text -- one extra string concatenated into the same embed call, not a
+  /// second embedding path. Metrics are not included, matching the FTS
+  /// extension's scope exactly.
+  String _embeddableText(rust.MeetingRecord meeting) {
+    final parts = [meeting.transcript, meeting.minutes];
+    for (final decision in meeting.decisions) {
+      parts.add(decision.statement);
+    }
+    for (final item in meeting.actionItems) {
+      final owner = item.owner;
+      parts.add(owner == null ? item.task : '${item.task} $owner');
+    }
+    return parts.join(' ').trim();
   }
 
   static const _maxSnippetLength = 160;

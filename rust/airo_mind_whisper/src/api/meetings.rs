@@ -45,7 +45,8 @@ use crate::transcript_store;
 use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
 use airo_mind_core::{
-    AudioInput, CancelToken, Meeting, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    ActionStatus, AudioInput, CancelToken, DecisionStatus, Meeting, MeetingActionItem,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
     TranscriptSegment, TranscriptionOptions,
 };
 
@@ -119,6 +120,177 @@ pub struct MeetingRecord {
     pub transcript: String,
     pub minutes: String,
     pub model: String,
+    /// `ADR-0022 §1`: the Meeting IR's decisions, action items and metrics,
+    /// flattened onto the meeting record the same way every other field on
+    /// this struct already is -- IR is not a sibling record with its own
+    /// lifecycle, it rides `Meeting`'s.
+    pub decisions: Vec<MeetingDecisionRecord>,
+    pub action_items: Vec<MeetingActionItemRecord>,
+    pub metrics: Vec<MeetingMetricRecord>,
+}
+
+/// Wire mirror of `airo_mind_core::DecisionStatus`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MeetingDecisionStatus {
+    Proposed,
+    Agreed,
+    Rejected,
+    Deferred,
+}
+
+impl From<DecisionStatus> for MeetingDecisionStatus {
+    fn from(status: DecisionStatus) -> Self {
+        match status {
+            DecisionStatus::Proposed => Self::Proposed,
+            DecisionStatus::Agreed => Self::Agreed,
+            DecisionStatus::Rejected => Self::Rejected,
+            DecisionStatus::Deferred => Self::Deferred,
+        }
+    }
+}
+
+impl From<MeetingDecisionStatus> for DecisionStatus {
+    fn from(status: MeetingDecisionStatus) -> Self {
+        match status {
+            MeetingDecisionStatus::Proposed => Self::Proposed,
+            MeetingDecisionStatus::Agreed => Self::Agreed,
+            MeetingDecisionStatus::Rejected => Self::Rejected,
+            MeetingDecisionStatus::Deferred => Self::Deferred,
+        }
+    }
+}
+
+/// Wire mirror of `airo_mind_core::ActionStatus`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MeetingActionStatus {
+    Open,
+    InProgress,
+    Done,
+    Blocked,
+}
+
+impl From<ActionStatus> for MeetingActionStatus {
+    fn from(status: ActionStatus) -> Self {
+        match status {
+            ActionStatus::Open => Self::Open,
+            ActionStatus::InProgress => Self::InProgress,
+            ActionStatus::Done => Self::Done,
+            ActionStatus::Blocked => Self::Blocked,
+        }
+    }
+}
+
+impl From<MeetingActionStatus> for ActionStatus {
+    fn from(status: MeetingActionStatus) -> Self {
+        match status {
+            MeetingActionStatus::Open => Self::Open,
+            MeetingActionStatus::InProgress => Self::InProgress,
+            MeetingActionStatus::Done => Self::Done,
+            MeetingActionStatus::Blocked => Self::Blocked,
+        }
+    }
+}
+
+/// Wire mirror of `airo_mind_core::MeetingDecision`. `evidence_segment_ids`
+/// resolves against `transcript.json` per `ADR-0022 §4` -- this record
+/// carries only the ids, never the words, matching the IR's own privacy
+/// discipline (`rust/airo_mind_meeting/src/ir.rs`'s "evidence is segment ids,
+/// not snippets").
+pub struct MeetingDecisionRecord {
+    pub id: String,
+    pub statement: String,
+    pub status: MeetingDecisionStatus,
+    pub evidence_segment_ids: Vec<String>,
+}
+
+impl From<MeetingDecision> for MeetingDecisionRecord {
+    fn from(d: MeetingDecision) -> Self {
+        Self {
+            id: d.id,
+            statement: d.statement,
+            status: d.status.into(),
+            evidence_segment_ids: d.evidence_segment_ids,
+        }
+    }
+}
+
+impl From<MeetingDecisionRecord> for MeetingDecision {
+    fn from(d: MeetingDecisionRecord) -> Self {
+        Self {
+            id: d.id,
+            statement: d.statement,
+            status: d.status.into(),
+            evidence_segment_ids: d.evidence_segment_ids,
+        }
+    }
+}
+
+/// Wire mirror of `airo_mind_core::MeetingActionItem`.
+pub struct MeetingActionItemRecord {
+    pub id: String,
+    pub task: String,
+    /// `None` when the transcript named nobody -- never inferred, mirrored
+    /// unchanged from `airo_mind_meeting::ir::ActionItem::owner`.
+    pub owner: Option<String>,
+    pub due: Option<String>,
+    pub status: MeetingActionStatus,
+    pub evidence_segment_ids: Vec<String>,
+}
+
+impl From<MeetingActionItem> for MeetingActionItemRecord {
+    fn from(a: MeetingActionItem) -> Self {
+        Self {
+            id: a.id,
+            task: a.task,
+            owner: a.owner,
+            due: a.due,
+            status: a.status.into(),
+            evidence_segment_ids: a.evidence_segment_ids,
+        }
+    }
+}
+
+impl From<MeetingActionItemRecord> for MeetingActionItem {
+    fn from(a: MeetingActionItemRecord) -> Self {
+        Self {
+            id: a.id,
+            task: a.task,
+            owner: a.owner,
+            due: a.due,
+            status: a.status.into(),
+            evidence_segment_ids: a.evidence_segment_ids,
+        }
+    }
+}
+
+/// Wire mirror of `airo_mind_core::MeetingMetric`.
+pub struct MeetingMetricRecord {
+    pub id: String,
+    pub name: String,
+    pub value: String,
+    pub evidence_segment_ids: Vec<String>,
+}
+
+impl From<MeetingMetric> for MeetingMetricRecord {
+    fn from(m: MeetingMetric) -> Self {
+        Self {
+            id: m.id,
+            name: m.name,
+            value: m.value,
+            evidence_segment_ids: m.evidence_segment_ids,
+        }
+    }
+}
+
+impl From<MeetingMetricRecord> for MeetingMetric {
+    fn from(m: MeetingMetricRecord) -> Self {
+        Self {
+            id: m.id,
+            name: m.name,
+            value: m.value,
+            evidence_segment_ids: m.evidence_segment_ids,
+        }
+    }
 }
 
 /// Builds the `index`th [TranscriptSegmentRecord] for a recording from the
@@ -147,6 +319,9 @@ impl From<Meeting> for MeetingRecord {
             transcript: m.transcript,
             minutes: m.minutes,
             model: m.model,
+            decisions: m.decisions.into_iter().map(Into::into).collect(),
+            action_items: m.action_items.into_iter().map(Into::into).collect(),
+            metrics: m.metrics.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -409,6 +584,12 @@ impl From<transcript_store::TranscriptDocument> for TranscriptDocumentRecord {
 /// durable, so the ASR step is reproducible — which model produced these
 /// segments, from which recording — independent of the append-only log's flat
 /// string.
+// `ADR-0022 §1` adds the three IR parameters to what was already a
+// wide bridge signature. A params struct would need its own frb wire type
+// with no reuse anywhere else, trading one clippy lint for a layer of
+// indirection with a single call site -- `runtime.rs` accepts the same
+// trade at this crate's other wide boundary functions.
+#[allow(clippy::too_many_arguments)]
 pub fn save_meeting(
     title: String,
     recorded_at_ms: u64,
@@ -417,6 +598,9 @@ pub fn save_meeting(
     model: String,
     segments: Vec<TranscriptSegmentRecord>,
     audio_path: String,
+    decisions: Vec<MeetingDecisionRecord>,
+    action_items: Vec<MeetingActionItemRecord>,
+    metrics: Vec<MeetingMetricRecord>,
 ) -> Result<String, String> {
     let meeting = Meeting {
         id: format!("m{recorded_at_ms}"),
@@ -425,6 +609,9 @@ pub fn save_meeting(
         transcript,
         minutes,
         model,
+        decisions: decisions.into_iter().map(Into::into).collect(),
+        action_items: action_items.into_iter().map(Into::into).collect(),
+        metrics: metrics.into_iter().map(Into::into).collect(),
     };
 
     let mut library = lock(&LIBRARY);
@@ -619,6 +806,9 @@ mod tests {
             "m".into(),
             Vec::new(),
             "rec.wav".into(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
         )
         .is_err());
         assert!(get_transcript("nope".into()).is_err());

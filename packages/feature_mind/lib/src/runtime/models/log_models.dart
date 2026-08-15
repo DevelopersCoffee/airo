@@ -27,6 +27,18 @@ enum MindOpKind {
   /// Consent was withdrawn while a recording was in progress. The encoder
   /// stops and the transcript it produced is marked partial.
   consentRevoked,
+
+  /// A meeting's Meeting IR (decisions, action items, metrics) was extracted
+  /// and persisted onto its `Meeting` record.
+  ///
+  /// `ADR-0022 §1.2`: a deliberate addition, not a reuse of [inference] --
+  /// meeting-IR extraction is a product-visible event (it is what makes
+  /// decisions/action-items exist), not an incidental inference side effect,
+  /// so it earns its own vocabulary entry the same way [consent] did. This is
+  /// what makes IR visible to a future timeline projection once #1213-#1220
+  /// land: an op that never happened cannot appear on a replay-built
+  /// timeline.
+  meetingIrExtracted,
 }
 
 /// Whether this operation's signature checked out.

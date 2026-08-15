@@ -174,6 +174,9 @@ pub use schema::{
 };
 pub use search::{Hit, SearchIndex};
 pub use signing::{DeviceKeySigner, Signer, SignerVerifier, Verifier};
-pub use store::{Meeting, MeetingStore, StoreError};
+pub use store::{
+    ActionStatus, DecisionStatus, Meeting, MeetingActionItem, MeetingDecision, MeetingMetric,
+    MeetingStore, StoreError,
+};
 pub use supervisor::{RuntimeError, Supervisor};
 pub use verb::{Verb, VerbPrimitive};

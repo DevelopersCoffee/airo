@@ -71,6 +71,9 @@ rust.MeetingRecord _meeting({
     transcript: transcript,
     minutes: minutes,
     model: 'qwen2.5-0.5b-instruct-q4_k_m',
+    decisions: const [],
+    actionItems: const [],
+    metrics: const [],
   );
 }
 
