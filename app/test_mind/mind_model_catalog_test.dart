@@ -40,6 +40,8 @@ class _EmptyDownloadService implements ModelDownloadService {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory modelsDir;
 
   setUp(() {
