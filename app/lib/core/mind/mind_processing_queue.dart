@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:path/path.dart' as p;
