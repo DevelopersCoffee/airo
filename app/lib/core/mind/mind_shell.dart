@@ -39,6 +39,11 @@ class MindShell extends StatelessWidget {
       selectedIcon: Icons.psychology,
     ),
     MindDestination(
+      label: 'Models',
+      icon: Icons.memory_outlined,
+      selectedIcon: Icons.memory,
+    ),
+    MindDestination(
       label: 'Wellbeing',
       icon: Icons.self_improvement_outlined,
       selectedIcon: Icons.self_improvement,
