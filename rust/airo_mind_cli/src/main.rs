@@ -22,7 +22,8 @@ use airo_mind_llama::{
 };
 use airo_mind_whisper::{
     AudioInput, CancelToken as WhisperCancelToken, ResourceBudget as WhisperBudget,
-    Supervisor as WhisperSupervisor, TranscriptSegment, WhisperSpeechEngine,
+    Supervisor as WhisperSupervisor, TranscriptSegment, TranscriptionOptions,
+    WhisperSpeechEngine,
 };
 
 fn manifest_dir() -> PathBuf {
@@ -177,6 +178,7 @@ fn main() {
                 sample_rate_hz: pcm.sample_rate_hz,
                 channels: pcm.channels,
             },
+            &TranscriptionOptions::default(),
             &WhisperCancelToken::new(),
             &mut |segment| {
                 segments.push(segment);
