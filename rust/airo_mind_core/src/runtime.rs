@@ -779,6 +779,11 @@ pub enum RuntimeApiError {
     /// `sync` (Phase 3+, explicitly out of scope for `#1194`/`#1195`)
     /// remain here; `attach_content` no longer does.
     OutOfScope(&'static str),
+    /// `#1226`: [`Self::replay_schema_checked`] refused because an
+    /// operation's [`Operation::schema_id`] resolved to a breaking,
+    /// migration-requiring, or unrecognized schema version against the
+    /// [`crate::schema::SchemaRegistry`] it was checked against.
+    SchemaIncompatible(crate::schema::SchemaViolation),
 }
 
 impl std::fmt::Display for RuntimeApiError {
@@ -790,6 +795,7 @@ impl std::fmt::Display for RuntimeApiError {
             Self::OutOfScope(what) => {
                 write!(f, "{what} is out of scope for this phase")
             }
+            Self::SchemaIncompatible(violation) => write!(f, "{violation}"),
         }
     }
 }
@@ -1004,6 +1010,24 @@ impl Runtime {
     pub fn query_projection<P: Projection>(&self) -> Result<P, RuntimeApiError> {
         let ops = self.replay()?;
         Ok(P::rebuild(&ops))
+    }
+
+    /// As [`Self::replay`], but refuses outright the moment a replayed
+    /// operation's [`Operation::schema_id`] resolves — through `registry` —
+    /// to anything other than [`crate::schema::ReplayDecision::Current`] or
+    /// [`crate::schema::ReplayDecision::Compatible`]. `#1226`'s enforcement
+    /// integration point: [`crate::schema::check_replay_compatible`] is the
+    /// decision, this is the runtime actually acting on it rather than
+    /// leaving a capability free to call [`Self::replay`] directly and
+    /// ignore the drift.
+    pub fn replay_schema_checked(
+        &self,
+        registry: &crate::schema::SchemaRegistry,
+    ) -> Result<Vec<Operation>, RuntimeApiError> {
+        let ops = self.replay()?;
+        crate::schema::check_replay_compatible(registry, &ops)
+            .map_err(RuntimeApiError::SchemaIncompatible)?;
+        Ok(ops)
     }
 
     /// Stores `bytes` in the content store, content-addressed. `#1194`'s
