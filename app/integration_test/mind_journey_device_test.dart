@@ -64,7 +64,6 @@ import 'dart:io';
 
 import 'package:airo_app/core/mind/mind_model_sources.dart';
 import 'package:feature_mind/feature_mind.dart';
-import 'package:feature_mind/src/export/application/meeting_export_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -84,8 +83,7 @@ void main() {
       Platform.environment['CI'] == 'true' ||
       Platform.environment['GITHUB_ACTIONS'] == 'true';
   final fixtureExists = File(fixturePath).existsSync();
-  final shouldSkip =
-      !runJourney || isCi || (!fixtureExists && !allowRecord);
+  final shouldSkip = !runJourney || isCi || (!fixtureExists && !allowRecord);
 
   if (shouldSkip) {
     final reason = (!runJourney || isCi)
@@ -201,7 +199,9 @@ void main() {
       );
 
       // ── 8. Export markdown (durable evidence; uses #1768 mom.md path) ────
-      final bundle = await MeetingExportService(service).exportMeeting(meetingId);
+      final bundle = await MeetingExportService(
+        service,
+      ).exportMeeting(meetingId);
       expect(bundle, isNotNull);
       expect(bundle!.files.containsKey('transcript.md'), isTrue);
       expect(bundle.files['transcript.md']!.trim(), isNotEmpty);

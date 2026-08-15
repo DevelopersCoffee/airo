@@ -147,10 +147,7 @@ class SemanticSearchRanker {
     rust.MeetingRecord meeting, {
     List<String> segmentTexts = const [],
   }) async {
-    final vectors = await _computeAndStore(
-      meeting,
-      segmentTexts: segmentTexts,
-    );
+    final vectors = await _computeAndStore(meeting, segmentTexts: segmentTexts);
     return vectors != null;
   }
 

@@ -427,9 +427,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              ScribeTrustSignals(
-                state: widget.service.scribeTrustState(),
-              ),
+              ScribeTrustSignals(state: widget.service.scribeTrustState()),
               const SizedBox(height: 12),
               if (_isRunning) const LinearProgressIndicator(),
               if (_stageLabel.isNotEmpty)

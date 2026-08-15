@@ -263,9 +263,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          child: ScribeTrustSignals(
-            state: widget.service.scribeTrustState(),
-          ),
+          child: ScribeTrustSignals(state: widget.service.scribeTrustState()),
         ),
         Padding(
           padding: const EdgeInsets.all(12),

@@ -21,7 +21,9 @@ export 'src/mind_availability.dart';
 export 'src/whisper/api/meetings.dart'
     show MeetingRecord, SearchHit, SpeechLanguage;
 export 'src/meeting_screen.dart' show MeetingScreen;
-export 'src/mind_home_screen.dart' show MindHomeScreen;
+export 'src/mind_home_screen.dart' show MindHomeScreen, meetingListPreview;
+export 'src/export/application/meeting_export_service.dart'
+    show MeetingExportService;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
