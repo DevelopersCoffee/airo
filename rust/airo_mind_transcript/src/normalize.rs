@@ -108,6 +108,23 @@ const TERM_CORRECTIONS: &[(&str, &str)] = &[
     ("ssl", "SSL"),
 ];
 
+/// The canonical (corrected) form of every technical term this module knows
+/// how to fix, deduplicated. This is the "dictionary" `#1636`'s ASR
+/// term-accuracy metric scores against — exposed as a function rather than a
+/// second `pub const` table so the eval crate always sees exactly the terms
+/// this module actually corrects, never a hand-copied list that can drift
+/// from it.
+pub fn technical_terms() -> Vec<&'static str> {
+    let mut terms: Vec<&'static str> = PHRASE_CORRECTIONS
+        .iter()
+        .map(|(_, corrected)| *corrected)
+        .chain(TERM_CORRECTIONS.iter().map(|(_, corrected)| *corrected))
+        .collect();
+    terms.sort_unstable();
+    terms.dedup();
+    terms
+}
+
 /// Normalizes one piece of text: phrase corrections, then single-word
 /// corrections, then number normalization. `raw` in the result is the
 /// caller's `text` unchanged.
@@ -302,5 +319,28 @@ fn group_thousands(value: i64) -> String {
         format!("-{grouped}")
     } else {
         grouped
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn technical_terms_are_deduplicated_and_sorted() {
+        let terms = technical_terms();
+        assert!(terms.contains(&"Temporal"), "{terms:?}");
+        assert!(terms.contains(&"YugabyteDB"), "{terms:?}");
+        assert!(terms.contains(&"GCP"), "{terms:?}");
+        assert!(terms.contains(&"Kubernetes"), "{terms:?}");
+        assert!(terms.contains(&"gRPC"), "{terms:?}");
+
+        let mut sorted = terms.clone();
+        sorted.sort_unstable();
+        assert_eq!(terms, sorted, "already sorted");
+
+        let mut unique = terms.clone();
+        unique.dedup();
+        assert_eq!(terms.len(), unique.len(), "no duplicates");
     }
 }
