@@ -291,6 +291,19 @@ void main() {
 
       expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
     });
+
+    test('uses defaultSpeechLanguage when initialize omits speechLanguage', () async {
+      final multilingualDefault = MindService(
+        recorder: MockAudioRecorder(),
+        modelProvider: FakeReadyModelProvider(),
+        speechBridge: speech,
+        generationBridge: generation,
+        defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
+      );
+      await multilingualDefault.initialize();
+
+      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+    });
   });
 
   // `#1664`: Settings pins a per-recording language, and `process()` is the

@@ -68,6 +68,31 @@ Future<List<RequiredModel>> pinnedRequiredModels() async => [
     requiredModelFromBridge(model),
 ];
 
+/// The multilingual whisper weights pinned in `airo_mind_core::models` as an
+/// optional file — same digest/size as `optional_files()` returns on the Rust
+/// side. Duplicated here rather than bridged because the optional registry is
+/// not yet exposed over FRB; the values must stay in sync with
+/// `rust/airo_mind_core/src/models.rs`.
+const RequiredModel pinnedMultilingualSpeechModel = RequiredModel(
+  fileName: 'ggml-tiny.bin',
+  sizeBytes: 77691713,
+  sha256:
+      'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
+);
+
+/// Everything the standalone Mind scribe downloads: default Milestone 2 weights
+/// plus the multilingual speech model Hindi/Marathi/English code-switching
+/// needs (`#1629`). The English-only row stays in the default registry for
+/// shells that never opt in; Mind ships both so auto-detect transcription
+/// works on first run.
+Future<List<RequiredModel>> mindScribeRequiredModels() async {
+  final required = await pinnedRequiredModels();
+  if (required.any((m) => m.fileName == pinnedMultilingualSpeechModel.fileName)) {
+    return required;
+  }
+  return [...required, pinnedMultilingualSpeechModel];
+}
+
 /// Full verification of what is installed, translated into the shape a
 /// [ModelProvider] speaks.
 ///

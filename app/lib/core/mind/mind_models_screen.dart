@@ -60,7 +60,8 @@ class MindModelsScreen extends ConsumerWidget {
           _ActionTile(
             icon: Icons.cloud_download_outlined,
             title: 'Browse Hugging Face catalog',
-            subtitle: 'Download Gemma, Qwen, Phi, and other local runtimes',
+            subtitle:
+                'Curated packages plus the latest public litert-community releases',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AIModelsScreen()),
             ),

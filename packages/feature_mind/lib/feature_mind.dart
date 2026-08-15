@@ -119,7 +119,7 @@ export 'src/models/model_provider.dart'
 // model-descriptor boundary adapter (#1673) alongside the rest of the
 // bridge <-> RequiredModel/InstalledModel/OfflineModelInfo translation.
 export 'src/models/model_descriptor_adapter.dart'
-    show pinnedRequiredModels, offlineModelInfoFromRequiredModel;
+    show pinnedRequiredModels, mindScribeRequiredModels, pinnedMultilingualSpeechModel, offlineModelInfoFromRequiredModel;
 
 // Model download manager (#1457): progress in bytes, mobile-data pause,
 // storage budget — built on `ModelPort` rather than on `ModelProvider`

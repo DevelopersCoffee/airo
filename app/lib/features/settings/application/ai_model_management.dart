@@ -26,10 +26,11 @@ const String mindScribeModelTag = 'mind-scribe';
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
-  registry.registerModels(ModelCatalog.bundledModels);
-  unawaited(
-    hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
-  );
+    registry.registerModels(ModelCatalog.bundledModels);
+    unawaited(
+      hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
+    );
+    unawaited(hydratePublicHuggingFaceModels(registry));
   ref.onDispose(registry.dispose);
   return registry;
 });

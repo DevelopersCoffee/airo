@@ -116,10 +116,12 @@ class MindService {
     MindSpeechBridge? speechBridge,
     MindGenerationBridge? generationBridge,
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
+    rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
        _generation = generationBridge ?? RustMindGenerationBridge(),
+       _defaultSpeechLanguage = defaultSpeechLanguage,
        _rankerBuilder =
            rankerBuilder ??
            ((dir) => SemanticSearchRanker(
@@ -131,6 +133,7 @@ class MindService {
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
+  final rust.SpeechLanguage _defaultSpeechLanguage;
 
   /// Built lazily against [modelsDirectory] rather than in the constructor:
   /// resolving that directory is async, and every other collaborator here is
@@ -151,9 +154,17 @@ class MindService {
   /// requires the multilingual weights to already be installed — this method
   /// does not acquire them; it only asks the Model Manager to resolve against
   /// them. Choosing this per user is #1664's job.
+  /// Loads speech if needed. Safe to call before every pipeline run — a no-op
+  /// when [initialize] already succeeded.
+  Future<MindStatus> ensureReady() async {
+    if (_speech.isReady()) return const MindStatus.ready();
+    return initialize();
+  }
+
   Future<MindStatus> initialize({
-    rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
+    rust.SpeechLanguage? speechLanguage,
   }) async {
+    final language = speechLanguage ?? _defaultSpeechLanguage;
     try {
       // Only the speech library. Generation is loaded on first use — see
       // `process`.
@@ -216,7 +227,7 @@ class MindService {
         // Admission ceiling, not an allocation. The Supervisor refuses a
         // model it cannot afford before anything is loaded.
         memoryBudgetMb: 4096,
-        speechLanguage: speechLanguage,
+        speechLanguage: language,
       );
       return const MindStatus.ready();
     } on Object catch (e) {

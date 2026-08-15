@@ -38,6 +38,10 @@ class MeetingProcessingJobRunner {
   final AudioRetentionPolicy Function() _retentionPolicy;
 
   Future<void> call(MeetingProcessingJob job) async {
+    final ready = await _mindService.ensureReady();
+    if (!ready.isReady) {
+      throw StateError(ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.');
+    }
     MindProgress? last;
     await for (final progress in _mindService.process(
       wavPath: job.audioPath,

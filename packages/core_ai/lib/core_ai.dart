@@ -70,6 +70,7 @@ export 'src/models/model_credibility.dart';
 export 'src/models/offline_model_info.dart';
 export 'src/registry/model_registry.dart';
 export 'src/registry/model_catalog.dart';
+export 'src/huggingface/huggingface_catalog_service.dart';
 
 // Model Download
 export 'src/download/model_download_progress.dart';
