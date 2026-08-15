@@ -66,9 +66,11 @@ class FakeDownloadProvider implements ModelProvider {
   }
 
   /// Ends the acquisition the way the real provider does.
-  Future<void> finish() async {
+  Future<void> finish({bool resumeSupported = false}) async {
     installed = failures.isEmpty;
-    events.add(ModelAcquisitionDone(failures));
+    events.add(
+      ModelAcquisitionDone(failures, resumeSupported: resumeSupported),
+    );
     await events.close();
   }
 
@@ -169,7 +171,7 @@ void main() {
     expect(find.text('Record'), findsOneWidget);
   });
 
-  testWidgets('a failed download names the file and offers a retry', (
+  testWidgets('a failed download names the file and offers Try again', (
     tester,
   ) async {
     final provider = FakeDownloadProvider(failures: const ['ggml-tiny.en.bin']);
@@ -187,7 +189,32 @@ void main() {
       find.textContaining('Could not download ggml-tiny.en.bin'),
       findsOneWidget,
     );
-    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('a stalled partial download offers Resume download', (
+    tester,
+  ) async {
+    final provider = FakeDownloadProvider(failures: const ['ggml-tiny.en.bin']);
+    await tester.pumpWidget(
+      MaterialApp(home: MindHomeScreen(service: serviceFor(provider))),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Download models (~78 MB)'));
+    await tester.pump();
+    provider.events.add(
+      const ModelAcquisitionProgress('ggml-tiny.en.bin', 38852357, 77704715),
+    );
+    await tester.pump();
+    await provider.finish(resumeSupported: true);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resume download'), findsOneWidget);
+    expect(
+      find.textContaining('Partial download kept'),
+      findsOneWidget,
+    );
   });
 }
 

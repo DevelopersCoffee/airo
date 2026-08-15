@@ -314,6 +314,29 @@ class ModelDownloadRow extends StatelessWidget {
           ),
         ],
       ),
+      ModelDownloadStalled(:final received, :final total) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(value: total > 0 ? received / total : null),
+          const SizedBox(height: 4),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              'Download stalled (${formatBytesOf(received, total)})',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: MindPalette.alarm,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onDownload,
+            child: Text(
+              received > 0 ? 'Resume download' : 'Try again',
+            ),
+          ),
+        ],
+      ),
       ModelDownloadCompleted() => Text(
         'Download complete',
         style: theme.textTheme.bodySmall,
@@ -330,7 +353,10 @@ class ModelDownloadRow extends StatelessWidget {
               ),
             ),
           ),
-          TextButton(onPressed: onDownload, child: const Text('Retry')),
+          TextButton(
+            onPressed: onDownload,
+            child: const Text('Try again'),
+          ),
         ],
       ),
     };

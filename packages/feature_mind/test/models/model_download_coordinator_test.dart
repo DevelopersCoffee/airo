@@ -311,5 +311,35 @@ void main() {
       );
       await sub.cancel();
     });
+
+    test('emits stalled when bytes stop moving for the stall window', () async {
+      final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
+      final coordinator = ModelDownloadCoordinator(
+        models: port,
+        connectivity: FakeConnectivity(),
+        stallThreshold: const Duration(milliseconds: 40),
+        stallPollInterval: const Duration(milliseconds: 10),
+      );
+
+      final states = <ModelDownloadState>[];
+      final sub = coordinator
+          .download('m1', sizeBytes: 500)
+          .listen(states.add);
+      await Future<void>.delayed(Duration.zero);
+
+      port.controllerFor('m1').add((received: 100, total: 500));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        states,
+        contains(const ModelDownloadInProgress(received: 100, total: 500)),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(
+        states.last,
+        const ModelDownloadStalled(received: 100, total: 500),
+      );
+      await sub.cancel();
+    });
   });
 }

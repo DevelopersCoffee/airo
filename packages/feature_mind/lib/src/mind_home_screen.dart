@@ -431,6 +431,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
   ModelAcquisitionProgress? _progress;
   List<String> _failed = const [];
   String? _error;
+  bool _resumeSupported = false;
 
   @override
   void initState() {
@@ -454,6 +455,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
       _failed = const [];
       _error = null;
       _progress = null;
+      _resumeSupported = false;
     });
 
     try {
@@ -462,8 +464,14 @@ class _ModelDownloadState extends State<_ModelDownload> {
         switch (event) {
           case ModelAcquisitionProgress():
             setState(() => _progress = event);
-          case ModelAcquisitionDone(:final failedFileNames):
-            setState(() => _failed = failedFileNames);
+          case ModelAcquisitionDone(
+            :final failedFileNames,
+            :final resumeSupported,
+          ):
+            setState(() {
+              _failed = failedFileNames;
+              _resumeSupported = resumeSupported;
+            });
         }
       }
     } on Object catch (e) {
@@ -478,11 +486,15 @@ class _ModelDownloadState extends State<_ModelDownload> {
   static String _megabytes(int bytes) =>
       '${(bytes / (1000 * 1000)).round()} MB';
 
+  bool get _canResume =>
+      _resumeSupported || (_progress != null && _progress!.fetched > 0);
+
   @override
   Widget build(BuildContext context) {
     final required = _required;
     final total = required?.fold<int>(0, (sum, m) => sum + m.sizeBytes);
     final failed = _failed.isNotEmpty;
+    final needsRecovery = failed || _error != null;
 
     return Center(
       child: Padding(
@@ -512,7 +524,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
               const SizedBox(height: 16),
               Text(
                 'Could not download ${_failed.join(', ')}. Check the '
-                'connection and try again.',
+                'connection and ${_canResume ? 'resume' : 'try again'}.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
@@ -525,6 +537,16 @@ class _ModelDownloadState extends State<_ModelDownload> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+            if (!_running && needsRecovery) ...[
+              const SizedBox(height: 8),
+              Text(
+                _canResume
+                    ? 'Partial download kept where the platform allows it.'
+                    : 'No partial download to resume on this device.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ],
         ),
       ),
@@ -532,13 +554,30 @@ class _ModelDownloadState extends State<_ModelDownload> {
   }
 
   Widget _action(int? total) {
-    final label = total == null
-        ? 'Download models'
-        : 'Download models (~${_megabytes(total)})';
+    final needsRecovery = _failed.isNotEmpty || _error != null;
+    final String label;
+    final IconData icon;
+    if (!needsRecovery) {
+      label = total == null
+          ? 'Download models'
+          : 'Download models (~${_megabytes(total)})';
+      icon = Icons.download;
+    } else if (_canResume) {
+      label = 'Resume download';
+      icon = Icons.download;
+    } else {
+      label = 'Try again';
+      icon = Icons.refresh;
+    }
     return FilledButton.icon(
+      key: Key(
+        needsRecovery
+            ? 'mind_model_download_retry'
+            : 'mind_model_download_start',
+      ),
       onPressed: _download,
-      icon: const Icon(Icons.download),
-      label: Text(_failed.isEmpty && _error == null ? label : 'Retry'),
+      icon: Icon(icon),
+      label: Text(label),
     );
   }
 
