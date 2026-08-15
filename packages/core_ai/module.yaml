@@ -7,6 +7,7 @@ reviewers:
 allowed_dependencies:
   - core_domain
   - core_native
+  - core_workers
   - platform_downloads
 forbidden_dependencies:
   - app
