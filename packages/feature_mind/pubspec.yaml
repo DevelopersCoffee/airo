@@ -50,6 +50,17 @@ dependencies:
   # same package and version core_data, platform_player and feature_iptv
   # already use for the same purpose.
   connectivity_plus: ^7.2.0
+  # Markdown export (#1663): rendering the transcript body runs off the main
+  # isolate once it crosses ~50 KB, per the repo's own parsing rule.
+  core_workers:
+    path: ../core_workers
+  # Share-sheet + save-to-folder for markdown export (#1663). Same package,
+  # same pinned version, as feature_iptv's backup/restore export -- see
+  # platform_backup_document_gateway.dart there for the house pattern this
+  # follows. TV builds swap both for packages/stubs/*_stub via
+  # app/pubspec_overrides.yaml, same as feature_iptv.
+  file_picker: 12.0.0-beta.7
+  share_plus: 13.3.0
 
 # An FFI plugin. Declaring the platforms is what makes the Flutter tool run
 # cargokit's podspec/gradle/cmake hooks during a normal build -- without this

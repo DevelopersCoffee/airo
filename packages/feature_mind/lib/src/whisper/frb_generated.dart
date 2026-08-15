@@ -113,6 +113,7 @@ abstract class RustLibApi extends BaseApi {
 
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
+    String? language,
   });
 
   Future<List<InstalledModel>> crateApiSetupVerifyInstalledModels({
@@ -446,6 +447,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
+    String? language,
   }) {
     final sink = RustStreamSink<TranscriptEvent>();
     unawaited(
@@ -454,6 +456,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           callFfi: (port_) {
             final serializer = SseSerializer(generalizedFrbRustBinding);
             sse_encode_String(wavPath, serializer);
+            sse_encode_opt_String(language, serializer);
             sse_encode_StreamSink_transcript_event_Sse(sink, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
@@ -467,7 +470,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: sse_decode_String,
           ),
           constMeta: kCrateApiMeetingsTranscribeRecordingConstMeta,
-          argValues: [wavPath, sink],
+          argValues: [wavPath, language, sink],
           apiImpl: this,
         ),
       ),
@@ -478,7 +481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMeetingsTranscribeRecordingConstMeta =>
       const TaskConstMeta(
         debugName: "transcribe_recording",
-        argNames: ["wavPath", "sink"],
+        argNames: ["wavPath", "language", "sink"],
       );
 
   @override

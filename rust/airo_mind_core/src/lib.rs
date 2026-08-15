@@ -52,10 +52,27 @@ pub mod models;
 pub mod budget;
 pub mod cancel;
 
+/// `#1295`'s capability-facing runtime API surface: `create_operation`,
+/// `attach_content`, `query_projection`, `instantiate_context`, `emit_event`.
+/// The only door a capability built after `#1338`'s [`notes`] should use —
+/// see the module doc for what is real and what is honestly stubbed.
+pub mod capability_api;
+
 /// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
 /// held out of line, addressed by [`content::ContentId`].
 pub mod content;
+
+/// `#1225`'s four capability DSLs — Graph, Workflow, View, Automation. Parse
+/// and validate declarative capability data (design doc §5.1 Tier 1); does
+/// not execute anything. See the module doc for the shared diagnostic type
+/// and why Graph gets the deepest treatment.
+pub mod dsl;
 pub mod engine;
+
+/// The in-process, non-durable event bus behind
+/// [`capability_api::CapabilityApi::emit_event`]. See the module doc for
+/// exactly what "non-durable" means mechanically.
+pub mod event;
 
 /// Engine lifecycle: state, dependency ordering, and graceful shutdown.
 /// `#1302`'s half of `C6` — see the module docs for why this is split from
@@ -67,6 +84,16 @@ pub mod lifecycle;
 /// its own.
 pub mod notes;
 
+/// `#1223`'s type system: [`ontology::Primitive`] (the nine leaf value
+/// types and their default merge), [`ontology::Archetype`] (the twelve
+/// abstract shapes, never in user data), [`ontology::CoreEntityType`] (the
+/// twelve concrete types a capability actually extends), and
+/// [`ontology::EntityTypeDef`] (what a capability declares). Additive: it
+/// encodes into the same `&[u8]` [`projection::encode_set_property`] already
+/// accepts, and does not change [`verb::Verb`] or
+/// [`projection::EntityGraphProjection`]'s wire shape — see the module doc.
+pub mod ontology;
+
 /// The generalized projection engine. `#1195`'s condition-5 machinery:
 /// [`projection::EntityGraphProjection`], the multi-capability projection
 /// that proves delete-and-rebuild is a property of the engine, not an
@@ -77,6 +104,14 @@ pub mod projection;
 /// against `C1`/`C2` for `#1194`/`#1195`, wired through
 /// [`lifecycle::EngineRegistry`] rather than around it.
 pub mod runtime;
+
+/// Schema fingerprint + compatibility classes (`#1226`). Turns an
+/// [`ontology::EntityTypeDef`] into a stable [`schema::fingerprint`], and
+/// classifies structural drift between two versions of "the same" schema as
+/// [`schema::Compatibility::Compatible`] or [`schema::Compatibility::Breaking`]
+/// — enforced, not just detected, at [`schema::check_replay_compatible`] /
+/// [`runtime::Runtime::replay_schema_checked`].
+pub mod schema;
 pub mod search;
 
 /// Operation signing. `#1194`'s `signature` header field — see the module
@@ -95,22 +130,47 @@ pub mod wav;
 
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
+pub use capability_api::{
+    CapabilityApi, CapabilityApiError, ContextId, CreateOperationRequest, OperationKind,
+    OperationReceipt,
+};
 pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
+pub use dsl::{
+    automation::{
+        ActionDef, ActionKind, AutomationDef, AutomationDsl, ConditionDef, ConditionOperator,
+        TriggerDef, TriggerKind,
+    },
+    graph::{Cardinality, GraphDsl, RelationDef},
+    view::{ViewDef, ViewDsl, ViewKind},
+    workflow::{TransitionDef, WorkflowDsl},
+    DslError,
+};
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-    SpeechEngine, TranscriptSegment,
+    SpeechEngine, TranscriptSegment, TranscriptionOptions,
 };
+pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
 };
 pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
+pub use ontology::{
+    parse_extends, validate_relation_endpoints, validate_user_facing_label, Archetype,
+    CoreEntityType, EntityTypeDef, MergeStrategy, OntologyError, Primitive, Value,
+};
 pub use projection::{
-    encode_relation, encode_set_property, rebuild_from_scratch, EntityGraphProjection, EntityRecord,
+    encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
+    ContextHypergraphProjection, ContextRecord, EntityGraphProjection, EntityRecord,
+    SurvivalReport,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
     ReplayVerifyError, Runtime, RuntimeApiError,
+};
+pub use schema::{
+    check_replay_compatible, classify, fingerprint, schema_fingerprint_id,
+    split_schema_fingerprint_id, Compatibility, ReplayDecision, SchemaRegistry, SchemaViolation,
 };
 pub use search::{Hit, SearchIndex};
 pub use signing::{DeviceKeySigner, Signer, SignerVerifier, Verifier};

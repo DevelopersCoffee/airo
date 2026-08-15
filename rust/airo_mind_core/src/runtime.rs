@@ -69,6 +69,7 @@ use std::sync::Mutex;
 use crate::content::{ContentId, ContentStore, ContentStoreError};
 use crate::digest::Sha256;
 use crate::engine::EngineError;
+use crate::event::{CapabilityEvent, EventBus};
 use crate::lifecycle::{EngineName, ManagedEngine};
 use crate::signing::{DeviceKeySigner, SignerVerifier};
 use crate::supervisor::Supervisor;
@@ -778,6 +779,11 @@ pub enum RuntimeApiError {
     /// `sync` (Phase 3+, explicitly out of scope for `#1194`/`#1195`)
     /// remain here; `attach_content` no longer does.
     OutOfScope(&'static str),
+    /// `#1226`: [`Self::replay_schema_checked`] refused because an
+    /// operation's [`Operation::schema_id`] resolved to a breaking,
+    /// migration-requiring, or unrecognized schema version against the
+    /// [`crate::schema::SchemaRegistry`] it was checked against.
+    SchemaIncompatible(crate::schema::SchemaViolation),
 }
 
 impl std::fmt::Display for RuntimeApiError {
@@ -789,6 +795,7 @@ impl std::fmt::Display for RuntimeApiError {
             Self::OutOfScope(what) => {
                 write!(f, "{what} is out of scope for this phase")
             }
+            Self::SchemaIncompatible(violation) => write!(f, "{violation}"),
         }
     }
 }
@@ -845,6 +852,12 @@ pub struct Runtime {
     supervisor: Supervisor,
     log: Arc<OperationLog>,
     content: Arc<ContentStore>,
+    /// The in-process, non-durable event bus `#1295`'s `emit_event` publishes
+    /// to. Not a lifecycle engine (`ProjectionEngine`'s reasoning applies
+    /// here too — no durable state for a Supervisor slot to own or restart)
+    /// and not reachable from a capability except through
+    /// [`crate::capability_api::CapabilityApi::emit_event`].
+    event_bus: Arc<EventBus>,
 }
 
 impl Runtime {
@@ -889,6 +902,7 @@ impl Runtime {
             supervisor,
             log,
             content,
+            event_bus: Arc::new(EventBus::new()),
         })
     }
 
@@ -998,6 +1012,24 @@ impl Runtime {
         Ok(P::rebuild(&ops))
     }
 
+    /// As [`Self::replay`], but refuses outright the moment a replayed
+    /// operation's [`Operation::schema_id`] resolves — through `registry` —
+    /// to anything other than [`crate::schema::ReplayDecision::Current`] or
+    /// [`crate::schema::ReplayDecision::Compatible`]. `#1226`'s enforcement
+    /// integration point: [`crate::schema::check_replay_compatible`] is the
+    /// decision, this is the runtime actually acting on it rather than
+    /// leaving a capability free to call [`Self::replay`] directly and
+    /// ignore the drift.
+    pub fn replay_schema_checked(
+        &self,
+        registry: &crate::schema::SchemaRegistry,
+    ) -> Result<Vec<Operation>, RuntimeApiError> {
+        let ops = self.replay()?;
+        crate::schema::check_replay_compatible(registry, &ops)
+            .map_err(RuntimeApiError::SchemaIncompatible)?;
+        Ok(ops)
+    }
+
     /// Stores `bytes` in the content store, content-addressed. `#1194`'s
     /// scope: *"content-addressed encrypted content store"* (encrypted is
     /// Phase 1's Vault — see [`crate::content`]'s module doc for the gap this
@@ -1016,9 +1048,275 @@ impl Runtime {
         Ok(self.content.get(id)?)
     }
 
+    /// Condition 8 of `#1311` (`#1217`): *"`DestroyContent` removes every
+    /// reachable representation of user content, except immutable structural
+    /// metadata intentionally retained by design."*
+    ///
+    /// # Why this cannot be `emit_verb_operation(Verb::DestroyContent, ...)`
+    ///
+    /// `C5`'s governing question: *"can it be implemented entirely by
+    /// emitting operations and consuming projections? If no, either the
+    /// runtime is missing a generic primitive that should be added once for
+    /// everyone, or the capability is bypassing the runtime."* An append-only
+    /// operation log cannot make its own past payload bytes disappear by
+    /// appending a new operation — the physical erasure this condition
+    /// requires happens in [`ContentStore`], which no operation, by itself,
+    /// touches. This method is that missing generic primitive: the one seam
+    /// that reaches both the content store and the log in one durability
+    /// boundary, so no capability needs (or is able) to reach the content
+    /// store directly to get real destruction.
+    ///
+    /// # What actually happens, in order, and why the order is load-bearing
+    ///
+    /// 1. **The bytes are physically erased first**
+    ///    ([`ContentStore::remove`]'s secure overwrite-then-unlink — see its
+    ///    doc). Before anything durable records that this happened.
+    /// 2. **Only then** is a `DestroyContent` operation appended, carrying
+    ///    `content_id` (already-public content-addressed metadata — the hash
+    ///    of bytes that no longer exist proves nothing about them, which is
+    ///    exactly the "immutable structural metadata intentionally retained"
+    ///    this condition's own carve-out names) but **no payload**: nothing
+    ///    about the destroyed bytes is copied into the log by the act of
+    ///    destroying them.
+    ///
+    ///    Reversing this order would mean a crash between the two steps could
+    ///    leave a log that *claims* content is destroyed while the bytes are
+    ///    still fully readable on disk — a false guarantee is worse than a
+    ///    missing one. This order's failure mode is the opposite and
+    ///    safe-by-default: a crash after step 1 but before step 2 leaves the
+    ///    bytes gone and the log not yet reflecting it, which a caller can
+    ///    safely retry (removing already-absent bytes is idempotent).
+    ///
+    /// # What this does not (yet) do
+    ///
+    /// `#1217`'s eight steps assume Phase 1's Vault (crypto-shredding a
+    /// content key, `RevokeContentKey` on a revocation ledger) and Phase 3's
+    /// derived-state sweep (embeddings, search index, AI caches) — neither
+    /// exists in this crate yet (see [`crate::content`]'s and this module's
+    /// own "still explicitly deferred" notes). What this method provides
+    /// instead, conservatively, for what *does* exist here: the content
+    /// store's bytes are genuinely gone from disk (not merely logically
+    /// deleted), and [`crate::projection::ContentLedgerProjection`] — the one
+    /// derived-state projection this phase's substrate has — reflects the
+    /// destruction on every rebuild.
+    pub fn destroy_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        // Step 1: physically unrecoverable first (idempotent if already
+        // gone — see `ContentStore::remove`'s doc).
+        self.content.remove(&content_id)?;
+
+        // Step 2: the tombstone. No payload, no bytes -- only the id of what
+        // was destroyed, which is exactly the structural metadata condition
+        // 8's carve-out names.
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::DestroyContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids: &[],
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
     /// Out of scope for this phase. Contexts are Phase 5.
     pub fn instantiate_context(&self) -> Result<(), RuntimeApiError> {
         Err(RuntimeApiError::OutOfScope("instantiate_context"))
+    }
+
+    /// Creates a context node — design §5.8: *"contexts belong to the user,
+    /// not the capability."* `context_id` is this operation's `entity_id`,
+    /// the same overload [`Verb::CreateEntity`] already uses for "the node
+    /// this operation is primarily about" — there is no separate context-id
+    /// field in the wire format, so a context and an entity share the one
+    /// the header already has. `label` is the context's small, inline
+    /// display name (a hospitalization's title, a project's name), the same
+    /// "small inline argument" shape [`Self::emit_verb_operation`]'s
+    /// `payload` already carries for `CreateEntity`.
+    ///
+    /// Not routed through [`crate::capability_api::CapabilityApi::instantiate_context`]
+    /// — that surface is still stubbed pending `#1197`'s context-template
+    /// work (a capability shipping a *named template* to instantiate). This
+    /// is the lower-level primitive a template's implementation would call:
+    /// one bare context node, no template resolution attached.
+    pub fn create_context(
+        &self,
+        capability: &str,
+        context_id: &str,
+        label: &[u8],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::CreateContext.as_str(),
+            payload: label,
+            recorded_at_ms,
+            entity_id: context_id,
+            parent_operation_id: None,
+            context_ids: &[],
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Links already-stored content into one or more contexts — one
+    /// hyperedge per context named, design §4.1: *"content links to many
+    /// contexts and is owned by none."* `content_id` must already exist
+    /// (from a prior `CreateContent` or [`Self::attach_content`]); this
+    /// stores no new bytes, only records which contexts now hold this
+    /// content — see [`crate::projection::ContextHypergraphProjection`] for
+    /// where that fact is read back.
+    ///
+    /// Modeled at the log/projection level, not as real per-context key
+    /// wrappings: `#1209`'s envelope encryption has not landed in this crate
+    /// yet (see [`crate::content`]'s module doc for the same gap already
+    /// documented for the content store itself). The shape here does not
+    /// change when `#1209` lands — `LinkContent` already carries exactly the
+    /// `(content_id, context_ids[])` pair real wrapping needs; the fold in
+    /// [`crate::projection::ContextHypergraphProjection`] would move from
+    /// modeling membership to modeling actual `wrap(CK, ContextKey)` calls
+    /// underneath the same operation shape.
+    pub fn link_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::LinkContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids,
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Removes one or more context wrappings from already-stored content —
+    /// design §3.2: *"`UnlinkContent` removes one context link"*, distinct
+    /// from [`Self::destroy_content`], which removes every wrapping and is
+    /// irreversible. The UI must never conflate the two; this method alone
+    /// never touches the content store or crypto-shreds anything.
+    ///
+    /// Does not compute what survives — call
+    /// [`crate::projection::ContextHypergraphProjection::survival_if_unlinked`]
+    /// against a fresh [`Self::query_projection`] first if the caller needs
+    /// that answer before committing to this call (the confirmation-dialog
+    /// use case design §4.1 names).
+    pub fn unlink_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::UnlinkContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids,
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Links two or more contexts to each other — design §5.8's
+    /// restructuring graph (*"merging two journeys, re-filing a decade of
+    /// documents... only links change"*), distinct from
+    /// [`Self::link_content`]'s content-to-context hyperedges. Recorded
+    /// symmetrically in [`crate::projection::ContextHypergraphProjection`]:
+    /// `from_context_id` and each of `to_context_ids` become mutually
+    /// linked, so a caller does not need to know which side "owns" the
+    /// edge to read it back.
+    pub fn link_context(
+        &self,
+        capability: &str,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::LinkContext.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id: from_context_id,
+            parent_operation_id: None,
+            context_ids: to_context_ids,
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Removes a [`Self::link_context`] edge. Restructuring, not
+    /// destruction — no context and no content is deleted by this call, only
+    /// the structural edge between two contexts.
+    pub fn unlink_context(
+        &self,
+        capability: &str,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::UnlinkContext.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id: from_context_id,
+            parent_operation_id: None,
+            context_ids: to_context_ids,
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Registers a new listener on the in-process event bus. Not part of
+    /// `#1295`'s five-function capability surface (that surface only exposes
+    /// the write side, `emit_event`, via
+    /// [`crate::capability_api::CapabilityApi`]) — this is the runtime-level
+    /// read side something outside a capability (a UI layer, a test) uses to
+    /// observe what capabilities publish. See [`crate::event`]'s module doc
+    /// for exactly what this does and does not guarantee.
+    pub fn subscribe_events(&self) -> std::sync::mpsc::Receiver<CapabilityEvent> {
+        self.event_bus.subscribe()
+    }
+
+    /// Publishes one event to every live subscriber. `pub(crate)`, not
+    /// `pub`: the only intended caller is
+    /// [`crate::capability_api::CapabilityApi::emit_event`] — a capability
+    /// reaches this exclusively through that narrower surface, never
+    /// [`Runtime`] directly.
+    pub(crate) fn publish_event(&self, event: CapabilityEvent) {
+        self.event_bus.publish(event);
     }
 
     /// Out of scope for this phase. Both `#1194` and `#1195` name Sync as

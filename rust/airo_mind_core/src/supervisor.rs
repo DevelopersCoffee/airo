@@ -18,7 +18,7 @@ use crate::budget::ResourceBudget;
 use crate::cancel::CancelToken;
 use crate::engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-    SpeechEngine, TranscriptSegment,
+    SpeechEngine, TranscriptSegment, TranscriptionOptions,
 };
 use crate::lifecycle::{
     ConcurrencyLimiter, EngineMetrics, EngineName, EngineRegistry, EngineState, GroupCommitBuffer,
@@ -157,6 +157,7 @@ impl Supervisor {
     pub fn run_speech(
         &self,
         audio: AudioInput<'_>,
+        options: &TranscriptionOptions,
         cancel: &CancelToken,
         sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
     ) -> Result<(), RuntimeError> {
@@ -166,7 +167,7 @@ impl Supervisor {
             .ok_or(RuntimeError::NoEngine("speech"))?;
         self.admit(engine.resource_request().memory_mb)?;
         let _slot = self.admit_concurrency()?;
-        engine.transcribe(audio, cancel, sink)?;
+        engine.transcribe(audio, options, cancel, sink)?;
         Ok(())
     }
 
@@ -308,6 +309,15 @@ mod tests {
         memory_mb: u32,
     }
 
+    impl FakeSpeech {
+        fn new(segments: usize, memory_mb: u32) -> Self {
+            Self {
+                segments,
+                memory_mb,
+            }
+        }
+    }
+
     impl SpeechEngine for FakeSpeech {
         fn resource_request(&self) -> ResourceRequest {
             ResourceRequest::new(self.memory_mb)
@@ -316,6 +326,7 @@ mod tests {
         fn transcribe(
             &self,
             _audio: AudioInput<'_>,
+            _options: &TranscriptionOptions,
             cancel: &CancelToken,
             sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
         ) -> Result<(), EngineError> {
@@ -374,10 +385,7 @@ mod tests {
 
     fn supervisor(budget_mb: u32, engine_mb: u32) -> Supervisor {
         let mut s = Supervisor::new(ResourceBudget::new(budget_mb));
-        s.register_speech(Box::new(FakeSpeech {
-            segments: 3,
-            memory_mb: engine_mb,
-        }));
+        s.register_speech(Box::new(FakeSpeech::new(3, engine_mb)));
         s.register_generation(Box::new(FakeGeneration {
             memory_mb: engine_mb,
         }));
@@ -396,6 +404,7 @@ mod tests {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &CancelToken::new(),
             &mut |seg| {
                 out.push(seg);
@@ -405,6 +414,66 @@ mod tests {
         .unwrap();
         assert_eq!(out.len(), 3);
         assert_eq!(out[0].text, "segment 0");
+    }
+
+    /// `#1664`: a language hint passed to `run_speech` must reach the engine
+    /// unchanged, not get dropped or defaulted away somewhere in between.
+    #[test]
+    fn run_speech_passes_the_language_hint_to_the_engine() {
+        let samples = audio();
+        let mut s = Supervisor::new(ResourceBudget::new(2048));
+
+        // `Supervisor` owns the only `Box<dyn SpeechEngine>` handle, so the
+        // engine reports what it saw through a shared `Arc<Mutex<_>>` rather
+        // than being inspected after the fact.
+        let observed = std::sync::Arc::new(std::sync::Mutex::new(None));
+        struct ObservingSpeech {
+            observed: std::sync::Arc<std::sync::Mutex<Option<TranscriptionOptions>>>,
+        }
+        impl SpeechEngine for ObservingSpeech {
+            fn resource_request(&self) -> ResourceRequest {
+                ResourceRequest::new(512)
+            }
+            fn transcribe(
+                &self,
+                _audio: AudioInput<'_>,
+                options: &TranscriptionOptions,
+                _cancel: &CancelToken,
+                sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
+            ) -> Result<(), EngineError> {
+                *self.observed.lock().unwrap() = Some(options.clone());
+                sink(TranscriptSegment {
+                    start_ms: 0,
+                    end_ms: 100,
+                    text: "hi".into(),
+                })
+            }
+        }
+        s.register_speech(Box::new(ObservingSpeech {
+            observed: observed.clone(),
+        }));
+
+        s.run_speech(
+            AudioInput {
+                samples: &samples,
+                sample_rate_hz: 16_000,
+                channels: 1,
+            },
+            &TranscriptionOptions {
+                language: Some("hi".into()),
+            },
+            &CancelToken::new(),
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        assert_eq!(
+            observed.lock().unwrap().clone(),
+            Some(TranscriptionOptions {
+                language: Some("hi".into())
+            }),
+            "the language hint must reach the engine's transcribe() call unchanged"
+        );
     }
 
     /// `#1396` acceptance: the Supervisor executes one generation job.
@@ -443,6 +512,7 @@ mod tests {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &cancel,
             &mut |seg| {
                 out.push(seg);
@@ -475,6 +545,7 @@ mod tests {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &CancelToken::new(),
             &mut |_| {
                 called = true;
@@ -505,6 +576,7 @@ mod tests {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &CancelToken::new(),
             &mut |_| Ok(()),
         );
@@ -525,6 +597,7 @@ mod tests {
                 sample_rate_hz: 16_000,
                 channels: 1,
             },
+            &TranscriptionOptions::default(),
             &CancelToken::new(),
             &mut |_| {
                 seen += 1;

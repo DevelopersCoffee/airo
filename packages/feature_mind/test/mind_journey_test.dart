@@ -51,6 +51,7 @@ class _FakeMind extends MindService {
   Stream<MindProgress> process({
     required String wavPath,
     required String title,
+    String? language,
   }) => _stream ?? const Stream.empty();
 
   @override

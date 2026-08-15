@@ -227,7 +227,13 @@ fn shares_a_domain_token(a: &BTreeSet<String>, b: &BTreeSet<String>) -> bool {
 /// Byte-identical text (what overlapping chunks produce for a fact sitting on a
 /// boundary) short-circuits, so the exact-duplicate case never depends on the
 /// heuristic at all.
-pub(crate) fn is_near_duplicate(left: &str, right: &str, config: &DedupConfig) -> bool {
+///
+/// `pub`, not `pub(crate)`: `airo_mind_eval` (`#1636`) scores extraction
+/// precision/recall/F1 by semantically matching predicted facts against a
+/// golden IR, and that is exactly this function's job. Widening the
+/// visibility here means the eval harness measures Pass 2's actual matching
+/// behaviour rather than a second, drifting reimplementation of it.
+pub fn is_near_duplicate(left: &str, right: &str, config: &DedupConfig) -> bool {
     if left.eq_ignore_ascii_case(right) {
         return true;
     }

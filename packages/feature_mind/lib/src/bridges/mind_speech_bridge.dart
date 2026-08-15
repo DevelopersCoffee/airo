@@ -134,7 +134,14 @@ abstract interface class MindSpeechBridge {
     rust.SpeechLanguage speechLanguage,
   });
 
-  Stream<TranscriptEvent> transcribe({required String wavPath});
+  /// [language] is `#1664`'s per-recording pin: a whisper.cpp language code
+  /// (`"en"`, `"hi"`, ...), or `null` to leave the engine on auto-detect.
+  /// Settings choosing a primary language maps to this caller supplying the
+  /// same code on every call — there is no separate "global" pin to
+  /// synchronize, and no way to pin two languages for one pass: whisper.cpp
+  /// accepts exactly one language per run (see
+  /// `rust.transcribeRecording`/`TranscriptionOptions` on the Rust side).
+  Stream<TranscriptEvent> transcribe({required String wavPath, String? language});
 
   /// Makes a meeting durable and searchable, and persists its structured
   /// transcript document. Returns the meeting's id.
@@ -210,8 +217,8 @@ class RustMindSpeechBridge implements MindSpeechBridge {
   );
 
   @override
-  Stream<TranscriptEvent> transcribe({required String wavPath}) =>
-      rust.transcribeRecording(wavPath: wavPath).map((event) {
+  Stream<TranscriptEvent> transcribe({required String wavPath, String? language}) =>
+      rust.transcribeRecording(wavPath: wavPath, language: language).map((event) {
         return switch (event) {
           rust.TranscriptEvent_Transcribing(:final segment) =>
             TranscriptEventTranscribing(toTranscriptSegment(segment)),

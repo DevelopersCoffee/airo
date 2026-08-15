@@ -30,8 +30,22 @@ bool isReady() => RustLib.instance.api.crateApiMeetingsIsReady();
 /// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
 /// The caller takes the transcript on to generation, which lives in the other
 /// library.
-Stream<TranscriptEvent> transcribeRecording({required String wavPath}) =>
-    RustLib.instance.api.crateApiMeetingsTranscribeRecording(wavPath: wavPath);
+///
+/// `language` is `#1664`'s per-recording language pin: a whisper.cpp
+/// language code (`"en"`, `"hi"`, ...), or `None` to leave the engine on
+/// auto-detect. Settings' "pin one or two expected languages" maps to Dart
+/// always supplying the user's chosen primary language here — this call
+/// accepts exactly one, because whisper.cpp itself has no "try either of
+/// these" mode (see `TranscriptionOptions` in `airo_mind_core::engine`). A
+/// "globally pinned" language is the same value passed on every call; there
+/// is no separate global switch to keep in sync on the Rust side.
+Stream<TranscriptEvent> transcribeRecording({
+  required String wavPath,
+  String? language,
+}) => RustLib.instance.api.crateApiMeetingsTranscribeRecording(
+  wavPath: wavPath,
+  language: language,
+);
 
 /// Makes a meeting durable and searchable, and persists its structured
 /// transcript document. Returns the meeting's id.
@@ -368,6 +382,15 @@ class SearchHit {
 /// Model Manager's to know, not this capability's). Wiring an install/
 /// preference flow for this is #1664's job; this is the mechanism it selects
 /// through.
+///
+/// Not to be confused with `TranscriptionOptions::language` (`#1664`), which
+/// this field feeds but does not replace: `SpeechLanguage` picks *which
+/// model* loads (English-only weights, or multilingual weights capable of
+/// more than English); `TranscriptionOptions::language`, supplied per call to
+/// `transcribe_recording`, pins *which language the loaded model decodes as*
+/// for that one recording, or leaves it on auto-detect. A `Multilingual`
+/// model with no language hint still auto-detects — this field alone does
+/// not pin anything.
 enum SpeechLanguage {
   englishOnly,
   multilingual;

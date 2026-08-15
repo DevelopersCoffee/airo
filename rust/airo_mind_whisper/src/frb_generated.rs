@@ -414,6 +414,7 @@ fn wire__crate__api__meetings__transcribe_recording_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_wav_path = <String>::sse_decode(&mut deserializer);
+            let api_language = <Option<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::meetings::TranscriptEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -421,8 +422,11 @@ fn wire__crate__api__meetings__transcribe_recording_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok =
-                        crate::api::meetings::transcribe_recording(api_wav_path, api_sink)?;
+                    let output_ok = crate::api::meetings::transcribe_recording(
+                        api_wav_path,
+                        api_language,
+                        api_sink,
+                    )?;
                     Ok(output_ok)
                 })())
             }
