@@ -24,6 +24,9 @@ List<Override> mindMeetingProcessingOverrides(MindService service) => [
       // mid-queue has it apply to the very next job that finishes or fails,
       // not just ones enqueued after the change.
       retentionPolicy: () => ref.read(audioRetentionPolicyProvider),
+      // Same live-read pattern for #1664 language mode → process(language:)
+      // and ensureReady(speechLanguage:).
+      languageMode: () => ref.read(speechLanguageModeProvider),
     );
     final queue = MeetingProcessingQueue(
       store: FileMeetingProcessingQueueStore(path),

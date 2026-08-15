@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../capture/presentation/audio_retention_settings_tile.dart';
+import '../../../capture/presentation/speech_language_settings_tile.dart';
 import '../../../host/assistant_host_adapter.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../routing/assistant_route_names.dart';
@@ -78,6 +79,7 @@ class ProfileScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const AudioRetentionSettingsTile(),
+            const SpeechLanguageSettingsTile(),
 
             const SizedBox(height: 32),
 

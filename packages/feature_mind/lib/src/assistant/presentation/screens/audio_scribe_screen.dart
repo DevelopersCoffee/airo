@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/voice_search_service.dart';
+import '../../../trust/scribe_trust_signals.dart';
+import '../../../trust/scribe_trust_state.dart';
 import '../../consent/audio_scribe_consent_gate.dart';
 import '../../consent/jurisdiction_consent_rules.dart';
 import '../../consent/mind_runtime_provider.dart';
@@ -180,6 +182,10 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
           const Text(
             'Capture speech, review the transcript, then send it to an installed model for translation or summarisation.',
           ),
+          const SizedBox(height: 12),
+          // #1774: listen-mode prefers India locales (#1769); capture itself
+          // is on-device. Translation is a separate, explicit hand-off.
+          const ScribeTrustSignals(state: ScribeTrustState.audioScribeListen()),
           const SizedBox(height: 12),
           _VoiceHealthPanel(
             availability: available,
