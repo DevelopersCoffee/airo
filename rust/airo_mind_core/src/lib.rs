@@ -104,6 +104,14 @@ pub mod projection;
 /// against `C1`/`C2` for `#1194`/`#1195`, wired through
 /// [`lifecycle::EngineRegistry`] rather than around it.
 pub mod runtime;
+
+/// Schema fingerprint + compatibility classes (`#1226`). Turns an
+/// [`ontology::EntityTypeDef`] into a stable [`schema::fingerprint`], and
+/// classifies structural drift between two versions of "the same" schema as
+/// [`schema::Compatibility::Compatible`] or [`schema::Compatibility::Breaking`]
+/// — enforced, not just detected, at [`schema::check_replay_compatible`] /
+/// [`runtime::Runtime::replay_schema_checked`].
+pub mod schema;
 pub mod search;
 
 /// Operation signing. `#1194`'s `signature` header field — see the module
@@ -153,11 +161,16 @@ pub use ontology::{
 };
 pub use projection::{
     encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
-    EntityGraphProjection, EntityRecord,
+    ContextHypergraphProjection, ContextRecord, EntityGraphProjection, EntityRecord,
+    SurvivalReport,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
     ReplayVerifyError, Runtime, RuntimeApiError,
+};
+pub use schema::{
+    check_replay_compatible, classify, fingerprint, schema_fingerprint_id,
+    split_schema_fingerprint_id, Compatibility, ReplayDecision, SchemaRegistry, SchemaViolation,
 };
 pub use search::{Hit, SearchIndex};
 pub use signing::{DeviceKeySigner, Signer, SignerVerifier, Verifier};

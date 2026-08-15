@@ -36,6 +36,9 @@ allowed_dependencies:
   - core_product_shell
   - core_domain
   - core_data
+  # Markdown export (#1663): renders transcript.md/mom.md off the main
+  # isolate once a meeting crosses ~50 KB, per the repo's own parsing rule.
+  - core_workers
 forbidden_dependencies:
   - app
 quality_gates: {}
