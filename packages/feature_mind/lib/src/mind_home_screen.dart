@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'whisper/api/meetings.dart' as rust;
 import 'export/application/meeting_export_service.dart';
@@ -190,6 +191,13 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       appBar: AppBar(
         title: const Text('Airo Mind'),
         actions: [
+          if (status != null && status.isReady)
+            IconButton(
+              key: const Key('mind_home_record_meeting_button'),
+              tooltip: 'Record a meeting',
+              icon: const Icon(Icons.mic_none),
+              onPressed: () => context.push('/record'),
+            ),
           if (status != null && status.isReady && _meetings.isNotEmpty)
             PopupMenuButton<bool>(
               icon: _exportingAll

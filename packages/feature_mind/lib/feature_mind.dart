@@ -243,6 +243,7 @@ export 'src/capture/data/meeting_recording_service_gateway.dart';
 export 'src/capture/data/meeting_processing_queue_store.dart';
 export 'src/capture/application/meeting_capture_controller.dart';
 export 'src/capture/application/meeting_processing_queue.dart';
+export 'src/capture/application/meeting_processing_job_runner.dart';
 export 'src/capture/application/meeting_capture_providers.dart';
 export 'src/capture/application/audio_retention_preference.dart';
 export 'src/capture/presentation/meeting_capture_screen.dart';
