@@ -21,7 +21,7 @@
 /// to the recorder — so before this shell grew a nav bar the assistant was
 /// unreachable on a device (#1555). The three destinations are therefore
 /// branches of a `StatefulShellRoute.indexedStack` wrapped in [MindShell]:
-/// Scribe (`/`), Assistant (the hub), Wellbeing. The affordance is
+/// Scribe (`/`), Assistant (the hub), Models (`/models`), Wellbeing. The affordance is
 /// shell-owned; `feature_mind` stays untouched. See [buildMindRoutes] for how
 /// the branches are assembled from the module's three route accessors.
 ///
@@ -60,13 +60,16 @@ import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'core/assistant/app_assistant_host_adapter.dart';
+import 'core/assistant/mind_assistant_host_adapter.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
+import 'core/mind/mind_models_screen.dart';
 import 'core/mind/mind_model_catalog.dart';
 import 'core/mind/mind_model_sources.dart';
 import 'core/mind/mind_processing_queue.dart';
+import 'core/mind/mind_provider_overrides.dart';
 import 'core/mind/mind_shell.dart';
 import 'core/mind/mind_unavailable_screen.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
@@ -77,6 +80,7 @@ import 'firebase_options.dart';
 
 Future<void> main() {
   late ModuleRegistry registry;
+  late SharedPreferences prefs;
 
   return AiroBootstrap.run(
     shell: ShellId.mind,
@@ -93,9 +97,16 @@ Future<void> main() {
           ),
       onResult: (initialized) => isFirebaseInitialized = initialized,
     ),
-    composeApp: () {
+    composeApp: () async {
+      prefs = await SharedPreferences.getInstance();
       registry = buildMindModuleRegistry();
-      return AiroMindApp(registry: registry);
+      return ProviderScope(
+        overrides: buildMindProviderOverrides(
+          prefs: prefs,
+          registry: registry,
+        ),
+        child: AiroMindApp(registry: registry),
+      );
     },
     afterRunApp: () {
       scheduleDeferredStartupTask(
@@ -113,7 +124,7 @@ Future<void> main() {
 @visibleForTesting
 ModuleRegistry buildMindModuleRegistry() {
   final mind = MindModule(
-    hostAdapterBuilder: AppAssistantHostAdapter.new,
+    hostAdapterBuilder: MindAssistantHostAdapter.new,
     // The shell's actual default: models come from Airo's existing download
     // pipeline, not the app bundle — neither this shell nor the super app
     // ships model weights in the APK
@@ -167,7 +178,7 @@ List<GoRoute> _legacyHubRedirects(String legacyRoot) => <GoRoute>[
 ];
 
 /// The Mind shell's complete route table: the navigation shell holding the
-/// three destinations, the legacy aliases, and the account screens the host
+/// four destinations, the legacy aliases, and the account screens the host
 /// adapter navigates to.
 ///
 /// The three destinations are branches of a [StatefulShellRoute.indexedStack]
@@ -221,6 +232,15 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
       branches: [
         StatefulShellBranch(routes: scribeRoutes),
         StatefulShellBranch(routes: mind.hubRoutesFor(registry.shell)),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/models',
+              name: 'mind_models',
+              builder: (context, state) => const MindModelsScreen(),
+            ),
+          ],
+        ),
         StatefulShellBranch(routes: mind.rootRoutesFor(registry.shell)),
       ],
     ),
@@ -267,17 +287,14 @@ class _AiroMindAppState extends State<AiroMindApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ProviderScope(
-      overrides: widget.registry.allProviderOverrides,
-      child: MaterialApp.router(
-        title: 'Airo Mind',
-        theme: AiroTheme.defaultDark,
-        routerConfig: _router,
-        builder: (context, child) => AiroDisplayScale(
-          child: AiroDomainTheme(
-            domain: AiroDomain.mind,
-            child: child ?? const SizedBox.shrink(),
-          ),
+    return MaterialApp.router(
+      title: 'Airo Mind',
+      theme: AiroTheme.defaultDark,
+      routerConfig: _router,
+      builder: (context, child) => AiroDisplayScale(
+        child: AiroDomainTheme(
+          domain: AiroDomain.mind,
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
     );

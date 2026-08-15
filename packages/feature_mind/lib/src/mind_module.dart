@@ -116,11 +116,11 @@ class MindModule extends AppModule {
 
   @override
   Future<void> initialize() async {
-    // Touching the getter is the initialization: it builds the recorder and
-    // the installer so the first tap on Record is not also the first time the
-    // platform channel is opened. A shell that never passed a factory has
-    // nothing to initialize here.
-    if (createService != null) service;
+    if (createService != null) {
+      // Warm the scribe pipeline so queued meeting jobs and the first Record
+      // tap do not hit an uninitialized whisper runtime.
+      await service.ensureReady();
+    }
   }
 
   @override
@@ -188,10 +188,14 @@ class MindModule extends AppModule {
         GoRoute(
           path: AssistantRouteNames.modelsSegment,
           name: AssistantRouteNames.modelsName,
-          builder: (context, state) => ModelLibraryScreen(
-            onModelSelected: (candidate) =>
-                context.go(AssistantRouteNames.assistant),
-            onOpenModelManager: () => context.push(AssistantRouteNames.profile),
+          builder: (context, state) => Consumer(
+            builder: (context, ref, _) => ModelLibraryScreen(
+              onModelSelected: (candidate) =>
+                  context.go(AssistantRouteNames.assistant),
+              onOpenModelManager: () => ref
+                  .read(assistantHostAdapterProvider)
+                  .openModelManager(context),
+            ),
           ),
         ),
         GoRoute(

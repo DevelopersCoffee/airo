@@ -92,10 +92,10 @@ class MeetingExportInput {
   /// without timestamps, which is the honest degradation, not a blocker.
   final String fallbackTranscript;
 
-  /// Minutes-of-Meeting markdown, already rendered (`rust/airo_mind_meeting`'s
-  /// `mom.rs` produces a complete document, action-items table included).
-  /// Null until MoM generation gets an FFI surface — see
-  /// `meeting_export_service.dart` for the concrete blocker.
+  /// Minutes-of-Meeting markdown from the saved meeting record (scribe pipeline
+  /// output). Null when the meeting was saved before minutes ran or generation
+  /// produced nothing. Structured action items may still arrive separately via
+  /// [actionItems] once `#1657` lands.
   final String? momMarkdown;
 
   /// A standalone action-item list, used only when there is no

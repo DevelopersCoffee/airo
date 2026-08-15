@@ -14,6 +14,7 @@ rust.MeetingRecord _meeting({
   String title = 'Standup',
   int recordedAtMs = 1755000000000,
   String transcript = 'the flat transcript',
+  String minutes = '',
   List<rust.MeetingDecisionRecord> decisions = const [],
   List<rust.MeetingActionItemRecord> actionItems = const [],
   List<rust.MeetingMetricRecord> metrics = const [],
@@ -22,7 +23,7 @@ rust.MeetingRecord _meeting({
   title: title,
   recordedAt: BigInt.from(recordedAtMs),
   transcript: transcript,
-  minutes: '',
+  minutes: minutes,
   model: 'qwen',
   decisions: decisions,
   actionItems: actionItems,
@@ -112,19 +113,34 @@ void main() {
       },
     );
 
-    test(
-      'does not yet populate mom.md -- no FFI surface for MoM generation',
-      () async {
-        when(
-          () => mind.meeting('m3'),
-        ).thenAnswer((_) async => _meeting(id: 'm3'));
-        when(() => mind.transcriptDocument('m3')).thenAnswer((_) async => null);
+    test('includes mom.md when the meeting record carries minutes', () async {
+      when(() => mind.meeting('m3')).thenAnswer(
+        (_) async => _meeting(
+          id: 'm3',
+          minutes: '## Summary\n\nTeam aligned on the release date.',
+        ),
+      );
+      when(() => mind.transcriptDocument('m3')).thenAnswer((_) async => null);
 
-        final bundle = await service.exportMeeting('m3');
+      final bundle = await service.exportMeeting('m3');
 
-        expect(bundle!.files.keys, ['transcript.md']);
-      },
-    );
+      expect(bundle!.files.keys, containsAll(['transcript.md', 'mom.md']));
+      expect(
+        bundle.files['mom.md'],
+        contains('Team aligned on the release date'),
+      );
+    });
+
+    test('omits mom.md when minutes are empty', () async {
+      when(
+        () => mind.meeting('m4'),
+      ).thenAnswer((_) async => _meeting(id: 'm4'));
+      when(() => mind.transcriptDocument('m4')).thenAnswer((_) async => null);
+
+      final bundle = await service.exportMeeting('m4');
+
+      expect(bundle!.files.keys, ['transcript.md']);
+    });
 
     test(
       'renders correctly even past the off-main isolate threshold',

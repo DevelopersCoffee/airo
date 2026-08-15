@@ -35,6 +35,7 @@ import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
+import '../../application/assistant_runtime_readiness.dart';
 import '../../../services/local_runtime_preloader_service.dart';
 import '../../../services/model_preload_preferences.dart';
 import '../../../services/voice_search_service.dart';
@@ -441,6 +442,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // No AppBar here - global AppBar is in AppShell
     final colorScheme = Theme.of(context).colorScheme;
+    final readiness = ref.watch(assistantRuntimeReadinessProvider);
+    final canSend = readiness.canSend && !_isGenerating;
     return AiroResponsiveScaffold(
       backgroundColor: Colors.transparent,
       body: ref
@@ -528,7 +531,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       IconButton.filled(
                         key: const Key('agent_chat_send_button'),
                         focusNode: _sendButtonFocusNode,
-                        onPressed: _sendMessage,
+                        onPressed: canSend ? _sendMessage : null,
                         icon: const Icon(Icons.send),
                       ),
                     ],
@@ -572,12 +575,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildSelectedModelBar(String selectedModelId) {
     final library = ref.watch(assistantModelLibraryProvider);
+    final readiness = ref.watch(assistantRuntimeReadinessProvider);
 
     return library.maybeWhen(
       data: (state) {
         final candidate = state.candidateById(selectedModelId);
         final label = candidate?.name ?? 'Selected model';
         final runtime = candidate?.runtime ?? selectedModelId;
+        final percent = (readiness.progress * 100).clamp(0, 100).round();
+        final statusLine = readiness.canSend
+            ? runtime
+            : '${readiness.label} · $percent%';
 
         return Container(
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -586,37 +594,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                candidate?.local == false
-                    ? Icons.cloud_outlined
-                    : Icons.memory_outlined,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge,
+              Row(
+                children: [
+                  Icon(
+                    candidate?.local == false
+                        ? Icons.cloud_outlined
+                        : Icons.memory_outlined,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        Text(
+                          statusLine,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      runtime,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
               IconButton(
                 focusNode: _selectedModelBarFocusNode,
                 tooltip: 'Change model',
@@ -656,6 +671,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.delete_sweep_outlined, size: 20),
               ),
+                ],
+              ),
+              if (!readiness.canSend && readiness.progress > 0) ...[
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: readiness.progress.clamp(0.0, 1.0),
+                ),
+              ],
             ],
           ),
         );
@@ -927,6 +950,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) {
+      return;
+    }
+
+    if (!ref.read(assistantRuntimeReadinessProvider).canSend) {
       return;
     }
 
@@ -1431,7 +1458,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(
         AgentChatMessage(
           text:
-              'Project ready. I picked ${candidate.name} for this category. ${candidate.local ? 'It runs on this device when available.' : 'This category uses the configured cloud fallback.'}',
+              'You selected ${candidate.name}. '
+              '${candidate.local ? 'Warming it on device before you can send.' : 'Cloud runtime is ready when you are.'}',
           isUser: false,
         ),
       );
@@ -1439,7 +1467,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openModelManager() {
-    context.push('/agent/profile');
+    ref.read(assistantHostAdapterProvider).openModelManager(context);
   }
 
   IconData _iconForSkill(String iconKey) {

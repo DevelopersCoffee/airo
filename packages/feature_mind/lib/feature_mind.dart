@@ -61,6 +61,7 @@ export 'src/assistant/presentation/screens/prompt_lab_screen.dart';
 
 // Agent chat + model management
 export 'src/agent_chat/application/assistant_model_preferences.dart';
+export 'src/agent_chat/application/assistant_runtime_readiness.dart';
 export 'src/agent_chat/data/services/agent_notification_scheduler.dart';
 export 'src/agent_chat/data/services/assistant_runtime_service.dart';
 export 'src/agent_chat/data/services/chat_history_store.dart';
@@ -118,7 +119,7 @@ export 'src/models/model_provider.dart'
 // model-descriptor boundary adapter (#1673) alongside the rest of the
 // bridge <-> RequiredModel/InstalledModel/OfflineModelInfo translation.
 export 'src/models/model_descriptor_adapter.dart'
-    show pinnedRequiredModels, offlineModelInfoFromRequiredModel;
+    show pinnedRequiredModels, mindScribeRequiredModels, pinnedMultilingualSpeechModel, offlineModelInfoFromRequiredModel;
 
 // Model download manager (#1457): progress in bytes, mobile-data pause,
 // storage budget — built on `ModelPort` rather than on `ModelProvider`

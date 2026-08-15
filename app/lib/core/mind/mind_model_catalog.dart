@@ -31,6 +31,7 @@ List<Override> mindModelRegistryOverrides({
     unawaited(
       hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
     );
+    unawaited(hydratePublicHuggingFaceModels(registry));
     unawaited(
       hydrateMindScribeModels(
         registry,
@@ -157,8 +158,24 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
     // architectures this enum names.
     family: ModelFamily.other,
     description:
-        'Powers the Airo Mind Scribe: turns a recorded meeting into text '
-        'on-device. Downloaded and verified by the Scribe, not by this screen.',
+        'English-only speech recognition for the Airo Mind Scribe. '
+        'The standalone Mind shell defaults to the multilingual weights '
+        'instead (`ggml-tiny.bin`) so Hindi/Marathi/English meetings '
+        'transcribe with auto-detect.',
+    modalities: [ModelModality.audio, ModelModality.text],
+    capabilities: [ModelCapability.audioUnderstanding],
+    author: 'OpenAI (ggml build by ggerganov)',
+    license: 'MIT',
+    huggingFaceId: 'ggerganov/whisper.cpp',
+  ),
+  'ggml-tiny.bin': _ScribeDescriptor(
+    id: 'mind-scribe-whisper-tiny-multilingual',
+    name: 'Whisper Tiny (Multilingual)',
+    family: ModelFamily.other,
+    description:
+        'Multilingual speech recognition for the Airo Mind Scribe: '
+        'Hindi, Marathi, English code-switching with auto-detect per '
+        'recording (`#1629`). Required by the standalone Mind shell.',
     modalities: [ModelModality.audio, ModelModality.text],
     capabilities: [ModelCapability.audioUnderstanding],
     author: 'OpenAI (ggml build by ggerganov)',
