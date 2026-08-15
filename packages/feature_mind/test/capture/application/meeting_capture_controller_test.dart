@@ -100,27 +100,36 @@ void main() {
       expect(recorder.calls, isEmpty);
     });
 
-    test('an OS-driven pause (call/Siri interruption) is reflected as pausedByOs', () async {
-      await controller.start('/tmp/meeting.m4a');
+    test(
+      'an OS-driven pause (call/Siri interruption) is reflected as pausedByOs',
+      () async {
+        await controller.start('/tmp/meeting.m4a');
 
-      recorder.emitOsEvent(RecorderOsEvent.osPaused);
-      await pumpEventQueue();
+        recorder.emitOsEvent(RecorderOsEvent.osPaused);
+        await pumpEventQueue();
 
-      expect(controller.current.lifecycle, MeetingRecordingLifecycle.paused);
-      expect(controller.current.pausedByOs, isTrue);
-    });
+        expect(controller.current.lifecycle, MeetingRecordingLifecycle.paused);
+        expect(controller.current.pausedByOs, isTrue);
+      },
+    );
 
-    test('the OS resuming after an interruption returns to recording', () async {
-      await controller.start('/tmp/meeting.m4a');
-      recorder.emitOsEvent(RecorderOsEvent.osPaused);
-      await pumpEventQueue();
+    test(
+      'the OS resuming after an interruption returns to recording',
+      () async {
+        await controller.start('/tmp/meeting.m4a');
+        recorder.emitOsEvent(RecorderOsEvent.osPaused);
+        await pumpEventQueue();
 
-      recorder.emitOsEvent(RecorderOsEvent.osResumed);
-      await pumpEventQueue();
+        recorder.emitOsEvent(RecorderOsEvent.osResumed);
+        await pumpEventQueue();
 
-      expect(controller.current.lifecycle, MeetingRecordingLifecycle.recording);
-      expect(controller.current.pausedByOs, isFalse);
-    });
+        expect(
+          controller.current.lifecycle,
+          MeetingRecordingLifecycle.recording,
+        );
+        expect(controller.current.pausedByOs, isFalse);
+      },
+    );
 
     test('a user-initiated pause is not mistaken for an OS pause', () async {
       await controller.start('/tmp/meeting.m4a');

@@ -73,7 +73,10 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             // #1656 AC5: raw-audio retention is a Settings toggle, not
             // hardcoded.
-            Text('Meeting recordings', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Meeting recordings',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const AudioRetentionSettingsTile(),
 
             const SizedBox(height: 32),

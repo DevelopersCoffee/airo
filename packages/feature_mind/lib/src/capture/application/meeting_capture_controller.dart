@@ -28,7 +28,8 @@ class MeetingCaptureController {
     MeetingRecordingServiceGateway? serviceGateway,
     Duration tickInterval = const Duration(seconds: 1),
   }) : _recorder = recorder,
-       _serviceGateway = serviceGateway ?? const NoopMeetingRecordingServiceGateway(),
+       _serviceGateway =
+           serviceGateway ?? const NoopMeetingRecordingServiceGateway(),
        _tickInterval = tickInterval {
     _osSub = _recorder.osEvents.listen(_onOsEvent);
   }
@@ -193,7 +194,8 @@ class MeetingCaptureController {
   int _liveElapsedMs() {
     final startedAt = _segmentStartedAt;
     if (startedAt == null) return _snapshot.elapsedMs;
-    return _snapshot.elapsedMs + DateTime.now().difference(startedAt).inMilliseconds;
+    return _snapshot.elapsedMs +
+        DateTime.now().difference(startedAt).inMilliseconds;
   }
 
   void _freezeElapsed() {

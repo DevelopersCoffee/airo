@@ -315,7 +315,9 @@ class _ConsentJurisdictionPicker extends StatelessWidget {
             key: const Key('meeting_capture_all_parties_checkbox'),
             value: allPartiesAck,
             onChanged: (value) => onAllPartiesAckChanged(value ?? false),
-            title: const Text('I have told everyone in this meeting they are being recorded'),
+            title: const Text(
+              'I have told everyone in this meeting they are being recorded',
+            ),
             controlAffinity: ListTileControlAffinity.leading,
           ),
         const SizedBox(height: 8),
@@ -326,7 +328,10 @@ class _ConsentJurisdictionPicker extends StatelessWidget {
         ),
         if (error != null) ...[
           const SizedBox(height: 8),
-          Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          Text(
+            error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
       ],
     );

@@ -59,13 +59,19 @@ void main() {
   test('runs the meeting through MindService.process and completes', () async {
     speech.transcriptEvents = const [
       TranscriptEventTranscriptReady('hello world', [
-        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+        TranscriptSegment(
+          id: 's0',
+          startMs: 0,
+          endMs: 500,
+          text: 'hello world',
+        ),
       ]),
     ];
     generation.generationEvents = const [
       GenerationEventMinutesReady('Minutes.'),
     ];
-    final audioFile = File('${tempDir.path}/meeting.wav')..writeAsStringSync('audio');
+    final audioFile = File('${tempDir.path}/meeting.wav')
+      ..writeAsStringSync('audio');
     final runner = MeetingProcessingJobRunner(
       mindService: mindService,
       retentionPolicy: () => AudioRetentionPolicy.keepAfterTranscript,
@@ -85,63 +91,81 @@ void main() {
     expect(audioFile.existsSync(), isTrue);
   });
 
-  test('deletes the source audio when retention policy says delete-after-transcript', () async {
-    speech.transcriptEvents = const [
-      TranscriptEventTranscriptReady('hello world', [
-        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
-      ]),
-    ];
-    generation.generationEvents = const [
-      GenerationEventMinutesReady('Minutes.'),
-    ];
-    final audioFile = File('${tempDir.path}/meeting.wav')..writeAsStringSync('audio');
-    final runner = MeetingProcessingJobRunner(
-      mindService: mindService,
-      retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
-    );
+  test(
+    'deletes the source audio when retention policy says delete-after-transcript',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
+      ];
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
+      );
 
-    await runner.call(
-      MeetingProcessingJob(
-        id: 'm1',
-        audioPath: audioFile.path,
-        title: 'Standup',
-        enqueuedAtMs: 0,
-      ),
-    );
-
-    expect(audioFile.existsSync(), isFalse);
-  });
-
-  test('a failed pipeline stage throws, so the queue marks the job failed/retries it', () async {
-    speech.transcriptEvents = const [
-      TranscriptEventTranscriptReady('hello world', [
-        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
-      ]),
-    ];
-    speech.saveError = Exception('store unavailable');
-    generation.generationEvents = const [
-      GenerationEventMinutesReady('Minutes.'),
-    ];
-    final audioFile = File('${tempDir.path}/meeting.wav')..writeAsStringSync('audio');
-    final runner = MeetingProcessingJobRunner(
-      mindService: mindService,
-      retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
-    );
-
-    await expectLater(
-      runner.call(
+      await runner.call(
         MeetingProcessingJob(
           id: 'm1',
           audioPath: audioFile.path,
           title: 'Standup',
           enqueuedAtMs: 0,
         ),
-      ),
-      throwsA(anything),
-    );
+      );
 
-    // A failed run must not delete the only copy of the audio -- there is
-    // nothing to fall back on if it did.
-    expect(audioFile.existsSync(), isTrue);
-  });
+      expect(audioFile.existsSync(), isFalse);
+    },
+  );
+
+  test(
+    'a failed pipeline stage throws, so the queue marks the job failed/retries it',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
+      ];
+      speech.saveError = Exception('store unavailable');
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
+      );
+
+      await expectLater(
+        runner.call(
+          MeetingProcessingJob(
+            id: 'm1',
+            audioPath: audioFile.path,
+            title: 'Standup',
+            enqueuedAtMs: 0,
+          ),
+        ),
+        throwsA(anything),
+      );
+
+      // A failed run must not delete the only copy of the audio -- there is
+      // nothing to fall back on if it did.
+      expect(audioFile.existsSync(), isTrue);
+    },
+  );
 }

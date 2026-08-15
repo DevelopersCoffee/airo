@@ -21,7 +21,10 @@ abstract interface class MeetingRecordingServiceGateway {
   /// same frame as) [AudioRecorderPort.start] — Android kills a background
   /// process's microphone access almost immediately without an active
   /// foreground service of type `microphone`.
-  Future<void> start({required String notificationTitle, String? notificationText});
+  Future<void> start({
+    required String notificationTitle,
+    String? notificationText,
+  });
 
   /// Stops the foreground service and dismisses the notification. Idempotent
   /// — safe to call even if [start] was never called.
@@ -30,9 +33,8 @@ abstract interface class MeetingRecordingServiceGateway {
 
 class PlatformMeetingRecordingServiceGateway
     implements MeetingRecordingServiceGateway {
-  const PlatformMeetingRecordingServiceGateway({
-    MethodChannel? channel,
-  }) : _channel = channel ?? _defaultChannel;
+  const PlatformMeetingRecordingServiceGateway({MethodChannel? channel})
+    : _channel = channel ?? _defaultChannel;
 
   static const MethodChannel _defaultChannel = MethodChannel(
     'com.airo.meeting_recording',

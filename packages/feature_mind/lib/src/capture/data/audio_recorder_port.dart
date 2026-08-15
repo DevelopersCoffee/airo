@@ -107,18 +107,17 @@ class PlatformAudioRecorderPort implements AudioRecorderPort {
   Future<String?> stop() => _recorder.stop();
 
   @override
-  Stream<RecorderOsEvent> get osEvents => _recorder.onStateChanged().map((
-    state,
-  ) {
-    switch (state) {
-      case RecordState.pause:
-        return RecorderOsEvent.osPaused;
-      case RecordState.record:
-        return RecorderOsEvent.osResumed;
-      case RecordState.stop:
-        return RecorderOsEvent.osStopped;
-    }
-  });
+  Stream<RecorderOsEvent> get osEvents =>
+      _recorder.onStateChanged().map((state) {
+        switch (state) {
+          case RecordState.pause:
+            return RecorderOsEvent.osPaused;
+          case RecordState.record:
+            return RecorderOsEvent.osResumed;
+          case RecordState.stop:
+            return RecorderOsEvent.osStopped;
+        }
+      });
 
   @override
   Future<void> dispose() => _recorder.dispose();

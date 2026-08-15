@@ -9,9 +9,7 @@ void main() {
   Future<void> pumpTile(WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(body: AudioRetentionSettingsTile()),
-        ),
+        child: MaterialApp(home: Scaffold(body: AudioRetentionSettingsTile())),
       ),
     );
     await tester.pumpAndSettle();
@@ -27,7 +25,9 @@ void main() {
     expect(find.textContaining('stays on this device'), findsOneWidget);
   });
 
-  testWidgets('reflects a previously saved "delete" preference', (tester) async {
+  testWidgets('reflects a previously saved "delete" preference', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'mind_audio_retention_policy':
           AudioRetentionPolicy.deleteAfterTranscript.storageValue,
@@ -40,24 +40,25 @@ void main() {
     expect(find.textContaining('is deleted once'), findsOneWidget);
   });
 
-  testWidgets('toggling off switches to delete-after-transcript and persists it', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
+  testWidgets(
+    'toggling off switches to delete-after-transcript and persists it',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
 
-    await pumpTile(tester);
-    await tester.tap(find.byType(SwitchListTile));
-    await tester.pumpAndSettle();
+      await pumpTile(tester);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
 
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      isFalse,
-    );
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isFalse,
+      );
 
-    final prefs = await SharedPreferences.getInstance();
-    expect(
-      prefs.getString('mind_audio_retention_policy'),
-      AudioRetentionPolicy.deleteAfterTranscript.storageValue,
-    );
-  });
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString('mind_audio_retention_policy'),
+        AudioRetentionPolicy.deleteAfterTranscript.storageValue,
+      );
+    },
+  );
 }

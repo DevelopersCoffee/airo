@@ -108,7 +108,8 @@ class MeetingProcessingQueue {
   final int _maxAttempts;
   final Duration _thermalPollInterval;
 
-  final _jobsController = StreamController<List<MeetingProcessingJob>>.broadcast();
+  final _jobsController =
+      StreamController<List<MeetingProcessingJob>>.broadcast();
   List<MeetingProcessingJob> _jobs = const [];
   bool _running = false;
   bool _thermallyPaused = false;
