@@ -307,13 +307,22 @@ void main() {
 
       controller.add(
         const MindProgress(
+          stage: MindStage.extracting,
+          transcript: 'Priya said the lag is the bottleneck.',
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Extracting…'), findsOneWidget);
+
+      controller.add(
+        const MindProgress(
           stage: MindStage.generating,
           transcript: 'Priya said the lag is the bottleneck.',
           minutes: '- Add three pods',
         ),
       );
       await tester.pump();
-      expect(find.text('Extracting…'), findsOneWidget);
+      expect(find.text('Generating minutes…'), findsOneWidget);
       expect(find.text('- Add three pods'), findsOneWidget);
 
       controller.add(

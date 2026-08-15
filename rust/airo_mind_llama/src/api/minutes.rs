@@ -16,15 +16,15 @@
 //! `generate_minutes` yields a `Stream`. Tokens reach the UI as the model
 //! produces them.
 
-use std::sync::Mutex;
-
 use flutter_rust_bridge::frb;
 
 use crate::frb_generated::StreamSink;
 
 use crate::LlamaGenerationEngine;
 use airo_mind_core::models;
-use airo_mind_core::{CancelToken, GenerationRequest, ResourceBudget, RuntimeStats, Supervisor};
+use airo_mind_core::{GenerationRequest, ResourceBudget, RuntimeStats, Supervisor};
+
+use super::generation_state::{begin_job, lock, CANCEL, ENGINE, MODEL_ID};
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -79,20 +79,8 @@ impl From<RuntimeStats> for GenerationStats {
 }
 
 // ---------------------------------------------------------------------------
-// State
+// State — shared with `meeting_intelligence` via `generation_state`.
 // ---------------------------------------------------------------------------
-
-static ENGINE: Mutex<Option<Supervisor>> = Mutex::new(None);
-static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
-
-/// The logical identity and version of the loaded model, recorded with the
-/// content it produces (`ADR-0018 §5`). The meeting library stores it; this
-/// library is the only thing that knows it.
-static MODEL_ID: Mutex<Option<String>> = Mutex::new(None);
-
-fn lock<T>(m: &'static Mutex<T>) -> std::sync::MutexGuard<'static, T> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
-}
 
 /// The Meeting capability's prompt. Above the engine boundary, because
 /// `GenerationEngine::summarize(transcript) -> Minutes` would push meeting
@@ -186,8 +174,7 @@ pub fn generate_minutes(
         sink.add(event).map_err(|e| e.to_string())
     };
 
-    let cancel = CancelToken::new();
-    *lock(&CANCEL) = Some(cancel.clone());
+    let cancel = begin_job();
 
     let mut minutes = String::new();
     {
