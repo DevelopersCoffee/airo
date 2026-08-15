@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
+import 'meeting_ir/meeting_ir_status_writer.dart';
 import 'model_installer.dart';
 import 'models/model_provider.dart';
 import 'search/meeting_embedding_store.dart';
@@ -519,6 +520,18 @@ class MindService {
   /// (a meeting saved before this feature shipped, or an unknown id).
   Future<rust.TranscriptDocumentRecord?> transcriptDocument(String meetingId) =>
       _speech.getTranscript(meetingId);
+
+  /// #1658 / MIND-LLM-16: checkable action status writes back through the
+  /// existing `saveMeeting` path (append-only, latest wins) — no new store.
+  Future<rust.MeetingRecord> updateActionItemStatus({
+    required rust.MeetingRecord meeting,
+    required String actionItemId,
+    required rust.MeetingActionStatus status,
+  }) => MeetingIrStatusWriter(_speech).updateActionStatus(
+    meeting: meeting,
+    actionItemId: actionItemId,
+    status: status,
+  );
 
   /// Releases the microphone and the model provider. The provider matters
   /// because the download-backed one holds a subscription to the platform

@@ -142,6 +142,70 @@ void main() {
       expect(bundle!.files.keys, ['transcript.md']);
     });
 
+    test('includes structured action items in mom.md when minutes have no '
+        'Action Items section', () async {
+      when(() => mind.meeting('m5')).thenAnswer(
+        (_) async => _meeting(
+          id: 'm5',
+          minutes: '## Summary\n\nShip the IR UI.',
+          actionItems: const [
+            rust.MeetingActionItemRecord(
+              id: 'a0',
+              task: 'Wire evidence timestamps',
+              owner: 'Priya',
+              due: 'Friday',
+              status: rust.MeetingActionStatus.open,
+              evidenceSegmentIds: ['s2'],
+            ),
+          ],
+        ),
+      );
+      when(() => mind.transcriptDocument('m5')).thenAnswer((_) async => null);
+
+      final bundle = await service.exportMeeting('m5');
+
+      expect(bundle!.files.keys, containsAll(['transcript.md', 'mom.md']));
+      final mom = bundle.files['mom.md']!;
+      expect(mom, contains('## Action Items'));
+      expect(mom, contains('Wire evidence timestamps'));
+      expect(mom, contains('Priya'));
+      expect(mom, contains('Friday'));
+      expect(mom, contains('Open'));
+    });
+
+    test(
+      'writes action-items.md when minutes are empty but IR actions exist',
+      () async {
+        when(() => mind.meeting('m6')).thenAnswer(
+          (_) async => _meeting(
+            id: 'm6',
+            actionItems: const [
+              rust.MeetingActionItemRecord(
+                id: 'a0',
+                task: 'Follow up with design',
+                status: rust.MeetingActionStatus.inProgress,
+                evidenceSegmentIds: [],
+              ),
+            ],
+          ),
+        );
+        when(() => mind.transcriptDocument('m6')).thenAnswer((_) async => null);
+
+        final bundle = await service.exportMeeting('m6');
+
+        expect(
+          bundle!.files.keys,
+          containsAll(['transcript.md', 'action-items.md']),
+        );
+        expect(bundle.files.containsKey('mom.md'), isFalse);
+        expect(
+          bundle.files['action-items.md'],
+          contains('Follow up with design'),
+        );
+        expect(bundle.files['action-items.md'], contains('In progress'));
+      },
+    );
+
     test(
       'renders correctly even past the off-main isolate threshold',
       () async {

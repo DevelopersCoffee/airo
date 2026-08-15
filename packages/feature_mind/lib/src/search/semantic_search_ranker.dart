@@ -147,10 +147,7 @@ class SemanticSearchRanker {
     rust.MeetingRecord meeting, {
     List<String> segmentTexts = const [],
   }) async {
-    final vectors = await _computeAndStore(
-      meeting,
-      segmentTexts: segmentTexts,
-    );
+    final vectors = await _computeAndStore(meeting, segmentTexts: segmentTexts);
     return vectors != null;
   }
 
@@ -270,9 +267,7 @@ class SemanticSearchRanker {
   static const _maxSnippetLength = 160;
 
   rust.SearchHit _hitFor(rust.MeetingRecord meeting) {
-    final source = meeting.minutes.trim().isNotEmpty
-        ? meeting.minutes.trim()
-        : meeting.transcript.trim();
+    final source = _snippetSource(meeting);
     final snippet = source.length > _maxSnippetLength
         ? '${source.substring(0, _maxSnippetLength)}…'
         : source;
@@ -282,6 +277,21 @@ class SemanticSearchRanker {
       recordedAt: meeting.recordedAt,
       snippet: snippet,
     );
+  }
+
+  /// Prefer minutes, then first action/decision, then transcript — same cheap
+  /// order as the meeting list preview so IR-only meetings still show why
+  /// they matched.
+  String _snippetSource(rust.MeetingRecord meeting) {
+    final minutes = meeting.minutes.trim();
+    if (minutes.isNotEmpty) return minutes;
+    if (meeting.actionItems.isNotEmpty) {
+      return meeting.actionItems.first.task.trim();
+    }
+    if (meeting.decisions.isNotEmpty) {
+      return meeting.decisions.first.statement.trim();
+    }
+    return meeting.transcript.trim();
   }
 }
 

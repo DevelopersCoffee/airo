@@ -4,6 +4,7 @@ import 'package:feature_mind/feature_mind.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// A [MindService] with the native library removed.
 ///
@@ -27,9 +28,8 @@ class _FakeMind extends MindService {
   String? searched;
 
   @override
-  Future<MindStatus> initialize({
-    rust.SpeechLanguage? speechLanguage,
-  }) async => status;
+  Future<MindStatus> initialize({rust.SpeechLanguage? speechLanguage}) async =>
+      status;
 
   @override
   Future<List<rust.MeetingRecord>> meetings() async => library;
@@ -43,6 +43,11 @@ class _FakeMind extends MindService {
   @override
   Future<rust.MeetingRecord?> meeting(String id) async =>
       library.where((m) => m.id == id).firstOrNull;
+
+  @override
+  Future<rust.TranscriptDocumentRecord?> transcriptDocument(
+    String meetingId,
+  ) async => null;
 
   @override
   void cancelProcessing() => cancelled = true;
@@ -80,6 +85,10 @@ rust.MeetingRecord _meeting({
 Widget _app(Widget home) => MaterialApp(home: home);
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('the library', () {
     testWidgets('an empty library says how to start one', (tester) async {
       await tester.pumpWidget(_app(MindHomeScreen(service: _FakeMind())));
@@ -304,7 +313,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Writing minutes…'), findsOneWidget);
+      expect(find.text('Extracting…'), findsOneWidget);
       expect(find.text('- Add three pods'), findsOneWidget);
 
       controller.add(
@@ -316,7 +325,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Saved on this device'), findsOneWidget);
+      expect(find.text('Ready'), findsOneWidget);
       expect(find.text('Stop'), findsNothing);
 
       await controller.close();

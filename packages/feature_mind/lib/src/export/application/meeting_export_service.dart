@@ -7,21 +7,10 @@ import '../domain/meeting_markdown_renderer.dart';
 
 /// Turns stored meetings into export bundles.
 ///
-/// This is the seam #1657 and a future MoM-FFI-wiring issue land in without
-/// touching the renderer: [_buildInput] is the only place that reads off
-/// `MindService`, and today it can only fill [MeetingExportInput.momMarkdown]
-/// and `.actionItems` with nothing, because:
-///
-/// - `#1657` (Stage 2, in flight as of this writing) is what puts
-///   `decisions`/`action_items`/`metrics` onto the persisted `Meeting`
-///   record and exposes them to Dart. Until it lands there is no Dart-side
-///   action-item data to read.
-/// - Saved minutes come from the scribe pipeline (`MindService.process` →
-///   `llama.generateMinutes`) and are persisted on `MeetingRecord.minutes`.
-///   Export reads that field today. Structured Meeting-IR action items still
-///   wait on `#1657`; once they land on the persisted record, map them onto
-///   [MeetingExportInput.actionItems] here — the renderer already knows what
-///   to do with them.
+/// [_buildInput] is the only place that reads off [MindService]: minutes from
+/// `MeetingRecord.minutes`, structured action items from
+/// `MeetingRecord.actionItems` (#1657 Stage 2), and timestamped transcript
+/// lines from `transcriptDocument` (#1629). The renderer stays pure Dart.
 class MeetingExportService {
   const MeetingExportService(this._mindService);
 
@@ -83,9 +72,25 @@ class MeetingExportService {
       transcriptLines: lines,
       fallbackTranscript: meeting.transcript,
       momMarkdown: minutes.isEmpty ? null : minutes,
-      // actionItems: waits on #1657 Meeting-IR persistence.
+      actionItems: [
+        for (final item in meeting.actionItems)
+          ExportActionItem(
+            task: item.task,
+            owner: item.owner,
+            due: item.due,
+            status: _actionStatusLabel(item.status),
+          ),
+      ],
     );
   }
+
+  static String _actionStatusLabel(rust.MeetingActionStatus status) =>
+      switch (status) {
+        rust.MeetingActionStatus.open => 'Open',
+        rust.MeetingActionStatus.inProgress => 'In progress',
+        rust.MeetingActionStatus.done => 'Done',
+        rust.MeetingActionStatus.blocked => 'Blocked',
+      };
 
   static List<TranscriptExportLine> _linesFrom(
     rust.TranscriptDocumentRecord? doc,
