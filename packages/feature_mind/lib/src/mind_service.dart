@@ -12,10 +12,12 @@ import 'bridges/mind_speech_bridge.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
 import 'model_installer.dart';
 import 'models/model_provider.dart';
+import 'runtime/ports/operation_log_port.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
 import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
+import 'whisper/meeting_ir_op_log.dart';
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -51,6 +53,7 @@ enum MindStage {
   idle,
   recording,
   transcribing,
+  extracting,
   generating,
   saving,
   done,
@@ -117,12 +120,16 @@ class MindService {
     ModelProvider? modelProvider,
     MindSpeechBridge? speechBridge,
     MindGenerationBridge? generationBridge,
+    OperationLogPort? operationLog,
+    String meetingContextId = '',
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
        _generation = generationBridge ?? RustMindGenerationBridge(),
+       _operationLog = operationLog,
+       _meetingContextId = meetingContextId,
        _defaultSpeechLanguage = defaultSpeechLanguage,
        _rankerBuilder =
            rankerBuilder ??
@@ -135,6 +142,8 @@ class MindService {
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
+  final OperationLogPort? _operationLog;
+  final String _meetingContextId;
   final rust.SpeechLanguage _defaultSpeechLanguage;
 
   /// Last language mode handed to [MindSpeechBridge.initialize], or the
@@ -335,7 +344,7 @@ class MindService {
     return path ?? _recordingPath;
   }
 
-  /// Transcribe → summarise → save, streaming.
+  /// Transcribe → extract IR → MoM → save, streaming.
   ///
   /// Each event folds into the previous [MindProgress], so a widget can render
   /// the latest value and nothing accumulates in two places.
@@ -344,16 +353,13 @@ class MindService {
   ///
   /// The two engines are in two libraries, because whisper.cpp and llama.cpp
   /// vendor incompatible copies of ggml and cannot share a linked image. So the
-  /// pipeline that used to be one Rust call is three, sequenced here.
+  /// pipeline that used to be one Rust call is sequenced here across both
+  /// cdylibs.
   ///
-  /// What moved is *sequencing*, and only sequencing. Each library still owns
-  /// its own admission, budget and cancellation (`C6`), and the store-before-
-  /// index durability rule stays inside `saveMeeting` rather than becoming
-  /// something this method is trusted to get right.
-  ///
-  /// The emitted [MindStage] sequence is unchanged from when Rust drove the
-  /// whole pipeline: transcribing → generating → saving → done. Widgets cannot
-  /// tell the difference, which is the point.
+  /// After `#1785`, the generation half runs the meeting-intelligence pipeline
+  /// (`transcript::process` → extract → validate → `generate_mom`) rather than
+  /// prose-only minutes. The emitted [MindStage] sequence is now
+  /// transcribing → extracting → generating → saving → done.
   /// [language] is `#1664`'s per-recording pin, forwarded to
   /// [MindSpeechBridge.transcribe] unchanged: a whisper.cpp language code, or
   /// `null` to leave the engine on auto-detect. A Settings screen choosing a
@@ -373,6 +379,11 @@ class MindService {
     // must reproduce, so the timestamp is taken once, here, and carried through
     // to `saveMeeting` as the meeting's identity.
     final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
+    final meetingId = 'm$recordedAtMs';
+
+    var decisions = const <rust.MeetingDecisionRecord>[];
+    var actionItems = const <rust.MeetingActionItemRecord>[];
+    var metrics = const <rust.MeetingMetricRecord>[];
 
     try {
       // ── 1. Audio → transcript, in the speech library ───────────────────────
@@ -392,7 +403,7 @@ class MindService {
           // Gap D needs `segments` to reach `saveMeeting` intact).
           case TranscriptEventTranscriptReady(:final text, :final segments):
             progress = progress.copyWith(
-              stage: MindStage.generating,
+              stage: MindStage.extracting,
               transcript: text,
               segments: segments,
             );
@@ -403,29 +414,41 @@ class MindService {
         yield progress;
       }
 
-      // ── 2. Transcript → minutes, in the generation library ────────────────
+      // ── 2. Segments → IR → MoM, in the generation library ─────────────────
       //
       // Loaded now rather than at startup: it is roughly 48 MB and only this
-      // step needs it. The stage is already `generating`, so the wait is
-      // visible rather than a silent pause.
+      // step needs it.
       final dir = await modelsDirectory();
       await _generation.ensureLoaded(modelsDir: dir.path, memoryBudgetMb: 4096);
 
-      await for (final event in _generation.generate(
-        transcript: progress.transcript,
+      await for (final event in _generation.processMeetingIntelligence(
+        meetingId: meetingId,
+        title: title,
+        segments: progress.segments,
       )) {
         switch (event) {
-          case GenerationEventGenerating(:final text):
+          case MeetingIntelligenceEventExtracting():
+            progress = progress.copyWith(stage: MindStage.extracting);
+          case MeetingIntelligenceEventGenerating(:final text):
             progress = progress.copyWith(
               stage: MindStage.generating,
               minutes: progress.minutes + text,
             );
-          case GenerationEventMinutesReady(:final text):
+          case MeetingIntelligenceEventIrReady(
+            decisions: final irDecisions,
+            actionItems: final irActionItems,
+            metrics: final irMetrics,
+          ):
+            decisions = irDecisions;
+            actionItems = irActionItems;
+            metrics = irMetrics;
+            continue;
+          case MeetingIntelligenceEventMinutesReady(:final text):
             progress = progress.copyWith(
               stage: MindStage.saving,
               minutes: text,
             );
-          case GenerationEventCancelled():
+          case MeetingIntelligenceEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
             return;
         }
@@ -437,7 +460,7 @@ class MindService {
       // `model` comes from the generation library: only it knows which model
       // produced these minutes, and `ADR-0018 §5` records that with the content
       // rather than inferring it later.
-      final meetingId = await _speech.save(
+      final savedMeetingId = await _speech.save(
         title: title,
         recordedAtMs: recordedAtMs,
         transcript: progress.transcript,
@@ -445,8 +468,25 @@ class MindService {
         model: _generation.modelId(),
         segments: progress.segments,
         wavPath: wavPath,
+        decisions: decisions,
+        actionItems: actionItems,
+        metrics: metrics,
       );
-      yield progress.copyWith(stage: MindStage.done, meetingId: meetingId);
+
+      final log = _operationLog;
+      if (log != null) {
+        await appendMeetingIrExtractedOp(
+          log: log,
+          meetingId: savedMeetingId,
+          meetingTitle: title,
+          contextId: _meetingContextId,
+          decisionCount: decisions.length,
+          actionItemCount: actionItems.length,
+          metricCount: metrics.length,
+        );
+      }
+
+      yield progress.copyWith(stage: MindStage.done, meetingId: savedMeetingId);
     } on Object catch (e) {
       yield progress.copyWith(stage: MindStage.failed, error: '$e');
     }

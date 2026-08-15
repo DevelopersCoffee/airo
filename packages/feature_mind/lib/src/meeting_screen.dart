@@ -206,6 +206,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   bool get _isRunning =>
       _progress.stage == MindStage.transcribing ||
+      _progress.stage == MindStage.extracting ||
       _progress.stage == MindStage.generating ||
       _progress.stage == MindStage.saving;
 
@@ -246,7 +247,8 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   String get _stageLabel => switch (_progress.stage) {
     MindStage.transcribing => 'Transcribing…',
-    MindStage.generating => 'Extracting…',
+    MindStage.extracting => 'Extracting…',
+    MindStage.generating => 'Generating minutes…',
     MindStage.saving => 'Saving…',
     MindStage.done => 'Ready',
     MindStage.failed => 'Failed',

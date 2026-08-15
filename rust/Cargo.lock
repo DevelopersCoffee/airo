@@ -111,6 +111,8 @@ name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
+ "airo_mind_meeting",
+ "airo_mind_transcript",
  "encoding_rs",
  "flutter_rust_bridge",
  "libc",

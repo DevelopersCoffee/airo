@@ -96,8 +96,8 @@ void main() {
         ),
       ]),
     ];
-    generation.generationEvents = const [
-      GenerationEventMinutesReady('Minutes.'),
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
     ];
     final audioFile = File('${tempDir.path}/meeting.wav')
       ..writeAsStringSync('audio');
@@ -133,8 +133,8 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
       final audioFile = File('${tempDir.path}/meeting.wav')
         ..writeAsStringSync('audio');
@@ -170,8 +170,8 @@ void main() {
         ]),
       ];
       speech.saveError = Exception('store unavailable');
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
       final audioFile = File('${tempDir.path}/meeting.wav')
         ..writeAsStringSync('audio');
@@ -255,8 +255,8 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
       final audioFile = File('${tempDir.path}/meeting.wav')
         ..writeAsStringSync('audio');

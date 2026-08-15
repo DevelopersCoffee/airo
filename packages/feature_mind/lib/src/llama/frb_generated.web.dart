@@ -6,6 +6,7 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -29,6 +30,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<MeetingIntelligenceEvent>
+  dco_decode_StreamSink_meeting_intelligence_event_Sse(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -50,7 +55,54 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   GenerationStats dco_decode_generation_stats(dynamic raw);
 
   @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<MeetingActionItemRecord> dco_decode_list_meeting_action_item_record(
+    dynamic raw,
+  );
+
+  @protected
+  List<MeetingDecisionRecord> dco_decode_list_meeting_decision_record(
+    dynamic raw,
+  );
+
+  @protected
+  List<MeetingIntelligenceSegment> dco_decode_list_meeting_intelligence_segment(
+    dynamic raw,
+  );
+
+  @protected
+  List<MeetingMetricRecord> dco_decode_list_meeting_metric_record(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw);
+
+  @protected
+  MeetingActionStatus dco_decode_meeting_action_status(dynamic raw);
+
+  @protected
+  MeetingDecisionRecord dco_decode_meeting_decision_record(dynamic raw);
+
+  @protected
+  MeetingDecisionStatus dco_decode_meeting_decision_status(dynamic raw);
+
+  @protected
+  MeetingIntelligenceEvent dco_decode_meeting_intelligence_event(dynamic raw);
+
+  @protected
+  MeetingIntelligenceSegment dco_decode_meeting_intelligence_segment(
+    dynamic raw,
+  );
+
+  @protected
+  MeetingMetricRecord dco_decode_meeting_metric_record(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -72,6 +124,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RustStreamSink<GenerationEvent> sse_decode_StreamSink_generation_event_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RustStreamSink<MeetingIntelligenceEvent>
+  sse_decode_StreamSink_meeting_intelligence_event_Sse(
     SseDeserializer deserializer,
   );
 
@@ -99,7 +157,68 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   GenerationStats sse_decode_generation_stats(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<MeetingActionItemRecord> sse_decode_list_meeting_action_item_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingDecisionRecord> sse_decode_list_meeting_decision_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingIntelligenceSegment> sse_decode_list_meeting_intelligence_segment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MeetingMetricRecord> sse_decode_list_meeting_metric_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  MeetingActionItemRecord sse_decode_meeting_action_item_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingActionStatus sse_decode_meeting_action_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingDecisionRecord sse_decode_meeting_decision_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingDecisionStatus sse_decode_meeting_decision_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingIntelligenceEvent sse_decode_meeting_intelligence_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingIntelligenceSegment sse_decode_meeting_intelligence_segment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MeetingMetricRecord sse_decode_meeting_metric_record(
+    SseDeserializer deserializer,
+  );
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -117,9 +236,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -128,6 +244,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_StreamSink_generation_event_Sse(
     RustStreamSink<GenerationEvent> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_meeting_intelligence_event_Sse(
+    RustStreamSink<MeetingIntelligenceEvent> self,
     SseSerializer serializer,
   );
 
@@ -165,8 +287,80 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_meeting_action_item_record(
+    List<MeetingActionItemRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_decision_record(
+    List<MeetingDecisionRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_intelligence_segment(
+    List<MeetingIntelligenceSegment> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_meeting_metric_record(
+    List<MeetingMetricRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_action_item_record(
+    MeetingActionItemRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_action_status(
+    MeetingActionStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_decision_record(
+    MeetingDecisionRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_decision_status(
+    MeetingDecisionStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_intelligence_event(
+    MeetingIntelligenceEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_intelligence_segment(
+    MeetingIntelligenceSegment self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_meeting_metric_record(
+    MeetingMetricRecord self,
     SseSerializer serializer,
   );
 
@@ -184,9 +378,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

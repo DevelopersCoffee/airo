@@ -87,12 +87,12 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  // T3 — the emitted MindStage sequence is exactly transcribing -> generating
-  // -> saving -> done. This is the contract that used to be enforced by
-  // `user_journey.rs` running both real engines in one process; it cannot any
+  // T3 — the emitted MindStage sequence is exactly transcribing → extracting
+  // → generating → saving → done. This is the contract that used to be enforced
+  // by `user_journey.rs` running both real engines in one process; it cannot any
   // more (#1549), so this is where that property now lives.
   test(
-    'T3: process emits transcribing, generating, saving, done in that order',
+    'T3: process emits transcribing, extracting, generating, saving, done in that order',
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscribing(
@@ -107,9 +107,22 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventGenerating('Min'),
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventExtracting(),
+        MeetingIntelligenceEventGenerating('Min'),
+        MeetingIntelligenceEventIrReady(
+          decisions: [
+            rust.MeetingDecisionRecord(
+              id: 'd1',
+              statement: 'ship it',
+              status: rust.MeetingDecisionStatus.agreed,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          actionItems: [],
+          metrics: [],
+        ),
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       final stages = await service
@@ -120,7 +133,8 @@ void main() {
       expect(stages, [
         MindStage.transcribing,
         MindStage.transcribing,
-        MindStage.generating,
+        MindStage.extracting,
+        MindStage.extracting,
         MindStage.generating,
         MindStage.saving,
         MindStage.done,
@@ -145,8 +159,8 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       await service.process(wavPath: 'x.wav', title: 't').drain<void>();
@@ -226,8 +240,8 @@ void main() {
         ),
       ]),
     ];
-    generation.generationEvents = const [
-      GenerationEventMinutesReady('Minutes.'),
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
     ];
     generation.modelIdValue = 'airo.generation.compact@1';
 
@@ -242,28 +256,69 @@ void main() {
   // "reproducible" would be a Rust-only property that Dart quietly drops on
   // its way to the store, the same failure mode `#1629` found in the ASR
   // segment IDs themselves.
-  test(
-    'T7b: save receives the transcript segments and the wav path unchanged',
-    () async {
-      const segments = [
-        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
-        TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
-      ];
-      speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world', segments),
-      ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
-      ];
+  test('T7b: save receives the transcript segments and the wav path unchanged', () async {
+    const segments = [
+      TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+      TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
+    ];
+    speech.transcriptEvents = const [
+      TranscriptEventTranscriptReady('hello world', segments),
+    ];
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
+    ];
 
-      await service
-          .process(wavPath: 'recording-1.wav', title: 't')
-          .drain<void>();
+    await service
+        .process(wavPath: 'recording-1.wav', title: 't')
+        .drain<void>();
 
-      expect(speech.savedSegments, segments);
-      expect(speech.savedWavPath, 'recording-1.wav');
-    },
-  );
+    expect(speech.savedSegments, segments);
+    expect(speech.savedWavPath, 'recording-1.wav');
+  });
+
+  test('T7c: save receives IR fields from the intelligence pipeline', () async {
+    speech.transcriptEvents = const [
+      TranscriptEventTranscriptReady('hello world', [
+        TranscriptSegment(
+          id: 's0',
+          startMs: 0,
+          endMs: 500,
+          text: 'hello world',
+        ),
+      ]),
+    ];
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventIrReady(
+        decisions: [
+          rust.MeetingDecisionRecord(
+            id: 'd1',
+            statement: 'ship it',
+            status: rust.MeetingDecisionStatus.agreed,
+            evidenceSegmentIds: ['s0'],
+          ),
+        ],
+        actionItems: [
+          rust.MeetingActionItemRecord(
+            id: 'a1',
+            task: 'write tests',
+            owner: 'Priya',
+            due: 'Friday',
+            status: rust.MeetingActionStatus.open,
+            evidenceSegmentIds: ['s0'],
+          ),
+        ],
+        metrics: const [],
+      ),
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
+    ];
+
+    await service.process(wavPath: 'x.wav', title: 'Standup').drain<void>();
+
+    expect(speech.savedDecisions, hasLength(1));
+    expect(speech.savedActionItems, hasLength(1));
+    expect(speech.savedDecisions!.single.statement, 'ship it');
+    expect(speech.savedActionItems!.single.task, 'write tests');
+  });
 
   // T8 — a bridge that throws surfaces as MindStage.failed with the message,
   // not an unhandled exception reaching the widget layer.
@@ -280,8 +335,8 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
       speech.saveError = StateError('disk full');
 
@@ -360,8 +415,8 @@ void main() {
           TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'namaste'),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       await service
@@ -382,8 +437,8 @@ void main() {
           ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       await service.process(wavPath: 'x.wav', title: 't').drain<void>();

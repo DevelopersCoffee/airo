@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -64,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1593969673;
+  int get rustContentHash => 755339592;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -76,6 +77,8 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
 abstract class RustLibApi extends BaseApi {
   void crateApiMinutesCancelGeneration();
+
+  void crateApiMeetingIntelligenceCancelMeetingIntelligence();
 
   Stream<GenerationEvent> crateApiMinutesGenerateMinutes({
     required String transcript,
@@ -89,6 +92,13 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiMinutesInitialize({required GenerationConfig config});
 
   bool crateApiMinutesIsReady();
+
+  Stream<MeetingIntelligenceEvent>
+  crateApiMeetingIntelligenceProcessMeetingIntelligence({
+    required String meetingId,
+    required String title,
+    required List<MeetingIntelligenceSegment> segments,
+  });
 
   void crateApiMinutesUnloadGeneration();
 }
@@ -124,6 +134,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "cancel_generation", argNames: []);
 
   @override
+  void crateApiMeetingIntelligenceCancelMeetingIntelligence() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiMeetingIntelligenceCancelMeetingIntelligenceConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMeetingIntelligenceCancelMeetingIntelligenceConstMeta =>
+      const TaskConstMeta(
+        debugName: "cancel_meeting_intelligence",
+        argNames: [],
+      );
+
+  @override
   Stream<GenerationEvent> crateApiMinutesGenerateMinutes({
     required String transcript,
     String? grammar,
@@ -140,7 +177,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 2,
+              funcId: 3,
               port: port_,
             );
           },
@@ -169,7 +206,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -191,7 +228,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_generation_stats,
@@ -217,7 +254,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -241,7 +278,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -258,12 +295,60 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "is_ready", argNames: []);
 
   @override
+  Stream<MeetingIntelligenceEvent>
+  crateApiMeetingIntelligenceProcessMeetingIntelligence({
+    required String meetingId,
+    required String title,
+    required List<MeetingIntelligenceSegment> segments,
+  }) {
+    final sink = RustStreamSink<MeetingIntelligenceEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_String(meetingId, serializer);
+            sse_encode_String(title, serializer);
+            sse_encode_list_meeting_intelligence_segment(segments, serializer);
+            sse_encode_StreamSink_meeting_intelligence_event_Sse(
+              sink,
+              serializer,
+            );
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 8,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_String,
+          ),
+          constMeta:
+              kCrateApiMeetingIntelligenceProcessMeetingIntelligenceConstMeta,
+          argValues: [meetingId, title, segments, sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta
+  get kCrateApiMeetingIntelligenceProcessMeetingIntelligenceConstMeta =>
+      const TaskConstMeta(
+        debugName: "process_meeting_intelligence",
+        argNames: ["meetingId", "title", "segments", "sink"],
+      );
+
+  @override
   void crateApiMinutesUnloadGeneration() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -289,6 +374,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustStreamSink<GenerationEvent> dco_decode_StreamSink_generation_event_Sse(
     dynamic raw,
   ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  RustStreamSink<MeetingIntelligenceEvent>
+  dco_decode_StreamSink_meeting_intelligence_event_Sse(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -361,9 +453,158 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<MeetingActionItemRecord> dco_decode_list_meeting_action_item_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_action_item_record)
+        .toList();
+  }
+
+  @protected
+  List<MeetingDecisionRecord> dco_decode_list_meeting_decision_record(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_decision_record)
+        .toList();
+  }
+
+  @protected
+  List<MeetingIntelligenceSegment> dco_decode_list_meeting_intelligence_segment(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_intelligence_segment)
+        .toList();
+  }
+
+  @protected
+  List<MeetingMetricRecord> dco_decode_list_meeting_metric_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_meeting_metric_record)
+        .toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return MeetingActionItemRecord(
+      id: dco_decode_String(arr[0]),
+      task: dco_decode_String(arr[1]),
+      owner: dco_decode_opt_String(arr[2]),
+      due: dco_decode_opt_String(arr[3]),
+      status: dco_decode_meeting_action_status(arr[4]),
+      evidenceSegmentIds: dco_decode_list_String(arr[5]),
+    );
+  }
+
+  @protected
+  MeetingActionStatus dco_decode_meeting_action_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MeetingActionStatus.values[raw as int];
+  }
+
+  @protected
+  MeetingDecisionRecord dco_decode_meeting_decision_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MeetingDecisionRecord(
+      id: dco_decode_String(arr[0]),
+      statement: dco_decode_String(arr[1]),
+      status: dco_decode_meeting_decision_status(arr[2]),
+      evidenceSegmentIds: dco_decode_list_String(arr[3]),
+    );
+  }
+
+  @protected
+  MeetingDecisionStatus dco_decode_meeting_decision_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MeetingDecisionStatus.values[raw as int];
+  }
+
+  @protected
+  MeetingIntelligenceEvent dco_decode_meeting_intelligence_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return MeetingIntelligenceEvent_Extracting();
+      case 1:
+        return MeetingIntelligenceEvent_Generating(
+          text: dco_decode_String(raw[1]),
+        );
+      case 2:
+        return MeetingIntelligenceEvent_MinutesReady(
+          text: dco_decode_String(raw[1]),
+        );
+      case 3:
+        return MeetingIntelligenceEvent_IrReady(
+          decisions: dco_decode_list_meeting_decision_record(raw[1]),
+          actionItems: dco_decode_list_meeting_action_item_record(raw[2]),
+          metrics: dco_decode_list_meeting_metric_record(raw[3]),
+        );
+      case 4:
+        return MeetingIntelligenceEvent_Cancelled();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  MeetingIntelligenceSegment dco_decode_meeting_intelligence_segment(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MeetingIntelligenceSegment(
+      id: dco_decode_String(arr[0]),
+      startMs: dco_decode_u_64(arr[1]),
+      endMs: dco_decode_u_64(arr[2]),
+      text: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  MeetingMetricRecord dco_decode_meeting_metric_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MeetingMetricRecord(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      value: dco_decode_String(arr[2]),
+      evidenceSegmentIds: dco_decode_list_String(arr[3]),
+    );
   }
 
   @protected
@@ -405,6 +646,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   RustStreamSink<GenerationEvent> sse_decode_StreamSink_generation_event_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
+  RustStreamSink<MeetingIntelligenceEvent>
+  sse_decode_StreamSink_meeting_intelligence_event_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -488,10 +738,210 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingActionItemRecord> sse_decode_list_meeting_action_item_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingActionItemRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_action_item_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingDecisionRecord> sse_decode_list_meeting_decision_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingDecisionRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_decision_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingIntelligenceSegment> sse_decode_list_meeting_intelligence_segment(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingIntelligenceSegment>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_intelligence_segment(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MeetingMetricRecord> sse_decode_list_meeting_metric_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MeetingMetricRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_meeting_metric_record(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  MeetingActionItemRecord sse_decode_meeting_action_item_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_task = sse_decode_String(deserializer);
+    var var_owner = sse_decode_opt_String(deserializer);
+    var var_due = sse_decode_opt_String(deserializer);
+    var var_status = sse_decode_meeting_action_status(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingActionItemRecord(
+      id: var_id,
+      task: var_task,
+      owner: var_owner,
+      due: var_due,
+      status: var_status,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
+  }
+
+  @protected
+  MeetingActionStatus sse_decode_meeting_action_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return MeetingActionStatus.values[inner];
+  }
+
+  @protected
+  MeetingDecisionRecord sse_decode_meeting_decision_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_statement = sse_decode_String(deserializer);
+    var var_status = sse_decode_meeting_decision_status(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingDecisionRecord(
+      id: var_id,
+      statement: var_statement,
+      status: var_status,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
+  }
+
+  @protected
+  MeetingDecisionStatus sse_decode_meeting_decision_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return MeetingDecisionStatus.values[inner];
+  }
+
+  @protected
+  MeetingIntelligenceEvent sse_decode_meeting_intelligence_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return MeetingIntelligenceEvent_Extracting();
+      case 1:
+        var var_text = sse_decode_String(deserializer);
+        return MeetingIntelligenceEvent_Generating(text: var_text);
+      case 2:
+        var var_text = sse_decode_String(deserializer);
+        return MeetingIntelligenceEvent_MinutesReady(text: var_text);
+      case 3:
+        var var_decisions = sse_decode_list_meeting_decision_record(
+          deserializer,
+        );
+        var var_actionItems = sse_decode_list_meeting_action_item_record(
+          deserializer,
+        );
+        var var_metrics = sse_decode_list_meeting_metric_record(deserializer);
+        return MeetingIntelligenceEvent_IrReady(
+          decisions: var_decisions,
+          actionItems: var_actionItems,
+          metrics: var_metrics,
+        );
+      case 4:
+        return MeetingIntelligenceEvent_Cancelled();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  MeetingIntelligenceSegment sse_decode_meeting_intelligence_segment(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_startMs = sse_decode_u_64(deserializer);
+    var var_endMs = sse_decode_u_64(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return MeetingIntelligenceSegment(
+      id: var_id,
+      startMs: var_startMs,
+      endMs: var_endMs,
+      text: var_text,
+    );
+  }
+
+  @protected
+  MeetingMetricRecord sse_decode_meeting_metric_record(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    var var_evidenceSegmentIds = sse_decode_list_String(deserializer);
+    return MeetingMetricRecord(
+      id: var_id,
+      name: var_name,
+      value: var_value,
+      evidenceSegmentIds: var_evidenceSegmentIds,
+    );
   }
 
   @protected
@@ -529,12 +979,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -553,6 +997,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.setupAndSerialize(
         codec: SseCodec(
           decodeSuccessData: sse_decode_generation_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_meeting_intelligence_event_Sse(
+    RustStreamSink<MeetingIntelligenceEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_meeting_intelligence_event,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -630,6 +1091,69 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_action_item_record(
+    List<MeetingActionItemRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_action_item_record(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_decision_record(
+    List<MeetingDecisionRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_decision_record(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_intelligence_segment(
+    List<MeetingIntelligenceSegment> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_intelligence_segment(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_meeting_metric_record(
+    List<MeetingMetricRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_meeting_metric_record(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -637,6 +1161,103 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_meeting_action_item_record(
+    MeetingActionItemRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.task, serializer);
+    sse_encode_opt_String(self.owner, serializer);
+    sse_encode_opt_String(self.due, serializer);
+    sse_encode_meeting_action_status(self.status, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_action_status(
+    MeetingActionStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_decision_record(
+    MeetingDecisionRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.statement, serializer);
+    sse_encode_meeting_decision_status(self.status, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_decision_status(
+    MeetingDecisionStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_intelligence_event(
+    MeetingIntelligenceEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case MeetingIntelligenceEvent_Extracting():
+        sse_encode_i_32(0, serializer);
+      case MeetingIntelligenceEvent_Generating(text: final text):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(text, serializer);
+      case MeetingIntelligenceEvent_MinutesReady(text: final text):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(text, serializer);
+      case MeetingIntelligenceEvent_IrReady(
+        decisions: final decisions,
+        actionItems: final actionItems,
+        metrics: final metrics,
+      ):
+        sse_encode_i_32(3, serializer);
+        sse_encode_list_meeting_decision_record(decisions, serializer);
+        sse_encode_list_meeting_action_item_record(actionItems, serializer);
+        sse_encode_list_meeting_metric_record(metrics, serializer);
+      case MeetingIntelligenceEvent_Cancelled():
+        sse_encode_i_32(4, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_meeting_intelligence_segment(
+    MeetingIntelligenceSegment self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_u_64(self.startMs, serializer);
+    sse_encode_u_64(self.endMs, serializer);
+    sse_encode_String(self.text, serializer);
+  }
+
+  @protected
+  void sse_encode_meeting_metric_record(
+    MeetingMetricRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.value, serializer);
+    sse_encode_list_String(self.evidenceSegmentIds, serializer);
   }
 
   @protected
@@ -670,11 +1291,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 }
