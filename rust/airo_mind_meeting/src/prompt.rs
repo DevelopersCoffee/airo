@@ -48,6 +48,28 @@ pub fn render_chunk_facts(segments: &[(&str, &str)]) -> String {
     CHUNK_FACTS_TEMPLATE.replace(SEGMENTS_PLACEHOLDER, rendered.trim_end())
 }
 
+/// What a retry appends to a prompt whose previous answer did not parse.
+///
+/// Deliberately says nothing about the meeting: it corrects the *format* of the
+/// reply and nothing else, so it cannot nudge the model toward inventing
+/// content it did not extract the first time. Not versioned alongside
+/// [`PROMPT_VERSION`] for the same reason — it adds no extraction instruction,
+/// so it does not change what a given prompt version means.
+const REPAIR_NOTE: &str = concat!(
+    "\n\nYour previous reply could not be parsed. ",
+    "Reply with the JSON object only — no explanation, no code fence, ",
+    "no text before or after it. Start at `{` and end at `}`."
+);
+
+/// The same prompt, with the repair note appended.
+///
+/// Used only by Pass 1's retry path (`#1739`): unconstrained generation is
+/// greedy and deterministic, so an identical prompt yields an identical
+/// unparseable reply and the retry bound would be spent for nothing.
+pub fn with_repair_note(prompt: &str) -> String {
+    format!("{}{REPAIR_NOTE}", prompt.trim_end())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -78,6 +100,23 @@ mod tests {
     fn the_template_is_loaded_from_the_versioned_file_named_by_the_constant() {
         assert!(CHUNK_FACTS_TEMPLATE.contains(SEGMENTS_PLACEHOLDER));
         assert_eq!(PROMPT_VERSION, "chunk_facts.v1");
+    }
+
+    #[test]
+    fn the_repair_note_changes_the_prompt_without_changing_what_was_asked_for() {
+        let first = render_chunk_facts(&[("s0", "Priya will own the rollout.")]);
+        let retry = with_repair_note(&first);
+
+        assert_ne!(
+            retry, first,
+            "a retry that sends the same prompt is not a retry"
+        );
+        // Everything the first attempt asked for is still being asked for.
+        assert!(retry.contains("[s0] Priya will own the rollout."));
+        assert!(retry.contains("EXTRACT, NEVER SUMMARISE"));
+        assert!(retry.contains("NEVER INVENT"));
+        // And the note itself corrects format, not content.
+        assert!(retry.ends_with("Start at `{` and end at `}`."));
     }
 
     #[test]
