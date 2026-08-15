@@ -13,11 +13,16 @@
 #
 #   cp app/pubspec_mind.yaml app/pubspec.yaml
 #   cp app/analysis_options_mind.yaml app/analysis_options.yaml
-#   cd app && flutter pub get && flutter analyze lib/main_mind.dart lib/core/mind
+#   cd app && flutter pub get && flutter analyze \
+#     lib/main_mind.dart lib/core/mind \
+#     integration_test/mind_journey_device_test.dart
 #
 # Everything below mirrors `analysis_options.yaml` except:
 #   * `lib/main_mind.dart` and `lib/core/mind/**` are NOT excluded -- that is
 #     the whole point;
+#   * `integration_test/mind_journey_device_test.dart` is kept (Mind device
+#     journey, #1771); other integration_test / patrol files stay excluded
+#     because they resolve only under the phone / patrol pubspecs;
 #   * the paths that do not resolve under this flavour ARE excluded: the patrol
 #     suites and the phone flavour's `test/` tree;
 #   * `test_mind/**` stays excluded. The analyzer only grants
@@ -42,8 +47,15 @@ analyzer:
     - "**/generated/**"
     - "**/*.g.dart"
     - "**/*.freezed.dart"
-    # Resolve only under pubspec_patrol.yaml.
-    - "integration_test/**"
+    # Phone / patrol integration suites — not the Mind device journey.
+    - "integration_test/agent_skills_journey_test.dart"
+    - "integration_test/coins_user_journeys_test.dart"
+    - "integration_test/edge_intelligence_native_pack_test.dart"
+    - "integration_test/finance_chat_ingestion_test.dart"
+    - "integration_test/gemini_nano_warmup_mobile_run_test.dart"
+    - "integration_test/media_asset_analyzer_device_test.dart"
+    - "integration_test/patrol_test.dart"
+    - "integration_test/receipt_on_device_parser_test.dart"
     - "patrol_test/**"
     # The phone flavour's suite. It imports packages this profile does not
     # carry (games, IPTV playback, media), so analysing it here reports the
