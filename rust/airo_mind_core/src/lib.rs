@@ -137,7 +137,8 @@ pub use ontology::{
 };
 pub use projection::{
     encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
-    EntityGraphProjection, EntityRecord,
+    ContextHypergraphProjection, ContextRecord, EntityGraphProjection, EntityRecord,
+    SurvivalReport,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,

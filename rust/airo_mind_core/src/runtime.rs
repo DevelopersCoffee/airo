@@ -1109,6 +1109,172 @@ impl Runtime {
         Err(RuntimeApiError::OutOfScope("instantiate_context"))
     }
 
+    /// Creates a context node — design §5.8: *"contexts belong to the user,
+    /// not the capability."* `context_id` is this operation's `entity_id`,
+    /// the same overload [`Verb::CreateEntity`] already uses for "the node
+    /// this operation is primarily about" — there is no separate context-id
+    /// field in the wire format, so a context and an entity share the one
+    /// the header already has. `label` is the context's small, inline
+    /// display name (a hospitalization's title, a project's name), the same
+    /// "small inline argument" shape [`Self::emit_verb_operation`]'s
+    /// `payload` already carries for `CreateEntity`.
+    ///
+    /// Not routed through [`crate::capability_api::CapabilityApi::instantiate_context`]
+    /// — that surface is still stubbed pending `#1197`'s context-template
+    /// work (a capability shipping a *named template* to instantiate). This
+    /// is the lower-level primitive a template's implementation would call:
+    /// one bare context node, no template resolution attached.
+    pub fn create_context(
+        &self,
+        capability: &str,
+        context_id: &str,
+        label: &[u8],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::CreateContext.as_str(),
+            payload: label,
+            recorded_at_ms,
+            entity_id: context_id,
+            parent_operation_id: None,
+            context_ids: &[],
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Links already-stored content into one or more contexts — one
+    /// hyperedge per context named, design §4.1: *"content links to many
+    /// contexts and is owned by none."* `content_id` must already exist
+    /// (from a prior `CreateContent` or [`Self::attach_content`]); this
+    /// stores no new bytes, only records which contexts now hold this
+    /// content — see [`crate::projection::ContextHypergraphProjection`] for
+    /// where that fact is read back.
+    ///
+    /// Modeled at the log/projection level, not as real per-context key
+    /// wrappings: `#1209`'s envelope encryption has not landed in this crate
+    /// yet (see [`crate::content`]'s module doc for the same gap already
+    /// documented for the content store itself). The shape here does not
+    /// change when `#1209` lands — `LinkContent` already carries exactly the
+    /// `(content_id, context_ids[])` pair real wrapping needs; the fold in
+    /// [`crate::projection::ContextHypergraphProjection`] would move from
+    /// modeling membership to modeling actual `wrap(CK, ContextKey)` calls
+    /// underneath the same operation shape.
+    pub fn link_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::LinkContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids,
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Removes one or more context wrappings from already-stored content —
+    /// design §3.2: *"`UnlinkContent` removes one context link"*, distinct
+    /// from [`Self::destroy_content`], which removes every wrapping and is
+    /// irreversible. The UI must never conflate the two; this method alone
+    /// never touches the content store or crypto-shreds anything.
+    ///
+    /// Does not compute what survives — call
+    /// [`crate::projection::ContextHypergraphProjection::survival_if_unlinked`]
+    /// against a fresh [`Self::query_projection`] first if the caller needs
+    /// that answer before committing to this call (the confirmation-dialog
+    /// use case design §4.1 names).
+    pub fn unlink_content(
+        &self,
+        capability: &str,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::UnlinkContent.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id,
+            parent_operation_id: None,
+            context_ids,
+            schema_id: "",
+            content_id: Some(content_id),
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Links two or more contexts to each other — design §5.8's
+    /// restructuring graph (*"merging two journeys, re-filing a decade of
+    /// documents... only links change"*), distinct from
+    /// [`Self::link_content`]'s content-to-context hyperedges. Recorded
+    /// symmetrically in [`crate::projection::ContextHypergraphProjection`]:
+    /// `from_context_id` and each of `to_context_ids` become mutually
+    /// linked, so a caller does not need to know which side "owns" the
+    /// edge to read it back.
+    pub fn link_context(
+        &self,
+        capability: &str,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::LinkContext.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id: from_context_id,
+            parent_operation_id: None,
+            context_ids: to_context_ids,
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
+    /// Removes a [`Self::link_context`] edge. Restructuring, not
+    /// destruction — no context and no content is deleted by this call, only
+    /// the structural edge between two contexts.
+    pub fn unlink_context(
+        &self,
+        capability: &str,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<Operation, RuntimeApiError> {
+        let op = self.log.append(AppendRequest {
+            capability,
+            kind: Verb::UnlinkContext.as_str(),
+            payload: &[],
+            recorded_at_ms,
+            entity_id: from_context_id,
+            parent_operation_id: None,
+            context_ids: to_context_ids,
+            schema_id: "",
+            content_id: None,
+        })?;
+        self.supervisor.record_op(REPLAY_ENGINE);
+        Ok(op)
+    }
+
     /// Registers a new listener on the in-process event bus. Not part of
     /// `#1295`'s five-function capability surface (that surface only exposes
     /// the write side, `emit_event`, via
