@@ -168,4 +168,48 @@ void main() {
       expect(audioFile.existsSync(), isTrue);
     },
   );
+
+  test('cleanupAfterTerminalFailure deletes the audio when policy says delete '
+      '(chief-security-officer review, #1656)', () async {
+    final audioFile = File('${tempDir.path}/meeting.wav')
+      ..writeAsStringSync('audio');
+    final runner = MeetingProcessingJobRunner(
+      mindService: mindService,
+      retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
+    );
+
+    await runner.cleanupAfterTerminalFailure(
+      MeetingProcessingJob(
+        id: 'm1',
+        audioPath: audioFile.path,
+        title: 'Standup',
+        enqueuedAtMs: 0,
+      ),
+    );
+
+    expect(audioFile.existsSync(), isFalse);
+  });
+
+  test(
+    'cleanupAfterTerminalFailure keeps the audio when policy says keep',
+    () async {
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.keepAfterTranscript,
+      );
+
+      await runner.cleanupAfterTerminalFailure(
+        MeetingProcessingJob(
+          id: 'm1',
+          audioPath: audioFile.path,
+          title: 'Standup',
+          enqueuedAtMs: 0,
+        ),
+      );
+
+      expect(audioFile.existsSync(), isTrue);
+    },
+  );
 }

@@ -36,7 +36,10 @@ void main() {
       await pumpEventQueue();
 
       expect(processed, ['m1']);
-      expect(queue.current.single.status, MeetingProcessingStatus.completed);
+      // Completed jobs are pruned, not kept as `completed` -- see the
+      // dedicated pruning test below and the class doc's "Retention
+      // discipline" section.
+      expect(queue.current, isEmpty);
 
       await queue.dispose();
     });
@@ -79,12 +82,8 @@ void main() {
         completers['second']!.complete();
         await pumpEventQueue();
 
-        expect(
-          queue.current.every(
-            (j) => j.status == MeetingProcessingStatus.completed,
-          ),
-          isTrue,
-        );
+        // Both completed -- and pruned, so nothing is left in the queue.
+        expect(queue.current, isEmpty);
 
         await queue.dispose();
       },
@@ -145,7 +144,90 @@ void main() {
       // The job that "died" mid-process is picked back up from scratch, not
       // left stuck in `processing` forever.
       expect(processed, ['orphaned']);
-      expect(queue.current.single.status, MeetingProcessingStatus.completed);
+      expect(queue.current, isEmpty);
+
+      await queue.dispose();
+    });
+
+    test(
+      'completed jobs are pruned from the persisted list, not kept forever',
+      () async {
+        final store = InMemoryProcessingQueueStore();
+        final queue = MeetingProcessingQueue(
+          store: store,
+          deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+            LlmDeviceSignals(totalRamMb: 8000, availableStorageMb: 8000),
+          ),
+          processJob: (job) async {},
+        );
+        await queue.restore();
+
+        await queue.enqueue(_job('m1'));
+        await pumpEventQueue();
+
+        expect(queue.current, isEmpty);
+        // Also gone from disk, not just the in-memory list -- a fresh queue
+        // reading the same store must not see it either.
+        expect(await store.load(), isEmpty);
+
+        await queue.dispose();
+      },
+    );
+
+    test('a terminally-failed job still runs the retention cleanup callback '
+        '(chief-security-officer review, #1656)', () async {
+      final store = InMemoryProcessingQueueStore();
+      final cleanedUp = <String>[];
+      final queue = MeetingProcessingQueue(
+        store: store,
+        deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+          LlmDeviceSignals(totalRamMb: 8000, availableStorageMb: 8000),
+        ),
+        maxAttempts: 1,
+        processJob: (job) async => throw Exception('unrecoverable'),
+        onTerminalFailure: (job) async => cleanedUp.add(job.id),
+      );
+      await queue.restore();
+
+      await queue.enqueue(_job('doomed'));
+      await pumpEventQueue();
+      await pumpEventQueue();
+
+      expect(cleanedUp, ['doomed']);
+      // Unlike a completed job, a failed one stays visible -- it is
+      // diagnostic state a future "needs attention" surface can show, not
+      // a job the person can act on again automatically.
+      expect(queue.current.single.status, MeetingProcessingStatus.failed);
+
+      await queue.dispose();
+    });
+
+    test('a throwing onTerminalFailure callback does not stop the queue '
+        'from moving on to the next job', () async {
+      final store = InMemoryProcessingQueueStore();
+      final processed = <String>[];
+      final queue = MeetingProcessingQueue(
+        store: store,
+        deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+          LlmDeviceSignals(totalRamMb: 8000, availableStorageMb: 8000),
+        ),
+        maxAttempts: 1,
+        processJob: (job) async {
+          if (job.id == 'doomed') throw Exception('unrecoverable');
+          processed.add(job.id);
+        },
+        onTerminalFailure: (job) async =>
+            throw Exception('cleanup also failed'),
+      );
+      await queue.restore();
+
+      await queue.enqueue(_job('doomed'));
+      await queue.enqueue(_job('fine'));
+      await pumpEventQueue();
+      await pumpEventQueue();
+      await pumpEventQueue();
+
+      expect(processed, ['fine']);
 
       await queue.dispose();
     });

@@ -86,6 +86,25 @@ import '../domain/meeting_processing_job.dart';
 ///   (the app's main isolate); it is not safe to construct two instances
 ///   against the same store file concurrently. Nothing in this codebase does
 ///   that today.
+///
+/// ## Retention discipline (chief-security-officer review, #1656)
+///
+/// [MeetingProcessingJobRunner] applies AC5's retention policy (delete the
+/// source audio once a transcript exists) only on the *success* path — a
+/// job that keeps failing never reaches that code, which would otherwise
+/// leave a `deleteAfterTranscript` user's raw audio on disk indefinitely
+/// past their chosen policy the moment a recording happens to be
+/// untranscribable. [onTerminalFailure] closes that gap: it is invoked with
+/// the same retention decision a caller would otherwise only get on success,
+/// the moment a job is marked [MeetingProcessingStatus.failed] for good.
+/// Completed jobs are also dropped from the persisted list right after
+/// [onJobSettled] runs (see [_advance]) rather than kept forever — the queue
+/// is in-flight/retry state, not a permanent history, and an unbounded
+/// `processing_queue.json` would otherwise retain every past meeting's
+/// title and audio path outside the retention toggle's reach even after the
+/// audio itself is gone. Failed jobs are kept (so a future "needs attention"
+/// surface has something to show), which is a smaller residual footprint —
+/// path and title, never audio content — than before this review.
 class MeetingProcessingQueue {
   MeetingProcessingQueue({
     required MeetingProcessingQueueStore store,
@@ -94,12 +113,14 @@ class MeetingProcessingQueue {
     LlmThermalPolicy thermalPolicy = const LlmThermalPolicy(),
     int maxAttempts = 3,
     Duration thermalPollInterval = const Duration(seconds: 30),
+    Future<void> Function(MeetingProcessingJob job)? onTerminalFailure,
   }) : _store = store,
        _deviceSignalsProbe = deviceSignalsProbe,
        _processJob = processJob,
        _thermalPolicy = thermalPolicy,
        _maxAttempts = maxAttempts,
-       _thermalPollInterval = thermalPollInterval;
+       _thermalPollInterval = thermalPollInterval,
+       _onTerminalFailure = onTerminalFailure;
 
   final MeetingProcessingQueueStore _store;
   final LlmDeviceSignalsProbe _deviceSignalsProbe;
@@ -107,6 +128,16 @@ class MeetingProcessingQueue {
   final LlmThermalPolicy _thermalPolicy;
   final int _maxAttempts;
   final Duration _thermalPollInterval;
+
+  /// Runs once a job is marked [MeetingProcessingStatus.failed] for good
+  /// (retry budget exhausted). Intended for the same retention-policy cleanup
+  /// the success path runs, so AC5's toggle is honoured on every terminal
+  /// outcome, not only the happy one — see the class doc's "Retention
+  /// discipline" section. Errors from this callback are logged to the job's
+  /// `lastError`-adjacent state only via best-effort catch; they never crash
+  /// the queue's advance loop, because a cleanup failure must not also take
+  /// down processing of the *next* queued job.
+  final Future<void> Function(MeetingProcessingJob job)? _onTerminalFailure;
 
   final _jobsController =
       StreamController<List<MeetingProcessingJob>>.broadcast();
@@ -194,21 +225,30 @@ class MeetingProcessingQueue {
 
         try {
           await _processJob(job);
-          _jobs = _replace(
-            _jobs.indexWhere((j) => j.id == job.id),
-            job.copyWith(status: MeetingProcessingStatus.completed),
-          );
+          // Pruned rather than kept as `completed`: nothing reads a
+          // completed job back out of this queue (the meeting itself lives
+          // in MindService's store from here on), and keeping it would grow
+          // `processing_queue.json` — including the job's title and audio
+          // path — forever, outside the retention toggle's reach. See the
+          // class doc's "Retention discipline" section.
+          _jobs = _jobs.where((j) => j.id != job.id).toList(growable: false);
         } catch (error) {
           final failedTerminally = job.attempt >= _maxAttempts;
-          _jobs = _replace(
-            _jobs.indexWhere((j) => j.id == job.id),
-            job.copyWith(
-              status: failedTerminally
-                  ? MeetingProcessingStatus.failed
-                  : MeetingProcessingStatus.queued,
-              lastError: error.toString(),
-            ),
+          final failedJob = job.copyWith(
+            status: failedTerminally
+                ? MeetingProcessingStatus.failed
+                : MeetingProcessingStatus.queued,
+            lastError: error.toString(),
           );
+          _jobs = _replace(_jobs.indexWhere((j) => j.id == job.id), failedJob);
+          if (failedTerminally && _onTerminalFailure != null) {
+            try {
+              await _onTerminalFailure(failedJob);
+            } catch (_) {
+              // Best-effort: a cleanup failure must not stop the queue from
+              // moving on to the next job.
+            }
+          }
         }
         await _persist();
         // Loop again: another job may be waiting, and thermal state may have

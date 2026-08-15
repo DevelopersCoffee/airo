@@ -17,14 +17,12 @@ import 'package:path_provider/path_provider.dart';
 List<Override> mindMeetingProcessingOverrides(MindService service) => [
   meetingProcessingQueueProvider.overrideWith((ref) async {
     final path = await _processingQueuePath();
-    final retentionPolicyState = ref.watch(audioRetentionPolicyProvider);
     final runner = MeetingProcessingJobRunner(
       mindService: service,
-      // A closure that reads current Riverpod state, not the value at
-      // override time -- ref.watch above only re-creates the queue when the
-      // toggle flips, but `MeetingProcessingJobRunner` reads this per job it
-      // runs, so a job that finishes long after the toggle changed still
-      // gets today's answer.
+      // A closure that reads current Riverpod state at call time, not a
+      // value captured once here, so a person who flips the Settings toggle
+      // mid-queue has it apply to the very next job that finishes or fails,
+      // not just ones enqueued after the change.
       retentionPolicy: () => ref.read(audioRetentionPolicyProvider),
     );
     final queue = MeetingProcessingQueue(
@@ -37,6 +35,10 @@ List<Override> mindMeetingProcessingOverrides(MindService service) => [
         availableStorageMb: () async => 4096,
       ),
       processJob: runner.call,
+      // chief-security-officer review (#1656): a job that exhausts its
+      // retry budget must still honour a delete-after-transcript policy --
+      // see `MeetingProcessingJobRunner.cleanupAfterTerminalFailure`'s doc.
+      onTerminalFailure: runner.cleanupAfterTerminalFailure,
     );
     ref.onDispose(() {
       // ignore: discarded_futures
