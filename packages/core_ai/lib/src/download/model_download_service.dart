@@ -274,6 +274,37 @@ class ModelDownloadService {
     await _prepareDownload(model);
   }
 
+  /// Recovers a stalled or failed transfer without discarding a usable partial.
+  ///
+  /// Prefers platform [resumeDownload] when the queue (or last progress)
+  /// retained resume state; otherwise falls back to [retryDownload] with the
+  /// current catalog metadata when [model] is provided.
+  Future<void> recoverDownload(
+    String modelId, {
+    OfflineModelInfo? model,
+    bool resumeSupported = false,
+  }) async {
+    if (resumeSupported) {
+      await resumeDownload(modelId);
+      return;
+    }
+
+    final snapshot = await _downloads.getQueue();
+    for (final entry in snapshot.entries) {
+      if (entry.artifactId != modelId) continue;
+      if (entry.resumeSupported ||
+          entry.status == DownloadStatus.paused ||
+          (entry.status == DownloadStatus.failed &&
+              entry.downloadedBytes > 0)) {
+        await resumeDownload(modelId);
+        return;
+      }
+      break;
+    }
+
+    await retryDownload(modelId, model: model);
+  }
+
   Future<void> cancelDownload(String modelId) => _downloads.cancel(modelId);
 
   Future<DownloadQueueSnapshot> getQueue() => _downloads.getQueue();
@@ -291,6 +322,11 @@ class ModelDownloadService {
       if (model == null) continue;
       if (entry.status == DownloadStatus.completed) {
         await _tryWriteReceipt(model);
+      } else if (entry.status == DownloadStatus.failed) {
+        // Keep catalog metadata for resume/retry, but do not mark the id as
+        // already scheduled — otherwise a later [downloadModel] call would
+        // skip re-enqueue and hang waiting for a dead WorkManager job.
+        _scheduledModels[model.id] = model;
       } else if (entry.status != DownloadStatus.cancelled) {
         _scheduledModels[model.id] = model;
         _scheduledIds.add(model.id);

@@ -59,12 +59,22 @@ final class ModelAcquisitionProgress extends ModelAcquisitionEvent {
 }
 
 /// Acquisition finished. [failedFileNames] is empty on full success — a real
-/// state (no network, no bundled asset, a corrupt file) that the UI must be
-/// able to explain rather than crash on.
+/// state (no network, no bundled asset, a corrupt file, a stalled transfer)
+/// that the UI must be able to explain rather than crash on.
+///
+/// [resumeSupported] is true when the platform retained partial bytes for at
+/// least one failure, so the shell can offer "Resume download" instead of a
+/// cold "Try again".
 final class ModelAcquisitionDone extends ModelAcquisitionEvent {
-  const ModelAcquisitionDone(this.failedFileNames);
+  const ModelAcquisitionDone(
+    this.failedFileNames, {
+    this.resumeSupported = false,
+  });
 
   final List<String> failedFileNames;
+
+  /// Whether a later acquire can continue from retained partial files.
+  final bool resumeSupported;
 }
 
 /// Where model bytes come from. `MindService` and the UI depend on this,
