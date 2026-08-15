@@ -15,6 +15,7 @@ import 'assistant/presentation/screens/assistant_screen.dart';
 import 'assistant/presentation/screens/audio_scribe_screen.dart';
 import 'assistant/presentation/screens/mobile_actions_screen.dart';
 import 'assistant/presentation/screens/prompt_lab_screen.dart';
+import 'capture/presentation/meeting_capture_screen.dart';
 import 'host/assistant_host_adapter.dart';
 import 'mind_home_screen.dart';
 import 'mind_service.dart';
@@ -143,6 +144,19 @@ class MindModule extends AppModule {
         path: '/',
         name: 'mind_scribe',
         builder: (context, state) => MindHomeScreen(service: service),
+        routes: [
+          // In-app capture (#1656): pause/resume, incremental disk writes,
+          // consent UX, the mic-privacy-respecting Android foreground
+          // service, and hand-off to the resumable processing queue.
+          // `MindHomeScreen`'s own record button (`MindService.startRecording`)
+          // is the pre-#1656 single-shot path and is left as-is; this is the
+          // upgraded route.
+          GoRoute(
+            path: 'record',
+            name: 'mind_meeting_capture',
+            builder: (context, state) => const MeetingCaptureScreen(),
+          ),
+        ],
       ),
   ];
 

@@ -66,6 +66,7 @@ import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/mind/mind_model_catalog.dart';
 import 'core/mind/mind_model_sources.dart';
+import 'core/mind/mind_processing_queue.dart';
 import 'core/mind/mind_shell.dart';
 import 'core/mind/mind_unavailable_screen.dart';
 import 'core/pro/pro_bootstrap_runner.dart';
@@ -123,8 +124,13 @@ ModuleRegistry buildMindModuleRegistry() {
     // here rather than by the package because the provider being overridden is
     // this app's, and because only this shell wants the rows — the super app's
     // model manager lists its own chat models and nothing else.
-    scribeOverrides: (service) =>
-        mindModelRegistryOverrides(modelsDirectory: service.modelsDirectory),
+    scribeOverrides: (service) => [
+      ...mindModelRegistryOverrides(modelsDirectory: service.modelsDirectory),
+      // #1656: the resumable post-meeting processing queue runs the same
+      // MindService instance the scribe journey uses, so a job it processes
+      // lands in the one store this shell reads from.
+      ...mindMeetingProcessingOverrides(service),
+    ],
   );
   return ModuleRegistry(shell: ShellId.mind)..register(mind);
 }

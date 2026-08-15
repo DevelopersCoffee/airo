@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.ContactsContract
@@ -42,6 +43,10 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val EMBEDDING_CHANNEL = "com.airo.embedding"
     private val AGENT_CONNECTORS_CHANNEL = "com.airo.agent_connectors"
     private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
+    // Foreground-service mic-use notification for in-app meeting capture
+    // (#1656 AC2). See MeetingRecordingService's doc comment for why this is
+    // a plain start/stop Intent pair rather than a bound service.
+    private val MEETING_RECORDING_CHANNEL = "com.airo.meeting_recording"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
     private val VOICE_PERMISSION_REQUEST = 9003
@@ -113,6 +118,28 @@ class MainActivity : AudioServiceFragmentActivity() {
                     )
                     "startListening" -> startVoiceListening(result)
                     "stopListening" -> stopVoiceListening(result)
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEETING_RECORDING_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        val title = call.argument<String>("title") ?: "Recording meeting audio"
+                        val text = call.argument<String>("text")
+                        val intent = MeetingRecordingService.startIntent(this, title, text)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(null)
+                    }
+                    "stop" -> {
+                        startService(MeetingRecordingService.stopIntent(this))
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

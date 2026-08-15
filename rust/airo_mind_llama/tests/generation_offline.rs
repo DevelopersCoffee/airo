@@ -318,6 +318,65 @@ fn runtime_stats_are_real_after_a_generation_call() {
     eprintln!("--- runtime stats ---\n{stats:?}\n---");
 }
 
+/// **The `#1739` regression test.** A grammar with a terminal state used to
+/// abort the whole OS process one token past completion:
+///
+/// ```text
+/// llama-grammar.cpp:940: GGML_ASSERT(!stacks.empty()) failed
+/// ```
+///
+/// `root ::= "{" "}"` is the minimal reproduction — the crash landed on the
+/// token immediately after the closing brace, every time, because generation
+/// only stopped on EOG or `max_output_tokens` and both are checked *after*
+/// sampling. `#1628`'s `[0-9]+` grammar never caught it: it has no terminal
+/// state, so there is always a "one more digit" continuation and the stacks
+/// never empty.
+///
+/// `max_output_tokens` is deliberately far higher than the grammar can consume.
+/// If the driver did not stop at the terminal state, the run would reach the
+/// assert long before the ceiling, and this test would not fail — it would take
+/// the test binary down with `SIGABRT`. Surviving to the assertions IS the
+/// result being asserted.
+///
+/// Skipped without a model, like every test in this file. That means CI does
+/// not prove this; a dev-loop or device run with a real GGUF does.
+#[test]
+fn a_grammar_that_can_finish_does_not_abort_the_process() {
+    let model = model();
+    if !model.exists() {
+        eprintln!("skipping: no model at {}", model.display());
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    let mut output = String::new();
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: "<|im_start|>user\nEmit an empty JSON object.<|im_end|>\n\
+                         <|im_start|>assistant\n"
+                    .to_string(),
+                max_output_tokens: 64,
+                grammar: Some(r#"root ::= "{" "}""#.to_string()),
+            },
+            &CancelToken::new(),
+            &mut |chunk| {
+                output.push_str(&chunk.text);
+                Ok(())
+            },
+        )
+        .expect("a terminating grammar generates and returns");
+
+    assert_eq!(
+        output.trim(),
+        "{}",
+        "the grammar admits exactly one string, and generation must stop at it"
+    );
+}
+
 /// `#1628` Wave 1 acceptance: `unload()` exists, is callable, and does not
 /// panic or leak.
 #[test]

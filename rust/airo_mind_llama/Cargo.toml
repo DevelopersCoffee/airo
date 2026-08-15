@@ -24,11 +24,22 @@ flutter_rust_bridge = "=2.11.1"
 # and the Android stdc++ linkage is a per-target concern this Cargo.toml does
 # not decide unilaterally.
 #
-# `common` is re-enabled explicitly below, in the `llama` feature union, purely
-# for `LlamaSampler::grammar` -- the GBNF-constrained sampler -- which llama-cpp-2
-# 0.1.153 only exposes behind it (the vocab pointer a manual FFI call would need
-# is `pub(crate)` inside llama-cpp-2 itself; there is no way to call the
-# grammar-init C API from outside the crate without this feature). Enabling
+# `common` is re-enabled explicitly below, in the `llama` feature union, for two
+# things, and the second one is a safety requirement rather than a convenience:
+#
+#  1. `LlamaSampler::grammar` -- the GBNF-constrained sampler -- which
+#     llama-cpp-2 0.1.153 only exposes behind it (the vocab pointer a manual FFI
+#     call would need is `pub(crate)` inside llama-cpp-2 itself; there is no way
+#     to call the grammar-init C API from outside the crate without it).
+#  2. `LlamaSampler::try_accept`, which is the ONLY way to see that a grammar has
+#     reached a terminal state (`#1739`). Without it, `accept` silently swallows
+#     llama.cpp's "empty grammar stack" exception, the stacks stay empty, and the
+#     next `sample` hits `GGML_ASSERT(!stacks.empty())` -- an `abort()` that takes
+#     the whole app process down. `llama.rs`'s generation loop depends on this;
+#     dropping `common` while `grammar` is still reachable reintroduces a
+#     process-crash bug, it does not merely shrink the binary.
+#
+# Enabling
 # `common` DOES compile `download.cpp` and `hf-cache.cpp` into the binary --
 # they are unconditional sources in llama.cpp's own `common/CMakeLists.txt`,
 # not gated on curl -- but `llama-cpp-sys-2`'s build.rs sets `LLAMA_CURL=OFF`
