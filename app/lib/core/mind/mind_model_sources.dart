@@ -17,7 +17,7 @@ import 'package:feature_mind/feature_mind.dart';
 ///
 /// # Why these exact URLs
 ///
-/// Both were downloaded and checked against the pinned registry before being
+/// Each was downloaded and checked against the pinned registry before being
 /// written down (#1554): the bytes at these addresses hash to exactly the
 /// digests in `rust/airo_mind_core/src/models.rs`. A URL that has not been
 /// verified against the pin does not belong here — a mismatch fails the
@@ -32,6 +32,9 @@ const Map<String, String> mindModelDownloadUrls = <String, String>{
   'ggml-tiny.en.bin':
       'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/'
       'ggml-tiny.en.bin',
+  'ggml-tiny.bin':
+      'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/'
+      'ggml-tiny.bin',
   'qwen2.5-0.5b-instruct-q4_k_m.gguf':
       'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/'
       'qwen2.5-0.5b-instruct-q4_k_m.gguf',

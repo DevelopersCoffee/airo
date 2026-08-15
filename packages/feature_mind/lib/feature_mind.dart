@@ -215,3 +215,18 @@ export 'src/surfaces/mind_home_surface.dart';
 export 'src/surfaces/portability_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
 export 'src/surfaces/context_workspace_surface.dart';
+
+// The runtime skeleton (#1338): Operation → Persist → Replay → Projection
+// through a minimal Notes capability, proving the vertical slice end to end.
+// Not yet wired into `mind_module.dart`'s routes -- this is the architecture
+// proof, not a shipped journey. The Rust-side twin
+// (`rust/airo_mind_core/src/{runtime,notes}.rs`) is what registers through
+// the real `#1302` Supervisor/EngineRegistry; this Dart half is an
+// independent implementation of the same contract, not yet bridged to it
+// through FFI (see the module docs on `NotesOperationLog` for why).
+export 'src/notes/domain/note.dart';
+export 'src/notes/domain/notes_operation.dart';
+export 'src/notes/domain/notes_operation_log.dart';
+export 'src/notes/domain/notes_projection.dart';
+export 'src/notes/notes_capability.dart';
+export 'src/notes/presentation/notes_screen.dart';

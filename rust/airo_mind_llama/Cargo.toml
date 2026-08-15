@@ -18,18 +18,33 @@ airo_mind_core = { path = "../airo_mind_core" }
 flutter_rust_bridge = "=2.11.1"
 # `default-features = false` is a CORRECTNESS setting, not a size one.
 #
-# llama-cpp-2's default features include `common`, which compiles llama.cpp's
-# `download.cpp` and `hf-cache.cpp` -- a HuggingFace HTTP client -- into the
-# binary. `ADR-0018 §1` says the runtime never acquires models, and "cloud
-# optional, never cloud required" is not a claim a binary carrying a model
-# downloader can make. It also does not link: httplib is not in the archive,
-# so the offline product and the building product happen to be the same one.
+# llama-cpp-2's default features include `openmp` and `android-shared-stdcxx`,
+# neither of which this crate wants: `openmp` costs nothing to drop because the
+# Supervisor owns the CPU budget (`C6`) and the engine is pinned to one thread,
+# and the Android stdc++ linkage is a per-target concern this Cargo.toml does
+# not decide unilaterally.
 #
-# Dropping the default `openmp` costs nothing here: the Supervisor owns the CPU
-# budget (`C6`) and the engine is pinned to one thread.
+# `common` is re-enabled explicitly below, in the `llama` feature union, purely
+# for `LlamaSampler::grammar` -- the GBNF-constrained sampler -- which llama-cpp-2
+# 0.1.153 only exposes behind it (the vocab pointer a manual FFI call would need
+# is `pub(crate)` inside llama-cpp-2 itself; there is no way to call the
+# grammar-init C API from outside the crate without this feature). Enabling
+# `common` DOES compile `download.cpp` and `hf-cache.cpp` into the binary --
+# they are unconditional sources in llama.cpp's own `common/CMakeLists.txt`,
+# not gated on curl -- but `llama-cpp-sys-2`'s build.rs sets `LLAMA_CURL=OFF`
+# unconditionally regardless of this feature (verified in its `build.rs`), so
+# no HTTP client is linked and no network capability is compiled in. `ADR-0018
+# §1`'s "cloud optional, never cloud required" claim survives: the extra
+# source is dead code with no way to reach the network, not a live downloader.
+# Flagged here because it is a real, if inert, growth in what's linked -- worth
+# knowing about at the next binary-size review.
 llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false }
 # Re-exported by llama-cpp-2 for token_to_piece; pinned to the version it uses.
 encoding_rs = { version = "0.8", optional = true }
+# RuntimeStats' peak-RSS reading (`getrusage` on macOS/iOS/Linux/Android).
+# Already a workspace dependency (`airo_core`), so this adds no new crate to
+# the lockfile, only a new consumer of one already vetted and pinned.
+libc = { version = "0.2", optional = true }
 
 # Metal acceleration, macOS only.
 #
@@ -58,7 +73,7 @@ llama-cpp-2 = { version = "0.1.153", optional = true, default-features = false, 
 [features]
 default = []
 # Real offline generation. Requires cmake and a C++ toolchain.
-llama = ["dep:llama-cpp-2", "dep:encoding_rs"]
+llama = ["dep:llama-cpp-2", "dep:encoding_rs", "dep:libc", "llama-cpp-2/common"]
 # Documents the macOS Metal contract explicitly (see the target-specific
 # dependency table above); does not change what gets linked on macOS, since
 # Metal is already unified in automatically for `cfg(target_os = "macos")`

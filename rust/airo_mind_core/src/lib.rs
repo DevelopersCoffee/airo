@@ -51,10 +51,63 @@ pub mod models;
 
 pub mod budget;
 pub mod cancel;
+
+/// `#1295`'s capability-facing runtime API surface: `create_operation`,
+/// `attach_content`, `query_projection`, `instantiate_context`, `emit_event`.
+/// The only door a capability built after `#1338`'s [`notes`] should use —
+/// see the module doc for what is real and what is honestly stubbed.
+pub mod capability_api;
+
+/// Content-addressed storage. `#1194`'s content-store half of `C1`: payload
+/// held out of line, addressed by [`content::ContentId`].
+pub mod content;
 pub mod engine;
+
+/// The in-process, non-durable event bus behind
+/// [`capability_api::CapabilityApi::emit_event`]. See the module doc for
+/// exactly what "non-durable" means mechanically.
+pub mod event;
+
+/// Engine lifecycle: state, dependency ordering, and graceful shutdown.
+/// `#1302`'s half of `C6` — see the module docs for why this is split from
+/// [`supervisor`], which owns `#1396`'s per-call job execution.
+pub mod lifecycle;
+
+/// The Notes capability (`#1338`) — the one capability the runtime skeleton
+/// exercises. Emits operations, reads a projection, holds nothing durable of
+/// its own.
+pub mod notes;
+
+/// `#1223`'s type system: [`ontology::Primitive`] (the nine leaf value
+/// types and their default merge), [`ontology::Archetype`] (the twelve
+/// abstract shapes, never in user data), [`ontology::CoreEntityType`] (the
+/// twelve concrete types a capability actually extends), and
+/// [`ontology::EntityTypeDef`] (what a capability declares). Additive: it
+/// encodes into the same `&[u8]` [`projection::encode_set_property`] already
+/// accepts, and does not change [`verb::Verb`] or
+/// [`projection::EntityGraphProjection`]'s wire shape — see the module doc.
+pub mod ontology;
+
+/// The generalized projection engine. `#1195`'s condition-5 machinery:
+/// [`projection::EntityGraphProjection`], the multi-capability projection
+/// that proves delete-and-rebuild is a property of the engine, not an
+/// accident of Notes' own shape.
+pub mod projection;
+
+/// The `Operation → Persist → Replay → Projection` substrate, formalized
+/// against `C1`/`C2` for `#1194`/`#1195`, wired through
+/// [`lifecycle::EngineRegistry`] rather than around it.
+pub mod runtime;
 pub mod search;
+
+/// Operation signing. `#1194`'s `signature` header field — see the module
+/// doc for exactly what this proves today and what it does not.
+pub mod signing;
 pub mod store;
 pub mod supervisor;
+
+/// The fixed, nineteen-verb runtime vocabulary `#1194`'s scope table names.
+pub mod verb;
 
 /// WAV decoding for the capability layer. A container format is an input
 /// detail, not part of the runtime's surface, so it is reachable only from the
@@ -63,11 +116,35 @@ pub mod wav;
 
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
+pub use capability_api::{
+    CapabilityApi, CapabilityApiError, ContextId, CreateOperationRequest, OperationKind,
+    OperationReceipt,
+};
+pub use content::{ContentId, ContentStore, ContentStoreError};
 pub use digest::file_digest;
 pub use engine::{
-    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, SpeechEngine,
-    TranscriptSegment,
+    AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
+    SpeechEngine, TranscriptSegment, TranscriptionOptions,
+};
+pub use event::{CapabilityEvent, EventBus};
+pub use lifecycle::{
+    EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,
+};
+pub use notes::{Note, NotesCapability, NotesProjection, NOTES_CAPABILITY};
+pub use ontology::{
+    parse_extends, validate_relation_endpoints, validate_user_facing_label, Archetype,
+    CoreEntityType, EntityTypeDef, MergeStrategy, OntologyError, Primitive, Value,
+};
+pub use projection::{
+    encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
+    EntityGraphProjection, EntityRecord,
+};
+pub use runtime::{
+    AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
+    ReplayVerifyError, Runtime, RuntimeApiError,
 };
 pub use search::{Hit, SearchIndex};
+pub use signing::{DeviceKeySigner, Signer, SignerVerifier, Verifier};
 pub use store::{Meeting, MeetingStore, StoreError};
 pub use supervisor::{RuntimeError, Supervisor};
+pub use verb::{Verb, VerbPrimitive};

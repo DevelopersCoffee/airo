@@ -55,9 +55,13 @@ class MindOpRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        op.deviceName,
-                        style: TextStyle(fontSize: 11, color: _muted),
+                      Flexible(
+                        child: Text(
+                          op.deviceName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: _muted),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Text(

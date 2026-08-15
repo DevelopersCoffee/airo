@@ -1,0 +1,20 @@
+{
+  "topics": [
+    { "title": "Temporal signaling limit", "evidence": ["s0"] }
+  ],
+  "observations": [],
+  "decisions": [
+    { "statement": "move signaling onto the queue before the release", "status": "agreed", "evidence": ["s4"] }
+  ],
+  "action_items": [
+    { "task": "check the Temporal signaling limit", "owner": null, "due": null, "status": "open", "evidence": ["s3"] }
+  ],
+  "metrics": [
+    { "name": "signals per day", "value": "about 500,000", "evidence": ["s1"] }
+  ],
+  "risks": [],
+  "questions": [
+    { "question": "What is the documented Temporal signaling limit?", "answer": null, "evidence": ["s2"] }
+  ],
+  "next_steps": []
+}

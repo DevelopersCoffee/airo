@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "The reference meeting for #1633. Small, but it contains one instance of",
+    "every property the two passes have to get right:",
+    "",
+    "  * an action item nobody was put on the hook for (s2/s3) -- the null-owner",
+    "    case, which must survive both passes as null,",
+    "  * the same action said three different ways across three chunks",
+    "    (s3, s6, s9) -- the issue's own dedup example, verbatim,",
+    "  * an action item that does name an owner (s7) and whose status changes",
+    "    later in the meeting (s10),",
+    "  * a decision, a metric, a risk, an unanswered question and a next step,",
+    "  * segments that land inside two chunks at once (s3, s6, s9, s10), which",
+    "    is what makes the cross-chunk dedup real rather than staged.",
+    "",
+    "Timings are deliberate: 5s segments with a 500ms gap, so",
+    "ChunkConfig { min 20s, max 40s, overlap 10s } splits it into four",
+    "overlapping chunks. See tests/golden.rs.",
+    "",
+    "MIND-LLM-11's F1 harness is expected to grow this file rather than start a",
+    "new one."
+  ],
+  "segments": [
+    { "id": "s0",  "start_ms": 0,     "end_ms": 4500,  "text": "Right, let us start with the Temporal signalling limit." },
+    { "id": "s1",  "start_ms": 5000,  "end_ms": 9500,  "text": "Priya said the current workflow hits about 500,000 signals a day." },
+    { "id": "s2",  "start_ms": 10000, "end_ms": 14500, "text": "The documented limit is unclear, so we need to find out." },
+    { "id": "s3",  "start_ms": 15000, "end_ms": 19500, "text": "Someone should check the Temporal signalling limit." },
+    { "id": "s4",  "start_ms": 20000, "end_ms": 24500, "text": "We agreed to move signalling onto the queue before the release." },
+    { "id": "s5",  "start_ms": 25000, "end_ms": 29500, "text": "Alright, that is the first half done." },
+    { "id": "s6",  "start_ms": 30000, "end_ms": 34500, "text": "Can we confirm the Temporal signalling capacity before Friday?" },
+    { "id": "s7",  "start_ms": 35000, "end_ms": 39500, "text": "Dev will update the runbook by Friday." },
+    { "id": "s8",  "start_ms": 40000, "end_ms": 44500, "text": "There is a risk the migration doubles the event volume." },
+    { "id": "s9",  "start_ms": 45000, "end_ms": 49500, "text": "Let us ask the Temporal team about signalling." },
+    { "id": "s10", "start_ms": 50000, "end_ms": 54500, "text": "Dev confirmed the runbook update is done." },
+    { "id": "s11", "start_ms": 55000, "end_ms": 59500, "text": "Next we will review the rollout plan." }
+  ]
+}

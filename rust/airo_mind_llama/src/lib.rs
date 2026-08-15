@@ -43,12 +43,12 @@ mod llama;
 // unchanged, so `crate::engine::…` and friends keep resolving. The definitions
 // live in `airo_mind_core`.
 #[cfg_attr(not(feature = "llama"), allow(unused_imports))]
-pub(crate) use airo_mind_core::{budget, cancel, engine, models};
+pub(crate) use airo_mind_core::{budget, cancel, engine};
 
 #[cfg(feature = "llama")]
 pub use llama::LlamaGenerationEngine;
 
 pub use airo_mind_core::{
     CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, ResourceBudget,
-    ResourceRequest, RuntimeError, Supervisor,
+    ResourceRequest, RuntimeError, RuntimeStats, Supervisor,
 };

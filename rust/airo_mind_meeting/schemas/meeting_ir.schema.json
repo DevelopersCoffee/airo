@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airo.app/schemas/meeting_ir/1.0.0",
+  "title": "Airo Meeting IR",
+  "description": "Evidence-grounded intermediate representation of one meeting, produced by two-pass extraction (#1633). Every item cites the transcript segment ids it came from. Minutes, action-item lists and meeting search are projections of this document; none of them is stored here, and no field in it is prose written by a model about the meeting as a whole.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "meeting",
+    "topics",
+    "observations",
+    "decisions",
+    "action_items",
+    "metrics",
+    "risks",
+    "questions",
+    "next_steps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Matches airo_mind_meeting::ir::IR_SCHEMA_VERSION. A reader that does not recognise it must refuse the document rather than guess."
+    },
+    "meeting": { "$ref": "#/$defs/meeting" },
+    "topics": { "type": "array", "items": { "$ref": "#/$defs/topic" } },
+    "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } },
+    "decisions": { "type": "array", "items": { "$ref": "#/$defs/decision" } },
+    "action_items": { "type": "array", "items": { "$ref": "#/$defs/action_item" } },
+    "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+    "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
+    "questions": { "type": "array", "items": { "$ref": "#/$defs/question" } },
+    "next_steps": { "type": "array", "items": { "$ref": "#/$defs/next_step" } }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "array",
+      "description": "Transcript segment ids backing this item. Non-empty: an uncited item is dropped during extraction, never stored. Segment ids rather than snippets, on purpose — a snippet copies secret-class transcript text into every projection that touches the IR, while an id is a pointer the holder of the transcript can resolve under that transcript's own access rules.",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "id": {
+      "type": "string",
+      "description": "Assigned by the extractor, never by the model — `<category>-<index>` within this document.",
+      "minLength": 1
+    },
+    "meeting": {
+      "type": "object",
+      "description": "Identity and provenance. None of it is extracted: it is supplied by the caller or derived from the transcript.",
+      "required": [
+        "id",
+        "title",
+        "started_at_ms",
+        "ended_at_ms",
+        "chunk_count",
+        "segment_count",
+        "model_id",
+        "prompt_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": ["string", "null"] },
+        "started_at_ms": { "type": "integer", "minimum": 0 },
+        "ended_at_ms": { "type": "integer", "minimum": 0 },
+        "chunk_count": { "type": "integer", "minimum": 0 },
+        "segment_count": { "type": "integer", "minimum": 0 },
+        "model_id": {
+          "type": ["string", "null"],
+          "description": "Logical model id and version that produced the facts (ADR-0018 §5). Null means the provenance is unknown, which is stated rather than invented."
+        },
+        "prompt_version": {
+          "type": "string",
+          "description": "The versioned extraction prompt that ran, e.g. `chunk_facts.v1`.",
+          "minLength": 1
+        }
+      }
+    },
+    "topic": {
+      "type": "object",
+      "required": ["id", "title", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["id", "statement", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "statement": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["id", "statement", "status", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "statement": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": ["proposed", "agreed", "rejected", "deferred"],
+          "description": "`proposed` is the default: silence is not agreement."
+        },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "action_item": {
+      "type": "object",
+      "required": ["id", "task", "owner", "due", "status", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "task": { "type": "string", "minLength": 1 },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "Null when the transcript names nobody. NEVER inferred — extraction erases any owner whose name does not appear as a whole word in the chunk the item came from."
+        },
+        "due": {
+          "type": ["string", "null"],
+          "description": "As spoken (\"Friday\", \"before the release\"). Not resolved to a date: that needs a meeting date and a timezone the extractor does not have, and a wrong date is worse than the words that were said."
+        },
+        "status": { "enum": ["open", "in_progress", "done", "blocked"] },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "required": ["id", "name", "value", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "value": {
+          "type": "string",
+          "description": "As quoted, including any unit. A string because \"about 500,000\", \"2x\" and \"under a second\" are all real answers and none of them is a number."
+        },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["id", "statement", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "statement": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["id", "question", "answer", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "question": { "type": "string", "minLength": 1 },
+        "answer": {
+          "type": ["string", "null"],
+          "description": "Null when the meeting never answered it. An open question is a result, not a gap to fill in."
+        },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "next_step": {
+      "type": "object",
+      "required": ["id", "statement", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "statement": { "type": "string", "minLength": 1 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    }
+  }
+}
