@@ -353,6 +353,116 @@ impl<'a> CapabilityApi<'a> {
         })
     }
 
+    /// Creates a context node under this handle's bound capability id —
+    /// design §5.8: contexts are user data that outlives the capability that
+    /// created them. See [`Runtime::create_context`] for the full guarantee;
+    /// this is that method reached through the only door.
+    pub fn create_context(
+        &self,
+        context_id: &str,
+        label: &[u8],
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op =
+            self.runtime
+                .create_context(&self.capability_id, context_id, label, recorded_at_ms)?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
+    /// Links already-stored content into one or more contexts — the
+    /// content-hypergraph half of `#1229`. See [`Runtime::link_content`].
+    pub fn link_content(
+        &self,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op = self.runtime.link_content(
+            &self.capability_id,
+            content_id,
+            entity_id,
+            context_ids,
+            recorded_at_ms,
+        )?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
+    /// Removes one or more context wrappings from already-stored content.
+    /// See [`Runtime::unlink_content`] for why this is never `Destroy` and
+    /// never computes survival on its own — call
+    /// [`Self::query_projection`]`::<`[`crate::projection::ContextHypergraphProjection`]`>`
+    /// and its `survival_if_unlinked` first if the caller needs that answer.
+    pub fn unlink_content(
+        &self,
+        content_id: ContentId,
+        entity_id: &str,
+        context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op = self.runtime.unlink_content(
+            &self.capability_id,
+            content_id,
+            entity_id,
+            context_ids,
+            recorded_at_ms,
+        )?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
+    /// Links two or more contexts to each other — design §5.8's
+    /// restructuring graph. See [`Runtime::link_context`].
+    pub fn link_context(
+        &self,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op = self.runtime.link_context(
+            &self.capability_id,
+            from_context_id,
+            to_context_ids,
+            recorded_at_ms,
+        )?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
+    /// Removes a [`Self::link_context`] edge. See [`Runtime::unlink_context`].
+    pub fn unlink_context(
+        &self,
+        from_context_id: &str,
+        to_context_ids: &[&str],
+        recorded_at_ms: u64,
+    ) -> Result<OperationReceipt, CapabilityApiError> {
+        let op = self.runtime.unlink_context(
+            &self.capability_id,
+            from_context_id,
+            to_context_ids,
+            recorded_at_ms,
+        )?;
+        Ok(OperationReceipt {
+            operation_id: op.operation_id,
+            seq: op.seq,
+            content_id: op.content_id,
+        })
+    }
+
     /// **Stubbed.** `#1295` is blocked by `#1197` (Context Runtime), and the
     /// substrate `#1197` actually requires — the context hypergraph,
     /// `LinkContent`/`UnlinkContent`/`DestroyContent` end-to-end semantics,
