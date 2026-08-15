@@ -83,6 +83,25 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
       final expected = required.sizeBytes;
       if (target.existsSync() && target.lengthSync() == expected) continue;
 
+      // Wrong-sized residue is corrupt — clear before atomic reinstall so
+      // a half-written file cannot pass the size check on a later launch.
+      if (target.existsSync()) {
+        try {
+          target.deleteSync();
+        } on Object {
+          failed.add(required.fileName);
+          continue;
+        }
+      }
+      final leftoverPartial = File('${target.path}.partial');
+      if (leftoverPartial.existsSync()) {
+        try {
+          leftoverPartial.deleteSync();
+        } on Object {
+          // Best-effort; the write path below recreates the partial.
+        }
+      }
+
       try {
         // Desktop bundles keep assets as real files. Copying file-to-file
         // streams; `rootBundle.load` would pull a 469 MB model entirely into
