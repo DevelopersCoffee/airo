@@ -73,6 +73,12 @@ abstract class AssistantHostAdapter {
   /// Opens the shell's settings screen, which the package does not own.
   void openHostSettings(BuildContext context);
 
+  /// Opens the shell's model manager — download, activate, and warm runtimes.
+  ///
+  /// Default routes through [openHostSettings]; standalone Mind overrides this
+  /// to reach `/models` directly.
+  void openModelManager(BuildContext context) => openHostSettings(context);
+
   /// Opens the host's HTTP status reference developer tool.
   void openHttpStatusReference(BuildContext context);
 

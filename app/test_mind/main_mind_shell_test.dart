@@ -140,7 +140,7 @@ void main() {
       branches
           .map((branch) => branch.routes.whereType<GoRoute>().first.path)
           .toList(),
-      ['/', AssistantRouteNames.assistant, AssistantRouteNames.wellbeing],
+      ['/', AssistantRouteNames.assistant, '/models', AssistantRouteNames.wellbeing],
       reason: 'branch order must match MindShell.destinations',
     );
   });
@@ -163,10 +163,10 @@ void main() {
     expect(paths.where((path) => path == '/'), hasLength(1));
   });
 
-  test('mind shell labels its destinations Scribe, Assistant, Wellbeing', () {
+  test('mind shell labels its destinations Scribe, Assistant, Models, Wellbeing', () {
     expect(
       MindShell.destinations.map((destination) => destination.label).toList(),
-      ['Scribe', 'Assistant', 'Wellbeing'],
+      ['Scribe', 'Assistant', 'Models', 'Wellbeing'],
     );
   });
 
@@ -183,7 +183,7 @@ void main() {
           builder: (context, state, navigationShell) =>
               MindShell(navigationShell: navigationShell),
           branches: [
-            for (final path in const ['/', '/assistant', '/wellbeing'])
+            for (final path in const ['/', '/assistant', '/models', '/wellbeing'])
               StatefulShellBranch(
                 routes: [
                   GoRoute(
@@ -204,6 +204,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Scribe'), findsOneWidget);
     expect(find.text('Assistant'), findsOneWidget);
+    expect(find.text('Models'), findsOneWidget);
     expect(find.text('Wellbeing'), findsOneWidget);
     expect(find.text('branch /'), findsOneWidget);
 

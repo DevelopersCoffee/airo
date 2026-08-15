@@ -387,8 +387,16 @@ class MainActivity : AudioServiceFragmentActivity() {
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            // India-focused meetings often mix English, Hindi, and Marathi in
+            // one take. Preference order lets the platform recognizer fall
+            // through locales instead of stopping at the first mismatch.
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                arrayOf("en-IN", "hi-IN", "mr-IN", "hi", "mr", "en")
+            )
             // Prefer the device speech pack so Audio Scribe does not silently
             // send microphone audio to a network recognizer when an offline
             // language pack is installed. Android may still report an

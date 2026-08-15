@@ -1,5 +1,6 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
+import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.
@@ -62,6 +63,9 @@ String? mindModelDownloadUrlFor(RequiredModel model) =>
 /// platform download stream.
 MindService buildMindDownloadService() {
   return MindService(
+    // Hindi/Marathi/English code-switching in meetings needs multilingual
+    // whisper weights and auto-detect per recording (`#1629`, `#1664`).
+    defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
       // app's support directory on purpose (`MindService.modelsDirectory`) —
@@ -72,8 +76,9 @@ MindService buildMindDownloadService() {
       downloadService: ModelDownloadService(
         storageLocation: ModelStorageLocation.applicationSupport,
       ),
-      // The pinned registry, read across the bridge — never restated here.
-      requiredModelsLookup: pinnedRequiredModels,
+      // Default weights plus the optional multilingual speech model Mind
+      // always ships (`mindScribeRequiredModels`).
+      requiredModelsLookup: mindScribeRequiredModels,
       downloadUrlFor: mindModelDownloadUrlFor,
     ),
   );
