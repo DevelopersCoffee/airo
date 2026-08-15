@@ -64,6 +64,7 @@ import 'dart:io';
 
 import 'package:airo_app/core/mind/mind_model_sources.dart';
 import 'package:feature_mind/feature_mind.dart';
+import 'package:feature_mind/src/library_loader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -100,6 +101,9 @@ void main() {
     (tester) async {
       final service = buildMindDownloadService();
       addTearDown(service.dispose);
+
+      // requiredModels() reads the whisper registry; load the library first.
+      await initializeWhisperBridge();
 
       // ── 1. Models (~570 MB on first run) ─────────────────────────────────
       final missing = await service.missingModels();
