@@ -230,3 +230,20 @@ export 'src/notes/domain/notes_operation_log.dart';
 export 'src/notes/domain/notes_projection.dart';
 export 'src/notes/notes_capability.dart';
 export 'src/notes/presentation/notes_screen.dart';
+
+// In-app meeting audio capture + resumable background processing (#1656).
+// Feeds `meetings.dart`'s `transcribeRecording`/`saveMeeting` (the ".m4a in"
+// pipeline) with a file this package now records itself, instead of only
+// accepting one that already exists on disk.
+export 'src/capture/domain/meeting_recording_state.dart';
+export 'src/capture/domain/audio_retention_policy.dart';
+export 'src/capture/domain/meeting_processing_job.dart';
+export 'src/capture/data/audio_recorder_port.dart';
+export 'src/capture/data/meeting_recording_service_gateway.dart';
+export 'src/capture/data/meeting_processing_queue_store.dart';
+export 'src/capture/application/meeting_capture_controller.dart';
+export 'src/capture/application/meeting_processing_queue.dart';
+export 'src/capture/application/meeting_capture_providers.dart';
+export 'src/capture/application/audio_retention_preference.dart';
+export 'src/capture/presentation/meeting_capture_screen.dart';
+export 'src/capture/presentation/audio_retention_settings_tile.dart';
