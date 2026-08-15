@@ -16,16 +16,12 @@ import '../domain/meeting_markdown_renderer.dart';
 ///   `decisions`/`action_items`/`metrics` onto the persisted `Meeting`
 ///   record and exposes them to Dart. Until it lands there is no Dart-side
 ///   action-item data to read.
-/// - MoM generation (`#1635`, landed) lives entirely in
-///   `rust/airo_mind_meeting`, an `rlib` with no FFI/cdylib surface — nothing
-///   in Dart can call it yet. Follow-up to file: "Wire
-///   `airo_mind_meeting`'s MoM generator through FFI (flutter_rust_bridge)
-///   so Dart can request minutes for a saved meeting" — until that exists,
-///   `momMarkdown` has nothing to be populated from either.
-///
-/// Once both exist, the fix here is two lines: fetch the fields in
-/// [_buildInput] and pass them into [MeetingExportInput]. Nothing in
-/// `meeting_markdown_renderer.dart` changes.
+/// - Saved minutes come from the scribe pipeline (`MindService.process` →
+///   `llama.generateMinutes`) and are persisted on `MeetingRecord.minutes`.
+///   Export reads that field today. Structured Meeting-IR action items still
+///   wait on `#1657`; once they land on the persisted record, map them onto
+///   [MeetingExportInput.actionItems] here — the renderer already knows what
+///   to do with them.
 class MeetingExportService {
   const MeetingExportService(this._mindService);
 
@@ -75,6 +71,8 @@ class MeetingExportService {
     final lines = _linesFrom(doc);
     final duration = _durationFrom(doc);
 
+    final minutes = meeting.minutes.trim();
+
     return MeetingExportInput(
       meetingId: meeting.id,
       title: meeting.title,
@@ -84,8 +82,8 @@ class MeetingExportService {
       duration: duration,
       transcriptLines: lines,
       fallbackTranscript: meeting.transcript,
-      // momMarkdown / actionItems: intentionally left unset. See the class
-      // doc comment for why, and what the follow-up wiring looks like.
+      momMarkdown: minutes.isEmpty ? null : minutes,
+      // actionItems: waits on #1657 Meeting-IR persistence.
     );
   }
 
