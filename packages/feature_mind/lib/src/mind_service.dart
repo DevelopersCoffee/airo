@@ -451,11 +451,36 @@ class MindService {
     final keywordHits = await _speech.search(query);
     _ranker ??= _rankerBuilder(await modelsDirectory());
     final allMeetings = await _speech.meetings();
+    final segmentTextsByMeetingId = <String, List<String>>{};
+    for (final meeting in allMeetings) {
+      final doc = await _speech.getTranscript(meeting.id);
+      if (doc == null || doc.segments.isEmpty) continue;
+      segmentTextsByMeetingId[meeting.id] = [
+        for (final segment in doc.segments) segment.text,
+      ];
+    }
     return _ranker!.rank(
       query: query,
       keywordHits: keywordHits,
       meetings: allMeetings,
+      segmentTextsByMeetingId: segmentTextsByMeetingId,
     );
+  }
+
+  /// Indexes [meeting] for EmbeddingGemma semantic search.
+  ///
+  /// **Agent G seam** (`#1770` Wave 2 chat-over-meetings): call after a
+  /// meeting is saved/processed, or from a chat tool that needs the archive
+  /// already embedded. [search] still indexes lazily when a meeting was
+  /// never passed here. Returns `false` when no embedding model is
+  /// installed — keyword search continues to work.
+  Future<bool> indexMeetingForSearch(rust.MeetingRecord meeting) async {
+    _ranker ??= _rankerBuilder(await modelsDirectory());
+    final doc = await _speech.getTranscript(meeting.id);
+    final segmentTexts = doc == null
+        ? const <String>[]
+        : [for (final segment in doc.segments) segment.text];
+    return _ranker!.indexMeeting(meeting, segmentTexts: segmentTexts);
   }
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);

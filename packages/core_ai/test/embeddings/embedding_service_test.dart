@@ -119,6 +119,27 @@ void main() {
       expect(client.embedCalls, 2);
     });
 
+    test('forwards EmbeddingTaskType to the client', () async {
+      final client = _FakeEmbeddingClient();
+      final service = EmbeddingService(
+        client: client,
+        downloadService: _FakeModelDownloadService(
+          downloaded: {
+            'embed-model': '/models/embed-model.tflite',
+            'tokenizer-model': '/models/sentencepiece.model',
+          },
+        ),
+        catalog: [embedModel, tokenizerModel],
+      );
+
+      await service.embed(
+        'hello',
+        taskType: EmbeddingTaskType.retrievalQuery,
+      );
+
+      expect(client.lastTaskType, EmbeddingTaskType.retrievalQuery);
+    });
+
     test(
       'reports modelFailed, not an exception, when the client throws',
       () async {
@@ -168,11 +189,17 @@ class _FakeEmbeddingClient implements EmbeddingClient {
   Future<bool> isReady() async => initializeCalls > 0;
 
   @override
-  Future<List<double>> embed({required String text}) async {
+  Future<List<double>> embed({
+    required String text,
+    EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
+  }) async {
     embedCalls++;
+    lastTaskType = taskType;
     if (embedError != null) throw embedError!;
     return vector;
   }
+
+  EmbeddingTaskType? lastTaskType;
 }
 
 class _FakeModelDownloadService extends ModelDownloadService {

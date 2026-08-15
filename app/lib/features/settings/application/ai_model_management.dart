@@ -191,6 +191,12 @@ class ActiveDownloadsNotifier
   void startDownload(OfflineModelInfo model) {
     final service = _ref.read(modelDownloadServiceProvider);
     service.downloadModel(model);
+    // EmbeddingGemma needs its SentencePiece tokenizer beside the .tflite;
+    // queue companions so semantic search is usable after one tap
+    // (`docs/superpowers/specs/2026-08-09-mind-scribe-semantic-search.md`).
+    for (final companion in ModelCatalog.companionsFor(model)) {
+      service.downloadModel(companion);
+    }
   }
 
   Future<void> pauseDownload(String modelId) {

@@ -3,6 +3,28 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// How the native embedder should treat [EmbeddingClient.embed]'s text.
+///
+/// Maps to Google's AI Edge RAG SDK `EmbedData.TaskType`. Query vs document
+/// asymmetry improves retrieval quality over always using semantic
+/// similarity — the plugin originally always used `SEMANTIC_SIMILARITY`
+/// and flagged this as a follow-up for `SemanticSearchRanker`.
+enum EmbeddingTaskType {
+  /// Short search query text.
+  retrievalQuery('retrievalQuery'),
+
+  /// Meeting chunk / document text being indexed.
+  retrievalDocument('retrievalDocument'),
+
+  /// Symmetric similarity (legacy default).
+  semanticSimilarity('semanticSimilarity');
+
+  const EmbeddingTaskType(this.wireName);
+
+  /// Value sent across the method channel / understood by Kotlin.
+  final String wireName;
+}
+
 /// Loads an on-device text embedding model and turns text into vectors.
 ///
 /// Backed by a **separate** native plugin from `LiteRtLmClient`'s
@@ -29,7 +51,10 @@ abstract class EmbeddingClient {
   /// succeeded — callers that want a non-throwing "is this available" check
   /// should call [isReady] first (mirrors `EmbeddingService`'s contract,
   /// which is where that check actually lives for real callers).
-  Future<List<double>> embed({required String text});
+  Future<List<double>> embed({
+    required String text,
+    EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
+  });
 }
 
 /// Channel name is distinct from `com.airo.litert_lm`: a different plugin,
@@ -80,9 +105,15 @@ class MethodChannelEmbeddingClient implements EmbeddingClient {
   }
 
   @override
-  Future<List<double>> embed({required String text}) async {
+  Future<List<double>> embed({
+    required String text,
+    EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
+  }) async {
     final result = await _channel
-        .invokeMethod<List<Object?>>('embed', {'text': text})
+        .invokeMethod<List<Object?>>('embed', {
+          'text': text,
+          'taskType': taskType.wireName,
+        })
         .timeout(operationTimeout);
     if (result == null) {
       throw StateError('Embedding plugin returned no vector for "$text"');
