@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'export/application/meeting_export_service.dart';
+import 'export/data/meeting_export_gateway.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'mind_service.dart';
 
@@ -38,6 +40,14 @@ class MeetingScreen extends StatefulWidget {
 class _MeetingScreenState extends State<MeetingScreen> {
   late MindProgress _progress;
 
+  // #1663: markdown export. Constructed here rather than injected — like
+  // `MindService`'s own defaults, the production path is the only path this
+  // screen needs; a test exercises the service/gateway directly instead of
+  // through the widget (see `test/export/`).
+  late final _exportService = MeetingExportService(widget.service);
+  final _exportGateway = const PlatformMeetingExportGateway();
+  bool _exporting = false;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +84,41 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _progress.stage == MindStage.generating ||
       _progress.stage == MindStage.saving;
 
+  /// Exports the stored meeting as markdown, then either hands it to the
+  /// share sheet or writes it to a folder the user picks. A no-op for a live
+  /// (not-yet-saved) meeting — there is no [MeetingScreen.stored]'s
+  /// `_meeting.id` to export until the pipeline finishes.
+  Future<void> _export({required bool share}) async {
+    final meetingId = widget._meeting?.id ?? _progress.meetingId;
+    if (meetingId == null || _exporting) return;
+
+    setState(() => _exporting = true);
+    try {
+      final bundle = await _exportService.exportMeeting(meetingId);
+      if (bundle == null) {
+        _notify('That meeting could not be found.');
+        return;
+      }
+      final ok = share
+          ? await _exportGateway.share([bundle])
+          : await _exportGateway.saveToFolder([bundle]);
+      if (ok) {
+        _notify(share ? 'Shared as markdown.' : 'Saved as markdown.');
+      }
+    } on Object catch (e) {
+      _notify('Export failed: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  void _notify(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   String get _stageLabel => switch (_progress.stage) {
     MindStage.transcribing => 'Transcribing…',
     MindStage.generating => 'Writing minutes…',
@@ -97,6 +142,24 @@ class _MeetingScreenState extends State<MeetingScreen> {
                 Navigator.of(context).pop();
               },
               child: const Text('Stop'),
+            )
+          // Export needs a saved meeting id -- available once processing
+          // reaches `done`, or always for a reopened meeting.
+          else if (stored != null || _progress.meetingId != null)
+            PopupMenuButton<bool>(
+              icon: _exporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.ios_share),
+              tooltip: 'Export as markdown',
+              onSelected: (share) => _export(share: share),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: false, child: Text('Save to folder')),
+                PopupMenuItem(value: true, child: Text('Share')),
+              ],
             ),
         ],
       ),
