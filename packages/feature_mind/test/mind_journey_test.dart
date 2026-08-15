@@ -304,7 +304,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Writing minutes…'), findsOneWidget);
+      expect(find.text('Extracting…'), findsOneWidget);
       expect(find.text('- Add three pods'), findsOneWidget);
 
       controller.add(
@@ -316,7 +316,7 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.text('Saved on this device'), findsOneWidget);
+      expect(find.text('Ready'), findsOneWidget);
       expect(find.text('Stop'), findsNothing);
 
       await controller.close();

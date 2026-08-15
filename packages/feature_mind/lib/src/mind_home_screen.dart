@@ -349,7 +349,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
         return ListTile(
           title: Text(m.title),
           subtitle: Text(
-            m.minutes.trim().isEmpty ? m.transcript : m.minutes.trim(),
+            meetingListPreview(m),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -358,6 +358,24 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       },
     );
   }
+}
+
+/// Cheap list subtitle: minutes first, else first action/decision text, else
+/// transcript. Keeps IR discoverable without an extra store round-trip.
+@visibleForTesting
+String meetingListPreview(rust.MeetingRecord meeting) {
+  final minutes = meeting.minutes.trim();
+  if (minutes.isNotEmpty) return minutes;
+
+  if (meeting.actionItems.isNotEmpty) {
+    final item = meeting.actionItems.first;
+    final owner = item.owner?.trim();
+    return owner == null || owner.isEmpty ? item.task : '${item.task} — $owner';
+  }
+  if (meeting.decisions.isNotEmpty) {
+    return meeting.decisions.first.statement;
+  }
+  return meeting.transcript;
 }
 
 /// Shown while [MindService.initialize] is in flight. Nothing to show yet
