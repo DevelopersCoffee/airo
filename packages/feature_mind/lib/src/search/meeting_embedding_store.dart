@@ -1,26 +1,37 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:core_workers/core_workers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-/// A meeting's embedding vector, and which model produced it.
+/// A meeting's embedding vector(s), and which model produced them.
 ///
-/// Storing the model id alongside the vector mirrors `MeetingRecord.model`
+/// Storing the model id alongside the vectors mirrors `MeetingRecord.model`
 /// (`ADR-0018 §5`): what produced a piece of derived content is recorded,
 /// not inferred later. If the embedding model changes, a caller compares
-/// [modelId] against the currently-resolved model and knows this vector is
-/// stale — [MeetingEmbeddingStore] itself does not judge staleness, it only
-/// reports what is on disk.
+/// [modelId] against the currently-resolved model and knows these vectors
+/// are stale — [MeetingEmbeddingStore] itself does not judge staleness, it
+/// only reports what is on disk.
+///
+/// [vectors] is one entry per text chunk (see `MeetingTextChunker`). A
+/// single-element list is the common short-meeting case and also the shape
+/// read back from stores written before chunking landed.
 @immutable
 class StoredEmbedding {
-  const StoredEmbedding({required this.modelId, required this.vector});
+  const StoredEmbedding({required this.modelId, required this.vectors})
+    : assert(vectors.length > 0);
 
   final String modelId;
-  final List<double> vector;
+
+  /// One embedding per chunk, in chunk order. Never empty.
+  final List<List<double>> vectors;
+
+  /// Convenience for the single-vector / legacy shape.
+  List<double> get vector => vectors.first;
 }
 
-/// Persists one embedding vector per meeting, keyed by meeting id.
+/// Persists embedding vectors per meeting, keyed by meeting id.
 ///
 /// A flat JSON file, not a database: meeting counts for a personal scribe
 /// are expected in the hundreds, and `feature_mind` has no Drift/sqflite
@@ -32,22 +43,49 @@ class StoredEmbedding {
 /// for models and the meeting store, rather than inventing a second
 /// location — the caller passes that `Directory` in, this class does not
 /// resolve it itself.
+///
+/// JSON decode/encode over ~50 KB runs via [runOffMain] — each 768-d vector
+/// is already ~10 KB of JSON, so a modest archive crosses the repo's
+/// main-isolate parsing rule quickly.
 class MeetingEmbeddingStore {
   MeetingEmbeddingStore(this._dir);
 
   final Directory _dir;
 
+  static const _offMainBytes = 50 * 1024;
+
   File get _file => File(p.join(_dir.path, 'meeting_embeddings.json'));
 
-  /// Stores [vector] for [meetingId], produced by [modelId]. Overwrites
-  /// whatever was stored for that meeting before.
+  /// Stores a single [vector] for [meetingId], produced by [modelId].
+  /// Overwrites whatever was stored for that meeting before.
   Future<void> put(
     String meetingId,
     String modelId,
     List<double> vector,
+  ) => putChunks(meetingId, modelId, [vector]);
+
+  /// Stores one vector per chunk for [meetingId]. [chunkVectors] must be
+  /// non-empty — call [remove] to clear instead of writing an empty list.
+  Future<void> putChunks(
+    String meetingId,
+    String modelId,
+    List<List<double>> chunkVectors,
   ) async {
+    if (chunkVectors.isEmpty) {
+      throw ArgumentError.value(
+        chunkVectors,
+        'chunkVectors',
+        'Use remove() to clear; an empty chunk list is not a valid store write.',
+      );
+    }
     final data = await _readAll();
-    data[meetingId] = {'modelId': modelId, 'vector': vector};
+    data[meetingId] = {
+      'modelId': modelId,
+      'vectors': chunkVectors,
+      // Legacy single-vector field kept so older readers (and hand-inspected
+      // JSON) still see a useful primary vector.
+      'vector': chunkVectors.first,
+    };
     await _writeAll(data);
   }
 
@@ -88,11 +126,24 @@ class MeetingEmbeddingStore {
   StoredEmbedding? _decode(Object? raw) {
     if (raw is! Map) return null;
     final modelId = raw['modelId'];
+    if (modelId is! String) return null;
+
+    final vectorsRaw = raw['vectors'];
+    if (vectorsRaw is List && vectorsRaw.isNotEmpty) {
+      final vectors = <List<double>>[];
+      for (final item in vectorsRaw) {
+        if (item is! List) return null;
+        vectors.add(item.cast<num>().map((v) => v.toDouble()).toList());
+      }
+      return StoredEmbedding(modelId: modelId, vectors: vectors);
+    }
+
+    // Pre-chunking schema: a single `vector` field.
     final vector = raw['vector'];
-    if (modelId is! String || vector is! List) return null;
+    if (vector is! List) return null;
     return StoredEmbedding(
       modelId: modelId,
-      vector: vector.cast<num>().map((v) => v.toDouble()).toList(),
+      vectors: [vector.cast<num>().map((v) => v.toDouble()).toList()],
     );
   }
 
@@ -101,7 +152,9 @@ class MeetingEmbeddingStore {
     final content = await _file.readAsString();
     if (content.trim().isEmpty) return {};
     try {
-      final decoded = jsonDecode(content);
+      final decoded = content.length > _offMainBytes
+          ? await runOffMain(() => jsonDecode(content))
+          : jsonDecode(content);
       return decoded is Map<String, dynamic> ? decoded : {};
     } on FormatException {
       // A corrupt file degrades to "nothing stored yet," the same as a
@@ -113,6 +166,33 @@ class MeetingEmbeddingStore {
 
   Future<void> _writeAll(Map<String, dynamic> data) async {
     if (!await _dir.exists()) await _dir.create(recursive: true);
-    await _file.writeAsString(jsonEncode(data));
+    final encoded = _estimateEncodedBytes(data) > _offMainBytes
+        ? await runOffMain(() => jsonEncode(data))
+        : jsonEncode(data);
+    await _file.writeAsString(encoded);
+  }
+
+  /// Rough JSON size before encoding: each float ~12 chars plus key overhead.
+  /// Prefer overshooting into [runOffMain] over decoding hundreds of KB on
+  /// the UI isolate.
+  int _estimateEncodedBytes(Map<String, dynamic> data) {
+    var estimate = 2;
+    for (final entry in data.entries) {
+      estimate += entry.key.length + 16;
+      final value = entry.value;
+      if (value is! Map) continue;
+      final vectors = value['vectors'];
+      if (vectors is List) {
+        for (final vector in vectors) {
+          if (vector is List) estimate += vector.length * 12 + 8;
+        }
+        estimate += 64;
+        continue;
+      }
+      if (value['vector'] is List) {
+        estimate += (value['vector'] as List).length * 12 + 64;
+      }
+    }
+    return estimate;
   }
 }

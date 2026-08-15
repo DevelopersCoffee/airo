@@ -30,11 +30,12 @@ export 'src/mind_service.dart'
 // exactly one speech engine and no TTS engine to choose between.
 export 'src/speech_task_availability.dart';
 
-// Phase 2 of the Mind scribe semantic search plan
-// (`tasks/mind-scribe-semantic-search-plan.md`): persists one embedding
-// vector per meeting. Not yet wired to a real caller -- that's Phase 3's
-// SemanticSearchRanker.
+// Scribe semantic search (#508): store + ranker. MindService.search() is the
+// product call site; indexMeetingForSearch / SemanticSearchRanker.indexMeeting
+// are the Wave 2 Agent G seams for chat-over-meetings.
 export 'src/search/meeting_embedding_store.dart';
+export 'src/search/meeting_text_chunker.dart';
+export 'src/search/semantic_search_ranker.dart';
 
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
