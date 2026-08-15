@@ -16,6 +16,7 @@ use std::process::Command;
 use std::time::Instant;
 
 use airo_mind_core::wav;
+use airo_mind_core::TranscriptionOptions;
 use airo_mind_llama::{
     CancelToken as LlamaCancelToken, GenerationRequest, LlamaGenerationEngine,
     ResourceBudget as LlamaBudget, Supervisor as LlamaSupervisor,
@@ -177,6 +178,7 @@ fn main() {
                 sample_rate_hz: pcm.sample_rate_hz,
                 channels: pcm.channels,
             },
+            &TranscriptionOptions::default(),
             &WhisperCancelToken::new(),
             &mut |segment| {
                 segments.push(segment);
