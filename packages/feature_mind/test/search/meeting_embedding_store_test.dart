@@ -31,6 +31,40 @@ void main() {
 
       expect(result?.modelId, 'embed-model-v1');
       expect(result?.vector, [0.1, 0.2, 0.3]);
+      expect(result?.vectors, [
+        [0.1, 0.2, 0.3],
+      ]);
+    });
+
+    test('putChunks round-trips multiple vectors per meeting', () async {
+      final store = MeetingEmbeddingStore(tempDir);
+
+      await store.putChunks('meeting-1', 'embed-model', [
+        [0.1, 0.2],
+        [0.3, 0.4],
+      ]);
+      final result = await store.get('meeting-1');
+
+      expect(result?.vectors, [
+        [0.1, 0.2],
+        [0.3, 0.4],
+      ]);
+      expect(result?.vector, [0.1, 0.2]);
+    });
+
+    test('reads a legacy single-vector JSON entry as one chunk', () async {
+      final file = File('${tempDir.path}/meeting_embeddings.json');
+      file.writeAsStringSync(
+        '{"meeting-1":{"modelId":"legacy","vector":[0.5,0.6]}}',
+      );
+      final store = MeetingEmbeddingStore(tempDir);
+
+      final result = await store.get('meeting-1');
+
+      expect(result?.modelId, 'legacy');
+      expect(result?.vectors, [
+        [0.5, 0.6],
+      ]);
     });
 
     test('put overwrites a previous entry for the same meeting', () async {
