@@ -137,6 +137,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             },
           ),
           const Divider(height: 1),
+          _HuggingFaceCatalogStatusBanner(),
 
           // Tab content
           Expanded(
@@ -434,5 +435,59 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
         ),
       );
     }
+  }
+}
+
+/// Clear empty/error vs offline-cached messaging for the HF catalog feed.
+class _HuggingFaceCatalogStatusBanner extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final availability = ref.watch(huggingFaceCatalogAvailabilityProvider);
+    final error = ref.watch(huggingFaceCatalogErrorProvider);
+    final theme = Theme.of(context);
+
+    final String? message = switch (availability) {
+      HuggingFaceCatalogAvailability.online => null,
+      HuggingFaceCatalogAvailability.offlineCached =>
+        'Showing previously fetched Hugging Face catalog entries offline.',
+      HuggingFaceCatalogAvailability.neverFetched =>
+        error == null
+            ? 'Hugging Face catalog not fetched yet. Connect once to discover '
+                  'public GGUF and litert-community packages.'
+            : 'Could not reach Hugging Face. No cached catalog entries yet.',
+    };
+    if (message == null) return const SizedBox.shrink();
+
+    final isError = availability == HuggingFaceCatalogAvailability.neverFetched;
+    return Material(
+      color: isError
+          ? theme.colorScheme.errorContainer
+          : theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              isError ? Icons.cloud_off_outlined : Icons.offline_bolt_outlined,
+              size: 18,
+              color: isError
+                  ? theme.colorScheme.onErrorContainer
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isError
+                      ? theme.colorScheme.onErrorContainer
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

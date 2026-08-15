@@ -23,17 +23,41 @@ import 'ai_preferences_settings.dart';
 /// imported it would stop compiling for three of the four apps.
 const String mindScribeModelTag = 'mind-scribe';
 
+/// Availability of live Hugging Face catalog rows (GGUF + litert-community).
+///
+/// Starts as [HuggingFaceCatalogAvailability.neverFetched] until hydrate
+/// finishes. Offline browse of previously seen entries sets [offlineCached].
+final huggingFaceCatalogAvailabilityProvider =
+    StateProvider<HuggingFaceCatalogAvailability>(
+      (ref) => HuggingFaceCatalogAvailability.neverFetched,
+    );
+
+/// Optional error from the last HF catalog hydrate (network / parse).
+final huggingFaceCatalogErrorProvider = StateProvider<String?>((ref) => null);
+
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
-    registry.registerModels(ModelCatalog.bundledModels);
-    unawaited(
-      hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
-    );
-    unawaited(hydratePublicHuggingFaceModels(registry));
+  registry.registerModels(ModelCatalog.bundledModels);
+  unawaited(
+    hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
+  );
+  unawaited(_hydratePublicHuggingFaceCatalog(ref, registry));
   ref.onDispose(registry.dispose);
   return registry;
 });
+
+Future<void> _hydratePublicHuggingFaceCatalog(
+  Ref ref,
+  ModelRegistry registry,
+) async {
+  final result = await hydratePublicHuggingFaceModels(registry);
+  if (!ref.mounted) return;
+  ref.read(huggingFaceCatalogAvailabilityProvider.notifier).state =
+      result.availability;
+  ref.read(huggingFaceCatalogErrorProvider.notifier).state =
+      result.errorMessage;
+}
 
 final modelRegistryEventsProvider = StreamProvider<ModelRegistryEvent>((ref) {
   final registry = ref.watch(modelRegistryProvider);
