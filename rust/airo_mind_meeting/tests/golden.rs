@@ -102,6 +102,9 @@ struct ScriptedEngine {
     /// Every prompt it was given, so a test can assert on what the model was
     /// actually asked.
     prompts: Mutex<Vec<String>>,
+    /// Every request's `grammar`, so a test can assert whether the sampler was
+    /// constrained — which `#1739` makes a safety property, not a detail.
+    grammars: Mutex<Vec<Option<String>>>,
 }
 
 impl ScriptedEngine {
@@ -119,6 +122,7 @@ impl ScriptedEngine {
                     .collect(),
             ),
             prompts: Mutex::new(Vec::new()),
+            grammars: Mutex::new(Vec::new()),
         }
     }
 
@@ -136,6 +140,10 @@ impl ScriptedEngine {
 
     fn prompts(&self) -> Vec<String> {
         self.prompts.lock().unwrap().clone()
+    }
+
+    fn grammars(&self) -> Vec<Option<String>> {
+        self.grammars.lock().unwrap().clone()
     }
 }
 
@@ -160,10 +168,7 @@ impl GenerationEngine for ScriptedEngine {
         if cancel.is_cancelled() {
             return Err(EngineError::Cancelled);
         }
-        assert!(
-            request.grammar.is_some(),
-            "extraction must always constrain the sampler with a grammar"
-        );
+        self.grammars.lock().unwrap().push(request.grammar.clone());
         self.prompts.lock().unwrap().push(request.prompt.clone());
 
         let key = first_segment_id(&request.prompt);
@@ -219,11 +224,18 @@ impl GenerationEngine for BrokenEngine {
 }
 
 fn run_reference(engine: &dyn GenerationEngine) -> airo_mind_meeting::Extraction {
+    run_reference_with(engine, &ExtractionConfig::default())
+}
+
+fn run_reference_with(
+    engine: &dyn GenerationEngine,
+    config: &ExtractionConfig,
+) -> airo_mind_meeting::Extraction {
     extract(
         engine,
         &reference_transcript(),
         &reference_meeting_input(),
-        &ExtractionConfig::default(),
+        config,
         &CancelToken::new(),
     )
     .expect("reference extraction should succeed")
@@ -438,6 +450,157 @@ fn every_item_in_the_ir_cites_a_segment_the_transcript_actually_has() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// `#1739`: no terminating grammar reaches a real sampler by default
+// ---------------------------------------------------------------------------
+
+/// The regression test for `#1739`. A GBNF grammar with a terminal state — and
+/// `CHUNK_FACTS_GRAMMAR` closes with `}`, so it has one — makes llama.cpp
+/// `abort()` the whole OS process one token past completion. That is not a Rust
+/// panic and nothing above it can catch it, so the only assertion that means
+/// anything is that the default configuration never puts such a grammar in
+/// front of the sampler at all.
+#[test]
+fn extraction_does_not_constrain_the_sampler_by_default() {
+    let engine = ScriptedEngine::reference();
+    run_reference_with(&engine, &ExtractionConfig::default());
+
+    let grammars = engine.grammars();
+    assert!(!grammars.is_empty(), "no generation ran");
+    assert!(
+        grammars.iter().all(Option::is_none),
+        "the default config attached a grammar: {grammars:?}"
+    );
+}
+
+/// The other half of the same contract: the constrained path is still wired,
+/// still reaches the engine, and still produces the identical IR — it is opt-in
+/// pending a device confirmation of the driver fix, not deleted.
+#[test]
+fn the_grammar_still_reaches_the_engine_when_it_is_opted_into() {
+    let engine = ScriptedEngine::reference();
+    let extraction = run_reference_with(
+        &engine,
+        &ExtractionConfig {
+            use_gbnf_grammar: true,
+            ..ExtractionConfig::default()
+        },
+    );
+
+    let grammars = engine.grammars();
+    assert!(!grammars.is_empty(), "no generation ran");
+    assert!(
+        grammars
+            .iter()
+            .all(|g| g.as_deref() == Some(airo_mind_meeting::CHUNK_FACTS_GRAMMAR)),
+        "opting in did not attach the grammar: {grammars:?}"
+    );
+
+    let golden: MeetingIr = serde_json::from_str(include_str!("fixtures/golden_ir.json")).unwrap();
+    assert_eq!(
+        serde_json::to_value(&extraction.ir).unwrap(),
+        serde_json::to_value(&golden).unwrap(),
+        "constraining the sampler must not change the IR"
+    );
+}
+
+/// What the mitigation actually costs, and that it is paid. Unconstrained, the
+/// model can answer with prose — the failure mode the grammar existed to make
+/// impossible. The retry path has to absorb that and still land on the golden
+/// IR, or "default the grammar off" is not a mitigation, it is a regression.
+#[test]
+fn a_chunk_answered_with_prose_is_retried_and_still_lands_on_the_golden_ir() {
+    let prose = "Sure! In this part of the meeting the team talked about Kafka consumer lag \
+                 and agreed to add more pods.";
+    let engine = ScriptedEngine::new(&[
+        (
+            "s0",
+            &[prose, include_str!("fixtures/model_output/chunk-0.json")],
+        ),
+        ("s3", &[include_str!("fixtures/model_output/chunk-1.json")]),
+        ("s6", &[include_str!("fixtures/model_output/chunk-2.json")]),
+        ("s9", &[include_str!("fixtures/model_output/chunk-3.json")]),
+    ]);
+
+    let extraction = run_reference_with(&engine, &ExtractionConfig::default());
+
+    assert!(extraction.diagnostics.iter().any(|d| matches!(
+        d,
+        Diagnostic::UnparseableOutput { chunk_id, attempt: 1, .. } if chunk_id == "chunk-0"
+    )));
+    let golden: MeetingIr = serde_json::from_str(include_str!("fixtures/golden_ir.json")).unwrap();
+    assert_eq!(
+        serde_json::to_value(&extraction.ir).unwrap(),
+        serde_json::to_value(&golden).unwrap(),
+        "unconstrained generation plus retry must reach the same IR the grammar would have"
+    );
+}
+
+/// Output that parses as JSON but not as `Facts` is caught by the same path:
+/// `serde_json` into the IR types is the schema check, so a category of the
+/// wrong shape is an unparseable attempt rather than a value that survives
+/// into grounding.
+#[test]
+fn output_that_is_json_but_not_the_ir_schema_is_a_retryable_failure() {
+    let wrong_shape = "{\"decisions\": \"we agreed to add three more pods\"}";
+    let engine = ScriptedEngine::new(&[
+        (
+            "s0",
+            &[
+                wrong_shape,
+                include_str!("fixtures/model_output/chunk-0.json"),
+            ],
+        ),
+        ("s3", &[include_str!("fixtures/model_output/chunk-1.json")]),
+        ("s6", &[include_str!("fixtures/model_output/chunk-2.json")]),
+        ("s9", &[include_str!("fixtures/model_output/chunk-3.json")]),
+    ]);
+
+    let extraction = run_reference_with(&engine, &ExtractionConfig::default());
+
+    assert!(extraction.diagnostics.iter().any(|d| matches!(
+        d,
+        Diagnostic::UnparseableOutput { chunk_id, attempt: 1, .. } if chunk_id == "chunk-0"
+    )));
+    let golden: MeetingIr = serde_json::from_str(include_str!("fixtures/golden_ir.json")).unwrap();
+    assert_eq!(
+        serde_json::to_value(&extraction.ir).unwrap(),
+        serde_json::to_value(&golden).unwrap()
+    );
+}
+
+/// Without the grammar, retry is the only thing standing between a bad reply
+/// and an abandoned chunk — so a retry that re-sent the identical prompt would
+/// be worthless against a greedy, deterministic sampler. The second attempt
+/// must ask something the first did not.
+#[test]
+fn a_retry_asks_a_different_question_than_the_attempt_that_failed() {
+    let engine = ScriptedEngine::new(&[
+        (
+            "s0",
+            &[
+                "not json at all",
+                include_str!("fixtures/model_output/chunk-0.json"),
+            ],
+        ),
+        ("s3", &[include_str!("fixtures/model_output/chunk-1.json")]),
+        ("s6", &[include_str!("fixtures/model_output/chunk-2.json")]),
+        ("s9", &[include_str!("fixtures/model_output/chunk-3.json")]),
+    ]);
+
+    run_reference_with(&engine, &ExtractionConfig::default());
+
+    let prompts = engine.prompts();
+    let chunk_0: Vec<&String> = prompts.iter().filter(|p| p.contains("\n[s0] ")).collect();
+    assert_eq!(chunk_0.len(), 2, "chunk-0 should have been asked twice");
+    assert_ne!(
+        chunk_0[0], chunk_0[1],
+        "the retry re-sent the prompt that just failed"
+    );
+    // Still the same extraction task, only a corrected reply format.
+    assert!(chunk_0[1].starts_with(chunk_0[0].trim_end()));
 }
 
 /// Truncated output is the realistic grammar-era failure: the sampler cannot
