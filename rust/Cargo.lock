@@ -96,6 +96,17 @@ name = "airo_mind_core"
 version = "0.1.0"
 
 [[package]]
+name = "airo_mind_eval"
+version = "0.1.0"
+dependencies = [
+ "airo_mind_core",
+ "airo_mind_meeting",
+ "airo_mind_transcript",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
