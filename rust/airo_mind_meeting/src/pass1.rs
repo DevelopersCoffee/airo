@@ -6,13 +6,20 @@
 //!
 //! # Three separate guarantees, in order
 //!
-//! 1. **Shape** is the grammar's job. `GenerationRequest::grammar` constrains
-//!    the sampler to a valid `Facts` object, so "the model returned prose" is
-//!    not a state that can occur.
-//! 2. **Parse** is bounded-retry's job. The grammar cannot prevent output being
-//!    cut off at `max_output_tokens` mid-object, which yields JSON that is valid
-//!    right up to where it stops. That retries, a fixed number of times, and
-//!    then the chunk is abandoned with a diagnostic — never an unbounded loop.
+//! 1. **Shape** is the grammar's job, *when the grammar is switched on*.
+//!    `GenerationRequest::grammar` constrains the sampler to a valid `Facts`
+//!    object. It is off by default (`ExtractionConfig::use_gbnf_grammar`, see
+//!    `#1739`), so "the model returned prose" is a state that can occur and
+//!    guarantee 2 is what has to survive it.
+//! 2. **Parse** is bounded-retry's job, and it is the load-bearing guarantee
+//!    rather than a mop-up for one edge case. Unconstrained, the model can
+//!    return prose, a fenced object, or nothing usable; constrained, it can
+//!    still be cut off at `max_output_tokens` mid-object. Either way the output
+//!    is parsed into `Facts` — which is a schema check, since a field of the
+//!    wrong shape is a serde error, not a silently accepted value — and a
+//!    failure retries a fixed number of times with a repair note appended to
+//!    the prompt, after which the chunk is abandoned with a diagnostic. Never
+//!    an unbounded loop.
 //! 3. **Grounding** is this module's job, and is not delegated to the model at
 //!    all. An item citing a segment outside its own chunk is dropped. An owner
 //!    whose name does not appear in the chunk is erased. Both are mechanical
@@ -44,6 +51,23 @@ pub struct ExtractionConfig {
     /// Must be at least 1; `0` is treated as 1 rather than silently extracting
     /// nothing.
     pub max_attempts: u32,
+    /// Whether the sampler is constrained by [`prompt::CHUNK_FACTS_GRAMMAR`].
+    ///
+    /// **Defaults to `false`, and that is a safety default, not a preference**
+    /// (`#1739`). llama.cpp aborts the OS process — `GGML_ASSERT`, not a
+    /// catchable Rust panic — when a GBNF grammar with a terminal state is
+    /// sampled one token past completion, and a JSON-object grammar always has
+    /// a terminal state. `airo_mind_llama`'s driver now stops at that point
+    /// instead of sampling into the assert, but that fix has only been proven
+    /// by reading llama.cpp's own source, not yet on a device with a real GGUF
+    /// model. Until it has been, extraction does not put a terminating grammar
+    /// in front of a real sampler by default, and leans on bounded retry
+    /// (guarantee 2 above) for shape instead.
+    ///
+    /// Flip it on to exercise the constrained path — it is the stronger
+    /// guarantee, and the intended default once `#1739` is confirmed fixed on
+    /// a device.
+    pub use_gbnf_grammar: bool,
     /// Pass 2's merge behaviour.
     pub dedup: DedupConfig,
 }
@@ -53,6 +77,7 @@ impl Default for ExtractionConfig {
         Self {
             max_output_tokens: 1024,
             max_attempts: 3,
+            use_gbnf_grammar: false,
             dedup: DedupConfig::default(),
         }
     }
@@ -88,10 +113,13 @@ pub fn extract_chunk(
         })
         .collect();
 
-    let request = GenerationRequest {
-        prompt: prompt::render_chunk_facts(&lines),
+    let rendered = prompt::render_chunk_facts(&lines);
+    let mut request = GenerationRequest {
+        prompt: rendered.clone(),
         max_output_tokens: config.max_output_tokens,
-        grammar: Some(prompt::CHUNK_FACTS_GRAMMAR.to_string()),
+        grammar: config
+            .use_gbnf_grammar
+            .then(|| prompt::CHUNK_FACTS_GRAMMAR.to_string()),
     };
 
     let attempts = config.max_attempts.max(1);
@@ -106,11 +134,20 @@ pub fn extract_chunk(
                 facts = Some(parsed);
                 break;
             }
-            Err(detail) => diagnostics.push(Diagnostic::UnparseableOutput {
-                chunk_id: chunk.id.clone(),
-                attempt,
-                detail,
-            }),
+            Err(detail) => {
+                diagnostics.push(Diagnostic::UnparseableOutput {
+                    chunk_id: chunk.id.clone(),
+                    attempt,
+                    detail,
+                });
+                // The retry asks a different question, because re-asking the
+                // same one would not be a retry. Generation is greedy and
+                // deterministic: an identical prompt produces an identical
+                // reply, so a loop that resent `rendered` verbatim would burn
+                // every attempt on the same unparseable output. Appending the
+                // repair note is what makes the bound worth having.
+                request.prompt = prompt::with_repair_note(&rendered);
+            }
         }
     }
 
@@ -163,9 +200,13 @@ fn generate(
 /// Parses the model's output into `Facts`.
 ///
 /// Trims to the outermost `{ … }` first. With the grammar attached there is
-/// nothing outside it to trim, but an engine that ignores the grammar (a test
-/// double, or a backend without grammar support) commonly wraps the object in a
-/// code fence, and recovering from that is free.
+/// nothing outside it to trim; unconstrained — which is the default, per
+/// `#1739` — a model very commonly wraps the object in a code fence or a line
+/// of preamble, and recovering from that costs nothing and saves an attempt.
+///
+/// `serde_json` into [`Facts`] is also the schema check: a category that came
+/// back as a string instead of a list, or an item missing `evidence`, is a
+/// parse error here rather than a value that reaches grounding.
 fn parse_facts(raw: &str) -> Result<Facts, String> {
     let start = raw.find('{').ok_or("no JSON object in output")?;
     let end = raw.rfind('}').ok_or("unterminated JSON object")?;

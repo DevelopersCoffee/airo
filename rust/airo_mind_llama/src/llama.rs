@@ -225,11 +225,35 @@ impl GenerationEngine for LlamaGenerationEngine {
             }
 
             let token = sampler.sample(&ctx, -1);
-            sampler.accept(token);
 
+            // End-of-generation is checked BEFORE the token reaches the
+            // sampler chain, not after. `llama_grammar_accept_impl` calls
+            // `GGML_ABORT` -- an `abort()`, not a catchable exception -- if it
+            // is handed an EOG token while every grammar stack still has
+            // something outstanding. A token that is never emitted leaves
+            // nothing worth recording in sampler state, so there is no reason
+            // to hand it over first.
             if self.model.is_eog_token(token) {
                 break;
             }
+
+            // `try_accept`, not `accept` (`#1739`). When a token completes the
+            // grammar, llama.cpp empties the grammar's stacks and throws;
+            // `LlamaSampler::accept` swallows that (`let _ = self.try_accept`),
+            // leaving the stacks empty. The NEXT `sample` then trips
+            // `GGML_ASSERT(!stacks.empty())` in
+            // `llama_grammar_reject_candidates`, which aborts the whole OS
+            // process -- it is not a Rust panic and nothing upstream can catch
+            // it. Every grammar with a terminal state hits this: `root ::= "{"
+            // "}"` crashes on the token after the closing brace, and so does
+            // any finite JSON grammar.
+            //
+            // An error here means the grammar has no continuation from this
+            // token, which is exactly "the constrained output is finished".
+            // The token itself is valid and in-grammar (the same chain's
+            // grammar sampler is what allowed it), so it is emitted, and then
+            // generation stops for the same reason EOG stops it.
+            let grammar_finished = sampler.try_accept(token).is_err();
 
             let text = self
                 .model
@@ -240,6 +264,16 @@ impl GenerationEngine for LlamaGenerationEngine {
             // engine never builds the whole output.
             sink(GenerationChunk { text })?;
 
+            produced += 1;
+
+            // Stop after emitting, not before: the token is in-grammar and
+            // belongs in the output. Nothing after this point is worth doing --
+            // decoding it would only prepare a next token that must never be
+            // sampled.
+            if grammar_finished {
+                break;
+            }
+
             batch.clear();
             batch
                 .add(token, position, &[0], true)
@@ -248,7 +282,6 @@ impl GenerationEngine for LlamaGenerationEngine {
                 .map_err(|e| EngineError::Backend(format!("decode: {e}")))?;
 
             position += 1;
-            produced += 1;
         }
         let generation_ms = elapsed_ms(generation_started);
 
