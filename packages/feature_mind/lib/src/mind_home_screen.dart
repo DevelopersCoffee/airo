@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'whisper/api/meetings.dart' as rust;
+import 'capture/application/speech_language_preference.dart';
 import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
 import 'meeting_screen.dart';
 import 'mind_service.dart';
 import 'models/model_provider.dart';
+import 'trust/scribe_trust_signals.dart';
 
 /// The whole app. Record, search, open.
 ///
@@ -65,7 +67,10 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   }
 
   Future<void> _start() async {
-    final status = await widget.service.initialize();
+    final mode = await loadSpeechLanguageMode();
+    final status = await widget.service.initialize(
+      speechLanguage: mode.speechLanguage,
+    );
     if (!mounted) return;
     setState(() {
       _status = status;
@@ -109,7 +114,13 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       if (path == null) return;
 
       final title = 'Meeting ${_meetings.length + 1}';
-      final progress = widget.service.process(wavPath: path, title: title);
+      final mode = await loadSpeechLanguageMode();
+      if (!mounted) return;
+      final progress = widget.service.process(
+        wavPath: path,
+        title: title,
+        language: mode.processLanguageCode,
+      );
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => MeetingScreen.live(
@@ -250,6 +261,12 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     final hits = _hits;
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: ScribeTrustSignals(
+            state: widget.service.scribeTrustState(),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
@@ -431,6 +448,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
   ModelAcquisitionProgress? _progress;
   List<String> _failed = const [];
   String? _error;
+  bool _resumeSupported = false;
 
   @override
   void initState() {
@@ -454,6 +472,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
       _failed = const [];
       _error = null;
       _progress = null;
+      _resumeSupported = false;
     });
 
     try {
@@ -462,8 +481,14 @@ class _ModelDownloadState extends State<_ModelDownload> {
         switch (event) {
           case ModelAcquisitionProgress():
             setState(() => _progress = event);
-          case ModelAcquisitionDone(:final failedFileNames):
-            setState(() => _failed = failedFileNames);
+          case ModelAcquisitionDone(
+            :final failedFileNames,
+            :final resumeSupported,
+          ):
+            setState(() {
+              _failed = failedFileNames;
+              _resumeSupported = resumeSupported;
+            });
         }
       }
     } on Object catch (e) {
@@ -478,11 +503,15 @@ class _ModelDownloadState extends State<_ModelDownload> {
   static String _megabytes(int bytes) =>
       '${(bytes / (1000 * 1000)).round()} MB';
 
+  bool get _canResume =>
+      _resumeSupported || (_progress != null && _progress!.fetched > 0);
+
   @override
   Widget build(BuildContext context) {
     final required = _required;
     final total = required?.fold<int>(0, (sum, m) => sum + m.sizeBytes);
     final failed = _failed.isNotEmpty;
+    final needsRecovery = failed || _error != null;
 
     return Center(
       child: Padding(
@@ -501,6 +530,10 @@ class _ModelDownloadState extends State<_ModelDownload> {
               'downloaded once and never leave this device.',
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 12),
+            ScribeTrustSignals(
+              state: widget.service.scribeTrustState(modelMissing: true),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Best on Wi-Fi — this is a large, one-time download.',
@@ -512,7 +545,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
               const SizedBox(height: 16),
               Text(
                 'Could not download ${_failed.join(', ')}. Check the '
-                'connection and try again.',
+                'connection and ${_canResume ? 'resume' : 'try again'}.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
@@ -525,6 +558,16 @@ class _ModelDownloadState extends State<_ModelDownload> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+            if (!_running && needsRecovery) ...[
+              const SizedBox(height: 8),
+              Text(
+                _canResume
+                    ? 'Partial download kept where the platform allows it.'
+                    : 'No partial download to resume on this device.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ],
         ),
       ),
@@ -532,13 +575,30 @@ class _ModelDownloadState extends State<_ModelDownload> {
   }
 
   Widget _action(int? total) {
-    final label = total == null
-        ? 'Download models'
-        : 'Download models (~${_megabytes(total)})';
+    final needsRecovery = _failed.isNotEmpty || _error != null;
+    final String label;
+    final IconData icon;
+    if (!needsRecovery) {
+      label = total == null
+          ? 'Download models'
+          : 'Download models (~${_megabytes(total)})';
+      icon = Icons.download;
+    } else if (_canResume) {
+      label = 'Resume download';
+      icon = Icons.download;
+    } else {
+      label = 'Try again';
+      icon = Icons.refresh;
+    }
     return FilledButton.icon(
+      key: Key(
+        needsRecovery
+            ? 'mind_model_download_retry'
+            : 'mind_model_download_start',
+      ),
       onPressed: _download,
-      icon: const Icon(Icons.download),
-      label: Text(_failed.isEmpty && _error == null ? label : 'Retry'),
+      icon: Icon(icon),
+      label: Text(label),
     );
   }
 

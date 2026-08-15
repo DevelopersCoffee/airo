@@ -95,6 +95,25 @@ final class ModelDownloadInProgress extends ModelDownloadState {
   int get hashCode => Object.hash(ModelDownloadInProgress, received, total);
 }
 
+/// Platform still reports an active transfer but bytes have not moved for the
+/// stall window. Distinct from [ModelDownloadFailed] so the row can offer
+/// "Resume download" while naming the hang rather than a generic error.
+final class ModelDownloadStalled extends ModelDownloadState {
+  const ModelDownloadStalled({required this.received, required this.total});
+
+  final int received;
+  final int total;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ModelDownloadStalled &&
+      other.received == received &&
+      other.total == total;
+
+  @override
+  int get hashCode => Object.hash(ModelDownloadStalled, received, total);
+}
+
 final class ModelDownloadCompleted extends ModelDownloadState {
   const ModelDownloadCompleted();
 

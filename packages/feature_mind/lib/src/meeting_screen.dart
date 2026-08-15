@@ -4,6 +4,7 @@ import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'mind_service.dart';
+import 'trust/scribe_trust_signals.dart';
 
 /// Transcript and minutes — live, or reopened.
 ///
@@ -166,6 +167,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ScribeTrustSignals(
+            state: widget.service.scribeTrustState(),
+          ),
+          const SizedBox(height: 12),
           if (_isRunning) const LinearProgressIndicator(),
           if (_stageLabel.isNotEmpty)
             Padding(

@@ -30,11 +30,12 @@ export 'src/mind_service.dart'
 // exactly one speech engine and no TTS engine to choose between.
 export 'src/speech_task_availability.dart';
 
-// Phase 2 of the Mind scribe semantic search plan
-// (`tasks/mind-scribe-semantic-search-plan.md`): persists one embedding
-// vector per meeting. Not yet wired to a real caller -- that's Phase 3's
-// SemanticSearchRanker.
+// Scribe semantic search (#508): store + ranker. MindService.search() is the
+// product call site; indexMeetingForSearch / SemanticSearchRanker.indexMeeting
+// are the Wave 2 Agent G seams for chat-over-meetings.
 export 'src/search/meeting_embedding_store.dart';
+export 'src/search/meeting_text_chunker.dart';
+export 'src/search/semantic_search_ranker.dart';
 
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
@@ -119,7 +120,11 @@ export 'src/models/model_provider.dart'
 // model-descriptor boundary adapter (#1673) alongside the rest of the
 // bridge <-> RequiredModel/InstalledModel/OfflineModelInfo translation.
 export 'src/models/model_descriptor_adapter.dart'
-    show pinnedRequiredModels, mindScribeRequiredModels, pinnedMultilingualSpeechModel, offlineModelInfoFromRequiredModel;
+    show
+        pinnedRequiredModels,
+        mindScribeRequiredModels,
+        pinnedMultilingualSpeechModel,
+        offlineModelInfoFromRequiredModel;
 
 // Model download manager (#1457): progress in bytes, mobile-data pause,
 // storage budget — built on `ModelPort` rather than on `ModelProvider`
@@ -201,6 +206,11 @@ export 'src/widgets/mind_everything_browser.dart';
 export 'src/widgets/mind_command_palette_scope.dart';
 export 'src/widgets/mind_native_menu_bar.dart';
 
+// #1774 trust UX — multilingual / language badge + honest offline copy on
+// scribe and meeting surfaces. Complements #1664 without shipping the pin UI.
+export 'src/trust/scribe_trust_state.dart';
+export 'src/trust/scribe_trust_signals.dart';
+
 // Provenance — on-device entity extraction and the Inspector (surfaces 09
 // and 11, issue #1463).
 export 'src/provenance/domain/models/extracted_entity.dart';
@@ -238,6 +248,7 @@ export 'src/notes/presentation/notes_screen.dart';
 // accepting one that already exists on disk.
 export 'src/capture/domain/meeting_recording_state.dart';
 export 'src/capture/domain/audio_retention_policy.dart';
+export 'src/capture/domain/speech_language_mode.dart';
 export 'src/capture/domain/meeting_processing_job.dart';
 export 'src/capture/data/audio_recorder_port.dart';
 export 'src/capture/data/meeting_recording_service_gateway.dart';
@@ -247,5 +258,9 @@ export 'src/capture/application/meeting_processing_queue.dart';
 export 'src/capture/application/meeting_processing_job_runner.dart';
 export 'src/capture/application/meeting_capture_providers.dart';
 export 'src/capture/application/audio_retention_preference.dart';
+export 'src/capture/application/speech_language_preference.dart';
 export 'src/capture/presentation/meeting_capture_screen.dart';
 export 'src/capture/presentation/audio_retention_settings_tile.dart';
+export 'src/capture/presentation/speech_language_settings_tile.dart';
+export 'src/trust/scribe_trust_signals.dart';
+export 'src/trust/scribe_trust_state.dart';

@@ -28,13 +28,11 @@ import java.util.Optional
  * against the real `com.google.ai.edge.localagents:localagents-rag:0.1.0`
  * AAR (`javap` on its decompiled `classes.jar`, on a Pixel 9 build attempt)
  * -- the first version of this file guessed `computeEmbeddings(text)`,
- * which failed `compileDebugKotlin` with "Unresolved reference." `TaskType`
- * is `SEMANTIC_SIMILARITY` for every call: the SDK also offers
- * `RETRIEVAL_QUERY`/`RETRIEVAL_DOCUMENT` for asymmetric query-vs-document
- * encoding, which would improve search quality, but this plugin's
- * `embed(text)` channel method doesn't yet distinguish a query from a
- * document -- that's a real refinement for whoever builds
- * `SemanticSearchRanker` (Phase 3), not invented here.
+ * which failed `compileDebugKotlin` with "Unresolved reference."
+ *
+ * `taskType` on the channel maps to Gecko's `EmbedData.TaskType` by the
+ * same wire names Dart sends (`RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT`,
+ * `SEMANTIC_SIMILARITY`).
  */
 class EmbeddingPlugin(private val context: Context) : MethodChannel.MethodCallHandler {
     companion object {
@@ -84,12 +82,13 @@ class EmbeddingPlugin(private val context: Context) : MethodChannel.MethodCallHa
             try {
                 val text = call.argument<String>("text")
                     ?: throw IllegalArgumentException("text is required")
+                val taskType = taskTypeFromWire(call.argument<String>("taskType"))
 
                 val vector = withContext(Dispatchers.IO) {
                     val activeEmbedder = embedder
                         ?: throw IllegalStateException("Embedding model is not initialized")
                     val request = EmbeddingRequest.create(
-                        listOf(EmbedData.create(text, EmbedData.TaskType.SEMANTIC_SIMILARITY)),
+                        listOf(EmbedData.create(text, taskType)),
                     )
                     activeEmbedder.getEmbeddings(request).get()
                 }
@@ -100,5 +99,11 @@ class EmbeddingPlugin(private val context: Context) : MethodChannel.MethodCallHa
                 result.error("EMBEDDING_FAILED", e.message, null)
             }
         }
+    }
+
+    private fun taskTypeFromWire(wire: String?): EmbedData.TaskType = when (wire) {
+        "RETRIEVAL_QUERY", "retrievalQuery" -> EmbedData.TaskType.RETRIEVAL_QUERY
+        "RETRIEVAL_DOCUMENT", "retrievalDocument" -> EmbedData.TaskType.RETRIEVAL_DOCUMENT
+        else -> EmbedData.TaskType.SEMANTIC_SIMILARITY
     }
 }

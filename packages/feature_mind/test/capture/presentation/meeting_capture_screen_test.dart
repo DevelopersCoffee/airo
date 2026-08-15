@@ -5,6 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Future<void> pumpScreen(WidgetTester tester) async {
+    // Tall surface so consent + trust strip + controls fit without scrolling
+    // (the trust strip (#1774) pushed the start button off a default phone
+    // viewport and broke key lookups).
+    await tester.binding.setSurfaceSize(const Size(400, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: MeetingCaptureScreen())),
     );
@@ -21,6 +26,29 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('checking it is on you'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows Multilingual · auto-detect badge and offline copy by default (#1774)',
+    (tester) async {
+      await pumpScreen(tester);
+
+      expect(find.byKey(const Key('scribe_trust_signals')), findsOneWidget);
+      expect(
+        find.byKey(const Key('scribe_trust_language_badge')),
+        findsOneWidget,
+      );
+      expect(find.text('Multilingual · auto-detect'), findsOneWidget);
+      expect(find.text('On this device'), findsOneWidget);
+      expect(
+        find.byKey(const Key('scribe_trust_offline_copy')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Sharing is always an explicit'),
+        findsOneWidget,
+      );
     },
   );
 

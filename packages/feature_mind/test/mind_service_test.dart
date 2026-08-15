@@ -99,7 +99,12 @@ void main() {
           TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
         ),
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
       generation.generationEvents = const [
@@ -132,7 +137,12 @@ void main() {
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
       generation.generationEvents = const [
@@ -208,8 +218,13 @@ void main() {
   test('T7: save receives the generation bridge\'s model id', () async {
     speech.transcriptEvents = const [
       TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
-        ]),
+        TranscriptSegment(
+          id: 's0',
+          startMs: 0,
+          endMs: 500,
+          text: 'hello world',
+        ),
+      ]),
     ];
     generation.generationEvents = const [
       GenerationEventMinutesReady('Minutes.'),
@@ -257,7 +272,12 @@ void main() {
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
       generation.generationEvents = const [
@@ -287,22 +307,45 @@ void main() {
     });
 
     test('passes multilingual through unchanged when requested', () async {
-      await service.initialize(speechLanguage: rust.SpeechLanguage.multilingual);
+      await service.initialize(
+        speechLanguage: rust.SpeechLanguage.multilingual,
+      );
 
-      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+      expect(
+        speech.initializedSpeechLanguage,
+        rust.SpeechLanguage.multilingual,
+      );
     });
 
-    test('uses defaultSpeechLanguage when initialize omits speechLanguage', () async {
-      final multilingualDefault = MindService(
-        recorder: MockAudioRecorder(),
-        modelProvider: FakeReadyModelProvider(),
-        speechBridge: speech,
-        generationBridge: generation,
-        defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
-      );
-      await multilingualDefault.initialize();
+    test(
+      'uses defaultSpeechLanguage when initialize omits speechLanguage',
+      () async {
+        final multilingualDefault = MindService(
+          recorder: MockAudioRecorder(),
+          modelProvider: FakeReadyModelProvider(),
+          speechBridge: speech,
+          generationBridge: generation,
+          defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
+        );
+        await multilingualDefault.initialize();
 
-      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+        expect(
+          speech.initializedSpeechLanguage,
+          rust.SpeechLanguage.multilingual,
+        );
+      },
+    );
+
+    test('exposes speechLanguage for trust UX (#1774)', () async {
+      expect(service.speechLanguage, rust.SpeechLanguage.englishOnly);
+      await service.initialize(
+        speechLanguage: rust.SpeechLanguage.multilingual,
+      );
+      expect(service.speechLanguage, rust.SpeechLanguage.multilingual);
+      expect(
+        service.scribeTrustState().languageBadgeLabel,
+        'Multilingual · auto-detect',
+      );
     });
   });
 
@@ -317,9 +360,13 @@ void main() {
           TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'namaste'),
         ]),
       ];
-      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
 
-      await service.process(wavPath: 'x.wav', title: 't', language: 'hi').drain<void>();
+      await service
+          .process(wavPath: 'x.wav', title: 't', language: 'hi')
+          .drain<void>();
 
       expect(speech.transcribeLanguage, 'hi');
     });
@@ -327,17 +374,25 @@ void main() {
     test('no language chosen leaves the bridge on auto-detect (null)', () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
-      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+      generation.generationEvents = const [
+        GenerationEventMinutesReady('Minutes.'),
+      ];
 
       await service.process(wavPath: 'x.wav', title: 't').drain<void>();
 
       expect(
         speech.transcribeLanguage,
         isNull,
-        reason: 'omitting language must not silently pin one -- auto-detect stays the default',
+        reason:
+            'omitting language must not silently pin one -- auto-detect stays the default',
       );
     });
   });

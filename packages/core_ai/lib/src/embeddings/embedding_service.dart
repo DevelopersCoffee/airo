@@ -80,7 +80,14 @@ class EmbeddingService {
   /// Never throws: an expected "nothing installed yet" state and an
   /// unexpected native failure are both a typed [EmbeddingResult], not an
   /// exception a caller must remember to catch.
-  Future<EmbeddingResult> embed(String text) async {
+  ///
+  /// [taskType] selects query vs document encoding when the native plugin
+  /// supports it — defaults to symmetric similarity for callers that do not
+  /// care.
+  Future<EmbeddingResult> embed(
+    String text, {
+    EmbeddingTaskType taskType = EmbeddingTaskType.semanticSimilarity,
+  }) async {
     final installed = <OfflineModelInfo>[];
     for (final candidate in _catalog) {
       // Skip capability-less entries (the tokenizer) before ever asking the
@@ -128,7 +135,7 @@ class EmbeddingService {
         _initialized = true;
       }
 
-      final vector = await _client.embed(text: text);
+      final vector = await _client.embed(text: text, taskType: taskType);
       return EmbeddingResult.ready(vector, resolved.id);
     } on Object catch (e) {
       return EmbeddingResult.unavailable(

@@ -15,6 +15,7 @@ import 'assistant/presentation/screens/assistant_screen.dart';
 import 'assistant/presentation/screens/audio_scribe_screen.dart';
 import 'assistant/presentation/screens/mobile_actions_screen.dart';
 import 'assistant/presentation/screens/prompt_lab_screen.dart';
+import 'capture/application/speech_language_preference.dart';
 import 'capture/presentation/meeting_capture_screen.dart';
 import 'host/assistant_host_adapter.dart';
 import 'mind_home_screen.dart';
@@ -118,8 +119,11 @@ class MindModule extends AppModule {
   Future<void> initialize() async {
     if (createService != null) {
       // Warm the scribe pipeline so queued meeting jobs and the first Record
-      // tap do not hit an uninitialized whisper runtime.
-      await service.ensureReady();
+      // tap do not hit an uninitialized whisper runtime. Honour Settings'
+      // language mode (#1664) so an English-only opt-in does not load the
+      // multilingual weights on cold start.
+      final mode = await loadSpeechLanguageMode();
+      await service.ensureReady(speechLanguage: mode.speechLanguage);
     }
   }
 

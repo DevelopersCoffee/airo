@@ -124,5 +124,16 @@ void main() {
         );
       }
     });
+
+    test('companionsFor queues the tokenizer with the embed model', () {
+      final embed = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-300m-embed',
+      );
+
+      final companions = ModelCatalog.companionsFor(embed);
+
+      expect(companions.map((m) => m.id), ['embeddinggemma-300m-tokenizer']);
+      expect(ModelCatalog.companionsFor(companions.single), isEmpty);
+    });
   });
 }

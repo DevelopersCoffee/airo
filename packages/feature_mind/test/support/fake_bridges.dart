@@ -32,13 +32,15 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   /// library (`MindUnavailable.bridgeMissing`).
   Object? loadLibraryError;
 
+  var _ready = false;
+
   @override
   Future<void> loadLibrary() async {
     if (loadLibraryError != null) throw loadLibraryError!;
   }
 
   @override
-  bool isReady() => true;
+  bool isReady() => _ready;
 
   @override
   Future<void> initialize({
@@ -48,6 +50,7 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
   }) async {
     initializedSpeechLanguage = speechLanguage;
+    _ready = true;
   }
 
   @override
