@@ -8,6 +8,7 @@ import 'package:feature_mind/src/capture/domain/meeting_processing_job.dart';
 import 'package:feature_mind/src/capture/domain/speech_language_mode.dart';
 import 'package:feature_mind/src/mind_service.dart';
 import 'package:feature_mind/src/models/model_provider.dart';
+import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -276,7 +277,10 @@ void main() {
 
       // ensureReady now re-inits when Settings picks a new speechLanguage;
       // with FakeReadyModelProvider that reaches the fake bridge.
-      expect(speech.initializedSpeechLanguage, isNotNull);
+      expect(
+        speech.initializedSpeechLanguage,
+        rust.SpeechLanguage.englishOnly,
+      );
       expect(speech.transcribeLanguage, 'en');
     },
   );
