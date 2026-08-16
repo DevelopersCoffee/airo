@@ -915,13 +915,13 @@ impl SseDecode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
-impl SseDecode for Vec<crate::mind_runtime_state::MindOpWire> {
+impl SseDecode for Vec<crate::api::mind_runtime::MindOpWire> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::mind_runtime_state::MindOpWire>::sse_decode(
+            ans_.push(<crate::api::mind_runtime::MindOpWire>::sse_decode(
                 deserializer,
             ));
         }
@@ -1118,7 +1118,7 @@ impl SseDecode for crate::api::meetings::MindConfig {
     }
 }
 
-impl SseDecode for crate::mind_runtime_state::MindOpWire {
+impl SseDecode for crate::api::mind_runtime::MindOpWire {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_sequence = <u64>::sse_decode(deserializer);
@@ -1128,7 +1128,7 @@ impl SseDecode for crate::mind_runtime_state::MindOpWire {
         let mut var_deviceName = <String>::sse_decode(deserializer);
         let mut var_recordedAtMs = <u64>::sse_decode(deserializer);
         let mut var_detail = <String>::sse_decode(deserializer);
-        return crate::mind_runtime_state::MindOpWire {
+        return crate::api::mind_runtime::MindOpWire {
             sequence: var_sequence,
             kind: var_kind,
             title: var_title,
@@ -1593,7 +1593,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MindConfig>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::mind_runtime_state::MindOpWire {
+impl flutter_rust_bridge::IntoDart for crate::api::mind_runtime::MindOpWire {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.sequence.into_into_dart().into_dart(),
@@ -1608,13 +1608,13 @@ impl flutter_rust_bridge::IntoDart for crate::mind_runtime_state::MindOpWire {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::mind_runtime_state::MindOpWire
+    for crate::api::mind_runtime::MindOpWire
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::mind_runtime_state::MindOpWire>
-    for crate::mind_runtime_state::MindOpWire
+impl flutter_rust_bridge::IntoIntoDart<crate::api::mind_runtime::MindOpWire>
+    for crate::api::mind_runtime::MindOpWire
 {
-    fn into_into_dart(self) -> crate::mind_runtime_state::MindOpWire {
+    fn into_into_dart(self) -> crate::api::mind_runtime::MindOpWire {
         self
     }
 }
@@ -1880,12 +1880,12 @@ impl SseEncode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
-impl SseEncode for Vec<crate::mind_runtime_state::MindOpWire> {
+impl SseEncode for Vec<crate::api::mind_runtime::MindOpWire> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::mind_runtime_state::MindOpWire>::sse_encode(item, serializer);
+            <crate::api::mind_runtime::MindOpWire>::sse_encode(item, serializer);
         }
     }
 }
@@ -2036,7 +2036,7 @@ impl SseEncode for crate::api::meetings::MindConfig {
     }
 }
 
-impl SseEncode for crate::mind_runtime_state::MindOpWire {
+impl SseEncode for crate::api::mind_runtime::MindOpWire {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.sequence, serializer);

@@ -16,7 +16,7 @@ pub struct MindOpWire {
     pub detail: String,
 }
 
-fn map_op(op: mind_runtime_state::MindOpWire) -> MindOpWire {
+fn map_op(op: mind_runtime_state::ScribeOpWire) -> MindOpWire {
     MindOpWire {
         sequence: op.sequence,
         kind: op.kind,

@@ -194,14 +194,13 @@ class RustBuilder {
         env.installNdk(javaHome: environment.javaHome!);
       }
       buildEnv = await env.buildEnvironment();
-      final ortLib = _resolveOrtLibLocation();
-      if (ortLib != null) {
-        buildEnv['ORT_CXX_STDLIB'] = 'c++_shared';
-      }
     }
     final ortLib = _resolveOrtLibLocation();
     if (ortLib != null) {
       buildEnv['ORT_LIB_LOCATION'] = ortLib;
+      if (target.android != null) {
+        buildEnv['ORT_CXX_STDLIB'] = 'c++_shared';
+      }
     }
     return buildEnv;
   }

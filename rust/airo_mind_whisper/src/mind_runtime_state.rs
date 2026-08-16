@@ -24,7 +24,7 @@ const SPEAKER_REMOVE_KIND: &str = "speaker.remove";
 static MIND_RUNTIME: LazyLock<Mutex<Option<Arc<MindRuntimeState>>>> =
     LazyLock::new(|| Mutex::new(None));
 
-pub struct MindOpWire {
+pub struct ScribeOpWire {
     pub sequence: u64,
     pub kind: String,
     pub title: String,
@@ -367,7 +367,7 @@ impl MindRuntimeState {
             .count() as u64)
     }
 
-    fn scribe_ops_recent(&self, offset: u64, limit: u64) -> Result<Vec<MindOpWire>, String> {
+    fn scribe_ops_recent(&self, offset: u64, limit: u64) -> Result<Vec<ScribeOpWire>, String> {
         let replayed = self.runtime.replay().map_err(|e| e.to_string())?;
         let mut ops: Vec<&Operation> = replayed
             .iter()
@@ -415,7 +415,7 @@ struct LegacySpeakerOpRecord {
     display_name: String,
 }
 
-fn decode_scribe_op(op: &Operation) -> MindOpWire {
+fn decode_scribe_op(op: &Operation) -> ScribeOpWire {
     let mut title = String::new();
     let mut detail = String::new();
     if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&op.payload) {
@@ -430,7 +430,7 @@ fn decode_scribe_op(op: &Operation) -> MindOpWire {
             .unwrap_or("")
             .to_string();
     }
-    MindOpWire {
+    ScribeOpWire {
         sequence: op.seq,
         kind: op.kind.clone(),
         title,
@@ -480,7 +480,7 @@ pub fn scribe_op_count() -> Result<u64, String> {
     state.scribe_op_count()
 }
 
-pub fn scribe_ops_recent(offset: u64, limit: u64) -> Result<Vec<MindOpWire>, String> {
+pub fn scribe_ops_recent(offset: u64, limit: u64) -> Result<Vec<ScribeOpWire>, String> {
     let state = runtime_state()?;
     state.scribe_ops_recent(offset, limit)
 }

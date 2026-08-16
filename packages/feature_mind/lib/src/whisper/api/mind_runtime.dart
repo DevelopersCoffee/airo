@@ -4,7 +4,6 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
-import '../mind_runtime_state.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `map_op`
@@ -51,3 +50,47 @@ void mindRuntimeEnrollSpeaker({
 /// JSON array of enrolled speaker profiles rebuilt from the Rust log.
 String mindRuntimeSpeakerProfilesJson() =>
     RustLib.instance.api.crateApiMindRuntimeMindRuntimeSpeakerProfilesJson();
+
+/// One scribe timeline operation mirrored from the Rust operation log.
+class MindOpWire {
+  final BigInt sequence;
+  final String kind;
+  final String title;
+  final String contextId;
+  final String deviceName;
+  final BigInt recordedAtMs;
+  final String detail;
+
+  const MindOpWire({
+    required this.sequence,
+    required this.kind,
+    required this.title,
+    required this.contextId,
+    required this.deviceName,
+    required this.recordedAtMs,
+    required this.detail,
+  });
+
+  @override
+  int get hashCode =>
+      sequence.hashCode ^
+      kind.hashCode ^
+      title.hashCode ^
+      contextId.hashCode ^
+      deviceName.hashCode ^
+      recordedAtMs.hashCode ^
+      detail.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MindOpWire &&
+          runtimeType == other.runtimeType &&
+          sequence == other.sequence &&
+          kind == other.kind &&
+          title == other.title &&
+          contextId == other.contextId &&
+          deviceName == other.deviceName &&
+          recordedAtMs == other.recordedAtMs &&
+          detail == other.detail;
+}
