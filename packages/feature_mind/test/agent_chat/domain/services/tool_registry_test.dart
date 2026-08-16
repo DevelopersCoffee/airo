@@ -10,10 +10,14 @@ class _FakeMeetingArchivePort implements MeetingArchivePort {
   _FakeMeetingArchivePort({
     this.hits = const [],
     this.items = const [],
+    this.latestMeeting,
+    this.minutesById = const {},
   });
 
   final List<rust.SearchHit> hits;
   final List<rust.MeetingActionItemRecord> items;
+  final rust.MeetingRecord? latestMeeting;
+  final Map<String, String> minutesById;
 
   @override
   Future<List<rust.MeetingActionItemRecord>> actionItemsForOwner(
@@ -22,10 +26,31 @@ class _FakeMeetingArchivePort implements MeetingArchivePort {
       items;
 
   @override
-  Future<rust.MeetingRecord?> meeting(String id) async => null;
+  Future<rust.MeetingRecord?> meeting(String id) async {
+    final minutes = minutesById[id];
+    if (minutes == null) return null;
+    return rust.MeetingRecord(
+      id: id,
+      title: 'Test meeting',
+      recordedAt: BigInt.zero,
+      transcript: '',
+      minutes: minutes,
+      model: 'test',
+      decisions: const [],
+      actionItems: const [],
+      metrics: const [],
+    );
+  }
 
   @override
   Future<List<rust.SearchHit>> search(String query) async => hits;
+
+  @override
+  Future<rust.MeetingRecord?> latestWithMinutes() async => latestMeeting;
+
+  @override
+  Future<String?> minutesForMeeting(String meetingId) async =>
+      minutesById[meetingId];
 }
 
 void main() {
@@ -124,6 +149,32 @@ void main() {
 
       expect(result.shouldNavigate, isFalse);
       expect(result.message, contains('Temporal signalling'));
+    });
+
+    test('returns saved minutes when user asks for mom', () async {
+      const mom = '# Minutes of Meeting\n\n**Meeting:** Infra standup';
+      registry.configureMeetingArchive(
+        _FakeMeetingArchivePort(
+          latestMeeting: rust.MeetingRecord(
+            id: 'm1',
+            title: 'Infra standup',
+            recordedAt: BigInt.from(1),
+            transcript: '',
+            minutes: mom,
+            model: 'test',
+            decisions: const [],
+            actionItems: const [],
+            metrics: const [],
+          ),
+        ),
+      );
+
+      final result = await registry.executeIntent(
+        IntentParser.parse('give me mom'),
+      );
+
+      expect(result.shouldNavigate, isFalse);
+      expect(result.message, contains('Infra standup'));
     });
 
     test('routes open scribe to /scribe', () async {

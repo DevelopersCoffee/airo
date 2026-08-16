@@ -15,6 +15,12 @@ abstract class MeetingArchivePort {
   Future<List<rust.MeetingActionItemRecord>> actionItemsForOwner(
     String ownerName,
   );
+
+  /// Latest saved meeting with non-empty [rust.MeetingRecord.minutes], or null.
+  Future<rust.MeetingRecord?> latestWithMinutes();
+
+  /// Minutes for [meetingId], or null when missing or empty.
+  Future<String?> minutesForMeeting(String meetingId);
 }
 
 /// Adapts [MindService] to [MeetingArchivePort].
@@ -52,5 +58,25 @@ class MindServiceMeetingArchivePort implements MeetingArchivePort {
       }
     }
     return hits;
+  }
+
+  @override
+  Future<rust.MeetingRecord?> latestWithMinutes() async {
+    final meetings = await _service.meetings();
+    if (meetings.isEmpty) return null;
+    meetings.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    for (final meeting in meetings) {
+      if (meeting.minutes.trim().isNotEmpty) {
+        return meeting;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<String?> minutesForMeeting(String meetingId) async {
+    final meeting = await _service.meeting(meetingId);
+    final minutes = meeting?.minutes.trim() ?? '';
+    return minutes.isEmpty ? null : minutes;
   }
 }
