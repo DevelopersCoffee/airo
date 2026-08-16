@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1703544676;
+  int get rustContentHash => -1565237977;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -104,6 +104,25 @@ abstract class RustLibApi extends BaseApi {
     required String detail,
   });
 
+  void crateApiMindRuntimeMindRuntimeCreateNote({
+    required String id,
+    required String title,
+    required String body,
+    required BigInt recordedAtMs,
+  });
+
+  void crateApiMindRuntimeMindRuntimeDeleteNote({
+    required String id,
+    required BigInt recordedAtMs,
+  });
+
+  void crateApiMindRuntimeMindRuntimeEditNote({
+    required String id,
+    required String title,
+    required String body,
+    required BigInt recordedAtMs,
+  });
+
   void crateApiMindRuntimeMindRuntimeEnrollSpeaker({
     required String id,
     required String displayName,
@@ -111,6 +130,18 @@ abstract class RustLibApi extends BaseApi {
   });
 
   void crateApiMindRuntimeMindRuntimeInitialize({required String baseDir});
+
+  String crateApiMindRuntimeMindRuntimeNotesJson();
+
+  Float64List crateApiMindRuntimeMindRuntimeReplayFrom({
+    required BigInt sequence,
+  });
+
+  void crateApiMindRuntimeMindRuntimeRevokeVaultDevice({
+    required String fingerprintA,
+    required String fingerprintB,
+    required String fingerprintC,
+  });
 
   BigInt crateApiMindRuntimeMindRuntimeScribeOpCount();
 
@@ -120,6 +151,10 @@ abstract class RustLibApi extends BaseApi {
   });
 
   String crateApiMindRuntimeMindRuntimeSpeakerProfilesJson();
+
+  List<MindDeviceWire> crateApiMindRuntimeMindRuntimeVaultDevices();
+
+  VaultStateWire crateApiMindRuntimeMindRuntimeVaultState();
 
   Future<List<RequiredModel>> crateApiSetupRequiredModels();
 
@@ -389,6 +424,104 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  void crateApiMindRuntimeMindRuntimeCreateNote({
+    required String id,
+    required String title,
+    required String body,
+    required BigInt recordedAtMs,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          sse_encode_String(title, serializer);
+          sse_encode_String(body, serializer);
+          sse_encode_u_64(recordedAtMs, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeCreateNoteConstMeta,
+        argValues: [id, title, body, recordedAtMs],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeCreateNoteConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_create_note",
+        argNames: ["id", "title", "body", "recordedAtMs"],
+      );
+
+  @override
+  void crateApiMindRuntimeMindRuntimeDeleteNote({
+    required String id,
+    required BigInt recordedAtMs,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          sse_encode_u_64(recordedAtMs, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeDeleteNoteConstMeta,
+        argValues: [id, recordedAtMs],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeDeleteNoteConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_delete_note",
+        argNames: ["id", "recordedAtMs"],
+      );
+
+  @override
+  void crateApiMindRuntimeMindRuntimeEditNote({
+    required String id,
+    required String title,
+    required String body,
+    required BigInt recordedAtMs,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          sse_encode_String(title, serializer);
+          sse_encode_String(body, serializer);
+          sse_encode_u_64(recordedAtMs, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeEditNoteConstMeta,
+        argValues: [id, title, body, recordedAtMs],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeEditNoteConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_edit_note",
+        argNames: ["id", "title", "body", "recordedAtMs"],
+      );
+
+  @override
   void crateApiMindRuntimeMindRuntimeEnrollSpeaker({
     required String id,
     required String displayName,
@@ -401,7 +534,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(id, serializer);
           sse_encode_String(displayName, serializer);
           sse_encode_list_prim_f_32_loose(embedding, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -427,7 +560,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(baseDir, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -447,12 +580,94 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  String crateApiMindRuntimeMindRuntimeNotesJson() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeNotesJsonConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeNotesJsonConstMeta =>
+      const TaskConstMeta(debugName: "mind_runtime_notes_json", argNames: []);
+
+  @override
+  Float64List crateApiMindRuntimeMindRuntimeReplayFrom({
+    required BigInt sequence,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_64(sequence, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_f_64_strict,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeReplayFromConstMeta,
+        argValues: [sequence],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeReplayFromConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_replay_from",
+        argNames: ["sequence"],
+      );
+
+  @override
+  void crateApiMindRuntimeMindRuntimeRevokeVaultDevice({
+    required String fingerprintA,
+    required String fingerprintB,
+    required String fingerprintC,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(fingerprintA, serializer);
+          sse_encode_String(fingerprintB, serializer);
+          sse_encode_String(fingerprintC, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeRevokeVaultDeviceConstMeta,
+        argValues: [fingerprintA, fingerprintB, fingerprintC],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeRevokeVaultDeviceConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_revoke_vault_device",
+        argNames: ["fingerprintA", "fingerprintB", "fingerprintC"],
+      );
+
+  @override
   BigInt crateApiMindRuntimeMindRuntimeScribeOpCount() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_64,
@@ -482,7 +697,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_64(offset, serializer);
           sse_encode_u_64(limit, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_mind_op_wire,
@@ -507,7 +722,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -528,6 +743,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  List<MindDeviceWire> crateApiMindRuntimeMindRuntimeVaultDevices() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mind_device_wire,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeVaultDevicesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeVaultDevicesConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_vault_devices",
+        argNames: [],
+      );
+
+  @override
+  VaultStateWire crateApiMindRuntimeMindRuntimeVaultState() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vault_state_wire,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeVaultStateConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeVaultStateConstMeta =>
+      const TaskConstMeta(debugName: "mind_runtime_vault_state", argNames: []);
+
+  @override
   Future<List<RequiredModel>> crateApiSetupRequiredModels() {
     return handler.executeNormal(
       NormalTask(
@@ -536,7 +798,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 22,
             port: port_,
           );
         },
@@ -560,7 +822,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -609,7 +871,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 24,
             port: port_,
           );
         },
@@ -664,7 +926,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 25,
             port: port_,
           );
         },
@@ -691,7 +953,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 26,
             port: port_,
           );
         },
@@ -721,7 +983,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 27,
             port: port_,
           );
         },
@@ -759,7 +1021,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 20,
+              funcId: 28,
               port: port_,
             );
           },
@@ -794,7 +1056,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 29,
             port: port_,
           );
         },
@@ -876,6 +1138,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -942,6 +1210,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MindDeviceWire> dco_decode_list_mind_device_wire(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mind_device_wire).toList();
+  }
+
+  @protected
   List<MindOpWire> dco_decode_list_mind_op_wire(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_mind_op_wire).toList();
@@ -957,6 +1231,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Float32List;
+  }
+
+  @protected
+  Float64List dco_decode_list_prim_f_64_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Float64List;
   }
 
   @protected
@@ -1073,6 +1353,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       storePath: dco_decode_String(arr[1]),
       memoryBudgetMb: dco_decode_u_32(arr[2]),
       speechLanguage: dco_decode_speech_language(arr[3]),
+    );
+  }
+
+  @protected
+  MindDeviceWire dco_decode_mind_device_wire(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return MindDeviceWire(
+      name: dco_decode_String(arr[0]),
+      fingerprintA: dco_decode_String(arr[1]),
+      fingerprintB: dco_decode_String(arr[2]),
+      fingerprintC: dco_decode_String(arr[3]),
+      isThisDevice: dco_decode_bool(arr[4]),
+      revokedAtMs: dco_decode_u_64(arr[5]),
     );
   }
 
@@ -1221,6 +1517,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  VaultStateWire dco_decode_vault_state_wire(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return VaultStateWire(
+      isSealed: dco_decode_bool(arr[0]),
+      keyCount: dco_decode_u_64(arr[1]),
+      revokedCount: dco_decode_u_64(arr[2]),
+      revocationEpoch: dco_decode_u_64(arr[3]),
+      onDiskBytes: dco_decode_u_64(arr[4]),
+    );
+  }
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_String(deserializer);
@@ -1282,6 +1593,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat32();
+  }
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
   }
 
   @protected
@@ -1388,6 +1705,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MindDeviceWire> sse_decode_list_mind_device_wire(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MindDeviceWire>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mind_device_wire(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<MindOpWire> sse_decode_list_mind_op_wire(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1411,6 +1742,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getFloat32List(len_);
+  }
+
+  @protected
+  Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getFloat64List(len_);
   }
 
   @protected
@@ -1572,6 +1910,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       storePath: var_storePath,
       memoryBudgetMb: var_memoryBudgetMb,
       speechLanguage: var_speechLanguage,
+    );
+  }
+
+  @protected
+  MindDeviceWire sse_decode_mind_device_wire(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_fingerprintA = sse_decode_String(deserializer);
+    var var_fingerprintB = sse_decode_String(deserializer);
+    var var_fingerprintC = sse_decode_String(deserializer);
+    var var_isThisDevice = sse_decode_bool(deserializer);
+    var var_revokedAtMs = sse_decode_u_64(deserializer);
+    return MindDeviceWire(
+      name: var_name,
+      fingerprintA: var_fingerprintA,
+      fingerprintB: var_fingerprintB,
+      fingerprintC: var_fingerprintC,
+      isThisDevice: var_isThisDevice,
+      revokedAtMs: var_revokedAtMs,
     );
   }
 
@@ -1756,6 +2113,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  VaultStateWire sse_decode_vault_state_wire(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_isSealed = sse_decode_bool(deserializer);
+    var var_keyCount = sse_decode_u_64(deserializer);
+    var var_revokedCount = sse_decode_u_64(deserializer);
+    var var_revocationEpoch = sse_decode_u_64(deserializer);
+    var var_onDiskBytes = sse_decode_u_64(deserializer);
+    return VaultStateWire(
+      isSealed: var_isSealed,
+      keyCount: var_keyCount,
+      revokedCount: var_revokedCount,
+      revocationEpoch: var_revocationEpoch,
+      onDiskBytes: var_onDiskBytes,
+    );
+  }
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -1833,6 +2207,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_32(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat32(self);
+  }
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
   }
 
   @protected
@@ -1923,6 +2303,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_mind_device_wire(
+    List<MindDeviceWire> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mind_device_wire(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_mind_op_wire(
     List<MindOpWire> self,
     SseSerializer serializer,
@@ -1954,6 +2346,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putFloat32List(self);
+  }
+
+  @protected
+  void sse_encode_list_prim_f_64_strict(
+    Float64List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putFloat64List(self);
   }
 
   @protected
@@ -2079,6 +2481,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
     sse_encode_speech_language(self.speechLanguage, serializer);
+  }
+
+  @protected
+  void sse_encode_mind_device_wire(
+    MindDeviceWire self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.fingerprintA, serializer);
+    sse_encode_String(self.fingerprintB, serializer);
+    sse_encode_String(self.fingerprintC, serializer);
+    sse_encode_bool(self.isThisDevice, serializer);
+    sse_encode_u_64(self.revokedAtMs, serializer);
   }
 
   @protected
@@ -2223,5 +2639,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_vault_state_wire(
+    VaultStateWire self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.isSealed, serializer);
+    sse_encode_u_64(self.keyCount, serializer);
+    sse_encode_u_64(self.revokedCount, serializer);
+    sse_encode_u_64(self.revocationEpoch, serializer);
+    sse_encode_u_64(self.onDiskBytes, serializer);
   }
 }

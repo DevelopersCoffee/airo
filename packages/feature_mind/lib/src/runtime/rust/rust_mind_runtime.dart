@@ -21,6 +21,7 @@ import '../persistent/rust_preferred_operation_log.dart';
 import '../ports/portability_port.dart';
 import '../ports/projection_port.dart';
 import '../ports/vault_port.dart';
+import 'rust_mind_runtime_vault.dart';
 
 /// The real runtime, honest about what milestone 19 has not landed.
 ///
@@ -35,7 +36,7 @@ class RustMindRuntime implements MindRuntime {
   RustMindRuntime({ModelPort? models}) : models = models ?? _RustModels();
 
   @override
-  final VaultPort vault = const _RustVault();
+  final VaultPort vault = const RustMindRuntimeVault();
 
   @override
   final OperationLogPort log = RustPreferredOperationLog(
@@ -75,22 +76,6 @@ Never _pending(String port, String issue) =>
 /// the subscription formed.
 Stream<T> _pendingStream<T>(String port, String issue) =>
     Stream<T>.error(MindPortUnavailable(port, 'not implemented yet — $issue'));
-
-class _RustVault implements VaultPort {
-  const _RustVault();
-
-  static const String _issue = '#1207, #1208, #1210';
-
-  @override
-  Future<VaultState> state() async => _pending('VaultPort', _issue);
-
-  @override
-  Future<List<MindDevice>> devices() async => _pending('VaultPort', _issue);
-
-  @override
-  Future<void> revokeDevice(DeviceFingerprint fingerprint) async =>
-      _pending('VaultPort', _issue);
-}
 
 class _RustContexts implements ContextPort {
   const _RustContexts();

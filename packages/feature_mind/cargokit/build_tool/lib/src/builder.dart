@@ -202,12 +202,19 @@ class RustBuilder {
         buildEnv['ORT_CXX_STDLIB'] = 'c++_shared';
       }
     }
+    final iosXcfwk = _resolveOrtIosXcfwkLocation();
+    if (iosXcfwk != null) {
+      buildEnv['ORT_IOS_XCFWK_LOCATION'] = iosXcfwk;
+    }
     return buildEnv;
   }
 
+  bool _ortAvailableForBuild() =>
+      _resolveOrtLibLocation() != null || _resolveOrtIosXcfwkLocation() != null;
+
   /// When ORT static libs are installed for this target, link ECAPA into whisper.
   List<String> _ecapaArgs(List<String> flags) {
-    if (_resolveOrtLibLocation() == null) {
+    if (!_ortAvailableForBuild()) {
       return flags;
     }
     final args = List<String>.from(flags);
@@ -268,6 +275,32 @@ class RustBuilder {
       if (File(lib).existsSync()) {
         return root;
       }
+    }
+    return null;
+  }
+
+  String? _resolveOrtIosXcfwkLocation() {
+    final fromEnv = Platform.environment['ORT_IOS_XCFWK_LOCATION'];
+    if (fromEnv != null && fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    if (!target.rust.contains('apple-ios')) {
+      return null;
+    }
+    final home = Platform.environment['HOME'];
+    if (home == null) return null;
+    final root = path.join(home, '.airo', 'onnxruntime', '1.20.0', 'ios-xcframework');
+    if (target.rust == 'aarch64-apple-ios') {
+      final fw = path.join(root, 'ios-arm64', 'onnxruntime.framework');
+      if (File(fw).existsSync()) return root;
+    }
+    if (target.rust.contains('apple-ios')) {
+      final simFw = path.join(
+        root,
+        'ios-arm64_x86_64-simulator',
+        'onnxruntime.framework',
+      );
+      if (File(simFw).existsSync()) return root;
     }
     return null;
   }

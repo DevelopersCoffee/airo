@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `map_op`
+// These functions are ignored because they are not marked as `pub`: `map_device`, `map_op`, `map_vault_state`
 
 /// Boots the Rust operation log + vault-backed speaker enrollment store.
 void mindRuntimeInitialize({required String baseDir}) => RustLib.instance.api
@@ -51,6 +51,101 @@ void mindRuntimeEnrollSpeaker({
 String mindRuntimeSpeakerProfilesJson() =>
     RustLib.instance.api.crateApiMindRuntimeMindRuntimeSpeakerProfilesJson();
 
+VaultStateWire mindRuntimeVaultState() =>
+    RustLib.instance.api.crateApiMindRuntimeMindRuntimeVaultState();
+
+List<MindDeviceWire> mindRuntimeVaultDevices() =>
+    RustLib.instance.api.crateApiMindRuntimeMindRuntimeVaultDevices();
+
+void mindRuntimeRevokeVaultDevice({
+  required String fingerprintA,
+  required String fingerprintB,
+  required String fingerprintC,
+}) => RustLib.instance.api.crateApiMindRuntimeMindRuntimeRevokeVaultDevice(
+  fingerprintA: fingerprintA,
+  fingerprintB: fingerprintB,
+  fingerprintC: fingerprintC,
+);
+
+Float64List mindRuntimeReplayFrom({required BigInt sequence}) => RustLib
+    .instance
+    .api
+    .crateApiMindRuntimeMindRuntimeReplayFrom(sequence: sequence);
+
+String mindRuntimeNotesJson() =>
+    RustLib.instance.api.crateApiMindRuntimeMindRuntimeNotesJson();
+
+void mindRuntimeCreateNote({
+  required String id,
+  required String title,
+  required String body,
+  required BigInt recordedAtMs,
+}) => RustLib.instance.api.crateApiMindRuntimeMindRuntimeCreateNote(
+  id: id,
+  title: title,
+  body: body,
+  recordedAtMs: recordedAtMs,
+);
+
+void mindRuntimeEditNote({
+  required String id,
+  required String title,
+  required String body,
+  required BigInt recordedAtMs,
+}) => RustLib.instance.api.crateApiMindRuntimeMindRuntimeEditNote(
+  id: id,
+  title: title,
+  body: body,
+  recordedAtMs: recordedAtMs,
+);
+
+void mindRuntimeDeleteNote({
+  required String id,
+  required BigInt recordedAtMs,
+}) => RustLib.instance.api.crateApiMindRuntimeMindRuntimeDeleteNote(
+  id: id,
+  recordedAtMs: recordedAtMs,
+);
+
+class MindDeviceWire {
+  final String name;
+  final String fingerprintA;
+  final String fingerprintB;
+  final String fingerprintC;
+  final bool isThisDevice;
+  final BigInt revokedAtMs;
+
+  const MindDeviceWire({
+    required this.name,
+    required this.fingerprintA,
+    required this.fingerprintB,
+    required this.fingerprintC,
+    required this.isThisDevice,
+    required this.revokedAtMs,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      fingerprintA.hashCode ^
+      fingerprintB.hashCode ^
+      fingerprintC.hashCode ^
+      isThisDevice.hashCode ^
+      revokedAtMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MindDeviceWire &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          fingerprintA == other.fingerprintA &&
+          fingerprintB == other.fingerprintB &&
+          fingerprintC == other.fingerprintC &&
+          isThisDevice == other.isThisDevice &&
+          revokedAtMs == other.revokedAtMs;
+}
+
 /// One scribe timeline operation mirrored from the Rust operation log.
 class MindOpWire {
   final BigInt sequence;
@@ -93,4 +188,39 @@ class MindOpWire {
           deviceName == other.deviceName &&
           recordedAtMs == other.recordedAtMs &&
           detail == other.detail;
+}
+
+class VaultStateWire {
+  final bool isSealed;
+  final BigInt keyCount;
+  final BigInt revokedCount;
+  final BigInt revocationEpoch;
+  final BigInt onDiskBytes;
+
+  const VaultStateWire({
+    required this.isSealed,
+    required this.keyCount,
+    required this.revokedCount,
+    required this.revocationEpoch,
+    required this.onDiskBytes,
+  });
+
+  @override
+  int get hashCode =>
+      isSealed.hashCode ^
+      keyCount.hashCode ^
+      revokedCount.hashCode ^
+      revocationEpoch.hashCode ^
+      onDiskBytes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VaultStateWire &&
+          runtimeType == other.runtimeType &&
+          isSealed == other.isSealed &&
+          keyCount == other.keyCount &&
+          revokedCount == other.revokedCount &&
+          revocationEpoch == other.revocationEpoch &&
+          onDiskBytes == other.onDiskBytes;
 }

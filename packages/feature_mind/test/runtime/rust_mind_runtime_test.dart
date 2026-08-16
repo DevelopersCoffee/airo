@@ -25,22 +25,16 @@ void main() {
   });
 
   test('the failure is per port, not per product', () async {
-    // A surface that only needs the log must be able to tell that the log is
-    // the thing missing, not conclude the whole runtime is dead.
+    // A surface that only needs the vault must be able to tell that the vault
+    // is the thing missing, not conclude the whole runtime is dead.
     await expectLater(
-      runtime.log.count(),
+      runtime.vault.state(),
       throwsA(
         isA<MindPortUnavailable>().having(
           (e) => e.port,
           'port',
-          'OperationLogPort',
+          'VaultPort',
         ),
-      ),
-    );
-    await expectLater(
-      runtime.vault.state(),
-      throwsA(
-        isA<MindPortUnavailable>().having((e) => e.port, 'port', 'VaultPort'),
       ),
     );
   });
@@ -63,12 +57,12 @@ void main() {
     );
   });
 
-  test('all eight ports report unavailable, none silently succeeds', () async {
+  test('ports still unimplemented report unavailable, none silently succeed', () async {
     // A port that returned a plausible empty list instead of failing would
     // let a surface render "no devices" when the truth is "not built yet".
+    // OperationLogPort uses a Dart fallback when Mind is not initialised (#1213).
     final probes = <String, Future<void>>{
       'vault': runtime.vault.devices(),
-      'log': runtime.log.count(),
       'contexts': runtime.contexts.all(),
       'projections': runtime.projections.states(),
       'mesh': runtime.mesh.authorise(
@@ -83,7 +77,7 @@ void main() {
       'portability': runtime.portability.plan(const []),
     };
 
-    expect(probes.keys.toSet(), MindRuntime.portNames);
+    expect(probes.length, MindRuntime.portNames.length - 1);
 
     for (final entry in probes.entries) {
       await expectLater(

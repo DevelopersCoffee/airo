@@ -1,6 +1,6 @@
 import '../models/log_models.dart';
 import '../ports/operation_log_port.dart';
-import '../../whisper/api/meetings.dart' show isReady;
+import '../rust/rust_mind_runtime_ready.dart';
 import '../../whisper/api/mind_runtime.dart';
 
 /// Operation log backed by Rust `airo_mind_core::Runtime` when Mind is ready.
@@ -12,7 +12,7 @@ class RustPreferredOperationLog implements OperationLogPort {
 
   final OperationLogPort _fallback;
 
-  bool get _rustReady => isReady();
+  bool get _rustReady => mindRuntimeRustReady();
 
   @override
   Future<int> append({
@@ -104,8 +104,17 @@ class RustPreferredOperationLog implements OperationLogPort {
 
   @override
   Stream<double> replayFrom(int sequence) async* {
-    for (var step = 0; step <= 10; step++) {
-      yield step / 10;
+    if (!_rustReady) {
+      yield* _fallback.replayFrom(sequence);
+      return;
+    }
+    try {
+      final steps = mindRuntimeReplayFrom(sequence: BigInt.from(sequence));
+      for (var index = 0; index < steps.length; index++) {
+        yield steps[index];
+      }
+    } on Object {
+      yield* _fallback.replayFrom(sequence);
     }
   }
 }
