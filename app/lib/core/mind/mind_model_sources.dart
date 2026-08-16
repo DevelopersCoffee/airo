@@ -67,6 +67,10 @@ MindService buildMindDownloadService() {
     // Settings can opt into English-only; [requiredModelsLookup] re-reads
     // that preference so the multilingual file is not forced on download.
     defaultSpeechLanguage: SpeechLanguage.multilingual,
+    // ADR-0022 §1.2: append `meetingIrExtracted` after IR lands on the meeting
+    // record. Fixture log until #1213 wires the real Rust operation log.
+    operationLog: FixtureMindRuntime().log,
+    meetingContextId: 'scribe',
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
       // app's support directory on purpose (`MindService.modelsDirectory`) —

@@ -4,6 +4,7 @@ import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/mind_service.dart';
 import 'package:feature_mind/src/models/model_provider.dart';
+import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +13,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:record/record.dart';
 
 import 'support/fake_bridges.dart';
+import 'support/recording_operation_log.dart';
 
 /// `AudioRecorder`'s real constructor talks to a platform channel, which does
 /// not exist in a plain `flutter_test` run. None of the tests here touch
@@ -319,6 +321,68 @@ void main() {
     expect(speech.savedDecisions!.single.statement, 'ship it');
     expect(speech.savedActionItems!.single.task, 'write tests');
   });
+
+  test(
+    'T7d: process appends meetingIrExtracted to the operation log on success',
+    () async {
+      final log = RecordingOperationLog();
+      final serviceWithLog = MindService(
+        recorder: MockAudioRecorder(),
+        modelProvider: FakeReadyModelProvider(),
+        speechBridge: speech,
+        generationBridge: generation,
+        operationLog: log,
+        meetingContextId: 'scribe-test',
+      );
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventIrReady(
+          decisions: [
+            rust.MeetingDecisionRecord(
+              id: 'd1',
+              statement: 'ship it',
+              status: rust.MeetingDecisionStatus.agreed,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          actionItems: [
+            rust.MeetingActionItemRecord(
+              id: 'a1',
+              task: 'write tests',
+              owner: 'Priya',
+              due: 'Friday',
+              status: rust.MeetingActionStatus.open,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          metrics: const [],
+        ),
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
+
+      await serviceWithLog
+          .process(wavPath: 'x.wav', title: 'Standup')
+          .drain<void>();
+
+      expect(log.appended, hasLength(1));
+      final op = log.appended.single;
+      expect(op.kind, MindOpKind.meetingIrExtracted);
+      expect(op.title, 'Standup minutes extracted');
+      expect(op.contextId, 'scribe-test');
+      expect(op.detail, contains('decisions=1'));
+      expect(op.detail, contains('action_items=1'));
+      expect(op.detail, contains('metrics=0'));
+    },
+  );
 
   // T8 — a bridge that throws surfaces as MindStage.failed with the message,
   // not an unhandled exception reaching the widget layer.
