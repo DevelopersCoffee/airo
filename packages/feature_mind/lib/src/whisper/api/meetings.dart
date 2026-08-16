@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `lock`, `transcript_segment_record`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Library`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `lock`, `sarvam_edge_speech_model_path`, `transcript_segment_record`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -24,6 +24,17 @@ Future<void> initialize({required MindConfig config}) =>
 /// True once `initialize` has succeeded. Lets the UI show why it cannot record
 /// instead of failing at the moment the user presses the button.
 bool isReady() => RustLib.instance.api.crateApiMeetingsIsReady();
+
+/// Sarvam Edge on-device ASR — true when public weights are installed (`#1664`).
+///
+/// Flip is automatic once `sarvam_edge_speech.onnx` is in the models directory
+/// (future HF pin). Dev override: `AIRO_SARVAM_EDGE_SPEECH=1`.
+bool sarvamEdgeSpeechAvailable() =>
+    RustLib.instance.api.crateApiMeetingsSarvamEdgeSpeechAvailable();
+
+/// Replaces the in-memory enrollment store used during diarization.
+Future<void> syncSpeakerEnrollmentJson({required String raw}) =>
+    RustLib.instance.api.crateApiMeetingsSyncSpeakerEnrollmentJson(raw: raw);
 
 /// Recording → transcript, streaming throughout.
 ///
@@ -379,9 +390,7 @@ class SearchHit {
 /// row — it does not download anything by itself, and `initialize` reports
 /// `NotInstalled` naming the missing multilingual weight file the same way it
 /// would for any other unresolved model (`ADR-0018 §4`: that name is the
-/// Model Manager's to know, not this capability's). Wiring an install/
-/// preference flow for this is #1664's job; this is the mechanism it selects
-/// through.
+/// Model Manager's to know, not this capability's).
 ///
 /// Not to be confused with `TranscriptionOptions::language` (`#1664`), which
 /// this field feeds but does not replace: `SpeechLanguage` picks *which
@@ -470,6 +479,8 @@ class TranscriptSegmentRecord {
   final BigInt startMs;
   final BigInt endMs;
   final String text;
+
+  /// Diarization label (`sp0`, `sp1`, …). None for legacy segments.
   final String? speakerLabel;
 
   const TranscriptSegmentRecord({

@@ -12,3 +12,5 @@ cargo:
     extra_flags: ["--features", "whisper"]
   profile:
     extra_flags: ["--features", "whisper"]
+  # Desktop ECAPA (optional): install ORT via scripts/install-onnxruntime.sh then
+  # build with --features whisper,ecapa,ecapa-bundle (see airo_mind_whisper/Cargo.toml).

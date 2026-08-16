@@ -522,10 +522,32 @@ pub fn is_ready() -> bool {
     lock(&ENGINES).is_some()
 }
 
-/// Sarvam Edge on-device ASR — reserved until public weights ship (`#1664`).
+/// Sarvam Edge on-device ASR — true when public weights are installed (`#1664`).
+///
+/// Flip is automatic once `sarvam_edge_speech.onnx` is in the models directory
+/// (future HF pin). Dev override: `AIRO_SARVAM_EDGE_SPEECH=1`.
 #[frb(sync)]
 pub fn sarvam_edge_speech_available() -> bool {
-    false
+    if std::env::var("AIRO_SARVAM_EDGE_SPEECH").as_deref() == Ok("1") {
+        return true;
+    }
+    let models_dir = lock(&MODELS_DIR);
+    match models_dir.as_deref() {
+        Some(dir) => sarvam_edge_speech_model_path(dir).is_some(),
+        None => false,
+    }
+}
+
+/// Expected on-disk name for Sarvam Edge ASR when public weights ship.
+pub const SARVAM_EDGE_SPEECH_FILE: &str = "sarvam_edge_speech.onnx";
+
+fn sarvam_edge_speech_model_path(models_dir: &Path) -> Option<PathBuf> {
+    let path = models_dir.join(SARVAM_EDGE_SPEECH_FILE);
+    if path.is_file() {
+        Some(path)
+    } else {
+        None
+    }
 }
 
 /// Wire profile for cross-meeting speaker enrollment (#504).
@@ -808,6 +830,35 @@ pub fn get_meeting(id: String) -> Result<Option<MeetingRecord>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sarvam_edge_speech_available_when_model_file_present() {
+        let dir = std::env::temp_dir().join(format!(
+            "airo_sarvam_edge_test_{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).expect("tempdir");
+        let model_path = dir.join(SARVAM_EDGE_SPEECH_FILE);
+        std::fs::write(&model_path, b"stub").expect("write stub onnx");
+
+        assert!(sarvam_edge_speech_model_path(&dir).is_some());
+        assert_eq!(
+            sarvam_edge_speech_model_path(&dir).as_ref(),
+            Some(&model_path)
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn sarvam_edge_speech_unavailable_without_model_file() {
+        let dir = std::env::temp_dir().join(format!(
+            "airo_sarvam_edge_empty_{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).expect("tempdir");
+        assert!(sarvam_edge_speech_model_path(&dir).is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     /// `#1629`: `transcribe_recording` computed `start_ms`/`end_ms` correctly
     /// at the engine layer (`WhisperSpeechEngine`) but discarded them before

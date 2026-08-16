@@ -23,6 +23,12 @@ rustfft = "6"
 default = []
 # ONNX Runtime ECAPA inference — enabled on product whisper builds that bundle ORT.
 ecapa-ort = ["dep:ort"]
+# Copy ORT dylibs next to build artifacts — set ORT_LIB_LOCATION before building.
+ecapa-ort-bundle = ["ecapa-ort", "ort/copy-dylibs"]
+
+[[test]]
+name = "ecapa_onnx_e2e"
+required-features = ["ecapa-ort"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

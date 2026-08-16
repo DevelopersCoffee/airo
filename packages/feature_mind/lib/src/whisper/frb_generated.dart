@@ -65,7 +65,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 191481972;
+  int get rustContentHash => -699939418;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -88,13 +88,11 @@ abstract class RustLibApi extends BaseApi {
 
   bool crateApiMeetingsIsReady();
 
-  bool crateApiMeetingsSarvamEdgeSpeechAvailable();
-
-  void crateApiMeetingsSyncSpeakerEnrollmentJson({required String json});
-
   Future<List<MeetingRecord>> crateApiMeetingsListMeetings();
 
   Future<List<RequiredModel>> crateApiSetupRequiredModels();
+
+  bool crateApiMeetingsSarvamEdgeSpeechAvailable();
 
   Future<String> crateApiMeetingsSaveMeeting({
     required String title,
@@ -114,6 +112,8 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<SpeechLanguage> crateApiMeetingsSpeechLanguageDefault();
+
+  Future<void> crateApiMeetingsSyncSpeakerEnrollmentJson({required String raw});
 
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
@@ -265,54 +265,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "is_ready", argNames: []);
 
   @override
-  bool crateApiMeetingsSarvamEdgeSpeechAvailable() {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_bool,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta =>
-      const TaskConstMeta(debugName: "sarvam_edge_speech_available", argNames: []);
-
-  @override
-  void crateApiMeetingsSyncSpeakerEnrollmentJson({required String json}) {
-    handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(json, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta,
-        argValues: [json],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta =>
-      const TaskConstMeta(
-        debugName: "sync_speaker_enrollment_json",
-        argNames: ["json"],
-      );
-
-  @override
   Future<List<MeetingRecord>> crateApiMeetingsListMeetings() {
     return handler.executeNormal(
       NormalTask(
@@ -367,6 +319,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "required_models", argNames: []);
 
   @override
+  bool crateApiMeetingsSarvamEdgeSpeechAvailable() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta =>
+      const TaskConstMeta(
+        debugName: "sarvam_edge_speech_available",
+        argNames: [],
+      );
+
+  @override
   Future<String> crateApiMeetingsSaveMeeting({
     required String title,
     required BigInt recordedAtMs,
@@ -396,7 +373,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -451,7 +428,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -478,7 +455,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -497,6 +474,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "speech_language_default", argNames: []);
 
   @override
+  Future<void> crateApiMeetingsSyncSpeakerEnrollmentJson({
+    required String raw,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(raw, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta,
+        argValues: [raw],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "sync_speaker_enrollment_json",
+        argNames: ["raw"],
+      );
+
+  @override
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
     String? language,
@@ -513,7 +523,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 11,
+              funcId: 13,
               port: port_,
             );
           },
@@ -548,7 +558,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },

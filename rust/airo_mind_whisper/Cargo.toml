@@ -28,7 +28,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 [dependencies]
 airo_mind_audio = { path = "../airo_mind_audio" }
 airo_mind_core = { path = "../airo_mind_core" }
-airo_mind_diarize = { path = "../airo_mind_diarize", features = ["ecapa-ort"] }
+airo_mind_diarize = { path = "../airo_mind_diarize" }
 airo_mind_transcript = { path = "../airo_mind_transcript" }
 # Pinned to the exact version core_native already uses. Two flutter_rust_bridge
 # versions in one Flutter app is a link-time conflict, not a warning.
@@ -85,6 +85,10 @@ whisper-rs = { version = "0.16", optional = true, features = ["metal"] }
 default = []
 # Real offline transcription. Requires cmake and a C++ toolchain.
 whisper = ["dep:whisper-rs"]
+# ECAPA diarization — link ONNX Runtime via ORT_LIB_LOCATION (see scripts/install-onnxruntime.sh).
+ecapa = ["airo_mind_diarize/ecapa-ort"]
+# Desktop release: copy ORT dylibs beside whisper cdylib when ORT_LIB_LOCATION is set.
+ecapa-bundle = ["ecapa", "airo_mind_diarize/ecapa-ort-bundle"]
 # Documents the macOS Metal contract explicitly (see the target-specific
 # dependency table above); does not change what gets linked on macOS, since
 # Metal is already unified in automatically for `cfg(target_os = "macos")`

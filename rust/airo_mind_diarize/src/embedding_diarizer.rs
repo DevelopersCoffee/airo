@@ -1,6 +1,5 @@
 //! Embedding + online clustering diarizer.
 
-use crate::cluster::cluster_embeddings_greedy_with_enrollment;
 use crate::diarizer::{DiarizationError, DiarizationInput, Diarizer};
 use crate::embedder::SpeakerEmbedder;
 use crate::result::DiarizationResult;

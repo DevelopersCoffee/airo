@@ -47,6 +47,21 @@ jobs:
       # which reads like a broken checkout rather than a missing flag.
       - run: cargo fmt --manifest-path rust/Cargo.toml --all --check
 
+      # ECAPA ONNX tests — optional feature, requires preinstalled ORT (no download-binaries).
+      - name: ECAPA ort tests (airo_mind_diarize)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential g++ libstdc++-13-dev
+          chmod +x scripts/install-onnxruntime.sh scripts/run-ecapa-ort-tests.sh scripts/download-ecapa-model.sh
+          scripts/run-ecapa-ort-tests.sh
+          AIRO_ECAPA_E2E=1 scripts/run-ecapa-ort-tests.sh
+
+      # Mind whisper FRB — requires Rust 1.88+ and cargo-expand; host stable is 1.83.
+      - name: Mind whisper FRB bindings check
+        run: |
+          chmod +x scripts/regenerate-mind-whisper-frb.sh scripts/check-mind-whisper-frb.sh
+          scripts/check-mind-whisper-frb.sh
+
       # Runtime v1 condition 9 (#1311, tracked on #1340): "every runtime
       # contract has automated conformance tests." `cargo test --all` above
       # already runs these as ordinary tests -- this step is the mechanical
