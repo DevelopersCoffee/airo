@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
@@ -78,7 +79,7 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
   }) async {
     final failed = <String>[];
 
-    for (final required in await descriptors.pinnedRequiredModels()) {
+    for (final required in await requiredModels()) {
       final target = File(p.join(modelsDir.path, required.fileName));
       final expected = required.sizeBytes;
       if (target.existsSync() && target.lengthSync() == expected) continue;
@@ -174,6 +175,29 @@ class ModelInstaller with PinnedModelFiles implements ModelProvider {
     ]) {
       final candidate = File(p.normalize(p.join(root, assetPrefix, fileName)));
       if (candidate.existsSync()) return candidate;
+    }
+
+    // Dev loop: `app/tool/fetch_mind_models.sh` stages weights here; they are
+    // not shipped in the APK/pubspec bundle. `run_mind_macos.sh` sets AIRO_ROOT.
+    if (kDebugMode) {
+      final repoRoot = Platform.environment['AIRO_ROOT'];
+      if (repoRoot != null && repoRoot.isNotEmpty) {
+        final staged = File(
+          p.normalize(
+            p.join(repoRoot, 'packages/feature_mind/assets/models', fileName),
+          ),
+        );
+        if (staged.existsSync()) return staged;
+      }
+      for (final rustDir in [
+        p.join('rust', 'airo_mind_whisper', 'models'),
+        p.join('rust', 'airo_mind_llama', 'models'),
+      ]) {
+        final fromEnv = Platform.environment['AIRO_ROOT'];
+        if (fromEnv == null || fromEnv.isEmpty) continue;
+        final candidate = File(p.normalize(p.join(fromEnv, rustDir, fileName)));
+        if (candidate.existsSync()) return candidate;
+      }
     }
     return null;
   }

@@ -8,6 +8,7 @@ class ModelFilters {
     this.credibility,
     this.downloaded,
     this.searchQuery,
+    this.modality,
     this.showCompatibleOnly = false,
   });
 
@@ -15,6 +16,7 @@ class ModelFilters {
   final ModelCredibility? credibility;
   final bool? downloaded;
   final String? searchQuery;
+  final ModelModality? modality;
   final bool showCompatibleOnly;
 
   ModelFilters copyWith({
@@ -22,17 +24,20 @@ class ModelFilters {
     ModelCredibility? credibility,
     bool? downloaded,
     String? searchQuery,
+    ModelModality? modality,
     bool? showCompatibleOnly,
     bool clearFamily = false,
     bool clearCredibility = false,
     bool clearDownloaded = false,
     bool clearSearch = false,
+    bool clearModality = false,
   }) {
     return ModelFilters(
       family: clearFamily ? null : (family ?? this.family),
       credibility: clearCredibility ? null : (credibility ?? this.credibility),
       downloaded: clearDownloaded ? null : (downloaded ?? this.downloaded),
       searchQuery: clearSearch ? null : (searchQuery ?? this.searchQuery),
+      modality: clearModality ? null : (modality ?? this.modality),
       showCompatibleOnly: showCompatibleOnly ?? this.showCompatibleOnly,
     );
   }
@@ -41,6 +46,7 @@ class ModelFilters {
       family != null ||
       credibility != null ||
       downloaded != null ||
+      modality != null ||
       (searchQuery?.isNotEmpty ?? false);
 }
 

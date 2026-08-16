@@ -77,7 +77,7 @@ class _AIStorageDashboardIoService {
 
   Future<int?> _availableDiskSpace() async {
     try {
-      return await MethodChannelBackgroundDownloads().getAvailableBytes();
+      return await createBackgroundDownloads().getAvailableBytes();
     } catch (_) {
       return null;
     }

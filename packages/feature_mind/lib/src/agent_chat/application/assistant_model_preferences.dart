@@ -1,10 +1,13 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models/assistant_model_selection.dart';
+import '../domain/models/assistant_runtime_ids.dart';
 
 const String selectedAssistantModelKey = 'selected_assistant_model_id';
+const String selectedOfflineModelKey = 'selected_offline_model_id';
 
 final selectedAssistantModelIdProvider =
     StateNotifierProvider<SelectedAssistantModelNotifier, String?>((ref) {
@@ -31,8 +34,13 @@ class SelectedAssistantModelNotifier extends StateNotifier<String?> {
     final prefs = await SharedPreferences.getInstance();
     if (modelId == null) {
       await prefs.remove(selectedAssistantModelKey);
+      await prefs.remove(selectedOfflineModelKey);
     } else {
       await prefs.setString(selectedAssistantModelKey, modelId);
+      final offlineId = offlineModelIdFromAssistantModelId(modelId);
+      if (offlineId != null) {
+        await prefs.setString(selectedOfflineModelKey, offlineId);
+      }
     }
   }
 }

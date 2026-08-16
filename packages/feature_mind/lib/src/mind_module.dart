@@ -12,6 +12,7 @@ import 'agent_chat/presentation/screens/model_advisor_screen.dart';
 import 'agent_chat/presentation/screens/model_library_screen.dart';
 import 'agent_chat/presentation/screens/notifications_screen.dart';
 import 'agent_chat/presentation/screens/profile_screen.dart';
+import 'assistant/assistant_surface_policy.dart';
 import 'assistant/presentation/screens/assistant_screen.dart';
 import 'assistant/presentation/screens/audio_scribe_screen.dart';
 import 'assistant/presentation/screens/mobile_actions_screen.dart';
@@ -111,6 +112,10 @@ class MindModule extends AppModule {
   @override
   List<Override> providerOverridesFor(ShellId shell) => [
     assistantHostAdapterProvider.overrideWith(hostAdapterBuilder),
+    if (shell == ShellId.mind)
+      assistantSurfacePolicyProvider.overrideWithValue(
+        const AssistantSurfacePolicy.mindDesktop(),
+      ),
     // Scribe-shaped overrides only exist where the scribe does: a shell with
     // no [createService] has no models directory to report on.
     if (createService != null && scribeOverrides != null)

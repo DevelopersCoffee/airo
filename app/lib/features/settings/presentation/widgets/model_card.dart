@@ -27,6 +27,7 @@ class ModelCard extends StatelessWidget {
     this.onResumeDownload,
     this.onRetryDownload,
     this.onLearnMore,
+    this.readiness,
   });
 
   /// The model to display.
@@ -75,6 +76,9 @@ class ModelCard extends StatelessWidget {
 
   /// Callback to open the model source page.
   final VoidCallback? onLearnMore;
+
+  /// Download vs runtime readiness for installed packages.
+  final ModelReadinessState? readiness;
 
   @override
   Widget build(BuildContext context) {
@@ -159,11 +163,17 @@ class ModelCard extends StatelessWidget {
                       icon: Icons.memory_outlined,
                       label: model.quantization.displayName,
                     ),
-                    if (model.supportsVision)
-                      const _InfoChip(
-                        icon: Icons.visibility_outlined,
-                        label: 'Vision',
-                      ),
+                    for (final modality in model.modalities)
+                      if (modality != ModelModality.toolCall)
+                        _InfoChip(
+                          icon: switch (modality) {
+                            ModelModality.text => Icons.chat_bubble_outline,
+                            ModelModality.image => Icons.image_outlined,
+                            ModelModality.audio => Icons.mic_none_outlined,
+                            ModelModality.toolCall => Icons.build_outlined,
+                          },
+                          label: modality.displayName,
+                        ),
                     if (model.contextLength > 2048)
                       _InfoChip(
                         icon: Icons.format_list_numbered,
@@ -175,6 +185,30 @@ class ModelCard extends StatelessWidget {
 
                 // Status row: Downloaded/Downloading/Download button
                 _buildStatusRow(context, isDownloaded),
+
+                if (readiness != null && isDownloaded && !readiness!.isRunnable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: theme.colorScheme.tertiary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${readiness!.headline}. ${readiness!.detail}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Compatibility warning
                 if (!isCompatible)

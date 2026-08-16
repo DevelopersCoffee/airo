@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_mind/src/services/llama_gguf_service.dart';
 
 import '../../application/ai_model_management.dart';
 import '../widgets/model_card.dart';
@@ -23,6 +25,7 @@ final filteredModelsProvider = FutureProvider<List<OfflineModelInfo>>((
     family: filters.family,
     minCredibility: filters.credibility,
     downloaded: filters.downloaded,
+    modality: filters.modality,
     searchQuery: filters.searchQuery,
   );
 
@@ -82,6 +85,21 @@ final modelCompatibilityProvider =
       return registry.checkCompatibility(model);
     });
 
+final modelReadinessProvider =
+    FutureProvider.family<ModelReadinessState, OfflineModelInfo>((
+      ref,
+      model,
+    ) async {
+      final liteRtAvailable = await LiteRtLmService().isAvailable();
+      final ggufAvailable = await LlamaGgufService().isAvailable();
+      return ModelReadinessService.evaluate(
+        model,
+        nativeGgufAvailable: ggufAvailable,
+        liteRtNativeAvailable: liteRtAvailable,
+        webMediaPipeAvailable: kIsWeb,
+      );
+    });
+
 /// AI Models browser screen.
 ///
 /// Displays a searchable, filterable list of available offline AI models.
@@ -100,11 +118,35 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(_syncModalityFilterFromTab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(modelFiltersProvider.notifier).state = ref
+          .read(modelFiltersProvider)
+          .copyWith(modality: ModelModality.text);
+    });
+  }
+
+  void _syncModalityFilterFromTab() {
+    if (!mounted || _tabController.indexIsChanging) return;
+    final modality = switch (_tabController.index) {
+      0 => ModelModality.text,
+      1 => ModelModality.image,
+      2 => ModelModality.audio,
+      _ => null,
+    };
+    final current = ref.read(modelFiltersProvider);
+    if (current.modality == modality) return;
+    ref.read(modelFiltersProvider.notifier).state = current.copyWith(
+      modality: modality,
+      clearModality: modality == null,
+    );
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_syncModalityFilterFromTab);
     _tabController.dispose();
     super.dispose();
   }
@@ -121,8 +163,12 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
         title: const Text('AI Models'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
-            Tab(icon: Icon(Icons.chat_outlined), text: 'Text Models'),
+            Tab(icon: Icon(Icons.chat_outlined), text: 'Text'),
+            Tab(icon: Icon(Icons.image_outlined), text: 'Image'),
+            Tab(icon: Icon(Icons.mic_none_outlined), text: 'Audio'),
+            Tab(icon: Icon(Icons.apps_outlined), text: 'All'),
             Tab(icon: Icon(Icons.download_done_outlined), text: 'Downloaded'),
           ],
         ),
@@ -144,15 +190,15 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // All models tab
                 _buildModelsAsync(models),
-
-                // Downloaded models tab
+                _buildModelsAsync(models),
+                _buildModelsAsync(models),
+                _buildModelsAsync(models),
                 _buildModelsAsync(
                   downloadedModels,
                   emptyMessage:
                       'No downloaded models yet.\n'
-                      'Browse the Text Models tab to download.',
+                      'Browse the catalog tabs to download.',
                 ),
               ],
             ),
@@ -209,44 +255,122 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             downloadProgress?.canRetry == true;
         final isActive = model.id == selectedModelId;
         final compatibility = ref.watch(modelCompatibilityProvider(model.id));
+        final readiness = ref.watch(modelReadinessProvider(model));
 
         return compatibility.when(
-          data: (result) => ModelCard(
-            model: model,
-            isActive: isActive,
-            isDownloading: isDownloading,
-            downloadProgress: downloadProgress?.progress,
-            downloadStatus: isDownloading
-                ? downloadProgress?.statusDisplay
-                : null,
-            downloadSpeed: isDownloading
-                ? downloadProgress?.speedDisplay
-                : null,
-            downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
-            isCompatible: result.isCompatible,
-            onTap: () => _openModelDetail(model),
-            onDownload: model.isDownloaded || isDownloading
-                ? null
-                : () => _downloadModel(model),
-            onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-            onSetActive: model.isDownloaded && !isActive
-                ? () => _setActiveModel(model)
-                : null,
-            onCancelDownload: isDownloading
-                ? () => _cancelDownload(model.id)
-                : null,
-            onPauseDownload: downloadProgress?.canPause == true
-                ? () => _pauseDownload(model.id)
-                : null,
-            onResumeDownload: downloadProgress?.canResume == true
-                ? () => _resumeDownload(model.id)
-                : null,
-            onRetryDownload: downloadProgress?.canRetry == true
-                ? () => _retryDownload(model.id)
-                : null,
-            onLearnMore: model.learnMoreUri != null
-                ? () => launchModelLearnMore(context, model)
-                : null,
+          data: (result) => readiness.when(
+            data: (readinessState) => ModelCard(
+              model: model,
+              isActive: isActive,
+              isDownloading: isDownloading,
+              downloadProgress: downloadProgress?.progress,
+              downloadStatus: isDownloading
+                  ? downloadProgress?.statusDisplay
+                  : null,
+              downloadSpeed: isDownloading
+                  ? downloadProgress?.speedDisplay
+                  : null,
+              downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+              isCompatible: result.isCompatible,
+              readiness: readinessState,
+              onTap: () => _openModelDetail(model),
+              onDownload: model.isDownloaded || isDownloading
+                  ? null
+                  : () => _downloadModel(model),
+              onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+              onSetActive: model.isDownloaded && !isActive
+                  ? () => _setActiveModel(model)
+                  : null,
+              onCancelDownload: isDownloading
+                  ? () => _cancelDownload(model.id)
+                  : null,
+              onPauseDownload: downloadProgress?.canPause == true
+                  ? () => _pauseDownload(model.id)
+                  : null,
+              onResumeDownload: downloadProgress?.canResume == true
+                  ? () => _resumeDownload(model.id)
+                  : null,
+              onRetryDownload: downloadProgress?.canRetry == true
+                  ? () => _retryDownload(model.id)
+                  : null,
+              onLearnMore: model.learnMoreUri != null
+                  ? () => launchModelLearnMore(context, model)
+                  : null,
+            ),
+            loading: () => ModelCard(
+              model: model,
+              isActive: isActive,
+              isDownloading: isDownloading,
+              downloadProgress: downloadProgress?.progress,
+              downloadStatus: isDownloading
+                  ? downloadProgress?.statusDisplay
+                  : null,
+              downloadSpeed: isDownloading
+                  ? downloadProgress?.speedDisplay
+                  : null,
+              downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+              isCompatible: result.isCompatible,
+              onTap: () => _openModelDetail(model),
+              onDownload: model.isDownloaded || isDownloading
+                  ? null
+                  : () => _downloadModel(model),
+              onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+              onSetActive: model.isDownloaded && !isActive
+                  ? () => _setActiveModel(model)
+                  : null,
+              onCancelDownload: isDownloading
+                  ? () => _cancelDownload(model.id)
+                  : null,
+              onPauseDownload: downloadProgress?.canPause == true
+                  ? () => _pauseDownload(model.id)
+                  : null,
+              onResumeDownload: downloadProgress?.canResume == true
+                  ? () => _resumeDownload(model.id)
+                  : null,
+              onRetryDownload: downloadProgress?.canRetry == true
+                  ? () => _retryDownload(model.id)
+                  : null,
+              onLearnMore: model.learnMoreUri != null
+                  ? () => launchModelLearnMore(context, model)
+                  : null,
+            ),
+            error: (_, _) => ModelCard(
+              model: model,
+              isActive: isActive,
+              isDownloading: isDownloading,
+              downloadProgress: downloadProgress?.progress,
+              downloadStatus: isDownloading
+                  ? downloadProgress?.statusDisplay
+                  : null,
+              downloadSpeed: isDownloading
+                  ? downloadProgress?.speedDisplay
+                  : null,
+              downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+              isCompatible: result.isCompatible,
+              onTap: () => _openModelDetail(model),
+              onDownload: model.isDownloaded || isDownloading
+                  ? null
+                  : () => _downloadModel(model),
+              onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+              onSetActive: model.isDownloaded && !isActive
+                  ? () => _setActiveModel(model)
+                  : null,
+              onCancelDownload: isDownloading
+                  ? () => _cancelDownload(model.id)
+                  : null,
+              onPauseDownload: downloadProgress?.canPause == true
+                  ? () => _pauseDownload(model.id)
+                  : null,
+              onResumeDownload: downloadProgress?.canResume == true
+                  ? () => _resumeDownload(model.id)
+                  : null,
+              onRetryDownload: downloadProgress?.canRetry == true
+                  ? () => _retryDownload(model.id)
+                  : null,
+              onLearnMore: model.learnMoreUri != null
+                  ? () => launchModelLearnMore(context, model)
+                  : null,
+            ),
           ),
           loading: () => ModelCard(
             model: model,

@@ -245,7 +245,12 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
         MindStatus(unavailable: MindUnavailable.modelsMissing)
             when widget.service.modelsNeedDownload =>
           _ModelDownload(service: widget.service, onInstalled: _restart),
-        MindStatus(isReady: false) => _Unavailable(status: status),
+        MindStatus(isReady: false) => _Unavailable(
+          status: status,
+          onRetry: status.unavailable == MindUnavailable.modelsMissing
+              ? _restart
+              : null,
+        ),
         _ => _library(context),
       },
       floatingActionButton: status != null && status.isReady
@@ -531,7 +536,7 @@ class _ModelDownloadState extends State<_ModelDownload> {
     final needsRecovery = failed || _error != null;
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -648,9 +653,10 @@ class _ModelDownloadState extends State<_ModelDownload> {
 /// commonest first-run state — models not downloaded — indistinguishable from a
 /// broken build.
 class _Unavailable extends StatelessWidget {
-  const _Unavailable({required this.status});
+  const _Unavailable({required this.status, this.onRetry});
 
   final MindStatus status;
+  final Future<void> Function()? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -673,7 +679,7 @@ class _Unavailable extends StatelessWidget {
     };
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -687,6 +693,13 @@ class _Unavailable extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Try again'),
+              ),
+            ],
           ],
         ),
       ),

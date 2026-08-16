@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'desktop_memory_probe_export.dart';
 import 'memory_severity.dart';
 
 /// Service for querying device capabilities, particularly memory information.
@@ -57,6 +58,19 @@ class DeviceCapabilityService {
       return _cachedMemoryInfo!;
     }
 
+    if (_usesDesktopMemoryProbe) {
+      final desktop = await probeDesktopMemory();
+      if (desktop != null) {
+        _cachedMemoryInfo = desktop;
+        _lastMemoryCheck = DateTime.now();
+        return desktop;
+      }
+    }
+
+    if (!_usesGeminiNanoChannel) {
+      return MemoryInfo.unknown();
+    }
+
     try {
       final Map<dynamic, dynamic> result = await _channel
           .invokeMethod('getMemoryInfo')
@@ -81,6 +95,14 @@ class DeviceCapabilityService {
   Future<DeviceInfo> getDeviceInfo() async {
     if (kIsWeb) {
       return DeviceInfo.web();
+    }
+
+    if (_usesDesktopMemoryProbe) {
+      return DeviceInfo.desktop(platform: defaultTargetPlatform.name);
+    }
+
+    if (!_usesGeminiNanoChannel) {
+      return DeviceInfo.unknown();
     }
 
     try {
@@ -110,11 +132,21 @@ class DeviceCapabilityService {
     }
   }
 
+  static bool get _usesGeminiNanoChannel =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  static bool get _usesDesktopMemoryProbe =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.windows);
+
   @visibleForTesting
   static bool shouldSuppressPlatformChannelErrorLog(Object error) {
     final message = '$error';
     return message.contains(_bindingInitializationErrorSnippet) ||
-        message.contains(_binaryMessengerInitializationErrorSnippet);
+        message.contains(_binaryMessengerInitializationErrorSnippet) ||
+        message.contains('MissingPluginException');
   }
 
   /// Clears the cached memory info.
@@ -178,6 +210,16 @@ class DeviceInfo {
     model: 'Browser',
     brand: 'Web',
     osVersion: 'N/A',
+    sdkVersion: 0,
+    isPixelDevice: false,
+    supportsOnDeviceAI: false,
+  );
+
+  factory DeviceInfo.desktop({required String platform}) => DeviceInfo(
+    manufacturer: platform,
+    model: 'Desktop',
+    brand: platform,
+    osVersion: 'Desktop',
     sdkVersion: 0,
     isPixelDevice: false,
     supportsOnDeviceAI: false,

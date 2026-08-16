@@ -1,3 +1,4 @@
+import 'package:feature_mind/src/assistant/assistant_surface_policy.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
 import 'package:feature_mind/src/meeting_archive/meeting_archive_port.dart';
@@ -89,6 +90,21 @@ void main() {
         cards.singleWhere((card) => card.title == 'Tiny Garden').route,
         '/assistant/mobile-actions',
       );
+    });
+
+    test('mind desktop policy hides phone-only skill cards', () {
+      final cards = registry.getSkillCards(
+        policy: const AssistantSurfacePolicy.mindDesktop(),
+      );
+      final titles = cards.map((card) => card.title).toList();
+
+      expect(titles, contains('AI Chat'));
+      expect(titles, contains('Audio Scribe'));
+      expect(titles, contains('Diet Plan'));
+      expect(titles, isNot(contains('Ask Image')));
+      expect(titles, isNot(contains('Mobile Actions')));
+      expect(titles, isNot(contains('Tiny Garden')));
+      expect(titles, isNot(contains('Arena Games')));
     });
 
     test(

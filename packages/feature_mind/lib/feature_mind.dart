@@ -94,6 +94,8 @@ export 'src/host/hotkey/hotkey_registration_outcome.dart';
 export 'src/host/hotkey/hotkey_request.dart';
 
 // Assistant hub + tools
+export 'src/assistant/assistant_surface_policy.dart'
+    show AssistantSurfacePolicy, assistantSurfacePolicyProvider;
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
 export 'src/assistant/presentation/screens/mobile_actions_screen.dart';
@@ -144,6 +146,8 @@ export 'src/services/llama_gguf_service.dart';
 // this package nor the shell is required to use it: `ModelInstaller` (the
 // bundled-asset default) still works unchanged.
 export 'src/model_installer.dart' show ModelInstaller;
+export 'src/models/desktop_mind_model_provider.dart'
+    show DesktopMindModelProvider;
 export 'src/models/download_model_provider.dart' show DownloadModelProvider;
 export 'src/models/model_provider.dart'
     show

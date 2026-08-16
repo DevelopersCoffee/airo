@@ -1,3 +1,4 @@
+import '../models/model_contract.dart';
 import '../models/model_credibility.dart';
 import '../models/offline_model_info.dart';
 import '../provider/ai_provider.dart';
@@ -53,6 +54,9 @@ class ModelCatalog {
       supportsWebRuntime: true,
       webAssetUrl:
           'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.textGeneration,
     ),
     const OfflineModelInfo(
       id: 'gemma-4-e4b-it-litertlm',
@@ -94,6 +98,9 @@ class ModelCatalog {
       supportsWebRuntime: true,
       webAssetUrl:
           'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.textGeneration,
     ),
     const OfflineModelInfo(
       id: 'qwen2.5-1.5b-it-litert',
@@ -127,6 +134,9 @@ class ModelCatalog {
       supportsWebRuntime: true,
       webAssetUrl:
           'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+      runtime: InferenceRuntime.mediaPipeWeb,
+      platformSupport: PlatformSupport(web: true, android: true),
+      task: ModelTask.textGeneration,
     ),
     const OfflineModelInfo(
       id: 'gemma-3n-e2b-it-litertlm',
@@ -163,6 +173,9 @@ class ModelCatalog {
       licenseState: ModelLicenseState.gated,
       minMemoryBytes: 4200000000,
       recommendedMemoryBytes: 5500000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.textGeneration,
     ),
     const OfflineModelInfo(
       id: 'mobile-actions-270m-litertlm',
@@ -188,6 +201,9 @@ class ModelCatalog {
       tags: ['gallery', 'function-calling', 'actions', 'small'],
       minMemoryBytes: 700000000,
       recommendedMemoryBytes: 1000000000,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      task: ModelTask.textGeneration,
     ),
 
     // Gemma 2B models (small, mobile-friendly)

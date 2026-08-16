@@ -74,6 +74,20 @@ export function getByPlaceholder(page: Page, placeholder: string): Locator {
 }
 
 /**
+ * Enable Flutter web semantics when the placeholder button is shown.
+ */
+export async function enableFlutterAccessibility(page: Page): Promise<void> {
+  const placeholder = page.locator('[aria-label="Enable accessibility"]');
+  if (await placeholder.count()) {
+    await page.evaluate(() => {
+      const el = document.querySelector('[aria-label="Enable accessibility"]');
+      el?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForTimeout(500);
+  }
+}
+
+/**
  * Wait for Flutter to be fully loaded
  * Uses multiple detection strategies for reliability
  *

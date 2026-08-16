@@ -26,7 +26,7 @@ class ModelStorageManager {
   ModelStorageManager({
     BackgroundDownloads? downloads,
     this.location = ModelStorageLocation.applicationDocuments,
-  }) : _downloads = downloads ?? MethodChannelBackgroundDownloads();
+  }) : _downloads = downloads ?? createBackgroundDownloads();
 
   static const supportedArtifactExtensions = <String>[
     '.litertlm',

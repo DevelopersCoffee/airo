@@ -4,6 +4,7 @@ import 'package:feature_mind/src/agent_chat/data/services/assistant_runtime_serv
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,14 +23,20 @@ void main() {
       provider: AIProvider.gguf,
     );
 
-    final candidate = AssistantModelCandidate.fromOfflineModel(model);
+    final candidate = AssistantModelCandidate.fromOfflineModel(
+      model,
+      nativeGgufAvailable: false,
+    );
 
     expect(candidate.available, isFalse);
-    expect(candidate.actionLabel, 'Native backend unavailable');
+    expect(candidate.actionLabel, 'Runtime unavailable');
     expect(candidate.unavailableReason, contains('llama.cpp'));
   });
 
-  test('recognizes downloaded LiteRT artifacts as runnable candidates', () {
+  test('downloaded LiteRT is runnable on Android when backend is ready', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
     final model = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -37,12 +44,42 @@ void main() {
       fileSizeBytes: 2_000_000_000,
       filePath: '/models/gemma-4-e2b-it.litertlm',
       provider: AIProvider.gemma,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
     );
 
-    final candidate = AssistantModelCandidate.fromOfflineModel(model);
+    final candidate = AssistantModelCandidate.fromOfflineModel(
+      model,
+      liteRtNativeAvailable: true,
+    );
 
     expect(candidate.available, isTrue);
     expect(candidate.actionLabel, 'Start');
+  });
+
+  test('downloaded LiteRT is not runnable on macOS even when downloaded', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    final model = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2_000_000_000,
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+      provider: AIProvider.gemma,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+    );
+
+    final candidate = AssistantModelCandidate.fromOfflineModel(
+      model,
+      liteRtNativeAvailable: true,
+    );
+
+    expect(candidate.available, isFalse);
+    expect(candidate.actionLabel, contains('macOS'));
+    expect(candidate.unavailableReason, contains('GGUF'));
   });
 
   test('LiteRT is not ready from native availability alone', () {
@@ -82,7 +119,7 @@ void main() {
     );
   });
 
-  test('chat prefers an installed Gemma package over Gemini Nano', () {
+  test('chat prefers an installed Gemma package over Gemini Nano on Android', () {
     const nano = AssistantModelCandidate(
       id: geminiNanoAssistantModelId,
       name: 'Gemini Nano',
@@ -115,8 +152,70 @@ void main() {
         [nano, gemma],
         AssistantTask.chat,
         const {},
+        isAndroidHost: true,
       ).id,
       litertGemmaAssistantModelId,
+    );
+  });
+
+  test('recommend does not prefer LiteRT on desktop hosts', () {
+    const nano = AssistantModelCandidate(
+      id: geminiNanoAssistantModelId,
+      name: 'Gemini Nano',
+      runtime: 'AICore on-device',
+      description: 'System runtime',
+      bestFor: [AssistantTask.chat],
+      tags: ['Local'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: 'System managed',
+      available: true,
+      actionLabel: 'Start chat',
+      local: true,
+    );
+    final gguf = AssistantModelCandidate(
+      id: 'offline-qwen2-1.5b-q4',
+      name: 'Qwen2 1.5B',
+      runtime: 'GGUF · llama.cpp',
+      description: 'Downloaded GGUF',
+      bestFor: [AssistantTask.chat],
+      tags: ['Local'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: '1.1 GB',
+      available: true,
+      actionLabel: 'Start chat',
+      local: true,
+    );
+    const gemma = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Downloaded package',
+      bestFor: [AssistantTask.chat],
+      tags: ['Local', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: '2.4 GB',
+      available: true,
+      actionLabel: 'Start chat',
+      local: true,
+    );
+
+    expect(
+      AssistantModelLibraryState.recommend(
+        [nano, gemma, gguf],
+        AssistantTask.chat,
+        {
+          AssistantTask.chat: OfflineModelInfo(
+            id: 'qwen2-1.5b-q4',
+            name: 'Qwen2 1.5B',
+            family: ModelFamily.qwen,
+            fileSizeBytes: 1_100_000_000,
+            filePath: '/models/qwen2-1.5b-q4.gguf',
+            provider: AIProvider.gguf,
+          ),
+        },
+        isAndroidHost: false,
+      ).id,
+      assistantModelIdForOfflineModel('qwen2-1.5b-q4'),
     );
   });
 
@@ -153,6 +252,7 @@ void main() {
 
     final state = await AssistantModelLibraryState.load(
       task: AssistantTask.reasoning,
+      isAndroidHost: true,
       isNanoSupported: () async => true,
       loadDeviceInfo: () async => {
         'manufacturer': 'Google',
@@ -225,6 +325,7 @@ void main() {
 
       final state = await AssistantModelLibraryState.load(
         task: AssistantTask.chat,
+        isAndroidHost: true,
         isNanoSupported: () async => false,
         loadDeviceInfo: () async => {
           'manufacturer': 'Google',
@@ -866,6 +967,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(openedManager, isTrue);
+  });
+
+  test('desktop model library steers users toward GGUF setup copy', () async {
+    final state = await AssistantModelLibraryState.load(
+      task: AssistantTask.chat,
+      isAndroidHost: false,
+      isNanoSupported: () async => false,
+      loadDeviceInfo: () async => {},
+      isLiteRtAvailable: () async => false,
+      isGgufAvailable: () async => false,
+      initializeCloud: () async {},
+      isCloudAvailable: () => false,
+      loadDefaultPackages: () async => {},
+      loadCompatibilityByModelId: (_) async => {},
+      hydrateDownloadedModel: (model) async => model,
+      mobileRecommended: const [],
+      platformLabelOverride: 'MACOS',
+    );
+
+    final setup = state.candidateById('assistant-setup-required');
+    expect(setup, isNotNull);
+    expect(setup!.description, contains('GGUF'));
   });
 }
 

@@ -102,12 +102,24 @@ class AssistantRuntimeReadinessNotifier
       return;
     }
 
+    final readiness = candidate.readiness;
+    if (readiness != null && !readiness.canPrepare) {
+      state = AssistantRuntimeReadiness(
+        phase: AssistantRuntimeReadinessPhase.blocked,
+        progress: 0,
+        label: readiness.headline,
+        detail: readiness.detail,
+        canSend: false,
+      );
+      return;
+    }
+
     if (!candidate.available) {
       state = AssistantRuntimeReadiness(
         phase: AssistantRuntimeReadinessPhase.blocked,
         progress: 0,
-        label: 'Download required',
-        detail: candidate.actionLabel,
+        label: readiness?.headline ?? 'Download required',
+        detail: readiness?.detail ?? candidate.actionLabel,
         canSend: false,
       );
       return;
