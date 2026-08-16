@@ -14,11 +14,9 @@ import '../runtime/ports/operation_log_port.dart';
 /// after the fact.
 ///
 /// Degrades gracefully, exactly like `quick_capture_controller.dart`'s
-/// `_guessContext`/`commit`: [OperationLogPort.append] is a no-op today
-/// (`RustMindRuntime`'s log is a `MindPortUnavailable` stub), and a missing
-/// operation log must cost the timeline entry, never the meeting -- the IR
-/// itself is already durable on the `Meeting` record by the time this is
-/// called, independent of whether this call succeeds.
+/// `_guessContext`/`commit`: a missing operation log must cost the timeline
+/// entry, never the meeting — the IR itself is already durable on the
+/// `Meeting` record by the time this is called.
 ///
 /// Returns the appended op's sequence number, or `null` when the log was
 /// unavailable.

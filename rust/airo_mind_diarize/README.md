@@ -38,4 +38,5 @@ cargo test -p airo_mind_diarize
 
 - Sarvam Edge ASR or cloud diarization APIs
 - Full ECAPA-TDNN / ONNX runtime (planned follow-up)
+- `EmbeddingDiarizer` + `StubSpeakerEmbedder` for dev/tests; swap embedder for ONNX
 - Word-level diarization (segment-level v1 only)

@@ -12,15 +12,25 @@
 
 #![deny(unsafe_code)]
 
+mod cluster;
 mod diarizer;
+mod embedder;
+mod embedding_diarizer;
+mod pcm_slice;
 mod result;
 mod segment;
 mod single_speaker;
+mod stub_embedder;
 
+pub use cluster::cluster_embeddings_greedy;
 pub use diarizer::{Diarizer, DiarizationError, DiarizationInput};
+pub use embedder::{SpeakerEmbedder, SpeakerEmbedding};
+pub use embedding_diarizer::EmbeddingDiarizer;
+pub use pcm_slice::slice_segment_pcm;
 pub use result::DiarizationResult;
 pub use segment::{DiarizedSegment, SpeakerId};
 pub use single_speaker::SingleSpeakerDiarizer;
+pub use stub_embedder::StubSpeakerEmbedder;
 
 /// Runs the default v0 diarizer (`SingleSpeakerDiarizer`) on transcript segments.
 pub fn diarize_single_speaker(
