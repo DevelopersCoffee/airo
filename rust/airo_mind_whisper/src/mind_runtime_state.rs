@@ -902,3 +902,90 @@ fn runtime_state() -> Result<Arc<MindRuntimeState>, String> {
 fn lock_runtime() -> std::sync::MutexGuard<'static, Option<Arc<MindRuntimeState>>> {
     MIND_RUNTIME.lock().unwrap_or_else(|e| e.into_inner())
 }
+
+#[cfg(test)]
+mod e2e_tests {
+    use super::*;
+    use std::io::Write;
+
+    fn temp_mind_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "airo_mind_runtime_e2e_{}_{}",
+            name,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        dir
+    }
+
+    fn write_legacy_notes_log(path: &Path) {
+        let file = File::create(path).expect("notes.log");
+        let mut file = file;
+        writeln!(
+            file,
+            r#"{{"seq":0,"kind":"create","id":"note-1","title":"Hello","body":"World","recordedAtMs":1000}}"#
+        )
+        .expect("write");
+        writeln!(
+            file,
+            r#"{{"seq":1,"kind":"edit","id":"note-1","title":"Hello","body":"Updated","recordedAtMs":2000}}"#
+        )
+        .expect("write");
+        file.flush().expect("flush");
+    }
+
+    #[test]
+    fn mind_runtime_vault_notes_replay_end_to_end() {
+        let base = temp_mind_dir("core");
+        write_legacy_notes_log(&base.join("notes.log"));
+
+        open_mind_runtime(base.to_str().expect("utf8 path")).expect("open");
+
+        let vault = vault_state().expect("vault state");
+        assert!(vault.is_sealed);
+        assert!(vault.key_count >= 1);
+
+        let devices = vault_devices().expect("devices");
+        assert!(!devices.is_empty());
+        assert!(devices.iter().any(|d| d.is_this_device));
+
+        let notes_raw = notes_json().expect("notes json");
+        assert!(notes_raw.contains("note-1"));
+        assert!(notes_raw.contains("Updated"));
+
+        create_note(
+            "note-2".to_string(),
+            "Second".to_string(),
+            "Body".to_string(),
+            3000,
+        )
+        .expect("create note");
+        let after_create = notes_json().expect("notes after create");
+        assert!(after_create.contains("note-2"));
+
+        let seq1 = append_scribe_op(
+            "inference".to_string(),
+            "First".to_string(),
+            "ctx-1".to_string(),
+            "detail-a".to_string(),
+        )
+        .expect("append 1");
+        let seq2 = append_scribe_op(
+            "inference".to_string(),
+            "Second".to_string(),
+            "ctx-2".to_string(),
+            "detail-b".to_string(),
+        )
+        .expect("append 2");
+        assert_eq!(scribe_op_count().expect("count"), 2);
+
+        let replay_tail = replay_from(seq2).expect("replay from seq2");
+        assert!(!replay_tail.is_empty());
+        assert_eq!(replay_tail.last().copied(), Some(1.0));
+
+        let replay_mid = replay_from(seq1).expect("replay from seq1");
+        assert!(replay_mid.len() >= 2);
+        assert_eq!(replay_mid.last().copied(), Some(1.0));
+    }
+}
