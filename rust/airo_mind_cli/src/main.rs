@@ -186,6 +186,8 @@ fn run_poc2_mode(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &
     write_artifacts(out_dir, args, &output);
 
     println!("wrote {}/transcript.json", out_dir.display());
+    println!("wrote {}/chunks.json", out_dir.display());
+    println!("wrote {}/meeting_ir.json", out_dir.display());
     println!("wrote {}/predicted_ir.json", out_dir.display());
     println!("wrote {}/mom.md", out_dir.display());
     println!("wrote {}/hypothesis_transcript.txt", out_dir.display());

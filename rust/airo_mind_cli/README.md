@@ -30,9 +30,14 @@ One command runs the product pipeline end to end:
 2. `airo_mind_transcript::process`
 3. `airo_mind_meeting::extract` → `validate` → `generate_mom`
 4. Writes artifacts under `--out/`:
-   `transcript.json`, `predicted_ir.json`, `mom.md`, `hypothesis_transcript.txt`
+   `transcript.json` (raw + normalized segments), `chunks.json`,
+   `meeting_ir.json`, `predicted_ir.json`, `mom.md`, `hypothesis_transcript.txt`
 5. Runs `airo_mind_eval` gates (unless `--skip-eval`) and writes
    `out/eval/run-NNN.json`. Exits non-zero when any gate fails.
+
+Whisper defaults to multilingual `ggml-tiny.bin` with auto language detection.
+Place user meeting audio at `rust/fixtures/meeting_001.m4a` (or pass path as
+first arg); no checked-in user recording — download models per table below.
 
 ```sh
 cd rust

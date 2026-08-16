@@ -12,7 +12,7 @@ use airo_mind_llama::{LlamaGenerationEngine, ResourceBudget, Supervisor as Llama
 use airo_mind_meeting::{
     extract, generate_mom, validate, ExtractionConfig, MeetingInput, MeetingIr, MomError,
 };
-use airo_mind_transcript::{process, ChunkConfig, Segment};
+use airo_mind_transcript::{process, Chunk, ChunkConfig, ProcessedTranscript, Segment};
 use airo_mind_whisper::{
     AudioInput, CancelToken as WhisperCancelToken, ResourceBudget as WhisperBudget,
     Supervisor as WhisperSupervisor, TranscriptionOptions, WhisperSpeechEngine,
@@ -23,7 +23,7 @@ use crate::args::CliArgs;
 
 #[derive(Debug)]
 pub struct PipelineOutput {
-    pub segments: Vec<Segment>,
+    pub processed: ProcessedTranscript,
     pub hypothesis_text: String,
     pub ir: MeetingIr,
     pub mom: String,
@@ -38,7 +38,8 @@ struct StoredSegmentArtifact {
     id: String,
     start_ms: u64,
     end_ms: u64,
-    text: String,
+    raw: String,
+    normalized: String,
 }
 
 #[derive(Serialize)]
@@ -46,7 +47,18 @@ struct TranscriptArtifact {
     meeting_id: String,
     audio_path: String,
     model_version: String,
+    raw: String,
+    normalized: String,
     segments: Vec<StoredSegmentArtifact>,
+}
+
+#[derive(Serialize)]
+struct ChunkArtifact {
+    id: String,
+    start_ms: u64,
+    end_ms: u64,
+    segment_ids: Vec<String>,
+    text: String,
 }
 
 fn segments_with_ids(raw: &[TranscriptSegment]) -> Vec<Segment> {
@@ -67,6 +79,19 @@ fn hypothesis_text(segments: &[Segment]) -> String {
         .map(|s| s.text.as_str())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn chunk_artifacts(chunks: &[Chunk]) -> Vec<ChunkArtifact> {
+    chunks
+        .iter()
+        .map(|c| ChunkArtifact {
+            id: c.id.clone(),
+            start_ms: c.start_ms,
+            end_ms: c.end_ms,
+            segment_ids: c.segment_ids.clone(),
+            text: c.text.clone(),
+        })
+        .collect()
 }
 
 struct SupervisorGenerationEngine<'a> {
@@ -117,6 +142,9 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
     let mut whisper_supervisor = WhisperSupervisor::new(WhisperBudget::new(2048));
     whisper_supervisor.register_speech(Box::new(speech_engine));
 
+    // Multilingual auto-detect — same default as product (`language: None`).
+    let asr_options = TranscriptionOptions { language: None };
+
     let mut raw_segments: Vec<TranscriptSegment> = Vec::new();
     whisper_supervisor
         .run_speech(
@@ -125,7 +153,7 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
                 sample_rate_hz: pcm.sample_rate_hz,
                 channels: pcm.channels,
             },
-            &TranscriptionOptions::default(),
+            &asr_options,
             &WhisperCancelToken::new(),
             &mut |segment| {
                 raw_segments.push(segment);
@@ -186,7 +214,7 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
     };
 
     PipelineOutput {
-        segments,
+        processed,
         hypothesis_text: hypothesis,
         ir: validated_ir,
         mom,
@@ -211,14 +239,18 @@ pub fn write_artifacts(out_dir: &Path, args: &CliArgs, output: &PipelineOutput) 
                 .and_then(|s| s.to_str())
                 .unwrap_or("model")
         ),
+        raw: output.processed.raw.clone(),
+        normalized: output.processed.normalized.clone(),
         segments: output
+            .processed
             .segments
             .iter()
             .map(|s| StoredSegmentArtifact {
                 id: s.id.clone(),
                 start_ms: s.start_ms,
                 end_ms: s.end_ms,
-                text: s.text.clone(),
+                raw: s.raw.clone(),
+                normalized: s.normalized.clone(),
             })
             .collect(),
     };
@@ -228,12 +260,18 @@ pub fn write_artifacts(out_dir: &Path, args: &CliArgs, output: &PipelineOutput) 
     )
     .expect("transcript.json written");
 
-    let ir_path = out_dir.join("predicted_ir.json");
+    let chunks_path = out_dir.join("chunks.json");
     std::fs::write(
-        &ir_path,
-        serde_json::to_string_pretty(&output.ir).expect("ir serializes"),
+        &chunks_path,
+        serde_json::to_string_pretty(&chunk_artifacts(&output.processed.chunks))
+            .expect("chunks serializes"),
     )
-    .expect("predicted_ir.json written");
+    .expect("chunks.json written");
+
+    let ir_json = serde_json::to_string_pretty(&output.ir).expect("ir serializes");
+
+    std::fs::write(out_dir.join("meeting_ir.json"), &ir_json).expect("meeting_ir.json written");
+    std::fs::write(out_dir.join("predicted_ir.json"), &ir_json).expect("predicted_ir.json written");
 
     let mom_path = out_dir.join("mom.md");
     std::fs::write(&mom_path, &output.mom).expect("mom.md written");

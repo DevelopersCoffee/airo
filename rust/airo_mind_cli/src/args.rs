@@ -127,9 +127,11 @@ EXAMPLE (POC-2):
 
 pub fn resolve_whisper_model(models_dir: Option<&PathBuf>) -> PathBuf {
     if let Some(dir) = models_dir {
-        let tiny = dir.join("ggml-tiny.en.bin");
-        if tiny.exists() {
-            return tiny;
+        for name in ["ggml-tiny.bin", "ggml-tiny.en.bin"] {
+            let path = dir.join(name);
+            if path.exists() {
+                return path;
+            }
         }
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
@@ -139,11 +141,11 @@ pub fn resolve_whisper_model(models_dir: Option<&PathBuf>) -> PathBuf {
                 }
             }
         }
-        return tiny;
+        return dir.join("ggml-tiny.bin");
     }
     env::var("AIRO_MIND_WHISPER_MODEL")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| manifest_dir().join("../airo_mind_whisper/models/ggml-tiny.en.bin"))
+        .unwrap_or_else(|_| manifest_dir().join("../airo_mind_whisper/models/ggml-tiny.bin"))
 }
 
 pub fn resolve_llama_model(models_dir: Option<&PathBuf>) -> PathBuf {
