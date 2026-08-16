@@ -4,12 +4,14 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/meetings.dart';
+import 'api/mind_runtime.dart';
 import 'api/setup.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'mind_runtime_state.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
@@ -65,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 147163789;
+  int get rustContentHash => -1703544676;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -95,6 +97,30 @@ abstract class RustLibApi extends BaseApi {
   bool crateApiMeetingsIsReady();
 
   Future<List<MeetingRecord>> crateApiMeetingsListMeetings();
+
+  BigInt crateApiMindRuntimeMindRuntimeAppendScribeOp({
+    required String kind,
+    required String title,
+    required String contextId,
+    required String detail,
+  });
+
+  void crateApiMindRuntimeMindRuntimeEnrollSpeaker({
+    required String id,
+    required String displayName,
+    required List<double> embedding,
+  });
+
+  void crateApiMindRuntimeMindRuntimeInitialize({required String baseDir});
+
+  BigInt crateApiMindRuntimeMindRuntimeScribeOpCount();
+
+  List<MindOpWire> crateApiMindRuntimeMindRuntimeScribeOpsRecent({
+    required BigInt offset,
+    required BigInt limit,
+  });
+
+  String crateApiMindRuntimeMindRuntimeSpeakerProfilesJson();
 
   Future<List<RequiredModel>> crateApiSetupRequiredModels();
 
@@ -330,6 +356,179 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "list_meetings", argNames: []);
 
   @override
+  BigInt crateApiMindRuntimeMindRuntimeAppendScribeOp({
+    required String kind,
+    required String title,
+    required String contextId,
+    required String detail,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(kind, serializer);
+          sse_encode_String(title, serializer);
+          sse_encode_String(contextId, serializer);
+          sse_encode_String(detail, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeAppendScribeOpConstMeta,
+        argValues: [kind, title, contextId, detail],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeAppendScribeOpConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_append_scribe_op",
+        argNames: ["kind", "title", "contextId", "detail"],
+      );
+
+  @override
+  void crateApiMindRuntimeMindRuntimeEnrollSpeaker({
+    required String id,
+    required String displayName,
+    required List<double> embedding,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          sse_encode_String(displayName, serializer);
+          sse_encode_list_prim_f_32_loose(embedding, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeEnrollSpeakerConstMeta,
+        argValues: [id, displayName, embedding],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeEnrollSpeakerConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_enroll_speaker",
+        argNames: ["id", "displayName", "embedding"],
+      );
+
+  @override
+  void crateApiMindRuntimeMindRuntimeInitialize({required String baseDir}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(baseDir, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeInitializeConstMeta,
+        argValues: [baseDir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeInitializeConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_initialize",
+        argNames: ["baseDir"],
+      );
+
+  @override
+  BigInt crateApiMindRuntimeMindRuntimeScribeOpCount() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeScribeOpCountConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeScribeOpCountConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_scribe_op_count",
+        argNames: [],
+      );
+
+  @override
+  List<MindOpWire> crateApiMindRuntimeMindRuntimeScribeOpsRecent({
+    required BigInt offset,
+    required BigInt limit,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_64(offset, serializer);
+          sse_encode_u_64(limit, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mind_op_wire,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeScribeOpsRecentConstMeta,
+        argValues: [offset, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMindRuntimeMindRuntimeScribeOpsRecentConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_scribe_ops_recent",
+        argNames: ["offset", "limit"],
+      );
+
+  @override
+  String crateApiMindRuntimeMindRuntimeSpeakerProfilesJson() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMindRuntimeMindRuntimeSpeakerProfilesJsonConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiMindRuntimeMindRuntimeSpeakerProfilesJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "mind_runtime_speaker_profiles_json",
+        argNames: [],
+      );
+
+  @override
   Future<List<RequiredModel>> crateApiSetupRequiredModels() {
     return handler.executeNormal(
       NormalTask(
@@ -338,7 +537,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 14,
             port: port_,
           );
         },
@@ -362,7 +561,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -411,7 +610,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 16,
             port: port_,
           );
         },
@@ -466,7 +665,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 17,
             port: port_,
           );
         },
@@ -493,7 +692,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 18,
             port: port_,
           );
         },
@@ -523,7 +722,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 19,
             port: port_,
           );
         },
@@ -561,7 +760,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 14,
+              funcId: 20,
               port: port_,
             );
           },
@@ -596,7 +795,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 21,
             port: port_,
           );
         },
@@ -744,6 +943,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MindOpWire> dco_decode_list_mind_op_wire(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mind_op_wire).toList();
+  }
+
+  @protected
+  List<double> dco_decode_list_prim_f_32_loose(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as List<double>;
+  }
+
+  @protected
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Float32List;
@@ -863,6 +1074,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       storePath: dco_decode_String(arr[1]),
       memoryBudgetMb: dco_decode_u_32(arr[2]),
       speechLanguage: dco_decode_speech_language(arr[3]),
+    );
+  }
+
+  @protected
+  MindOpWire dco_decode_mind_op_wire(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return MindOpWire(
+      sequence: dco_decode_u_64(arr[0]),
+      kind: dco_decode_String(arr[1]),
+      title: dco_decode_String(arr[2]),
+      contextId: dco_decode_String(arr[3]),
+      deviceName: dco_decode_String(arr[4]),
+      recordedAtMs: dco_decode_u_64(arr[5]),
+      detail: dco_decode_String(arr[6]),
     );
   }
 
@@ -1161,6 +1389,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MindOpWire> sse_decode_list_mind_op_wire(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MindOpWire>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mind_op_wire(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<double> sse_decode_list_prim_f_32_loose(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getFloat32List(len_);
+  }
+
+  @protected
   Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1326,6 +1573,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       storePath: var_storePath,
       memoryBudgetMb: var_memoryBudgetMb,
       speechLanguage: var_speechLanguage,
+    );
+  }
+
+  @protected
+  MindOpWire sse_decode_mind_op_wire(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sequence = sse_decode_u_64(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_contextId = sse_decode_String(deserializer);
+    var var_deviceName = sse_decode_String(deserializer);
+    var var_recordedAtMs = sse_decode_u_64(deserializer);
+    var var_detail = sse_decode_String(deserializer);
+    return MindOpWire(
+      sequence: var_sequence,
+      kind: var_kind,
+      title: var_title,
+      contextId: var_contextId,
+      deviceName: var_deviceName,
+      recordedAtMs: var_recordedAtMs,
+      detail: var_detail,
     );
   }
 
@@ -1656,6 +1924,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_mind_op_wire(
+    List<MindOpWire> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mind_op_wire(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prim_f_32_loose(
+    List<double> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putFloat32List(
+      self is Float32List ? self : Float32List.fromList(self),
+    );
+  }
+
+  @protected
   void sse_encode_list_prim_f_32_strict(
     Float32List self,
     SseSerializer serializer,
@@ -1788,6 +2080,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.storePath, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
     sse_encode_speech_language(self.speechLanguage, serializer);
+  }
+
+  @protected
+  void sse_encode_mind_op_wire(MindOpWire self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.sequence, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.contextId, serializer);
+    sse_encode_String(self.deviceName, serializer);
+    sse_encode_u_64(self.recordedAtMs, serializer);
+    sse_encode_String(self.detail, serializer);
   }
 
   @protected

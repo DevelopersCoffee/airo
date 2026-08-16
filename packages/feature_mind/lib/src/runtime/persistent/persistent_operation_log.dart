@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/log_models.dart';
 import '../ports/operation_log_port.dart';
+import 'rust_preferred_operation_log.dart';
 
 /// JSON wire shape for a persisted [MindOp].
 @immutable
@@ -247,5 +248,12 @@ class LazyPersistentOperationLog implements OperationLogPort {
       _ensure().asStream().asyncExpand((log) => log.replayFrom(sequence));
 }
 
+final _fallbackMindOperationLog = LazyPersistentOperationLog();
+RustPreferredOperationLog? _sharedMindOperationLog;
+
 /// One shared log instance for the Mind shell composition root.
-LazyPersistentOperationLog sharedMindOperationLog() => LazyPersistentOperationLog();
+OperationLogPort sharedMindOperationLog() {
+  _sharedMindOperationLog ??=
+      RustPreferredOperationLog(_fallbackMindOperationLog);
+  return _sharedMindOperationLog!;
+}

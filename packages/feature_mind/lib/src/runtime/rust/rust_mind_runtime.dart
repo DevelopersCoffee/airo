@@ -5,7 +5,6 @@ import 'package:core_ai/core_ai.dart' as core_ai;
 import '../mind_runtime.dart';
 import '../models/capability_models.dart';
 import '../models/context_models.dart';
-import '../models/log_models.dart';
 import '../models/mesh_models.dart';
 import '../models/model_models.dart';
 import '../models/portability_models.dart';
@@ -16,6 +15,9 @@ import '../ports/context_port.dart';
 import '../ports/mesh_port.dart';
 import '../ports/model_port.dart';
 import '../ports/operation_log_port.dart';
+import '../persistent/persistent_operation_log.dart'
+    show LazyPersistentOperationLog;
+import '../persistent/rust_preferred_operation_log.dart';
 import '../ports/portability_port.dart';
 import '../ports/projection_port.dart';
 import '../ports/vault_port.dart';
@@ -36,7 +38,9 @@ class RustMindRuntime implements MindRuntime {
   final VaultPort vault = const _RustVault();
 
   @override
-  final OperationLogPort log = const _RustLog();
+  final OperationLogPort log = RustPreferredOperationLog(
+    LazyPersistentOperationLog(),
+  );
 
   @override
   final ContextPort contexts = const _RustContexts();
@@ -86,39 +90,6 @@ class _RustVault implements VaultPort {
   @override
   Future<void> revokeDevice(DeviceFingerprint fingerprint) async =>
       _pending('VaultPort', _issue);
-}
-
-class _RustLog implements OperationLogPort {
-  const _RustLog();
-
-  static const String _issue = '#1213, #1214, #1215';
-
-  @override
-  Future<int> count() async => _pending('OperationLogPort', _issue);
-
-  @override
-  Future<List<MindOp>> range({required int offset, required int limit}) async =>
-      _pending('OperationLogPort', _issue);
-
-  @override
-  Future<MindOp?> bySequence(int sequence) async =>
-      _pending('OperationLogPort', _issue);
-
-  @override
-  Future<int> append({
-    required MindOpKind kind,
-    required String title,
-    required String contextId,
-    String detail = '',
-  }) async => _pending('OperationLogPort', _issue);
-
-  @override
-  Future<SignatureState> verify(int sequence) async =>
-      _pending('OperationLogPort', _issue);
-
-  @override
-  Stream<double> replayFrom(int sequence) =>
-      _pendingStream('OperationLogPort', '#1216');
 }
 
 class _RustContexts implements ContextPort {

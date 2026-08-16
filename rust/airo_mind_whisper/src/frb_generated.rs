@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 147163789;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1703544676;
 
 // Section: executor
 
@@ -269,6 +269,201 @@ fn wire__crate__api__meetings__list_meetings_impl(
                     Ok(output_ok)
                 })())
             }
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_append_scribe_op",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            let api_title = <String>::sse_decode(&mut deserializer);
+            let api_context_id = <String>::sse_decode(&mut deserializer);
+            let api_detail = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_append_scribe_op(
+                    api_kind,
+                    api_title,
+                    api_context_id,
+                    api_detail,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_enroll_speaker",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_display_name = <String>::sse_decode(&mut deserializer);
+            let api_embedding = <Vec<f32>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_enroll_speaker(
+                    api_id,
+                    api_display_name,
+                    api_embedding,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_initialize",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_base_dir = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_initialize(api_base_dir)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_scribe_op_count",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_scribe_op_count()?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_scribe_ops_recent",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_offset = <u64>::sse_decode(&mut deserializer);
+            let api_limit = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_scribe_ops_recent(
+                    api_offset, api_limit,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_speaker_profiles_json",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_speaker_profiles_json()?;
+                Ok(output_ok)
+            })())
         },
     )
 }
@@ -720,6 +915,20 @@ impl SseDecode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
+impl SseDecode for Vec<crate::mind_runtime_state::MindOpWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::mind_runtime_state::MindOpWire>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<f32> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -909,6 +1118,28 @@ impl SseDecode for crate::api::meetings::MindConfig {
     }
 }
 
+impl SseDecode for crate::mind_runtime_state::MindOpWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_sequence = <u64>::sse_decode(deserializer);
+        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_contextId = <String>::sse_decode(deserializer);
+        let mut var_deviceName = <String>::sse_decode(deserializer);
+        let mut var_recordedAtMs = <u64>::sse_decode(deserializer);
+        let mut var_detail = <String>::sse_decode(deserializer);
+        return crate::mind_runtime_state::MindOpWire {
+            sequence: var_sequence,
+            kind: var_kind,
+            title: var_title,
+            context_id: var_contextId,
+            device_name: var_deviceName,
+            recorded_at_ms: var_recordedAtMs,
+            detail: var_detail,
+        };
+    }
+}
+
 impl SseDecode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1093,25 +1324,25 @@ fn pde_ffi_dispatcher_primary_impl(
         4 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
         5 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
         7 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__meetings__speech_language_default_impl(
+        14 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__meetings__speech_language_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+        19 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => {
+        20 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        15 => {
+        21 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1129,7 +1360,37 @@ fn pde_ffi_dispatcher_sync_impl(
         1 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
         2 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
         6 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
+        8 => wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        9 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        10 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        11 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        12 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        13 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        15 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -1328,6 +1589,32 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MindConfig>
     for crate::api::meetings::MindConfig
 {
     fn into_into_dart(self) -> crate::api::meetings::MindConfig {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::mind_runtime_state::MindOpWire {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.sequence.into_into_dart().into_dart(),
+            self.kind.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.context_id.into_into_dart().into_dart(),
+            self.device_name.into_into_dart().into_dart(),
+            self.recorded_at_ms.into_into_dart().into_dart(),
+            self.detail.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::mind_runtime_state::MindOpWire
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::mind_runtime_state::MindOpWire>
+    for crate::mind_runtime_state::MindOpWire
+{
+    fn into_into_dart(self) -> crate::mind_runtime_state::MindOpWire {
         self
     }
 }
@@ -1593,6 +1880,16 @@ impl SseEncode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
+impl SseEncode for Vec<crate::mind_runtime_state::MindOpWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::mind_runtime_state::MindOpWire>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<f32> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1736,6 +2033,19 @@ impl SseEncode for crate::api::meetings::MindConfig {
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
         <crate::api::meetings::SpeechLanguage>::sse_encode(self.speech_language, serializer);
+    }
+}
+
+impl SseEncode for crate::mind_runtime_state::MindOpWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.sequence, serializer);
+        <String>::sse_encode(self.kind, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.context_id, serializer);
+        <String>::sse_encode(self.device_name, serializer);
+        <u64>::sse_encode(self.recorded_at_ms, serializer);
+        <String>::sse_encode(self.detail, serializer);
     }
 }
 

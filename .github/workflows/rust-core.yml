@@ -142,6 +142,16 @@ jobs:
           cargo ndk --target ${{ matrix.target }} --platform 21 \
             build --release --manifest-path airo_core/Cargo.toml
 
+      # Mind whisper + ECAPA on Android arm64 when ORT is installed.
+      - name: Android whisper ECAPA cross-compile (arm64)
+        if: matrix.target == 'aarch64-linux-android'
+        run: |
+          chmod +x scripts/install-onnxruntime-android.sh
+          source scripts/install-onnxruntime-android.sh
+          cd rust
+          cargo ndk --target aarch64-linux-android --platform 21 \
+            build --release -p airo_mind_whisper --features whisper,ecapa
+
   # ── macOS / iOS ────────────────────────────────────────────────────────────
   build-apple:
     name: Apple (${{ matrix.target }})
