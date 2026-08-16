@@ -197,9 +197,9 @@ void main() {
         .whereType<GoRoute>()
         .map((route) => route.path);
 
-    final topLevelPaths = router.configuration.routes
-        .whereType<GoRoute>()
-        .map((route) => route.path);
+    final topLevelPaths = router.configuration.routes.whereType<GoRoute>().map(
+      (route) => route.path,
+    );
 
     expect(branchPaths, contains(AssistantRouteNames.assistant));
     expect(branchPaths, isNot(contains(AssistantRouteNames.wellbeing)));
