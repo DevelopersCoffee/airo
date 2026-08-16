@@ -36,6 +36,28 @@ void main() {
     expect(applySoloSpeakerDiarization(const []), isEmpty);
   });
 
+  test('ensureSpeakerLabels keeps rust-assigned labels', () {
+    const segments = [
+      TranscriptSegment(
+        id: 's0',
+        startMs: 0,
+        endMs: 500,
+        text: 'hello',
+        speakerLabel: 'sp1',
+      ),
+    ];
+    final labeled = ensureSpeakerLabels(segments);
+    expect(labeled.single.speakerLabel, 'sp1');
+  });
+
+  test('ensureSpeakerLabels applies solo fallback when labels missing', () {
+    const segments = [
+      TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+    ];
+    final labeled = ensureSpeakerLabels(segments);
+    expect(labeled.single.speakerLabel, kMindSoloSpeakerLabel);
+  });
+
   test('formatMindSpeakerLabel maps spN to Speaker N+1', () {
     expect(formatMindSpeakerLabel('sp0'), 'Speaker 1');
     expect(formatMindSpeakerLabel('sp2'), 'Speaker 3');

@@ -20,11 +20,29 @@ audio → airo_mind_audio (16 kHz PCM)
 ## API
 
 ```rust
+use airo_mind_diarize::{diarize_segments, DiarizationStrategy};
+
+// Product transcribe path (solo v0):
+let result = diarize_segments(&segments, Some(&pcm), DiarizationStrategy::Solo)?;
+
+// CLI / dev tests (stub embedder + clustering):
+let result = diarize_segments(
+    &segments,
+    Some(&pcm),
+    DiarizationStrategy::StubEmbedding {
+        similarity_threshold: 0.85,
+    },
+)?;
+```
+
+Legacy helper:
+
+```rust
 use airo_mind_diarize::{Diarizer, SingleSpeakerDiarizer, DiarizationInput};
 
 let result = SingleSpeakerDiarizer::new().diarize(&DiarizationInput {
     segments: &transcript_segments,
-    pcm: None, // required for future embedders
+    pcm: None,
 })?;
 ```
 

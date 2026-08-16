@@ -20,6 +20,7 @@ mod pcm_slice;
 mod result;
 mod segment;
 mod single_speaker;
+mod strategy;
 mod stub_embedder;
 
 pub use cluster::cluster_embeddings_greedy;
@@ -30,6 +31,7 @@ pub use pcm_slice::slice_segment_pcm;
 pub use result::DiarizationResult;
 pub use segment::{DiarizedSegment, SpeakerId};
 pub use single_speaker::SingleSpeakerDiarizer;
+pub use strategy::{diarize_segments, DiarizationStrategy};
 pub use stub_embedder::StubSpeakerEmbedder;
 
 /// Runs the default v0 diarizer (`SingleSpeakerDiarizer`) on transcript segments.

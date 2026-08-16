@@ -13,8 +13,8 @@ String formatMindSpeakerLabel(String label) {
   return label;
 }
 
-/// v0 on-device diarization — mirrors `SingleSpeakerDiarizer` in Rust until
-/// ECAPA clustering ships. Assigns one speaker to every segment.
+/// v0 on-device diarization — mirrors Rust `SingleSpeakerDiarizer` until ECAPA
+/// clustering ships. Assigns one speaker to every segment missing a label.
 List<TranscriptSegment> applySoloSpeakerDiarization(
   List<TranscriptSegment> segments,
 ) {
@@ -26,7 +26,15 @@ List<TranscriptSegment> applySoloSpeakerDiarization(
         startMs: segment.startMs,
         endMs: segment.endMs,
         text: segment.text,
-        speakerLabel: kMindSoloSpeakerLabel,
+        speakerLabel: segment.speakerLabel ?? kMindSoloSpeakerLabel,
       ),
   ];
+}
+
+/// Ensures every segment has a speaker label — Rust ASR sets labels at
+/// transcribe; fake bridges and legacy paths still get solo fallback.
+List<TranscriptSegment> ensureSpeakerLabels(List<TranscriptSegment> segments) {
+  if (segments.isEmpty) return segments;
+  if (segments.every((s) => s.speakerLabel != null)) return segments;
+  return applySoloSpeakerDiarization(segments);
 }
