@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
-import 'package:feature_mind/src/services/llama_gguf_service.dart';
+import 'package:feature_mind/feature_mind.dart' show LlamaGgufService;
 
 import '../../application/ai_model_management.dart';
 import '../widgets/model_card.dart';
