@@ -302,5 +302,3 @@ export 'src/capture/application/speech_language_preference.dart';
 export 'src/capture/presentation/meeting_capture_screen.dart';
 export 'src/capture/presentation/audio_retention_settings_tile.dart';
 export 'src/capture/presentation/speech_language_settings_tile.dart';
-export 'src/trust/scribe_trust_signals.dart';
-export 'src/trust/scribe_trust_state.dart';

@@ -1,0 +1,23 @@
+//! Speaker diarization for Airo Mind — Wave 3 scaffolding.
+//!
+//! Whisper produces time-bounded segments with text but no speaker identity.
+//! This crate assigns a stable [`SpeakerId`] per segment so downstream Meeting
+//! IR, persistence (`speakerLabel` columns in the app DB), and export can cite
+//! who spoke without re-running ASR.
+//!
+//! The shipped [`SingleSpeakerDiarizer`] is the v0 fallback: one speaker for
+//! the whole recording. Future embedders (ECAPA-TDNN tiny, online clustering)
+//! implement the same [`Diarizer`] trait and consume optional 16 kHz PCM from
+//! [`airo_mind_audio`] / [`airo_mind_core::wav::Pcm`].
+
+#![deny(unsafe_code)]
+
+mod diarizer;
+mod result;
+mod segment;
+mod single_speaker;
+
+pub use diarizer::{Diarizer, DiarizationError, DiarizationInput};
+pub use result::DiarizationResult;
+pub use segment::{DiarizedSegment, SpeakerId};
+pub use single_speaker::SingleSpeakerDiarizer;

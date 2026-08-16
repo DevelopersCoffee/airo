@@ -1,4 +1,3 @@
-import 'package:feature_mind/src/mind_indic_intelligence.dart';
 import 'package:feature_mind/src/settings/indic_speech_backend_settings_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
