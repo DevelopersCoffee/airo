@@ -223,6 +223,21 @@ class IntentParser {
     }
 
     if (_containsAny(text, [
+      'give me mom',
+      'get mom',
+      'get minutes',
+      'show minutes',
+      'minutes of meeting',
+      'meeting minutes',
+      'share the mom',
+      'share minutes',
+      'mom for',
+      'minutes for',
+    ])) {
+      return IntentType.getMeetingMom;
+    }
+
+    if (_containsAny(text, [
       'search meeting',
       'find meeting',
       'what did we decide',
