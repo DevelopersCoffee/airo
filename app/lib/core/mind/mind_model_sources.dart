@@ -102,8 +102,6 @@ MindService buildMindDownloadService() {
             },
             downloadUrlFor: mindModelDownloadUrlFor,
           )
-        : DesktopMindModelProvider(
-            downloadUrlFor: mindModelDownloadUrlFor,
-          ),
+        : DesktopMindModelProvider(downloadUrlFor: mindModelDownloadUrlFor),
   );
 }

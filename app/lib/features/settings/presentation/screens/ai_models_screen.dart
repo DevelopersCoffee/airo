@@ -87,18 +87,18 @@ final modelCompatibilityProvider =
 
 final modelReadinessProvider =
     FutureProvider.family<ModelReadinessState, OfflineModelInfo>((
-  ref,
-  model,
-) async {
-  final liteRtAvailable = await LiteRtLmService().isAvailable();
-  final ggufAvailable = await LlamaGgufService().isAvailable();
-  return ModelReadinessService.evaluate(
-    model,
-    nativeGgufAvailable: ggufAvailable,
-    liteRtNativeAvailable: liteRtAvailable,
-    webMediaPipeAvailable: kIsWeb,
-  );
-});
+      ref,
+      model,
+    ) async {
+      final liteRtAvailable = await LiteRtLmService().isAvailable();
+      final ggufAvailable = await LlamaGgufService().isAvailable();
+      return ModelReadinessService.evaluate(
+        model,
+        nativeGgufAvailable: ggufAvailable,
+        liteRtNativeAvailable: liteRtAvailable,
+        webMediaPipeAvailable: kIsWeb,
+      );
+    });
 
 /// AI Models browser screen.
 ///

@@ -186,9 +186,7 @@ class ModelCard extends StatelessWidget {
                 // Status row: Downloaded/Downloading/Download button
                 _buildStatusRow(context, isDownloaded),
 
-                if (readiness != null &&
-                    isDownloaded &&
-                    !readiness!.isRunnable)
+                if (readiness != null && isDownloaded && !readiness!.isRunnable)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Row(
