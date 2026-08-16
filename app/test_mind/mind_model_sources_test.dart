@@ -25,6 +25,13 @@ List<String> _pinnedFileNames() {
   ];
 }
 
+/// HF (and other hosts) sometimes publish a different basename than the pinned
+/// on-disk install target. The download pipeline renames on install; this map
+/// records those exceptions so the URL check stays strict for every other model.
+const Map<String, String> _remoteDownloadBasenames = {
+  'ecapa_tdnn_tiny_int8.onnx': 'ecapa-speaker-v1.onnx',
+};
+
 void main() {
   test('the pinned registry is readable and non-empty', () {
     expect(_pinnedFileNames(), isNotEmpty);
@@ -43,7 +50,8 @@ void main() {
       expect(Uri.parse(url!).scheme, 'https');
       // The download service refuses anything but HTTPS, and the file name at
       // the end is what makes a mismatched pin obvious on sight.
-      expect(url, endsWith(fileName));
+      final remoteName = _remoteDownloadBasenames[fileName] ?? fileName;
+      expect(url, endsWith(remoteName));
     }
   });
 
