@@ -33,7 +33,7 @@
 //! path that replay must reproduce, and this is that path.
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 use flutter_rust_bridge::frb;
 
@@ -338,7 +338,7 @@ fn apply_diarization_labels(
             text: record.text.clone(),
         })
         .collect();
-    let enrollment = lock(&SPEAKER_ENROLLMENT);
+    let enrollment = lock(&*SPEAKER_ENROLLMENT);
     let result = match diarize_segments(
         &segments,
         Some(pcm),
@@ -449,8 +449,8 @@ static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
 
 /// Cross-meeting speaker enrollment profiles synced from Dart (#504).
-static SPEAKER_ENROLLMENT: Mutex<SpeakerEnrollmentStore> =
-    Mutex::new(SpeakerEnrollmentStore::new());
+static SPEAKER_ENROLLMENT: LazyLock<Mutex<SpeakerEnrollmentStore>> =
+    LazyLock::new(|| Mutex::new(SpeakerEnrollmentStore::new()));
 
 struct Library {
     store: MeetingStore,
@@ -570,7 +570,7 @@ pub fn sync_speaker_enrollment_json(raw: String) {
             profile.embedding,
         );
     }
-    *lock(&SPEAKER_ENROLLMENT) = store;
+    *lock(&*SPEAKER_ENROLLMENT) = store;
 }
 
 /// Recording → transcript, streaming throughout.
