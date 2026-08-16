@@ -101,6 +101,7 @@ class MeetingExportService {
         TranscriptExportLine(
           startMs: segment.startMs.toInt(),
           text: segment.text,
+          speakerLabel: segment.speakerLabel,
         ),
     ];
   }

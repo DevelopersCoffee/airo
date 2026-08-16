@@ -84,6 +84,26 @@ void main() {
       expect(md, contains('[00:00:05] First up, the signaling limit.'));
     });
 
+    test('includes speaker label prefix when present', () {
+      final md = renderTranscriptMarkdown(
+        title: 'Standup',
+        recordedAt: DateTime.utc(2026, 8, 14),
+        lines: const [
+          TranscriptExportLine(
+            startMs: 65000,
+            text: 'Priya said the lag is the bottleneck.',
+            speakerLabel: 'sp0',
+          ),
+        ],
+      );
+      expect(
+        md,
+        contains(
+          '[00:01:05] sp0: Priya said the lag is the bottleneck.',
+        ),
+      );
+    });
+
     test('skips blank lines', () {
       final md = renderTranscriptMarkdown(
         title: 'Standup',

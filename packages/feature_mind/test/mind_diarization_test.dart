@@ -35,4 +35,10 @@ void main() {
   test('empty segments stay empty', () {
     expect(applySoloSpeakerDiarization(const []), isEmpty);
   });
+
+  test('formatMindSpeakerLabel maps spN to Speaker N+1', () {
+    expect(formatMindSpeakerLabel('sp0'), 'Speaker 1');
+    expect(formatMindSpeakerLabel('sp2'), 'Speaker 3');
+    expect(formatMindSpeakerLabel('guest'), 'guest');
+  });
 }

@@ -1,13 +1,13 @@
-import '../fixture/fixture_mind_runtime.dart';
-import '../mind_runtime.dart';
-import '../ports/capability_port.dart';
-import '../ports/context_port.dart';
-import '../ports/mesh_port.dart';
-import '../ports/model_port.dart';
-import '../ports/operation_log_port.dart';
-import '../ports/portability_port.dart';
-import '../ports/projection_port.dart';
-import '../ports/vault_port.dart';
+import 'fixture/fixture_mind_runtime.dart';
+import 'mind_runtime.dart';
+import 'ports/capability_port.dart';
+import 'ports/context_port.dart';
+import 'ports/mesh_port.dart';
+import 'ports/model_port.dart';
+import 'ports/operation_log_port.dart';
+import 'ports/portability_port.dart';
+import 'ports/projection_port.dart';
+import 'ports/vault_port.dart';
 
 /// Mind runtime for the standalone scribe shell: real durable log, fixture elsewhere.
 ///

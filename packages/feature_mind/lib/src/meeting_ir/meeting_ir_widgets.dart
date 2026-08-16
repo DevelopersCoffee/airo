@@ -2,6 +2,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../export/domain/meeting_markdown_renderer.dart' show formatTimestamp;
+import '../mind_diarization.dart' show formatMindSpeakerLabel;
 import '../whisper/api/meetings.dart' as rust;
 import 'evidence_resolver.dart';
 import 'meeting_ir_user_edits.dart';
@@ -350,9 +351,34 @@ class MeetingIrTranscriptList extends StatelessWidget {
                   ? Border.all(color: scheme.tertiary)
                   : null,
             ),
-            child: SelectableText(
-              '${formatTimestamp(segment.startMs)} ${segment.text.trim()}',
-              style: Theme.of(context).textTheme.bodyMedium,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formatTimestamp(segment.startMs),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (segment.speakerLabel != null) ...[
+                  const SizedBox(width: 8),
+                  Chip(
+                    key: Key('meeting_ir_speaker_${segment.id}'),
+                    label: Text(
+                      formatMindSpeakerLabel(segment.speakerLabel!),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SelectableText(
+                    segment.text.trim(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -369,12 +395,16 @@ class TranscriptSegmentView {
     required this.startMs,
     required this.endMs,
     required this.text,
+    this.speakerLabel,
   });
 
   final String id;
   final int startMs;
   final int endMs;
   final String text;
+
+  /// Diarization label (`sp0`, `sp1`, …). Null before Wave 3 wiring.
+  final String? speakerLabel;
 
   factory TranscriptSegmentView.fromEvidence(EvidenceHit hit) =>
       TranscriptSegmentView(

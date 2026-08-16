@@ -153,6 +153,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           startMs: s.startMs,
           endMs: s.endMs,
           text: s.text,
+          speakerLabel: s.speakerLabel,
         ),
     ];
     _segmentsById = {for (final s in _orderedSegments) s.id: s};
@@ -172,6 +173,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
           startMs: s.startMs.toInt(),
           endMs: s.endMs.toInt(),
           text: s.text,
+          speakerLabel: s.speakerLabel,
         ),
     ];
     if (!mounted) return;
@@ -189,6 +191,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
             startMs: e.value.startMs,
             endMs: e.value.endMs,
             text: e.value.text,
+            speakerLabel: e.value.speakerLabel,
           ),
       };
       for (final s in _orderedSegments) {
