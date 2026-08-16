@@ -2,6 +2,9 @@ import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_mind/feature_mind.dart';
 
 import '../assistant/app_assistant_host_adapter.dart';
+import 'mind_model_sources.dart';
+import 'mind_processing_queue.dart';
+import 'mind_model_catalog.dart';
 
 /// Registers Airo Mind into [registry]. Phone/desktop only.
 ///
@@ -14,6 +17,13 @@ import '../assistant/app_assistant_host_adapter.dart';
 /// `scripts/check-mind-private-devices.sh`.
 void registerMind(ModuleRegistry registry) {
   registry.register(
-    MindModule(hostAdapterBuilder: AppAssistantHostAdapter.new),
+    MindModule(
+      hostAdapterBuilder: AppAssistantHostAdapter.new,
+      createService: buildMindDownloadService,
+      scribeOverrides: (service) => [
+        ...mindModelRegistryOverrides(modelsDirectory: service.modelsDirectory),
+        ...mindMeetingProcessingOverrides(service),
+      ],
+    ),
   );
 }

@@ -9,6 +9,8 @@ app builds pick the same libraries up.
 
 ## What it does
 
+### Legacy dev loop (default)
+
 1. Decodes the input audio to 16 kHz mono 16-bit PCM via `airo_mind_audio`
    (symphonia + rubato — no platform `afconvert` / ffmpeg binary).
 2. Runs it through `WhisperSpeechEngine` behind the real `Supervisor` /
@@ -19,6 +21,41 @@ app builds pick the same libraries up.
    summarization prompt, streaming the generated text to stdout chunk by
    chunk as `GenerationChunk`s arrive.
 4. Prints load/inference timings for both engines.
+
+### POC-2 full offline path (`--out`)
+
+One command runs the product pipeline end to end:
+
+1. preprocess → whisper ASR (segment ids `s0`, `s1`, …)
+2. `airo_mind_transcript::process`
+3. `airo_mind_meeting::extract` → `validate` → `generate_mom`
+4. Writes artifacts under `--out/`:
+   `transcript.json` (raw + normalized segments), `chunks.json`,
+   `meeting_ir.json`, `predicted_ir.json`, `mom.md`, `hypothesis_transcript.txt`
+5. Runs `airo_mind_eval` gates (unless `--skip-eval`) and writes
+   `out/eval/run-NNN.json`. Exits non-zero when any gate fails.
+
+Whisper defaults to multilingual `ggml-tiny.bin` with auto language detection.
+Place user meeting audio at `rust/fixtures/meeting_001.m4a` (or pass path as
+first arg); no checked-in user recording — download models per table below.
+
+```sh
+cd rust
+mkdir -p models   # put ggml-tiny.en.bin and qwen2.5-0.5b-instruct-q4_k_m.gguf here
+cargo run -p airo_mind_cli -- fixtures/speech.m4a \
+  --models-dir models \
+  --out ./out/
+```
+
+`--models-dir` must contain **both** the whisper `.bin` and llama `.gguf` (or the first
+`.bin` / `.gguf` found). For separate locations, omit `--models-dir` and set
+`AIRO_MIND_WHISPER_MODEL` / `AIRO_MIND_LLAMA_MODEL` instead.
+
+Eval defaults score against the reference-meeting golden set in
+`airo_mind_eval/golden/reference_meeting/` and
+`airo_mind_meeting/tests/fixtures/golden_ir.json` — expect gate failures
+when the input audio is unrelated (e.g. `speech.m4a`). That is normal; the
+report still proves the wiring.
 
 On macOS, both crates are built with their `metal` cargo feature when available.
 

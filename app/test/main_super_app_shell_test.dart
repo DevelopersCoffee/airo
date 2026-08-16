@@ -27,6 +27,7 @@ void main() {
       'vault',
       AssistantRouteNames.assistant,
       AssistantRouteNames.wellbeing,
+      '/scribe',
       '/iptv',
       '/iptv/player',
       '/vod',

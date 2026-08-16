@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:go_router/go_router.dart';
 
+import 'agent_chat/domain/services/tool_registry.dart';
 import 'agent_chat/presentation/screens/agent_skills_screen.dart';
 import 'agent_chat/presentation/screens/chat_screen.dart';
 import 'agent_chat/presentation/screens/device_capability_report_screen.dart';
@@ -18,6 +19,7 @@ import 'assistant/presentation/screens/prompt_lab_screen.dart';
 import 'capture/application/speech_language_preference.dart';
 import 'capture/presentation/meeting_capture_screen.dart';
 import 'host/assistant_host_adapter.dart';
+import 'meeting_archive/meeting_archive_port.dart';
 import 'mind_home_screen.dart';
 import 'mind_service.dart';
 import 'routing/assistant_route_names.dart';
@@ -50,7 +52,7 @@ typedef AssistantHostAdapterBuilder = AssistantHostAdapter Function(Ref ref);
 ///   Mind branch would wrap it in the super app's bottom navigation.
 /// * [scribeRoutesFor] — the meeting recorder, mounted at `/` and only
 ///   contributed when [createService] is supplied. The standalone shell reaches
-///   the scribe this way; the super app does not yet (Phase 4).
+///   the scribe this way; the super app mounts the same journey at `/scribe`.
 ///
 /// [routesFor] returns all three, so [ModuleRegistry] still sees the module's
 /// complete path/name surface for conflict detection. Shells that need the
@@ -124,6 +126,9 @@ class MindModule extends AppModule {
       // multilingual weights on cold start.
       final mode = await loadSpeechLanguageMode();
       await service.ensureReady(speechLanguage: mode.speechLanguage);
+      ToolRegistry().configureMeetingArchive(
+        MindServiceMeetingArchivePort(service),
+      );
     }
   }
 
@@ -140,13 +145,15 @@ class MindModule extends AppModule {
     ...scribeRoutesFor(shell),
   ];
 
-  /// The meeting recorder, mounted at the shell's root. Contributed only when
-  /// [createService] was supplied — today, the standalone Mind shell.
+  /// The meeting recorder. Contributed only when [createService] was supplied.
+  ///
+  /// Standalone Mind shell (`ShellId.mind`) mounts at `/`; the phone super app
+  /// mounts at `/scribe` so it does not collide with `/` → `/money`.
   List<RouteBase> scribeRoutesFor(ShellId shell) => [
     if (createService != null)
       GoRoute(
-        path: '/',
-        name: 'mind_scribe',
+        path: shell == ShellId.mind ? '/' : '/scribe',
+        name: shell == ShellId.mind ? 'mind_scribe' : 'superapp_scribe',
         builder: (context, state) => MindHomeScreen(service: service),
         routes: [
           // In-app capture (#1656): pause/resume, incremental disk writes,

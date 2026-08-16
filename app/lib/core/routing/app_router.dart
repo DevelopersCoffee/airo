@@ -98,6 +98,10 @@ class AppRouter {
         // inside the bottom nav. Absent entirely when Mind itself is absent
         // (web) -- there is no hub for them to be reached from.
         if (assistant != null) ...assistant.rootRoutesFor(moduleRegistry.shell),
+        // Meeting scribe (record → transcribe → IR → MoM). Top-level so it
+        // renders full-screen outside the bottom nav, same as Wellbeing.
+        if (assistant != null && assistant.createService != null)
+          ...assistant.scribeRoutesFor(moduleRegistry.shell),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
         GoRoute(

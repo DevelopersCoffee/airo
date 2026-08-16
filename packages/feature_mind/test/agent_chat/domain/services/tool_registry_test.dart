@@ -1,8 +1,32 @@
 import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
+import 'package:feature_mind/src/meeting_archive/meeting_archive_port.dart';
 import 'package:feature_mind/src/services/device_actions_service.dart';
+import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeMeetingArchivePort implements MeetingArchivePort {
+  _FakeMeetingArchivePort({
+    this.hits = const [],
+    this.items = const [],
+  });
+
+  final List<rust.SearchHit> hits;
+  final List<rust.MeetingActionItemRecord> items;
+
+  @override
+  Future<List<rust.MeetingActionItemRecord>> actionItemsForOwner(
+    String ownerName,
+  ) async =>
+      items;
+
+  @override
+  Future<rust.MeetingRecord?> meeting(String id) async => null;
+
+  @override
+  Future<List<rust.SearchHit>> search(String query) async => hits;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +102,38 @@ void main() {
 
       expect(result.route, '/assistant/audio-scribe');
       expect(result.message, contains('on-device capture'));
+    });
+
+    test('searches the meeting archive when a port is configured', () async {
+      registry.configureMeetingArchive(
+        _FakeMeetingArchivePort(
+          hits: [
+            rust.SearchHit(
+              meetingId: 'm1',
+              title: 'Infra standup',
+              recordedAt: BigInt.zero,
+              snippet: 'Temporal signalling limit',
+            ),
+          ],
+        ),
+      );
+
+      final result = await registry.executeIntent(
+        IntentParser.parse('what did we decide about Temporal signalling'),
+      );
+
+      expect(result.shouldNavigate, isFalse);
+      expect(result.message, contains('Temporal signalling'));
+    });
+
+    test('routes open scribe to /scribe', () async {
+      registry.configureMeetingArchive(_FakeMeetingArchivePort());
+
+      final result = await registry.executeIntent(
+        IntentParser.parse('record meeting'),
+      );
+
+      expect(result.route, '/scribe');
     });
 
     test('routes game and model management requests to Airo screens', () async {

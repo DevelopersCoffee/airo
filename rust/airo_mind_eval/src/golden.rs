@@ -142,6 +142,29 @@ fn parse_json<T: serde::de::DeserializeOwned>(
     })
 }
 
+/// Resolves the four artifact paths for a named golden meeting under
+/// `golden/<meeting_id>/`.
+pub fn paths_for_meeting(eval_manifest: &Path, meeting_id: &str) -> GoldenPaths {
+    let dir = eval_manifest.join("golden").join(meeting_id);
+    GoldenPaths {
+        transcript: dir.join("transcript.json"),
+        golden_ir: dir.join("golden_ir.json"),
+        golden_mom: dir.join("golden_mom.md"),
+        audio: dir.join("audio.m4a"),
+    }
+}
+
+/// One term per line; `#` starts a comment. Used by `meeting_001` and friends.
+pub fn load_technical_terms(path: &Path) -> Result<Vec<String>, GoldenLoadError> {
+    let raw = read(path)?;
+    Ok(raw
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(str::to_string)
+        .collect())
+}
+
 /// Loads a golden set from `paths`. `audio` is not required to exist -- see
 /// the module doc comment.
 pub fn load(paths: &GoldenPaths) -> Result<GoldenSet, GoldenLoadError> {
@@ -208,6 +231,40 @@ mod tests {
         assert_eq!(set.audio_path, dir.join("audio.m4a"));
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn meeting_001_golden_mom_passes_self_consistency_checks() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let paths = paths_for_meeting(&manifest, "meeting_001");
+        let set = load(&paths).expect("meeting_001 loads");
+        let consistency =
+            crate::factual_consistency::factual_consistency(&set.golden_ir, &set.golden_mom);
+        assert_eq!(
+            consistency.score, 1.0,
+            "golden MoM must match golden IR for smoke runs: {:?}",
+            consistency.checks
+        );
+        let completeness = crate::mom_quality::section_completeness(&set.golden_mom);
+        assert_eq!(completeness.coverage, 1.0, "missing: {:?}", completeness.missing);
+    }
+
+    #[test]
+    fn meeting_001_fixture_loads_from_repo() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let paths = paths_for_meeting(&manifest, "meeting_001");
+        let set = load(&paths).expect("meeting_001 golden set loads");
+        assert_eq!(set.transcript.meeting_id, "meeting-001-multilingual");
+        assert_eq!(set.golden_ir.meeting.id, "meeting-001-multilingual");
+        let terms = load_technical_terms(
+            &paths
+                .transcript
+                .parent()
+                .unwrap()
+                .join("technical_terms.txt"),
+        )
+        .expect("technical terms load");
+        assert!(terms.contains(&"Temporal".to_string()));
     }
 
     #[test]

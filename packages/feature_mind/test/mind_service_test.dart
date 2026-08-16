@@ -228,6 +228,28 @@ void main() {
     },
   );
 
+  test(
+    'T6b: MeetingIntelligenceEventCancelled yields idle and skips save',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        ]),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventCancelled(),
+      ];
+
+      final stages = await service
+          .process(wavPath: 'x.wav', title: 't')
+          .map((p) => p.stage)
+          .toList();
+
+      expect(stages.last, MindStage.idle);
+      expect(speech.savedModel, isNull);
+    },
+  );
+
   // T7 — save() is called with the model id the GENERATION bridge reports,
   // not something process() invents. `ADR-0018 §5`: what produced a summary
   // is recorded with it.

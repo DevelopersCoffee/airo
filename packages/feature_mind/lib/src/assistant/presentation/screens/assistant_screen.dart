@@ -52,6 +52,14 @@ class AssistantScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           AiroActionCard(
+            title: 'Meeting Scribe',
+            subtitle:
+                'Record meetings, extract decisions and action items offline.',
+            icon: Icons.record_voice_over_outlined,
+            onTap: () => context.push('/scribe'),
+          ),
+          const SizedBox(height: 10),
+          AiroActionCard(
             title: 'Audio Scribe',
             subtitle:
                 'Capture speech, review the transcript, and translate with Airo.',
