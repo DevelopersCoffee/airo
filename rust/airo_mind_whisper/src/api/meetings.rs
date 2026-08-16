@@ -512,6 +512,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     ));
     *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
     *lock(&LIBRARY) = Some(Library { store, index });
+    crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
     Ok(())
 }
 
@@ -570,6 +571,10 @@ pub fn sync_speaker_enrollment_json(raw: String) {
             profile.embedding,
         );
     }
+    *lock(&*SPEAKER_ENROLLMENT) = store;
+}
+
+pub(crate) fn replace_speaker_enrollment_store(store: SpeakerEnrollmentStore) {
     *lock(&*SPEAKER_ENROLLMENT) = store;
 }
 

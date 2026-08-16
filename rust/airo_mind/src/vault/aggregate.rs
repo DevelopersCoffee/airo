@@ -260,6 +260,24 @@ impl Vault {
         Ok(envelope)
     }
 
+    /// Decrypts a content blob sealed with a vault envelope (#1214 / #504).
+    ///
+    /// Phase 2 bridge for out-of-line encrypted blobs: the envelope travels
+    /// beside the content store object; the Vault unwraps the content key.
+    pub fn open_enveloped_content(
+        &self,
+        envelope: &ContentEnvelope,
+        context_id: &ContextId,
+        sealed_content: &[u8],
+    ) -> Result<zeroize::Zeroizing<Vec<u8>>, VaultError> {
+        let context_key = self
+            .context_keys
+            .get(context_id.as_str())
+            .ok_or_else(|| VaultError::NoWrappingForContext(context_id.to_string()))?;
+        let content_key = envelope.unwrap_with(context_id.as_str(), context_key)?;
+        content_key.open(sealed_content)
+    }
+
     /// Removes one context link. Does not destroy anything.
     pub fn unlink_content(
         &self,

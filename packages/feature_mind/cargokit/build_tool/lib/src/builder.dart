@@ -139,7 +139,7 @@ class RustBuilder {
 
   /// Returns the path of directory containing build artifacts.
   Future<String> build() async {
-    final extraArgs = _androidEcapaArgs(_buildOptions?.flags ?? []);
+    final extraArgs = _ecapaArgs(_buildOptions?.flags ?? []);
     final manifestPath = path.join(environment.manifestDir, 'Cargo.toml');
     runCommand(
       'rustup',
@@ -169,9 +169,8 @@ class RustBuilder {
   }
 
   Future<Map<String, String>> _buildEnvironment() async {
-    if (target.android == null) {
-      return {};
-    } else {
+    Map<String, String> buildEnv = {};
+    if (target.android != null) {
       final sdkPath = environment.androidSdkPath;
       final ndkVersion = environment.androidNdkVersion;
       final minSdkVersion = environment.androidMinSdkVersion;
@@ -194,19 +193,21 @@ class RustBuilder {
       if (!env.ndkIsInstalled() && environment.javaHome != null) {
         env.installNdk(javaHome: environment.javaHome!);
       }
-      final buildEnv = await env.buildEnvironment();
-      final ortLib = _resolveOrtLibLocation();
-      if (ortLib != null) {
-        buildEnv['ORT_LIB_LOCATION'] = ortLib;
+      buildEnv = await env.buildEnvironment();
+    }
+    final ortLib = _resolveOrtLibLocation();
+    if (ortLib != null) {
+      buildEnv['ORT_LIB_LOCATION'] = ortLib;
+      if (target.android != null) {
         buildEnv['ORT_CXX_STDLIB'] = 'c++_shared';
       }
-      return buildEnv;
     }
+    return buildEnv;
   }
 
-  /// When Android ORT static libs are installed, link ECAPA into whisper.
-  List<String> _androidEcapaArgs(List<String> flags) {
-    if (target.android == null || _resolveOrtLibLocation() == null) {
+  /// When ORT static libs are installed for this target, link ECAPA into whisper.
+  List<String> _ecapaArgs(List<String> flags) {
+    if (_resolveOrtLibLocation() == null) {
       return flags;
     }
     final args = List<String>.from(flags);
@@ -227,17 +228,46 @@ class RustBuilder {
     }
     final home = Platform.environment['HOME'];
     if (home == null) return null;
-    final defaultRoot = path.join(
-      home,
-      '.airo',
-      'onnxruntime',
-      '1.20.0',
-      'android-arm64',
-      'onnxruntime-android-arm64-v8a-static_lib-1.20.0',
-    );
-    final lib = path.join(defaultRoot, 'lib', 'libonnxruntime.a');
-    if (File(lib).existsSync()) {
-      return defaultRoot;
+
+    final candidates = <String>[];
+    if (target.android != null) {
+      candidates.add(
+        path.join(
+          home,
+          '.airo',
+          'onnxruntime',
+          '1.20.0',
+          'android-arm64',
+          'onnxruntime-android-arm64-v8a-static_lib-1.20.0',
+        ),
+      );
+    } else if (target.rust.contains('apple-darwin')) {
+      if (target.rust.startsWith('aarch64')) {
+        candidates.add(
+          path.join(home, '.airo', 'onnxruntime', '1.20.0', 'macos-arm64'),
+        );
+      } else {
+        candidates.add(
+          path.join(home, '.airo', 'onnxruntime', '1.20.0', 'macos-x64'),
+        );
+      }
+    } else if (target.rust.contains('linux-gnu')) {
+      if (target.rust.startsWith('aarch64')) {
+        candidates.add(
+          path.join(home, '.airo', 'onnxruntime', '1.20.0', 'linux-arm64'),
+        );
+      } else {
+        candidates.add(
+          path.join(home, '.airo', 'onnxruntime', '1.20.0', 'linux-x64'),
+        );
+      }
+    }
+
+    for (final root in candidates) {
+      final lib = path.join(root, 'lib', 'libonnxruntime.a');
+      if (File(lib).existsSync()) {
+        return root;
+      }
     }
     return null;
   }

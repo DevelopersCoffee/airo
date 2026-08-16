@@ -11,4 +11,5 @@
 //! is unstable in Rust.)
 
 pub mod meetings;
+pub mod mind_runtime;
 pub mod setup;

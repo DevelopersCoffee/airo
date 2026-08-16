@@ -31,6 +31,9 @@
 //! is created here.
 
 #[cfg(feature = "whisper")]
+mod mind_runtime_state;
+
+#[cfg(feature = "whisper")]
 pub mod api;
 
 #[cfg(feature = "whisper")]

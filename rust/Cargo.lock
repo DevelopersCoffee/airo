@@ -165,6 +165,7 @@ version = "0.1.0"
 name = "airo_mind_whisper"
 version = "0.1.0"
 dependencies = [
+ "airo_mind",
  "airo_mind_audio",
  "airo_mind_core",
  "airo_mind_diarize",
