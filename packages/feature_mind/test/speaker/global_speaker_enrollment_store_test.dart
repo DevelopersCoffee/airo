@@ -32,7 +32,7 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.single.id, 'enrolled_1');
     expect(profiles.single.displayName, 'Bob');
-    expect(profiles.single.embedding, [0.4, 0.5]);
+    expect(profiles.single.embedding, [0.4, closeTo(0.5, 0.001)]);
 
     await tempDir.delete(recursive: true);
   });

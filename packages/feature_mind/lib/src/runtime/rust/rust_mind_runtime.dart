@@ -17,7 +17,7 @@ import '../ports/model_port.dart';
 import '../ports/operation_log_port.dart';
 import '../persistent/persistent_operation_log.dart'
     show LazyPersistentOperationLog;
-import '../persistent/rust_preferred_operation_log.dart';
+import 'rust_mind_runtime_operation_log.dart';
 import '../ports/portability_port.dart';
 import '../ports/projection_port.dart';
 import '../ports/vault_port.dart';
@@ -38,7 +38,7 @@ class RustMindRuntime implements MindRuntime {
   final VaultPort vault = const _RustVault();
 
   @override
-  final OperationLogPort log = RustPreferredOperationLog(
+  final OperationLogPort log = RustMindRuntimeOperationLog(
     LazyPersistentOperationLog(),
   );
 

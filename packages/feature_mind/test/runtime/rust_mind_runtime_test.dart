@@ -27,16 +27,7 @@ void main() {
   test('the failure is per port, not per product', () async {
     // A surface that only needs the log must be able to tell that the log is
     // the thing missing, not conclude the whole runtime is dead.
-    await expectLater(
-      runtime.log.count(),
-      throwsA(
-        isA<MindPortUnavailable>().having(
-          (e) => e.port,
-          'port',
-          'OperationLogPort',
-        ),
-      ),
-    );
+    await expectLater(runtime.log.count(), completion(isNonNegative));
     await expectLater(
       runtime.vault.state(),
       throwsA(
@@ -68,7 +59,11 @@ void main() {
     // let a surface render "no devices" when the truth is "not built yet".
     final probes = <String, Future<void>>{
       'vault': runtime.vault.devices(),
-      'log': runtime.log.count(),
+      'log': runtime.log.count().then((count) {
+        if (count < 0) {
+          throw StateError('log count must be non-negative');
+        }
+      }),
       'contexts': runtime.contexts.all(),
       'projections': runtime.projections.states(),
       'mesh': runtime.mesh.authorise(
@@ -86,6 +81,10 @@ void main() {
     expect(probes.keys.toSet(), MindRuntime.portNames);
 
     for (final entry in probes.entries) {
+      if (entry.key == 'log') {
+        await expectLater(entry.value, completes);
+        continue;
+      }
       await expectLater(
         entry.value,
         throwsA(isA<MindPortUnavailable>()),

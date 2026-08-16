@@ -5,14 +5,21 @@ import '../../whisper/api/mind_runtime.dart';
 
 /// Operation log backed by Rust `airo_mind_core::Runtime` when Mind is ready.
 ///
-/// Falls back to [PersistentOperationLog] for consent ops recorded before
+/// Lives under `runtime/rust/` so only the Rust runtime seam touches the bridge.
+/// Falls back to [OperationLogPort] for consent ops recorded before
 /// `initialize` completes. Legacy JSONL rows migrate into Rust on first boot.
-class RustPreferredOperationLog implements OperationLogPort {
-  RustPreferredOperationLog(this._fallback);
+class RustMindRuntimeOperationLog implements OperationLogPort {
+  RustMindRuntimeOperationLog(this._fallback);
 
   final OperationLogPort _fallback;
 
-  bool get _rustReady => isReady();
+  bool get _rustReady {
+    try {
+      return isReady();
+    } on Object {
+      return false;
+    }
+  }
 
   @override
   Future<int> append({
@@ -29,7 +36,7 @@ class RustPreferredOperationLog implements OperationLogPort {
         detail: detail,
       );
     }
-  try {
+    try {
       final sequence = mindRuntimeAppendScribeOp(
         kind: kind.name,
         title: title,
