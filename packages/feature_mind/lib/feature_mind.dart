@@ -32,6 +32,19 @@ export 'src/mind_indic_intelligence.dart'
         kMindIndicMinTotalRamBytes,
         pinnedIndicGenerationModel;
 
+export 'src/mind_model_advisor.dart'
+    show
+        MindModelAdvisor,
+        MindModelRecommendation,
+        MindModelRecommendationAction,
+        MindModelRecommendationBadge,
+        MindModelRecommendationSeverity,
+        MindScribeModelIds,
+        MindScribeStackRecommendation;
+
+export 'src/mind_scribe_models_panel.dart'
+    show mindScribeServiceProvider, MindScribeModelsPanel, scribeCatalogIdToFileName;
+
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 

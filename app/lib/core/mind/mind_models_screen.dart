@@ -1,3 +1,4 @@
+import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'mind_model_catalog.dart';
 import '../../features/settings/application/ai_model_management.dart';
 import '../../features/settings/presentation/screens/ai_models_screen.dart';
 import '../../features/settings/presentation/screens/intelligent_model_manager_screen.dart';
@@ -14,16 +16,58 @@ import '../../features/settings/presentation/screens/intelligent_model_manager_s
 /// Surfaces download, activation, and warmup status in one place instead of
 /// burying them under Profile → AI preferences (which the super app reaches
 /// through Settings).
-class MindModelsScreen extends ConsumerWidget {
+class MindModelsScreen extends ConsumerStatefulWidget {
   const MindModelsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MindModelsScreen> createState() => _MindModelsScreenState();
+}
+
+class _MindModelsScreenState extends ConsumerState<MindModelsScreen> {
+  MemoryInfo? _memoryInfo;
+  bool _loadingMemory = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadMemory());
+  }
+
+  Future<void> _loadMemory() async {
+    try {
+      final memory = await DeviceCapabilityService().getMemoryInfo(
+        forceRefresh: true,
+      );
+      if (!mounted) return;
+      setState(() {
+        _memoryInfo = memory;
+        _loadingMemory = false;
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() => _loadingMemory = false);
+    }
+  }
+
+  Map<String, OfflineModelInfo> _scribeModelsById() {
+    final registry = ref.watch(modelRegistryProvider);
+    final byId = <String, OfflineModelInfo>{};
+    for (final model in registry.allModels) {
+      if (model.tags.contains(mindScribeModelTag)) {
+        byId[model.id] = model;
+      }
+    }
+    return byId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selectedCatalog = ref.watch(selectedModelProvider);
     final assistantId = ref.watch(selectedAssistantModelIdProvider);
     final readiness = ref.watch(assistantRuntimeReadinessProvider);
     final activeDownloads = ref.watch(activeDownloadsProvider);
+    final service = ref.watch(mindScribeServiceProvider);
 
     return AiroResponsiveScaffold(
       appBar: AppBar(
@@ -35,12 +79,31 @@ class MindModelsScreen extends ConsumerWidget {
         children: [
           Text(
             'Choose a model from Hugging Face, download it, then warm it before '
-            'chatting. Nothing runs until you pick one.',
+            'chatting. Meeting scribe stacks are recommended separately below.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 16),
+          if (_loadingMemory)
+            const Center(child: CircularProgressIndicator())
+          else
+            MindScribeModelsPanel(
+              scribeModelsById: _scribeModelsById(),
+              entitlements: pro_bootstrap.createEntitlements(),
+              memoryInfo: _memoryInfo,
+              onTryStack: () => context.go('/'),
+              onAcquireComplete: () async {
+                final registry = ref.read(modelRegistryProvider);
+                await hydrateMindScribeModels(
+                  registry,
+                  requiredModels: mindScribeRequiredModels,
+                  modelsDirectory: service.modelsDirectory,
+                );
+                if (mounted) setState(() {});
+              },
+            ),
+          const SizedBox(height: 20),
           _ActiveModelCard(
             catalogModel: selectedCatalog,
             assistantRuntimeId: assistantId,
@@ -118,7 +181,7 @@ class _ActiveModelCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Active model', style: theme.textTheme.labelLarge),
+            Text('Active chat model', style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             Text(name, style: theme.textTheme.titleLarge),
             const SizedBox(height: 4),

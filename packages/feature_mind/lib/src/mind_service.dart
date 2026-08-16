@@ -13,6 +13,8 @@ import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
+import 'models/download_model_provider.dart';
+import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
@@ -275,6 +277,24 @@ class MindService {
   Stream<ModelAcquisitionEvent> acquireModels() async* {
     yield* _models.acquire(await modelsDirectory());
   }
+
+  /// Downloads optional pinned files (for example the Sarvam-1 pro pack) into
+  /// [modelsDirectory]. Only the download-backed provider can fetch over the
+  /// network; bundled installers report every file as failed.
+  Stream<ModelAcquisitionEvent> acquireModelFiles(
+    List<RequiredModel> models,
+  ) async* {
+    final dir = await modelsDirectory();
+    if (_models is DownloadModelProvider) {
+      yield* (_models as DownloadModelProvider).acquireFiles(dir, models);
+      return;
+    }
+    yield ModelAcquisitionDone(models.map((model) => model.fileName).toList());
+  }
+
+  /// Optional Indic generation weights from the public HF mirror.
+  Stream<ModelAcquisitionEvent> acquireOptionalIndicGeneration() =>
+      acquireModelFiles(mindIndicOptionalModels());
 
   /// Hashes every installed model against the digest pinned in Rust source.
   Future<List<InstalledModel>> verifyModels() async =>
