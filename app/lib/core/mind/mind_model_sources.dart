@@ -1,6 +1,5 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
-import 'package:feature_mind/src/runtime/persistent/persistent_operation_log.dart';
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.

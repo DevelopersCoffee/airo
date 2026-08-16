@@ -1,0 +1,4 @@
+owner: Rust Architect
+description: >
+  On-device speaker diarization between whisper ASR and Meeting IR —
+  solo fallback, embedding clustering, ECAPA ONNX seam.

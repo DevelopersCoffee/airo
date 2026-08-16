@@ -2,7 +2,9 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../export/domain/meeting_markdown_renderer.dart' show formatTimestamp;
-import '../mind_diarization.dart' show formatMindSpeakerLabel;
+import '../mind_diarization.dart';
+import '../speaker/meeting_speaker_registry.dart';
+import '../speaker/mind_speaker_palette.dart';
 import '../whisper/api/meetings.dart' as rust;
 import 'evidence_resolver.dart';
 import 'meeting_ir_user_edits.dart';
@@ -317,12 +319,18 @@ class MeetingIrTranscriptList extends StatelessWidget {
     required this.highlightedIds,
     required this.segmentKeys,
     this.fallbackTranscript = '',
+    this.speakerRegistry = MeetingSpeakerRegistry.empty,
+    this.onRenameSpeaker,
+    this.onMergeSpeaker,
   });
 
   final List<TranscriptSegmentView> segments;
   final Set<String> highlightedIds;
   final Map<String, GlobalKey> segmentKeys;
   final String fallbackTranscript;
+  final MeetingSpeakerRegistry speakerRegistry;
+  final void Function(String speakerLabel)? onRenameSpeaker;
+  final void Function(String fromLabel)? onMergeSpeaker;
 
   @override
   Widget build(BuildContext context) {
@@ -360,15 +368,68 @@ class MeetingIrTranscriptList extends StatelessWidget {
                 ),
                 if (segment.speakerLabel != null) ...[
                   const SizedBox(width: 8),
-                  Chip(
-                    key: Key('meeting_ir_speaker_${segment.id}'),
-                    label: Text(
-                      formatMindSpeakerLabel(segment.speakerLabel!),
-                      style: Theme.of(context).textTheme.labelSmall,
+                  GestureDetector(
+                    onLongPress: onRenameSpeaker == null
+                        ? null
+                        : () async {
+                            final label = speakerRegistry.canonicalLabel(
+                              segment.speakerLabel!,
+                            );
+                            if (onMergeSpeaker == null) {
+                              onRenameSpeaker!(label);
+                              return;
+                            }
+                            await showModalBottomSheet<void>(
+                              context: context,
+                              builder: (context) => SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.edit_outlined),
+                                      title: const Text('Rename speaker'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        onRenameSpeaker!(label);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.merge_type),
+                                      title: const Text('Merge into another'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        onMergeSpeaker!(label);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                    child: Chip(
+                      key: Key('meeting_ir_speaker_${segment.id}'),
+                      label: Text(
+                        mindSpeakerDisplayLabel(
+                          segment.speakerLabel!,
+                          registry: speakerRegistry,
+                        ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: mindSpeakerChipForeground(
+                            mindSpeakerChipColor(
+                              speakerRegistry.canonicalLabel(
+                                segment.speakerLabel!,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      backgroundColor: mindSpeakerChipColor(
+                        speakerRegistry.canonicalLabel(segment.speakerLabel!),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   ),
                 ],
                 const SizedBox(width: 8),

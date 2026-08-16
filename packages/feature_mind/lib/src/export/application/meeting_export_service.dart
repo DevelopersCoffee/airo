@@ -2,6 +2,8 @@ import 'package:core_workers/core_workers.dart';
 
 import '../../mind_service.dart';
 import '../../whisper/api/meetings.dart' as rust;
+import '../../speaker/meeting_speaker_registry.dart';
+import '../../speaker/meeting_speaker_registry_store.dart';
 import '../domain/meeting_export_models.dart';
 import '../domain/meeting_markdown_renderer.dart';
 
@@ -12,9 +14,13 @@ import '../domain/meeting_markdown_renderer.dart';
 /// `MeetingRecord.actionItems` (#1657 Stage 2), and timestamped transcript
 /// lines from `transcriptDocument` (#1629). The renderer stays pure Dart.
 class MeetingExportService {
-  const MeetingExportService(this._mindService);
+  const MeetingExportService(
+    this._mindService, {
+    this.speakerRegistryStore,
+  });
 
   final MindService _mindService;
+  final MeetingSpeakerRegistryStore? speakerRegistryStore;
 
   /// Same policy as everywhere else in the repo: parsing/serialization past
   /// ~50 KB moves off the main isolate via `runOffMain`
@@ -59,6 +65,9 @@ class MeetingExportService {
     final doc = await _mindService.transcriptDocument(meetingId);
     final lines = _linesFrom(doc);
     final duration = _durationFrom(doc);
+    final speakerRegistry = speakerRegistryStore == null
+        ? MeetingSpeakerRegistry.empty
+        : await speakerRegistryStore!.load(meetingId);
 
     final minutes = meeting.minutes.trim();
 
@@ -72,6 +81,7 @@ class MeetingExportService {
       transcriptLines: lines,
       fallbackTranscript: meeting.transcript,
       momMarkdown: minutes.isEmpty ? null : minutes,
+      speakerRegistry: speakerRegistry,
       actionItems: [
         for (final item in meeting.actionItems)
           ExportActionItem(

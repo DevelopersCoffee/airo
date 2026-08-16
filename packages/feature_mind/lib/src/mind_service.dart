@@ -413,6 +413,16 @@ class MindService {
     var metrics = const <rust.MeetingMetricRecord>[];
 
     try {
+      final speechMode = await MindIndicPreferences.readSpeechMode();
+      if (speechMode == MindIndicSpeechMode.sarvamEdge) {
+        yield progress.copyWith(
+          stage: MindStage.failed,
+          error:
+              'Sarvam Edge on-device ASR is not available in this build yet.',
+        );
+        return;
+      }
+
       // ── 1. Audio → transcript, in the speech library ───────────────────────
       await for (final event in _speech.transcribe(
         wavPath: wavPath,

@@ -32,6 +32,7 @@
 //! `recorded_at_ms` comes from Dart. `C2` forbids reading a wall clock on a
 //! path that replay must reproduce, and this is that path.
 
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use flutter_rust_bridge::frb;
@@ -50,7 +51,7 @@ use airo_mind_core::{
     MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
     TranscriptSegment, TranscriptionOptions,
 };
-use airo_mind_diarize::{diarize_segments, DiarizationStrategy};
+use airo_mind_diarize::{diarize_segments, product_diarization_strategy, DiarizationStrategy};
 use airo_mind_transcript::Segment;
 
 // ---------------------------------------------------------------------------
@@ -320,6 +321,7 @@ fn apply_diarization_labels(
     records: &mut [TranscriptSegmentRecord],
     pcm: &Pcm,
     strategy: DiarizationStrategy,
+    models_dir: Option<&Path>,
 ) -> Result<(), String> {
     if records.is_empty() {
         return Ok(());
@@ -333,7 +335,17 @@ fn apply_diarization_labels(
             text: record.text.clone(),
         })
         .collect();
-    let result = diarize_segments(&segments, Some(pcm), strategy).map_err(|e| e.to_string())?;
+    let result = match diarize_segments(&segments, Some(pcm), strategy, models_dir) {
+        Ok(result) => result,
+        Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => diarize_segments(
+            &segments,
+            None,
+            DiarizationStrategy::Solo,
+            None,
+        )
+        .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?,
+        Err(error) => return Err(error.to_string()),
+    };
     for (record, diarized) in records.iter_mut().zip(result.segments.iter()) {
         record.speaker_label = Some(diarized.speaker.label());
     }
@@ -418,6 +430,10 @@ static SPEECH_MODEL_VERSION: Mutex<Option<String>> = Mutex::new(None);
 /// The store and its projection.
 static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
 
+/// Models directory from the last successful `initialize` — used to pick
+/// diarization strategy (ECAPA optional weights).
+static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+
 /// The in-flight job's token, so the UI can stop it.
 static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
 
@@ -479,6 +495,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
         "{}@{}",
         speech_model.logical_id, speech_model.version
     ));
+    *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
     *lock(&LIBRARY) = Some(Library { store, index });
     Ok(())
 }
@@ -488,6 +505,12 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
 #[frb(sync)]
 pub fn is_ready() -> bool {
     lock(&ENGINES).is_some()
+}
+
+/// Sarvam Edge on-device ASR — reserved until public weights ship (`#1664`).
+#[frb(sync)]
+pub fn sarvam_edge_speech_available() -> bool {
+    false
 }
 
 /// Recording → transcript, streaming throughout.
@@ -560,7 +583,12 @@ pub fn transcribe_recording(
         return Err("No speech was found in the recording.".into());
     }
 
-    apply_diarization_labels(&mut segments, &pcm, DiarizationStrategy::Solo)?;
+    let models_dir_guard = lock(&MODELS_DIR);
+    let models_dir = models_dir_guard.as_deref();
+    let strategy = models_dir
+        .map(product_diarization_strategy)
+        .unwrap_or(DiarizationStrategy::Solo);
+    apply_diarization_labels(&mut segments, &pcm, strategy, models_dir)?;
 
     emit(TranscriptEvent::TranscriptReady {
         text: transcript,
@@ -844,7 +872,7 @@ mod tests {
                 speaker_label: None,
             },
         ];
-        apply_diarization_labels(&mut records, &pcm, DiarizationStrategy::Solo)
+        apply_diarization_labels(&mut records, &pcm, DiarizationStrategy::Solo, None)
             .expect("solo labels apply");
         assert_eq!(records[0].speaker_label.as_deref(), Some("sp0"));
         assert_eq!(records[1].speaker_label.as_deref(), Some("sp0"));

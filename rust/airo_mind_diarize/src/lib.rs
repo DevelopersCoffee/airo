@@ -14,8 +14,11 @@
 
 mod cluster;
 mod diarizer;
+mod ecapa_onnx;
 mod embedder;
+mod embedder_factory;
 mod embedding_diarizer;
+mod model_files;
 mod pcm_slice;
 mod result;
 mod segment;
@@ -29,9 +32,14 @@ pub use embedder::{SpeakerEmbedder, SpeakerEmbedding};
 pub use embedding_diarizer::EmbeddingDiarizer;
 pub use pcm_slice::slice_segment_pcm;
 pub use result::DiarizationResult;
+pub use embedder_factory::{resolve_embedder, stub_embedder, ResolvedEmbedder};
+pub use ecapa_onnx::EcapaOnnxEmbedder;
+pub use model_files::{ecapa_model_path, ECAPA_TINY_ONNX_FILE};
 pub use segment::{DiarizedSegment, SpeakerId};
 pub use single_speaker::SingleSpeakerDiarizer;
-pub use strategy::{diarize_segments, DiarizationStrategy};
+pub use strategy::{
+    diarize_segments, product_diarization_strategy, DiarizationStrategy,
+};
 pub use stub_embedder::StubSpeakerEmbedder;
 
 /// Runs the default v0 diarizer (`SingleSpeakerDiarizer`) on transcript segments.

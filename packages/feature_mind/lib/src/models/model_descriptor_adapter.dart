@@ -102,6 +102,14 @@ Future<List<RequiredModel>> mindScribeRequiredModels({
 /// Optional pro Indic generation pack — not required for first-run scribe.
 List<RequiredModel> mindIndicOptionalModels() => [pinnedIndicGenerationModel];
 
+/// Optional ECAPA diarization weights — file name only until a public pin ships.
+///
+/// Rust checks `ecapa_tdnn_tiny_int8.onnx` in the models directory; download
+/// URL and digest land when weights are verified on Hugging Face.
+const String kMindEcapaOnnxFileName = 'ecapa_tdnn_tiny_int8.onnx';
+
+List<RequiredModel> mindDiarizeOptionalModels() => const [];
+
 /// Full verification of what is installed, translated into the shape a
 /// [ModelProvider] speaks.
 ///
