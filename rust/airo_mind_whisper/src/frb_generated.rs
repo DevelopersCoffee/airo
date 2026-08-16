@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -699939418;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 147163789;
 
 // Section: executor
 
@@ -71,6 +71,42 @@ fn wire__crate__api__meetings__cancel_processing_impl(
                 let output_ok = Result::<_, ()>::Ok({
                     crate::api::meetings::cancel_processing();
                 })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__meetings__embed_speaker_segment_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "embed_speaker_segment",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_wav_path = <String>::sse_decode(&mut deserializer);
+            let api_start_ms = <u64>::sse_decode(&mut deserializer);
+            let api_end_ms = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::meetings::embed_speaker_segment(
+                    api_wav_path,
+                    api_start_ms,
+                    api_end_ms,
+                )?;
                 Ok(output_ok)
             })())
         },
@@ -572,6 +608,13 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for f32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f32::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -672,6 +715,18 @@ impl SseDecode for Vec<crate::api::meetings::MeetingRecord> {
             ans_.push(<crate::api::meetings::MeetingRecord>::sse_decode(
                 deserializer,
             ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<f32>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1034,29 +1089,29 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        2 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__meetings__speech_language_default_impl(
+        3 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__meetings__speech_language_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+        13 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => {
+        14 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => {
+        15 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1072,8 +1127,9 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         1 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
+        2 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -1453,6 +1509,13 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for f32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f32::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1526,6 +1589,16 @@ impl SseEncode for Vec<crate::api::meetings::MeetingRecord> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::api::meetings::MeetingRecord>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <f32>::sse_encode(item, serializer);
         }
     }
 }

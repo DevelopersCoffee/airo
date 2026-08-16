@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../whisper/api/meetings_seam.dart';
+import '../whisper/api/meetings_seam.dart' show embedSpeakerSegment, syncSpeakerEnrollmentJson;
 
 /// A globally enrolled speaker profile (#504) — survives across meetings.
 class GlobalEnrolledSpeaker {
@@ -85,5 +85,49 @@ class GlobalSpeakerEnrollmentStore {
   Future<void> syncToRuntime() async {
     final profiles = await loadProfiles();
     await saveProfiles(profiles);
+  }
+
+  /// Enrolls a speaker from one meeting segment (#504).
+  ///
+  /// Returns the saved profile, or null when embedding could not be computed.
+  Future<GlobalEnrolledSpeaker?> enrollFromSegment({
+    required String displayName,
+    required String wavPath,
+    required int startMs,
+    required int endMs,
+  }) async {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) return null;
+    final embedding = embedSpeakerSegment(
+      wavPath: wavPath,
+      startMs: startMs,
+      endMs: endMs,
+    );
+    if (embedding.isEmpty) return null;
+
+    final profiles = await loadProfiles();
+    final id = _nextEnrolledId(profiles);
+    final profile = GlobalEnrolledSpeaker(
+      id: id,
+      displayName: trimmed,
+      embedding: embedding,
+    );
+    final next = [...profiles, profile];
+    await saveProfiles(next);
+    return profile;
+  }
+
+  String _nextEnrolledId(List<GlobalEnrolledSpeaker> profiles) {
+    var max = -1;
+    for (final profile in profiles) {
+      final suffix = profile.id.startsWith('enrolled_')
+          ? profile.id.substring('enrolled_'.length)
+          : null;
+      final parsed = suffix != null ? int.tryParse(suffix) : null;
+      if (parsed != null && parsed > max) {
+        max = parsed;
+      }
+    }
+    return 'enrolled_${max + 1}';
   }
 }

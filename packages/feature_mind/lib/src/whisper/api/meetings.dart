@@ -36,6 +36,19 @@ bool sarvamEdgeSpeechAvailable() =>
 Future<void> syncSpeakerEnrollmentJson({required String raw}) =>
     RustLib.instance.api.crateApiMeetingsSyncSpeakerEnrollmentJson(raw: raw);
 
+/// Speaker embedding for one transcript time range (#504).
+///
+/// Uses ECAPA when the optional ONNX file is installed; stub embedder otherwise.
+Float32List embedSpeakerSegment({
+  required String wavPath,
+  required BigInt startMs,
+  required BigInt endMs,
+}) => RustLib.instance.api.crateApiMeetingsEmbedSpeakerSegment(
+  wavPath: wavPath,
+  startMs: startMs,
+  endMs: endMs,
+);
+
 /// Recording → transcript, streaming throughout.
 ///
 /// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
