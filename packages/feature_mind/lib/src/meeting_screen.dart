@@ -10,8 +10,11 @@ import 'meeting_ir/meeting_ir_user_edits_store.dart';
 import 'meeting_ir/meeting_ir_widgets.dart';
 import 'speaker/meeting_speaker_registry.dart';
 import 'speaker/meeting_speaker_registry_store.dart';
+import 'speaker/global_speaker_enrollment_store.dart';
 import 'speaker/speaker_rename_dialog.dart';
+import 'speaker/speaker_remember_dialog.dart';
 import 'whisper/api/meetings.dart' as rust;
+import 'mind_diarization.dart';
 import 'mind_service.dart';
 import 'trust/scribe_trust_signals.dart';
 
@@ -30,6 +33,7 @@ class MeetingScreen extends StatefulWidget {
     required this.service,
     required this.title,
     required Stream<MindProgress> this._progress,
+    this.audioPath,
     this.meetingIntelligenceEnabled = true,
     this.showLowTierCloudChoice = false,
     this.onCloudFallback,
@@ -51,12 +55,17 @@ class MeetingScreen extends StatefulWidget {
     this.speakerRegistryStore,
     super.key,
   }) : _progress = null,
-       title = '';
+       title = '',
+       audioPath = null;
 
   final MindService service;
   final String title;
   final Stream<MindProgress>? _progress;
   final rust.MeetingRecord? _meeting;
+
+  /// Recording path while [MindService.process] is running — enables speaker
+  /// enrollment before the transcript document is saved (#504).
+  final String? audioPath;
 
   /// Pro / launch-promo seam: when false, IR MoM review is locked (AC).
   /// Open-source builds leave this true (`LaunchPromoEntitlements`).
@@ -94,6 +103,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
       widget.userEditsStore ?? MeetingIrUserEditsStore();
   late final MeetingSpeakerRegistryStore _speakerStore =
       widget.speakerRegistryStore ?? MeetingSpeakerRegistryStore();
+  final _globalEnrollmentStore = GlobalSpeakerEnrollmentStore();
   late final _exportService = MeetingExportService(
     widget.service,
     speakerRegistryStore: _speakerStore,
@@ -103,6 +113,8 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   MeetingIrUserEdits _edits = const MeetingIrUserEdits();
   MeetingSpeakerRegistry _speakerRegistry = MeetingSpeakerRegistry.empty;
+  List<GlobalEnrolledSpeaker> _globalProfiles = const [];
+  String? _audioPath;
   final _evidence = const EvidenceResolver();
 
   Map<String, TranscriptSegmentView> _segmentsById = const {};
@@ -155,7 +167,15 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _loadIrContext(stored);
     } else {
       _syncLiveSegments();
+      _audioPath = widget.audioPath;
     }
+    _loadGlobalEnrollment();
+  }
+
+  Future<void> _loadGlobalEnrollment() async {
+    final profiles = await _globalEnrollmentStore.loadProfiles();
+    if (!mounted) return;
+    setState(() => _globalProfiles = profiles);
   }
 
   void _syncLiveSegments() {
@@ -195,6 +215,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
     setState(() {
       _edits = edits;
       _speakerRegistry = speakers;
+      _audioPath = doc?.audioPath;
       _orderedSegments = ordered.isNotEmpty
           ? ordered
           : [
@@ -439,6 +460,54 @@ class _MeetingScreenState extends State<MeetingScreen> {
     setState(() => _speakerRegistry = next);
   }
 
+  TranscriptSegmentView? _segmentForSpeaker(String speakerLabel) {
+    final canonical = _speakerRegistry.canonicalLabel(speakerLabel);
+    for (final segment in _orderedSegments) {
+      final label = segment.speakerLabel;
+      if (label != null &&
+          _speakerRegistry.canonicalLabel(label) == canonical) {
+        return segment;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _rememberSpeaker(String speakerLabel) async {
+    final audioPath = _audioPath;
+    if (audioPath == null || audioPath.isEmpty) {
+      _notify('Audio is not available yet for speaker enrollment.');
+      return;
+    }
+    final segment = _segmentForSpeaker(speakerLabel);
+    if (segment == null) {
+      _notify('No transcript segment found for this speaker.');
+      return;
+    }
+    final name = await showSpeakerRememberDialog(
+      context: context,
+      speakerLabel: speakerLabel,
+      registry: _speakerRegistry,
+    );
+    if (name == null || !mounted) return;
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+
+    final profile = await _globalEnrollmentStore.enrollFromSegment(
+      displayName: trimmed,
+      wavPath: audioPath,
+      startMs: segment.startMs,
+      endMs: segment.endMs,
+    );
+    if (!mounted) return;
+    if (profile == null) {
+      _notify('Could not compute a voice profile for this segment.');
+      return;
+    }
+    await _loadGlobalEnrollment();
+    if (!mounted) return;
+    _notify('Remembered ${profile.displayName} for future meetings.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final stored = _meeting ?? widget._meeting;
@@ -568,6 +637,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   speakerRegistry: _speakerRegistry,
                   onRenameSpeaker: _renameSpeaker,
                   onMergeSpeaker: _mergeSpeaker,
+                  onRememberSpeaker:
+                      _audioPath != null ? _rememberSpeaker : null,
+                  globalEnrolledNames:
+                      globalEnrolledSpeakerNames(_globalProfiles),
                 ),
               ],
               if (stored != null) ...[

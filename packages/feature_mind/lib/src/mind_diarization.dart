@@ -1,4 +1,5 @@
 import 'bridges/mind_speech_bridge.dart';
+import 'speaker/global_speaker_enrollment_store.dart';
 import 'speaker/meeting_speaker_registry.dart';
 
 /// Stable speaker label for solo recordings (`sp0` in `airo_mind_diarize`).
@@ -18,7 +19,12 @@ String formatMindSpeakerLabel(String label) {
 String mindSpeakerDisplayLabel(
   String label, {
   MeetingSpeakerRegistry registry = MeetingSpeakerRegistry.empty,
+  Map<String, String> globalEnrolledNames = const {},
 }) {
+  final enrolledName = globalEnrolledNames[label];
+  if (enrolledName != null && enrolledName.isNotEmpty) {
+    return enrolledName;
+  }
   final canonical = registry.canonicalLabel(label);
   final custom = registry.displayNameFor(canonical);
   if (custom != null && custom.isNotEmpty) {
@@ -26,6 +32,15 @@ String mindSpeakerDisplayLabel(
   }
   return formatMindSpeakerLabel(canonical);
 }
+
+/// Display names keyed by enrolled speaker id (`enrolled_0`, …).
+Map<String, String> globalEnrolledSpeakerNames(
+  List<GlobalEnrolledSpeaker> profiles,
+) => {
+  for (final profile in profiles)
+    if (profile.id.isNotEmpty && profile.displayName.isNotEmpty)
+      profile.id: profile.displayName,
+};
 
 /// v0 on-device diarization — mirrors Rust `SingleSpeakerDiarizer` until ECAPA
 /// clustering ships. Assigns one speaker to every segment missing a label.

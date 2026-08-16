@@ -14,3 +14,5 @@ cargo:
     extra_flags: ["--features", "whisper"]
   # Desktop ECAPA (optional): install ORT via scripts/install-onnxruntime.sh then
   # build with --features whisper,ecapa,ecapa-bundle (see airo_mind_whisper/Cargo.toml).
+  # Android ECAPA: install scripts/install-onnxruntime-android.sh — cargokit enables
+  # ecapa automatically when ORT_LIB_LOCATION is present.

@@ -29,7 +29,9 @@ source scripts/install-onnxruntime.sh
 scripts/build-whisper-ecapa-desktop.sh
 ```
 
-Android cargokit builds stay on `whisper` only until ORT is bundled for arm64.
+Android cargokit builds enable `ecapa` when Android ORT static libs are
+installed (`scripts/install-onnxruntime-android.sh`). Without ORT, builds stay
+on `whisper` only (stub embedder at runtime).
 
 ### Test
 

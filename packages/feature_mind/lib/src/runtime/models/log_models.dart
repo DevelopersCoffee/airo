@@ -39,6 +39,9 @@ enum MindOpKind {
   /// land: an op that never happened cannot appear on a replay-built
   /// timeline.
   meetingIrExtracted,
+
+  /// A speaker voice profile was enrolled for cross-meeting recognition (#504).
+  speakerEnrolled,
 }
 
 /// Whether this operation's signature checked out.

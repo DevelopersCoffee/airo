@@ -322,6 +322,8 @@ class MeetingIrTranscriptList extends StatelessWidget {
     this.speakerRegistry = MeetingSpeakerRegistry.empty,
     this.onRenameSpeaker,
     this.onMergeSpeaker,
+    this.onRememberSpeaker,
+    this.globalEnrolledNames = const {},
   });
 
   final List<TranscriptSegmentView> segments;
@@ -331,6 +333,8 @@ class MeetingIrTranscriptList extends StatelessWidget {
   final MeetingSpeakerRegistry speakerRegistry;
   final void Function(String speakerLabel)? onRenameSpeaker;
   final void Function(String fromLabel)? onMergeSpeaker;
+  final void Function(String speakerLabel)? onRememberSpeaker;
+  final Map<String, String> globalEnrolledNames;
 
   @override
   Widget build(BuildContext context) {
@@ -401,6 +405,17 @@ class MeetingIrTranscriptList extends StatelessWidget {
                                         onMergeSpeaker!(label);
                                       },
                                     ),
+                                    if (onRememberSpeaker != null)
+                                      ListTile(
+                                        leading: const Icon(Icons.badge_outlined),
+                                        title: const Text(
+                                          'Remember for future meetings',
+                                        ),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          onRememberSpeaker!(label);
+                                        },
+                                      ),
                                   ],
                                 ),
                               ),
@@ -412,6 +427,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
                         mindSpeakerDisplayLabel(
                           segment.speakerLabel!,
                           registry: speakerRegistry,
+                          globalEnrolledNames: globalEnrolledNames,
                         ),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: mindSpeakerChipForeground(

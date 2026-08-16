@@ -10,7 +10,7 @@ pub struct EnrolledSpeaker {
     pub embedding: SpeakerEmbedding,
 }
 
-/// In-memory enrollment store — durable persistence lands in Vault / op log (#504).
+/// In-memory enrollment store — durable persistence via Dart op log (#504).
 #[derive(Clone, Debug, Default)]
 pub struct SpeakerEnrollmentStore {
     profiles: Vec<EnrolledSpeaker>,

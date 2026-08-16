@@ -1,6 +1,8 @@
 /// This is copied from Cargokit (which is the official way to use it currently)
 /// Details: https://fzyzcjy.github.io/flutter_rust_bridge/manual/integrate/builtin
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
@@ -137,7 +139,7 @@ class RustBuilder {
 
   /// Returns the path of directory containing build artifacts.
   Future<String> build() async {
-    final extraArgs = _buildOptions?.flags ?? [];
+    final extraArgs = _androidEcapaArgs(_buildOptions?.flags ?? []);
     final manifestPath = path.join(environment.manifestDir, 'Cargo.toml');
     runCommand(
       'rustup',
@@ -192,7 +194,51 @@ class RustBuilder {
       if (!env.ndkIsInstalled() && environment.javaHome != null) {
         env.installNdk(javaHome: environment.javaHome!);
       }
-      return env.buildEnvironment();
+      final buildEnv = await env.buildEnvironment();
+      final ortLib = _resolveOrtLibLocation();
+      if (ortLib != null) {
+        buildEnv['ORT_LIB_LOCATION'] = ortLib;
+        buildEnv['ORT_CXX_STDLIB'] = 'c++_shared';
+      }
+      return buildEnv;
     }
+  }
+
+  /// When Android ORT static libs are installed, link ECAPA into whisper.
+  List<String> _androidEcapaArgs(List<String> flags) {
+    if (target.android == null || _resolveOrtLibLocation() == null) {
+      return flags;
+    }
+    final args = List<String>.from(flags);
+    final featureIndex = args.indexOf('--features');
+    if (featureIndex >= 0 && featureIndex + 1 < args.length) {
+      final current = args[featureIndex + 1];
+      if (!current.contains('ecapa')) {
+        args[featureIndex + 1] = '$current,ecapa';
+      }
+    }
+    return args;
+  }
+
+  String? _resolveOrtLibLocation() {
+    final fromEnv = Platform.environment['ORT_LIB_LOCATION'];
+    if (fromEnv != null && fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    final home = Platform.environment['HOME'];
+    if (home == null) return null;
+    final defaultRoot = path.join(
+      home,
+      '.airo',
+      'onnxruntime',
+      '1.20.0',
+      'android-arm64',
+      'onnxruntime-android-arm64-v8a-static_lib-1.20.0',
+    );
+    final lib = path.join(defaultRoot, 'lib', 'libonnxruntime.a');
+    if (File(lib).existsSync()) {
+      return defaultRoot;
+    }
+    return null;
   }
 }

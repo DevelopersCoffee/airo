@@ -52,8 +52,8 @@ use airo_mind_core::{
     TranscriptSegment, TranscriptionOptions,
 };
 use airo_mind_diarize::{
-    diarize_segments, product_diarization_strategy, DiarizationStrategy,
-    SpeakerEnrollmentStore,
+    diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
+    SpeakerEmbedder, SpeakerEnrollmentStore,
 };
 use airo_mind_transcript::Segment;
 
@@ -573,6 +573,29 @@ pub fn sync_speaker_enrollment_json(raw: String) {
     *lock(&*SPEAKER_ENROLLMENT) = store;
 }
 
+/// Speaker embedding for one transcript time range (#504).
+///
+/// Uses ECAPA when the optional ONNX file is installed; stub embedder otherwise.
+#[frb(sync)]
+pub fn embed_speaker_segment(
+    wav_path: String,
+    start_ms: u64,
+    end_ms: u64,
+) -> Result<Vec<f32>, String> {
+    let pcm = airo_mind_audio::preprocess_path(Path::new(&wav_path))
+        .map_err(|e| e.to_string())?;
+    let core_pcm = Pcm {
+        samples: pcm.samples,
+        sample_rate_hz: pcm.sample_rate_hz,
+        channels: pcm.channels,
+    };
+    let models_dir = lock(&MODELS_DIR).clone();
+    let embedder = resolve_embedder(models_dir.as_deref());
+    embedder
+        .embed_segment(&core_pcm, start_ms, end_ms)
+        .map_err(|e| e.to_string())
+}
+
 /// Recording → transcript, streaming throughout.
 ///
 /// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
@@ -858,6 +881,50 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("tempdir");
         assert!(sarvam_edge_speech_model_path(&dir).is_none());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn embed_speaker_segment_returns_stub_vector_without_ecapa() {
+        let dir = std::env::temp_dir().join(format!(
+            "airo_embed_segment_test_{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).expect("tempdir");
+        let wav_path = dir.join("tone.wav");
+        write_test_wav_i16(
+            &wav_path,
+            &(0..16_000).map(|i| ((i % 200) as i16) - 100).collect::<Vec<_>>(),
+            16_000,
+        );
+
+        let embedding =
+            embed_speaker_segment(wav_path.to_string_lossy().into_owned(), 0, 1_000)
+                .expect("embed segment");
+        assert!(!embedding.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn write_test_wav_i16(path: &Path, samples: &[i16], sample_rate_hz: u32) {
+        let num_samples = samples.len();
+        let data_bytes = num_samples * 2;
+        let byte_rate = sample_rate_hz * 2;
+        let mut bytes = Vec::with_capacity(44 + data_bytes);
+        bytes.extend_from_slice(b"RIFF");
+        bytes.extend_from_slice(&(36 + data_bytes as u32).to_le_bytes());
+        bytes.extend_from_slice(b"WAVEfmt ");
+        bytes.extend_from_slice(&16u32.to_le_bytes());
+        bytes.extend_from_slice(&1u16.to_le_bytes());
+        bytes.extend_from_slice(&1u16.to_le_bytes());
+        bytes.extend_from_slice(&sample_rate_hz.to_le_bytes());
+        bytes.extend_from_slice(&byte_rate.to_le_bytes());
+        bytes.extend_from_slice(&2u16.to_le_bytes());
+        bytes.extend_from_slice(&16u16.to_le_bytes());
+        bytes.extend_from_slice(b"data");
+        bytes.extend_from_slice(&(data_bytes as u32).to_le_bytes());
+        for sample in samples {
+            bytes.extend_from_slice(&sample.to_le_bytes());
+        }
+        std::fs::write(path, bytes).expect("write wav");
     }
 
     /// `#1629`: `transcribe_recording` computed `start_ms`/`end_ms` correctly
