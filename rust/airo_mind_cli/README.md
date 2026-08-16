@@ -36,12 +36,39 @@ One command runs the product pipeline end to end:
    `out/eval/run-NNN.json`. Exits non-zero when any gate fails.
 
 Whisper defaults to multilingual `ggml-tiny.bin` with auto language detection.
-Place user meeting audio at `rust/fixtures/meeting_001.m4a` (or pass path as
-first arg); no checked-in user recording — download models per table below.
+
+### Optional user recording (`meeting_001`)
+
+For real-device POC-2 runs, symlink any local `.m4a` (not committed):
+
+```sh
+ln -sf /path/to/your/recording.m4a rust/fixtures/meeting_001.m4a
+```
+
+Preprocess-only smoke test (no models):
+
+```sh
+cd rust && cargo test -p airo_mind_audio --test meeting_001_m4a
+```
+
+Then run against the `meeting_001` eval golden set (see
+`airo_mind_eval/golden/meeting_001/README.md`):
 
 ```sh
 cd rust
-mkdir -p models   # put ggml-tiny.en.bin and qwen2.5-0.5b-instruct-q4_k_m.gguf here
+cargo run -p airo_mind_cli -- \
+  --models-dir models \
+  --out ./out/meeting_001/ \
+  --golden-meeting meeting_001
+```
+
+The hand-authored `meeting_001` transcript is domain-agnostic fixture text;
+whisper on unrelated audio will fail WER until goldens match a real pass — use
+`--skip-eval` to inspect artifacts only.
+
+```sh
+cd rust
+mkdir -p models   # put ggml-tiny.bin and qwen2.5-0.5b-instruct-q4_k_m.gguf here
 cargo run -p airo_mind_cli -- fixtures/speech.m4a \
   --models-dir models \
   --out ./out/

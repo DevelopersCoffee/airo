@@ -424,6 +424,7 @@ class MeetingArchiveTool implements Tool {
   bool canHandle(Intent intent) {
     return intent.type == IntentType.searchMeetings ||
         intent.type == IntentType.openMeetingScribe ||
+        intent.type == IntentType.getMeetingMom ||
         intent.type == IntentType.myActionItems;
   }
 
@@ -465,6 +466,35 @@ class MeetingArchiveTool implements Tool {
         return AgentToolResult(
           message: 'Found ${hits.length} meeting(s) for "$query":\n$lines',
         );
+      case IntentType.getMeetingMom:
+        final query = (intent.parameters['query'] as String?)?.trim() ?? '';
+        if (query.isNotEmpty) {
+          final hits = await port.search(query);
+          if (hits.isEmpty) {
+            return AgentToolResult(
+              message:
+                  'No saved meeting matched "$query". Record or process a meeting in Scribe first.',
+            );
+          }
+          final minutes = await port.minutesForMeeting(hits.first.meetingId);
+          if (minutes == null) {
+            return AgentToolResult(
+              message:
+                  'Found "${hits.first.title}" but minutes are not ready yet. Open Meeting Scribe to finish processing.',
+              route: '/scribe',
+            );
+          }
+          return AgentToolResult(message: minutes);
+        }
+        final latest = await port.latestWithMinutes();
+        if (latest == null) {
+          return const AgentToolResult(
+            route: '/scribe',
+            message:
+                'No minutes found yet. Record a meeting in Scribe and wait for processing to finish.',
+          );
+        }
+        return AgentToolResult(message: latest.minutes);
       case IntentType.myActionItems:
         final owner =
             (intent.parameters['owner'] as String?)?.trim() ?? 'me';

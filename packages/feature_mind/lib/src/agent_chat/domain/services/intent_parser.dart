@@ -18,6 +18,7 @@ enum IntentType {
   audioScribe,
   searchMeetings,
   openMeetingScribe,
+  getMeetingMom,
   myActionItems,
   mobileActions,
   openWifiSettings,
@@ -104,6 +105,11 @@ class IntentParser {
     'find meeting': IntentType.searchMeetings,
     'open scribe': IntentType.openMeetingScribe,
     'record meeting': IntentType.openMeetingScribe,
+    'give me mom': IntentType.getMeetingMom,
+    'get mom': IntentType.getMeetingMom,
+    'get minutes': IntentType.getMeetingMom,
+    'show minutes': IntentType.getMeetingMom,
+    'meeting minutes': IntentType.getMeetingMom,
     'my action items': IntentType.myActionItems,
     'what is assigned to me': IntentType.myActionItems,
     'mobile actions': IntentType.mobileActions,
@@ -217,6 +223,21 @@ class IntentParser {
     }
 
     if (_containsAny(text, [
+      'give me mom',
+      'get mom',
+      'get minutes',
+      'show minutes',
+      'minutes of meeting',
+      'meeting minutes',
+      'share the mom',
+      'share minutes',
+      'mom for',
+      'minutes for',
+    ])) {
+      return IntentType.getMeetingMom;
+    }
+
+    if (_containsAny(text, [
       'search meeting',
       'find meeting',
       'what did we decide',
@@ -229,6 +250,19 @@ class IntentParser {
 
     if (_containsAny(text, ['open scribe', 'record meeting', 'meeting scribe'])) {
       return IntentType.openMeetingScribe;
+    }
+
+    if (_containsAny(text, [
+      'give me mom',
+      'get mom',
+      'get minutes',
+      'show minutes',
+      'minutes of meeting',
+      'meeting minutes',
+      'share the mom',
+      'share minutes',
+    ])) {
+      return IntentType.getMeetingMom;
     }
 
     if (_containsAny(text, [
@@ -347,6 +381,14 @@ class IntentParser {
       params['query'] = about?.group(1)?.trim() ?? text.trim();
     }
 
+    if (lowerText.contains('mom for') || lowerText.contains('minutes for')) {
+      final match = RegExp(
+        r'(?:mom|minutes)\s+for\s+(.+)$',
+        caseSensitive: false,
+      ).firstMatch(text);
+      params['query'] = match?.group(1)?.trim() ?? text.trim();
+    }
+
     return params;
   }
 
@@ -426,6 +468,8 @@ class IntentParser {
         return 'Searching meeting archive';
       case IntentType.openMeetingScribe:
         return 'Opening Meeting Scribe';
+      case IntentType.getMeetingMom:
+        return 'Fetching minutes of meeting';
       case IntentType.myActionItems:
         return 'Listing action items from meetings';
       case IntentType.mobileActions:

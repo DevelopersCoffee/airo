@@ -86,6 +86,11 @@ void main() {
         IntentParser.parse('manage offline models').type,
         IntentType.modelManagement,
       );
+      expect(IntentParser.parse('give me mom').type, IntentType.getMeetingMom);
+      expect(
+        IntentParser.parse('minutes for standup').type,
+        IntentType.getMeetingMom,
+      );
     });
   });
 }
