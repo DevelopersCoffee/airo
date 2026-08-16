@@ -1,6 +1,7 @@
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:feature_mind/src/host/assistant_host_adapter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_assistant_host_adapter.dart';
+import '../support/gemini_nano_channel.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({
-      'selected_assistant_model_id': geminiNanoAssistantModelId,
+      'selected_assistant_model_id': _cloudChatModelId,
     });
   });
 
@@ -65,6 +67,7 @@ void main() {
   testWidgets('a finance-shaped message is routed through the host adapter', (
     tester,
   ) async {
+    stubGeminiNanoChannel();
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(1200, 1000);
     addTearDown(() {
@@ -88,11 +91,16 @@ void main() {
       ProviderScope(
         overrides: [
           assistantHostAdapterProvider.overrideWithValue(adapter),
+          assistantModelLibraryProvider.overrideWith(
+            (ref) async => _financeChatLibraryState,
+          ),
           selectedAssistantModelIdProvider.overrideWith(
-            (ref) => _SelectedAssistantModelNotifier(),
+            (ref) => _FinanceChatModelNotifier(),
           ),
         ],
-        child: const MaterialApp(home: ChatScreen()),
+        child: const MaterialApp(
+          home: ChatScreen(enableAiInitialization: false),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -125,3 +133,34 @@ class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
     state = geminiNanoAssistantModelId;
   }
 }
+
+class _FinanceChatModelNotifier extends SelectedAssistantModelNotifier {
+  _FinanceChatModelNotifier() {
+    state = _cloudChatModelId;
+  }
+}
+
+const _cloudChatModelId = 'cloud-chat-test';
+
+const _financeChatCandidate = AssistantModelCandidate(
+  id: _cloudChatModelId,
+  name: 'Cloud chat',
+  runtime: 'Network',
+  description: 'Remote model for tests',
+  bestFor: [AssistantTask.chat],
+  tags: ['Cloud'],
+  privacyLabel: 'Processed remotely',
+  sizeLabel: 'No download',
+  available: true,
+  actionLabel: 'Use',
+  local: false,
+);
+
+const _financeChatLibraryState = AssistantModelLibraryState(
+  task: AssistantTask.chat,
+  deviceLabel: 'Test host',
+  platformLabel: 'TEST',
+  candidates: [_financeChatCandidate],
+  recommended: _financeChatCandidate,
+  defaultPackages: {},
+);
