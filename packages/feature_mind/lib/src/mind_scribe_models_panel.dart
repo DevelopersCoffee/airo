@@ -10,6 +10,7 @@ import 'mind_model_advisor.dart';
 import 'mind_service.dart';
 import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
+import 'settings/indic_intelligence_preferences.dart';
 
 /// Shell override supplies the live scribe [MindService] (optional downloads,
 /// Try it navigation). Mind shell overrides this at composition root.
@@ -42,43 +43,19 @@ class MindScribeModelsPanel extends ConsumerStatefulWidget {
 }
 
 class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
-  MindIndicGenerationMode _generationMode = MindIndicGenerationMode.auto;
-  bool _loadingPrefs = true;
-
   String? _downloadingStackId;
   ModelAcquisitionProgress? _downloadProgress;
   String? _downloadError;
   List<String> _downloadFailed = const [];
 
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadPrefs());
-  }
-
-  Future<void> _loadPrefs() async {
-    final mode = await MindIndicPreferences.readGenerationMode();
-    if (!mounted) return;
-    setState(() {
-      _generationMode = mode;
-      _loadingPrefs = false;
-    });
-  }
-
-  Future<void> _setGenerationMode(MindIndicGenerationMode mode) async {
-    await MindIndicPreferences.writeGenerationMode(mode);
-    if (!mounted) return;
-    setState(() => _generationMode = mode);
-  }
-
-  MindScribeStackRecommendation _recommendation() {
+  MindScribeStackRecommendation _recommendation(MindIndicGenerationMode mode) {
     final capability = MindIndicCapability(
       entitlements: widget.entitlements,
       memoryInfo: widget.memoryInfo,
     );
     return const MindModelAdvisor().recommend(
       capability: capability,
-      generationMode: _generationMode,
+      generationMode: mode,
       scribeModelsById: widget.scribeModelsById,
     );
   }
@@ -142,14 +119,8 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingPrefs) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final recommendation = _recommendation();
+    final generationMode = ref.watch(indicGenerationModeProvider);
+    final recommendation = _recommendation(generationMode);
     final capability = MindIndicCapability(
       entitlements: widget.entitlements,
       memoryInfo: widget.memoryInfo,
@@ -174,8 +145,9 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
         if (capability.proEnabled && capability.isDesktopHost) ...[
           const SizedBox(height: 12),
           _GenerationModeSelector(
-            value: _generationMode,
-            onChanged: _setGenerationMode,
+            value: generationMode,
+            onChanged: (mode) =>
+                ref.read(indicGenerationModeProvider.notifier).select(mode),
           ),
         ],
         const SizedBox(height: 16),
