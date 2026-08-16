@@ -923,11 +923,13 @@ impl SseDecode for crate::api::meetings::TranscriptSegmentRecord {
         let mut var_startMs = <u64>::sse_decode(deserializer);
         let mut var_endMs = <u64>::sse_decode(deserializer);
         let mut var_text = <String>::sse_decode(deserializer);
+        let mut var_speakerLabel = <Option<String>>::sse_decode(deserializer);
         return crate::api::meetings::TranscriptSegmentRecord {
             id: var_id,
             start_ms: var_startMs,
             end_ms: var_endMs,
             text: var_text,
+            speaker_label: var_speakerLabel,
         };
     }
 }
@@ -1325,6 +1327,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptSegmentRe
             self.start_ms.into_into_dart().into_dart(),
             self.end_ms.into_into_dart().into_dart(),
             self.text.into_into_dart().into_dart(),
+            self.speaker_label.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1694,6 +1697,7 @@ impl SseEncode for crate::api::meetings::TranscriptSegmentRecord {
         <u64>::sse_encode(self.start_ms, serializer);
         <u64>::sse_encode(self.end_ms, serializer);
         <String>::sse_encode(self.text, serializer);
+        <Option<String>>::sse_encode(self.speaker_label, serializer);
     }
 }
 

@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
+import 'mind_diarization.dart';
 import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
 import 'models/download_model_provider.dart';
@@ -431,7 +432,7 @@ class MindService {
             progress = progress.copyWith(
               stage: MindStage.extracting,
               transcript: text,
-              segments: segments,
+              segments: applySoloSpeakerDiarization(segments),
             );
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);

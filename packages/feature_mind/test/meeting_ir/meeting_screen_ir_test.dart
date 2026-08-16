@@ -111,6 +111,7 @@ rust.TranscriptDocumentRecord _doc() => rust.TranscriptDocumentRecord(
       startMs: BigInt.from(65000),
       endMs: BigInt.from(70000),
       text: 'Priya said the Kafka consumer lag is the bottleneck.',
+      speakerLabel: 'sp0',
     ),
   ],
 );
@@ -145,6 +146,16 @@ void main() {
     expect(find.text('lag: 2s'), findsOneWidget);
     // Evidence clock on the action row (65_000 ms → 01:05).
     expect(find.text('01:05'), findsOneWidget);
+    // Transcript is below MoM sections — scroll it into the lazy ListView.
+    await tester.scrollUntilVisible(
+      find.text('Transcript'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    // Solo diarization label on the transcript segment.
+    expect(find.byKey(const Key('meeting_ir_speaker_s0')), findsOneWidget);
+    expect(find.text('Speaker 1'), findsOneWidget);
     // Free-form minutes fallback is suppressed when IR is present.
     expect(find.text('Minutes'), findsNothing);
   });

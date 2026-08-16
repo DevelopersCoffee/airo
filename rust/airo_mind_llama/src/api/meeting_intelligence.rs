@@ -11,6 +11,7 @@ use airo_mind_core::{
     CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest,
     ResourceRequest, RuntimeError, RuntimeStats, Supervisor,
 };
+use airo_mind_diarize::diarize_single_speaker;
 use airo_mind_meeting::{
     extract, generate_mom, validate, ExtractionConfig, MeetingInput, MomError,
 };
@@ -244,6 +245,11 @@ pub fn process_meeting_intelligence(
             text: s.text.clone(),
         })
         .collect();
+
+    // Wave 3: validate diarization seam before transcript preprocessing.
+    // v0 assigns one speaker; multi-speaker embedders plug in here later.
+    diarize_single_speaker(&transcript_segments).map_err(|e| e.to_string())?;
+
     let validate_segments = transcript_segments.clone();
 
     let processed = process(&transcript_segments, &ChunkConfig::default());

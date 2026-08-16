@@ -8,6 +8,7 @@ use airo_mind_core::{
     CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest,
     ResourceRequest, RuntimeError, RuntimeStats, Supervisor, TranscriptSegment,
 };
+use airo_mind_diarize::diarize_single_speaker;
 use airo_mind_llama::{LlamaGenerationEngine, ResourceBudget, Supervisor as LlamaSupervisor};
 use airo_mind_meeting::{
     extract, generate_mom, validate, ExtractionConfig, MeetingInput, MeetingIr, MomError,
@@ -31,6 +32,7 @@ pub struct PipelineOutput {
     #[allow(dead_code)]
     pub llama_model: PathBuf,
     pub processing_ms: u64,
+    pub speaker_labels: std::collections::HashMap<String, String>,
 }
 
 #[derive(Serialize)]
@@ -40,6 +42,7 @@ struct StoredSegmentArtifact {
     end_ms: u64,
     raw: String,
     normalized: String,
+    speaker_label: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -168,6 +171,13 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
         panic!("whisper produced no text");
     }
 
+    let diarized = diarize_single_speaker(&segments).expect("diarization succeeds");
+    let speaker_by_id: std::collections::HashMap<String, String> = diarized
+        .segments
+        .iter()
+        .map(|s| (s.id.clone(), s.speaker.label()))
+        .collect();
+
     let processed = process(&segments, &ChunkConfig::default());
 
     let generation_engine =
@@ -221,6 +231,7 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
         whisper_model: whisper_model.to_path_buf(),
         llama_model: llama_model.to_path_buf(),
         processing_ms: start.elapsed().as_millis() as u64,
+        speaker_labels: speaker_by_id,
     }
 }
 
@@ -251,6 +262,7 @@ pub fn write_artifacts(out_dir: &Path, args: &CliArgs, output: &PipelineOutput) 
                 end_ms: s.end_ms,
                 raw: s.raw.clone(),
                 normalized: s.normalized.clone(),
+                speaker_label: output.speaker_labels.get(&s.id).cloned(),
             })
             .collect(),
     };

@@ -307,6 +307,7 @@ fn transcript_segment_record(index: usize, segment: &TranscriptSegment) -> Trans
         start_ms: segment.start_ms,
         end_ms: segment.end_ms,
         text: segment.text.trim().to_string(),
+        speaker_label: None,
     }
 }
 
@@ -350,6 +351,8 @@ pub struct TranscriptSegmentRecord {
     pub start_ms: u64,
     pub end_ms: u64,
     pub text: String,
+    /// Diarization label (`sp0`, `sp1`, …). None for legacy segments.
+    pub speaker_label: Option<String>,
 }
 
 /// Transcription progress, as it happens.
@@ -558,6 +561,7 @@ impl From<transcript_store::TranscriptDocument> for TranscriptDocumentRecord {
                     start_ms: s.start_ms,
                     end_ms: s.end_ms,
                     text: s.text,
+                    speaker_label: s.speaker_label,
                 })
                 .collect(),
         }
@@ -633,6 +637,7 @@ pub fn save_meeting(
                 start_ms: s.start_ms,
                 end_ms: s.end_ms,
                 text: s.text,
+                speaker_label: s.speaker_label,
             })
             .collect(),
     };

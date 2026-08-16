@@ -84,8 +84,11 @@ String renderTranscriptMarkdown({
     for (final line in lines) {
       final text = line.text.trim();
       if (text.isEmpty) continue;
+      final speakerPrefix = line.speakerLabel == null
+          ? ''
+          : '${line.speakerLabel}: ';
       buf
-        ..writeln('${formatTimestamp(line.startMs)} $text')
+        ..writeln('${formatTimestamp(line.startMs)} $speakerPrefix$text')
         ..writeln();
     }
   } else if (fallbackTranscript.trim().isNotEmpty) {

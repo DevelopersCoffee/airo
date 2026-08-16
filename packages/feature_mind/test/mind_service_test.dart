@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_bridges.dart';
 import 'support/recording_operation_log.dart';
+import 'package:feature_mind/src/mind_diarization.dart';
 
 /// `AudioRecorder`'s real constructor talks to a platform channel, which does
 /// not exist in a plain `flutter_test` run. None of the tests here touch
@@ -300,7 +301,10 @@ void main() {
         .process(wavPath: 'recording-1.wav', title: 't')
         .drain<void>();
 
-    expect(speech.savedSegments, segments);
+    expect(
+      speech.savedSegments,
+      applySoloSpeakerDiarization(segments),
+    );
     expect(speech.savedWavPath, 'recording-1.wav');
   });
 

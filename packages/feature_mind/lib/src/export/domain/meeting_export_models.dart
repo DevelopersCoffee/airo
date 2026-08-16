@@ -8,21 +8,29 @@ import 'package:flutter/foundation.dart';
 /// native library and reusable the day transcript storage changes shape.
 @immutable
 class TranscriptExportLine {
-  const TranscriptExportLine({required this.startMs, required this.text});
+  const TranscriptExportLine({
+    required this.startMs,
+    required this.text,
+    this.speakerLabel,
+  });
 
   /// Milliseconds from the start of the recording.
   final int startMs;
   final String text;
+
+  /// Diarization label (`sp0`, `sp1`, …) when persisted on the segment.
+  final String? speakerLabel;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TranscriptExportLine &&
           startMs == other.startMs &&
-          text == other.text;
+          text == other.text &&
+          speakerLabel == other.speakerLabel;
 
   @override
-  int get hashCode => Object.hash(startMs, text);
+  int get hashCode => Object.hash(startMs, text, speakerLabel);
 }
 
 /// A task pulled out of a meeting, shaped for markdown export.

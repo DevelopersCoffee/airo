@@ -1,5 +1,6 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
+import 'package:feature_mind/src/runtime/persistent/persistent_operation_log.dart';
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.
@@ -70,9 +71,8 @@ MindService buildMindDownloadService() {
     // Settings can opt into English-only; [requiredModelsLookup] re-reads
     // that preference so the multilingual file is not forced on download.
     defaultSpeechLanguage: SpeechLanguage.multilingual,
-    // ADR-0022 §1.2: append `meetingIrExtracted` after IR lands on the meeting
-    // record. Fixture log until #1213 wires the real Rust operation log.
-    operationLog: FixtureMindRuntime().log,
+    // ADR-0022 §1.2: durable log shared with assistant consent + runtime console.
+    operationLog: sharedMindOperationLog(),
     meetingContextId: 'scribe',
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
