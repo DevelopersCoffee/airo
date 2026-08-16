@@ -470,17 +470,23 @@ class TranscriptSegmentRecord {
   final BigInt startMs;
   final BigInt endMs;
   final String text;
+  final String? speakerLabel;
 
   const TranscriptSegmentRecord({
     required this.id,
     required this.startMs,
     required this.endMs,
     required this.text,
+    this.speakerLabel,
   });
 
   @override
   int get hashCode =>
-      id.hashCode ^ startMs.hashCode ^ endMs.hashCode ^ text.hashCode;
+      id.hashCode ^
+      startMs.hashCode ^
+      endMs.hashCode ^
+      text.hashCode ^
+      speakerLabel.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -490,5 +496,6 @@ class TranscriptSegmentRecord {
           id == other.id &&
           startMs == other.startMs &&
           endMs == other.endMs &&
-          text == other.text;
+          text == other.text &&
+          speakerLabel == other.speakerLabel;
 }

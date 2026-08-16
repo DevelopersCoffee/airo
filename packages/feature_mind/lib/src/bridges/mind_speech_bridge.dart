@@ -24,6 +24,7 @@ class TranscriptSegment {
     required this.startMs,
     required this.endMs,
     required this.text,
+    this.speakerLabel,
   });
 
   final String id;
@@ -31,9 +32,13 @@ class TranscriptSegment {
   final int endMs;
   final String text;
 
+  /// Speaker label from diarization (`sp0`, `sp1`, …). Null before Wave 3
+  /// wiring or when ASR-only segments have not been diarized yet.
+  final String? speakerLabel;
+
   @override
   int get hashCode =>
-      Object.hash(id, startMs, endMs, text);
+      Object.hash(id, startMs, endMs, text, speakerLabel);
 
   @override
   bool operator ==(Object other) =>
@@ -43,7 +48,8 @@ class TranscriptSegment {
           id == other.id &&
           startMs == other.startMs &&
           endMs == other.endMs &&
-          text == other.text;
+          text == other.text &&
+          speakerLabel == other.speakerLabel;
 }
 
 /// Converts the generated wire type to [TranscriptSegment].
@@ -60,6 +66,7 @@ TranscriptSegment toTranscriptSegment(rust.TranscriptSegmentRecord segment) =>
       startMs: segment.startMs.toInt(),
       endMs: segment.endMs.toInt(),
       text: segment.text,
+      speakerLabel: segment.speakerLabel,
     );
 
 /// The reverse of [toTranscriptSegment] — `#1629` Gap D: [MindSpeechBridge.
@@ -73,6 +80,7 @@ rust.TranscriptSegmentRecord fromTranscriptSegment(TranscriptSegment segment) =>
       startMs: BigInt.from(segment.startMs),
       endMs: BigInt.from(segment.endMs),
       text: segment.text,
+      speakerLabel: segment.speakerLabel,
     );
 
 final class TranscriptEventTranscribing extends TranscriptEvent {

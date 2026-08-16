@@ -21,3 +21,13 @@ pub use diarizer::{Diarizer, DiarizationError, DiarizationInput};
 pub use result::DiarizationResult;
 pub use segment::{DiarizedSegment, SpeakerId};
 pub use single_speaker::SingleSpeakerDiarizer;
+
+/// Runs the default v0 diarizer (`SingleSpeakerDiarizer`) on transcript segments.
+pub fn diarize_single_speaker(
+    segments: &[airo_mind_transcript::Segment],
+) -> Result<DiarizationResult, DiarizationError> {
+    SingleSpeakerDiarizer::new().diarize(&DiarizationInput {
+        segments,
+        pcm: None,
+    })
+}

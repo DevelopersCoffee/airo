@@ -34,6 +34,8 @@ pub struct StoredSegment {
     pub start_ms: u64,
     pub end_ms: u64,
     pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker_label: Option<String>,
 }
 
 /// The full artifact: what the transcript was, which model made it, and which
@@ -113,12 +115,14 @@ mod tests {
                     start_ms: 0,
                     end_ms: 1_200,
                     text: "the deploy is blocked".into(),
+                    speaker_label: Some("sp0".into()),
                 },
                 StoredSegment {
                     id: "s1".into(),
                     start_ms: 1_200,
                     end_ms: 3_450,
                     text: "on the migration".into(),
+                    speaker_label: Some("sp0".into()),
                 },
             ],
         }
@@ -157,6 +161,7 @@ mod tests {
         assert_eq!(segments[0]["start_ms"], 0);
         assert_eq!(segments[0]["end_ms"], 1_200);
         assert_eq!(segments[0]["text"], "the deploy is blocked");
+        assert_eq!(segments[0]["speaker_label"], "sp0");
         assert_eq!(value["model_version"], "airo.speech.compact@1");
         assert_eq!(value["audio_path"], "/tmp/recording-1.wav");
 

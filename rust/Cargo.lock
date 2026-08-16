@@ -97,6 +97,7 @@ version = "0.1.0"
 dependencies = [
  "airo_mind_audio",
  "airo_mind_core",
+ "airo_mind_diarize",
  "airo_mind_eval",
  "airo_mind_llama",
  "airo_mind_meeting",
@@ -134,6 +135,7 @@ name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
+ "airo_mind_diarize",
  "airo_mind_meeting",
  "airo_mind_transcript",
  "encoding_rs",

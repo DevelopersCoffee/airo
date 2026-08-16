@@ -846,13 +846,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TranscriptSegmentRecord dco_decode_transcript_segment_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return TranscriptSegmentRecord(
       id: dco_decode_String(arr[0]),
       startMs: dco_decode_u_64(arr[1]),
       endMs: dco_decode_u_64(arr[2]),
       text: dco_decode_String(arr[3]),
+      speakerLabel: dco_decode_opt_String(arr[4]),
     );
   }
 
@@ -1329,11 +1330,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_startMs = sse_decode_u_64(deserializer);
     var var_endMs = sse_decode_u_64(deserializer);
     var var_text = sse_decode_String(deserializer);
+    var var_speakerLabel = sse_decode_opt_String(deserializer);
     return TranscriptSegmentRecord(
       id: var_id,
       startMs: var_startMs,
       endMs: var_endMs,
       text: var_text,
+      speakerLabel: var_speakerLabel,
     );
   }
 
@@ -1752,6 +1755,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_64(self.startMs, serializer);
     sse_encode_u_64(self.endMs, serializer);
     sse_encode_String(self.text, serializer);
+    sse_encode_opt_String(self.speakerLabel, serializer);
   }
 
   @protected
