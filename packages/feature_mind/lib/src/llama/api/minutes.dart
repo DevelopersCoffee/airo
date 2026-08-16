@@ -70,13 +70,28 @@ class GenerationConfig {
   /// Admission ceiling for the Supervisor (`C6`).
   final int memoryBudgetMb;
 
+  /// Try Sarvam-1 (`ModelQuality::Standard`) before Qwen when true.
+  final bool preferIndicGeneration;
+
+  /// Fall back to Qwen when Indic model is missing (Auto mode). False for
+  /// explicit Enhanced Indic user choice.
+  final bool allowCompactFallback;
+
   const GenerationConfig({
     required this.modelsDir,
     required this.memoryBudgetMb,
+    this.preferIndicGeneration = false,
+    this.allowCompactFallback = true,
   });
 
   @override
-  int get hashCode => modelsDir.hashCode ^ memoryBudgetMb.hashCode;
+  int get hashCode =>
+      Object.hash(
+        modelsDir,
+        memoryBudgetMb,
+        preferIndicGeneration,
+        allowCompactFallback,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -84,7 +99,9 @@ class GenerationConfig {
       other is GenerationConfig &&
           runtimeType == other.runtimeType &&
           modelsDir == other.modelsDir &&
-          memoryBudgetMb == other.memoryBudgetMb;
+          memoryBudgetMb == other.memoryBudgetMb &&
+          preferIndicGeneration == other.preferIndicGeneration &&
+          allowCompactFallback == other.allowCompactFallback;
 }
 
 @freezed

@@ -133,6 +133,7 @@ ModuleRegistry buildMindModuleRegistry() {
     // this app's, and because only this shell wants the rows — the super app's
     // model manager lists its own chat models and nothing else.
     scribeOverrides: (service) => [
+      mindScribeServiceProvider.overrideWithValue(service),
       ...mindModelRegistryOverrides(modelsDirectory: service.modelsDirectory),
       // #1656: the resumable post-meeting processing queue runs the same
       // MindService instance the scribe journey uses, so a job it processes

@@ -411,9 +411,13 @@ impl SseDecode for crate::api::minutes::GenerationConfig {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_modelsDir = <String>::sse_decode(deserializer);
         let mut var_memoryBudgetMb = <u32>::sse_decode(deserializer);
+        let mut var_preferIndicGeneration = <bool>::sse_decode(deserializer);
+        let mut var_allowCompactFallback = <bool>::sse_decode(deserializer);
         return crate::api::minutes::GenerationConfig {
             models_dir: var_modelsDir,
             memory_budget_mb: var_memoryBudgetMb,
+            prefer_indic_generation: var_preferIndicGeneration,
+            allow_compact_fallback: var_allowCompactFallback,
         };
     }
 }
@@ -785,6 +789,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::minutes::GenerationConfig {
         [
             self.models_dir.into_into_dart().into_dart(),
             self.memory_budget_mb.into_into_dart().into_dart(),
+            self.prefer_indic_generation.into_into_dart().into_dart(),
+            self.allow_compact_fallback.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1097,6 +1103,8 @@ impl SseEncode for crate::api::minutes::GenerationConfig {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.models_dir, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
+        <bool>::sse_encode(self.prefer_indic_generation, serializer);
+        <bool>::sse_encode(self.allow_compact_fallback, serializer);
     }
 }
 

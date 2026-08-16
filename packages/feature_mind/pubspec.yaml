@@ -26,6 +26,8 @@ dependencies:
   # source can change without touching MindService. See module.yaml.
   core_ai:
     path: ../core_ai
+  core_entitlements:
+    path: ../core_entitlements
   # Below: brought in from feature_assistant on the Phase 2 merge
   # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md) -- the assistant
   # hub (chat, models, prompt lab, wellbeing) is now this package.

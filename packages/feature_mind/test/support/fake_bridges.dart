@@ -126,6 +126,8 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,
+    bool preferIndicGeneration = false,
+    bool allowCompactFallback = true,
   }) async {
     ensureLoadedCalls++;
     _loaded = true;

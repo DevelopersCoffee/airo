@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/mind_service.dart';
@@ -11,6 +12,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_bridges.dart';
 import 'support/recording_operation_log.dart';
@@ -73,6 +75,7 @@ void main() {
   late MindService service;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     tempDir = Directory.systemTemp.createTempSync('mind_service_test_');
     PathProviderPlatform.instance = FakePathProviderPlatform(tempDir.path);
     speech = FakeMindSpeechBridge();
@@ -82,6 +85,7 @@ void main() {
       modelProvider: FakeReadyModelProvider(),
       speechBridge: speech,
       generationBridge: generation,
+      entitlements: const NoEntitlements(),
     );
   });
 

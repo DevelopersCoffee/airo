@@ -85,6 +85,15 @@ Future<void> hydrateMindScribeModels(
       ),
     );
   }
+
+  for (final model in mindIndicOptionalModels()) {
+    registry.registerModel(
+      _scribeModel(
+        model,
+        filePath: directory == null ? null : _installedPathIn(directory, model),
+      ),
+    );
+  }
 }
 
 /// The installed path for [model], or null when the file is absent or the
@@ -203,6 +212,21 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
     author: 'Alibaba Qwen',
     license: 'Apache-2.0',
     huggingFaceId: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF',
+  ),
+  'sarvam-1-Q4_K_M.gguf': _ScribeDescriptor(
+    id: 'mind-scribe-sarvam-1-indic',
+    name: 'Sarvam-1 (Q4_K_M) — Indic minutes',
+    family: ModelFamily.other,
+    description:
+        'Optional pro pack: Sarvam-1 2B for Hindi/Marathi/Gujarati and '
+        'other Indic meeting minutes. Requires ~8 GB RAM. Public mirror of '
+        'sarvamai/sarvam-1 on Hugging Face — not Sarvam Edge ASR.',
+    quantization: ModelQuantization.q4,
+    parameterCount: 2000000000,
+    capabilities: [ModelCapability.documents],
+    author: 'Sarvam AI (GGUF by bartowski)',
+    license: 'Apache-2.0',
+    huggingFaceId: 'bartowski/sarvam-1-GGUF',
   ),
 };
 

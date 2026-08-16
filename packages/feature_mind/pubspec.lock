@@ -190,6 +190,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_entitlements:
+    dependency: "direct main"
+    description:
+      path: "../core_entitlements"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_native:
     dependency: transitive
     description:

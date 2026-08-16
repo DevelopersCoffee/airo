@@ -28,7 +28,12 @@ enum ProFeature {
 
   /// Pre-save credential verification for Xtream, Stalker, and Jellyfin
   /// content sources.
-  sourceConnectionDiagnostics('source_connection_diagnostics');
+  sourceConnectionDiagnostics('source_connection_diagnostics'),
+
+  /// On-device Indic meeting intelligence: optional Sarvam-1 generation and
+  /// future Sarvam Edge ASR when public weights exist. Gated in pro overlay;
+  /// public repo widens the entitlement seam only.
+  mindIndicIntelligence('mind_indic_intelligence');
 
   const ProFeature(this.stableId);
 

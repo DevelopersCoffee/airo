@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_ai/core_ai.dart' show EmbeddingService;
+import 'package:core_ai/core_ai.dart' as core_ai show DeviceCapabilityService;
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +12,10 @@ import 'package:record/record.dart';
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
+import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
+import 'models/download_model_provider.dart';
+import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
 import 'runtime/ports/operation_log_port.dart';
 import 'search/meeting_embedding_store.dart';
@@ -124,6 +129,7 @@ class MindService {
     String meetingContextId = '',
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
+    Entitlements entitlements = const LaunchPromoEntitlements(),
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
@@ -131,6 +137,7 @@ class MindService {
        _operationLog = operationLog,
        _meetingContextId = meetingContextId,
        _defaultSpeechLanguage = defaultSpeechLanguage,
+       _entitlements = entitlements,
        _rankerBuilder =
            rankerBuilder ??
            ((dir) => SemanticSearchRanker(
@@ -145,6 +152,7 @@ class MindService {
   final OperationLogPort? _operationLog;
   final String _meetingContextId;
   final rust.SpeechLanguage _defaultSpeechLanguage;
+  final Entitlements _entitlements;
 
   /// Last language mode handed to [MindSpeechBridge.initialize], or the
   /// constructor default before the first successful init. Read-only seam
@@ -309,6 +317,24 @@ class MindService {
     yield* _models.acquire(await modelsDirectory());
   }
 
+  /// Downloads optional pinned files (for example the Sarvam-1 pro pack) into
+  /// [modelsDirectory]. Only the download-backed provider can fetch over the
+  /// network; bundled installers report every file as failed.
+  Stream<ModelAcquisitionEvent> acquireModelFiles(
+    List<RequiredModel> models,
+  ) async* {
+    final dir = await modelsDirectory();
+    if (_models case DownloadModelProvider provider) {
+      yield* provider.acquireFiles(dir, models);
+      return;
+    }
+    yield ModelAcquisitionDone(models.map((model) => model.fileName).toList());
+  }
+
+  /// Optional Indic generation weights from the public HF mirror.
+  Stream<ModelAcquisitionEvent> acquireOptionalIndicGeneration() =>
+      acquireModelFiles(mindIndicOptionalModels());
+
   /// Hashes every installed model against the digest pinned in Rust source.
   Future<List<InstalledModel>> verifyModels() async =>
       _models.verify(await modelsDirectory());
@@ -419,7 +445,22 @@ class MindService {
       // Loaded now rather than at startup: it is roughly 48 MB and only this
       // step needs it.
       final dir = await modelsDirectory();
-      await _generation.ensureLoaded(modelsDir: dir.path, memoryBudgetMb: 4096);
+      final memoryInfo =
+          await core_ai.DeviceCapabilityService().getMemoryInfo();
+      final generationMode = await MindIndicPreferences.readGenerationMode();
+      final indicCapability = MindIndicCapability(
+        entitlements: _entitlements,
+        memoryInfo: memoryInfo,
+      );
+      await _generation.ensureLoaded(
+        modelsDir: dir.path,
+        memoryBudgetMb: 4096,
+        preferIndicGeneration: indicCapability.shouldPreferIndicGeneration(
+          generationMode,
+        ),
+        allowCompactFallback:
+            generationMode != MindIndicGenerationMode.enhancedIndic,
+      );
 
       await for (final event in _generation.processMeetingIntelligence(
         meetingId: meetingId,

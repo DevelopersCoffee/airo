@@ -26,6 +26,31 @@ export 'src/export/application/meeting_export_service.dart'
     show MeetingExportService;
 export 'src/export/domain/meeting_export_models.dart'
     show MeetingExportBundle;
+export 'src/mind_indic_intelligence.dart'
+    show
+        MindIndicCapability,
+        MindIndicGenerationMode,
+        MindIndicPreferences,
+        MindIndicSpeechMode,
+        kMindIndicMinAvailableRamBytes,
+        kMindIndicMinTotalRamBytes,
+        pinnedIndicGenerationModel;
+
+export 'src/mind_model_advisor.dart'
+    show
+        MindModelAdvisor,
+        MindModelRecommendation,
+        MindModelRecommendationAction,
+        MindModelRecommendationBadge,
+        MindModelRecommendationSeverity,
+        MindScribeModelIds,
+        MindScribeStackRecommendation;
+
+export 'src/mind_scribe_models_panel.dart'
+    show
+        mindScribeServiceProvider,
+        MindScribeModelsPanel,
+        scribeCatalogIdToFileName;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 
@@ -128,6 +153,7 @@ export 'src/models/model_descriptor_adapter.dart'
     show
         pinnedRequiredModels,
         mindScribeRequiredModels,
+        mindIndicOptionalModels,
         pinnedMultilingualSpeechModel,
         offlineModelInfoFromRequiredModel;
 

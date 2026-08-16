@@ -324,6 +324,55 @@ void main() {
     );
 
     test(
+      // `ADR-0022 §3`: the embedded text extends to decision statements and
+      // action-item task/owner text, the same text `SearchIndex::insert`
+      // feeds its lexical index -- union, not a second embedding path.
+      'embeds decision statements and action-item task/owner text',
+      () async {
+        final ranker = SemanticSearchRanker(
+          embeddingService: _FakeEmbeddingService(
+            vectors: {
+              'query': [1.0, 0.0],
+              'transcript text minutes text Adopt Kubernetes for staging '
+                      'Finish the migration Priya':
+                  [1.0, 0.0],
+            },
+          ),
+          embeddingStore: store,
+        );
+
+        final result = await ranker.rank(
+          query: 'query',
+          keywordHits: const [],
+          meetings: [
+            _meeting(
+              'm1',
+              decisions: const [
+                rust.MeetingDecisionRecord(
+                  id: 'd0',
+                  statement: 'Adopt Kubernetes for staging',
+                  status: rust.MeetingDecisionStatus.agreed,
+                  evidenceSegmentIds: ['s1'],
+                ),
+              ],
+              actionItems: const [
+                rust.MeetingActionItemRecord(
+                  id: 'a0',
+                  task: 'Finish the migration',
+                  owner: 'Priya',
+                  status: rust.MeetingActionStatus.open,
+                  evidenceSegmentIds: ['s2'],
+                ),
+              ],
+            ),
+          ],
+        );
+
+        expect(result.map((h) => h.meetingId), ['m1']);
+      },
+    );
+
+    test(
       'ranks multiple semantic-only matches by descending similarity',
       () async {
         final ranker = SemanticSearchRanker(

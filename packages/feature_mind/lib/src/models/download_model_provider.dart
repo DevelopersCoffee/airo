@@ -322,18 +322,26 @@ class DownloadModelProvider with PinnedModelFiles implements ModelProvider {
 
   @override
   Stream<ModelAcquisitionEvent> acquire(Directory modelsDir) async* {
-    final required = await requiredModels();
+    yield* acquireFiles(modelsDir, await requiredModels());
+  }
+
+  /// Downloads and installs an arbitrary pinned list — used for optional pro
+  /// packs such as Sarvam-1 that are not part of [requiredModels].
+  Stream<ModelAcquisitionEvent> acquireFiles(
+    Directory modelsDir,
+    List<RequiredModel> models,
+  ) async* {
     final failed = <String>[];
     var resumeSupported = false;
 
     // Rehydrate WorkManager / URLSession queue so a cold start can continue
     // a ~570 MB scribe transfer instead of discarding the partial.
-    final restored = await _restorePersisted(required: required);
+    final restored = await _restorePersisted(required: models);
 
     // Sequential, not concurrent: the two Mind models together are ~570 MB,
     // and running both downloads at once on a constrained connection is a
     // worse experience than a predictable queue, not a faster one.
-    for (final model in required) {
+    for (final model in models) {
       if (PinnedModelFiles.isPresent(modelsDir, model)) {
         // Already installed. Only some of the set is usually missing, and
         // re-fetching 469 MB because 77 MB is absent is not a retry anyone

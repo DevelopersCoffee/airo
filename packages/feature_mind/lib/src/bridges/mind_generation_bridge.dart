@@ -131,6 +131,8 @@ abstract interface class MindGenerationBridge {
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,
+    bool preferIndicGeneration = false,
+    bool allowCompactFallback = true,
   });
 
   /// Meeting-intelligence pipeline: preprocess → extract → validate → MoM.
@@ -164,6 +166,8 @@ class RustMindGenerationBridge implements MindGenerationBridge {
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,
+    bool preferIndicGeneration = false,
+    bool allowCompactFallback = true,
   }) async {
     await initializeLlamaBridge();
     if (llama.isReady()) {
@@ -174,6 +178,8 @@ class RustMindGenerationBridge implements MindGenerationBridge {
       config: llama.GenerationConfig(
         modelsDir: modelsDir,
         memoryBudgetMb: memoryBudgetMb,
+        preferIndicGeneration: preferIndicGeneration,
+        allowCompactFallback: allowCompactFallback,
       ),
     );
     _loaded = true;
