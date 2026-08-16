@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/log_models.dart';
 import '../ports/operation_log_port.dart';
-import 'rust/rust_mind_runtime_operation_log.dart';
+import '../rust/rust_mind_runtime_operation_log.dart';
 
 /// JSON wire shape for a persisted [MindOp].
 @immutable
