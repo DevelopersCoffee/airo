@@ -12,6 +12,6 @@ bool sarvamEdgeSpeechAvailable() =>
 /// Syncs cross-meeting speaker enrollment profiles into the Rust diarizer (#504).
 void syncSpeakerEnrollmentJson(List<Map<String, Object?>> profiles) {
   RustLib.instance.api.crateApiMeetingsSyncSpeakerEnrollmentJson(
-    json: jsonEncode(profiles),
+    raw: jsonEncode(profiles),
   );
 }
