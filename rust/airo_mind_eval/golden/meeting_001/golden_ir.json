@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0.0",
+  "meeting": {
+    "id": "meeting-001-multilingual",
+    "title": "Multilingual infra standup",
+    "started_at_ms": 0,
+    "ended_at_ms": 19500,
+    "chunk_count": 1,
+    "segment_count": 4,
+    "model_id": "model-under-test@0.0.0",
+    "prompt_version": "chunk_facts.v1"
+  },
+  "topics": [
+    {
+      "id": "topic-0",
+      "title": "YugabyteDB connection pool",
+      "evidence": ["s0"]
+    }
+  ],
+  "observations": [],
+  "decisions": [
+    {
+      "id": "decision-0",
+      "statement": "move signalling onto the queue before the release",
+      "status": "agreed",
+      "evidence": ["s3"]
+    }
+  ],
+  "action_items": [
+    {
+      "id": "action_item-0",
+      "task": "check the Temporal signalling limit",
+      "owner": null,
+      "due": "Friday",
+      "status": "open",
+      "evidence": ["s1"]
+    },
+    {
+      "id": "action_item-1",
+      "task": "update the runbook",
+      "owner": "Priya",
+      "due": "Monday",
+      "status": "open",
+      "evidence": ["s2"]
+    }
+  ],
+  "metrics": [],
+  "risks": [],
+  "questions": [],
+  "next_steps": []
+}

@@ -50,23 +50,31 @@ fn flag(args: &[String], name: &str) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
+fn flag_string(args: &[String], name: &str) -> Option<String> {
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    // golden_ir.json / golden_mom.md live in airo_mind_meeting's own fixture
-    // directory -- see golden.rs's module doc comment for why this crate
-    // reads them by relative path instead of keeping a second copy.
     let meeting_fixtures = manifest_dir().join("../airo_mind_meeting/tests/fixtures");
     let own_golden_dir = manifest_dir().join("golden/reference_meeting");
 
-    let golden_paths = GoldenPaths {
-        transcript: flag(&args, "--transcript")
-            .unwrap_or_else(|| own_golden_dir.join("transcript.json")),
-        golden_ir: flag(&args, "--golden-ir")
-            .unwrap_or_else(|| meeting_fixtures.join("golden_ir.json")),
-        golden_mom: flag(&args, "--golden-mom")
-            .unwrap_or_else(|| meeting_fixtures.join("golden_mom.md")),
-        audio: flag(&args, "--audio").unwrap_or_else(|| own_golden_dir.join("audio.m4a")),
+    let golden_paths = if let Some(meeting_id) = flag_string(&args, "--meeting") {
+        golden::paths_for_meeting(&manifest_dir(), &meeting_id)
+    } else {
+        GoldenPaths {
+            transcript: flag(&args, "--transcript")
+                .unwrap_or_else(|| own_golden_dir.join("transcript.json")),
+            golden_ir: flag(&args, "--golden-ir")
+                .unwrap_or_else(|| meeting_fixtures.join("golden_ir.json")),
+            golden_mom: flag(&args, "--golden-mom")
+                .unwrap_or_else(|| meeting_fixtures.join("golden_mom.md")),
+            audio: flag(&args, "--audio").unwrap_or_else(|| own_golden_dir.join("audio.m4a")),
+        }
     };
     let out_dir = flag(&args, "--out-dir").unwrap_or_else(|| manifest_dir().join("evals/reports"));
 
@@ -160,11 +168,29 @@ fn main() {
     let start = Instant::now();
 
     let wer = word_error_rate(&golden.transcript.reference_text(), &hypothesis_transcript);
-    let terms = airo_mind_transcript::normalize::technical_terms();
+    let terms: Vec<String> = flag(&args, "--technical-terms")
+        .map(|path| golden::load_technical_terms(&path).expect("technical terms file loads"))
+        .or_else(|| {
+            let auto = golden_paths
+                .transcript
+                .parent()
+                .map(|dir| dir.join("technical_terms.txt"))
+                .filter(|path| path.is_file());
+            auto.map(|path| {
+                golden::load_technical_terms(&path).expect("technical terms file loads")
+            })
+        })
+        .unwrap_or_else(|| {
+            airo_mind_transcript::normalize::technical_terms()
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect()
+        });
+    let term_refs: Vec<&str> = terms.iter().map(String::as_str).collect();
     let term_result = term_accuracy(
         &golden.transcript.reference_text(),
         &hypothesis_transcript,
-        &terms,
+        &term_refs,
     );
 
     let extraction = score_extraction(

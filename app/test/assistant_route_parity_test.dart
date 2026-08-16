@@ -197,14 +197,15 @@ void main() {
         .whereType<GoRoute>()
         .map((route) => route.path);
 
+    final topLevelPaths = router.configuration.routes
+        .whereType<GoRoute>()
+        .map((route) => route.path);
+
     expect(branchPaths, contains(AssistantRouteNames.assistant));
     expect(branchPaths, isNot(contains(AssistantRouteNames.wellbeing)));
-    expect(
-      router.configuration.routes.whereType<GoRoute>().map(
-        (route) => route.path,
-      ),
-      contains('/wellbeing'),
-    );
+    expect(topLevelPaths, contains('/wellbeing'));
+    expect(branchPaths, isNot(contains('/scribe')));
+    expect(topLevelPaths, contains('/scribe'));
   });
 
   test('the router starts without the mind module and falls back to a '

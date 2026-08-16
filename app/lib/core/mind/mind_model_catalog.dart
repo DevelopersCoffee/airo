@@ -31,7 +31,14 @@ List<Override> mindModelRegistryOverrides({
     unawaited(
       hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
     );
-    unawaited(hydratePublicHuggingFaceModels(registry));
+    unawaited(() async {
+      final result = await hydratePublicHuggingFaceModels(registry);
+      if (!ref.mounted) return;
+      ref.read(huggingFaceCatalogAvailabilityProvider.notifier).state =
+          result.availability;
+      ref.read(huggingFaceCatalogErrorProvider.notifier).state =
+          result.errorMessage;
+    }());
     unawaited(
       hydrateMindScribeModels(
         registry,

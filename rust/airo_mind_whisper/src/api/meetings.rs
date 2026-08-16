@@ -481,8 +481,7 @@ pub fn transcribe_recording(
         sink.add(event).map_err(|e| e.to_string())
     };
 
-    let bytes = std::fs::read(&wav_path).map_err(|e| format!("reading {wav_path}: {e}"))?;
-    let pcm = airo_mind_core::wav::decode(&bytes)?;
+    let pcm = airo_mind_audio::preprocess_path(std::path::Path::new(&wav_path))?;
 
     let cancel = CancelToken::new();
     *lock(&CANCEL) = Some(cancel.clone());

@@ -26,6 +26,7 @@ name = "airo_mind_whisper"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+airo_mind_audio = { path = "../airo_mind_audio" }
 airo_mind_core = { path = "../airo_mind_core" }
 # Pinned to the exact version core_native already uses. Two flutter_rust_bridge
 # versions in one Flutter app is a link-time conflict, not a warning.

@@ -1,4 +1,4 @@
-//! `#1397` acceptance: `.wav` → transcript, offline, streaming, no temp files.
+//! `#1397` acceptance: `.wav` / `.m4a` → transcript, offline, streaming, no temp files.
 //!
 //! Runs only with `--features whisper`, because it needs the C++ backend and a
 //! model on disk.
@@ -249,5 +249,61 @@ fn a_pinned_language_hint_does_not_break_transcription() {
     assert!(
         transcript.contains("country"),
         "expected recognisable speech, got: {transcript}"
+    );
+}
+
+fn speech_m4a_fixture() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../fixtures/speech.m4a")
+}
+
+/// `#1786`: meeting capture writes `.m4a`; preprocess must feed whisper the
+/// same shape as a 16 kHz mono WAV fixture.
+#[test]
+fn speech_m4a_preprocesses_to_a_transcript() {
+    let model = model_path();
+    let audio = speech_m4a_fixture();
+    if !model.exists() {
+        eprintln!("skipping: no model at {}", model.display());
+        return;
+    }
+    if !audio.exists() {
+        eprintln!("skipping: no fixture at {}", audio.display());
+        return;
+    }
+
+    let pcm = airo_mind_audio::preprocess_path(&audio).expect("speech.m4a preprocesses");
+    assert_eq!(pcm.sample_rate_hz, 16_000);
+    assert_eq!(pcm.channels, 1);
+
+    let engine = WhisperSpeechEngine::load(&model, 512).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(2048));
+    supervisor.register_speech(Box::new(engine));
+
+    let mut segments: Vec<TranscriptSegment> = Vec::new();
+    supervisor
+        .run_speech(
+            AudioInput {
+                samples: &pcm.samples,
+                sample_rate_hz: pcm.sample_rate_hz,
+                channels: pcm.channels,
+            },
+            &TranscriptionOptions::default(),
+            &CancelToken::new(),
+            &mut |seg| {
+                segments.push(seg);
+                Ok(())
+            },
+        )
+        .expect("m4a-backed transcription succeeds");
+
+    let transcript = segments
+        .iter()
+        .map(|s| s.text.trim())
+        .filter(|t| !t.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        !transcript.is_empty(),
+        "speech.m4a should yield a non-empty transcript after preprocess"
     );
 }

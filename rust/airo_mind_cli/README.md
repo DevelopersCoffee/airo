@@ -1,18 +1,18 @@
 # airo_mind_cli
 
-macOS dev-loop smoke test for `airo_mind_whisper` and `airo_mind_llama`:
-a real `.m4a` in, a timestamped transcript and a generated summary out, both
-engines Metal-accelerated. Not shipped product code — nothing here is wired
-into the Flutter bridge or built by cargokit. It exists so changes to the two
-Rust inference crates can be exercised in seconds on a Mac, before they reach
-the Android/iOS app builds that eventually consume the same libraries
-(milestone 26, Wave 1 exit gate: "macOS CLI: GGUF gen + timestamped
-transcript from real .m4a").
+Cross-platform dev-loop smoke test for `airo_mind_whisper` and `airo_mind_llama`:
+a real `.m4a` or `.wav` in, a timestamped transcript and a generated summary out.
+On macOS both engines can be Metal-accelerated. Not shipped product code — nothing
+here is wired into the Flutter bridge or built by cargokit. It exists so changes
+to the two Rust inference crates can be exercised locally before the Android/iOS
+app builds pick the same libraries up.
 
 ## What it does
 
-1. Decodes the input audio to 16 kHz mono 16-bit PCM by shelling out to
-   `afconvert` (built into macOS — see "Why `afconvert`" below).
+### Legacy dev loop (default)
+
+1. Decodes the input audio to 16 kHz mono 16-bit PCM via `airo_mind_audio`
+   (symphonia + rubato — no platform `afconvert` / ffmpeg binary).
 2. Runs it through `WhisperSpeechEngine` behind the real `Supervisor` /
    `SpeechEngine` contract, printing each `TranscriptSegment` with its
    `start_ms`/`end_ms` timestamps.
@@ -22,15 +22,69 @@ transcript from real .m4a").
    chunk as `GenerationChunk`s arrive.
 4. Prints load/inference timings for both engines.
 
-Both crates are built with their `metal` cargo feature, so watch the ggml
-load-time log lines this prints to stderr to confirm the run actually used
-Metal rather than falling back to CPU:
+### POC-2 full offline path (`--out`)
 
-- whisper: `whisper_backend_init_gpu: using Metal backend`,
-  `ggml_metal_device_init: GPU name: <your GPU>`
-- llama: `llama_prepare_model_devices: using device Metal (...)`,
-  `load_tensors: offloaded N/N layers to GPU`,
-  `llama_kv_cache: layer N: dev = Metal`
+One command runs the product pipeline end to end:
+
+1. preprocess → whisper ASR (segment ids `s0`, `s1`, …)
+2. `airo_mind_transcript::process`
+3. `airo_mind_meeting::extract` → `validate` → `generate_mom`
+4. Writes artifacts under `--out/`:
+   `transcript.json` (raw + normalized segments), `chunks.json`,
+   `meeting_ir.json`, `predicted_ir.json`, `mom.md`, `hypothesis_transcript.txt`
+5. Runs `airo_mind_eval` gates (unless `--skip-eval`) and writes
+   `out/eval/run-NNN.json`. Exits non-zero when any gate fails.
+
+Whisper defaults to multilingual `ggml-tiny.bin` with auto language detection.
+
+### Optional user recording (`meeting_001`)
+
+For real-device POC-2 runs, symlink any local `.m4a` (not committed):
+
+```sh
+ln -sf /path/to/your/recording.m4a rust/fixtures/meeting_001.m4a
+```
+
+Preprocess-only smoke test (no models):
+
+```sh
+cd rust && cargo test -p airo_mind_audio --test meeting_001_m4a
+```
+
+Then run against the `meeting_001` eval golden set (see
+`airo_mind_eval/golden/meeting_001/README.md`):
+
+```sh
+cd rust
+cargo run -p airo_mind_cli -- \
+  --models-dir models \
+  --out ./out/meeting_001/ \
+  --golden-meeting meeting_001
+```
+
+The hand-authored `meeting_001` transcript is domain-agnostic fixture text;
+whisper on unrelated audio will fail WER until goldens match a real pass — use
+`--skip-eval` to inspect artifacts only.
+
+```sh
+cd rust
+mkdir -p models   # put ggml-tiny.bin and qwen2.5-0.5b-instruct-q4_k_m.gguf here
+cargo run -p airo_mind_cli -- fixtures/speech.m4a \
+  --models-dir models \
+  --out ./out/
+```
+
+`--models-dir` must contain **both** the whisper `.bin` and llama `.gguf` (or the first
+`.bin` / `.gguf` found). For separate locations, omit `--models-dir` and set
+`AIRO_MIND_WHISPER_MODEL` / `AIRO_MIND_LLAMA_MODEL` instead.
+
+Eval defaults score against the reference-meeting golden set in
+`airo_mind_eval/golden/reference_meeting/` and
+`airo_mind_meeting/tests/fixtures/golden_ir.json` — expect gate failures
+when the input audio is unrelated (e.g. `speech.m4a`). That is normal; the
+report still proves the wiring.
+
+On macOS, both crates are built with their `metal` cargo feature when available.
 
 ## Re-running it
 
@@ -97,22 +151,17 @@ rm speech.aiff
 It is small enough to check in (~48 KB, same precedent as `fixtures/jfk.wav`,
 which `airo_mind_whisper`'s own test suite already commits).
 
-## Why `afconvert` instead of an in-process decoder
+## Audio preprocess
 
-This binary never ships and runs only on a developer's Mac, where
-`afconvert` is always present. Adding an AAC/MP4 demuxer crate (e.g.
-`symphonia` with its `aac`/`isomp4` features) to decode `.m4a` in-process
-would need the same Constitution §6 dependency scorecard the engine crates
-go out of their way to avoid — see the comment on `wav.rs` in
-`airo_mind_core` — for a benefit only this dev tool would use. Shelling out
-keeps the decode step real (it is still a genuine AAC decode, just done by
-the OS's own tool) without adding a dependency to the workspace.
+Decode/resample lives in `airo_mind_audio` (see that crate's README for
+dependency scorecard). Supported inputs include AAC `.m4a` and WAV at any
+rate/channel layout; output is always 16 kHz mono 16-bit PCM for whisper.
 
 ## Sample run
 
 ```
 $ cargo run -p airo_mind_cli
-== Airo Mind macOS dev loop ==
+== Airo Mind dev loop ==
 ...
 -- transcript (3 segment(s)) --
 [00:00.000 -> 00:04.500] Priya said the Kafka consumer lag is the bottleneck, not the database.
@@ -122,8 +171,7 @@ $ cargo run -p airo_mind_cli
 -- loading llama.cpp (Metal) --
 ...
 -- generation --
-Priya and Raj have agreed to add three more pods to the Kafka consumer lag
-before Friday, with Priya owning the rollout and reporting back Monday.
+...
 
 == done ==
 transcript chars: 167

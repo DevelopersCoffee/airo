@@ -11,14 +11,18 @@ import 'package:record/record.dart';
 
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
+import 'meeting_ir/meeting_ir_status_writer.dart';
 import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
 import 'models/download_model_provider.dart';
 import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
+import 'runtime/ports/operation_log_port.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
+import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
+import 'whisper/meeting_ir_op_log.dart';
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -54,6 +58,7 @@ enum MindStage {
   idle,
   recording,
   transcribing,
+  extracting,
   generating,
   saving,
   done,
@@ -120,6 +125,8 @@ class MindService {
     ModelProvider? modelProvider,
     MindSpeechBridge? speechBridge,
     MindGenerationBridge? generationBridge,
+    OperationLogPort? operationLog,
+    String meetingContextId = '',
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
     Entitlements entitlements = const LaunchPromoEntitlements(),
@@ -127,6 +134,8 @@ class MindService {
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
        _generation = generationBridge ?? RustMindGenerationBridge(),
+       _operationLog = operationLog,
+       _meetingContextId = meetingContextId,
        _defaultSpeechLanguage = defaultSpeechLanguage,
        _entitlements = entitlements,
        _rankerBuilder =
@@ -140,8 +149,32 @@ class MindService {
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
+  final OperationLogPort? _operationLog;
+  final String _meetingContextId;
   final rust.SpeechLanguage _defaultSpeechLanguage;
   final Entitlements _entitlements;
+
+  /// Last language mode handed to [MindSpeechBridge.initialize], or the
+  /// constructor default before the first successful init. Read-only seam
+  /// for #1774 trust badges — not the #1664 pin UI.
+  rust.SpeechLanguage? _activeSpeechLanguage;
+
+  /// Speech-model language mode the pipeline is configured for (#1629).
+  ///
+  /// Thin read-only seam for multilingual / language badges (#1774). Does
+  /// not expose or set a per-recording whisper.cpp pin — that remains #1664.
+  rust.SpeechLanguage get speechLanguage =>
+      _activeSpeechLanguage ?? _defaultSpeechLanguage;
+
+  /// Trust UX snapshot for scribe/meeting surfaces (#1774).
+  ScribeTrustState scribeTrustState({
+    bool modelMissing = false,
+    String? pinnedLanguageCode,
+  }) => ScribeTrustState.forSpeechModel(
+    multilingual: speechLanguage == rust.SpeechLanguage.multilingual,
+    modelMissing: modelMissing,
+    pinnedLanguageCode: pinnedLanguageCode,
+  );
 
   /// Built lazily against [modelsDirectory] rather than in the constructor:
   /// resolving that directory is async, and every other collaborator here is
@@ -157,21 +190,26 @@ class MindService {
   /// Returns a status rather than throwing: on a real device "the models are
   /// not downloaded yet" is the ordinary first-run state, and an exception
   /// would make the app's normal opening move look like a crash.
-  /// [speechLanguage] is `#1629`: defaults to the bundled English-only model,
-  /// unchanged from before this parameter existed. Passing `multilingual`
-  /// requires the multilingual weights to already be installed — this method
-  /// does not acquire them; it only asks the Model Manager to resolve against
-  /// them. Choosing this per user is #1664's job.
-  /// Loads speech if needed. Safe to call before every pipeline run — a no-op
-  /// when [initialize] already succeeded.
-  Future<MindStatus> ensureReady() async {
-    if (_speech.isReady()) return const MindStatus.ready();
-    return initialize();
+  ///
+  /// [speechLanguage] is `#1629` / `#1664`: defaults to
+  /// [_defaultSpeechLanguage] (English-only unless the shell overrides).
+  /// Passing `multilingual` requires the multilingual weights to already be
+  /// installed — this method does not acquire them; it only asks the Model
+  /// Manager to resolve against them.
+  ///
+  /// [ensureReady] is safe to call before every pipeline run — a no-op when
+  /// [initialize] already succeeded for the same [speechLanguage]. A Settings
+  /// change (#1664) that picks a different mode re-runs initialize so the
+  /// speech bridge sees the new weights / pin.
+  Future<MindStatus> ensureReady({rust.SpeechLanguage? speechLanguage}) async {
+    final desired = speechLanguage ?? _defaultSpeechLanguage;
+    if (_speech.isReady() && _activeSpeechLanguage == desired) {
+      return const MindStatus.ready();
+    }
+    return initialize(speechLanguage: desired);
   }
 
-  Future<MindStatus> initialize({
-    rust.SpeechLanguage? speechLanguage,
-  }) async {
+  Future<MindStatus> initialize({rust.SpeechLanguage? speechLanguage}) async {
     final language = speechLanguage ?? _defaultSpeechLanguage;
     try {
       // Only the speech library. Generation is loaded on first use — see
@@ -237,6 +275,7 @@ class MindService {
         memoryBudgetMb: 4096,
         speechLanguage: language,
       );
+      _activeSpeechLanguage = language;
       return const MindStatus.ready();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.loadFailed, '$e');
@@ -285,8 +324,8 @@ class MindService {
     List<RequiredModel> models,
   ) async* {
     final dir = await modelsDirectory();
-    if (_models is DownloadModelProvider) {
-      yield* (_models as DownloadModelProvider).acquireFiles(dir, models);
+    if (_models case DownloadModelProvider provider) {
+      yield* provider.acquireFiles(dir, models);
       return;
     }
     yield ModelAcquisitionDone(models.map((model) => model.fileName).toList());
@@ -331,7 +370,7 @@ class MindService {
     return path ?? _recordingPath;
   }
 
-  /// Transcribe → summarise → save, streaming.
+  /// Transcribe → extract IR → MoM → save, streaming.
   ///
   /// Each event folds into the previous [MindProgress], so a widget can render
   /// the latest value and nothing accumulates in two places.
@@ -340,16 +379,13 @@ class MindService {
   ///
   /// The two engines are in two libraries, because whisper.cpp and llama.cpp
   /// vendor incompatible copies of ggml and cannot share a linked image. So the
-  /// pipeline that used to be one Rust call is three, sequenced here.
+  /// pipeline that used to be one Rust call is sequenced here across both
+  /// cdylibs.
   ///
-  /// What moved is *sequencing*, and only sequencing. Each library still owns
-  /// its own admission, budget and cancellation (`C6`), and the store-before-
-  /// index durability rule stays inside `saveMeeting` rather than becoming
-  /// something this method is trusted to get right.
-  ///
-  /// The emitted [MindStage] sequence is unchanged from when Rust drove the
-  /// whole pipeline: transcribing → generating → saving → done. Widgets cannot
-  /// tell the difference, which is the point.
+  /// After `#1785`, the generation half runs the meeting-intelligence pipeline
+  /// (`transcript::process` → extract → validate → `generate_mom`) rather than
+  /// prose-only minutes. The emitted [MindStage] sequence is now
+  /// transcribing → extracting → generating → saving → done.
   /// [language] is `#1664`'s per-recording pin, forwarded to
   /// [MindSpeechBridge.transcribe] unchanged: a whisper.cpp language code, or
   /// `null` to leave the engine on auto-detect. A Settings screen choosing a
@@ -369,6 +405,11 @@ class MindService {
     // must reproduce, so the timestamp is taken once, here, and carried through
     // to `saveMeeting` as the meeting's identity.
     final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
+    final meetingId = 'm$recordedAtMs';
+
+    var decisions = const <rust.MeetingDecisionRecord>[];
+    var actionItems = const <rust.MeetingActionItemRecord>[];
+    var metrics = const <rust.MeetingMetricRecord>[];
 
     try {
       // ── 1. Audio → transcript, in the speech library ───────────────────────
@@ -388,7 +429,7 @@ class MindService {
           // Gap D needs `segments` to reach `saveMeeting` intact).
           case TranscriptEventTranscriptReady(:final text, :final segments):
             progress = progress.copyWith(
-              stage: MindStage.generating,
+              stage: MindStage.extracting,
               transcript: text,
               segments: segments,
             );
@@ -399,11 +440,10 @@ class MindService {
         yield progress;
       }
 
-      // ── 2. Transcript → minutes, in the generation library ────────────────
+      // ── 2. Segments → IR → MoM, in the generation library ─────────────────
       //
       // Loaded now rather than at startup: it is roughly 48 MB and only this
-      // step needs it. The stage is already `generating`, so the wait is
-      // visible rather than a silent pause.
+      // step needs it.
       final dir = await modelsDirectory();
       final memoryInfo =
           await core_ai.DeviceCapabilityService().getMemoryInfo();
@@ -422,21 +462,34 @@ class MindService {
             generationMode != MindIndicGenerationMode.enhancedIndic,
       );
 
-      await for (final event in _generation.generate(
-        transcript: progress.transcript,
+      await for (final event in _generation.processMeetingIntelligence(
+        meetingId: meetingId,
+        title: title,
+        segments: progress.segments,
       )) {
         switch (event) {
-          case GenerationEventGenerating(:final text):
+          case MeetingIntelligenceEventExtracting():
+            progress = progress.copyWith(stage: MindStage.extracting);
+          case MeetingIntelligenceEventGenerating(:final text):
             progress = progress.copyWith(
               stage: MindStage.generating,
               minutes: progress.minutes + text,
             );
-          case GenerationEventMinutesReady(:final text):
+          case MeetingIntelligenceEventIrReady(
+            decisions: final irDecisions,
+            actionItems: final irActionItems,
+            metrics: final irMetrics,
+          ):
+            decisions = irDecisions;
+            actionItems = irActionItems;
+            metrics = irMetrics;
+            continue;
+          case MeetingIntelligenceEventMinutesReady(:final text):
             progress = progress.copyWith(
               stage: MindStage.saving,
               minutes: text,
             );
-          case GenerationEventCancelled():
+          case MeetingIntelligenceEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
             return;
         }
@@ -448,7 +501,7 @@ class MindService {
       // `model` comes from the generation library: only it knows which model
       // produced these minutes, and `ADR-0018 §5` records that with the content
       // rather than inferring it later.
-      final meetingId = await _speech.save(
+      final savedMeetingId = await _speech.save(
         title: title,
         recordedAtMs: recordedAtMs,
         transcript: progress.transcript,
@@ -456,8 +509,31 @@ class MindService {
         model: _generation.modelId(),
         segments: progress.segments,
         wavPath: wavPath,
+        decisions: decisions,
+        actionItems: actionItems,
+        metrics: metrics,
       );
-      yield progress.copyWith(stage: MindStage.done, meetingId: meetingId);
+
+      final savedMeeting = await _speech.meeting(savedMeetingId);
+      if (savedMeeting != null) {
+        // Agent G (#1770): warm semantic search index after each save.
+        await indexMeetingForSearch(savedMeeting);
+      }
+
+      final log = _operationLog;
+      if (log != null) {
+        await appendMeetingIrExtractedOp(
+          log: log,
+          meetingId: savedMeetingId,
+          meetingTitle: title,
+          contextId: _meetingContextId,
+          decisionCount: decisions.length,
+          actionItemCount: actionItems.length,
+          metricCount: metrics.length,
+        );
+      }
+
+      yield progress.copyWith(stage: MindStage.done, meetingId: savedMeetingId);
     } on Object catch (e) {
       yield progress.copyWith(stage: MindStage.failed, error: '$e');
     }
@@ -492,11 +568,36 @@ class MindService {
     final keywordHits = await _speech.search(query);
     _ranker ??= _rankerBuilder(await modelsDirectory());
     final allMeetings = await _speech.meetings();
+    final segmentTextsByMeetingId = <String, List<String>>{};
+    for (final meeting in allMeetings) {
+      final doc = await _speech.getTranscript(meeting.id);
+      if (doc == null || doc.segments.isEmpty) continue;
+      segmentTextsByMeetingId[meeting.id] = [
+        for (final segment in doc.segments) segment.text,
+      ];
+    }
     return _ranker!.rank(
       query: query,
       keywordHits: keywordHits,
       meetings: allMeetings,
+      segmentTextsByMeetingId: segmentTextsByMeetingId,
     );
+  }
+
+  /// Indexes [meeting] for EmbeddingGemma semantic search.
+  ///
+  /// **Agent G seam** (`#1770` Wave 2 chat-over-meetings): call after a
+  /// meeting is saved/processed, or from a chat tool that needs the archive
+  /// already embedded. [search] still indexes lazily when a meeting was
+  /// never passed here. Returns `false` when no embedding model is
+  /// installed — keyword search continues to work.
+  Future<bool> indexMeetingForSearch(rust.MeetingRecord meeting) async {
+    _ranker ??= _rankerBuilder(await modelsDirectory());
+    final doc = await _speech.getTranscript(meeting.id);
+    final segmentTexts = doc == null
+        ? const <String>[]
+        : [for (final segment in doc.segments) segment.text];
+    return _ranker!.indexMeeting(meeting, segmentTexts: segmentTexts);
   }
 
   Future<rust.MeetingRecord?> meeting(String id) => _speech.meeting(id);
@@ -506,6 +607,18 @@ class MindService {
   /// (a meeting saved before this feature shipped, or an unknown id).
   Future<rust.TranscriptDocumentRecord?> transcriptDocument(String meetingId) =>
       _speech.getTranscript(meetingId);
+
+  /// #1658 / MIND-LLM-16: checkable action status writes back through the
+  /// existing `saveMeeting` path (append-only, latest wins) — no new store.
+  Future<rust.MeetingRecord> updateActionItemStatus({
+    required rust.MeetingRecord meeting,
+    required String actionItemId,
+    required rust.MeetingActionStatus status,
+  }) => MeetingIrStatusWriter(_speech).updateActionStatus(
+    meeting: meeting,
+    actionItemId: actionItemId,
+    status: status,
+  );
 
   /// Releases the microphone and the model provider. The provider matters
   /// because the download-backed one holds a subscription to the platform

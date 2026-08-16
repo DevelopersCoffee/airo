@@ -1,0 +1,4 @@
+# Per-meeting technical vocabulary for term-accuracy scoring (J3).
+Temporal
+YugabyteDB
+signalling

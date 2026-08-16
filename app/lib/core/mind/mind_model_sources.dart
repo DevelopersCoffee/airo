@@ -1,6 +1,5 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
-import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.
@@ -68,7 +67,13 @@ MindService buildMindDownloadService() {
   return MindService(
     // Hindi/Marathi/English code-switching in meetings needs multilingual
     // whisper weights and auto-detect per recording (`#1629`, `#1664`).
-    defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
+    // Settings can opt into English-only; [requiredModelsLookup] re-reads
+    // that preference so the multilingual file is not forced on download.
+    defaultSpeechLanguage: SpeechLanguage.multilingual,
+    // ADR-0022 §1.2: append `meetingIrExtracted` after IR lands on the meeting
+    // record. Fixture log until #1213 wires the real Rust operation log.
+    operationLog: FixtureMindRuntime().log,
+    meetingContextId: 'scribe',
     modelProvider: DownloadModelProvider(
       // Application support, not documents. Airo Mind keeps its models in the
       // app's support directory on purpose (`MindService.modelsDirectory`) —
@@ -79,9 +84,15 @@ MindService buildMindDownloadService() {
       downloadService: ModelDownloadService(
         storageLocation: ModelStorageLocation.applicationSupport,
       ),
-      // Default weights plus the optional multilingual speech model Mind
-      // always ships (`mindScribeRequiredModels`).
-      requiredModelsLookup: mindScribeRequiredModels,
+      // Default weights plus multilingual when Settings is on Auto (mixed).
+      // English opt-in (#1774) drops the multilingual row so first-run never
+      // spends ~78 MB the user did not ask for.
+      requiredModelsLookup: () async {
+        final mode = await loadSpeechLanguageMode();
+        return mindScribeRequiredModels(
+          includeMultilingual: mode.includesMultilingualModel,
+        );
+      },
       downloadUrlFor: mindModelDownloadUrlFor,
     ),
   );

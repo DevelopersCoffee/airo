@@ -2,7 +2,7 @@
 name = "airo_mind_cli"
 version = "0.1.0"
 edition = "2021"
-description = "macOS dev-loop smoke test: real .m4a -> ASR transcript (with timestamps) -> LLM generation, both engines Metal-accelerated. Not shipped product code -- see README.md in this crate."
+description = "Cross-platform dev-loop and POC-2 offline pipeline: .m4a/.wav -> ASR -> meeting IR -> MoM -> eval gates. Not shipped product code -- see README.md."
 license = "MIT"
 publish = false
 
@@ -11,9 +11,15 @@ name = "airo_mind_cli"
 path = "src/main.rs"
 
 [dependencies]
+airo_mind_audio = { path = "../airo_mind_audio" }
 airo_mind_core = { path = "../airo_mind_core" }
+airo_mind_eval = { path = "../airo_mind_eval" }
+airo_mind_meeting = { path = "../airo_mind_meeting" }
+airo_mind_transcript = { path = "../airo_mind_transcript" }
 airo_mind_whisper = { path = "../airo_mind_whisper", features = ["whisper", "metal"] }
 airo_mind_llama = { path = "../airo_mind_llama", features = ["llama", "metal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

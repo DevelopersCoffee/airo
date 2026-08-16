@@ -82,12 +82,17 @@ const RequiredModel pinnedMultilingualSpeechModel = RequiredModel(
 );
 
 /// Everything the standalone Mind scribe downloads: default Milestone 2 weights
-/// plus the multilingual speech model Hindi/Marathi/English code-switching
-/// needs (`#1629`). The English-only row stays in the default registry for
-/// shells that never opt in; Mind ships both so auto-detect transcription
-/// works on first run.
-Future<List<RequiredModel>> mindScribeRequiredModels() async {
+/// plus, when [includeMultilingual] is true, the multilingual speech model
+/// Hindi/Marathi/English code-switching needs (`#1629`). The English-only row
+/// stays in the default registry for shells that never opt in; Mind's Auto
+/// (mixed) language preference (#1664 / #1774) includes both so auto-detect
+/// works on first run. English-only Settings opt-in sets
+/// [includeMultilingual] false so that download is never forced.
+Future<List<RequiredModel>> mindScribeRequiredModels({
+  bool includeMultilingual = true,
+}) async {
   final required = await pinnedRequiredModels();
+  if (!includeMultilingual) return required;
   if (required.any((m) => m.fileName == pinnedMultilingualSpeechModel.fileName)) {
     return required;
   }

@@ -4,4 +4,7 @@
 //! (`rust_input: crate::api`). Everything below it is invisible to Dart: the
 //! bridge exposes a capability, not a runtime.
 
+mod generation_state;
+
+pub mod meeting_intelligence;
 pub mod minutes;

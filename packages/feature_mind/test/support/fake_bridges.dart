@@ -32,13 +32,15 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   /// library (`MindUnavailable.bridgeMissing`).
   Object? loadLibraryError;
 
+  var _ready = false;
+
   @override
   Future<void> loadLibrary() async {
     if (loadLibraryError != null) throw loadLibraryError!;
   }
 
   @override
-  bool isReady() => true;
+  bool isReady() => _ready;
 
   @override
   Future<void> initialize({
@@ -48,6 +50,7 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
     rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
   }) async {
     initializedSpeechLanguage = speechLanguage;
+    _ready = true;
   }
 
   @override
@@ -99,6 +102,7 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
 /// Same idea, for the generation half. [ensureLoaded] is tracked separately
 /// from construction so a test can assert it was never called (T5).
 class FakeMindGenerationBridge implements MindGenerationBridge {
+  List<MeetingIntelligenceEvent> meetingIntelligenceEvents = const [];
   List<GenerationEvent> generationEvents = const [];
   String modelIdValue = 'test-model@1';
   GenerationStats statsValue = const GenerationStats(
@@ -128,6 +132,13 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
     ensureLoadedCalls++;
     _loaded = true;
   }
+
+  @override
+  Stream<MeetingIntelligenceEvent> processMeetingIntelligence({
+    required String meetingId,
+    required String title,
+    required List<TranscriptSegment> segments,
+  }) => Stream.fromIterable(meetingIntelligenceEvents);
 
   @override
   Stream<GenerationEvent> generate({

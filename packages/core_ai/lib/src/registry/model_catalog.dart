@@ -398,6 +398,27 @@ class ModelCatalog {
           .where((model) => model.modalities.contains(modality))
           .toList();
 
+  /// Companion artifacts that must be downloaded with [model].
+  ///
+  /// EmbeddingGemma's tokenizer is a separate catalog entry with empty
+  /// capabilities (so it never resolves `AiTask.embeddings`) but tags that
+  /// name the embed model id. Downloading the embed weights without the
+  /// tokenizer leaves `EmbeddingService` unable to initialize — so the
+  /// model-library download path queues companions automatically.
+  static List<OfflineModelInfo> companionsFor(OfflineModelInfo model) {
+    if (!model.capabilities.contains(ModelCapability.embeddings)) {
+      return const [];
+    }
+    return bundledModels
+        .where(
+          (candidate) =>
+              candidate.id != model.id &&
+              candidate.tags.contains('tokenizer') &&
+              candidate.tags.contains(model.id),
+        )
+        .toList(growable: false);
+  }
+
   /// Gets models by family.
   static List<OfflineModelInfo> byFamily(ModelFamily family) =>
       bundledModels.where((m) => m.family == family).toList();

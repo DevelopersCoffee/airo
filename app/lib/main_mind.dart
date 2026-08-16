@@ -101,10 +101,7 @@ Future<void> main() {
       prefs = await SharedPreferences.getInstance();
       registry = buildMindModuleRegistry();
       return ProviderScope(
-        overrides: buildMindProviderOverrides(
-          prefs: prefs,
-          registry: registry,
-        ),
+        overrides: buildMindProviderOverrides(prefs: prefs, registry: registry),
         child: AiroMindApp(registry: registry),
       );
     },

@@ -15,11 +15,27 @@ import 'model_download_state.dart';
 /// This coordinator does not rely on that alone: it watches connectivity
 /// directly, so a caller always gets a state that names the reason, even if
 /// the underlying port never emits anything while paused.
+///
+/// It also watches byte movement. When [ModelPort.download] stops emitting
+/// after a WorkManager FGS timeout, the stall watchdog still flips the row to
+/// [ModelDownloadStalled] so the shell can offer resume / try-again.
 class ModelDownloadCoordinator {
-  ModelDownloadCoordinator({required this.models, required this.connectivity});
+  ModelDownloadCoordinator({
+    required this.models,
+    required this.connectivity,
+    this.stallThreshold = const Duration(seconds: 90),
+    this.stallPollInterval = const Duration(seconds: 2),
+  });
 
   final ModelPort models;
   final ModelDownloadConnectivity connectivity;
+
+  /// How long [received] may stay unchanged while a download is active before
+  /// the coordinator emits [ModelDownloadStalled].
+  final Duration stallThreshold;
+
+  /// How often the stall watchdog re-checks when the port is silent.
+  final Duration stallPollInterval;
 
   /// Emits the states of downloading [modelId], whose full size is
   /// [sizeBytes] — read from [ModelPort.all] by the caller, since the port
@@ -37,9 +53,13 @@ class ModelDownloadCoordinator {
     late final StreamController<ModelDownloadState> controller;
     StreamSubscription<({int received, int total})>? downloadSub;
     StreamSubscription<bool>? meteredSub;
+    Timer? stallWatchdog;
     var metered = false;
     var received = 0;
+    var total = sizeBytes;
+    var lastByteAt = DateTime.now();
     var closed = false;
+    var stalled = false;
 
     void emit(ModelDownloadState state) {
       if (!closed && !controller.isClosed) controller.add(state);
@@ -48,47 +68,68 @@ class ModelDownloadCoordinator {
     Future<void> close() async {
       if (closed) return;
       closed = true;
+      stallWatchdog?.cancel();
       await downloadSub?.cancel();
       await meteredSub?.cancel();
       await controller.close();
     }
 
+    void armStallWatchdog() {
+      stallWatchdog?.cancel();
+      stallWatchdog = Timer.periodic(stallPollInterval, (_) {
+        if (closed || metered && !allowMetered || stalled) return;
+        if (DateTime.now().difference(lastByteAt) < stallThreshold) return;
+        stalled = true;
+        emit(ModelDownloadStalled(received: received, total: total));
+        unawaited(close());
+      });
+    }
+
     void startDownload() {
-      downloadSub = models.download(modelId).listen(
-        (progress) {
-          received = progress.received;
-          if (metered && !allowMetered) {
-            emit(
-              ModelDownloadPausedForMetered(
-                received: progress.received,
-                total: progress.total,
-              ),
-            );
-            return;
-          }
-          if (progress.total > 0 && progress.received >= progress.total) {
-            emit(const ModelDownloadCompleted());
-            unawaited(close());
-            return;
-          }
-          emit(
-            ModelDownloadInProgress(
-              received: progress.received,
-              total: progress.total,
-            ),
+      armStallWatchdog();
+      downloadSub = models
+          .download(modelId)
+          .listen(
+            (progress) {
+              if (progress.received > received) {
+                lastByteAt = DateTime.now();
+                stalled = false;
+              }
+              received = progress.received;
+              if (progress.total > 0) total = progress.total;
+              if (metered && !allowMetered) {
+                emit(
+                  ModelDownloadPausedForMetered(
+                    received: progress.received,
+                    total: progress.total,
+                  ),
+                );
+                return;
+              }
+              if (progress.total > 0 && progress.received >= progress.total) {
+                emit(const ModelDownloadCompleted());
+                unawaited(close());
+                return;
+              }
+              emit(
+                ModelDownloadInProgress(
+                  received: progress.received,
+                  total: progress.total,
+                ),
+              );
+              armStallWatchdog();
+            },
+            onError: (Object error, StackTrace _) {
+              emit(ModelDownloadFailed(error.toString()));
+              unawaited(close());
+            },
+            onDone: () {
+              if (!closed) {
+                emit(const ModelDownloadCompleted());
+                unawaited(close());
+              }
+            },
           );
-        },
-        onError: (Object error, StackTrace _) {
-          emit(ModelDownloadFailed(error.toString()));
-          unawaited(close());
-        },
-        onDone: () {
-          if (!closed) {
-            emit(const ModelDownloadCompleted());
-            unawaited(close());
-          }
-        },
-      );
     }
 
     controller = StreamController<ModelDownloadState>(
@@ -137,16 +178,16 @@ class ModelDownloadCoordinator {
                 ),
               );
             } else {
+              lastByteAt = DateTime.now();
               emit(
                 ModelDownloadInProgress(received: received, total: sizeBytes),
               );
+              armStallWatchdog();
             }
           });
 
           if (metered) {
-            emit(
-              ModelDownloadPausedForMetered(received: 0, total: sizeBytes),
-            );
+            emit(ModelDownloadPausedForMetered(received: 0, total: sizeBytes));
           }
           startDownload();
         }());

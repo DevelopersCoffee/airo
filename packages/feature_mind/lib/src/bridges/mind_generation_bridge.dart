@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 
+import '../bridges/mind_speech_bridge.dart';
 import '../library_loader.dart';
+import '../llama/api/meeting_intelligence.dart' as llama_mi;
 import '../llama/api/minutes.dart' as llama;
+import '../whisper/api/meetings.dart' as rust;
 
-/// Timing and memory from the most recently completed [MindGenerationBridge.
-/// generate] call. All zero before anything has generated -- a state the
-/// caller can act on (nothing to show yet) rather than a lie about a
-/// generation that never happened.
+/// Timing and memory from the most recently completed generation call.
 @immutable
 class GenerationStats {
   const GenerationStats({
@@ -24,6 +24,41 @@ class GenerationStats {
   final int generatedTokens;
   final double tokensPerSecond;
   final int peakRssBytes;
+}
+
+@immutable
+sealed class MeetingIntelligenceEvent {
+  const MeetingIntelligenceEvent();
+}
+
+final class MeetingIntelligenceEventExtracting extends MeetingIntelligenceEvent {
+  const MeetingIntelligenceEventExtracting();
+}
+
+final class MeetingIntelligenceEventGenerating extends MeetingIntelligenceEvent {
+  const MeetingIntelligenceEventGenerating(this.text);
+  final String text;
+}
+
+final class MeetingIntelligenceEventMinutesReady extends MeetingIntelligenceEvent {
+  const MeetingIntelligenceEventMinutesReady(this.text);
+  final String text;
+}
+
+final class MeetingIntelligenceEventIrReady extends MeetingIntelligenceEvent {
+  const MeetingIntelligenceEventIrReady({
+    required this.decisions,
+    required this.actionItems,
+    required this.metrics,
+  });
+
+  final List<rust.MeetingDecisionRecord> decisions;
+  final List<rust.MeetingActionItemRecord> actionItems;
+  final List<rust.MeetingMetricRecord> metrics;
+}
+
+final class MeetingIntelligenceEventCancelled extends MeetingIntelligenceEvent {
+  const MeetingIntelligenceEventCancelled();
 }
 
 @immutable
@@ -45,16 +80,54 @@ final class GenerationEventCancelled extends GenerationEvent {
   const GenerationEventCancelled();
 }
 
+rust.MeetingDecisionRecord toWhisperDecision(
+  llama_mi.MeetingDecisionRecord record,
+) => rust.MeetingDecisionRecord(
+  id: record.id,
+  statement: record.statement,
+  status: switch (record.status) {
+    llama_mi.MeetingDecisionStatus.proposed =>
+      rust.MeetingDecisionStatus.proposed,
+    llama_mi.MeetingDecisionStatus.agreed => rust.MeetingDecisionStatus.agreed,
+    llama_mi.MeetingDecisionStatus.rejected =>
+      rust.MeetingDecisionStatus.rejected,
+    llama_mi.MeetingDecisionStatus.deferred_ =>
+      rust.MeetingDecisionStatus.deferred_,
+  },
+  evidenceSegmentIds: record.evidenceSegmentIds,
+);
+
+rust.MeetingActionItemRecord toWhisperActionItem(
+  llama_mi.MeetingActionItemRecord record,
+) => rust.MeetingActionItemRecord(
+  id: record.id,
+  task: record.task,
+  owner: record.owner,
+  due: record.due,
+  status: switch (record.status) {
+    llama_mi.MeetingActionStatus.open => rust.MeetingActionStatus.open,
+    llama_mi.MeetingActionStatus.inProgress =>
+      rust.MeetingActionStatus.inProgress,
+    llama_mi.MeetingActionStatus.done => rust.MeetingActionStatus.done,
+    llama_mi.MeetingActionStatus.blocked =>
+      rust.MeetingActionStatus.blocked,
+  },
+  evidenceSegmentIds: record.evidenceSegmentIds,
+);
+
+rust.MeetingMetricRecord toWhisperMetric(llama_mi.MeetingMetricRecord record) =>
+    rust.MeetingMetricRecord(
+      id: record.id,
+      name: record.name,
+      value: record.value,
+      evidenceSegmentIds: record.evidenceSegmentIds,
+    );
+
 /// The generation half of the pipeline. See `MindSpeechBridge` for why this is
 /// an interface rather than a direct call.
-///
-/// [ensureLoaded] makes the lazy load — 48 MB that only minutes need,
-/// currently an inline guard in `library_loader.dart` — an observable, testable
-/// step rather than something buried inside `generate`.
 abstract interface class MindGenerationBridge {
   bool get isLoaded;
 
-  /// Idempotent: loads the generation library and model on first call only.
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,
@@ -62,28 +135,25 @@ abstract interface class MindGenerationBridge {
     bool allowCompactFallback = true,
   });
 
-  /// [grammar] is a GBNF grammar (start symbol `root`) constraining the
-  /// token stream, or `null` for the model's normal unconstrained output.
-  /// Plumbing only -- this bridge does not know or care what the grammar
-  /// encodes.
+  /// Meeting-intelligence pipeline: preprocess → extract → validate → MoM.
+  Stream<MeetingIntelligenceEvent> processMeetingIntelligence({
+    required String meetingId,
+    required String title,
+    required List<TranscriptSegment> segments,
+  });
+
+  /// Legacy prose-minutes path — retained for tests that still script it.
   Stream<GenerationEvent> generate({required String transcript, String? grammar});
 
-  /// What produced the last minutes, for [MindSpeechBridge.save] to record
-  /// (`ADR-0018 §5`). Empty before anything has been generated.
   String modelId();
 
-  /// Timing and memory from the most recently completed [generate] call.
   GenerationStats stats();
 
-  /// Releases the loaded generation model. Safe to call when nothing is
-  /// loaded.
   void unload();
 
   void cancel();
 }
 
-/// Delegates to the generated llama bridge, owning the lazy-load guard that
-/// used to live inline in `MindService.process`.
 class RustMindGenerationBridge implements MindGenerationBridge {
   RustMindGenerationBridge();
 
@@ -114,6 +184,56 @@ class RustMindGenerationBridge implements MindGenerationBridge {
     );
     _loaded = true;
   }
+
+  @override
+  Stream<MeetingIntelligenceEvent> processMeetingIntelligence({
+    required String meetingId,
+    required String title,
+    required List<TranscriptSegment> segments,
+  }) =>
+      llama_mi
+          .processMeetingIntelligence(
+            meetingId: meetingId,
+            title: title,
+            segments: [
+              for (final segment in segments)
+                llama_mi.MeetingIntelligenceSegment(
+                  id: segment.id,
+                  startMs: BigInt.from(segment.startMs),
+                  endMs: BigInt.from(segment.endMs),
+                  text: segment.text,
+                ),
+            ],
+          )
+          .map((event) {
+            return switch (event) {
+              llama_mi.MeetingIntelligenceEvent_Extracting() =>
+                const MeetingIntelligenceEventExtracting(),
+              llama_mi.MeetingIntelligenceEvent_Generating(:final text) =>
+                MeetingIntelligenceEventGenerating(text),
+              llama_mi.MeetingIntelligenceEvent_MinutesReady(:final text) =>
+                MeetingIntelligenceEventMinutesReady(text),
+              llama_mi.MeetingIntelligenceEvent_IrReady(
+                :final decisions,
+                :final actionItems,
+                :final metrics,
+              ) =>
+                MeetingIntelligenceEventIrReady(
+                  decisions: [
+                    for (final decision in decisions)
+                      toWhisperDecision(decision),
+                  ],
+                  actionItems: [
+                    for (final item in actionItems) toWhisperActionItem(item),
+                  ],
+                  metrics: [
+                    for (final metric in metrics) toWhisperMetric(metric),
+                  ],
+                ),
+              llama_mi.MeetingIntelligenceEvent_Cancelled() =>
+                const MeetingIntelligenceEventCancelled(),
+            };
+          });
 
   @override
   Stream<GenerationEvent> generate({
@@ -153,5 +273,8 @@ class RustMindGenerationBridge implements MindGenerationBridge {
   void unload() => llama.unloadGeneration();
 
   @override
-  void cancel() => llama.cancelGeneration();
+  void cancel() {
+    llama.cancelGeneration();
+    llama_mi.cancelMeetingIntelligence();
+  }
 }

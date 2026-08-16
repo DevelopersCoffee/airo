@@ -80,6 +80,9 @@ void main() {
       find.text('Speech recognition is ready on this device.'),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('scribe_trust_signals')), findsOneWidget);
+    expect(find.text('Multilingual · auto-detect'), findsOneWidget);
+    expect(find.text('On this device'), findsOneWidget);
     expect(find.byKey(const Key('audio_scribe_voice_health')), findsOneWidget);
     expect(find.text('Speech service'), findsOneWidget);
     expect(find.text('Ready'), findsWidgets);

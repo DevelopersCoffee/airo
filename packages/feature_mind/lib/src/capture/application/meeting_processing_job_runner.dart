@@ -3,6 +3,8 @@ import 'dart:io';
 import '../../mind_service.dart';
 import '../domain/audio_retention_policy.dart';
 import '../domain/meeting_processing_job.dart';
+import '../domain/speech_language_mode.dart';
+import 'speech_language_preference.dart';
 
 /// Adapts [MindService.process] (the existing "transcribe → minutes → save"
 /// pipeline, `mind_service.dart`) into the
@@ -31,14 +33,20 @@ class MeetingProcessingJobRunner {
   MeetingProcessingJobRunner({
     required MindService mindService,
     required AudioRetentionPolicy Function() retentionPolicy,
+    SpeechLanguageMode Function()? languageMode,
   }) : _mindService = mindService,
-       _retentionPolicy = retentionPolicy;
+       _retentionPolicy = retentionPolicy,
+       _languageMode = languageMode ?? (() => SpeechLanguageMode.fallback);
 
   final MindService _mindService;
   final AudioRetentionPolicy Function() _retentionPolicy;
+  final SpeechLanguageMode Function() _languageMode;
 
   Future<void> call(MeetingProcessingJob job) async {
-    final ready = await _mindService.ensureReady();
+    final mode = _languageMode();
+    final ready = await _mindService.ensureReady(
+      speechLanguage: mode.speechLanguage,
+    );
     if (!ready.isReady) {
       throw StateError(ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.');
     }
@@ -46,6 +54,7 @@ class MeetingProcessingJobRunner {
     await for (final progress in _mindService.process(
       wavPath: job.audioPath,
       title: job.title,
+      language: mode.processLanguageCode,
     )) {
       last = progress;
     }

@@ -37,7 +37,10 @@ void main() {
     test('embed converts the native vector to a List<double>', () async {
       messenger.setMockMethodCallHandler(channel, (call) async {
         expect(call.method, 'embed');
-        expect(call.arguments, {'text': 'hello'});
+        expect(call.arguments, {
+          'text': 'hello',
+          'taskType': 'semanticSimilarity',
+        });
         return [0.1, 0.2, 0.3];
       });
 
@@ -45,6 +48,33 @@ void main() {
       final vector = await client.embed(text: 'hello');
 
       expect(vector, [0.1, 0.2, 0.3]);
+    });
+
+    test('embed forwards retrievalQuery / retrievalDocument task types', () async {
+      MethodCall? captured;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        captured = call;
+        return [0.0];
+      });
+
+      final client = MethodChannelEmbeddingClient(channel: channel);
+      await client.embed(
+        text: 'query',
+        taskType: EmbeddingTaskType.retrievalQuery,
+      );
+      expect(captured?.arguments, {
+        'text': 'query',
+        'taskType': 'retrievalQuery',
+      });
+
+      await client.embed(
+        text: 'doc',
+        taskType: EmbeddingTaskType.retrievalDocument,
+      );
+      expect(captured?.arguments, {
+        'text': 'doc',
+        'taskType': 'retrievalDocument',
+      });
     });
 
     test('embed throws when the native side returns nothing', () async {

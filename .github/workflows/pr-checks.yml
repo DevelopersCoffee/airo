@@ -307,10 +307,16 @@ jobs:
 
       # Same flags as the `code-quality` job: infos and warnings are advisory
       # in this repo, errors are not.
+      #
+      # `integration_test/mind_journey_device_test.dart` is analysed here so
+      # the gated Pixel 9 journey (#1771) cannot drift against the Mind
+      # pubspec. Opt-in via AIRO_RUN_MIND_JOURNEY; CI never executes it.
       - name: Analyze the Mind shell
         run: |
           cd app
-          flutter analyze --no-fatal-infos --no-fatal-warnings lib/main_mind.dart lib/core/mind
+          flutter analyze --no-fatal-infos --no-fatal-warnings \
+            lib/main_mind.dart lib/core/mind \
+            integration_test/mind_journey_device_test.dart
 
       - name: Run Mind shell tests
         run: |

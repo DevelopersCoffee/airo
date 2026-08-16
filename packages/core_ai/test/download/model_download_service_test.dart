@@ -458,4 +458,63 @@ void main() {
       expect(restored.single.resumeSupported, isTrue);
     },
   );
+
+  test(
+    'restoreQueue keeps failed entries resumable without blocking re-enqueue',
+    () async {
+      downloads.queue = DownloadQueueSnapshot(
+        entries: [
+          DownloadProgress(
+            artifactId: model.id,
+            status: DownloadStatus.failed,
+            downloadedBytes: 400,
+            totalBytes: 1000,
+            resumeSupported: true,
+          ),
+        ],
+      );
+
+      final restored = await downloadService.restoreQueue(
+        catalogModels: [model],
+      );
+
+      expect(restored.single.status, ModelDownloadStatus.failed);
+      expect(restored.single.resumeSupported, isTrue);
+
+      downloadService.downloadModel(model);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(downloads.requests, hasLength(1));
+    },
+  );
+
+  test(
+    'recoverDownload resumes when the platform retained a partial',
+    () async {
+      downloads.queue = DownloadQueueSnapshot(
+        entries: [
+          DownloadProgress(
+            artifactId: model.id,
+            status: DownloadStatus.failed,
+            downloadedBytes: 400,
+            totalBytes: 1000,
+            resumeSupported: true,
+          ),
+        ],
+      );
+
+      await downloadService.recoverDownload(model.id, model: model);
+
+      expect(downloads.actions, ['resume:model-a']);
+      expect(downloads.requests, isEmpty);
+    },
+  );
+
+  test('recoverDownload retries when resume is not available', () async {
+    await downloadService.recoverDownload(model.id, model: model);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(downloads.actions, contains('cancel:model-a'));
+    expect(downloads.requests, hasLength(1));
+  });
 }

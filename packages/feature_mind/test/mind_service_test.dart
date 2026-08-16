@@ -5,6 +5,7 @@ import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/mind_service.dart';
 import 'package:feature_mind/src/models/model_provider.dart';
+import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -14,6 +15,7 @@ import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_bridges.dart';
+import 'support/recording_operation_log.dart';
 
 /// `AudioRecorder`'s real constructor talks to a platform channel, which does
 /// not exist in a plain `flutter_test` run. None of the tests here touch
@@ -91,24 +93,42 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  // T3 — the emitted MindStage sequence is exactly transcribing -> generating
-  // -> saving -> done. This is the contract that used to be enforced by
-  // `user_journey.rs` running both real engines in one process; it cannot any
+  // T3 — the emitted MindStage sequence is exactly transcribing → extracting
+  // → generating → saving → done. This is the contract that used to be enforced
+  // by `user_journey.rs` running both real engines in one process; it cannot any
   // more (#1549), so this is where that property now lives.
   test(
-    'T3: process emits transcribing, generating, saving, done in that order',
+    'T3: process emits transcribing, extracting, generating, saving, done in that order',
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscribing(
           TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
         ),
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventGenerating('Min'),
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventExtracting(),
+        MeetingIntelligenceEventGenerating('Min'),
+        MeetingIntelligenceEventIrReady(
+          decisions: [
+            rust.MeetingDecisionRecord(
+              id: 'd1',
+              statement: 'ship it',
+              status: rust.MeetingDecisionStatus.agreed,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          actionItems: [],
+          metrics: [],
+        ),
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       final stages = await service
@@ -119,7 +139,8 @@ void main() {
       expect(stages, [
         MindStage.transcribing,
         MindStage.transcribing,
-        MindStage.generating,
+        MindStage.extracting,
+        MindStage.extracting,
         MindStage.generating,
         MindStage.saving,
         MindStage.done,
@@ -136,11 +157,16 @@ void main() {
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
       await service.process(wavPath: 'x.wav', title: 't').drain<void>();
@@ -206,17 +232,44 @@ void main() {
     },
   );
 
+  test(
+    'T6b: MeetingIntelligenceEventCancelled yields idle and skips save',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello', [
+          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        ]),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventCancelled(),
+      ];
+
+      final stages = await service
+          .process(wavPath: 'x.wav', title: 't')
+          .map((p) => p.stage)
+          .toList();
+
+      expect(stages.last, MindStage.idle);
+      expect(speech.savedModel, isNull);
+    },
+  );
+
   // T7 — save() is called with the model id the GENERATION bridge reports,
   // not something process() invents. `ADR-0018 §5`: what produced a summary
   // is recorded with it.
   test('T7: save receives the generation bridge\'s model id', () async {
     speech.transcriptEvents = const [
       TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
-        ]),
+        TranscriptSegment(
+          id: 's0',
+          startMs: 0,
+          endMs: 500,
+          text: 'hello world',
+        ),
+      ]),
     ];
-    generation.generationEvents = const [
-      GenerationEventMinutesReady('Minutes.'),
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
     ];
     generation.modelIdValue = 'airo.generation.compact@1';
 
@@ -231,26 +284,129 @@ void main() {
   // "reproducible" would be a Rust-only property that Dart quietly drops on
   // its way to the store, the same failure mode `#1629` found in the ASR
   // segment IDs themselves.
+  test('T7b: save receives the transcript segments and the wav path unchanged', () async {
+    const segments = [
+      TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+      TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
+    ];
+    speech.transcriptEvents = const [
+      TranscriptEventTranscriptReady('hello world', segments),
+    ];
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
+    ];
+
+    await service
+        .process(wavPath: 'recording-1.wav', title: 't')
+        .drain<void>();
+
+    expect(speech.savedSegments, segments);
+    expect(speech.savedWavPath, 'recording-1.wav');
+  });
+
+  test('T7c: save receives IR fields from the intelligence pipeline', () async {
+    speech.transcriptEvents = const [
+      TranscriptEventTranscriptReady('hello world', [
+        TranscriptSegment(
+          id: 's0',
+          startMs: 0,
+          endMs: 500,
+          text: 'hello world',
+        ),
+      ]),
+    ];
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventIrReady(
+        decisions: [
+          rust.MeetingDecisionRecord(
+            id: 'd1',
+            statement: 'ship it',
+            status: rust.MeetingDecisionStatus.agreed,
+            evidenceSegmentIds: ['s0'],
+          ),
+        ],
+        actionItems: [
+          rust.MeetingActionItemRecord(
+            id: 'a1',
+            task: 'write tests',
+            owner: 'Priya',
+            due: 'Friday',
+            status: rust.MeetingActionStatus.open,
+            evidenceSegmentIds: ['s0'],
+          ),
+        ],
+        metrics: const [],
+      ),
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
+    ];
+
+    await service.process(wavPath: 'x.wav', title: 'Standup').drain<void>();
+
+    expect(speech.savedDecisions, hasLength(1));
+    expect(speech.savedActionItems, hasLength(1));
+    expect(speech.savedDecisions!.single.statement, 'ship it');
+    expect(speech.savedActionItems!.single.task, 'write tests');
+  });
+
   test(
-    'T7b: save receives the transcript segments and the wav path unchanged',
+    'T7d: process appends meetingIrExtracted to the operation log on success',
     () async {
-      const segments = [
-        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
-        TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
-      ];
+      final log = RecordingOperationLog();
+      final serviceWithLog = MindService(
+        recorder: MockAudioRecorder(),
+        modelProvider: FakeReadyModelProvider(),
+        speechBridge: speech,
+        generationBridge: generation,
+        operationLog: log,
+        meetingContextId: 'scribe-test',
+      );
       speech.transcriptEvents = const [
-        TranscriptEventTranscriptReady('hello world', segments),
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventIrReady(
+          decisions: [
+            rust.MeetingDecisionRecord(
+              id: 'd1',
+              statement: 'ship it',
+              status: rust.MeetingDecisionStatus.agreed,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          actionItems: [
+            rust.MeetingActionItemRecord(
+              id: 'a1',
+              task: 'write tests',
+              owner: 'Priya',
+              due: 'Friday',
+              status: rust.MeetingActionStatus.open,
+              evidenceSegmentIds: ['s0'],
+            ),
+          ],
+          metrics: const [],
+        ),
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
 
-      await service
-          .process(wavPath: 'recording-1.wav', title: 't')
+      await serviceWithLog
+          .process(wavPath: 'x.wav', title: 'Standup')
           .drain<void>();
 
-      expect(speech.savedSegments, segments);
-      expect(speech.savedWavPath, 'recording-1.wav');
+      expect(log.appended, hasLength(1));
+      final op = log.appended.single;
+      expect(op.kind, MindOpKind.meetingIrExtracted);
+      expect(op.title, 'Standup minutes extracted');
+      expect(op.contextId, 'scribe-test');
+      expect(op.detail, contains('decisions=1'));
+      expect(op.detail, contains('action_items=1'));
+      expect(op.detail, contains('metrics=0'));
     },
   );
 
@@ -261,11 +417,16 @@ void main() {
     () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
-      generation.generationEvents = const [
-        GenerationEventMinutesReady('Minutes.'),
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
       ];
       speech.saveError = StateError('disk full');
 
@@ -291,22 +452,45 @@ void main() {
     });
 
     test('passes multilingual through unchanged when requested', () async {
-      await service.initialize(speechLanguage: rust.SpeechLanguage.multilingual);
+      await service.initialize(
+        speechLanguage: rust.SpeechLanguage.multilingual,
+      );
 
-      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+      expect(
+        speech.initializedSpeechLanguage,
+        rust.SpeechLanguage.multilingual,
+      );
     });
 
-    test('uses defaultSpeechLanguage when initialize omits speechLanguage', () async {
-      final multilingualDefault = MindService(
-        recorder: MockAudioRecorder(),
-        modelProvider: FakeReadyModelProvider(),
-        speechBridge: speech,
-        generationBridge: generation,
-        defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
-      );
-      await multilingualDefault.initialize();
+    test(
+      'uses defaultSpeechLanguage when initialize omits speechLanguage',
+      () async {
+        final multilingualDefault = MindService(
+          recorder: MockAudioRecorder(),
+          modelProvider: FakeReadyModelProvider(),
+          speechBridge: speech,
+          generationBridge: generation,
+          defaultSpeechLanguage: rust.SpeechLanguage.multilingual,
+        );
+        await multilingualDefault.initialize();
 
-      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.multilingual);
+        expect(
+          speech.initializedSpeechLanguage,
+          rust.SpeechLanguage.multilingual,
+        );
+      },
+    );
+
+    test('exposes speechLanguage for trust UX (#1774)', () async {
+      expect(service.speechLanguage, rust.SpeechLanguage.englishOnly);
+      await service.initialize(
+        speechLanguage: rust.SpeechLanguage.multilingual,
+      );
+      expect(service.speechLanguage, rust.SpeechLanguage.multilingual);
+      expect(
+        service.scribeTrustState().languageBadgeLabel,
+        'Multilingual · auto-detect',
+      );
     });
   });
 
@@ -321,9 +505,13 @@ void main() {
           TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'namaste'),
         ]),
       ];
-      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
 
-      await service.process(wavPath: 'x.wav', title: 't', language: 'hi').drain<void>();
+      await service
+          .process(wavPath: 'x.wav', title: 't', language: 'hi')
+          .drain<void>();
 
       expect(speech.transcribeLanguage, 'hi');
     });
@@ -331,17 +519,25 @@ void main() {
     test('no language chosen leaves the bridge on auto-detect (null)', () async {
       speech.transcriptEvents = const [
         TranscriptEventTranscriptReady('hello world', [
-          TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello world'),
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
         ]),
       ];
-      generation.generationEvents = const [GenerationEventMinutesReady('Minutes.')];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
 
       await service.process(wavPath: 'x.wav', title: 't').drain<void>();
 
       expect(
         speech.transcribeLanguage,
         isNull,
-        reason: 'omitting language must not silently pin one -- auto-detect stays the default',
+        reason:
+            'omitting language must not silently pin one -- auto-detect stays the default',
       );
     });
   });

@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../assistant/consent/audio_scribe_consent_gate.dart';
 import '../../assistant/consent/jurisdiction_consent_rules.dart';
 import '../../assistant/consent/mind_runtime_provider.dart';
+import '../../trust/scribe_trust_signals.dart';
+import '../../trust/scribe_trust_state.dart';
 import '../application/meeting_capture_controller.dart';
 import '../application/meeting_capture_providers.dart';
+import '../application/speech_language_preference.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
 
@@ -128,6 +131,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final recording = lifecycle == MeetingRecordingLifecycle.recording;
     final paused = lifecycle == MeetingRecordingLifecycle.paused;
     final active = recording || paused;
+    final languageMode = ref.watch(speechLanguageModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record meeting')),
@@ -135,6 +139,11 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           const _ConsentReminder(),
+          const SizedBox(height: 12),
+          // #1774: settings-driven multilingual / English badge + offline copy.
+          ScribeTrustSignals(
+            state: ScribeTrustState.fromSpeechLanguageMode(languageMode),
+          ),
           const SizedBox(height: 12),
           _ConsentJurisdictionPicker(
             jurisdiction: _jurisdiction,
