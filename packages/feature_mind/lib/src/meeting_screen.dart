@@ -33,6 +33,7 @@ class MeetingScreen extends StatefulWidget {
     required this.service,
     required this.title,
     required Stream<MindProgress> this._progress,
+    this.audioPath,
     this.meetingIntelligenceEnabled = true,
     this.showLowTierCloudChoice = false,
     this.onCloudFallback,
@@ -54,12 +55,17 @@ class MeetingScreen extends StatefulWidget {
     this.speakerRegistryStore,
     super.key,
   }) : _progress = null,
-       title = '';
+       title = '',
+       audioPath = null;
 
   final MindService service;
   final String title;
   final Stream<MindProgress>? _progress;
   final rust.MeetingRecord? _meeting;
+
+  /// Recording path while [MindService.process] is running — enables speaker
+  /// enrollment before the transcript document is saved (#504).
+  final String? audioPath;
 
   /// Pro / launch-promo seam: when false, IR MoM review is locked (AC).
   /// Open-source builds leave this true (`LaunchPromoEntitlements`).
@@ -161,6 +167,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _loadIrContext(stored);
     } else {
       _syncLiveSegments();
+      _audioPath = widget.audioPath;
     }
     _loadGlobalEnrollment();
   }

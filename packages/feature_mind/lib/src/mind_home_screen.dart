@@ -127,6 +127,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
             service: widget.service,
             title: title,
             progress: progress,
+            audioPath: path,
           ),
         ),
       );
