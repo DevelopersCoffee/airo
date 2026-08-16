@@ -51,6 +51,15 @@ export 'src/mind_scribe_models_panel.dart'
         mindScribeServiceProvider,
         MindScribeModelsPanel,
         scribeCatalogIdToFileName;
+
+export 'src/settings/indic_generation_settings_tile.dart'
+    show IndicGenerationSettingsTile;
+export 'src/settings/indic_speech_backend_settings_tile.dart'
+    show IndicSpeechBackendSettingsTile;
+export 'src/settings/indic_intelligence_preferences.dart'
+    show indicGenerationModeProvider, indicSpeechModeProvider;
+export 'src/settings/mind_entitlements_provider.dart'
+    show mindEntitlementsProvider;
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 

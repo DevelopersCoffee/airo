@@ -1,4 +1,3 @@
-import 'package:airo_pro_bootstrap/airo_pro_bootstrap.dart' as pro_bootstrap;
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';
@@ -88,7 +87,7 @@ class _MindModelsScreenState extends ConsumerState<MindModelsScreen> {
           else
             MindScribeModelsPanel(
               scribeModelsById: _scribeModelsById(),
-              entitlements: pro_bootstrap.createEntitlements(),
+              entitlements: ref.watch(mindEntitlementsProvider),
               memoryInfo: _memoryInfo,
               onTryStack: () => context.go('/'),
               onAcquireComplete: () async {
