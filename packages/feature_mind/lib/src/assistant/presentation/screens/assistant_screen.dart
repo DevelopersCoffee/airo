@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../assistant_surface_policy.dart';
 import '../../../widgets/airo_action_card.dart';
 
 /// On-device AI: chat, skills, transcription, prompts, models.
@@ -17,6 +18,7 @@ class AssistantScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final policy = ref.watch(assistantSurfacePolicyProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -43,13 +45,15 @@ class AssistantScreen extends ConsumerWidget {
             icon: Icons.extension_outlined,
             onTap: () => context.push('/assistant/skills'),
           ),
-          const SizedBox(height: 10),
-          AiroActionCard(
-            title: 'Ask Image',
-            subtitle: 'Upload an image and ask Airo questions about it.',
-            icon: Icons.image_outlined,
-            onTap: () => context.push('/quest/new'),
-          ),
+          if (policy.showQuestImage) ...[
+            const SizedBox(height: 10),
+            AiroActionCard(
+              title: 'Ask Image',
+              subtitle: 'Upload an image and ask Airo questions about it.',
+              icon: Icons.image_outlined,
+              onTap: () => context.push('/quest/new'),
+            ),
+          ],
           const SizedBox(height: 10),
           AiroActionCard(
             title: 'Meeting Scribe',
@@ -73,14 +77,16 @@ class AssistantScreen extends ConsumerWidget {
             icon: Icons.tune,
             onTap: () => context.push('/assistant/prompt-lab'),
           ),
-          const SizedBox(height: 10),
-          AiroActionCard(
-            title: 'Mobile Actions & Tiny Garden',
-            subtitle:
-                'Try safe device commands and a playful natural-language garden.',
-            icon: Icons.local_florist_outlined,
-            onTap: () => context.push('/assistant/mobile-actions'),
-          ),
+          if (policy.showMobileActions) ...[
+            const SizedBox(height: 10),
+            AiroActionCard(
+              title: 'Mobile Actions & Tiny Garden',
+              subtitle:
+                  'Try safe device commands and a playful natural-language garden.',
+              icon: Icons.local_florist_outlined,
+              onTap: () => context.push('/assistant/mobile-actions'),
+            ),
+          ],
           const SizedBox(height: 10),
           AiroActionCard(
             title: 'Model Management & Benchmark',

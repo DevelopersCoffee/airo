@@ -55,6 +55,15 @@ void main() {
       );
     });
 
+    test('suppresses missing plugin failures on desktop hosts', () {
+      expect(
+        DeviceCapabilityService.shouldSuppressPlatformChannelErrorLog(
+          MissingPluginException('getMemoryInfo'),
+        ),
+        isTrue,
+      );
+    });
+
     test('does not suppress unrelated platform channel failures', () {
       expect(
         DeviceCapabilityService.shouldSuppressPlatformChannelErrorLog(

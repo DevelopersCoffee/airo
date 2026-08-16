@@ -1,5 +1,6 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
+import 'package:flutter/foundation.dart';
 
 /// Where Airo Mind's models are fetched from, and the provider that fetches
 /// them.
@@ -67,6 +68,9 @@ String? mindModelDownloadUrlFor(RequiredModel model) =>
 /// so nothing outside should be responsible for its subscription to the
 /// platform download stream.
 MindService buildMindDownloadService() {
+  final useDownloadProvider =
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
   return MindService(
     // Hindi/Marathi/English code-switching in meetings needs multilingual
     // whisper weights and auto-detect per recording (`#1629`, `#1664`).
@@ -76,26 +80,30 @@ MindService buildMindDownloadService() {
     // ADR-0022 §1.2: durable log shared with assistant consent + runtime console.
     operationLog: sharedMindOperationLog(),
     meetingContextId: 'scribe',
-    modelProvider: DownloadModelProvider(
-      // Application support, not documents. Airo Mind keeps its models in the
-      // app's support directory on purpose (`MindService.modelsDirectory`) —
-      // on iOS the documents directory is user-visible in Files and backed up
-      // to iCloud, which a 491 MB model has no business being. Staging the
-      // download in documents would put it there anyway, along with the
-      // install receipt left behind after the artifact is moved.
-      downloadService: ModelDownloadService(
-        storageLocation: ModelStorageLocation.applicationSupport,
-      ),
-      // Default weights plus multilingual when Settings is on Auto (mixed).
-      // English opt-in (#1774) drops the multilingual row so first-run never
-      // spends ~78 MB the user did not ask for.
-      requiredModelsLookup: () async {
-        final mode = await loadSpeechLanguageMode();
-        return mindScribeRequiredModels(
-          includeMultilingual: mode.includesMultilingualModel,
-        );
-      },
-      downloadUrlFor: mindModelDownloadUrlFor,
-    ),
+    modelProvider: useDownloadProvider
+        ? DownloadModelProvider(
+            // Application support, not documents. Airo Mind keeps its models in the
+            // app's support directory on purpose (`MindService.modelsDirectory`) —
+            // on iOS the documents directory is user-visible in Files and backed up
+            // to iCloud, which a 491 MB model has no business being. Staging the
+            // download in documents would put it there anyway, along with the
+            // install receipt left behind after the artifact is moved.
+            downloadService: ModelDownloadService(
+              storageLocation: ModelStorageLocation.applicationSupport,
+            ),
+            // Default weights plus multilingual when Settings is on Auto (mixed).
+            // English opt-in (#1774) drops the multilingual row so first-run never
+            // spends ~78 MB the user did not ask for.
+            requiredModelsLookup: () async {
+              final mode = await loadSpeechLanguageMode();
+              return mindScribeRequiredModels(
+                includeMultilingual: mode.includesMultilingualModel,
+              );
+            },
+            downloadUrlFor: mindModelDownloadUrlFor,
+          )
+        : DesktopMindModelProvider(
+            downloadUrlFor: mindModelDownloadUrlFor,
+          ),
   );
 }

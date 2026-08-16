@@ -254,11 +254,13 @@ class AssistantModelLibraryState {
 
     if (initializeCloud != null) {
       await initializeCloud();
-    } else {
+    } else if (isAndroidHost || kIsWeb) {
       await geminiApiService.initialize();
     }
-    final cloudAvailable =
-        isCloudAvailable?.call() ?? geminiApiService.isAvailable;
+    final cloudAvailable = isAndroidHost || kIsWeb
+        ? (isCloudAvailable?.call() ?? geminiApiService.isAvailable)
+        : false;
+    final webMediaPipeAvailable = kIsWeb && cloudAvailable;
     final defaultPackages = loadDefaultPackages == null
         ? await _defaultPackages(liteRtService)
         : await loadDefaultPackages();
@@ -289,29 +291,31 @@ class AssistantModelLibraryState {
       candidatesById[candidate.id] = candidate;
     }
 
-    addCandidate(
-      AssistantModelCandidate(
-        id: geminiNanoAssistantModelId,
-        name: 'Gemini Nano',
-        runtime: 'AICore on-device',
-        description:
-            'Default for private chat and mobile actions on supported Pixel devices.',
-        bestFor: const [
-          AssistantTask.chat,
-          AssistantTask.actions,
-          AssistantTask.documents,
-        ],
-        tags: const ['Local', 'Private', 'Streaming'],
-        privacyLabel: 'Prompt stays on device',
-        sizeLabel: 'System managed',
-        available: nanoSupported,
-        actionLabel: nanoSupported ? 'Start' : 'Needs Pixel 9 AICore',
-        unavailableReason: nanoSupported
-            ? null
-            : 'Gemini Nano is only runnable when the native AICore integration reports support.',
-        local: true,
-      ),
-    );
+    if (isAndroidHost) {
+      addCandidate(
+        AssistantModelCandidate(
+          id: geminiNanoAssistantModelId,
+          name: 'Gemini Nano',
+          runtime: 'AICore on-device',
+          description:
+              'Default for private chat and mobile actions on supported Pixel devices.',
+          bestFor: const [
+            AssistantTask.chat,
+            AssistantTask.actions,
+            AssistantTask.documents,
+          ],
+          tags: const ['Local', 'Private', 'Streaming'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: 'System managed',
+          available: nanoSupported,
+          actionLabel: nanoSupported ? 'Start' : 'Needs Pixel 9 AICore',
+          unavailableReason: nanoSupported
+              ? null
+              : 'Gemini Nano is only runnable when the native AICore integration reports support.',
+          local: true,
+        ),
+      );
+    }
     // A catalog entry is not an installed runtime. Do not put a LiteRT card
     // in the Mind chooser when the device has neither an executable artifact
     // nor a configured model path. Model Management remains the explicit
@@ -343,29 +347,31 @@ class AssistantModelLibraryState {
         ),
       );
     }
-    addCandidate(
-      AssistantModelCandidate(
-        id: geminiCloudAssistantModelId,
-        name: 'Gemini Cloud',
-        runtime: 'Google Generative Language API',
-        description:
-            'Fallback for use cases that are not covered by the on-device packages yet.',
-        bestFor: const [
-          AssistantTask.image,
-          AssistantTask.audio,
-          AssistantTask.reasoning,
-        ],
-        tags: const ['Cloud', 'Vision', 'API key'],
-        privacyLabel: 'Sends prompt to API',
-        sizeLabel: 'No local download',
-        available: cloudAvailable,
-        actionLabel: cloudAvailable ? 'Start' : 'Needs API setup',
-        unavailableReason: cloudAvailable
-            ? null
-            : 'Launch Flutter with --dart-define=GEMINI_API_KEY=... to enable this real API path.',
-        local: false,
-      ),
-    );
+    if (isAndroidHost || kIsWeb) {
+      addCandidate(
+        AssistantModelCandidate(
+          id: geminiCloudAssistantModelId,
+          name: 'Gemini Cloud',
+          runtime: 'Google Generative Language API',
+          description:
+              'Fallback for use cases that are not covered by the on-device packages yet.',
+          bestFor: const [
+            AssistantTask.image,
+            AssistantTask.audio,
+            AssistantTask.reasoning,
+          ],
+          tags: const ['Cloud', 'Vision', 'API key'],
+          privacyLabel: 'Sends prompt to API',
+          sizeLabel: 'No local download',
+          available: cloudAvailable,
+          actionLabel: cloudAvailable ? 'Start' : 'Needs API setup',
+          unavailableReason: cloudAvailable
+              ? null
+              : 'Launch Flutter with --dart-define=GEMINI_API_KEY=... to enable this real API path.',
+          local: false,
+        ),
+      );
+    }
     for (final model
         in (mobileRecommended ?? ModelCatalog.mobileRecommended).take(3)) {
       final hydrated = hydrateDownloadedModel == null
@@ -377,6 +383,8 @@ class AssistantModelLibraryState {
             hydrated,
             compatibilityByModelId: compatibilityByModelId,
             nativeGgufAvailable: ggufAvailable,
+            liteRtNativeAvailable: liteRtAvailable,
+            webMediaPipeAvailable: webMediaPipeAvailable,
           ),
         );
       }
@@ -395,13 +403,23 @@ class AssistantModelLibraryState {
             model,
             compatibilityByModelId: compatibilityByModelId,
             nativeGgufAvailable: ggufAvailable,
+            liteRtNativeAvailable: liteRtAvailable,
+            webMediaPipeAvailable: webMediaPipeAvailable,
           ),
         );
       }
     }
+    if (candidatesById.isEmpty) {
+      addCandidate(_setupRequiredCandidate(platformLabel));
+    }
     final candidates = candidatesById.values.toList();
 
-    final recommended = recommend(candidates, task, defaultPackages);
+    final recommended = recommend(
+      candidates,
+      task,
+      defaultPackages,
+      isAndroidHost: isAndroidHost,
+    );
     return AssistantModelLibraryState(
       task: task,
       deviceLabel: deviceLabel.isEmpty ? 'Unknown device' : deviceLabel,
@@ -415,25 +433,26 @@ class AssistantModelLibraryState {
   static AssistantModelCandidate recommend(
     List<AssistantModelCandidate> candidates,
     AssistantTask task,
-    Map<AssistantTask, OfflineModelInfo> packages,
-  ) {
+    Map<AssistantTask, OfflineModelInfo> packages, {
+    bool isAndroidHost = false,
+  }) {
     final package = packages[task];
     final preferredIds = switch (task) {
       AssistantTask.chat => [
         if (package != null) assistantModelIdForOfflineModel(package.id),
-        litertGemmaAssistantModelId,
-        geminiNanoAssistantModelId,
+        if (isAndroidHost) litertGemmaAssistantModelId,
+        if (isAndroidHost) geminiNanoAssistantModelId,
       ],
       AssistantTask.actions => [
-        geminiNanoAssistantModelId,
+        if (isAndroidHost) geminiNanoAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.reasoning || AssistantTask.documents => [
-        litertGemmaAssistantModelId,
+        if (isAndroidHost) litertGemmaAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.skills => [
-        litertGemmaAssistantModelId,
+        if (isAndroidHost) litertGemmaAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.image || AssistantTask.audio => [
@@ -441,11 +460,11 @@ class AssistantModelLibraryState {
         geminiCloudAssistantModelId,
       ],
       AssistantTask.promptLab => [
-        litertGemmaAssistantModelId,
+        if (isAndroidHost) litertGemmaAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.tinyGarden => [
-        geminiNanoAssistantModelId,
+        if (isAndroidHost) geminiNanoAssistantModelId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
     };
@@ -475,7 +494,33 @@ class AssistantModelLibraryState {
         final bScore = b.scoreFor(task);
         return bScore.compareTo(aScore);
       });
+    if (ranked.isEmpty) {
+      return candidates.first;
+    }
     return ranked.first;
+  }
+
+  static AssistantModelCandidate _setupRequiredCandidate(String platformLabel) {
+    final isMacLike = platformLabel.toUpperCase().contains('MACOS') ||
+        platformLabel.toUpperCase().contains('MAC');
+    return AssistantModelCandidate(
+      id: 'assistant-setup-required',
+      name: 'Choose a local model',
+      runtime: 'On-device package required',
+      description: isMacLike
+          ? 'Download a GGUF package (for example Qwen 1.5B) from Models, then pick it here to chat on $platformLabel.'
+          : 'Download a compatible on-device package from Models to chat on $platformLabel.',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Setup'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: 'Varies by package',
+      available: false,
+      actionLabel: 'Choose a model',
+      unavailableReason:
+          'No runnable assistant model is selected for this device yet.',
+      local: true,
+      opensModelManager: true,
+    );
   }
 
   AssistantModelCandidate? candidateById(String? id) {
@@ -573,19 +618,27 @@ class AssistantModelCandidate {
     this.opensModelManager = false,
     this.package,
     this.compatibility,
+    this.readiness,
   });
 
   factory AssistantModelCandidate.fromOfflineModel(
     OfflineModelInfo model, {
     Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
     bool nativeGgufAvailable = false,
+    bool liteRtNativeAvailable = false,
+    bool webMediaPipeAvailable = false,
   }) {
-    final isLiteRt = AssistantModelLibraryState.isLiteRtPackage(model);
-    final isRunnable = model.isDownloaded && (isLiteRt || nativeGgufAvailable);
+    final readiness = ModelReadinessService.evaluate(
+      model,
+      nativeGgufAvailable: nativeGgufAvailable,
+      liteRtNativeAvailable: liteRtNativeAvailable,
+      webMediaPipeAvailable: webMediaPipeAvailable,
+    );
+    final isRunnable = readiness.isRunnable;
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
-      runtime: '${model.family.displayName} ${model.provider.displayName}',
+      runtime: model.effectiveRuntime.displayName,
       description:
           model.description ??
           'Offline model from the bundled local model catalog.',
@@ -593,7 +646,7 @@ class AssistantModelCandidate {
       tags: [
         'Local',
         model.backendPreference.displayName,
-        model.licenseState.displayName,
+        if (!isRunnable && model.isDownloaded) readiness.headline,
       ],
       privacyLabel: 'Prompt stays on device after install',
       sizeLabel: model.fileSizeDisplay,
@@ -601,19 +654,14 @@ class AssistantModelCandidate {
       actionLabel: isRunnable
           ? 'Start'
           : model.isDownloaded
-          ? 'Native backend unavailable'
+          ? readiness.headline
           : 'Download package',
-      unavailableReason: model.isDownloaded && !isLiteRt && !nativeGgufAvailable
-          ? 'This GGUF package is downloaded, but local llama.cpp execution is not bundled. Configure an OpenAI-compatible remote server or choose a LiteRT package.'
-          : model.isDownloaded
-          ? null
-          : 'Download this package from Profile settings before using it in chat.',
+      unavailableReason: model.isDownloaded ? readiness.detail : null,
       local: true,
-      // A downloaded artifact without a matching local backend still needs a
-      // setup action. It must never look like a runnable chat target.
       opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
+      readiness: readiness,
     );
   }
 
@@ -632,6 +680,7 @@ class AssistantModelCandidate {
   final bool opensModelManager;
   final OfflineModelInfo? package;
   final ModelCompatibilityResult? compatibility;
+  final ModelReadinessState? readiness;
 
   int scoreFor(AssistantTask task) {
     var score = 0;

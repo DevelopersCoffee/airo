@@ -30,9 +30,9 @@ class GeminiApiService {
   /// TODO(security): should resolve the key via secure storage instead of
   /// String.fromEnvironment; see
   /// https://github.com/DevelopersCoffee/airo/issues/1695
-  Future<void> initialize({String? apiKey}) async {
+  Future<void> initialize({String? apiKey, bool warnIfMissing = false}) async {
     _apiKey = apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
-    if (_apiKey == null || _apiKey!.isEmpty) {
+    if (warnIfMissing && (_apiKey == null || _apiKey!.isEmpty)) {
       debugPrint(
         'Warning: GEMINI_API_KEY not set. Gemini API features disabled.',
       );

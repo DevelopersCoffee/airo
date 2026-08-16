@@ -43,7 +43,7 @@ class ModelDownloadService {
     ModelStorageManager? storageManager,
     required ModelStorageLocation storageLocation,
   }) {
-    final resolvedDownloads = downloads ?? MethodChannelBackgroundDownloads();
+    final resolvedDownloads = downloads ?? createBackgroundDownloads();
     return _ResolvedDependencies(
       downloads: resolvedDownloads,
       storageManager:

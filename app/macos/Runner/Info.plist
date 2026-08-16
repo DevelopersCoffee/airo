@@ -4,6 +4,8 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Airo Mind records meetings on this device. Audio never leaves it.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Airo Mind uses speech recognition to transcribe audio you capture in Audio Scribe.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

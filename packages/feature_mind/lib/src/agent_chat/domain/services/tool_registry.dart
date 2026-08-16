@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../assistant/assistant_surface_policy.dart';
 import '../../../meeting_archive/meeting_archive_port.dart';
 import '../../../services/device_actions_service.dart';
 import 'intent_parser.dart';
@@ -601,7 +602,20 @@ class ToolRegistry {
   List<Tool> getAllTools() => _tools.values.toList();
 
   /// Get Gallery-style feature cards for the chat prompt surface.
-  List<AgentSkillCard> getSkillCards() {
+  List<AgentSkillCard> getSkillCards({
+    AssistantSurfacePolicy policy = AssistantSurfacePolicy.mobile,
+  }) {
+    return _allSkillCards().where((card) {
+      return switch (card.key) {
+        'ask_image' => policy.showQuestImage,
+        'mobile_actions' || 'tiny_garden' => policy.showMobileActions,
+        'arena_games' => policy.showArenaGames,
+        _ => true,
+      };
+    }).toList();
+  }
+
+  List<AgentSkillCard> _allSkillCards() {
     return const [
       AgentSkillCard(
         key: 'ai_chat',

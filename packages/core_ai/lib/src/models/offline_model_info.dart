@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 import '../provider/ai_provider.dart';
+import 'model_contract.dart';
 import 'model_credibility.dart';
 
 /// Quantization level for GGUF models.
@@ -158,6 +159,9 @@ class OfflineModelInfo {
     this.recommendedMemoryBytes,
     this.supportsWebRuntime = false,
     this.webAssetUrl,
+    this.task,
+    this.runtime,
+    this.platformSupport,
   });
 
   /// Unique identifier for this model.
@@ -253,6 +257,15 @@ class OfflineModelInfo {
   /// [supportsWebRuntime] is true.
   final String? webAssetUrl;
 
+  /// Primary product task for routing (inferred when null).
+  final ModelTask? task;
+
+  /// Execution backend contract (inferred from artifact extension when null).
+  final InferenceRuntime? runtime;
+
+  /// OS eligibility for install/run (inferred from [runtime] when null).
+  final PlatformSupport? platformSupport;
+
   /// Whether the model is downloaded and available locally.
   bool get isDownloaded => filePath?.trim().isNotEmpty ?? false;
 
@@ -347,6 +360,9 @@ class OfflineModelInfo {
     int? recommendedMemoryBytes,
     bool? supportsWebRuntime,
     String? webAssetUrl,
+    ModelTask? task,
+    InferenceRuntime? runtime,
+    PlatformSupport? platformSupport,
   }) {
     return OfflineModelInfo(
       id: id ?? this.id,
@@ -381,6 +397,9 @@ class OfflineModelInfo {
           recommendedMemoryBytes ?? this.recommendedMemoryBytes,
       supportsWebRuntime: supportsWebRuntime ?? this.supportsWebRuntime,
       webAssetUrl: webAssetUrl ?? this.webAssetUrl,
+      task: task ?? this.task,
+      runtime: runtime ?? this.runtime,
+      platformSupport: platformSupport ?? this.platformSupport,
     );
   }
 
@@ -416,6 +435,9 @@ class OfflineModelInfo {
     'recommendedMemoryBytes': recommendedMemoryBytes,
     'supportsWebRuntime': supportsWebRuntime,
     'webAssetUrl': webAssetUrl,
+    'task': task?.name,
+    'runtime': runtime?.name,
+    'platformSupport': platformSupport?.toJson(),
   };
 
   /// Creates from JSON map.
@@ -488,6 +510,23 @@ class OfflineModelInfo {
       recommendedMemoryBytes: json['recommendedMemoryBytes'] as int?,
       supportsWebRuntime: json['supportsWebRuntime'] as bool? ?? false,
       webAssetUrl: json['webAssetUrl'] as String?,
+      task: json['task'] == null
+          ? null
+          : ModelTask.values.firstWhere(
+              (value) => value.name == json['task'],
+              orElse: () => ModelTask.textGeneration,
+            ),
+      runtime: json['runtime'] == null
+          ? null
+          : InferenceRuntime.values.firstWhere(
+              (value) => value.name == json['runtime'],
+              orElse: () => InferenceRuntime.llamaCpp,
+            ),
+      platformSupport: json['platformSupport'] is Map
+          ? PlatformSupport.fromJson(
+              Map<String, dynamic>.from(json['platformSupport'] as Map),
+            )
+          : null,
     );
   }
 

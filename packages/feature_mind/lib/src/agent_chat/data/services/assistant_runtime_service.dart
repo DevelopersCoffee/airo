@@ -297,6 +297,26 @@ class AssistantRuntimeService {
     final earlyCancel = cancelled();
     if (earlyCancel != null) return earlyCancel;
 
+    final readiness = candidate.readiness;
+    if (readiness != null && !readiness.canPrepare) {
+      return AssistantRuntimePreparationResult.blocked(
+        AssistantRuntimeDiagnosticEnvelope(
+          runtimeId: candidate.id,
+          runtimeName: candidate.name,
+          summary: readiness.headline,
+          detail: readiness.detail,
+          deviceLabel: resolvedDeviceLabel,
+          platformLabel: platformLabel,
+          reasonCode: 'runtime_unavailable',
+          repairActions: _repairActionsForReadiness(
+            readiness,
+            platformLabel: platformLabel,
+            package: candidate.package,
+          ),
+        ),
+      );
+    }
+
     if (!candidate.local) {
       emit(
         AssistantRuntimePreparationPhase.ready,
@@ -1016,5 +1036,38 @@ class AssistantRuntimeService {
     }
 
     return null;
+  }
+
+  static List<String> _repairActionsForReadiness(
+    ModelReadinessState readiness, {
+    required String platformLabel,
+    OfflineModelInfo? package,
+  }) {
+    final runtime = package?.effectiveRuntime;
+    final isMacLike = platformLabel.toUpperCase().contains('MAC');
+    if (runtime == InferenceRuntime.litertLm) {
+      if (isMacLike) {
+        return const [
+          'Download a GGUF model (for example Qwen 1.5B) from AI Models.',
+          'Choose the GGUF package in Mind chat.',
+          'Use Gemini Cloud if you prefer a hosted model.',
+        ];
+      }
+      return const [
+        'Install this package on a supported Android device.',
+        'Choose a GGUF or cloud model on desktop.',
+      ];
+    }
+    if (runtime == InferenceRuntime.llamaCpp) {
+      return const [
+        'Verify the native llama.cpp backend is available on this device.',
+        'Re-download the GGUF artifact if it appears corrupted.',
+        'Configure a compatible remote llama.cpp server.',
+      ];
+    }
+    return const [
+      'Open AI Models and choose a package supported on this device.',
+      'Pick another model from the library.',
+    ];
   }
 }

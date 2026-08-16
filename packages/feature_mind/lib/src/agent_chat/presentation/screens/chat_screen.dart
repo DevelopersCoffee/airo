@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../host/assistant_host_adapter.dart';
+import '../../../assistant/assistant_surface_policy.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
@@ -688,7 +689,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildSamplePrompts() {
-    final prompts = _toolRegistry.getSkillCards();
+    final policy = ref.watch(assistantSurfacePolicyProvider);
+    final prompts = _toolRegistry.getSkillCards(policy: policy);
     final theme = Theme.of(context);
 
     return Column(

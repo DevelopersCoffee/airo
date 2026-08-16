@@ -16,6 +16,7 @@ dependencies:
   # Microphone capture. Step 1 of the journey; nothing else in the workspace
   # records audio. Constitution §6 scorecard owed before release.
   record: ^6.0.0
+  speech_to_text: ^7.0.0
   path_provider: ^2.1.4
   path: ^1.9.0
   # Required by flutter_rust_bridge for the generated sealed classes that carry
