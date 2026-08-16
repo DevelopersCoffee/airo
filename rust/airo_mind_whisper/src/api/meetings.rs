@@ -44,11 +44,14 @@ use crate::frb_generated::StreamSink;
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
+use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
     ActionStatus, AudioInput, CancelToken, DecisionStatus, Meeting, MeetingActionItem,
     MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
     TranscriptSegment, TranscriptionOptions,
 };
+use airo_mind_diarize::{diarize_segments, DiarizationStrategy};
+use airo_mind_transcript::Segment;
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -311,6 +314,32 @@ fn transcript_segment_record(index: usize, segment: &TranscriptSegment) -> Trans
     }
 }
 
+/// Assigns `speaker_label` on wire segments after ASR, using the PCM whisper
+/// already preprocessed for transcription.
+fn apply_diarization_labels(
+    records: &mut [TranscriptSegmentRecord],
+    pcm: &Pcm,
+    strategy: DiarizationStrategy,
+) -> Result<(), String> {
+    if records.is_empty() {
+        return Ok(());
+    }
+    let segments: Vec<Segment> = records
+        .iter()
+        .map(|record| Segment {
+            id: record.id.clone(),
+            start_ms: record.start_ms,
+            end_ms: record.end_ms,
+            text: record.text.clone(),
+        })
+        .collect();
+    let result = diarize_segments(&segments, Some(pcm), strategy).map_err(|e| e.to_string())?;
+    for (record, diarized) in records.iter_mut().zip(result.segments.iter()) {
+        record.speaker_label = Some(diarized.speaker.label());
+    }
+    Ok(())
+}
+
 impl From<Meeting> for MeetingRecord {
     fn from(m: Meeting) -> Self {
         Self {
@@ -530,6 +559,9 @@ pub fn transcribe_recording(
     if transcript.trim().is_empty() {
         return Err("No speech was found in the recording.".into());
     }
+
+    apply_diarization_labels(&mut segments, &pcm, DiarizationStrategy::Solo)?;
+
     emit(TranscriptEvent::TranscriptReady {
         text: transcript,
         segments,
@@ -787,6 +819,35 @@ mod tests {
         assert_eq!(record.start_ms, 0);
         assert_eq!(record.end_ms, 900);
         assert_eq!(record.text, "hello");
+    }
+
+    #[test]
+    fn apply_diarization_labels_assigns_solo_speaker_on_segments() {
+        let pcm = Pcm {
+            samples: vec![0, 1, 2, 3],
+            sample_rate_hz: 16_000,
+            channels: 1,
+        };
+        let mut records = vec![
+            TranscriptSegmentRecord {
+                id: "s0".into(),
+                start_ms: 0,
+                end_ms: 500,
+                text: "hello".into(),
+                speaker_label: None,
+            },
+            TranscriptSegmentRecord {
+                id: "s1".into(),
+                start_ms: 500,
+                end_ms: 900,
+                text: "world".into(),
+                speaker_label: None,
+            },
+        ];
+        apply_diarization_labels(&mut records, &pcm, DiarizationStrategy::Solo)
+            .expect("solo labels apply");
+        assert_eq!(records[0].speaker_label.as_deref(), Some("sp0"));
+        assert_eq!(records[1].speaker_label.as_deref(), Some("sp0"));
     }
 
     /// Every call must say what is wrong rather than panicking on `None`, since

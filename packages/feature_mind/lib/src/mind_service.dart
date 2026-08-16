@@ -432,7 +432,7 @@ class MindService {
             progress = progress.copyWith(
               stage: MindStage.extracting,
               transcript: text,
-              segments: applySoloSpeakerDiarization(segments),
+              segments: ensureSpeakerLabels(segments),
             );
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);

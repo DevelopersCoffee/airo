@@ -8,7 +8,7 @@ use airo_mind_core::{
     CancelToken, EngineError, GenerationChunk, GenerationEngine, GenerationRequest,
     ResourceRequest, RuntimeError, RuntimeStats, Supervisor, TranscriptSegment,
 };
-use airo_mind_diarize::diarize_single_speaker;
+use airo_mind_diarize::{diarize_segments, DiarizationStrategy};
 use airo_mind_llama::{LlamaGenerationEngine, ResourceBudget, Supervisor as LlamaSupervisor};
 use airo_mind_meeting::{
     extract, generate_mom, validate, ExtractionConfig, MeetingInput, MeetingIr, MomError,
@@ -171,7 +171,14 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
         panic!("whisper produced no text");
     }
 
-    let diarized = diarize_single_speaker(&segments).expect("diarization succeeds");
+    let diarized = diarize_segments(
+        &segments,
+        Some(&pcm),
+        DiarizationStrategy::StubEmbedding {
+            similarity_threshold: 0.85,
+        },
+    )
+    .expect("diarization succeeds");
     let speaker_by_id: std::collections::HashMap<String, String> = diarized
         .segments
         .iter()
