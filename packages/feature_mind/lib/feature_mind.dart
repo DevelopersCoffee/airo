@@ -21,6 +21,17 @@ export 'src/mind_availability.dart';
 export 'src/whisper/api/meetings.dart' show MeetingRecord, SearchHit;
 export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen;
+export 'src/models/model_descriptor_adapter.dart' show mindIndicOptionalModels;
+export 'src/mind_indic_intelligence.dart'
+    show
+        MindIndicCapability,
+        MindIndicGenerationMode,
+        MindIndicPreferences,
+        MindIndicSpeechMode,
+        kMindIndicMinAvailableRamBytes,
+        kMindIndicMinTotalRamBytes,
+        pinnedIndicGenerationModel;
+
 export 'src/mind_service.dart'
     show MindProgress, MindService, MindStage, MindStatus, MindUnavailable;
 

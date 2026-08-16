@@ -230,6 +230,22 @@ const REGISTRY: &[Bundled] = &[
         sha256: "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
         required_by_default: true,
     },
+    // Optional Indic generation (`mind_indic_intelligence` pro feature):
+    // `sarvamai/sarvam-1` community GGUF, verified against bartowski pin.
+    // `required_by_default: false` — desktop pro installs on demand; mobile
+    // stays on Qwen unless the user explicitly downloads this pack.
+    Bundled {
+        logical_id: "airo.generation.indic.standard",
+        version: "1",
+        task: ModelTask::Generation,
+        quality: ModelQuality::Standard,
+        language: ModelLanguage::EnglishOnly,
+        file_name: "sarvam-1-Q4_K_M.gguf",
+        memory_mb: 3072,
+        size_bytes: 1_547_736_928,
+        sha256: "608cf36dc3f79d608a6d4f7c41c81e663bd919c44ac2d61af4029a0c2322c937",
+        required_by_default: false,
+    },
 ];
 
 /// Resolves a requirement against what is installed.
@@ -556,6 +572,7 @@ mod tests {
     fn optional_files_holds_the_multilingual_model_and_nothing_required() {
         let files = optional_files();
         assert!(files.iter().any(|(n, _, _)| n == "ggml-tiny.bin"));
+        assert!(files.iter().any(|(n, _, _)| n == "sarvam-1-Q4_K_M.gguf"));
         let required = required_files();
         assert!(
             files
@@ -563,6 +580,30 @@ mod tests {
                 .all(|(n, _, _)| !required.iter().any(|(r, _, _)| r == n)),
             "a file must not be both required and optional"
         );
+    }
+
+    #[test]
+    fn a_standard_generation_requirement_resolves_sarvam_when_installed() {
+        let entry = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.generation.indic.standard")
+            .expect("indic generation row");
+        let d = dir("indic-gen");
+        install(&d, entry, entry.size_bytes);
+
+        let resolved = resolve(
+            &ModelRequirement {
+                task: ModelTask::Generation,
+                memory_budget_mb: 4096,
+                minimum_quality: ModelQuality::Standard,
+                language: ModelLanguage::EnglishOnly,
+            },
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.generation.indic.standard");
     }
 
     /// `#1629`: Hindi+English code-switching cannot work with the English-only

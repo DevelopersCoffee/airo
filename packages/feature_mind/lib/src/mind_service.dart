@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core_ai/core_ai.dart' show EmbeddingService;
+import 'package:core_ai/core_ai.dart' as core_ai show DeviceCapabilityService;
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +11,7 @@ import 'package:record/record.dart';
 
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
+import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
 import 'models/model_provider.dart';
 import 'search/meeting_embedding_store.dart';
@@ -117,11 +120,13 @@ class MindService {
     MindGenerationBridge? generationBridge,
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
+    Entitlements entitlements = const LaunchPromoEntitlements(),
   }) : _recorder = recorder ?? AudioRecorder(),
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
        _generation = generationBridge ?? RustMindGenerationBridge(),
        _defaultSpeechLanguage = defaultSpeechLanguage,
+       _entitlements = entitlements,
        _rankerBuilder =
            rankerBuilder ??
            ((dir) => SemanticSearchRanker(
@@ -134,6 +139,7 @@ class MindService {
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
   final rust.SpeechLanguage _defaultSpeechLanguage;
+  final Entitlements _entitlements;
 
   /// Built lazily against [modelsDirectory] rather than in the constructor:
   /// resolving that directory is async, and every other collaborator here is
@@ -379,7 +385,22 @@ class MindService {
       // step needs it. The stage is already `generating`, so the wait is
       // visible rather than a silent pause.
       final dir = await modelsDirectory();
-      await _generation.ensureLoaded(modelsDir: dir.path, memoryBudgetMb: 4096);
+      final memoryInfo =
+          await core_ai.DeviceCapabilityService().getMemoryInfo();
+      final generationMode = await MindIndicPreferences.readGenerationMode();
+      final indicCapability = MindIndicCapability(
+        entitlements: _entitlements,
+        memoryInfo: memoryInfo,
+      );
+      await _generation.ensureLoaded(
+        modelsDir: dir.path,
+        memoryBudgetMb: 4096,
+        preferIndicGeneration: indicCapability.shouldPreferIndicGeneration(
+          generationMode,
+        ),
+        allowCompactFallback:
+            generationMode != MindIndicGenerationMode.enhancedIndic,
+      );
 
       await for (final event in _generation.generate(
         transcript: progress.transcript,

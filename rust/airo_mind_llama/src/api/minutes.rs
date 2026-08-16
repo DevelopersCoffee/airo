@@ -36,6 +36,13 @@ pub struct GenerationConfig {
     pub models_dir: String,
     /// Admission ceiling for the Supervisor (`C6`).
     pub memory_budget_mb: u32,
+    /// When true, resolve `ModelQuality::Standard` first (e.g. Sarvam-1 for
+    /// Indic meetings). Falls back to `Draft` (Qwen) when
+    /// `allow_compact_fallback` is true.
+    pub prefer_indic_generation: bool,
+    /// When false and Indic resolution fails, return the error instead of
+    /// falling back to Qwen (`enhanced_indic` user preference).
+    pub allow_compact_fallback: bool,
 }
 
 /// Generation progress, as it happens.
@@ -118,21 +125,35 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
     let models_dir = std::path::Path::new(&config.models_dir);
 
     // `ADR-0018 §1`: ask for a CAPABILITY and a budget, never for a file.
-    let generation_model = models::resolve(
-        &models::ModelRequirement {
-            task: models::ModelTask::Generation,
-            memory_budget_mb: config.memory_budget_mb,
-            minimum_quality: models::ModelQuality::Draft,
-            // Not meaningful for `Generation` — `resolve` only compares
-            // language for `Speech` — stated explicitly rather than relying on
-            // that fact silently, in case that ever changes.
-            language: models::ModelLanguage::default(),
+    let requirement = models::ModelRequirement {
+        task: models::ModelTask::Generation,
+        memory_budget_mb: config.memory_budget_mb,
+        minimum_quality: if config.prefer_indic_generation {
+            models::ModelQuality::Standard
+        } else {
+            models::ModelQuality::Draft
         },
-        models_dir,
-        &[],
-        false,
-    )
-    .map_err(|e| e.to_string())?;
+        language: models::ModelLanguage::default(),
+    };
+
+    let generation_model = match models::resolve(&requirement, models_dir, &[], false) {
+        Ok(model) => model,
+        Err(err) if config.prefer_indic_generation && config.allow_compact_fallback => {
+            // Auto mode: Standard Indic model missing or too large — stay
+            // responsive with the compact default rather than failing the job.
+            models::resolve(
+                &models::ModelRequirement {
+                    minimum_quality: models::ModelQuality::Draft,
+                    ..requirement
+                },
+                models_dir,
+                &[],
+                false,
+            )
+            .map_err(|fallback| format!("{err}; compact fallback also failed: {fallback}"))?
+        }
+        Err(err) => return Err(err.to_string()),
+    };
 
     let generation = LlamaGenerationEngine::load(
         std::path::Path::new(&generation_model.path),

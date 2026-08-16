@@ -39,6 +39,9 @@ const Map<String, String> mindModelDownloadUrls = <String, String>{
   'qwen2.5-0.5b-instruct-q4_k_m.gguf':
       'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/'
       'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+  'sarvam-1-Q4_K_M.gguf':
+      'https://huggingface.co/bartowski/sarvam-1-GGUF/resolve/main/'
+      'sarvam-1-Q4_K_M.gguf',
 };
 
 /// The URL for a pinned model, or null if this build has no source for it.

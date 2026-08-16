@@ -28,6 +28,7 @@ import 'package:core_ai/core_ai.dart'
         OfflineModelInfo;
 
 import '../whisper/api/setup.dart' as rust;
+import '../mind_indic_intelligence.dart';
 import 'model_provider.dart';
 
 /// Bridge → hand-written [RequiredModel]. Only the `BigInt` → `int` cast
@@ -92,6 +93,9 @@ Future<List<RequiredModel>> mindScribeRequiredModels() async {
   }
   return [...required, pinnedMultilingualSpeechModel];
 }
+
+/// Optional pro Indic generation pack — not required for first-run scribe.
+List<RequiredModel> mindIndicOptionalModels() => [pinnedIndicGenerationModel];
 
 /// Full verification of what is installed, translated into the shape a
 /// [ModelProvider] speaks.

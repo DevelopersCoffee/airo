@@ -321,11 +321,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   GenerationConfig dco_decode_generation_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return GenerationConfig(
       modelsDir: dco_decode_String(arr[0]),
       memoryBudgetMb: dco_decode_u_32(arr[1]),
+      preferIndicGeneration: dco_decode_bool(arr[2]),
+      allowCompactFallback: dco_decode_bool(arr[3]),
     );
   }
 
@@ -443,9 +445,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_modelsDir = sse_decode_String(deserializer);
     var var_memoryBudgetMb = sse_decode_u_32(deserializer);
+    var var_preferIndicGeneration = sse_decode_bool(deserializer);
+    var var_allowCompactFallback = sse_decode_bool(deserializer);
     return GenerationConfig(
       modelsDir: var_modelsDir,
       memoryBudgetMb: var_memoryBudgetMb,
+      preferIndicGeneration: var_preferIndicGeneration,
+      allowCompactFallback: var_allowCompactFallback,
     );
   }
 
@@ -595,6 +601,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.modelsDir, serializer);
     sse_encode_u_32(self.memoryBudgetMb, serializer);
+    sse_encode_bool(self.preferIndicGeneration, serializer);
+    sse_encode_bool(self.allowCompactFallback, serializer);
   }
 
   @protected

@@ -7,4 +7,5 @@ const expectedProFeatureStableIds = [
   'multi_source_failover',
   'coin_encrypted_backup_restore',
   'source_connection_diagnostics',
+  'mind_indic_intelligence',
 ];
