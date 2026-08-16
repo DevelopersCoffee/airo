@@ -495,7 +495,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
         "{}@{}",
         speech_model.logical_id, speech_model.version
     ));
-    *lock(&MODELS_DIR) = Some(config.models_dir.clone());
+    *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
     *lock(&LIBRARY) = Some(Library { store, index });
     Ok(())
 }
@@ -583,7 +583,8 @@ pub fn transcribe_recording(
         return Err("No speech was found in the recording.".into());
     }
 
-    let models_dir = lock(&MODELS_DIR).as_deref();
+    let models_dir_guard = lock(&MODELS_DIR);
+    let models_dir = models_dir_guard.as_deref();
     let strategy = models_dir
         .map(product_diarization_strategy)
         .unwrap_or(DiarizationStrategy::Solo);

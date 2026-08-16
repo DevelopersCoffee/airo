@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';

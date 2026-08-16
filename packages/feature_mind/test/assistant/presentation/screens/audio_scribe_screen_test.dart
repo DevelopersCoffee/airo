@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
+import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
+import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:feature_mind/src/services/voice_search_service.dart';
 import 'package:feature_mind/src/assistant/consent/jurisdiction_consent_rules.dart';
 import 'package:feature_mind/src/assistant/presentation/screens/audio_scribe_screen.dart';
@@ -58,6 +61,21 @@ class _FakeVoiceService implements VoiceSearchService {
   void dispose() {}
 }
 
+Widget _scribeScope({
+  required VoiceSearchService voice,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [
+      voiceSearchServiceProvider.overrideWithValue(voice),
+      mindRuntimeProvider.overrideWithValue(
+        ScribeMindRuntime(log: FixtureMindRuntime().log),
+      ),
+    ],
+    child: child,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -66,10 +84,8 @@ void main() {
   ) async {
     await _usePhoneSurface(tester);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          voiceSearchServiceProvider.overrideWithValue(_FakeVoiceService()),
-        ],
+      _scribeScope(
+        voice: _FakeVoiceService(),
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -108,8 +124,8 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+      _scribeScope(
+        voice: service,
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -133,8 +149,8 @@ void main() {
     final pending = Completer<VoiceSearchResult>();
     final service = _FakeVoiceService(pendingResult: pending);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+      _scribeScope(
+        voice: service,
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -160,8 +176,8 @@ void main() {
     final pending = Completer<VoiceSearchResult>();
     final service = _FakeVoiceService(pendingResult: pending);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+      _scribeScope(
+        voice: service,
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -205,10 +221,8 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          voiceSearchServiceProvider.overrideWithValue(_FakeVoiceService()),
-        ],
+      _scribeScope(
+        voice: _FakeVoiceService(),
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -253,12 +267,8 @@ void main() {
   ) async {
     await _usePhoneSurface(tester);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          voiceSearchServiceProvider.overrideWithValue(
-            _FakeVoiceService(availabilityError: StateError('no recognizer')),
-          ),
-        ],
+      _scribeScope(
+        voice: _FakeVoiceService(availabilityError: StateError('no recognizer')),
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -287,8 +297,8 @@ void main() {
       await _usePhoneSurface(tester);
       final service = _FakeVoiceService(available: false);
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+        _scribeScope(
+          voice: service,
           child: const MaterialApp(home: AudioScribeScreen()),
         ),
       );
@@ -316,8 +326,8 @@ void main() {
     await _usePhoneSurface(tester);
     final service = _FakeVoiceService();
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+      _scribeScope(
+        voice: service,
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -352,10 +362,8 @@ void main() {
       'acknowledged as notified', (tester) async {
     await _usePhoneSurface(tester);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          voiceSearchServiceProvider.overrideWithValue(_FakeVoiceService()),
-        ],
+      _scribeScope(
+        voice: _FakeVoiceService(),
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );
@@ -402,8 +410,8 @@ void main() {
     final pending = Completer<VoiceSearchResult>();
     final service = _FakeVoiceService(pendingResult: pending);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [voiceSearchServiceProvider.overrideWithValue(service)],
+      _scribeScope(
+        voice: service,
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );

@@ -200,6 +200,10 @@ export 'src/runtime/ports/vault_port.dart';
 export 'src/runtime/fixture/fixture_data.dart';
 export 'src/runtime/fixture/fixture_mind_runtime.dart';
 export 'src/runtime/rust/rust_mind_runtime.dart';
+export 'src/runtime/persistent/persistent_operation_log.dart'
+    show LazyPersistentOperationLog, sharedMindOperationLog;
+export 'src/library_loader.dart'
+    show initializeLlamaBridge, initializeWhisperBridge, isLlamaLoaded, isWhisperLoaded;
 
 // Portability -- surface 08's ".airobackup" envelope-sealing flow: pick
 // contexts, set the phrase, choose a destination on your own network.
