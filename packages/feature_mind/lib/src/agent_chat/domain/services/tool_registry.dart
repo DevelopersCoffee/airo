@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../meeting_archive/meeting_archive_port.dart';
 import '../../../services/device_actions_service.dart';
 import 'intent_parser.dart';
 
@@ -407,6 +408,85 @@ class ReaderTool implements Tool {
   }
 }
 
+/// Queries the offline meeting archive via [MeetingArchivePort] (#1770).
+class MeetingArchiveTool implements Tool {
+  MeetingArchiveTool(this._port);
+
+  final MeetingArchivePort? _port;
+
+  @override
+  String get key => 'meeting_archive';
+
+  @override
+  String get name => 'Meeting Archive';
+
+  @override
+  bool canHandle(Intent intent) {
+    return intent.type == IntentType.searchMeetings ||
+        intent.type == IntentType.openMeetingScribe ||
+        intent.type == IntentType.myActionItems;
+  }
+
+  @override
+  Future<AgentToolResult?> handle(Intent intent) async {
+    final port = _port;
+    if (port == null) {
+      return const AgentToolResult(
+        route: '/scribe',
+        message:
+            'Meeting Scribe is not available in this shell. Open the Mind tab on phone.',
+      );
+    }
+
+    switch (intent.type) {
+      case IntentType.openMeetingScribe:
+        return const AgentToolResult(
+          route: '/scribe',
+          message: 'Opening Meeting Scribe.',
+        );
+      case IntentType.searchMeetings:
+        final query = (intent.parameters['query'] as String?)?.trim() ?? '';
+        if (query.isEmpty) {
+          return const AgentToolResult(
+            route: '/scribe',
+            message: 'Opening Meeting Scribe to search your archive.',
+          );
+        }
+        final hits = await port.search(query);
+        if (hits.isEmpty) {
+          return AgentToolResult(
+            message: 'No meetings matched "$query" in your local archive.',
+          );
+        }
+        final lines = hits
+            .take(5)
+            .map((hit) => '• ${hit.title}: ${hit.snippet}')
+            .join('\n');
+        return AgentToolResult(
+          message: 'Found ${hits.length} meeting(s) for "$query":\n$lines',
+        );
+      case IntentType.myActionItems:
+        final owner =
+            (intent.parameters['owner'] as String?)?.trim() ?? 'me';
+        final items = await port.actionItemsForOwner(owner);
+        if (items.isEmpty) {
+          return AgentToolResult(
+            message: owner == 'me'
+                ? 'No open action items assigned to you in saved meetings.'
+                : 'No action items found for $owner.',
+          );
+        }
+        final lines = items
+            .take(8)
+            .map((item) => '• ${item.task}${item.due == null ? '' : ' (due ${item.due})'}')
+            .join('\n');
+        return AgentToolResult(message: 'Action items:\n$lines');
+      default:
+        return null;
+    }
+  }
+}
+
 /// Social/Chat tool.
 class SocialTool implements Tool {
   @override
@@ -454,6 +534,8 @@ class SocialTool implements Tool {
 class ToolRegistry {
   static final ToolRegistry _instance = ToolRegistry._internal();
 
+  MeetingArchivePort? _meetingArchive;
+
   final Map<String, Tool> _tools = {
     'split_bill': SplitBillTool(),
     'diet_plan': DietPlanTool(),
@@ -467,7 +549,16 @@ class ToolRegistry {
     'social': SocialTool(),
   };
 
-  ToolRegistry._internal();
+  ToolRegistry._internal() {
+    _tools['meeting_archive'] = MeetingArchiveTool(_meetingArchive);
+  }
+
+  /// Wires the offline meeting archive for chat tools (#1770). Called from
+  /// [MindModule.initialize] when the scribe is mounted.
+  void configureMeetingArchive(MeetingArchivePort? port) {
+    _meetingArchive = port;
+    _tools['meeting_archive'] = MeetingArchiveTool(port);
+  }
 
   factory ToolRegistry() {
     return _instance;

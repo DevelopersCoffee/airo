@@ -473,6 +473,12 @@ class MindService {
         metrics: metrics,
       );
 
+      final savedMeeting = await _speech.meeting(savedMeetingId);
+      if (savedMeeting != null) {
+        // Agent G (#1770): warm semantic search index after each save.
+        await indexMeetingForSearch(savedMeeting);
+      }
+
       final log = _operationLog;
       if (log != null) {
         await appendMeetingIrExtractedOp(

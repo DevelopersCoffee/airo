@@ -16,6 +16,9 @@ enum IntentType {
   playGame,
   askImage,
   audioScribe,
+  searchMeetings,
+  openMeetingScribe,
+  myActionItems,
   mobileActions,
   openWifiSettings,
   setFlashlight,
@@ -97,6 +100,12 @@ class IntentParser {
     'describe image': IntentType.askImage,
     'audio scribe': IntentType.audioScribe,
     'transcribe audio': IntentType.audioScribe,
+    'search meetings': IntentType.searchMeetings,
+    'find meeting': IntentType.searchMeetings,
+    'open scribe': IntentType.openMeetingScribe,
+    'record meeting': IntentType.openMeetingScribe,
+    'my action items': IntentType.myActionItems,
+    'what is assigned to me': IntentType.myActionItems,
     'mobile actions': IntentType.mobileActions,
     'open mobile actions': IntentType.mobileActions,
     'open wifi settings': IntentType.openWifiSettings,
@@ -207,6 +216,30 @@ class IntentParser {
       return IntentType.audioScribe;
     }
 
+    if (_containsAny(text, [
+      'search meeting',
+      'find meeting',
+      'what did we decide',
+      'decide about',
+      'standup',
+      'last week',
+    ])) {
+      return IntentType.searchMeetings;
+    }
+
+    if (_containsAny(text, ['open scribe', 'record meeting', 'meeting scribe'])) {
+      return IntentType.openMeetingScribe;
+    }
+
+    if (_containsAny(text, [
+      'assigned to me',
+      'my action items',
+      'my tasks',
+      'action items',
+    ])) {
+      return IntentType.myActionItems;
+    }
+
     if (_containsAny(text, ['mobile actions', 'device control'])) {
       return IntentType.mobileActions;
     }
@@ -298,6 +331,22 @@ class IntentParser {
       params['enabled'] = !lowerText.contains(' off');
     }
 
+    if (lowerText.contains('assigned to me') ||
+        lowerText.contains('my action items')) {
+      params['owner'] = 'me';
+    }
+
+    if (lowerText.contains('decide about') ||
+        lowerText.contains('what did we decide') ||
+        lowerText.contains('search meeting') ||
+        lowerText.contains('find meeting')) {
+      final about = RegExp(
+        r'(?:decide about|decided about|about)\s+(.+)$',
+        caseSensitive: false,
+      ).firstMatch(text);
+      params['query'] = about?.group(1)?.trim() ?? text.trim();
+    }
+
     return params;
   }
 
@@ -373,6 +422,12 @@ class IntentParser {
         return 'Opening Ask Image';
       case IntentType.audioScribe:
         return 'Opening Audio Scribe';
+      case IntentType.searchMeetings:
+        return 'Searching meeting archive';
+      case IntentType.openMeetingScribe:
+        return 'Opening Meeting Scribe';
+      case IntentType.myActionItems:
+        return 'Listing action items from meetings';
       case IntentType.mobileActions:
         return 'Opening Mobile Actions';
       case IntentType.openWifiSettings:
