@@ -8,6 +8,9 @@ import 'meeting_ir/evidence_resolver.dart';
 import 'meeting_ir/meeting_ir_user_edits.dart';
 import 'meeting_ir/meeting_ir_user_edits_store.dart';
 import 'meeting_ir/meeting_ir_widgets.dart';
+import 'speaker/meeting_speaker_registry.dart';
+import 'speaker/meeting_speaker_registry_store.dart';
+import 'speaker/speaker_rename_dialog.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'mind_service.dart';
 import 'trust/scribe_trust_signals.dart';
@@ -32,6 +35,7 @@ class MeetingScreen extends StatefulWidget {
     this.onCloudFallback,
     this.onSeekAudio,
     this.userEditsStore,
+    this.speakerRegistryStore,
     super.key,
   }) : _meeting = null;
 
@@ -44,6 +48,7 @@ class MeetingScreen extends StatefulWidget {
     this.onCloudFallback,
     this.onSeekAudio,
     this.userEditsStore,
+    this.speakerRegistryStore,
     super.key,
   }) : _progress = null,
        title = '';
@@ -70,6 +75,9 @@ class MeetingScreen extends StatefulWidget {
   /// Override for tests. Defaults to a SharedPreferences-backed store.
   final MeetingIrUserEditsStore? userEditsStore;
 
+  /// Per-meeting speaker rename / merge overlays.
+  final MeetingSpeakerRegistryStore? speakerRegistryStore;
+
   @override
   State<MeetingScreen> createState() => _MeetingScreenState();
 }
@@ -82,13 +90,19 @@ class _MeetingScreenState extends State<MeetingScreen> {
   // `MindService`'s own defaults, the production path is the only path this
   // screen needs; a test exercises the service/gateway directly instead of
   // through the widget (see `test/export/`).
-  late final _exportService = MeetingExportService(widget.service);
+  late final MeetingIrUserEditsStore _editsStore =
+      widget.userEditsStore ?? MeetingIrUserEditsStore();
+  late final MeetingSpeakerRegistryStore _speakerStore =
+      widget.speakerRegistryStore ?? MeetingSpeakerRegistryStore();
+  late final _exportService = MeetingExportService(
+    widget.service,
+    speakerRegistryStore: _speakerStore,
+  );
   final _exportGateway = const PlatformMeetingExportGateway();
   bool _exporting = false;
 
-  late final MeetingIrUserEditsStore _editsStore =
-      widget.userEditsStore ?? MeetingIrUserEditsStore();
   MeetingIrUserEdits _edits = const MeetingIrUserEdits();
+  MeetingSpeakerRegistry _speakerRegistry = MeetingSpeakerRegistry.empty;
   final _evidence = const EvidenceResolver();
 
   Map<String, TranscriptSegmentView> _segmentsById = const {};
@@ -164,6 +178,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
 
   Future<void> _loadIrContext(rust.MeetingRecord meeting) async {
     final edits = await _editsStore.load(meeting.id);
+    final speakers = await _speakerStore.load(meeting.id);
     final doc = await widget.service.transcriptDocument(meeting.id);
     final byId = _evidence.indexFromDocument(doc);
     final ordered = [
@@ -179,6 +194,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
     if (!mounted) return;
     setState(() {
       _edits = edits;
+      _speakerRegistry = speakers;
       _orderedSegments = ordered.isNotEmpty
           ? ordered
           : [
@@ -381,6 +397,48 @@ class _MeetingScreenState extends State<MeetingScreen> {
     setState(() => _edits = next);
   }
 
+  Future<void> _renameSpeaker(String speakerLabel) async {
+    final meetingId = _meeting?.id ?? _progress.meetingId;
+    if (meetingId == null) return;
+    final name = await showSpeakerRenameDialog(
+      context: context,
+      speakerLabel: speakerLabel,
+      registry: _speakerRegistry,
+    );
+    if (name == null || !mounted) return;
+    final next = _speakerRegistry.renameSpeaker(
+      label: speakerLabel,
+      displayName: name,
+    );
+    await _speakerStore.save(meetingId, next);
+    if (!mounted) return;
+    setState(() => _speakerRegistry = next);
+  }
+
+  Future<void> _mergeSpeaker(String fromLabel) async {
+    final meetingId = _meeting?.id ?? _progress.meetingId;
+    if (meetingId == null) return;
+    final labels = {
+      for (final segment in _orderedSegments)
+        if (segment.speakerLabel != null)
+          _speakerRegistry.canonicalLabel(segment.speakerLabel!),
+    }.toList();
+    final into = await showSpeakerMergeDialog(
+      context: context,
+      fromLabel: fromLabel,
+      candidateLabels: labels,
+      registry: _speakerRegistry,
+    );
+    if (into == null || !mounted) return;
+    final next = _speakerRegistry.mergeSpeakers(
+      fromLabel: fromLabel,
+      intoLabel: into,
+    );
+    await _speakerStore.save(meetingId, next);
+    if (!mounted) return;
+    setState(() => _speakerRegistry = next);
+  }
+
   @override
   Widget build(BuildContext context) {
     final stored = _meeting ?? widget._meeting;
@@ -507,6 +565,9 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   highlightedIds: _highlightedIds,
                   segmentKeys: _segmentKeys,
                   fallbackTranscript: _progress.transcript,
+                  speakerRegistry: _speakerRegistry,
+                  onRenameSpeaker: _renameSpeaker,
+                  onMergeSpeaker: _mergeSpeaker,
                 ),
               ],
               if (stored != null) ...[

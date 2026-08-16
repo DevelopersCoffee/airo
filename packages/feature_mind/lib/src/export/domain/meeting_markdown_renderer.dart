@@ -1,4 +1,6 @@
+import '../../mind_diarization.dart';
 import 'meeting_export_models.dart';
+import '../../speaker/meeting_speaker_registry.dart';
 
 /// Pure markdown rendering for meeting export (#1663).
 ///
@@ -69,6 +71,7 @@ String renderTranscriptMarkdown({
   Duration? duration,
   List<TranscriptExportLine> lines = const [],
   String fallbackTranscript = '',
+  MeetingSpeakerRegistry speakerRegistry = MeetingSpeakerRegistry.empty,
 }) {
   final buf = StringBuffer()
     ..write(
@@ -86,7 +89,7 @@ String renderTranscriptMarkdown({
       if (text.isEmpty) continue;
       final speakerPrefix = line.speakerLabel == null
           ? ''
-          : '${line.speakerLabel}: ';
+          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry)}: ';
       buf
         ..writeln('${formatTimestamp(line.startMs)} $speakerPrefix$text')
         ..writeln();
@@ -155,6 +158,7 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
       duration: input.duration,
       lines: input.transcriptLines,
       fallbackTranscript: input.fallbackTranscript,
+      speakerRegistry: input.speakerRegistry,
     ),
   };
 
@@ -203,3 +207,15 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
 /// case — kept simple per this issue's scope note on batch export.
 List<MeetingExportBundle> composeBatchExport(List<MeetingExportInput> inputs) =>
     inputs.map(composeMeetingExportBundle).toList(growable: false);
+
+String _exportSpeakerPrefix(
+  String label,
+  MeetingSpeakerRegistry registry,
+) {
+  final canonical = registry.canonicalLabel(label);
+  final display = mindSpeakerDisplayLabel(canonical, registry: registry);
+  if (display != formatMindSpeakerLabel(canonical)) {
+    return '$canonical ($display)';
+  }
+  return canonical;
+}

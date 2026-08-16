@@ -1,4 +1,5 @@
 import 'bridges/mind_speech_bridge.dart';
+import 'speaker/meeting_speaker_registry.dart';
 
 /// Stable speaker label for solo recordings (`sp0` in `airo_mind_diarize`).
 const String kMindSoloSpeakerLabel = 'sp0';
@@ -11,6 +12,19 @@ String formatMindSpeakerLabel(String label) {
     return 'Speaker ${index + 1}';
   }
   return label;
+}
+
+/// Display name with optional registry overlay (rename + merge).
+String mindSpeakerDisplayLabel(
+  String label, {
+  MeetingSpeakerRegistry registry = MeetingSpeakerRegistry.empty,
+}) {
+  final canonical = registry.canonicalLabel(label);
+  final custom = registry.displayNameFor(canonical);
+  if (custom != null && custom.isNotEmpty) {
+    return custom;
+  }
+  return formatMindSpeakerLabel(canonical);
 }
 
 /// v0 on-device diarization — mirrors Rust `SingleSpeakerDiarizer` until ECAPA

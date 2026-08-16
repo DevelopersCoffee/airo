@@ -177,6 +177,7 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
         DiarizationStrategy::StubEmbedding {
             similarity_threshold: 0.85,
         },
+        None,
     )
     .expect("diarization succeeds");
     let speaker_by_id: std::collections::HashMap<String, String> = diarized

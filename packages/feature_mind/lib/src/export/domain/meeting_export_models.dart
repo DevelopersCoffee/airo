@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../speaker/meeting_speaker_registry.dart';
+
 /// One line of a rendered transcript body: the audio timestamp it started at,
 /// and the words said in that window.
 ///
@@ -82,6 +84,7 @@ class MeetingExportInput {
     this.fallbackTranscript = '',
     this.momMarkdown,
     this.actionItems = const [],
+    this.speakerRegistry = MeetingSpeakerRegistry.empty,
   });
 
   final String meetingId;
@@ -110,6 +113,9 @@ class MeetingExportInput {
   /// [momMarkdown] to carry its own table (or the caller wants a
   /// dedicated `action-items.md`, e.g. for piping into a task manager).
   final List<ExportActionItem> actionItems;
+
+  /// User-assigned speaker names and merge aliases for export rendering.
+  final MeetingSpeakerRegistry speakerRegistry;
 }
 
 /// A folder-per-meeting export: a stable folder name and the markdown files
