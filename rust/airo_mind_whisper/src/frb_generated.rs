@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1703544676;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1565237977;
 
 // Section: executor
 
@@ -310,6 +310,114 @@ fn wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
         },
     )
 }
+fn wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_create_note",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_title = <String>::sse_decode(&mut deserializer);
+            let api_body = <String>::sse_decode(&mut deserializer);
+            let api_recorded_at_ms = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_create_note(
+                    api_id,
+                    api_title,
+                    api_body,
+                    api_recorded_at_ms,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_delete_note",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_recorded_at_ms = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok =
+                    crate::api::mind_runtime::mind_runtime_delete_note(api_id, api_recorded_at_ms)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_edit_note_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_edit_note",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            let api_title = <String>::sse_decode(&mut deserializer);
+            let api_body = <String>::sse_decode(&mut deserializer);
+            let api_recorded_at_ms = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_edit_note(
+                    api_id,
+                    api_title,
+                    api_body,
+                    api_recorded_at_ms,
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -371,6 +479,101 @@ fn wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
             deserializer.end();
             transform_result_sse::<_, String>((move || {
                 let output_ok = crate::api::mind_runtime::mind_runtime_initialize(api_base_dir)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_notes_json",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_notes_json()?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_replay_from",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_sequence = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_replay_from(api_sequence)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_revoke_vault_device",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_fingerprint_a = <String>::sse_decode(&mut deserializer);
+            let api_fingerprint_b = <String>::sse_decode(&mut deserializer);
+            let api_fingerprint_c = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_revoke_vault_device(
+                    api_fingerprint_a,
+                    api_fingerprint_b,
+                    api_fingerprint_c,
+                )?;
                 Ok(output_ok)
             })())
         },
@@ -462,6 +665,64 @@ fn wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
             deserializer.end();
             transform_result_sse::<_, String>((move || {
                 let output_ok = crate::api::mind_runtime::mind_runtime_speaker_profiles_json()?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_vault_devices",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_vault_devices()?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mind_runtime_vault_state",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::mind_runtime::mind_runtime_vault_state()?;
                 Ok(output_ok)
             })())
         },
@@ -810,6 +1071,13 @@ impl SseDecode for f32 {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -915,6 +1183,20 @@ impl SseDecode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
+impl SseDecode for Vec<crate::api::mind_runtime::MindDeviceWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::mind_runtime::MindDeviceWire>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::mind_runtime::MindOpWire> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -936,6 +1218,18 @@ impl SseDecode for Vec<f32> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<f32>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<f64>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1114,6 +1408,26 @@ impl SseDecode for crate::api::meetings::MindConfig {
             store_path: var_storePath,
             memory_budget_mb: var_memoryBudgetMb,
             speech_language: var_speechLanguage,
+        };
+    }
+}
+
+impl SseDecode for crate::api::mind_runtime::MindDeviceWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_fingerprintA = <String>::sse_decode(deserializer);
+        let mut var_fingerprintB = <String>::sse_decode(deserializer);
+        let mut var_fingerprintC = <String>::sse_decode(deserializer);
+        let mut var_isThisDevice = <bool>::sse_decode(deserializer);
+        let mut var_revokedAtMs = <u64>::sse_decode(deserializer);
+        return crate::api::mind_runtime::MindDeviceWire {
+            name: var_name,
+            fingerprint_a: var_fingerprintA,
+            fingerprint_b: var_fingerprintB,
+            fingerprint_c: var_fingerprintC,
+            is_this_device: var_isThisDevice,
+            revoked_at_ms: var_revokedAtMs,
         };
     }
 }
@@ -1311,6 +1625,24 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
+impl SseDecode for crate::api::mind_runtime::VaultStateWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_isSealed = <bool>::sse_decode(deserializer);
+        let mut var_keyCount = <u64>::sse_decode(deserializer);
+        let mut var_revokedCount = <u64>::sse_decode(deserializer);
+        let mut var_revocationEpoch = <u64>::sse_decode(deserializer);
+        let mut var_onDiskBytes = <u64>::sse_decode(deserializer);
+        return crate::api::mind_runtime::VaultStateWire {
+            is_sealed: var_isSealed,
+            key_count: var_keyCount,
+            revoked_count: var_revokedCount,
+            revocation_epoch: var_revocationEpoch,
+            on_disk_bytes: var_onDiskBytes,
+        };
+    }
+}
+
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -1324,25 +1656,25 @@ fn pde_ffi_dispatcher_primary_impl(
         4 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
         5 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
         7 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__meetings__speech_language_default_impl(
+        22 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__meetings__speech_language_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+        27 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => {
+        28 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        21 => {
+        29 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1365,32 +1697,70 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
+        9 => wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
+        10 => wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+        11 => {
+            wire__crate__api__mind_runtime__mind_runtime_edit_note_impl(ptr, rust_vec_len, data_len)
+        }
+        12 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+        13 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+        14 => wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
+        15 => wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        16 => wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        17 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        18 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        19 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        20 => wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        21 => wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        23 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -1593,6 +1963,31 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::MindConfig>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::mind_runtime::MindDeviceWire {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.fingerprint_a.into_into_dart().into_dart(),
+            self.fingerprint_b.into_into_dart().into_dart(),
+            self.fingerprint_c.into_into_dart().into_dart(),
+            self.is_this_device.into_into_dart().into_dart(),
+            self.revoked_at_ms.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::mind_runtime::MindDeviceWire
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::mind_runtime::MindDeviceWire>
+    for crate::api::mind_runtime::MindDeviceWire
+{
+    fn into_into_dart(self) -> crate::api::mind_runtime::MindDeviceWire {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::mind_runtime::MindOpWire {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1762,6 +2157,30 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptSegmentRe
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::mind_runtime::VaultStateWire {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.is_sealed.into_into_dart().into_dart(),
+            self.key_count.into_into_dart().into_dart(),
+            self.revoked_count.into_into_dart().into_dart(),
+            self.revocation_epoch.into_into_dart().into_dart(),
+            self.on_disk_bytes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::mind_runtime::VaultStateWire
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::mind_runtime::VaultStateWire>
+    for crate::api::mind_runtime::VaultStateWire
+{
+    fn into_into_dart(self) -> crate::api::mind_runtime::VaultStateWire {
+        self
+    }
+}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1800,6 +2219,13 @@ impl SseEncode for f32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_f32::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -1880,6 +2306,16 @@ impl SseEncode for Vec<crate::api::meetings::MeetingRecord> {
     }
 }
 
+impl SseEncode for Vec<crate::api::mind_runtime::MindDeviceWire> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::mind_runtime::MindDeviceWire>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::mind_runtime::MindOpWire> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1896,6 +2332,16 @@ impl SseEncode for Vec<f32> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <f32>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <f64>::sse_encode(item, serializer);
         }
     }
 }
@@ -2033,6 +2479,18 @@ impl SseEncode for crate::api::meetings::MindConfig {
         <String>::sse_encode(self.store_path, serializer);
         <u32>::sse_encode(self.memory_budget_mb, serializer);
         <crate::api::meetings::SpeechLanguage>::sse_encode(self.speech_language, serializer);
+    }
+}
+
+impl SseEncode for crate::api::mind_runtime::MindDeviceWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.fingerprint_a, serializer);
+        <String>::sse_encode(self.fingerprint_b, serializer);
+        <String>::sse_encode(self.fingerprint_c, serializer);
+        <bool>::sse_encode(self.is_this_device, serializer);
+        <u64>::sse_encode(self.revoked_at_ms, serializer);
     }
 }
 
@@ -2184,6 +2642,17 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for crate::api::mind_runtime::VaultStateWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_sealed, serializer);
+        <u64>::sse_encode(self.key_count, serializer);
+        <u64>::sse_encode(self.revoked_count, serializer);
+        <u64>::sse_encode(self.revocation_epoch, serializer);
+        <u64>::sse_encode(self.on_disk_bytes, serializer);
+    }
 }
 
 #[cfg(not(target_family = "wasm"))]

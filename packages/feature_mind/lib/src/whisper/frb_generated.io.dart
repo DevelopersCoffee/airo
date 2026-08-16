@@ -54,6 +54,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_32(dynamic raw);
 
   @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -82,6 +85,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MeetingRecord> dco_decode_list_meeting_record(dynamic raw);
 
   @protected
+  List<MindDeviceWire> dco_decode_list_mind_device_wire(dynamic raw);
+
+  @protected
   List<MindOpWire> dco_decode_list_mind_op_wire(dynamic raw);
 
   @protected
@@ -89,6 +95,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw);
+
+  @protected
+  Float64List dco_decode_list_prim_f_64_strict(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -124,6 +133,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MindConfig dco_decode_mind_config(dynamic raw);
+
+  @protected
+  MindDeviceWire dco_decode_mind_device_wire(dynamic raw);
 
   @protected
   MindOpWire dco_decode_mind_op_wire(dynamic raw);
@@ -169,6 +181,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  VaultStateWire dco_decode_vault_state_wire(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
@@ -202,6 +217,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double sse_decode_f_32(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -238,6 +256,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<MindDeviceWire> sse_decode_list_mind_device_wire(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<MindOpWire> sse_decode_list_mind_op_wire(SseDeserializer deserializer);
 
   @protected
@@ -245,6 +268,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer);
+
+  @protected
+  Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -292,6 +318,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MindConfig sse_decode_mind_config(SseDeserializer deserializer);
+
+  @protected
+  MindDeviceWire sse_decode_mind_device_wire(SseDeserializer deserializer);
 
   @protected
   MindOpWire sse_decode_mind_op_wire(SseDeserializer deserializer);
@@ -345,6 +374,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  VaultStateWire sse_decode_vault_state_wire(SseDeserializer deserializer);
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -390,6 +422,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_32(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -432,6 +467,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_mind_device_wire(
+    List<MindDeviceWire> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_mind_op_wire(
     List<MindOpWire> self,
     SseSerializer serializer,
@@ -446,6 +487,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_f_32_strict(
     Float32List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_f_64_strict(
+    Float64List self,
     SseSerializer serializer,
   );
 
@@ -510,6 +557,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_mind_config(MindConfig self, SseSerializer serializer);
 
   @protected
+  void sse_encode_mind_device_wire(
+    MindDeviceWire self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_mind_op_wire(MindOpWire self, SseSerializer serializer);
 
   @protected
@@ -568,6 +621,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vault_state_wire(
+    VaultStateWire self,
+    SseSerializer serializer,
+  );
 }
 
 // Section: wire_class

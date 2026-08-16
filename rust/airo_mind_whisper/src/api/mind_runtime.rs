@@ -16,6 +16,25 @@ pub struct MindOpWire {
     pub detail: String,
 }
 
+#[frb]
+pub struct VaultStateWire {
+    pub is_sealed: bool,
+    pub key_count: u64,
+    pub revoked_count: u64,
+    pub revocation_epoch: u64,
+    pub on_disk_bytes: u64,
+}
+
+#[frb]
+pub struct MindDeviceWire {
+    pub name: String,
+    pub fingerprint_a: String,
+    pub fingerprint_b: String,
+    pub fingerprint_c: String,
+    pub is_this_device: bool,
+    pub revoked_at_ms: u64,
+}
+
 fn map_op(op: mind_runtime_state::ScribeOpWire) -> MindOpWire {
     MindOpWire {
         sequence: op.sequence,
@@ -25,6 +44,27 @@ fn map_op(op: mind_runtime_state::ScribeOpWire) -> MindOpWire {
         device_name: op.device_name,
         recorded_at_ms: op.recorded_at_ms,
         detail: op.detail,
+    }
+}
+
+fn map_vault_state(state: mind_runtime_state::VaultStateData) -> VaultStateWire {
+    VaultStateWire {
+        is_sealed: state.is_sealed,
+        key_count: state.key_count,
+        revoked_count: state.revoked_count,
+        revocation_epoch: state.revocation_epoch,
+        on_disk_bytes: state.on_disk_bytes,
+    }
+}
+
+fn map_device(device: mind_runtime_state::MindDeviceData) -> MindDeviceWire {
+    MindDeviceWire {
+        name: device.name,
+        fingerprint_a: device.fingerprint_a,
+        fingerprint_b: device.fingerprint_b,
+        fingerprint_c: device.fingerprint_c,
+        is_this_device: device.is_this_device,
+        revoked_at_ms: device.revoked_at_ms,
     }
 }
 
@@ -73,4 +113,59 @@ pub fn mind_runtime_enroll_speaker(
 #[frb(sync)]
 pub fn mind_runtime_speaker_profiles_json() -> Result<String, String> {
     mind_runtime_state::speaker_profiles_json()
+}
+
+#[frb(sync)]
+pub fn mind_runtime_vault_state() -> Result<VaultStateWire, String> {
+    mind_runtime_state::vault_state().map(map_vault_state)
+}
+
+#[frb(sync)]
+pub fn mind_runtime_vault_devices() -> Result<Vec<MindDeviceWire>, String> {
+    mind_runtime_state::vault_devices()
+        .map(|devices| devices.into_iter().map(map_device).collect())
+}
+
+#[frb(sync)]
+pub fn mind_runtime_revoke_vault_device(
+    fingerprint_a: String,
+    fingerprint_b: String,
+    fingerprint_c: String,
+) -> Result<(), String> {
+    mind_runtime_state::revoke_vault_device(fingerprint_a, fingerprint_b, fingerprint_c)
+}
+
+#[frb(sync)]
+pub fn mind_runtime_replay_from(sequence: u64) -> Result<Vec<f64>, String> {
+    mind_runtime_state::replay_from(sequence)
+}
+
+#[frb(sync)]
+pub fn mind_runtime_notes_json() -> Result<String, String> {
+    mind_runtime_state::notes_json()
+}
+
+#[frb(sync)]
+pub fn mind_runtime_create_note(
+    id: String,
+    title: String,
+    body: String,
+    recorded_at_ms: u64,
+) -> Result<(), String> {
+    mind_runtime_state::create_note(id, title, body, recorded_at_ms)
+}
+
+#[frb(sync)]
+pub fn mind_runtime_edit_note(
+    id: String,
+    title: String,
+    body: String,
+    recorded_at_ms: u64,
+) -> Result<(), String> {
+    mind_runtime_state::edit_note(id, title, body, recorded_at_ms)
+}
+
+#[frb(sync)]
+pub fn mind_runtime_delete_note(id: String, recorded_at_ms: u64) -> Result<(), String> {
+    mind_runtime_state::delete_note(id, recorded_at_ms)
 }
