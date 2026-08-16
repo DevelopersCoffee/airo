@@ -3,6 +3,13 @@
 use crate::embedder::SpeakerEmbedding;
 use crate::segment::SpeakerId;
 
+/// Per-segment clustering output — local speaker id plus optional enrollment label.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClusterAssignment {
+    pub speaker: SpeakerId,
+    pub enrolled_id: Option<String>,
+}
+
 /// Assigns each embedding to a speaker cluster in transcript order.
 ///
 /// Greedy: compare to running centroids; join the best match above [threshold],
@@ -11,31 +18,85 @@ pub fn cluster_embeddings_greedy(
     embeddings: &[SpeakerEmbedding],
     threshold: f32,
 ) -> Vec<SpeakerId> {
+    cluster_embeddings_greedy_with_enrollment(embeddings, threshold, &[])
+        .into_iter()
+        .map(|a| a.speaker)
+        .collect()
+}
+
+/// Greedy clustering with optional per-segment enrollment hints (#504).
+///
+/// When [enrollment_hints] contains an enrolled id for a segment, that segment
+/// joins (or creates) a cluster keyed by that id so cross-meeting labels survive.
+pub fn cluster_embeddings_greedy_with_enrollment(
+    embeddings: &[SpeakerEmbedding],
+    threshold: f32,
+    enrollment_hints: &[Option<String>],
+) -> Vec<ClusterAssignment> {
     if embeddings.is_empty() {
         return Vec::new();
     }
 
     let mut centroids: Vec<SpeakerEmbedding> = Vec::new();
+    let mut enrolled_keys: Vec<Option<String>> = Vec::new();
     let mut assignments = Vec::with_capacity(embeddings.len());
 
-    for embedding in embeddings {
+    for (idx, embedding) in embeddings.iter().enumerate() {
+        let hint = enrollment_hints.get(idx).and_then(|h| h.clone());
+
+        if let Some(enrolled_id) = hint {
+            if let Some(cluster_idx) = enrolled_keys
+                .iter()
+                .position(|key| key.as_deref() == Some(enrolled_id.as_str()))
+            {
+                update_centroid(&mut centroids[cluster_idx], embedding);
+                assignments.push(ClusterAssignment {
+                    speaker: SpeakerId(cluster_idx as u32),
+                    enrolled_id: Some(enrolled_id),
+                });
+                continue;
+            }
+            centroids.push(embedding.clone());
+            enrolled_keys.push(Some(enrolled_id.clone()));
+            assignments.push(ClusterAssignment {
+                speaker: SpeakerId((centroids.len() - 1) as u32),
+                enrolled_id: Some(enrolled_id),
+            });
+            continue;
+        }
+
         let mut best_idx: Option<usize> = None;
         let mut best_sim = threshold;
 
-        for (idx, centroid) in centroids.iter().enumerate() {
+        for (cluster_idx, centroid) in centroids.iter().enumerate() {
+            if enrolled_keys
+                .get(cluster_idx)
+                .map(|k| k.is_some())
+                .unwrap_or(false)
+            {
+                // Enrolled clusters only accept explicit enrollment hints.
+                continue;
+            }
             let sim = cosine_similarity(embedding, centroid);
             if sim >= best_sim {
                 best_sim = sim;
-                best_idx = Some(idx);
+                best_idx = Some(cluster_idx);
             }
         }
 
-        if let Some(idx) = best_idx {
-            update_centroid(&mut centroids[idx], embedding);
-            assignments.push(SpeakerId(idx as u32));
+        if let Some(cluster_idx) = best_idx {
+            update_centroid(&mut centroids[cluster_idx], embedding);
+            assignments.push(ClusterAssignment {
+                speaker: SpeakerId(cluster_idx as u32),
+                enrolled_id: None,
+            });
         } else {
             centroids.push(embedding.clone());
-            assignments.push(SpeakerId((centroids.len() - 1) as u32));
+            enrolled_keys.push(None);
+            assignments.push(ClusterAssignment {
+                speaker: SpeakerId((centroids.len() - 1) as u32),
+                enrolled_id: None,
+            });
         }
     }
 

@@ -52,11 +52,13 @@ pub fn diarize_segments(
     pcm: Option<&Pcm>,
     strategy: DiarizationStrategy,
     models_dir: Option<&Path>,
+    enrollment: Option<&crate::enrollment::SpeakerEnrollmentStore>,
 ) -> Result<DiarizationResult, DiarizationError> {
     match strategy {
         DiarizationStrategy::Solo => SingleSpeakerDiarizer::new().diarize(&DiarizationInput {
             segments,
             pcm: None,
+            enrollment: None,
         }),
         DiarizationStrategy::StubEmbedding {
             similarity_threshold,
@@ -66,6 +68,7 @@ pub fn diarize_segments(
                 &DiarizationInput {
                     segments,
                     pcm: Some(pcm),
+                    enrollment,
                 },
             )
         }
@@ -74,7 +77,13 @@ pub fn diarize_segments(
         } => {
             let pcm = pcm.ok_or(DiarizationError::PcmRequired)?;
             let embedder = resolve_embedder(models_dir);
-            run_embedding_diarizer(embedder, segments, pcm, similarity_threshold)
+            run_embedding_diarizer(
+                embedder,
+                segments,
+                pcm,
+                similarity_threshold,
+                enrollment,
+            )
         }
     }
 }
@@ -84,19 +93,20 @@ fn run_embedding_diarizer(
     segments: &[Segment],
     pcm: &Pcm,
     similarity_threshold: f32,
+    enrollment: Option<&crate::enrollment::SpeakerEnrollmentStore>,
 ) -> Result<DiarizationResult, DiarizationError> {
+    let input = DiarizationInput {
+        segments,
+        pcm: Some(pcm),
+        enrollment,
+    };
     match embedder {
         ResolvedEmbedder::Stub(stub) => {
-            EmbeddingDiarizer::new(stub, similarity_threshold).diarize(&DiarizationInput {
-                segments,
-                pcm: Some(pcm),
-            })
+            EmbeddingDiarizer::new(stub, similarity_threshold).diarize(&input)
         }
+        #[cfg(feature = "ecapa-ort")]
         ResolvedEmbedder::EcapaOnnx(onnx) => {
-            EmbeddingDiarizer::new(onnx, similarity_threshold).diarize(&DiarizationInput {
-                segments,
-                pcm: Some(pcm),
-            })
+            EmbeddingDiarizer::new(onnx, similarity_threshold).diarize(&input)
         }
     }
 }
@@ -104,8 +114,8 @@ fn run_embedding_diarizer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::embedder::SpeakerEmbedder;
     use airo_mind_core::wav::Pcm;
-    use std::path::PathBuf;
 
     fn seg(id: &str, start: u64, end: u64) -> Segment {
         Segment {
@@ -123,6 +133,7 @@ mod tests {
             None,
             DiarizationStrategy::Solo,
             None,
+            None,
         )
         .expect("solo diarize");
         assert_eq!(result.segments[0].speaker.label(), "sp0");
@@ -136,6 +147,7 @@ mod tests {
             DiarizationStrategy::StubEmbedding {
                 similarity_threshold: 0.85,
             },
+            None,
             None,
         )
         .unwrap_err();
@@ -160,6 +172,7 @@ mod tests {
             DiarizationStrategy::StubEmbedding {
                 similarity_threshold: 0.85,
             },
+            None,
             None,
         )
         .expect("stub embedding diarize");
@@ -189,8 +202,37 @@ mod tests {
     }
 
     #[test]
-    fn product_strategy_defaults_to_solo_without_ecapa() {
-        let dir = PathBuf::from("/tmp/airo-mind-no-ecapa-dir-never-exists");
-        assert_eq!(product_diarization_strategy(&dir), DiarizationStrategy::Solo);
+    fn enrollment_hint_labels_segments_with_enrolled_id() {
+        let pcm = Pcm {
+            samples: (0..48_000).map(|i| (i % 100) as i16).collect(),
+            sample_rate_hz: 16_000,
+            channels: 1,
+        };
+        let segments = [seg("s0", 0, 1_000), seg("s1", 1_000, 2_000)];
+        let stub = StubSpeakerEmbedder::new(8);
+        let embedding = stub
+            .embed_segment(&pcm, 0, 1_000)
+            .expect("stub embedding");
+        let mut enrollment = crate::enrollment::SpeakerEnrollmentStore::new();
+        enrollment.enroll("Alice".into(), embedding);
+
+        let result = diarize_segments(
+            &segments,
+            Some(&pcm),
+            DiarizationStrategy::StubEmbedding {
+                similarity_threshold: 0.85,
+            },
+            None,
+            Some(&enrollment),
+        )
+        .expect("enrollment diarize");
+
+        assert!(
+            result
+                .segments
+                .iter()
+                .any(|s| s.enrolled_id.as_deref() == Some("enrolled_0")),
+            "expected at least one enrolled match"
+        );
     }
 }

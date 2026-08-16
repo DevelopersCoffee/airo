@@ -163,6 +163,9 @@ export 'src/models/model_descriptor_adapter.dart'
         pinnedRequiredModels,
         mindScribeRequiredModels,
         mindIndicOptionalModels,
+        mindDiarizeOptionalModels,
+        pinnedEcapaDiarizeModel,
+        kMindEcapaOnnxFileName,
         pinnedMultilingualSpeechModel,
         offlineModelInfoFromRequiredModel;
 

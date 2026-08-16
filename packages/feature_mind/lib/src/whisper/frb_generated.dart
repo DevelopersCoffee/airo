@@ -88,6 +88,10 @@ abstract class RustLibApi extends BaseApi {
 
   bool crateApiMeetingsIsReady();
 
+  bool crateApiMeetingsSarvamEdgeSpeechAvailable();
+
+  void crateApiMeetingsSyncSpeakerEnrollmentJson({required String json});
+
   Future<List<MeetingRecord>> crateApiMeetingsListMeetings();
 
   Future<List<RequiredModel>> crateApiSetupRequiredModels();
@@ -259,6 +263,54 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiMeetingsIsReadyConstMeta =>
       const TaskConstMeta(debugName: "is_ready", argNames: []);
+
+  @override
+  bool crateApiMeetingsSarvamEdgeSpeechAvailable() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSarvamEdgeSpeechAvailableConstMeta =>
+      const TaskConstMeta(debugName: "sarvam_edge_speech_available", argNames: []);
+
+  @override
+  void crateApiMeetingsSyncSpeakerEnrollmentJson({required String json}) {
+    handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(json, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta,
+        argValues: [json],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSyncSpeakerEnrollmentJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "sync_speaker_enrollment_json",
+        argNames: ["json"],
+      );
 
   @override
   Future<List<MeetingRecord>> crateApiMeetingsListMeetings() {

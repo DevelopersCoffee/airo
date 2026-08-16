@@ -1,6 +1,6 @@
 //! Embedding + online clustering diarizer.
 
-use crate::cluster::cluster_embeddings_greedy;
+use crate::cluster::cluster_embeddings_greedy_with_enrollment;
 use crate::diarizer::{DiarizationError, DiarizationInput, Diarizer};
 use crate::embedder::SpeakerEmbedder;
 use crate::result::DiarizationResult;
@@ -35,13 +35,34 @@ impl<E: SpeakerEmbedder> Diarizer for EmbeddingDiarizer<E> {
             .map(|s| self.embedder.embed_segment(pcm, s.start_ms, s.end_ms))
             .collect::<Result<_, _>>()?;
 
-        let speaker_ids = cluster_embeddings_greedy(&embeddings, self.similarity_threshold);
+        let enrollment_hints: Vec<Option<String>> = embeddings
+            .iter()
+            .map(|embedding| {
+                input
+                    .enrollment
+                    .and_then(|store| {
+                        store
+                            .match_embedding(embedding, self.similarity_threshold)
+                            .map(|profile| profile.id.clone())
+                    })
+            })
+            .collect();
+
+        let assignments = crate::cluster::cluster_embeddings_greedy_with_enrollment(
+            &embeddings,
+            self.similarity_threshold,
+            &enrollment_hints,
+        );
 
         let segments: Vec<DiarizedSegment> = input
             .segments
             .iter()
-            .zip(speaker_ids.iter())
-            .map(|(s, speaker)| DiarizedSegment::from_segment(s, *speaker))
+            .zip(assignments.iter())
+            .map(|(s, assignment)| {
+                let mut diarized = DiarizedSegment::from_segment(s, assignment.speaker);
+                diarized.enrolled_id = assignment.enrolled_id.clone();
+                diarized
+            })
             .collect();
 
         Ok(DiarizationResult::from_segments(segments))
@@ -71,6 +92,7 @@ mod tests {
             .diarize(&DiarizationInput {
                 segments: &[seg("s0", 0, 1000)],
                 pcm: None,
+                enrollment: None,
             })
             .unwrap_err();
         assert_eq!(err, DiarizationError::PcmRequired);
@@ -93,6 +115,7 @@ mod tests {
             .diarize(&DiarizationInput {
                 segments: &segments,
                 pcm: Some(&pcm),
+                enrollment: None,
             })
             .expect("diarize");
 

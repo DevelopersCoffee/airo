@@ -51,7 +51,10 @@ use airo_mind_core::{
     MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
     TranscriptSegment, TranscriptionOptions,
 };
-use airo_mind_diarize::{diarize_segments, product_diarization_strategy, DiarizationStrategy};
+use airo_mind_diarize::{
+    diarize_segments, product_diarization_strategy, DiarizationStrategy,
+    SpeakerEnrollmentStore,
+};
 use airo_mind_transcript::Segment;
 
 // ---------------------------------------------------------------------------
@@ -335,19 +338,27 @@ fn apply_diarization_labels(
             text: record.text.clone(),
         })
         .collect();
-    let result = match diarize_segments(&segments, Some(pcm), strategy, models_dir) {
+    let enrollment = lock(&SPEAKER_ENROLLMENT);
+    let result = match diarize_segments(
+        &segments,
+        Some(pcm),
+        strategy,
+        models_dir,
+        Some(&*enrollment),
+    ) {
         Ok(result) => result,
         Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => diarize_segments(
             &segments,
             None,
             DiarizationStrategy::Solo,
             None,
+            None,
         )
         .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?,
         Err(error) => return Err(error.to_string()),
     };
     for (record, diarized) in records.iter_mut().zip(result.segments.iter()) {
-        record.speaker_label = Some(diarized.speaker.label());
+        record.speaker_label = Some(diarized.wire_label());
     }
     Ok(())
 }
@@ -437,6 +448,10 @@ static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 /// The in-flight job's token, so the UI can stop it.
 static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
 
+/// Cross-meeting speaker enrollment profiles synced from Dart (#504).
+static SPEAKER_ENROLLMENT: Mutex<SpeakerEnrollmentStore> =
+    Mutex::new(SpeakerEnrollmentStore::new());
+
 struct Library {
     store: MeetingStore,
     /// `C4`: rebuilt from the store, never persisted, disposable.
@@ -511,6 +526,29 @@ pub fn is_ready() -> bool {
 #[frb(sync)]
 pub fn sarvam_edge_speech_available() -> bool {
     false
+}
+
+/// Wire profile for cross-meeting speaker enrollment (#504).
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct EnrolledSpeakerRecord {
+    pub id: String,
+    pub display_name: String,
+    pub embedding: Vec<f32>,
+}
+
+/// Replaces the in-memory enrollment store used during diarization.
+pub fn sync_speaker_enrollment_json(raw: String) {
+    let profiles: Vec<EnrolledSpeakerRecord> =
+        serde_json::from_str(&raw).unwrap_or_default();
+    let mut store = SpeakerEnrollmentStore::new();
+    for profile in profiles {
+        store.replace_or_insert(
+            profile.id,
+            profile.display_name,
+            profile.embedding,
+        );
+    }
+    *lock(&SPEAKER_ENROLLMENT) = store;
 }
 
 /// Recording → transcript, streaming throughout.

@@ -94,6 +94,15 @@ Future<void> hydrateMindScribeModels(
       ),
     );
   }
+
+  for (final model in mindDiarizeOptionalModels()) {
+    registry.registerModel(
+      _scribeModel(
+        model,
+        filePath: directory == null ? null : _installedPathIn(directory, model),
+      ),
+    );
+  }
 }
 
 /// The installed path for [model], or null when the file is absent or the
@@ -227,6 +236,19 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
     author: 'Sarvam AI (GGUF by bartowski)',
     license: 'Apache-2.0',
     huggingFaceId: 'bartowski/sarvam-1-GGUF',
+  ),
+  'ecapa_tdnn_tiny_int8.onnx': _ScribeDescriptor(
+    id: 'mind-scribe-ecapa-diarize',
+    name: 'ECAPA speaker embeddings',
+    family: ModelFamily.other,
+    description:
+        'Optional ONNX speaker embeddings for multi-speaker meeting labels. '
+        'vedk00 SpeechBrain ECAPA export on Hugging Face (~83 MB).',
+    modalities: [ModelModality.audio],
+    capabilities: [ModelCapability.audioUnderstanding],
+    author: 'vedk00 (SpeechBrain ECAPA)',
+    license: 'Apache-2.0',
+    huggingFaceId: 'vedk00/ecapa-voxceleb-speaker-embedding-onnx',
   ),
 };
 

@@ -102,13 +102,18 @@ Future<List<RequiredModel>> mindScribeRequiredModels({
 /// Optional pro Indic generation pack — not required for first-run scribe.
 List<RequiredModel> mindIndicOptionalModels() => [pinnedIndicGenerationModel];
 
-/// Optional ECAPA diarization weights — file name only until a public pin ships.
-///
-/// Rust checks `ecapa_tdnn_tiny_int8.onnx` in the models directory; download
-/// URL and digest land when weights are verified on Hugging Face.
+/// Optional ECAPA diarization weights — vedk00 SpeechBrain ONNX export on HF.
 const String kMindEcapaOnnxFileName = 'ecapa_tdnn_tiny_int8.onnx';
 
-List<RequiredModel> mindDiarizeOptionalModels() => const [];
+const RequiredModel pinnedEcapaDiarizeModel = RequiredModel(
+  fileName: kMindEcapaOnnxFileName,
+  sizeBytes: 83476039,
+  sha256:
+      'f46380bbaeddb929fb3a10ab63a4b1877a50e3d1e5fdd55a1b618d5651d3f64e',
+);
+
+/// Optional ECAPA diarization weights for multi-speaker labels.
+List<RequiredModel> mindDiarizeOptionalModels() => [pinnedEcapaDiarizeModel];
 
 /// Full verification of what is installed, translated into the shape a
 /// [ModelProvider] speaks.

@@ -3,6 +3,7 @@
 use airo_mind_core::wav::Pcm;
 use airo_mind_transcript::Segment;
 
+use crate::enrollment::SpeakerEnrollmentStore;
 use crate::result::DiarizationResult;
 
 /// Why diarization refused to run.
@@ -32,6 +33,8 @@ impl std::error::Error for DiarizationError {}
 pub struct DiarizationInput<'a> {
     pub segments: &'a [Segment],
     pub pcm: Option<&'a Pcm>,
+    /// Optional cross-meeting enrollment profiles (#504).
+    pub enrollment: Option<&'a SpeakerEnrollmentStore>,
 }
 
 /// Assigns speakers to whisper segments.

@@ -41,6 +41,7 @@ fn distinct_audio_regions_can_split_speakers() {
         .diarize(&DiarizationInput {
             segments: &segments,
             pcm: Some(&pcm),
+            enrollment: None,
         })
         .expect("diarize");
 
