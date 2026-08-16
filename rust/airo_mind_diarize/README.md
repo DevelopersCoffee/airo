@@ -1,60 +1,53 @@
 # airo_mind_diarize
 
-Wave 3 scaffolding for on-device speaker diarization in Airo Mind.
+Wave 3 on-device speaker diarization for Airo Mind.
 
-Sits between whisper ASR (`airo_mind_whisper`) and transcript processing
-(`airo_mind_transcript`). Today ships a deterministic **single-speaker**
-fallback so the pipeline can carry `speaker_id` through segments before
-ECAPA-TDNN embeddings and online clustering land.
-
-## Pipeline position
+## Pipeline
 
 ```text
-audio → airo_mind_audio (16 kHz PCM)
-     → whisper (segments: id, start_ms, end_ms, text)
-     → airo_mind_diarize (segments + speaker_id)
-     → airo_mind_transcript (normalize + chunk)
-     → Meeting IR / minutes
+audio → whisper (segments)
+     → airo_mind_diarize (speaker labels)
+     → Meeting IR / export
 ```
 
-## API
+## ECAPA ONNX (optional)
 
-```rust
-use airo_mind_diarize::{diarize_segments, DiarizationStrategy};
+Multi-speaker labels use vedk00 ECAPA ONNX weights (`ecapa_tdnn_tiny_int8.onnx`).
+Inference is gated behind the `ecapa-ort` feature and links against ONNX Runtime
+1.20 — **not** `download-binaries` (edition2024 deps on older Rust).
 
-// Product transcribe path (solo v0):
-let result = diarize_segments(&segments, Some(&pcm), DiarizationStrategy::Solo)?;
+### Link ONNX Runtime
 
-// CLI / dev tests (stub embedder + clustering):
-let result = diarize_segments(
-    &segments,
-    Some(&pcm),
-    DiarizationStrategy::StubEmbedding {
-        similarity_threshold: 0.85,
-    },
-)?;
+```bash
+source scripts/install-onnxruntime.sh   # sets ORT_LIB_LOCATION
 ```
 
-Legacy helper:
+### Product whisper + ECAPA (desktop)
 
-```rust
-use airo_mind_diarize::{Diarizer, SingleSpeakerDiarizer, DiarizationInput};
-
-let result = SingleSpeakerDiarizer::new().diarize(&DiarizationInput {
-    segments: &transcript_segments,
-    pcm: None,
-})?;
+```bash
+source scripts/install-onnxruntime.sh
+scripts/build-whisper-ecapa-desktop.sh
 ```
 
-## Verify
+Android cargokit builds stay on `whisper` only until ORT is bundled for arm64.
+
+### Test
+
+```bash
+scripts/run-ecapa-ort-tests.sh
+# With real weights (downloads pinned HF file once):
+AIRO_ECAPA_E2E=1 scripts/run-ecapa-ort-tests.sh
+```
+
+### FRB regen (whisper bridge)
+
+```bash
+scripts/regenerate-mind-whisper-frb.sh   # requires Rust 1.88+ and cargo-expand
+scripts/check-mind-whisper-frb.sh        # CI gate — bindings must match committed output
+```
+
+## Verify (no ORT)
 
 ```bash
 cargo test -p airo_mind_diarize
 ```
-
-## Non-goals (this crate)
-
-- Sarvam Edge ASR or cloud diarization APIs
-- Full ECAPA-TDNN / ONNX runtime (planned follow-up)
-- `EmbeddingDiarizer` + `StubSpeakerEmbedder` for dev/tests; swap embedder for ONNX
-- Word-level diarization (segment-level v1 only)
