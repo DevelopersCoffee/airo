@@ -21,6 +21,7 @@ import 'models/model_provider.dart';
 import 'runtime/ports/operation_log_port.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
+import 'speaker/global_speaker_enrollment_store.dart';
 import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'whisper/meeting_ir_op_log.dart';
@@ -276,6 +277,7 @@ class MindService {
         memoryBudgetMb: 4096,
         speechLanguage: language,
       );
+      await GlobalSpeakerEnrollmentStore().syncToRuntime();
       _activeSpeechLanguage = language;
       return const MindStatus.ready();
     } on Object catch (e) {
@@ -332,9 +334,9 @@ class MindService {
     yield ModelAcquisitionDone(models.map((model) => model.fileName).toList());
   }
 
-  /// Optional Indic generation weights from the public HF mirror.
-  Stream<ModelAcquisitionEvent> acquireOptionalIndicGeneration() =>
-      acquireModelFiles(mindIndicOptionalModels());
+  /// Optional ECAPA diarization weights for multi-speaker labels.
+  Stream<ModelAcquisitionEvent> acquireOptionalDiarizeModels() =>
+      acquireModelFiles(mindDiarizeOptionalModels());
 
   /// Hashes every installed model against the digest pinned in Rust source.
   Future<List<InstalledModel>> verifyModels() async =>

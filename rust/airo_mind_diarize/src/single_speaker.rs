@@ -51,6 +51,7 @@ mod tests {
             .diarize(&DiarizationInput {
                 segments: &[],
                 pcm: None,
+                enrollment: None,
             })
             .unwrap_err();
         assert_eq!(err, DiarizationError::EmptyInput);
@@ -66,6 +67,7 @@ mod tests {
             .diarize(&DiarizationInput {
                 segments: &segments,
                 pcm: None,
+                enrollment: None,
             })
             .expect("diarize");
 

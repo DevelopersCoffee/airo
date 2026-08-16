@@ -15,6 +15,14 @@ crate-type = ["rlib"]
 [dependencies]
 airo_mind_core = { path = "../airo_mind_core" }
 airo_mind_transcript = { path = "../airo_mind_transcript" }
+ort = { version = "=2.0.0-rc.9", default-features = false, features = ["ndarray"], optional = true }
+realfft = "3"
+rustfft = "6"
+
+[features]
+default = []
+# ONNX Runtime ECAPA inference — enabled on product whisper builds that bundle ORT.
+ecapa-ort = ["dep:ort"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

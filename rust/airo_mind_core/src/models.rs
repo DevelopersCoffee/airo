@@ -35,6 +35,7 @@ use crate::digest::file_digest;
 pub enum ModelTask {
     Speech,
     Generation,
+    Diarization,
 }
 
 /// `ADR-0018 §1`'s `minimum_quality`. Ordered worst to best.
@@ -244,6 +245,20 @@ const REGISTRY: &[Bundled] = &[
         memory_mb: 3072,
         size_bytes: 1_547_736_928,
         sha256: "608cf36dc3f79d608a6d4f7c41c81e663bd919c44ac2d61af4029a0c2322c937",
+        required_by_default: false,
+    },
+    // Optional ECAPA speaker embedding weights for multi-speaker diarization.
+    // File name is the on-disk install target; HF hosts `ecapa-speaker-v1.onnx`.
+    Bundled {
+        logical_id: "airo.diarization.ecapa",
+        version: "1",
+        task: ModelTask::Diarization,
+        quality: ModelQuality::Standard,
+        language: ModelLanguage::EnglishOnly,
+        file_name: "ecapa_tdnn_tiny_int8.onnx",
+        memory_mb: 256,
+        size_bytes: 83_476_039,
+        sha256: "f46380bbaeddb929fb3a10ab63a4b1877a50e3d1e5fdd55a1b618d5651d3f64e",
         required_by_default: false,
     },
 ];
@@ -573,6 +588,7 @@ mod tests {
         let files = optional_files();
         assert!(files.iter().any(|(n, _, _)| n == "ggml-tiny.bin"));
         assert!(files.iter().any(|(n, _, _)| n == "sarvam-1-Q4_K_M.gguf"));
+        assert!(files.iter().any(|(n, _, _)| n == "ecapa_tdnn_tiny_int8.onnx"));
         let required = required_files();
         assert!(
             files

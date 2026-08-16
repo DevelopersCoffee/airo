@@ -14,7 +14,10 @@
 
 mod cluster;
 mod diarizer;
+mod ecapa_fbank;
+#[cfg(feature = "ecapa-ort")]
 mod ecapa_onnx;
+mod enrollment;
 mod embedder;
 mod embedder_factory;
 mod embedding_diarizer;
@@ -32,7 +35,9 @@ pub use embedder::{SpeakerEmbedder, SpeakerEmbedding};
 pub use embedding_diarizer::EmbeddingDiarizer;
 pub use pcm_slice::slice_segment_pcm;
 pub use result::DiarizationResult;
+pub use enrollment::{EnrolledSpeaker, SpeakerEnrollmentStore};
 pub use embedder_factory::{resolve_embedder, stub_embedder, ResolvedEmbedder};
+#[cfg(feature = "ecapa-ort")]
 pub use ecapa_onnx::EcapaOnnxEmbedder;
 pub use model_files::{ecapa_model_path, ECAPA_TINY_ONNX_FILE};
 pub use segment::{DiarizedSegment, SpeakerId};
@@ -49,5 +54,6 @@ pub fn diarize_single_speaker(
     SingleSpeakerDiarizer::new().diarize(&DiarizationInput {
         segments,
         pcm: None,
+        enrollment: None,
     })
 }

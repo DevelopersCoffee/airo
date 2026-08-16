@@ -358,6 +358,9 @@ Future<RequiredModel?> requiredModelForScribeCatalogId(String catalogId) async {
   for (final model in mindIndicOptionalModels()) {
     if (model.fileName == fileName) return model;
   }
+  for (final model in mindDiarizeOptionalModels()) {
+    if (model.fileName == fileName) return model;
+  }
   if (pinnedMultilingualSpeechModel.fileName == fileName) {
     return pinnedMultilingualSpeechModel;
   }
@@ -369,4 +372,5 @@ const Map<String, String> scribeCatalogIdToFileName = {
   MindScribeModelIds.whisperEnglish: 'ggml-tiny.en.bin',
   MindScribeModelIds.qwenGeneration: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
   MindScribeModelIds.sarvamGeneration: 'sarvam-1-Q4_K_M.gguf',
+  'mind-scribe-ecapa-diarize': 'ecapa_tdnn_tiny_int8.onnx',
 };

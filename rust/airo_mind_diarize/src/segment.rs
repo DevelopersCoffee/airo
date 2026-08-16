@@ -23,6 +23,8 @@ pub struct DiarizedSegment {
     pub end_ms: u64,
     pub text: String,
     pub speaker: SpeakerId,
+    /// Cross-meeting enrolled speaker id (`enrolled_0`, …) when matched (#504).
+    pub enrolled_id: Option<String>,
 }
 
 impl DiarizedSegment {
@@ -33,6 +35,14 @@ impl DiarizedSegment {
             end_ms: segment.end_ms,
             text: segment.text.clone(),
             speaker,
+            enrolled_id: None,
         }
+    }
+
+    /// Wire/storage label — enrolled id when present, else `spN`.
+    pub fn wire_label(&self) -> String {
+        self.enrolled_id
+            .clone()
+            .unwrap_or_else(|| self.speaker.label())
     }
 }

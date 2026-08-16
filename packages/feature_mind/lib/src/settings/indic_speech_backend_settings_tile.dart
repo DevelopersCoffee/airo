@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../mind_indic_intelligence.dart';
+import '../whisper/api/meetings_seam.dart' show sarvamEdgeSpeechAvailable;
 import 'indic_intelligence_preferences.dart';
 import 'mind_entitlements_provider.dart';
 
@@ -49,7 +50,11 @@ class IndicSpeechBackendSettingsTile extends ConsumerWidget {
             enabled: capability.shouldPreferIndicSpeech(
               MindIndicSpeechMode.sarvamEdge,
             ),
-            child: const Text('Sarvam Edge (not available)'),
+            child: Text(
+              sarvamEdgeSpeechAvailable()
+                  ? 'Sarvam Edge'
+                  : 'Sarvam Edge (not available)',
+            ),
           ),
         ],
       ),

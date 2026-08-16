@@ -41,6 +41,9 @@ const Map<String, String> mindModelDownloadUrls = <String, String>{
   'sarvam-1-Q4_K_M.gguf':
       'https://huggingface.co/bartowski/sarvam-1-GGUF/resolve/main/'
       'sarvam-1-Q4_K_M.gguf',
+  'ecapa_tdnn_tiny_int8.onnx':
+      'https://huggingface.co/vedk00/ecapa-voxceleb-speaker-embedding-onnx/resolve/main/'
+      'model/ecapa-speaker-v1.onnx',
 };
 
 /// The URL for a pinned model, or null if this build has no source for it.

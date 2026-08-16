@@ -26,6 +26,7 @@ fn preserves_segment_ids_and_timestamps() {
         .diarize(&DiarizationInput {
             segments: &segments,
             pcm: None,
+            enrollment: None,
         })
         .expect("diarize");
 

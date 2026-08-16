@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/model_provider.dart';
+import 'whisper/api/meetings_seam.dart' show sarvamEdgeSpeechAvailable;
 
 /// How meeting minutes generation is chosen for Indic-heavy content.
 enum MindIndicGenerationMode {
@@ -124,11 +125,16 @@ class MindIndicCapability {
     }
   }
 
-  /// Sarvam Edge ASR is not publicly available yet — always false for on-device.
+  /// Sarvam Edge ASR when public weights are installed and enabled in this build.
   bool shouldPreferIndicSpeech(MindIndicSpeechMode mode) {
     if (!proEnabled) return false;
     if (mode == MindIndicSpeechMode.whisper) return false;
-    if (mode == MindIndicSpeechMode.sarvamEdge) return false;
+    if (mode == MindIndicSpeechMode.sarvamEdge) {
+      return sarvamEdgeSpeechAvailable();
+    }
+    if (mode == MindIndicSpeechMode.auto) {
+      return sarvamEdgeSpeechAvailable();
+    }
     return false;
   }
 
