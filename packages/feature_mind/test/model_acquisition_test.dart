@@ -10,6 +10,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_bridges.dart';
 
@@ -85,6 +86,7 @@ void main() {
   late FakeMindSpeechBridge speech;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     tempDir = Directory.systemTemp.createTempSync('mind_acquisition_test_');
     PathProviderPlatform.instance = FakePathProviderPlatform(tempDir.path);
     speech = FakeMindSpeechBridge();
