@@ -1,0 +1,20 @@
+[package]
+name = "airo_mind_diarize"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind speaker diarization — Wave 3 scaffolding between ASR segments and Meeting IR."
+license = "MIT"
+publish = false
+
+[lib]
+name = "airo_mind_diarize"
+# rlib only. ECAPA-TDNN / online clustering will link here later; no FFI
+# surface until a cdylib owner needs one.
+crate-type = ["rlib"]
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+airo_mind_transcript = { path = "../airo_mind_transcript" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
