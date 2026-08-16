@@ -46,6 +46,8 @@ echo "==> Generating feature_mind code"
 (cd "$ROOT/packages/feature_mind" && flutter pub get && dart run build_runner build)
 
 echo "==> Building (cargokit compiles the Rust as part of this)"
+# Optional preflight (Rust vault/notes/replay + macOS compile):
+#   scripts/verify-mind-macos-e2e.sh
 # Flavors are separate pubspecs in this repo, so selecting one means swapping
 # the file. Restored on exit, including on failure.
 cp app/pubspec_mind.yaml app/pubspec.yaml

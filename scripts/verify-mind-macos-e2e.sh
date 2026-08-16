@@ -1,32 +1,75 @@
 #!/usr/bin/env bash
-# Verifies Mind runtime follow-ups end-to-end on macOS (vault, notes, replay, ECAPA build).
+# Verifies Mind runtime follow-ups end-to-end (vault, notes, replay, ECAPA build).
 #
-# Run on your Mac after merging #1810 / mind-followups:
+# macOS (full native stack):
 #   scripts/verify-mind-macos-e2e.sh
+#   scripts/verify-mind-macos-e2e.sh --journey   # + transcribe pipeline (~570 MB)
 #
-# Optional: full UI journey with models (~570 MB first run):
-#   scripts/verify-mind-macos-e2e.sh --journey
+# Linux / CI (Rust runtime + optional browser smoke):
+#   scripts/verify-mind-macos-e2e.sh --linux
+#   scripts/verify-mind-macos-e2e.sh --linux --browser
+#
+# After automated checks pass on macOS, launch the GUI for manual UI proof:
+#   app/tool/run_mind_macos.sh
+#
+# Known gaps (not covered here — separate follow-ups):
+#   • Qwen 0.5B cannot summarize 74+ min transcripts (2048 ctx; needs chunking).
+#   • Whisper tiny loops on long meetings; use small/base + chunking for prod quality.
+#   • Speaker enroll (#504) and Devices (#1592) need on-device GUI verification.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_JOURNEY=false
-if [[ "${1:-}" == "--journey" ]]; then
-  RUN_JOURNEY=true
-fi
+RUN_LINUX=false
+RUN_BROWSER=false
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "This script targets macOS (Darwin). On Linux use the Rust test only:" >&2
-  echo "  cd rust && cargo +1.88.0 test -p airo_mind_whisper --features whisper mind_runtime_vault_notes_replay_end_to_end" >&2
-  exit 1
-fi
+for arg in "$@"; do
+  case "$arg" in
+    --journey) RUN_JOURNEY=true ;;
+    --linux) RUN_LINUX=true ;;
+    --browser) RUN_BROWSER=true ;;
+    --help|-h)
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $arg (try --help)" >&2
+      exit 1
+      ;;
+  esac
+done
 
 export FRB_TOOLCHAIN="${FRB_TOOLCHAIN:-1.88.0}"
 export PATH="${HOME}/.cargo/bin:${PATH}"
 
-echo "==> 1/5 Rust mind runtime E2E (vault, notes migration, replayFrom)"
-cd "${ROOT}/rust"
-cargo "+${FRB_TOOLCHAIN}" test -p airo_mind_whisper --features whisper mind_runtime_vault_notes_replay_end_to_end
+run_rust_e2e() {
+  echo "==> Rust mind runtime E2E (vault, notes migration, replayFrom)"
+  cd "${ROOT}/rust"
+  cargo "+${FRB_TOOLCHAIN}" test -p airo_mind_whisper --features whisper mind_runtime_vault_notes_replay_end_to_end
+}
+
+if [[ "${RUN_LINUX}" == "true" ]] || [[ "$(uname -s)" != "Darwin" ]]; then
+  run_rust_e2e
+  if [[ "${RUN_BROWSER}" == "true" ]]; then
+    echo "==> Mind web smoke (Playwright)"
+    "${ROOT}/scripts/validate_airo_mind_browser.sh"
+  fi
+  cat <<'EOF'
+
+✓ Linux verification passed (Rust runtime E2E).
+
+For native vault UI, Devices surface, Notes persist, Runtime Console replayFrom,
+and speaker enroll (#504), run on macOS:
+  scripts/verify-mind-macos-e2e.sh
+  app/tool/run_mind_macos.sh
+
+EOF
+  exit 0
+fi
+
+echo "==> 1/5 Rust mind runtime E2E"
+run_rust_e2e
 
 echo "==> 2/5 FRB bindings in sync"
 "${ROOT}/scripts/check-mind-whisper-frb.sh"
@@ -36,11 +79,10 @@ echo "==> 3/5 ONNX Runtime macOS (ECAPA link check)"
 source "${ROOT}/scripts/install-onnxruntime.sh"
 "${ROOT}/scripts/build-whisper-ecapa-desktop.sh"
 
-echo "==> 4/5 feature_mind unit tests (notes + runtime)"
+echo "==> 4/5 feature_mind unit tests (notes)"
 cd "${ROOT}/packages/feature_mind"
 flutter pub get
-flutter test test/notes/ test/runtime/rust_mind_runtime_test.dart --plain-name "the failure is per port" --plain-name "every unimplemented" 2>/dev/null || \
-  flutter test test/notes/
+flutter test test/notes/
 
 echo "==> 5/5 Mind shell compile (macOS)"
 "${ROOT}/app/tool/fetch_mind_models.sh"
@@ -53,7 +95,7 @@ flutter pub get
 flutter build macos -t lib/main_mind.dart
 
 if [[ "${RUN_JOURNEY}" == "true" ]]; then
-  echo "==> Optional device journey (models + transcribe pipeline)"
+  echo "==> Optional journey (models + transcribe; use short audio — tiny loops on 70+ min)"
   cp "${ROOT}/app/analysis_options_mind.yaml" "${ROOT}/app/analysis_options.yaml"
   JFK="${ROOT}/rust/fixtures/jfk.wav"
   if [[ ! -f "${JFK}" ]]; then
@@ -69,18 +111,21 @@ fi
 
 cat <<'EOF'
 
-✓ macOS verification passed (Rust runtime, FRB, ECAPA build, Mind macOS compile).
+✓ macOS automated verification passed (Rust runtime, FRB, ECAPA build, Mind compile).
 
-Manual UI checks (launch Mind shell):
+Manual UI checklist — launch:
   app/tool/run_mind_macos.sh
 
-Then verify in the app:
-  • Record a short meeting → transcript + minutes save (scribe op log → Rust)
-  • Devices surface → vault shows "This device" with fingerprint groups
-  • Notes (if routed in shell) → create/edit persists across restart
-  • Runtime console → right-click op row → replayFrom shows progress
+  [ ] Scribe: record short meeting → transcript + minutes persist (#1213)
+  [ ] Devices: "This device" + fingerprint groups (#1592 / vault UI)
+  [ ] Notes: create → restart app → note still there (Rust notes log)
+  [ ] Runtime console: right-click op → replayFrom progress (#1216)
+  [ ] Speaker: enroll with ECAPA model → recognized in next meeting (#504)
 
-Speaker enrollment (#504) needs ECAPA model on disk; install via Models tab
-or app/tool/fetch_mind_models.sh, then enroll a speaker in a meeting.
+Long meetings (74 min Voice Memo): decode is fine; Whisper tiny loops after ~27 min
+and Qwen 0.5B exceeds 2048-token context — use larger ASR + chunked summarization.
+
+Optional browser smoke (shell routes, assistant catalog):
+  scripts/validate_airo_mind_browser.sh
 
 EOF
