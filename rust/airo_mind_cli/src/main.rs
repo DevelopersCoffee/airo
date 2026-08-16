@@ -1,6 +1,6 @@
-//! macOS dev-loop smoke test for Airo Mind's two engines.
+//! Dev-loop smoke test for Airo Mind's two engines.
 //!
-//! `.m4a` in, timestamped transcript out (`airo_mind_whisper`), transcript in,
+//! `.m4a` / `.wav` in, timestamped transcript out (`airo_mind_whisper`), transcript in,
 //! generated text out (`airo_mind_llama`) -- both engines running the exact
 //! same `Supervisor` / `SpeechEngine` / `GenerationEngine` contract the app
 //! consumes, both Metal-accelerated on this machine. See `README.md` in this
@@ -11,11 +11,10 @@
 //! pick the same libraries up -- see milestone 26, Wave 1 exit gate.
 
 use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::PathBuf;
 use std::time::Instant;
 
-use airo_mind_core::wav;
+use airo_mind_audio::preprocess_path;
 use airo_mind_llama::{
     CancelToken as LlamaCancelToken, GenerationRequest, LlamaGenerationEngine,
     ResourceBudget as LlamaBudget, Supervisor as LlamaSupervisor,
@@ -61,29 +60,6 @@ fn llama_model_path() -> PathBuf {
         })
 }
 
-/// Decodes `input` (any container `afconvert` reads -- `.m4a` included) to a
-/// 16 kHz mono 16-bit PCM WAVE file at `out`.
-///
-/// Shells out rather than adding an in-process AAC/MP4 decoder: this binary
-/// runs on a developer's Mac only, never ships, and `afconvert` is already on
-/// every machine that can build this workspace. A new decoding crate here
-/// would need the same Constitution §6 dependency scorecard the engine crates
-/// deliberately avoid for far less benefit -- see the comment on `wav.rs`.
-fn decode_to_wav16k_mono(input: &Path, out: &Path) -> Result<(), String> {
-    let status = Command::new("afconvert")
-        .args(["-f", "WAVE", "-d", "LEI16@16000", "-c", "1"])
-        .arg(input)
-        .arg(out)
-        .status()
-        .map_err(|e| {
-            format!("couldn't run `afconvert` ({e}) -- this CLI is macOS-only, see README.md")
-        })?;
-    if !status.success() {
-        return Err(format!("afconvert exited with {status}"));
-    }
-    Ok(())
-}
-
 fn format_ts(ms: u64) -> String {
     let total_secs = ms / 1000;
     format!(
@@ -112,7 +88,7 @@ fn main() {
     let whisper_model = whisper_model_path();
     let llama_model = llama_model_path();
 
-    println!("== Airo Mind macOS dev loop ==");
+    println!("== Airo Mind dev loop ==");
     println!("audio:         {}", audio.display());
     println!("whisper model: {}", whisper_model.display());
     println!("llama model:   {}", llama_model.display());
@@ -144,14 +120,13 @@ fn main() {
     }
 
     // --- decode -------------------------------------------------------
-    let tmp_wav = env::temp_dir().join(format!("airo_mind_cli_{}.wav", std::process::id()));
-    if let Err(e) = decode_to_wav16k_mono(&audio, &tmp_wav) {
-        eprintln!("decode failed: {e}");
-        std::process::exit(1);
-    }
-    let wav_bytes = std::fs::read(&tmp_wav).expect("afconvert wrote a wav file");
-    let _ = std::fs::remove_file(&tmp_wav);
-    let pcm = wav::decode(&wav_bytes).expect("afconvert output is a valid 16-bit PCM WAVE file");
+    let pcm = match preprocess_path(&audio) {
+        Ok(pcm) => pcm,
+        Err(e) => {
+            eprintln!("decode failed: {e}");
+            std::process::exit(1);
+        }
+    };
     println!(
         "decoded: {} samples @ {} Hz, {} channel(s)",
         pcm.samples.len(),

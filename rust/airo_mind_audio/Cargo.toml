@@ -1,0 +1,20 @@
+[package]
+name = "airo_mind_audio"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-platform audio preprocess for Airo Mind — container decode, downmix, resample to 16 kHz mono PCM."
+license = "MIT"
+publish = false
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+rubato = "0.16"
+symphonia = { version = "0.5", default-features = false, features = [
+    "aac",
+    "isomp4",
+    "pcm",
+    "wav",
+] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

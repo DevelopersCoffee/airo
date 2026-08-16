@@ -134,6 +134,10 @@ abstract interface class MindSpeechBridge {
     rust.SpeechLanguage speechLanguage,
   });
 
+  /// [wavPath] is the on-disk recording path. Despite the name, Rust preprocesses
+  /// `.m4a` (meeting capture) and `.wav` to 16 kHz mono PCM before whisper runs
+  /// (`#1786`).
+  ///
   /// [language] is `#1664`'s per-recording pin: a whisper.cpp language code
   /// (`"en"`, `"hi"`, ...), or `null` to leave the engine on auto-detect.
   /// Settings choosing a primary language maps to this caller supplying the
