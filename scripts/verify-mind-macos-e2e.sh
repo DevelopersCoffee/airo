@@ -116,14 +116,18 @@ cat <<'EOF'
 Manual UI checklist — launch:
   app/tool/run_mind_macos.sh
 
-  [ ] Scribe: record short meeting → transcript + minutes persist (#1213)
+  Window > Mind Runtime… (or /runtime):
   [ ] Devices: "This device" + fingerprint groups (#1592 / vault UI)
   [ ] Notes: create → restart app → note still there (Rust notes log)
   [ ] Runtime console: right-click op → replayFrom progress (#1216)
+
+  Scribe tab:
+  [ ] Record short meeting → transcript + minutes persist (#1213)
   [ ] Speaker: enroll with ECAPA model → recognized in next meeting (#504)
 
-Long meetings (74 min Voice Memo): decode is fine; Whisper tiny loops after ~27 min
-and Qwen 0.5B exceeds 2048-token context — use larger ASR + chunked summarization.
+Long meetings (74 min Voice Memo): decode is fine; prefer small/base ASR +
+chunked LLM (--out / GUI meeting intelligence). Legacy CLI auto-chunks when
+transcript exceeds Qwen context.
 
 Optional browser smoke (shell routes, assistant catalog):
   scripts/validate_airo_mind_browser.sh

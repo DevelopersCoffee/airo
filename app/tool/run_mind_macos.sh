@@ -35,7 +35,7 @@ sed -i '' 's/^PRODUCT_NAME = .*/PRODUCT_NAME = Airo Mind/' "$APP_INFO_XCCONFIG"
 # does not depend on platform_downloads (mobile-only) or a hot restart.
 MIND_SUPPORT="$HOME/Library/Containers/com.developerscoffee.airo.tv/Data/Library/Application Support/com.developerscoffee.airo.tv/airo_mind"
 mkdir -p "$MIND_SUPPORT"
-for model in ggml-tiny.en.bin ggml-tiny.bin qwen2.5-0.5b-instruct-q4_k_m.gguf; do
+for model in ggml-tiny.en.bin ggml-tiny.bin qwen2.5-0.5b-instruct-q4_k_m.gguf ecapa_tdnn_tiny_int8.onnx; do
   src="$ROOT/packages/feature_mind/assets/models/$model"
   if [ -f "$src" ]; then
     cp -f "$src" "$MIND_SUPPORT/$model"

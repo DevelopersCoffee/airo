@@ -277,6 +277,9 @@ export 'src/surfaces/mind_home_surface.dart';
 export 'src/surfaces/portability_surface.dart';
 export 'src/surfaces/mind_surface_scaffold.dart';
 export 'src/surfaces/context_workspace_surface.dart';
+export 'src/surfaces/mind_runtime_hub_screen.dart';
+
+export 'src/widgets/mind_macos_root.dart';
 
 // The runtime skeleton (#1338): Operation → Persist → Replay → Projection
 // through a minimal Notes capability, proving the vertical slice end to end.
