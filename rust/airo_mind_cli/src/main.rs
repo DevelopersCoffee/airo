@@ -43,6 +43,10 @@ fn summarize_prompt(transcript: &str) -> String {
     )
 }
 
+/// Qwen 0.5B in the legacy dev loop uses a 2048-token context. Full meeting
+/// transcripts exceed that; chunked POC-2 extraction stays within budget.
+const LEGACY_MAX_TRANSCRIPT_CHARS: usize = 6000;
+
 fn validate_models(
     audio: &std::path::Path,
     whisper_model: &std::path::Path,
@@ -135,6 +139,31 @@ fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std
     if transcript.trim().is_empty() {
         eprintln!("\nwhisper produced no text -- nothing to feed the LLM, stopping here.");
         std::process::exit(1);
+    }
+
+    if transcript.len() > LEGACY_MAX_TRANSCRIPT_CHARS {
+        println!(
+            "\n-- transcript is {} chars; running chunked meeting pipeline (use --out for artifacts) --",
+            transcript.len()
+        );
+        let poc_args = CliArgs {
+            audio: args.audio.clone(),
+            models_dir: args.models_dir.clone(),
+            out: None,
+            skip_eval: true,
+            meeting_id: args.meeting_id.clone(),
+            golden_transcript: None,
+            golden_ir: None,
+            golden_mom: None,
+            help: false,
+        };
+        let output = run_poc2(&poc_args, whisper_model, llama_model);
+        println!("\n== minutes of meeting (chunked) ==\n");
+        println!("{}", output.mom);
+        println!("\n== done ==");
+        println!("transcript chars: {}", transcript.len());
+        println!("mom chars:        {}", output.mom.len());
+        return;
     }
 
     println!("\n-- loading llama.cpp (Metal) --");

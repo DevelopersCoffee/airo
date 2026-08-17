@@ -6,6 +6,11 @@ import 'package:flutter/services.dart';
 import '../runtime/mind_runtime.dart';
 import '../runtime/models/log_models.dart';
 
+/// Optional navigation hook for shell routes the menu bar cannot import.
+abstract final class MindRuntimeNavigation {
+  static void Function()? openHub;
+}
+
 /// The macOS native menu bar for a Mind surface.
 ///
 /// File, Edit, Capture, Context, Model, Window, Help — the design's own list.
@@ -109,6 +114,13 @@ class MindNativeMenuBar extends StatelessWidget {
               label: 'Everything Browser',
               shortcut: _summonShortcut,
               onSelected: onOpenEverythingBrowser,
+            ),
+            PlatformMenuItem(
+              label: 'Mind Runtime…',
+              onSelected: () {
+                // Shell-owned route — menu cannot import go_router here.
+                MindRuntimeNavigation.openHub?.call();
+              },
             ),
           ],
         ),
