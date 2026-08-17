@@ -24,6 +24,13 @@ use crate::engine::{
     AudioInput, EngineError, SpeechEngine, TranscriptSegment, TranscriptionOptions,
 };
 
+const SAMPLE_RATE_HZ: u32 = 16_000;
+/// Whisper decoder carries prior text as prompt; on long files this can lock into
+/// a repeated hallucination. Chunked mode resets context every N minutes.
+const CHUNK_MS: u64 = 5 * 60 * 1000;
+/// Single `full()` above this duration uses chunked transcription.
+const LONG_AUDIO_MS: u64 = 30 * 60 * 1000;
+
 /// A loaded Whisper model.
 pub struct WhisperSpeechEngine {
     context: WhisperContext,
@@ -45,6 +52,122 @@ impl WhisperSpeechEngine {
                 .map_err(|e| EngineError::Backend(format!("whisper model load failed: {e}")))?;
         Ok(Self { context, memory_mb })
     }
+
+    fn configure_params<'a>(
+        params: &mut FullParams<'a, 'a>,
+        options: &'a TranscriptionOptions,
+        no_context: bool,
+    ) {
+        params.set_print_special(false);
+        params.set_print_progress(false);
+        params.set_print_realtime(false);
+        params.set_print_timestamps(false);
+        // Single-threaded by default: the Supervisor owns the CPU budget (`C6`).
+        params.set_n_threads(1);
+        params.set_translate(false);
+        params.set_language(options.language.as_deref());
+
+        // Reduce common hallucination tokens on silence / music.
+        params.set_suppress_nst(true);
+        // Stricter than whisper.cpp defaults — fail weak segments instead of looping.
+        params.set_entropy_thold(2.2);
+        params.set_logprob_thold(-0.5);
+
+        if no_context {
+            params.set_no_context(true);
+        }
+    }
+
+    fn decode_segments(
+        state: &whisper_rs::WhisperState,
+        offset_ms: u64,
+        cancel: &CancelToken,
+    ) -> Result<Vec<TranscriptSegment>, EngineError> {
+        let mut out = Vec::new();
+        for segment in state.as_iter() {
+            if cancel.is_cancelled() {
+                return Err(EngineError::Cancelled);
+            }
+            let text = segment
+                .to_str_lossy()
+                .map_err(|e| EngineError::Backend(format!("segment text: {e}")))?
+                .trim()
+                .to_string();
+            if text.is_empty() {
+                continue;
+            }
+            // whisper reports centiseconds.
+            let start_ms = offset_ms + segment.start_timestamp().max(0) as u64 * 10;
+            let end_ms = offset_ms + segment.end_timestamp().max(0) as u64 * 10;
+            out.push(TranscriptSegment {
+                start_ms,
+                end_ms,
+                text,
+            });
+        }
+        Ok(out)
+    }
+
+    fn transcribe_pcm_chunk(
+        &self,
+        state: &mut whisper_rs::WhisperState,
+        pcm: &[f32],
+        offset_ms: u64,
+        options: &TranscriptionOptions,
+        no_context: bool,
+        cancel: &CancelToken,
+    ) -> Result<Vec<TranscriptSegment>, EngineError> {
+        if cancel.is_cancelled() {
+            return Err(EngineError::Cancelled);
+        }
+        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        Self::configure_params(&mut params, options, no_context);
+        state
+            .full(params, pcm)
+            .map_err(|e| EngineError::Backend(format!("whisper inference: {e}")))?;
+        Self::decode_segments(state, offset_ms, cancel)
+    }
+
+    fn transcribe_pcm(
+        &self,
+        pcm: &[f32],
+        options: &TranscriptionOptions,
+        cancel: &CancelToken,
+    ) -> Result<Vec<TranscriptSegment>, EngineError> {
+        let duration_ms = pcm.len() as u64 * 1000 / SAMPLE_RATE_HZ as u64;
+        let mut state = self
+            .context
+            .create_state()
+            .map_err(|e| EngineError::Backend(format!("whisper state: {e}")))?;
+
+        if duration_ms <= LONG_AUDIO_MS {
+            return self.transcribe_pcm_chunk(&mut state, pcm, 0, options, false, cancel);
+        }
+
+        let chunk_samples = (CHUNK_MS as usize) * SAMPLE_RATE_HZ as usize / 1000;
+        let mut all = Vec::new();
+        let mut offset_sample = 0usize;
+        let mut offset_ms = 0u64;
+        while offset_sample < pcm.len() {
+            if cancel.is_cancelled() {
+                return Err(EngineError::Cancelled);
+            }
+            let end_sample = (offset_sample + chunk_samples).min(pcm.len());
+            let chunk = &pcm[offset_sample..end_sample];
+            let segments = self.transcribe_pcm_chunk(
+                &mut state,
+                chunk,
+                offset_ms,
+                options,
+                true,
+                cancel,
+            )?;
+            all.extend(segments);
+            offset_sample = end_sample;
+            offset_ms += CHUNK_MS;
+        }
+        Ok(all)
+    }
 }
 
 /// Whisper wants 16 kHz mono `f32` in `[-1.0, 1.0]`.
@@ -56,7 +179,7 @@ fn to_whisper_pcm(audio: AudioInput<'_>) -> Result<Vec<f32>, EngineError> {
     if audio.channels == 0 {
         return Err(EngineError::InvalidInput("zero channels".into()));
     }
-    if audio.sample_rate_hz != 16_000 {
+    if audio.sample_rate_hz != SAMPLE_RATE_HZ {
         return Err(EngineError::InvalidInput(format!(
             "expected 16 kHz, got {} Hz -- resample before calling",
             audio.sample_rate_hz
@@ -75,6 +198,21 @@ fn to_whisper_pcm(audio: AudioInput<'_>) -> Result<Vec<f32>, EngineError> {
     Ok(mono)
 }
 
+/// Collapse consecutive segments with identical text (Whisper repetition loops).
+fn collapse_consecutive_duplicate_text(segments: Vec<TranscriptSegment>) -> Vec<TranscriptSegment> {
+    let mut out: Vec<TranscriptSegment> = Vec::new();
+    for seg in segments {
+        if let Some(last) = out.last_mut() {
+            if last.text == seg.text {
+                last.end_ms = seg.end_ms;
+                continue;
+            }
+        }
+        out.push(seg);
+    }
+    out
+}
+
 impl SpeechEngine for WhisperSpeechEngine {
     fn resource_request(&self) -> ResourceRequest {
         ResourceRequest::new(self.memory_mb)
@@ -91,57 +229,10 @@ impl SpeechEngine for WhisperSpeechEngine {
             return Err(EngineError::Cancelled);
         }
         let pcm = to_whisper_pcm(audio)?;
-
-        let mut state = self
-            .context
-            .create_state()
-            .map_err(|e| EngineError::Backend(format!("whisper state: {e}")))?;
-
-        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-        params.set_print_special(false);
-        params.set_print_progress(false);
-        params.set_print_realtime(false);
-        params.set_print_timestamps(false);
-        // Single-threaded by default: the Supervisor owns the CPU budget
-        // (`C6`), and an engine that spawns its own pool is an engine whose
-        // CPU use nobody can cap.
-        params.set_n_threads(1);
-
-        // `#1664`: never translate. This is the fix for the "silent
-        // auto-translate" bug the issue is about -- whisper.cpp's own
-        // default is already `false`, so this call changes nothing at
-        // runtime, but it makes the guarantee an explicit, greppable fact
-        // about this file rather than an inherited default that a future
-        // edit could flip without anyone noticing. `translate_is_never_set_true`
-        // below pins it: exactly one call, exactly this literal.
-        params.set_translate(false);
-
-        // `#1664`: pin the spoken language when the caller asked for one.
-        // `None` leaves whisper.cpp on its own auto-detection -- see
-        // `TranscriptionOptions` for why this crate never tries to honour
-        // more than one language in a single call.
-        params.set_language(options.language.as_deref());
-
-        state
-            .full(params, &pcm)
-            .map_err(|e| EngineError::Backend(format!("whisper inference: {e}")))?;
-
-        for segment in state.as_iter() {
-            // Between segments, per `C6`. A backend holding a partially decoded
-            // model cannot be killed safely mid-segment.
-            if cancel.is_cancelled() {
-                return Err(EngineError::Cancelled);
-            }
-            let text = segment
-                .to_str_lossy()
-                .map_err(|e| EngineError::Backend(format!("segment text: {e}")))?;
-
-            // whisper reports centiseconds.
-            sink(TranscriptSegment {
-                start_ms: segment.start_timestamp().max(0) as u64 * 10,
-                end_ms: segment.end_timestamp().max(0) as u64 * 10,
-                text: text.trim().to_string(),
-            })?;
+        let raw = self.transcribe_pcm(&pcm, options, cancel)?;
+        let segments = collapse_consecutive_duplicate_text(raw);
+        for segment in segments {
+            sink(segment)?;
         }
         Ok(())
     }
@@ -183,6 +274,32 @@ mod tests {
             channels: 1,
         });
         assert!(matches!(r, Err(EngineError::InvalidInput(_))));
+    }
+
+    #[test]
+    fn consecutive_duplicate_segments_collapse_to_one_span() {
+        let input = vec![
+            TranscriptSegment {
+                start_ms: 0,
+                end_ms: 1000,
+                text: "hello".into(),
+            },
+            TranscriptSegment {
+                start_ms: 1000,
+                end_ms: 2000,
+                text: "hello".into(),
+            },
+            TranscriptSegment {
+                start_ms: 2000,
+                end_ms: 3000,
+                text: "other".into(),
+            },
+        ];
+        let out = collapse_consecutive_duplicate_text(input);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].text, "hello");
+        assert_eq!(out[0].end_ms, 2000);
+        assert_eq!(out[1].text, "other");
     }
 
     /// `#1664` acceptance: "never emit translation when transcription was
