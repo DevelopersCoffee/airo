@@ -8,21 +8,27 @@ import 'ports/operation_log_port.dart';
 import 'ports/portability_port.dart';
 import 'ports/projection_port.dart';
 import 'ports/vault_port.dart';
+import 'rust/rust_mind_runtime_vault.dart';
 
-/// Mind runtime for the standalone scribe shell: real durable log, fixture elsewhere.
+/// Mind runtime for the standalone scribe shell: Rust vault + op log, fixture elsewhere.
 ///
-/// Wave 2 wire-up until `RustMindRuntime.log` ships (#1213). Assistant consent
-/// and meeting IR extraction append to the same file [MindService] uses.
+/// [VaultPort] reads the vault opened when [MindService.initialize] boots the
+/// whisper library (`meetings::initialize` → `open_mind_runtime`). Contexts,
+/// projections, and mesh stay on fixtures until their issues land.
 class ScribeMindRuntime implements MindRuntime {
-  ScribeMindRuntime({required OperationLogPort log})
-    : _inner = FixtureMindRuntime(),
-      _log = log;
+  ScribeMindRuntime({
+    required OperationLogPort log,
+    VaultPort? vault,
+  }) : _inner = FixtureMindRuntime(),
+       _log = log,
+       _vault = vault ?? const RustMindRuntimeVault();
 
   final FixtureMindRuntime _inner;
   final OperationLogPort _log;
+  final VaultPort _vault;
 
   @override
-  VaultPort get vault => _inner.vault;
+  VaultPort get vault => _vault;
 
   @override
   OperationLogPort get log => _log;

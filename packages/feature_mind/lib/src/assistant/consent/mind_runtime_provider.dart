@@ -7,9 +7,8 @@ import '../../runtime/mind_runtime.dart';
 /// The [MindRuntime] Audio Scribe (and, as they land, other assistant
 /// surfaces) writes operations against.
 ///
-/// Uses [ScribeMindRuntime] with a durable JSON-lines log shared with
-/// [MindService] (`sharedMindOperationLog`). `RustMindRuntime.log` remains
-/// unimplemented (#1213); this is the Wave 2 wire-up until that lands.
+/// Uses [ScribeMindRuntime] with [RustPreferredOperationLog] and
+/// [RustMindRuntimeVault] shared with [MindService] (`sharedMindOperationLog`).
 final mindRuntimeProvider = Provider<MindRuntime>(
   (ref) => ScribeMindRuntime(log: sharedMindOperationLog()),
 );

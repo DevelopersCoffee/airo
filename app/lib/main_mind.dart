@@ -102,7 +102,9 @@ Future<void> main() {
       registry = buildMindModuleRegistry();
       return ProviderScope(
         overrides: buildMindProviderOverrides(prefs: prefs, registry: registry),
-        child: AiroMindApp(registry: registry),
+        child: MindMacOsRoot(
+          child: AiroMindApp(registry: registry),
+        ),
       );
     },
     afterRunApp: () {
@@ -224,6 +226,28 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
       name: 'register',
       builder: (context, state) => const RegisterScreen(),
     ),
+    GoRoute(
+      path: '/runtime',
+      name: 'mind_runtime_hub',
+      builder: (context, state) => const MindRuntimeHubScreen(),
+      routes: [
+        GoRoute(
+          path: 'devices',
+          name: 'mind_runtime_devices',
+          builder: (context, state) => const MindRuntimeDevicesScreen(),
+        ),
+        GoRoute(
+          path: 'notes',
+          name: 'mind_runtime_notes',
+          builder: (context, state) => const MindRuntimeNotesScreen(),
+        ),
+        GoRoute(
+          path: 'console',
+          name: 'mind_runtime_console',
+          builder: (context, state) => const MindRuntimeConsoleScreen(),
+        ),
+      ],
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           MindShell(navigationShell: navigationShell),
@@ -274,7 +298,14 @@ class _AiroMindAppState extends State<AiroMindApp> {
   late final GoRouter _router = buildMindRouter(registry: widget.registry);
 
   @override
+  void initState() {
+    super.initState();
+    MindRuntimeNavigation.openHub = () => _router.go('/runtime');
+  }
+
+  @override
   void dispose() {
+    MindRuntimeNavigation.openHub = null;
     // The registry owns module teardown, and MindModule's is real work: it
     // releases the microphone and the loaded models. `State.dispose` cannot
     // await, so this is fire-and-forget — the shell is going away either way.
