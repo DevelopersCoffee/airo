@@ -121,44 +121,47 @@ void main() {
     );
   });
 
-  test('chat prefers an installed Gemma package over Gemini Nano on Android', () {
-    const nano = AssistantModelCandidate(
-      id: geminiNanoAssistantModelId,
-      name: 'Gemini Nano',
-      runtime: 'AICore on-device',
-      description: 'System runtime',
-      bestFor: [AssistantTask.chat],
-      tags: ['Local'],
-      privacyLabel: 'Prompt stays on device',
-      sizeLabel: 'System managed',
-      available: true,
-      actionLabel: 'Start chat',
-      local: true,
-    );
-    const gemma = AssistantModelCandidate(
-      id: litertGemmaAssistantModelId,
-      name: 'Gemma mobile package',
-      runtime: 'LiteRT-LM local model',
-      description: 'Downloaded package',
-      bestFor: [AssistantTask.chat],
-      tags: ['Local', 'Gemma'],
-      privacyLabel: 'Prompt stays on device',
-      sizeLabel: '2.4 GB',
-      available: true,
-      actionLabel: 'Start chat',
-      local: true,
-    );
+  test(
+    'chat prefers an installed Gemma package over Gemini Nano on Android',
+    () {
+      const nano = AssistantModelCandidate(
+        id: geminiNanoAssistantModelId,
+        name: 'Gemini Nano',
+        runtime: 'AICore on-device',
+        description: 'System runtime',
+        bestFor: [AssistantTask.chat],
+        tags: ['Local'],
+        privacyLabel: 'Prompt stays on device',
+        sizeLabel: 'System managed',
+        available: true,
+        actionLabel: 'Start chat',
+        local: true,
+      );
+      const gemma = AssistantModelCandidate(
+        id: litertGemmaAssistantModelId,
+        name: 'Gemma mobile package',
+        runtime: 'LiteRT-LM local model',
+        description: 'Downloaded package',
+        bestFor: [AssistantTask.chat],
+        tags: ['Local', 'Gemma'],
+        privacyLabel: 'Prompt stays on device',
+        sizeLabel: '2.4 GB',
+        available: true,
+        actionLabel: 'Start chat',
+        local: true,
+      );
 
-    expect(
-      AssistantModelLibraryState.recommend(
-        [nano, gemma],
-        AssistantTask.chat,
-        const {},
-        isAndroidHost: true,
-      ).id,
-      litertGemmaAssistantModelId,
-    );
-  });
+      expect(
+        AssistantModelLibraryState.recommend(
+          [nano, gemma],
+          AssistantTask.chat,
+          const {},
+          isAndroidHost: true,
+        ).id,
+        litertGemmaAssistantModelId,
+      );
+    },
+  );
 
   test('recommend does not prefer LiteRT on desktop hosts', () {
     const nano = AssistantModelCandidate(
@@ -973,6 +976,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(openedManager, isTrue);
+  });
+
+  test('desktop profile recommends installed GGUF and hides LiteRT', () async {
+    final gemma = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma-4-E2B-it',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+      provider: AIProvider.gemma,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      capabilities: const [ModelCapability.chat],
+    );
+    final tempDir = await Directory.systemTemp.createTemp('airo_desktop_gguf');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final ggufPath = '${tempDir.path}/qwen.gguf';
+    await File(ggufPath).writeAsBytes(List<int>.filled(1024, 0));
+    final gguf = OfflineModelInfo(
+      id: 'mind-scribe-qwen2.5-0.5b-instruct',
+      name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1024,
+      filePath: ggufPath,
+      provider: AIProvider.gguf,
+      capabilities: const [ModelCapability.chat],
+    );
+
+    final state = await AssistantModelLibraryState.load(
+      task: AssistantTask.chat,
+      isAndroidHost: false,
+      runtimeProfile: ModelRuntimeProfile.desktopGguf,
+      isNanoSupported: () async => false,
+      loadDeviceInfo: () async => {},
+      isLiteRtAvailable: () async => true,
+      isGgufAvailable: () async => true,
+      initializeCloud: () async {},
+      isCloudAvailable: () => false,
+      loadCompatibilityByModelId: (_) async => {},
+      hydrateDownloadedModel: (model) async => model,
+      mobileRecommended: [gemma],
+      loadAssistantDownloadedModels: () async => [gguf],
+      platformLabelOverride: 'MACOS',
+    );
+
+    expect(
+      state.candidateById(assistantModelIdForOfflineModel(gemma.id)),
+      isNull,
+    );
+    expect(state.recommended.id, assistantModelIdForOfflineModel(gguf.id));
+    expect(state.recommended.available, isTrue);
+    expect(state.recommended.opensModelManager, isFalse);
   });
 
   test('desktop model library steers users toward GGUF setup copy', () async {

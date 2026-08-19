@@ -64,4 +64,6 @@ cp app/pubspec_mind.yaml app/pubspec.yaml
 trap 'git -C "$ROOT" checkout app/pubspec.yaml app/pubspec.lock; restore_app_info' EXIT
 cd app
 flutter pub get
-flutter run -d macos -t lib/main_mind.dart
+flutter run -d macos -t lib/main_mind.dart \
+  --dart-define=APP_VARIANT=mind \
+  --dart-define=AIRO_MIND_DESKTOP=true

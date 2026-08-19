@@ -1,5 +1,6 @@
 import '../models/model_contract.dart';
 import '../models/model_credibility.dart';
+import '../models/model_runtime_profile.dart';
 import '../models/offline_model_info.dart';
 import '../provider/ai_provider.dart';
 
@@ -10,6 +11,18 @@ import '../provider/ai_provider.dart';
 /// discovered from external catalogs like HuggingFace.
 class ModelCatalog {
   ModelCatalog._();
+
+  /// Packages this [profile] is allowed to install and recommend.
+  ///
+  /// Desktop Mind uses [ModelRuntimeProfile.desktopGguf] so Gallery LiteRT
+  /// rows never enter the registry. Android keeps the full [bundledModels]
+  /// list.
+  static List<OfflineModelInfo> forProfile(ModelRuntimeProfile profile) {
+    if (profile == ModelRuntimeProfile.androidOnDevice) {
+      return bundledModels;
+    }
+    return bundledModels.where(profile.offersPackage).toList(growable: false);
+  }
 
   /// Gets the default/bundled model catalog.
   static List<OfflineModelInfo> get bundledModels => [

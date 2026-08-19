@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:path/path.dart' as p;
 
 import '../../features/settings/application/ai_model_management.dart';
+import '../platform/platform_config.dart';
 import 'mind_model_sources.dart';
 
 /// The Mind shell's model registry: the shared catalog plus the scribe's own
@@ -27,7 +28,11 @@ List<Override> mindModelRegistryOverrides({
 }) => [
   modelRegistryProvider.overrideWith((ref) {
     final registry = ModelRegistry();
-    registry.registerModels(ModelCatalog.bundledModels);
+    registry.registerModels(
+      ModelCatalog.forProfile(
+        ModelRuntimeProfile.resolve(isAndroidHost: PlatformConfig.isAndroid),
+      ),
+    );
     unawaited(
       hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
     );
@@ -39,13 +44,15 @@ List<Override> mindModelRegistryOverrides({
       ref.read(huggingFaceCatalogErrorProvider.notifier).state =
           result.errorMessage;
     }());
-    unawaited(
-      hydrateMindScribeModels(
+    unawaited(() async {
+      await hydrateMindScribeModels(
         registry,
         requiredModels: requiredModels,
         modelsDirectory: modelsDirectory,
-      ),
-    );
+      );
+      if (!ref.mounted) return;
+      ref.invalidate(assistantModelLibraryProvider);
+    }());
     ref.onDispose(registry.dispose);
     return registry;
   }),

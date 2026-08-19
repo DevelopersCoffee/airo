@@ -69,6 +69,7 @@ export 'src/client/safety_filtered_client.dart';
 export 'src/models/model_credibility.dart';
 export 'src/models/model_contract.dart';
 export 'src/models/model_readiness_service.dart';
+export 'src/models/model_runtime_profile.dart';
 export 'src/models/offline_model_info.dart';
 export 'src/registry/model_registry.dart';
 export 'src/registry/model_catalog.dart';

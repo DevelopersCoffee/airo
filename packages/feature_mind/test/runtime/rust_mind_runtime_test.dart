@@ -14,6 +14,7 @@ void main() {
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('rust_mind_runtime_test_');
+    Directory(path.join(tempDir.path, 'airo_mind')).createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.flutter.io/path_provider'),
@@ -29,6 +30,14 @@ void main() {
   });
 
   tearDown(() async {
+    // RustMindRuntime opens the durable op log lazily on construction. Finish
+    // that work before deleting the temp support dir or a later test sees a
+    // PathNotFoundException from a stale openDefault() future.
+    try {
+      await runtime.log.count();
+    } on Object {
+      // Unimplemented Rust ports are irrelevant here; we only need the open.
+    }
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.flutter.io/path_provider'),
