@@ -8,17 +8,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version label, for example v0.0.6'
+        description: 'Release version label, for example v0.0.7-preview'
         required: true
-        default: 'airo-tv-v0.0.6'
+        default: 'v0.0.7-preview'
       build_name:
-        description: 'Android versionName, for example 0.0.6'
+        description: 'Android versionName, for example 0.0.7-preview'
         required: true
-        default: '0.0.6'
+        default: '0.0.7-preview'
       build_number:
         description: 'Android versionCode shared by Android artifacts'
         required: true
-        default: '8'
+        default: '12'
       release_ref:
         description: 'Git ref to release; must be based on origin/main'
         required: true
@@ -26,7 +26,7 @@ on:
       release_branch:
         description: 'Release branch to create/update from release_ref'
         required: true
-        default: 'release/airo-tv-v0.0.6'
+        default: 'release/v0.0.7-preview'
       dry_run:
         description: 'Build and upload workflow artifacts without public/store publishing'
         required: true
@@ -133,9 +133,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEFAULT_VERSION: airo-tv-v0.0.6
-  DEFAULT_BUILD_NAME: 0.0.6
-  DEFAULT_BUILD_NUMBER: '8'
+  DEFAULT_VERSION: v0.0.7-preview
+  DEFAULT_BUILD_NAME: 0.0.7-preview
+  DEFAULT_BUILD_NUMBER: '12'
 
 jobs:
   prepare:

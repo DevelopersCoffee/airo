@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## v0.0.7-preview — unreleased
+
+Preview cut of the `0.0.7` line across Airo TV, the full app, Airo Coins, and
+macOS TV. Prepared notes: [docs/release/AIRO_v0.0.7-preview.md](docs/release/AIRO_v0.0.7-preview.md).
+Not tagged until Rust Core CI is green on the freeze SHA.
+
+### Added
+
+- Unified live playlist merge across M3U, Xtream, and Stalker sources.
+- Coins embeddings auto-categorization, recurrence/anomaly detection, and
+  `DraftConfirmCard`.
+- Meeting IR / MoM / speaker enrollment land in the full app behind
+  Under-qualification copy. No standalone Mind APK.
+
+### Fixed
+
+- Airo TV BACK on the channel-browse grid after playback (#1430).
+- Rust Core CI no longer links `airo_mind_cli` into Linux workspace
+  `--workspace` jobs (whisper.cpp / llama.cpp ggml duplicate symbols).
+
+### Known issues
+
+- #1240 Airo Coins can open to a persistent black screen on Pixel 9 / Android 17.
+- #1243 Fire TV live playback emits repeated vendor property-denial log errors.
+- #1023 macOS mini-player Watch does not open fullscreen.
+
 ## v0.0.6 — 2026-08-04
 
 Stable cut of the `0.0.6` line across Airo TV, the full app, Airo Coins, and

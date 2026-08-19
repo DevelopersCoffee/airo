@@ -97,8 +97,9 @@ device class, or store listing.
   are retained for history and are no longer minted per wave. Anything that
   resolves "the current Airo TV release" must therefore match on the published
   `Airo-TV-*` assets, not on the tag prefix.
-- The current release train advances from `airo-tv-v0.0.5` to the aggregate
-  `v0.0.6`.
+- The current release train is the aggregate `v0.0.6` line. The next
+  candidate is `v0.0.7-preview` (same four SKUs: TV, full, Coins, macOS TV).
+  `airo-tv-v*` tags are retained for history and are no longer minted per wave.
 - Treat package contracts, feature registry APIs, and build target manifests as
   V2 compatibility surfaces.
 
