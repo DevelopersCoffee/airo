@@ -110,11 +110,15 @@ above that block), and full LTO across two rlibs that each carry their own
 `flutter_rust_bridge`-generated `frb_generated` module (`airo_mind_whisper`
 and `airo_mind_llama`, both cdylib-shaped by design, statically linked into
 one bin here) fails at the bitcode-merge step with a duplicate-symbol error
-on `frb_dart_fn_deliver_output`. Not a regression from anything this crate
-does — the two libraries were never meant to share a link unit — and not
-worth chasing for a dev-only tool: `cargo build -p airo_mind_cli` (dev
-profile) links them fine and every model-load/inference cost dominates the
-missing optimization anyway.
+on `frb_dart_fn_deliver_output`. Linux `lld` also refuses the *dev* link:
+whisper.cpp and llama.cpp each vendor ggml under the same symbol names, so
+`cargo test --workspace` on Ubuntu emits `duplicate symbol: ggml_backend_*`.
+macOS `ld` is lenient and still produces a working local binary. The two
+libraries were never meant to share a link unit — that is why the Flutter
+app loads them as separate cdylibs. This crate stays a macOS-oriented
+dev-loop tool: `cargo build -p airo_mind_cli` (dev profile, this Mac) is the
+supported invocation. CI uses `--workspace --exclude airo_mind_cli`.
+Every model-load/inference cost dominates the missing optimization anyway.
 
 By default it uses:
 

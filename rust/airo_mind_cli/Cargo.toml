@@ -17,6 +17,11 @@ airo_mind_diarize = { path = "../airo_mind_diarize" }
 airo_mind_eval = { path = "../airo_mind_eval" }
 airo_mind_meeting = { path = "../airo_mind_meeting" }
 airo_mind_transcript = { path = "../airo_mind_transcript" }
+# Both engines in one bin is an ODR conflict on Linux lld (duplicate ggml
+# symbols). macOS ld still links this for the local dev loop. Do not add this
+# package to `cargo test --workspace` / `cargo clippy --workspace` / Linux
+# `cargo build --release --workspace`. See README.md and rust/Cargo.toml
+# `default-members`.
 airo_mind_whisper = { path = "../airo_mind_whisper", features = ["whisper", "metal"] }
 airo_mind_llama = { path = "../airo_mind_llama", features = ["llama", "metal"] }
 serde = { version = "1", features = ["derive"] }
