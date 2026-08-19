@@ -60,8 +60,11 @@ vendor/
 *.log
 logs/
 artifacts/agent-skills-journey/
+artifacts/airo-mind-browser/
 artifacts/airo-tv-browser-viewports/
+artifacts/mind-macos-e2e/
 artifacts/store-listing/
+app/macos/Runner/Configs/AppInfo.xcconfig.mind-run.bak
 .gstack/
 $CODEX_HOME/
 app/pubspec.yaml.backup

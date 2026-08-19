@@ -10,8 +10,34 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late RustMindRuntime runtime;
+  late Directory tempDir;
 
-  setUp(() => runtime = RustMindRuntime());
+  setUp(() {
+    tempDir = Directory.systemTemp.createTempSync('rust_mind_runtime_test_');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationSupportDirectory' ||
+                methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
+            }
+            return null;
+          },
+        );
+    runtime = RustMindRuntime();
+  });
+
+  tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          null,
+        );
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
 
   test('every unimplemented method names its port and its issue', () async {
     await expectLater(
@@ -104,33 +130,6 @@ void main() {
   });
 
   group('models.all/storage/download are real, not stubs (#1630)', () {
-    late Directory tempDir;
-
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('rust_models_test');
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/path_provider'),
-            (MethodCall methodCall) async {
-              if (methodCall.method == 'getApplicationDocumentsDirectory') {
-                return tempDir.path;
-              }
-              return null;
-            },
-          );
-    });
-
-    tearDown(() async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/path_provider'),
-            null,
-          );
-      if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
-      }
-    });
-
     test('all() reports the default catalog, nothing on disk yet', () async {
       final models = await runtime.models.all();
 

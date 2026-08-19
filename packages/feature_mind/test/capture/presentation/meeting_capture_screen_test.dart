@@ -1,4 +1,7 @@
+import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
 import 'package:feature_mind/src/capture/presentation/meeting_capture_screen.dart';
+import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
+import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +14,14 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: MeetingCaptureScreen())),
+      ProviderScope(
+        overrides: [
+          mindRuntimeProvider.overrideWithValue(
+            ScribeMindRuntime(log: FixtureMindRuntime().log),
+          ),
+        ],
+        child: const MaterialApp(home: MeetingCaptureScreen()),
+      ),
     );
     await tester.pumpAndSettle();
   }

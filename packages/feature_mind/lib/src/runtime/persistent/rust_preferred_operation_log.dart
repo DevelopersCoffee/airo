@@ -1,7 +1,7 @@
 import '../models/log_models.dart';
 import '../ports/operation_log_port.dart';
+import '../rust/rust_mind_runtime_log.dart';
 import '../rust/rust_mind_runtime_ready.dart';
-import '../../whisper/api/mind_runtime.dart';
 
 /// Operation log backed by Rust `airo_mind_core::Runtime` when Mind is ready.
 ///
@@ -30,8 +30,8 @@ class RustPreferredOperationLog implements OperationLogPort {
       );
     }
   try {
-      final sequence = mindRuntimeAppendScribeOp(
-        kind: kind.name,
+      final sequence = mindRuntimeAppendScribeOpSafe(
+        kind: kind,
         title: title,
         contextId: contextId,
         detail: detail,
@@ -51,7 +51,7 @@ class RustPreferredOperationLog implements OperationLogPort {
   Future<int> count() async {
     if (!_rustReady) return await _fallback.count();
     try {
-      return mindRuntimeScribeOpCount().toInt();
+      return mindRuntimeScribeOpCountSafe().toInt();
     } on Object {
       return await _fallback.count();
     }
@@ -63,9 +63,9 @@ class RustPreferredOperationLog implements OperationLogPort {
       return await _fallback.range(offset: offset, limit: limit);
     }
     try {
-      final ops = mindRuntimeScribeOpsRecent(
-        offset: BigInt.from(offset),
-        limit: BigInt.from(limit),
+      final ops = mindRuntimeScribeOpsRecentSafe(
+        offset: offset,
+        limit: limit,
       );
       return ops
           .map(
@@ -109,7 +109,7 @@ class RustPreferredOperationLog implements OperationLogPort {
       return;
     }
     try {
-      final steps = mindRuntimeReplayFrom(sequence: BigInt.from(sequence));
+      final steps = mindRuntimeReplayFromSafe(sequence: sequence);
       for (var index = 0; index < steps.length; index++) {
         yield steps[index];
       }

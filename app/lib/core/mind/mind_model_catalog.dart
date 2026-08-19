@@ -252,10 +252,7 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'questions about what was said. Also used for local chat on desktop.',
     quantization: ModelQuantization.q4,
     parameterCount: 500000000,
-    capabilities: [
-      ModelCapability.chat,
-      ModelCapability.documents,
-    ],
+    capabilities: [ModelCapability.chat, ModelCapability.documents],
     author: 'Alibaba Qwen',
     license: 'Apache-2.0',
     huggingFaceId: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF',

@@ -6,8 +6,13 @@ import 'dart:convert';
 import '../frb_generated.dart';
 
 /// Whether Sarvam Edge on-device ASR weights are available in this build.
-bool sarvamEdgeSpeechAvailable() =>
-    RustLib.instance.api.crateApiMeetingsSarvamEdgeSpeechAvailable();
+bool sarvamEdgeSpeechAvailable() {
+  try {
+    return RustLib.instance.api.crateApiMeetingsSarvamEdgeSpeechAvailable();
+  } on Object {
+    return false;
+  }
+}
 
 /// Speaker embedding for a transcript time range (#504).
 List<double> embedSpeakerSegment({

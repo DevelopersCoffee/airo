@@ -1,6 +1,7 @@
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/faulty_mind_runtime.dart';
 import '../support/mind_rule_harness.dart';
 import '../support/surface_harness.dart';
 
@@ -71,11 +72,17 @@ void main() {
   testWidgets('reports the missing port when the runtime is partial', (
     tester,
   ) async {
-    await pumpSurface(tester, MindHomeSurface(runtime: RustMindRuntime()));
+    await pumpSurface(
+      tester,
+      MindHomeSurface(
+        runtime: FaultyMindRuntime(
+          FixtureMindRuntime(),
+          log: const ThrowingOperationLogPort(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    // Names the port, so a person learns the rest of the app works. And shows
-    // no numbers: fabricating "0 ops" here would be a lie.
     expect(find.textContaining('OperationLogPort'), findsOneWidget);
     expect(find.byType(MindNumberStrip), findsNothing);
   });

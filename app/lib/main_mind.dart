@@ -102,9 +102,7 @@ Future<void> main() {
       registry = buildMindModuleRegistry();
       return ProviderScope(
         overrides: buildMindProviderOverrides(prefs: prefs, registry: registry),
-        child: MindMacOsRoot(
-          child: AiroMindApp(registry: registry),
-        ),
+        child: AiroMindApp(registry: registry),
       );
     },
     afterRunApp: () {
@@ -320,10 +318,12 @@ class _AiroMindAppState extends State<AiroMindApp> {
       title: 'Airo Mind',
       theme: AiroTheme.defaultDark,
       routerConfig: _router,
-      builder: (context, child) => AiroDisplayScale(
-        child: AiroDomainTheme(
-          domain: AiroDomain.mind,
-          child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => MindMacOsRoot(
+        child: AiroDisplayScale(
+          child: AiroDomainTheme(
+            domain: AiroDomain.mind,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

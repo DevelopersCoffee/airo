@@ -277,8 +277,12 @@ class MindService {
         memoryBudgetMb: 4096,
         speechLanguage: language,
       );
-      await GlobalSpeakerEnrollmentStore().syncToRuntime();
       _activeSpeechLanguage = language;
+      try {
+        await GlobalSpeakerEnrollmentStore().syncToRuntime();
+      } on Object {
+        // Enrollment sync is best-effort; speech is already configured.
+      }
       return const MindStatus.ready();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.loadFailed, '$e');
