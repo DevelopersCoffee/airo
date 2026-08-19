@@ -39,12 +39,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - run: cargo test --manifest-path rust/Cargo.toml --all
-      - run: cargo clippy --manifest-path rust/Cargo.toml --all -- -D warnings
-      # `--all` is required now that the workspace has more than one member.
-      # Without it, cargo fmt looks for a package in the working directory,
-      # finds a virtual manifest, and exits with "Failed to find targets" --
-      # which reads like a broken checkout rather than a missing flag.
+      # `--workspace` is required on a virtual manifest. `--exclude airo_mind_cli`
+      # is required because that bin statically links whisper.cpp and llama.cpp
+      # in one image; each vendors ggml under the same symbol names, and Linux
+      # lld refuses the duplicate (see rust/airo_mind_cli/README.md). macOS ld
+      # is lenient, which is why the local dev loop still builds on this Mac.
+      # Engines stay independently testable via their own packages.
+      - run: cargo test --manifest-path rust/Cargo.toml --workspace --exclude airo_mind_cli
+      - run: cargo clippy --manifest-path rust/Cargo.toml --workspace --exclude airo_mind_cli -- -D warnings
+      # `--all`/`--workspace` is required now that the workspace has more than
+      # one member. Without it, cargo fmt looks for a package in the working
+      # directory, finds a virtual manifest, and exits with "Failed to find
+      # targets" -- which reads like a broken checkout rather than a missing
+      # flag. fmt does not link, so the CLI stays included.
       - run: cargo fmt --manifest-path rust/Cargo.toml --all --check
 
       # ECAPA ONNX tests — optional feature, requires preinstalled ORT (no download-binaries).
@@ -63,8 +70,8 @@ jobs:
           scripts/check-mind-whisper-frb.sh
 
       # Runtime v1 condition 9 (#1311, tracked on #1340): "every runtime
-      # contract has automated conformance tests." `cargo test --all` above
-      # already runs these as ordinary tests -- this step is the mechanical
+      # contract has automated conformance tests." `cargo test --workspace`
+      # above already runs these as ordinary tests -- this step is the mechanical
       # gate on top of that: it *discovers* every `tests/*conformance*.rs`
       # file in the workspace structurally (so a new one lands covered
       # without editing this workflow) and reports which of the spec's S1-S5
@@ -210,4 +217,6 @@ jobs:
           key: desktop-${{ matrix.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
           restore-keys: desktop-${{ matrix.os }}-cargo-
 
-      - run: cargo build --release --manifest-path rust/Cargo.toml --all
+      # Same ggml ODR exclusion as test-host: the CLI is a macOS-lenient
+      # combined link and must not be part of Linux/Windows `--workspace`.
+      - run: cargo build --release --manifest-path rust/Cargo.toml --workspace --exclude airo_mind_cli

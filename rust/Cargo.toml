@@ -12,6 +12,23 @@ members = [
   "airo_mind_transcript",
   "airo_mind_whisper",
 ]
+# airo_mind_cli is a member so `cargo build -p airo_mind_cli` stays one command,
+# but it is not a default-member: it statically links both whisper.cpp and
+# llama.cpp ggml copies into one bin. Linux lld rejects that as duplicate
+# symbols; macOS ld picks a winner. `cd rust && cargo test` must not pull it
+# in. CI uses `--workspace --exclude airo_mind_cli` for the same reason.
+default-members = [
+  "airo_core",
+  "airo_mind",
+  "airo_mind_audio",
+  "airo_mind_core",
+  "airo_mind_diarize",
+  "airo_mind_eval",
+  "airo_mind_llama",
+  "airo_mind_meeting",
+  "airo_mind_transcript",
+  "airo_mind_whisper",
+]
 resolver = "2"
 
 # Measured by chief-performance-officer on Apple Silicon against the real
