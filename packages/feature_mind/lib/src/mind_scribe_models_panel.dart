@@ -60,10 +60,34 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refreshInstalledState());
+    });
+  }
+
+  Future<void> _refreshInstalledState() async {
+    await widget.onAcquireComplete?.call();
+    if (mounted) setState(() {});
+  }
+
   Future<void> _downloadStack(MindModelRecommendation recommendation) async {
     final service = ref.read(mindScribeServiceProvider);
     final models = await _missingRequiredForStack(recommendation, service);
-    if (models.isEmpty) return;
+    if (models.isEmpty) {
+      await _refreshInstalledState();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'These models are already on disk. Tap Try it to start scribe.',
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _downloadingStackId = recommendation.id;
@@ -92,7 +116,7 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
       _downloadProgress = null;
     });
     if (_downloadFailed.isEmpty && _downloadError == null) {
-      await widget.onAcquireComplete?.call();
+      await _refreshInstalledState();
     }
   }
 
@@ -355,6 +379,9 @@ Future<RequiredModel?> requiredModelForScribeCatalogId(String catalogId) async {
   for (final model in pinned) {
     if (model.fileName == fileName) return model;
   }
+  for (final model in mindSpeechOptionalModels()) {
+    if (model.fileName == fileName) return model;
+  }
   for (final model in mindIndicOptionalModels()) {
     if (model.fileName == fileName) return model;
   }
@@ -370,6 +397,8 @@ Future<RequiredModel?> requiredModelForScribeCatalogId(String catalogId) async {
 const Map<String, String> scribeCatalogIdToFileName = {
   MindScribeModelIds.whisperMultilingual: 'ggml-tiny.bin',
   MindScribeModelIds.whisperEnglish: 'ggml-tiny.en.bin',
+  MindScribeModelIds.whisperSmallMultilingual: 'ggml-small.bin',
+  MindScribeModelIds.whisperSmallEnglish: 'ggml-small.en.bin',
   MindScribeModelIds.qwenGeneration: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
   MindScribeModelIds.sarvamGeneration: 'sarvam-1-Q4_K_M.gguf',
   'mind-scribe-ecapa-diarize': 'ecapa_tdnn_tiny_int8.onnx',

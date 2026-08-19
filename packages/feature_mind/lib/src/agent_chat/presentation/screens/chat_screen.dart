@@ -680,6 +680,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   value: readiness.progress.clamp(0.0, 1.0),
                 ),
               ],
+              if (!readiness.canSend &&
+                  readiness.phase == AssistantRuntimeReadinessPhase.blocked) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        ref
+                            .read(selectedAssistantModelIdProvider.notifier)
+                            .select(null);
+                      },
+                      child: const Text('Select another model'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        unawaited(
+                          ref
+                              .read(assistantRuntimeReadinessProvider.notifier)
+                              .refresh(),
+                        );
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         );

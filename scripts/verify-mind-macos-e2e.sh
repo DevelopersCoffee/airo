@@ -12,6 +12,11 @@
 # After automated checks pass on macOS, launch the GUI for manual UI proof:
 #   app/tool/run_mind_macos.sh
 #
+# Real meeting recordings (default ~/Documents/data):
+#   scripts/mind-meeting-recordings.sh list
+#   scripts/mind-meeting-recordings.sh transcribe short
+#   scripts/mind-meeting-recordings.sh analyze
+#
 # Known gaps (not covered here — separate follow-ups):
 #   • Qwen 0.5B cannot summarize 74+ min transcripts (2048 ctx; needs chunking).
 #   • Whisper tiny loops on long meetings; use small/base + chunking for prod quality.
@@ -85,6 +90,18 @@ flutter pub get
 flutter test test/notes/
 
 echo "==> 5/5 Mind shell compile (macOS)"
+# Homebrew rustc on PATH shadows rustup and breaks cargokit x86_64 cross-builds.
+if command -v rustup >/dev/null 2>&1; then
+  export RUSTC="$(rustup which rustc)"
+fi
+unset CARGO_TARGET_DIR
+# install-onnxruntime.sh sets ORT_LIB_LOCATION for the host arch; cargokit must
+# resolve per-target ORT paths when building universal macOS slices.
+unset ORT_LIB_LOCATION
+# ECAPA ONNX static libs are single-arch; skip the x86_64 slice on Apple Silicon.
+if [[ "$(uname -m)" == "arm64" ]]; then
+  export ARCHS=arm64
+fi
 "${ROOT}/app/tool/fetch_mind_models.sh"
 cd "${ROOT}/packages/feature_mind"
 dart run build_runner build --delete-conflicting-outputs
@@ -129,7 +146,14 @@ Long meetings (74 min Voice Memo): decode is fine; prefer small/base ASR +
 chunked LLM (--out / GUI meeting intelligence). Legacy CLI auto-chunks when
 transcript exceeds Qwen context.
 
-Optional browser smoke (shell routes, assistant catalog):
+Real device recordings (default ~/Documents/data):
+  scripts/mind-meeting-recordings.sh list
+  scripts/mind-meeting-recordings.sh transcribe short
+  scripts/mind-meeting-recordings.sh analyze
+
+Optional browser E2E + branding (shell routes, flow checklist, PNGs):
   scripts/validate_airo_mind_browser.sh
+  scripts/validate_airo_mind_browser.sh --e2e
+  scripts/validate_airo_mind_browser.sh --branding
 
 EOF

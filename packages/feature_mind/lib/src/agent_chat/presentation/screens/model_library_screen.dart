@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../../host/assistant_host_adapter.dart';
 import '../../application/assistant_model_preferences.dart';
 import '../../data/services/assistant_runtime_service.dart';
+import '../../../health/model_health_facts.dart';
+import '../../../services/gguf_artifact_guard.dart';
 import '../../../services/llama_gguf_service.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'model_health_center_screen.dart';
@@ -22,9 +24,11 @@ final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
 final assistantModelLibraryProvider =
     FutureProvider<AssistantModelLibraryState>((ref) async {
       final task = ref.watch(selectedAssistantTaskProvider);
+      final host = ref.read(assistantHostAdapterProvider);
       return AssistantModelLibraryState.load(
         task: task,
-        isAndroidHost: ref.read(assistantHostAdapterProvider).isAndroidHost,
+        isAndroidHost: host.isAndroidHost,
+        loadAssistantDownloadedModels: host.loadAssistantDownloadedModels,
       );
     });
 
@@ -227,6 +231,7 @@ class AssistantModelLibraryState {
     Future<OfflineModelInfo> Function(OfflineModelInfo model)?
     hydrateDownloadedModel,
     Iterable<OfflineModelInfo>? mobileRecommended,
+    Future<List<OfflineModelInfo>> Function()? loadAssistantDownloadedModels,
     String? platformLabelOverride,
   }) async {
     final nanoService = GeminiNanoService();
@@ -389,6 +394,21 @@ class AssistantModelLibraryState {
         );
       }
     }
+    if (loadAssistantDownloadedModels != null) {
+      final extraModels = await loadAssistantDownloadedModels();
+      for (final model in extraModels) {
+        if (!model.isDownloaded) continue;
+        addCandidate(
+          AssistantModelCandidate.fromOfflineModel(
+            model,
+            compatibilityByModelId: compatibilityByModelId,
+            nativeGgufAvailable: ggufAvailable,
+            liteRtNativeAvailable: liteRtAvailable,
+            webMediaPipeAvailable: webMediaPipeAvailable,
+          ),
+        );
+      }
+    }
     for (final task in [
       AssistantTask.image,
       AssistantTask.audio,
@@ -430,6 +450,17 @@ class AssistantModelLibraryState {
     );
   }
 
+  static String? _firstRunnableGgufCandidateId(
+    List<AssistantModelCandidate> candidates,
+  ) {
+    for (final candidate in candidates) {
+      final package = candidate.package;
+      if (package == null || isLiteRtPackage(package)) continue;
+      if (candidate.available) return candidate.id;
+    }
+    return null;
+  }
+
   static AssistantModelCandidate recommend(
     List<AssistantModelCandidate> candidates,
     AssistantTask task,
@@ -439,6 +470,9 @@ class AssistantModelLibraryState {
     final package = packages[task];
     final preferredIds = switch (task) {
       AssistantTask.chat => [
+        if (!isAndroidHost)
+          if (_firstRunnableGgufCandidateId(candidates) case final ggufId?)
+            ggufId,
         if (package != null) assistantModelIdForOfflineModel(package.id),
         if (isAndroidHost) litertGemmaAssistantModelId,
         if (isAndroidHost) geminiNanoAssistantModelId,
@@ -494,10 +528,20 @@ class AssistantModelLibraryState {
         final bScore = b.scoreFor(task);
         return bScore.compareTo(aScore);
       });
-    if (ranked.isEmpty) {
+    final viable = ranked
+        .where(
+          (candidate) =>
+              !candidate.local ||
+              candidate.available ||
+              candidate.opensModelManager,
+        )
+        .toList();
+    if (viable.isEmpty) {
       return candidates.first;
     }
-    return ranked.first;
+    final ready = viable.where((candidate) => candidate.available);
+    if (ready.isNotEmpty) return ready.first;
+    return viable.first;
   }
 
   static AssistantModelCandidate _setupRequiredCandidate(String platformLabel) {
@@ -634,7 +678,24 @@ class AssistantModelCandidate {
       liteRtNativeAvailable: liteRtNativeAvailable,
       webMediaPipeAvailable: webMediaPipeAvailable,
     );
-    final isRunnable = readiness.isRunnable;
+    final artifactReady =
+        model.effectiveRuntime != InferenceRuntime.llamaCpp ||
+        !model.isDownloaded ||
+        !nativeGgufAvailable ||
+        GgufArtifactGuard.isVerified(model);
+    final mismatch = GgufArtifactGuard.sizeMismatch(model);
+    final resolvedReadiness = artifactReady
+        ? readiness
+        : ModelReadinessState(
+            phase: ModelReadinessPhase.runtimeUnavailable,
+            headline: mismatch == null ? 'Model file missing' : 'Download incomplete',
+            detail: mismatch == null
+                ? 'The GGUF file is not in local storage. Open Models to install or repair it.'
+                : 'Expected ${mismatch.expected} bytes but found ${mismatch.found}. Re-download from Models.',
+            isRunnable: false,
+            canPrepare: false,
+          );
+    final isRunnable = resolvedReadiness.isRunnable;
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -646,7 +707,7 @@ class AssistantModelCandidate {
       tags: [
         'Local',
         model.backendPreference.displayName,
-        if (!isRunnable && model.isDownloaded) readiness.headline,
+        if (!isRunnable && model.isDownloaded) resolvedReadiness.headline,
       ],
       privacyLabel: 'Prompt stays on device after install',
       sizeLabel: model.fileSizeDisplay,
@@ -654,14 +715,14 @@ class AssistantModelCandidate {
       actionLabel: isRunnable
           ? 'Start'
           : model.isDownloaded
-          ? readiness.headline
+          ? resolvedReadiness.headline
           : 'Download package',
-      unavailableReason: model.isDownloaded ? readiness.detail : null,
+      unavailableReason: model.isDownloaded ? resolvedReadiness.detail : null,
       local: true,
       opensModelManager: !isRunnable,
       package: model,
       compatibility: compatibilityByModelId[model.id],
-      readiness: readiness,
+      readiness: resolvedReadiness,
     );
   }
 
@@ -1215,14 +1276,21 @@ class _RuntimeHealthButton extends ConsumerWidget {
             );
             return;
           }
-          final report = ModelHealthReport.fromFacts(
-            model: model,
-            compatibility: candidate.compatibility,
-          );
           Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (_) => ModelHealthCenterScreen(
-                report: report,
+              builder: (_) => ModelHealthCenterLoaderScreen(
+                model: model,
+                compatibilityFuture:
+                    candidate.compatibility != null
+                        ? Future.value(candidate.compatibility!)
+                        : ModelHealthFacts.compatibilityFor(model),
+                artifactPresentFuture: Future.value(
+                  GgufArtifactGuard.isVerified(model),
+                ),
+                readiness: candidate.readiness,
+                contextTokens: ref
+                    .read(assistantHostAdapterProvider)
+                    .modelContextLength,
                 onAction: (action) {
                   var reducedContext = 1024;
                   if (action == ModelHealthAction.reduceContext) {
@@ -1444,7 +1512,9 @@ class _ProjectTemplateCard extends StatelessWidget {
                     _StatusPill(label: tag, color: Colors.grey.shade700),
                 ],
               ),
-              if (candidate.local && candidate.compatibility != null) ...[
+              if (candidate.local &&
+                  candidate.compatibility != null &&
+                  (candidate.readiness?.canPrepare ?? true)) ...[
                 const SizedBox(height: 12),
                 _CompatibilityPanel(compatibility: candidate.compatibility!),
               ],

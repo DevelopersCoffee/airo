@@ -29,9 +29,11 @@ void main() {
     },
   );
 
-  test('reports unavailable and refuses model loading off Android', () async {
+  test('reports unavailable off Android when desktop probe fails', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    final service = LlamaGgufService();
+    final service = LlamaGgufService(
+      desktopAvailabilityOverride: () async => false,
+    );
     final model = OfflineModelInfo(
       id: 'gguf-release-check',
       name: 'GGUF release check',
@@ -41,6 +43,7 @@ void main() {
     );
 
     expect(service.isPlatformSupported, isFalse);
+    expect(service.isDesktopGgufSupported, isTrue);
     await expectLater(service.isAvailable(), completion(isFalse));
     await expectLater(service.loadModel(model), completion(isFalse));
     await expectLater(service.unload(), completes);

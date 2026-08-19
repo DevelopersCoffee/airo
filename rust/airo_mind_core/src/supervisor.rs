@@ -133,6 +133,11 @@ impl Supervisor {
         self.generation = None;
     }
 
+    /// True when a generation engine is registered and can accept prompts.
+    pub fn has_generation_engine(&self) -> bool {
+        self.generation.is_some()
+    }
+
     /// Stats from the registered generation engine's most recent `generate`
     /// call, or `None` if no generation engine is registered.
     pub fn generation_stats(&self) -> Option<RuntimeStats> {

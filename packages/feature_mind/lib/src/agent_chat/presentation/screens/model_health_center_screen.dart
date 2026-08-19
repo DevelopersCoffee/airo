@@ -2,6 +2,8 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../health/model_health_facts.dart';
+
 /// Loads live compatibility facts without blocking navigation to the health
 /// center. Platform probes can be slow or unavailable after an OS update.
 class ModelHealthCenterLoaderScreen extends StatelessWidget {
@@ -10,31 +12,33 @@ class ModelHealthCenterLoaderScreen extends StatelessWidget {
     required this.model,
     required this.compatibilityFuture,
     this.artifactPresentFuture,
+    this.readiness,
+    this.contextTokens,
     this.onAction,
   });
 
   final OfflineModelInfo model;
   final Future<ModelCompatibilityResult> compatibilityFuture;
   final Future<bool>? artifactPresentFuture;
+  final ModelReadinessState? readiness;
+  final int? contextTokens;
   final ValueChanged<ModelHealthAction>? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Object?>>(
-      future: Future.wait<Object?>([
-        compatibilityFuture,
-        artifactPresentFuture ?? Future<bool>.value(model.isDownloaded),
-      ]),
+    return FutureBuilder<ModelHealthReport>(
+      future: compatibilityFuture.then(
+        (compatibility) => ModelHealthFacts.build(
+          model: model,
+          compatibility: compatibility,
+          readiness: readiness,
+          contextTokens: contextTokens,
+        ),
+      ),
       builder: (context, snapshot) {
-        final compatibility = snapshot.data?[0] as ModelCompatibilityResult?;
-        final artifactPresent = snapshot.data?[1] as bool?;
-        if (compatibility != null && artifactPresent != null) {
+        if (snapshot.hasData) {
           return ModelHealthCenterScreen(
-            report: ModelHealthReport.fromFacts(
-              model: model,
-              artifactPresent: artifactPresent,
-              compatibility: compatibility,
-            ),
+            report: snapshot.data!,
             onAction: onAction,
           );
         }

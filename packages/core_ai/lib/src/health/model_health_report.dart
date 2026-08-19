@@ -170,6 +170,7 @@ class ModelHealthReport {
     required OfflineModelInfo model,
     ModelDownloadProgress? download,
     bool? artifactPresent,
+    bool artifactSizeVerified = false,
     ModelCompatibilityResult? compatibility,
     RuntimeHealth? runtimeHealth,
     ExecutionPlan? plan,
@@ -210,11 +211,15 @@ class ModelHealthReport {
             ? ModelHealthStageStatus.passed
             : downloadStatus == ModelDownloadStatus.failed
             ? ModelHealthStageStatus.failed
+            : artifactSizeVerified
+            ? ModelHealthStageStatus.passed
             : (artifactPresent ?? model.isDownloaded)
             ? ModelHealthStageStatus.unknown
             : ModelHealthStageStatus.pending,
         detail: downloadStatus == ModelDownloadStatus.failed
             ? (download?.error ?? 'Integrity verification failed.')
+            : artifactSizeVerified
+            ? 'File size matches the pinned catalog entry.'
             : (artifactPresent ?? model.isDownloaded)
             ? 'Integrity receipt is not available in this snapshot.'
             : 'Verification starts after download completion.',
@@ -265,15 +270,20 @@ class ModelHealthReport {
     );
     final isRunning = runtimeHealth?.state == RuntimeHealthState.busy;
     final hasFailure = failureCode != ModelHealthFailureCode.none;
+    final installedOnDevice = _installedOnDevice(stages);
     final status = isRunning
         ? ModelHealthReportStatus.running
         : hasFailure
         ? ModelHealthReportStatus.recoverable
         : stages.every((entry) => entry.isPassed)
         ? ModelHealthReportStatus.ready
+        : installedOnDevice && runtimeHealth?.state == RuntimeHealthState.ready
+        ? ModelHealthReportStatus.ready
         : stalled
         ? ModelHealthReportStatus.recoverable
         : downloading
+        ? ModelHealthReportStatus.preparing
+        : installedOnDevice
         ? ModelHealthReportStatus.preparing
         : ModelHealthReportStatus.unknown;
 
@@ -287,6 +297,7 @@ class ModelHealthReport {
         failureCode: failureCode,
         compatibility: compatibility,
         runtimeHealth: runtimeHealth,
+        installedOnDevice: installedOnDevice,
       ),
       failureCode: failureCode,
       actions: _actions(
@@ -301,6 +312,14 @@ class ModelHealthReport {
       contextTokens: plan?.ir.contextTokens,
       trace: trace,
     );
+  }
+
+  static bool _installedOnDevice(List<ModelHealthStageResult> stages) {
+    bool passed(ModelHealthStage stage) =>
+        stages.firstWhere((entry) => entry.stage == stage).isPassed;
+    return passed(ModelHealthStage.downloaded) &&
+        passed(ModelHealthStage.verified) &&
+        passed(ModelHealthStage.compatible);
   }
 
   static ModelHealthStageStatus _runtimeStageStatus(RuntimeHealth? health) {
@@ -407,6 +426,7 @@ class ModelHealthReport {
     required ModelHealthFailureCode failureCode,
     required ModelCompatibilityResult? compatibility,
     required RuntimeHealth? runtimeHealth,
+    required bool installedOnDevice,
   }) {
     switch (failureCode) {
       case ModelHealthFailureCode.insufficientMemory:
@@ -451,6 +471,19 @@ class ModelHealthReport {
         return runtimeHealth?.detail ??
             'The runtime reported an unknown failure while handling this model.';
       case ModelHealthFailureCode.none:
+        if (runtimeHealth?.state == RuntimeHealthState.busy) {
+          return 'Model is running on this device.';
+        }
+        if (runtimeHealth?.state == RuntimeHealthState.ready) {
+          return 'Local runtime is ready. You can send messages with this model.';
+        }
+        if (runtimeHealth?.state == RuntimeHealthState.unavailable) {
+          return runtimeHealth?.detail ??
+              'This model cannot run on the current device.';
+        }
+        if (installedOnDevice) {
+          return 'Model is installed on this device. Select it in chat to load and warm the local runtime.';
+        }
         return 'Airo is still collecting runtime facts for this model.';
     }
   }

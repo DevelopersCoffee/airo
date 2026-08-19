@@ -10,6 +10,8 @@
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
     "test:airo-tv-viewports": "playwright test --config=playwright.airo-tv.config.ts",
     "test:airo-mind": "playwright test --config=playwright.airo-mind.config.ts",
+    "test:airo-mind:e2e": "playwright test --config=playwright.airo-mind.config.ts mind-e2e-flow.spec.ts",
+    "test:airo-mind:branding": "playwright test --config=playwright.airo-mind.config.ts mind-branding-screenshots.spec.ts",
     "test:bill-split": "playwright test bill-split",
     "test:auth": "playwright test auth",
     "test:smoke": "playwright test --grep @smoke",

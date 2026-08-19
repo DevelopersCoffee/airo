@@ -44,6 +44,17 @@ Stream<GenerationEvent> generateMinutes({
   grammar: grammar,
 );
 
+/// General text completion for assistant chat — prompt is used as-is (no
+/// meeting-secretary wrapper). Shares the same generation engine as
+/// [`generate_minutes`].
+Stream<GenerationEvent> generateCompletion({
+  required String prompt,
+  required int maxOutputTokens,
+}) => RustLib.instance.api.crateApiMinutesGenerateCompletion(
+  prompt: prompt,
+  maxOutputTokens: maxOutputTokens,
+);
+
 /// Stops the in-flight generation at the next token.
 void cancelGeneration() =>
     RustLib.instance.api.crateApiMinutesCancelGeneration();
@@ -70,28 +81,28 @@ class GenerationConfig {
   /// Admission ceiling for the Supervisor (`C6`).
   final int memoryBudgetMb;
 
-  /// Try Sarvam-1 (`ModelQuality::Standard`) before Qwen when true.
+  /// When true, resolve `ModelQuality::Standard` first (e.g. Sarvam-1 for
+  /// Indic meetings). Falls back to `Draft` (Qwen) when
+  /// `allow_compact_fallback` is true.
   final bool preferIndicGeneration;
 
-  /// Fall back to Qwen when Indic model is missing (Auto mode). False for
-  /// explicit Enhanced Indic user choice.
+  /// When false and Indic resolution fails, return the error instead of
+  /// falling back to Qwen (`enhanced_indic` user preference).
   final bool allowCompactFallback;
 
   const GenerationConfig({
     required this.modelsDir,
     required this.memoryBudgetMb,
-    this.preferIndicGeneration = false,
-    this.allowCompactFallback = true,
+    required this.preferIndicGeneration,
+    required this.allowCompactFallback,
   });
 
   @override
   int get hashCode =>
-      Object.hash(
-        modelsDir,
-        memoryBudgetMb,
-        preferIndicGeneration,
-        allowCompactFallback,
-      );
+      modelsDir.hashCode ^
+      memoryBudgetMb.hashCode ^
+      preferIndicGeneration.hashCode ^
+      allowCompactFallback.hashCode;
 
   @override
   bool operator ==(Object other) =>

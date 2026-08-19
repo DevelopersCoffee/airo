@@ -1,3 +1,4 @@
+import 'package:feature_mind/src/services/gguf_load_outcome.dart';
 import 'package:feature_mind/src/services/llama_gguf_service.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -1338,9 +1339,23 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     OfflineModelInfo model, {
     int? contextSize,
     int threads = 4,
+    int memoryBudgetMb = 4096,
   }) async {
     loadedContextSize = contextSize;
     return loadModelResult;
+  }
+
+  @override
+  Future<GgufLoadOutcome> loadModelOutcome(
+    OfflineModelInfo model, {
+    int? contextSize,
+    int threads = 4,
+    int memoryBudgetMb = 4096,
+  }) async {
+    loadedContextSize = contextSize;
+    return loadModelResult
+        ? const GgufLoadOutcome.success()
+        : GgufLoadOutcome.engineError('test_load_failed');
   }
 
   @override

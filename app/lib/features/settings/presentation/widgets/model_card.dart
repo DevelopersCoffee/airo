@@ -186,6 +186,30 @@ class ModelCard extends StatelessWidget {
                 // Status row: Downloaded/Downloading/Download button
                 _buildStatusRow(context, isDownloaded),
 
+                if (readiness != null && isDownloaded && readiness!.isRunnable)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            readiness!.headline,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 if (readiness != null && isDownloaded && !readiness!.isRunnable)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -200,7 +224,9 @@ class ModelCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            '${readiness!.headline}. ${readiness!.detail}',
+                            readiness!.detail.isNotEmpty
+                                ? readiness!.detail
+                                : readiness!.headline,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -347,6 +373,8 @@ class ModelCard extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
     final isTextLarge = mediaQuery.textScaler.scale(10) > 12.5;
+    final canSetActive =
+        onSetActive != null && (readiness == null || readiness!.isRunnable);
 
     final children = [
       if (isDownloaded && isActive)
@@ -375,7 +403,7 @@ class ModelCard extends StatelessWidget {
             ],
           ),
         )
-      else if (isDownloaded)
+      else if (isDownloaded && canSetActive)
         TextButton.icon(
           onPressed: onSetActive,
           icon: const Icon(Icons.play_arrow, size: 18),

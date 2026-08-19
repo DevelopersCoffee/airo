@@ -86,6 +86,15 @@ Future<void> hydrateMindScribeModels(
     );
   }
 
+  for (final model in mindSpeechOptionalModels()) {
+    registry.registerModel(
+      _scribeModel(
+        model,
+        filePath: directory == null ? null : _installedPathIn(directory, model),
+      ),
+    );
+  }
+
   for (final model in mindIndicOptionalModels()) {
     registry.registerModel(
       _scribeModel(
@@ -207,17 +216,46 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
     license: 'MIT',
     huggingFaceId: 'ggerganov/whisper.cpp',
   ),
+  'ggml-small.bin': _ScribeDescriptor(
+    id: 'mind-scribe-whisper-small-multilingual',
+    name: 'Whisper Small (Multilingual)',
+    family: ModelFamily.other,
+    description:
+        'Optional upgrade for long meetings: better accuracy and fewer '
+        'hallucination loops than tiny on 30+ minute recordings. '
+        'Auto-selected when installed and the device has enough RAM.',
+    modalities: [ModelModality.audio, ModelModality.text],
+    capabilities: [ModelCapability.audioUnderstanding],
+    author: 'OpenAI (ggml build by ggerganov)',
+    license: 'MIT',
+    huggingFaceId: 'ggerganov/whisper.cpp',
+  ),
+  'ggml-small.en.bin': _ScribeDescriptor(
+    id: 'mind-scribe-whisper-small-en',
+    name: 'Whisper Small (English)',
+    family: ModelFamily.other,
+    description:
+        'Optional English-only speech model with higher accuracy than '
+        'Whisper Tiny for long recordings.',
+    modalities: [ModelModality.audio, ModelModality.text],
+    capabilities: [ModelCapability.audioUnderstanding],
+    author: 'OpenAI (ggml build by ggerganov)',
+    license: 'MIT',
+    huggingFaceId: 'ggerganov/whisper.cpp',
+  ),
   'qwen2.5-0.5b-instruct-q4_k_m.gguf': _ScribeDescriptor(
     id: 'mind-scribe-qwen2.5-0.5b-instruct',
     name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
     family: ModelFamily.qwen,
     description:
         'Powers the Airo Mind Scribe: writes the minutes and answers '
-        'questions about what was said. Downloaded and verified by the '
-        'Scribe, not by this screen.',
+        'questions about what was said. Also used for local chat on desktop.',
     quantization: ModelQuantization.q4,
     parameterCount: 500000000,
-    capabilities: [ModelCapability.documents],
+    capabilities: [
+      ModelCapability.chat,
+      ModelCapability.documents,
+    ],
     author: 'Alibaba Qwen',
     license: 'Apache-2.0',
     huggingFaceId: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF',

@@ -465,12 +465,16 @@ class MindService {
         entitlements: _entitlements,
         memoryInfo: memoryInfo,
       );
+      final wantsIndicGeneration = indicCapability.shouldPreferIndicGeneration(
+        generationMode,
+      );
+      final sarvamOnDisk =
+          wantsIndicGeneration &&
+          PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
       await _generation.ensureLoaded(
         modelsDir: dir.path,
         memoryBudgetMb: 4096,
-        preferIndicGeneration: indicCapability.shouldPreferIndicGeneration(
-          generationMode,
-        ),
+        preferIndicGeneration: sarvamOnDisk,
         allowCompactFallback:
             generationMode != MindIndicGenerationMode.enhancedIndic,
       );
@@ -548,8 +552,22 @@ class MindService {
 
       yield progress.copyWith(stage: MindStage.done, meetingId: savedMeetingId);
     } on Object catch (e) {
-      yield progress.copyWith(stage: MindStage.failed, error: '$e');
+      yield progress.copyWith(
+        stage: MindStage.failed,
+        error: _formatProcessingError(e),
+      );
     }
+  }
+
+  static String _formatProcessingError(Object error) {
+    final message = '$error';
+    if (message.contains('airo.generation.indic.standard') &&
+        message.contains('sarvam-1-Q4_K_M.gguf')) {
+      return 'Sarvam-1 is not installed on this device. '
+          'Open Models → Meeting scribe picks and choose Standard (Qwen), '
+          'or download the Sarvam stack from On-device models.';
+    }
+    return message;
   }
 
   static String _append(String existing, String segment) {

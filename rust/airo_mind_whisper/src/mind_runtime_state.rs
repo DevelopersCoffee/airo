@@ -80,7 +80,19 @@ impl MindRuntimeState {
         std::fs::create_dir_all(&vault_dir).map_err(|e| e.to_string())?;
         let mnemonic_path = vault_dir.join("recovery.mnemonic");
         let mnemonic = if mnemonic_path.exists() {
-            std::fs::read_to_string(&mnemonic_path).map_err(|e| e.to_string())?
+            let existing =
+                std::fs::read_to_string(&mnemonic_path).map_err(|e| e.to_string())?;
+            if seed_from_mnemonic(existing.trim()).is_ok() {
+                existing
+            } else {
+                // A truncated or hand-edited file bricks first launch with
+                // "invalid recovery mnemonic". Regenerate rather than fail
+                // permanently — the vault has no recoverable state yet.
+                let generated = generate_mnemonic().map_err(|e| e.to_string())?;
+                std::fs::write(&mnemonic_path, generated.as_str())
+                    .map_err(|e| e.to_string())?;
+                generated.to_string()
+            }
         } else {
             let generated = generate_mnemonic().map_err(|e| e.to_string())?;
             std::fs::write(&mnemonic_path, generated.as_str()).map_err(|e| e.to_string())?;
@@ -933,6 +945,23 @@ mod e2e_tests {
         )
         .expect("write");
         file.flush().expect("flush");
+    }
+
+    #[test]
+    fn open_regenerates_invalid_recovery_mnemonic() {
+        let base = temp_mind_dir("invalid-mnemonic");
+        let vault_dir = base.join("vault");
+        std::fs::create_dir_all(&vault_dir).expect("vault dir");
+        std::fs::write(vault_dir.join("recovery.mnemonic"), "not a valid mnemonic")
+            .expect("write bad mnemonic");
+
+        open_mind_runtime(base.to_str().expect("utf8 path")).expect("open");
+
+        let mnemonic =
+            std::fs::read_to_string(vault_dir.join("recovery.mnemonic")).expect("read mnemonic");
+        assert_ne!(mnemonic.trim(), "not a valid mnemonic");
+        let vault = vault_state().expect("vault state");
+        assert!(vault.is_sealed);
     }
 
     #[test]

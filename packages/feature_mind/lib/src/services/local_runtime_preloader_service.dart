@@ -2,6 +2,7 @@ import 'package:core_ai/core_ai.dart';
 
 import '../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../agent_chat/presentation/screens/model_library_screen.dart';
+import '../services/llama_gguf_service.dart';
 
 class LocalRuntimePreloaderService {
   factory LocalRuntimePreloaderService({
@@ -67,8 +68,15 @@ class LocalRuntimePreloaderService {
   /// Explicitly warms one installed package through the shared residency gate.
   Future<ModelPreloadReport> warmModel(OfflineModelInfo model) {
     return _preloader.preloadSelectedModels(
-      adapters: [_LiteRtPackageWarmupAdapter(_liteRtLm, model)],
+      adapters: [_adapterForModel(model)],
     );
+  }
+
+  ModelWarmupAdapter _adapterForModel(OfflineModelInfo model) {
+    if (model.effectiveRuntime == InferenceRuntime.llamaCpp) {
+      return _GgufPackageWarmupAdapter(model);
+    }
+    return _LiteRtPackageWarmupAdapter(_liteRtLm, model);
   }
 
   Future<List<ModelWarmupAdapter>> _buildAdapters(
@@ -91,11 +99,15 @@ class LocalRuntimePreloaderService {
       _GeminiNanoWarmupAdapter(_geminiNano),
       if (selectedPackage != null &&
           selectedCandidate?.id != geminiNanoAssistantModelId)
-        _LiteRtPackageWarmupAdapter(_liteRtLm, selectedPackage)
+        selectedPackage.effectiveRuntime == InferenceRuntime.llamaCpp
+            ? _GgufPackageWarmupAdapter(selectedPackage)
+            : _LiteRtPackageWarmupAdapter(_liteRtLm, selectedPackage)
       else if (frequentPackages.isEmpty && _liteRtLm.hasConfiguredModel)
         _LiteRtInstalledWarmupAdapter(_liteRtLm),
       for (final model in frequentPackages)
-        _LiteRtPackageWarmupAdapter(_liteRtLm, model),
+        model.effectiveRuntime == InferenceRuntime.llamaCpp
+            ? _GgufPackageWarmupAdapter(model)
+            : _LiteRtPackageWarmupAdapter(_liteRtLm, model),
       NoOpWarmupAdapter(
         const ModelResidentSpec(
           id: 'assistant-tts-hook',
@@ -173,6 +185,34 @@ class _GeminiNanoWarmupAdapter implements ModelWarmupAdapter {
 
   @override
   Future<bool> warmup() => _service.warmup();
+}
+
+class _GgufPackageWarmupAdapter implements ModelWarmupAdapter {
+  _GgufPackageWarmupAdapter(this._package);
+
+  final OfflineModelInfo _package;
+  final LlamaGgufService _gguf = LlamaGgufService();
+
+  @override
+  ModelResidentSpec get residentSpec => ModelResidentSpec(
+    id: _package.id,
+    residentType: ResidentRuntimeType.text,
+    estimatedMemoryBytes:
+        _package.recommendedMemoryBytes ??
+        _package.minMemoryBytes ??
+        (_package.fileSizeBytes * 1.5).round(),
+  );
+
+  @override
+  Future<bool> isAvailable() async {
+    final path = _package.filePath?.trim();
+    return path != null && path.isNotEmpty && await _gguf.isAvailable();
+  }
+
+  @override
+  Future<bool> warmup() async {
+    return _gguf.loadModel(_package);
+  }
 }
 
 class _LiteRtInstalledWarmupAdapter implements ModelWarmupAdapter {

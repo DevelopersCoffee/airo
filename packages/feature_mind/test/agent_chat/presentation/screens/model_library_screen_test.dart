@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:feature_mind/src/host/assistant_host_adapter.dart';
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_runtime_service.dart';
@@ -240,12 +242,16 @@ void main() {
       capabilities: const [ModelCapability.mobileActions],
       backendPreference: ModelBackendPreference.npu,
     );
+    final tempDir = await Directory.systemTemp.createTemp('airo_gguf_test');
+    final ggufPath = '${tempDir.path}/qwen2-1.5b-q4.gguf';
+    final ggufFile = File(ggufPath);
+    await ggufFile.writeAsBytes(List<int>.filled(1024, 0));
     final downloadedGguf = OfflineModelInfo(
       id: 'qwen2-1.5b-q4',
       name: 'Qwen2 1.5B Q4',
       family: ModelFamily.qwen,
-      fileSizeBytes: 1_100_000_000,
-      filePath: '/models/qwen2-1.5b-q4.gguf',
+      fileSizeBytes: 1024,
+      filePath: ggufPath,
       provider: AIProvider.gguf,
       capabilities: const [ModelCapability.chat],
     );

@@ -59,15 +59,37 @@ else
 fi
 
 export ORT_LIB_LOCATION="${TARGET_DIR}"
-export ORT_CXX_STDLIB="stdc++"
 
-# Static ORT links libstdc++; rustc invokes `cc` by default, so point at g++'s
-# lib search path (same fix as product whisper builds with ecapa-ort).
-export CXX="${CXX:-g++}"
-_gcc_libdir="$(gcc -print-file-name=libstdc++.a 2>/dev/null | xargs dirname 2>/dev/null || true)"
-if [[ -n "${_gcc_libdir}" && -d "${_gcc_libdir}" ]]; then
-  export LIBRARY_PATH="${_gcc_libdir}${LIBRARY_PATH:+:${LIBRARY_PATH}}"
-fi
+case "$(uname -s)" in
+  Darwin)
+    # whisper-rs-sys links -lstdc++; macOS SDK only ships libc++. Homebrew gcc
+    # provides libstdc++ for Apple Silicon / modern Xcode toolchains.
+    export CXX="${CXX:-clang++}"
+    export ORT_CXX_STDLIB="${ORT_CXX_STDLIB:-c++}"
+    if command -v brew >/dev/null 2>&1; then
+      _gcc_prefix="$(brew --prefix gcc 2>/dev/null || true)"
+      if [[ -n "${_gcc_prefix}" ]]; then
+        for _libdir in "${_gcc_prefix}/lib/gcc/current" "${_gcc_prefix}"/lib/gcc/*; do
+          if [[ -f "${_libdir}/libstdc++.a" || -f "${_libdir}/libstdc++.dylib" ]]; then
+            export LIBRARY_PATH="${_libdir}${LIBRARY_PATH:+:${LIBRARY_PATH}}"
+            export DYLD_LIBRARY_PATH="${_libdir}${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+            break
+          fi
+        done
+      fi
+    fi
+    ;;
+  *)
+    export ORT_CXX_STDLIB="${ORT_CXX_STDLIB:-stdc++}"
+    # Static ORT links libstdc++; rustc invokes `cc` by default, so point at g++'s
+    # lib search path (same fix as product whisper builds with ecapa-ort).
+    export CXX="${CXX:-g++}"
+    _gcc_libdir="$(gcc -print-file-name=libstdc++.a 2>/dev/null | xargs dirname 2>/dev/null || true)"
+    if [[ -n "${_gcc_libdir}" && -d "${_gcc_libdir}" && "${_gcc_libdir}" != "." ]]; then
+      export LIBRARY_PATH="${_gcc_libdir}${LIBRARY_PATH:+:${LIBRARY_PATH}}"
+    fi
+    ;;
+esac
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   : # sourced — ORT_LIB_LOCATION is now set in the caller shell

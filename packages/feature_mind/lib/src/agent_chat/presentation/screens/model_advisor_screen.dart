@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../host/assistant_host_adapter.dart';
 import 'model_library_screen.dart';
 
 /// Helps users choose a model by capability instead of model names.
-class ModelAdvisorScreen extends StatefulWidget {
+class ModelAdvisorScreen extends ConsumerStatefulWidget {
   const ModelAdvisorScreen({super.key, this.loadRecommendation});
 
   final Future<AssistantModelLibraryState> Function(AssistantTask task)?
   loadRecommendation;
 
   @override
-  State<ModelAdvisorScreen> createState() => _ModelAdvisorScreenState();
+  ConsumerState<ModelAdvisorScreen> createState() => _ModelAdvisorScreenState();
 }
 
-class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
+class _ModelAdvisorScreenState extends ConsumerState<ModelAdvisorScreen> {
   AssistantTask _task = AssistantTask.chat;
   late Future<AssistantModelLibraryState> _recommendation;
 
@@ -32,8 +34,15 @@ class _ModelAdvisorScreenState extends State<ModelAdvisorScreen> {
   }
 
   Future<AssistantModelLibraryState> _load(AssistantTask task) {
-    return widget.loadRecommendation?.call(task) ??
-        AssistantModelLibraryState.load(task: task);
+    if (widget.loadRecommendation != null) {
+      return widget.loadRecommendation!.call(task);
+    }
+    final host = ref.read(assistantHostAdapterProvider);
+    return AssistantModelLibraryState.load(
+      task: task,
+      isAndroidHost: host.isAndroidHost,
+      loadAssistantDownloadedModels: host.loadAssistantDownloadedModels,
+    );
   }
 
   @override

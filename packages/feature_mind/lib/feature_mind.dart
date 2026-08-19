@@ -138,6 +138,7 @@ export 'src/services/local_runtime_preloader_service.dart';
 export 'src/services/model_preload_preferences.dart';
 export 'src/services/voice_search_service.dart';
 export 'src/services/device_actions_service.dart';
+export 'src/services/gguf_artifact_guard.dart';
 export 'src/services/llama_gguf_service.dart';
 
 // Model acquisition. A shell composes `DownloadModelProvider` with its own
@@ -168,6 +169,7 @@ export 'src/models/model_descriptor_adapter.dart'
         mindScribeRequiredModels,
         mindIndicOptionalModels,
         mindDiarizeOptionalModels,
+        mindSpeechOptionalModels,
         pinnedEcapaDiarizeModel,
         kMindEcapaOnnxFileName,
         pinnedMultilingualSpeechModel,

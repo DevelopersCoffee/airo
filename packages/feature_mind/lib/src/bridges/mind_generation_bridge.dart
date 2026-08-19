@@ -174,14 +174,25 @@ class RustMindGenerationBridge implements MindGenerationBridge {
       _loaded = true;
       return;
     }
-    await llama.initialize(
-      config: llama.GenerationConfig(
-        modelsDir: modelsDir,
-        memoryBudgetMb: memoryBudgetMb,
-        preferIndicGeneration: preferIndicGeneration,
-        allowCompactFallback: allowCompactFallback,
-      ),
+    final config = llama.GenerationConfig(
+      modelsDir: modelsDir,
+      memoryBudgetMb: memoryBudgetMb,
+      preferIndicGeneration: preferIndicGeneration,
+      allowCompactFallback: allowCompactFallback,
     );
+    try {
+      await llama.initialize(config: config);
+    } on Object {
+      if (!preferIndicGeneration || !allowCompactFallback) rethrow;
+      await llama.initialize(
+        config: llama.GenerationConfig(
+          modelsDir: modelsDir,
+          memoryBudgetMb: memoryBudgetMb,
+          preferIndicGeneration: false,
+          allowCompactFallback: true,
+        ),
+      );
+    }
     _loaded = true;
   }
 

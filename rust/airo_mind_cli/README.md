@@ -45,6 +45,17 @@ For real-device POC-2 runs, symlink any local `.m4a` (not committed):
 ln -sf /path/to/your/recording.m4a rust/fixtures/meeting_001.m4a
 ```
 
+Or use the meeting-recordings helper (default `~/Documents/data`):
+
+```sh
+scripts/mind-meeting-recordings.sh list
+scripts/mind-meeting-recordings.sh transcribe short          # ASR smoke
+scripts/mind-meeting-recordings.sh transcribe full --poc2 --out ./out/full --skip-eval
+scripts/mind-meeting-recordings.sh analyze
+```
+
+Set `AIRO_MIND_RECORDINGS_DIR` if your `.m4a` files live elsewhere.
+
 Preprocess-only smoke test (no models):
 
 ```sh

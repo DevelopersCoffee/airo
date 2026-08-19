@@ -10,7 +10,7 @@ part 'meeting_intelligence.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `action_items_from_ir`, `decisions_from_ir`, `metrics_from_ir`, `mom_to_engine`, `runtime_to_engine`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `SupervisorGenerationEngine`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `from`, `generate`, `resource_request`, `stats`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `from`, `generate`, `resource_request`, `stats`
 
 /// Segments → validated Meeting IR → streaming MoM.
 ///

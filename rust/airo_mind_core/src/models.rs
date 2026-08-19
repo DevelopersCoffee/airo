@@ -93,6 +93,9 @@ pub struct ModelRequirement {
     pub task: ModelTask,
     pub memory_budget_mb: u32,
     pub minimum_quality: ModelQuality,
+    /// When set, caps the resolved tier — compact fallback uses `Some(Draft)` so
+    /// a missing Sarvam pack does not keep selecting Standard generation.
+    pub maximum_quality: Option<ModelQuality>,
     /// Only meaningful for `ModelTask::Speech`; a `Generation` requirement
     /// carries it because the field lives on the shared type, not because
     /// generation cares. `ModelLanguage::default()` (`EnglishOnly`) for every
@@ -219,6 +222,33 @@ const REGISTRY: &[Bundled] = &[
         sha256: "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
         required_by_default: false,
     },
+    // Optional Standard-tier speech for long meetings — ~465 MB on disk, resolves
+    // ahead of tiny when installed because `resolve` picks the highest quality
+    // tier that fits the memory budget.
+    Bundled {
+        logical_id: "airo.speech.standard",
+        version: "1",
+        task: ModelTask::Speech,
+        quality: ModelQuality::Standard,
+        language: ModelLanguage::Multilingual,
+        file_name: "ggml-small.bin",
+        memory_mb: 1024,
+        size_bytes: 487_601_967,
+        sha256: "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+        required_by_default: false,
+    },
+    Bundled {
+        logical_id: "airo.speech.standard.en",
+        version: "1",
+        task: ModelTask::Speech,
+        quality: ModelQuality::Standard,
+        language: ModelLanguage::EnglishOnly,
+        file_name: "ggml-small.en.bin",
+        memory_mb: 1024,
+        size_bytes: 487_614_201,
+        sha256: "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d",
+        required_by_default: false,
+    },
     Bundled {
         logical_id: "airo.generation.compact",
         version: "1",
@@ -278,86 +308,103 @@ pub fn resolve(
     revocations: &[(String, String)],
     verify_digest: bool,
 ) -> Result<ResolvedModel, ModelUnavailable> {
-    let mut best: Option<&Bundled> = None;
+    let mut candidates: Vec<&Bundled> = Vec::new();
     let mut over_budget: Option<&Bundled> = None;
 
     for entry in REGISTRY {
         if entry.task != requirement.task || entry.quality < requirement.minimum_quality {
             continue;
         }
-        // Only a `Speech` requirement's language is meaningful (see the field
-        // doc on `ModelRequirement::language`); every non-speech row is tagged
-        // `EnglishOnly` and every non-speech requirement defaults to it too, so
-        // this comparison is a no-op for `Generation` and an exact match is
-        // still required for `Speech` — a `.en` model must never resolve for a
-        // caller that explicitly asked for `Multilingual`, and vice versa.
+        if requirement
+            .maximum_quality
+            .is_some_and(|max_quality| entry.quality > max_quality)
+        {
+            continue;
+        }
         if entry.task == ModelTask::Speech && entry.language != requirement.language {
             continue;
         }
         if entry.memory_mb > requirement.memory_budget_mb {
-            // Remembered so the caller learns "too big for this device" rather
-            // than "no such model", which are different problems.
             over_budget.get_or_insert(entry);
             continue;
         }
-        // Highest quality that fits.
-        if best.is_none_or(|b| entry.quality > b.quality) {
-            best = Some(entry);
-        }
+        candidates.push(entry);
     }
 
-    let entry = match (best, over_budget) {
-        (Some(entry), _) => entry,
-        (None, Some(big)) => {
+    if candidates.is_empty() {
+        if let Some(big) = over_budget {
             return Err(ModelUnavailable::OverBudget {
                 needs_mb: big.memory_mb,
                 budget_mb: requirement.memory_budget_mb,
-            })
-        }
-        (None, None) => return Err(ModelUnavailable::NoModelForTask),
-    };
-
-    if let Some((_, reason)) = revocations.iter().find(|(id, _)| id == entry.logical_id) {
-        return Err(ModelUnavailable::Revoked {
-            logical_id: entry.logical_id.to_string(),
-            reason: reason.clone(),
-        });
-    }
-
-    let path: PathBuf = models_dir.join(entry.file_name);
-    let metadata = std::fs::metadata(&path).map_err(|_| ModelUnavailable::NotInstalled {
-        logical_id: entry.logical_id.to_string(),
-        file_name: entry.file_name.to_string(),
-    })?;
-
-    // A truncated download is the common corruption and it is free to detect.
-    if metadata.len() != entry.size_bytes {
-        return Err(ModelUnavailable::DigestMismatch {
-            logical_id: entry.logical_id.to_string(),
-            found: format!("{} bytes, expected {}", metadata.len(), entry.size_bytes),
-        });
-    }
-
-    if verify_digest {
-        let found = file_digest(&path).map_err(|e| ModelUnavailable::DigestMismatch {
-            logical_id: entry.logical_id.to_string(),
-            found: format!("unreadable: {e}"),
-        })?;
-        if found != entry.sha256 {
-            return Err(ModelUnavailable::DigestMismatch {
-                logical_id: entry.logical_id.to_string(),
-                found,
             });
         }
+        return Err(ModelUnavailable::NoModelForTask);
     }
 
-    Ok(ResolvedModel {
-        logical_id: entry.logical_id.to_string(),
-        version: entry.version.to_string(),
-        path: path.to_string_lossy().into_owned(),
-        memory_mb: entry.memory_mb,
-        strategy: AcquisitionStrategy::Bundled,
-    })
+    candidates.sort_by(|a, b| b.quality.cmp(&a.quality));
+
+    let mut last_missing: Option<ModelUnavailable> = None;
+    for entry in candidates {
+        if let Some((_, reason)) = revocations.iter().find(|(id, _)| id == entry.logical_id) {
+            return Err(ModelUnavailable::Revoked {
+                logical_id: entry.logical_id.to_string(),
+                reason: reason.clone(),
+            });
+        }
+
+        let path: PathBuf = models_dir.join(entry.file_name);
+        let metadata = match std::fs::metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(_) => {
+                last_missing = Some(ModelUnavailable::NotInstalled {
+                    logical_id: entry.logical_id.to_string(),
+                    file_name: entry.file_name.to_string(),
+                });
+                continue;
+            }
+        };
+
+        if metadata.len() != entry.size_bytes {
+            return Err(ModelUnavailable::DigestMismatch {
+                logical_id: entry.logical_id.to_string(),
+                found: format!("{} bytes, expected {}", metadata.len(), entry.size_bytes),
+            });
+        }
+
+        if verify_digest {
+            let found = file_digest(&path).map_err(|e| ModelUnavailable::DigestMismatch {
+                logical_id: entry.logical_id.to_string(),
+                found: format!("unreadable: {e}"),
+            })?;
+            if found != entry.sha256 {
+                return Err(ModelUnavailable::DigestMismatch {
+                    logical_id: entry.logical_id.to_string(),
+                    found,
+                });
+            }
+        }
+
+        return Ok(ResolvedModel {
+            logical_id: entry.logical_id.to_string(),
+            version: entry.version.to_string(),
+            path: path.to_string_lossy().into_owned(),
+            memory_mb: entry.memory_mb,
+            strategy: AcquisitionStrategy::Bundled,
+        });
+    }
+
+    if let Some(err) = last_missing {
+        return Err(err);
+    }
+
+    if let Some(big) = over_budget {
+        return Err(ModelUnavailable::OverBudget {
+            needs_mb: big.memory_mb,
+            budget_mb: requirement.memory_budget_mb,
+        });
+    }
+
+    Err(ModelUnavailable::NoModelForTask)
 }
 
 /// What the app must have on disk before first use. Named by **file**, because
@@ -409,6 +456,7 @@ mod tests {
             task: ModelTask::Speech,
             memory_budget_mb: budget,
             minimum_quality: ModelQuality::Draft,
+            maximum_quality: None,
             language: ModelLanguage::EnglishOnly,
         }
     }
@@ -476,6 +524,7 @@ mod tests {
                 task: ModelTask::Speech,
                 memory_budget_mb: 4096,
                 minimum_quality: ModelQuality::High,
+                maximum_quality: None,
                 language: ModelLanguage::EnglishOnly,
             },
             &d,
@@ -587,6 +636,8 @@ mod tests {
     fn optional_files_holds_the_multilingual_model_and_nothing_required() {
         let files = optional_files();
         assert!(files.iter().any(|(n, _, _)| n == "ggml-tiny.bin"));
+        assert!(files.iter().any(|(n, _, _)| n == "ggml-small.bin"));
+        assert!(files.iter().any(|(n, _, _)| n == "ggml-small.en.bin"));
         assert!(files.iter().any(|(n, _, _)| n == "sarvam-1-Q4_K_M.gguf"));
         assert!(files.iter().any(|(n, _, _)| n == "ecapa_tdnn_tiny_int8.onnx"));
         let required = required_files();
@@ -612,6 +663,7 @@ mod tests {
                 task: ModelTask::Generation,
                 memory_budget_mb: 4096,
                 minimum_quality: ModelQuality::Standard,
+                maximum_quality: None,
                 language: ModelLanguage::EnglishOnly,
             },
             &d,
@@ -620,6 +672,31 @@ mod tests {
         )
         .unwrap();
         assert_eq!(resolved.logical_id, "airo.generation.indic.standard");
+    }
+
+    #[test]
+    fn draft_cap_resolves_qwen_when_sarvam_is_missing() {
+        let qwen = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.generation.compact")
+            .expect("compact generation row");
+        let d = dir("qwen-only");
+        install(&d, qwen, qwen.size_bytes);
+
+        let resolved = resolve(
+            &ModelRequirement {
+                task: ModelTask::Generation,
+                memory_budget_mb: 4096,
+                minimum_quality: ModelQuality::Draft,
+                maximum_quality: Some(ModelQuality::Draft),
+                language: ModelLanguage::EnglishOnly,
+            },
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.generation.compact");
     }
 
     /// `#1629`: Hindi+English code-switching cannot work with the English-only
@@ -663,6 +740,40 @@ mod tests {
 
         let resolved = resolve(&speech(4096), &d, &[], false).unwrap();
         assert_eq!(resolved.logical_id, "airo.speech.compact");
+    }
+
+    #[test]
+    fn standard_speech_resolves_small_when_installed() {
+        let entry = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard")
+            .expect("standard multilingual speech row");
+        let d = dir("speech-standard");
+        install(&d, entry, entry.size_bytes);
+
+        let resolved = resolve(
+            &speech_language(4096, ModelLanguage::Multilingual),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.standard");
+        assert!(resolved.path.ends_with("ggml-small.bin"));
+    }
+
+    #[test]
+    fn standard_english_speech_resolves_small_en_when_installed() {
+        let entry = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard.en")
+            .expect("standard english speech row");
+        let d = dir("speech-standard-en");
+        install(&d, entry, entry.size_bytes);
+
+        let resolved = resolve(&speech(4096), &d, &[], false).unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.standard.en");
+        assert!(resolved.path.ends_with("ggml-small.en.bin"));
     }
 
     /// Asking for a language nothing installed serves reports `NotInstalled`

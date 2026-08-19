@@ -1,5 +1,6 @@
 import '../download/model_download_service.dart';
 import '../models/model_credibility.dart';
+import '../models/model_readiness_service.dart';
 import '../models/offline_model_info.dart';
 import '../registry/model_registry.dart';
 import '../storage/model_storage_manager.dart';
@@ -194,6 +195,13 @@ class IntelligentModelManager {
 
   Future<ModelWarmupResult> warmModel(String modelId) async {
     final model = _requireModel(modelId);
+    if (!model.isRunnableOnCurrentPlatform) {
+      return ModelWarmupResult(
+        modelId: modelId,
+        status: ModelWarmupStatus.unavailable,
+        detail: 'platform_unsupported',
+      );
+    }
     final installed = await _storageManager.findExistingModelPath(
       model.id,
       model: model,

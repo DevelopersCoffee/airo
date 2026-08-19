@@ -483,6 +483,15 @@ void main() {
         overrides: [
           modelRegistryProvider.overrideWithValue(registry),
           modelDownloadServiceProvider.overrideWithValue(downloadService),
+          modelReadinessProvider.overrideWith((ref, model) async {
+            return const ModelReadinessState(
+              phase: ModelReadinessPhase.runtimeAvailable,
+              headline: 'Ready on this device',
+              detail: 'Installed and runnable with the llama.cpp backend.',
+              isRunnable: true,
+              canPrepare: true,
+            );
+          }),
         ],
         child: const MaterialApp(home: AIModelsScreen()),
       ),
@@ -502,6 +511,62 @@ void main() {
 
     expect(downloadService.deletedModelIds, contains('gemma-downloaded'));
     expect(registry.getModel('gemma-downloaded')?.isDownloaded, isFalse);
+  });
+
+  testWidgets('downloaded tab hides Set Active for non-runnable models', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'gemma-litert': ModelCompatibilityResult.compatible(
+              MemorySeverity.safe,
+            ),
+          },
+        )..registerModel(
+          const OfflineModelInfo(
+            id: 'gemma-litert',
+            name: 'Gemma LiteRT',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 1024,
+            filePath: '/models/gemma.litertlm',
+            provider: AIProvider.gemma,
+            runtime: InferenceRuntime.litertLm,
+            platformSupport: PlatformSupport.androidOnly(),
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          modelReadinessProvider.overrideWith((ref, model) async {
+            return const ModelReadinessState(
+              phase: ModelReadinessPhase.runtimeUnavailable,
+              headline: 'Not supported on macOS',
+              detail:
+                  'LiteRT-LM packages run on Android today. On macOS, download a GGUF model for local chat.',
+              isRunnable: false,
+              canPrepare: false,
+            );
+          }),
+        ],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloaded'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gemma LiteRT'), findsOneWidget);
+    expect(find.text('Set Active'), findsNothing);
+    expect(
+      find.textContaining('LiteRT-LM packages run on Android today'),
+      findsOneWidget,
+    );
   });
 }
 

@@ -9,6 +9,8 @@ pub struct CliArgs {
     pub models_dir: Option<PathBuf>,
     pub out: Option<PathBuf>,
     pub skip_eval: bool,
+    pub asr_only: bool,
+    pub language: Option<String>,
     pub meeting_id: String,
     pub golden_transcript: Option<PathBuf>,
     pub golden_ir: Option<PathBuf>,
@@ -50,6 +52,7 @@ fn positional_audio(args: &[String]) -> Option<PathBuf> {
             if arg == "--models-dir"
                 || arg == "--out"
                 || arg == "--meeting-id"
+                || arg == "--language"
                 || arg == "--golden-meeting"
                 || arg == "--golden-transcript"
                 || arg == "--golden-ir"
@@ -102,6 +105,8 @@ pub fn parse() -> CliArgs {
         models_dir: flag(&args, "--models-dir"),
         out: flag(&args, "--out"),
         skip_eval: has_flag(&args, "--skip-eval"),
+        asr_only: has_flag(&args, "--asr-only"),
+        language: flag_string(&args, "--language"),
         meeting_id: flag(&args, "--meeting-id")
             .and_then(|p| p.into_os_string().into_string().ok())
             .or(golden_meeting)
@@ -144,6 +149,8 @@ OPTIONS:
     --models-dir DIR           Directory with whisper .bin and llama .gguf models
     --out DIR                  Run full POC-2 pipeline and write artifacts here
     --skip-eval                With --out, skip eval gates (artifacts only)
+    --asr-only                 Transcribe only; skip LLM summary (legacy mode)
+    --language CODE            Pin whisper language (e.g. en, hi); default auto
     --meeting-id ID            Meeting id for transcript/IR (default: cli-run)
     --golden-meeting ID        Load eval goldens from airo_mind_eval/golden/ID/
     --golden-transcript PATH   Golden transcript.json for eval
@@ -176,7 +183,12 @@ EXAMPLE (user recording, meeting_001 goldens):
 
 pub fn resolve_whisper_model(models_dir: Option<&PathBuf>) -> PathBuf {
     if let Some(dir) = models_dir {
-        for name in ["ggml-tiny.bin", "ggml-tiny.en.bin"] {
+        for name in [
+            "ggml-small.bin",
+            "ggml-small.en.bin",
+            "ggml-tiny.bin",
+            "ggml-tiny.en.bin",
+        ] {
             let path = dir.join(name);
             if path.exists() {
                 return path;

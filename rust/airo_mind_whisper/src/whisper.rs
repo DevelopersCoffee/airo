@@ -29,7 +29,12 @@ const SAMPLE_RATE_HZ: u32 = 16_000;
 /// a repeated hallucination. Chunked mode resets context every N minutes.
 const CHUNK_MS: u64 = 5 * 60 * 1000;
 /// Single `full()` above this duration uses chunked transcription.
-const LONG_AUDIO_MS: u64 = 30 * 60 * 1000;
+/// Tiny/base models loop around ~27 min on real meetings; chunk before that.
+const LONG_AUDIO_MS: u64 = 10 * 60 * 1000;
+/// Stop emitting when the same phrase repeats too often inside a sliding window.
+const LOOP_WINDOW_MS: u64 = 60_000;
+const LOOP_REPEAT_THRESHOLD: usize = 5;
+const LOOP_MIN_TEXT_LEN: usize = 8;
 
 /// A loaded Whisper model.
 pub struct WhisperSpeechEngine {
@@ -213,6 +218,31 @@ fn collapse_consecutive_duplicate_text(segments: Vec<TranscriptSegment>) -> Vec<
     out
 }
 
+/// Truncate when whisper locks into a non-consecutive repetition loop — the 74 min
+/// meeting failure mode where one phrase appears hundreds of times after ~27 min.
+fn suppress_repetition_loops(segments: Vec<TranscriptSegment>) -> Vec<TranscriptSegment> {
+    let mut out: Vec<TranscriptSegment> = Vec::new();
+    for seg in segments {
+        if repetition_loop_detected(&out, &seg) {
+            break;
+        }
+        out.push(seg);
+    }
+    collapse_consecutive_duplicate_text(out)
+}
+
+fn repetition_loop_detected(history: &[TranscriptSegment], seg: &TranscriptSegment) -> bool {
+    if seg.text.len() < LOOP_MIN_TEXT_LEN {
+        return false;
+    }
+    let window_start = seg.start_ms.saturating_sub(LOOP_WINDOW_MS);
+    let repeats = history
+        .iter()
+        .filter(|s| s.text == seg.text && s.start_ms >= window_start)
+        .count();
+    repeats >= LOOP_REPEAT_THRESHOLD
+}
+
 impl SpeechEngine for WhisperSpeechEngine {
     fn resource_request(&self) -> ResourceRequest {
         ResourceRequest::new(self.memory_mb)
@@ -230,7 +260,7 @@ impl SpeechEngine for WhisperSpeechEngine {
         }
         let pcm = to_whisper_pcm(audio)?;
         let raw = self.transcribe_pcm(&pcm, options, cancel)?;
-        let segments = collapse_consecutive_duplicate_text(raw);
+        let segments = suppress_repetition_loops(raw);
         for segment in segments {
             sink(segment)?;
         }
@@ -300,6 +330,60 @@ mod tests {
         assert_eq!(out[0].text, "hello");
         assert_eq!(out[0].end_ms, 2000);
         assert_eq!(out[1].text, "other");
+    }
+
+    #[test]
+    fn repetition_loop_stops_after_five_repeats_in_sixty_seconds() {
+        let mut input = Vec::new();
+        for i in 0..7 {
+            input.push(TranscriptSegment {
+                start_ms: i * 10_000,
+                end_ms: (i + 1) * 10_000,
+                text: "I have to go under the insert.".into(),
+            });
+        }
+        input.push(TranscriptSegment {
+            start_ms: 70_000,
+            end_ms: 71_000,
+            text: "different phrase after the loop".into(),
+        });
+        let out = suppress_repetition_loops(input);
+        assert_eq!(out.len(), 1, "loop guard stops then consecutive dupes collapse");
+        assert_eq!(out[0].text, "I have to go under the insert.");
+        assert_eq!(out[0].end_ms, 50_000);
+    }
+
+    #[test]
+    fn short_repeated_phrases_do_not_trigger_the_loop_guard() {
+        let input = vec![
+            TranscriptSegment {
+                start_ms: 0,
+                end_ms: 1000,
+                text: "sounds good to me".into(),
+            },
+            TranscriptSegment {
+                start_ms: 1000,
+                end_ms: 2000,
+                text: "sounds good to me".into(),
+            },
+            TranscriptSegment {
+                start_ms: 2000,
+                end_ms: 3000,
+                text: "sounds good to me".into(),
+            },
+            TranscriptSegment {
+                start_ms: 3000,
+                end_ms: 4000,
+                text: "sounds good to me".into(),
+            },
+            TranscriptSegment {
+                start_ms: 4000,
+                end_ms: 5000,
+                text: "different follow-up point".into(),
+            },
+        ];
+        let out = suppress_repetition_loops(input);
+        assert_eq!(out.len(), 2, "four repeats then a different phrase stays");
     }
 
     /// `#1664` acceptance: "never emit translation when transcription was

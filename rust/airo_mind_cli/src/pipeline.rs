@@ -145,8 +145,10 @@ pub fn run_poc2(args: &CliArgs, whisper_model: &Path, llama_model: &Path) -> Pip
     let mut whisper_supervisor = WhisperSupervisor::new(WhisperBudget::new(2048));
     whisper_supervisor.register_speech(Box::new(speech_engine));
 
-    // Multilingual auto-detect — same default as product (`language: None`).
-    let asr_options = TranscriptionOptions { language: None };
+    // Multilingual auto-detect unless --language pins a code.
+    let asr_options = TranscriptionOptions {
+        language: args.language.clone(),
+    };
 
     let mut raw_segments: Vec<TranscriptSegment> = Vec::new();
     whisper_supervisor

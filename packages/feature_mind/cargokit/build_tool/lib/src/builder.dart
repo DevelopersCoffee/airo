@@ -217,6 +217,9 @@ class RustBuilder {
     if (!_ortAvailableForBuild()) {
       return flags;
     }
+    if (environment.crateInfo.packageName != 'airo_mind_whisper') {
+      return flags;
+    }
     final args = List<String>.from(flags);
     final featureIndex = args.indexOf('--features');
     if (featureIndex >= 0 && featureIndex + 1 < args.length) {
@@ -231,7 +234,10 @@ class RustBuilder {
   String? _resolveOrtLibLocation() {
     final fromEnv = Platform.environment['ORT_LIB_LOCATION'];
     if (fromEnv != null && fromEnv.isNotEmpty) {
-      return fromEnv;
+      final lib = path.join(fromEnv, 'lib', 'libonnxruntime.a');
+      if (File(lib).existsSync() && _ortEnvMatchesTarget(fromEnv)) {
+        return fromEnv;
+      }
     }
     final home = Platform.environment['HOME'];
     if (home == null) return null;
@@ -277,6 +283,18 @@ class RustBuilder {
       }
     }
     return null;
+  }
+
+  /// ORT_LIB_LOCATION from install-onnxruntime.sh is host-arch specific; ignore
+  /// it when cargokit is building a different macOS slice (e.g. x86_64 on arm64).
+  bool _ortEnvMatchesTarget(String ortRoot) {
+    if (target.rust.contains('apple-darwin')) {
+      if (target.rust.startsWith('aarch64')) {
+        return ortRoot.contains('arm64') || ortRoot.contains('aarch64');
+      }
+      return ortRoot.contains('x64') || ortRoot.contains('x86_64');
+    }
+    return true;
   }
 
   String? _resolveOrtIosXcfwkLocation() {

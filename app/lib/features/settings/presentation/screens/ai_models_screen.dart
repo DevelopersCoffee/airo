@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
-import 'package:feature_mind/feature_mind.dart' show LlamaGgufService;
+import 'package:feature_mind/feature_mind.dart'
+    show GgufArtifactGuard, LlamaGgufService;
 
 import '../../application/ai_model_management.dart';
 import '../widgets/model_card.dart';
@@ -92,13 +93,45 @@ final modelReadinessProvider =
     ) async {
       final liteRtAvailable = await LiteRtLmService().isAvailable();
       final ggufAvailable = await LlamaGgufService().isAvailable();
-      return ModelReadinessService.evaluate(
+      return _resolveInstalledModelReadiness(
         model,
         nativeGgufAvailable: ggufAvailable,
         liteRtNativeAvailable: liteRtAvailable,
         webMediaPipeAvailable: kIsWeb,
       );
     });
+
+ModelReadinessState _resolveInstalledModelReadiness(
+  OfflineModelInfo model, {
+  required bool nativeGgufAvailable,
+  required bool liteRtNativeAvailable,
+  required bool webMediaPipeAvailable,
+}) {
+  final readiness = ModelReadinessService.evaluate(
+    model,
+    nativeGgufAvailable: nativeGgufAvailable,
+    liteRtNativeAvailable: liteRtNativeAvailable,
+    webMediaPipeAvailable: webMediaPipeAvailable,
+  );
+  final artifactReady =
+      model.effectiveRuntime != InferenceRuntime.llamaCpp ||
+      !model.isDownloaded ||
+      !nativeGgufAvailable ||
+      GgufArtifactGuard.isVerified(model);
+  if (artifactReady) {
+    return readiness;
+  }
+  final mismatch = GgufArtifactGuard.sizeMismatch(model);
+  return ModelReadinessState(
+    phase: ModelReadinessPhase.runtimeUnavailable,
+    headline: mismatch == null ? 'Model file missing' : 'Download incomplete',
+    detail: mismatch == null
+        ? 'The GGUF file is not in local storage. Re-download to repair it.'
+        : 'Expected ${mismatch.expected} bytes but found ${mismatch.found}. Re-download to repair it.',
+    isRunnable: false,
+    canPrepare: false,
+  );
+}
 
 /// AI Models browser screen.
 ///
@@ -278,9 +311,11 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                   ? null
                   : () => _downloadModel(model),
               onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-              onSetActive: model.isDownloaded && !isActive
-                  ? () => _setActiveModel(model)
-                  : null,
+              onSetActive: _setActiveCallback(
+                model,
+                isActive: isActive,
+                readiness: readinessState,
+              ),
               onCancelDownload: isDownloading
                   ? () => _cancelDownload(model.id)
                   : null,
@@ -315,9 +350,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                   ? null
                   : () => _downloadModel(model),
               onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-              onSetActive: model.isDownloaded && !isActive
-                  ? () => _setActiveModel(model)
-                  : null,
+              onSetActive: null,
               onCancelDownload: isDownloading
                   ? () => _cancelDownload(model.id)
                   : null,
@@ -352,9 +385,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                   ? null
                   : () => _downloadModel(model),
               onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-              onSetActive: model.isDownloaded && !isActive
-                  ? () => _setActiveModel(model)
-                  : null,
+              onSetActive: null,
               onCancelDownload: isDownloading
                   ? () => _cancelDownload(model.id)
                   : null,
@@ -389,9 +420,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                 ? null
                 : () => _downloadModel(model),
             onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-            onSetActive: model.isDownloaded && !isActive
-                ? () => _setActiveModel(model)
-                : null,
+            onSetActive: null,
             onCancelDownload: isDownloading
                 ? () => _cancelDownload(model.id)
                 : null,
@@ -426,9 +455,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
                 ? null
                 : () => _downloadModel(model),
             onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-            onSetActive: model.isDownloaded && !isActive
-                ? () => _setActiveModel(model)
-                : null,
+            onSetActive: null,
             onCancelDownload: isDownloading
                 ? () => _cancelDownload(model.id)
                 : null,
@@ -559,6 +586,16 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
         ),
       );
     }
+  }
+
+  VoidCallback? _setActiveCallback(
+    OfflineModelInfo model, {
+    required bool isActive,
+    ModelReadinessState? readiness,
+  }) {
+    if (!model.isDownloaded || isActive) return null;
+    if (readiness != null && !readiness.isRunnable) return null;
+    return () => _setActiveModel(model);
   }
 }
 

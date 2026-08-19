@@ -36,6 +36,12 @@ const Map<String, String> mindModelDownloadUrls = <String, String>{
   'ggml-tiny.bin':
       'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/'
       'ggml-tiny.bin',
+  'ggml-small.bin':
+      'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/'
+      'ggml-small.bin',
+  'ggml-small.en.bin':
+      'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/'
+      'ggml-small.en.bin',
   'qwen2.5-0.5b-instruct-q4_k_m.gguf':
       'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/'
       'qwen2.5-0.5b-instruct-q4_k_m.gguf',

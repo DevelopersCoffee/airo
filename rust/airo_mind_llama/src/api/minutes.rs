@@ -121,6 +121,7 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
         } else {
             models::ModelQuality::Draft
         },
+        maximum_quality: None,
         language: models::ModelLanguage::default(),
     };
 
@@ -132,6 +133,7 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
             models::resolve(
                 &models::ModelRequirement {
                     minimum_quality: models::ModelQuality::Draft,
+                    maximum_quality: Some(models::ModelQuality::Draft),
                     ..requirement
                 },
                 models_dir,
@@ -163,10 +165,12 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
     Ok(())
 }
 
-/// True once `initialize` has succeeded.
+/// True once `initialize` has loaded a generation engine.
 #[frb(sync)]
 pub fn is_ready() -> bool {
-    lock(&ENGINE).is_some()
+    lock(&ENGINE)
+        .as_ref()
+        .is_some_and(Supervisor::has_generation_engine)
 }
 
 /// What produced the minutes, for the meeting library to record.
@@ -225,6 +229,50 @@ pub fn generate_minutes(
     }
 
     emit(GenerationEvent::MinutesReady { text: minutes })
+}
+
+/// General text completion for assistant chat — prompt is used as-is (no
+/// meeting-secretary wrapper). Shares the same generation engine as
+/// [`generate_minutes`].
+pub fn generate_completion(
+    prompt: String,
+    max_output_tokens: u32,
+    sink: StreamSink<GenerationEvent>,
+) -> Result<(), String> {
+    let emit = |event: GenerationEvent| -> Result<(), String> {
+        sink.add(event).map_err(|e| e.to_string())
+    };
+
+    let cancel = begin_job();
+
+    let mut completion = String::new();
+    {
+        let mut engine = lock(&ENGINE);
+        let supervisor = engine.as_mut().ok_or("Airo Mind is not initialised")?;
+
+        let generation = supervisor.run_generation(
+            &GenerationRequest {
+                prompt,
+                max_output_tokens,
+                grammar: None,
+            },
+            &cancel,
+            &mut |chunk| {
+                completion.push_str(&chunk.text);
+                let _ = sink.add(GenerationEvent::Generating {
+                    text: chunk.text.clone(),
+                });
+                Ok(())
+            },
+        );
+        if cancel.is_cancelled() {
+            emit(GenerationEvent::Cancelled)?;
+            return Ok(());
+        }
+        generation.map_err(|e| e.to_string())?;
+    }
+
+    emit(GenerationEvent::MinutesReady { text: completion })
 }
 
 /// Stops the in-flight generation at the next token.

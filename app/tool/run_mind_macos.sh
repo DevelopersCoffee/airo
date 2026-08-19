@@ -48,6 +48,16 @@ echo "==> Generating feature_mind code"
 echo "==> Building (cargokit compiles the Rust as part of this)"
 # Optional preflight (Rust vault/notes/replay + macOS compile):
 #   scripts/verify-mind-macos-e2e.sh
+# Meeting recordings dev loop (~/Documents/data):
+#   scripts/mind-meeting-recordings.sh list
+if command -v rustup >/dev/null 2>&1; then
+  export RUSTC="$(rustup which rustc)"
+fi
+unset CARGO_TARGET_DIR
+unset ORT_LIB_LOCATION
+if [[ "$(uname -m)" == "arm64" ]]; then
+  export ARCHS=arm64
+fi
 # Flavors are separate pubspecs in this repo, so selecting one means swapping
 # the file. Restored on exit, including on failure.
 cp app/pubspec_mind.yaml app/pubspec.yaml

@@ -230,6 +230,26 @@ void main() {
     expect(await storageManager.readInstallReceipt(model.id), isNull);
   });
 
+  test('findExistingModelPath prefers an explicit registry filePath', () async {
+    const model = OfflineModelInfo(
+      id: 'mind-scribe-qwen2.5-0.5b-instruct',
+      name: 'Qwen',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1024,
+      filePath: '/tmp/airo_mind/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    );
+    final explicit = File(model.filePath!);
+    await explicit.parent.create(recursive: true);
+    await explicit.writeAsBytes(List.filled(1024, 0));
+
+    final found = await storageManager.findExistingModelPath(
+      model.id,
+      model: model,
+    );
+
+    expect(found, model.filePath);
+  });
+
   test(
     'cleanupOrphanedFiles deletes unregistered files across extensions',
     () async {

@@ -1,3 +1,4 @@
+import '../../../services/gguf_load_diagnostics.dart';
 import '../../../services/llama_gguf_service.dart';
 import 'package:flutter/foundation.dart';
 import '../../presentation/screens/model_library_screen.dart';
@@ -278,8 +279,8 @@ class AssistantRuntimeService {
 
     final deviceInfo =
         await (_loadDeviceInfoOverride?.call() ?? _geminiNano.getDeviceInfo());
-    final platformLabel =
-        (deviceInfo['platform'] as String?)?.toUpperCase() ?? 'DEVICE';
+    final platformLabel = _resolvePlatformLabel(deviceInfo);
+    final isMacLike = platformLabel.contains('MAC');
     final deviceLabel = [
       deviceInfo['manufacturer'],
       deviceInfo['model'],
@@ -438,16 +439,23 @@ class AssistantRuntimeService {
                 runtimeId: candidate.id,
                 runtimeName: candidate.name,
                 summary: 'The native GGUF backend is unavailable.',
-                detail:
-                    'The llama.cpp backend is unavailable, so this device cannot load the selected GGUF model locally.',
+                detail: isMacLike
+                    ? 'The Airo Mind llama.cpp engine could not start. Restart the app or verify the model file in Application Support.'
+                    : 'The llama.cpp backend is unavailable, so this device cannot load the selected GGUF model locally.',
                 deviceLabel: resolvedDeviceLabel,
                 platformLabel: platformLabel,
                 reasonCode: 'native_backend_unavailable',
-                repairActions: const [
-                  'Choose a LiteRT-LM package.',
-                  'Configure a compatible remote llama.cpp server.',
-                  'Retry after restarting the app.',
-                ],
+                repairActions: isMacLike
+                    ? const [
+                        'Open Models and confirm Qwen GGUF is installed.',
+                        'Restart Airo Mind after models finish installing.',
+                        'Pick another downloaded GGUF package.',
+                      ]
+                    : const [
+                        'Choose a LiteRT-LM package.',
+                        'Configure a compatible remote llama.cpp server.',
+                        'Retry after restarting the app.',
+                      ],
               ),
             );
           }
@@ -463,26 +471,26 @@ class AssistantRuntimeService {
             package,
             contextLengthOverride: contextLengthOverride,
           );
-          final loaded = await _llamaGguf.loadModel(
+          final loaded = await _llamaGguf.loadModelOutcome(
             package,
             contextSize: contextSize,
           );
-          if (!loaded) {
+          if (!loaded.succeeded) {
+            final copy = GgufLoadDiagnostics.describe(
+              model: package,
+              outcome: loaded,
+              isMacLike: isMacLike,
+            );
             return AssistantRuntimePreparationResult.blocked(
               AssistantRuntimeDiagnosticEnvelope(
                 runtimeId: candidate.id,
                 runtimeName: candidate.name,
-                summary: 'The GGUF model could not be initialized.',
-                detail:
-                    'The native loader rejected the verified model artifact.',
+                summary: copy.summary,
+                detail: copy.detail,
                 deviceLabel: resolvedDeviceLabel,
                 platformLabel: platformLabel,
-                reasonCode: 'init_failed',
-                repairActions: const [
-                  'Repair or re-download the model artifact.',
-                  'Reduce the context size and retry.',
-                  'Choose another installed model.',
-                ],
+                reasonCode: copy.reasonCode,
+                repairActions: copy.repairActions,
               ),
             );
           }
@@ -1036,6 +1044,22 @@ class AssistantRuntimeService {
     }
 
     return null;
+  }
+
+  static String _resolvePlatformLabel(Map<String, dynamic> deviceInfo) {
+    final reported =
+        (deviceInfo['platform'] as String?)?.trim().toUpperCase() ?? '';
+    if (reported.isNotEmpty && reported != 'DEVICE') {
+      return reported;
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.macOS => 'MACOS',
+      TargetPlatform.windows => 'WINDOWS',
+      TargetPlatform.linux => 'LINUX',
+      TargetPlatform.android => 'ANDROID',
+      TargetPlatform.iOS => 'IOS',
+      TargetPlatform.fuchsia => 'FUCHSIA',
+    };
   }
 
   static List<String> _repairActionsForReadiness(

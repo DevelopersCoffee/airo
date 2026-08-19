@@ -176,8 +176,10 @@ class AssistantRuntimeReadinessNotifier
     state = AssistantRuntimeReadiness(
       phase: AssistantRuntimeReadinessPhase.blocked,
       progress: 0,
-      label: 'Could not prepare ${candidate.name}',
-      detail: result.diagnostic?.summary ?? 'Try another model or free storage.',
+      label: result.diagnostic?.summary ?? 'Could not prepare ${candidate.name}',
+      detail:
+          result.diagnostic?.detail ??
+          'Try another model or open Models to repair the download.',
       canSend: false,
     );
   }

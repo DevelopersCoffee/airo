@@ -105,8 +105,17 @@ class MemoryBudgetManager {
     final budget = calculateBudget(memoryInfo);
     final usagePercent = estimatedUsageBytes / budget;
 
-    // Low transient free RAM should warn, not hard-block, when the device
-    // budget still fits the model.
+    // Fits in currently available RAM — classify by headroom, not % of budget.
+    // A model using 70% of free memory can still be safe when >500 MB remains.
+    if (estimatedUsageBytes <= memoryInfo.availableBytes) {
+      final headroom = memoryInfo.availableBytes - estimatedUsageBytes;
+      const minComfortableHeadroom = 512 * 1024 * 1024;
+      if (headroom >= minComfortableHeadroom) {
+        return MemorySeverity.safe;
+      }
+      return MemorySeverity.warning;
+    }
+
     if (estimatedUsageBytes > memoryInfo.availableBytes) {
       return MemorySeverity.critical;
     }

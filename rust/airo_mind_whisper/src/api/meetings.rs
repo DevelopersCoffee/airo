@@ -485,6 +485,7 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
             task: models::ModelTask::Speech,
             memory_budget_mb: config.memory_budget_mb,
             minimum_quality: models::ModelQuality::Draft,
+            maximum_quality: None,
             language: config.speech_language.into(),
         },
         models_dir,

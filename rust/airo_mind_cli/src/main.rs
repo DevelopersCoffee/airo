@@ -51,6 +51,7 @@ fn validate_models(
     audio: &std::path::Path,
     whisper_model: &std::path::Path,
     llama_model: &std::path::Path,
+    asr_only: bool,
 ) {
     if !audio.exists() {
         eprintln!("no audio at {} -- see README.md", audio.display());
@@ -63,6 +64,9 @@ fn validate_models(
         );
         std::process::exit(1);
     }
+    if asr_only {
+        return;
+    }
     if !llama_model.exists() {
         eprintln!(
             "no llama model at {} -- see README.md for the download command",
@@ -72,11 +76,24 @@ fn validate_models(
     }
 }
 
+fn transcription_options(args: &CliArgs) -> TranscriptionOptions {
+    TranscriptionOptions {
+        language: args.language.clone(),
+    }
+}
+
 fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std::path::Path) {
     println!("== Airo Mind dev loop ==");
     println!("audio:         {}", args.audio.display());
     println!("whisper model: {}", whisper_model.display());
-    println!("llama model:   {}", llama_model.display());
+    if !args.asr_only {
+        println!("llama model:   {}", llama_model.display());
+    }
+    if let Some(lang) = args.language.as_deref() {
+        println!("language:      {lang}");
+    } else {
+        println!("language:      auto");
+    }
     println!();
 
     let pcm = match preprocess_path(&args.audio) {
@@ -110,7 +127,7 @@ fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std
                 sample_rate_hz: pcm.sample_rate_hz,
                 channels: pcm.channels,
             },
-            &TranscriptionOptions::default(),
+            &transcription_options(args),
             &WhisperCancelToken::new(),
             &mut |segment| {
                 segments.push(segment);
@@ -137,7 +154,7 @@ fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std
         .join(" ");
 
     if transcript.trim().is_empty() {
-        eprintln!("\nwhisper produced no text -- nothing to feed the LLM, stopping here.");
+        eprintln!("\nwhisper produced no text -- stopping here.");
         std::process::exit(1);
     }
 
@@ -151,6 +168,8 @@ fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std
             models_dir: args.models_dir.clone(),
             out: None,
             skip_eval: true,
+            asr_only: false,
+            language: args.language.clone(),
             meeting_id: args.meeting_id.clone(),
             golden_transcript: None,
             golden_ir: None,
@@ -163,6 +182,13 @@ fn run_legacy(args: &CliArgs, whisper_model: &std::path::Path, llama_model: &std
         println!("\n== done ==");
         println!("transcript chars: {}", transcript.len());
         println!("mom chars:        {}", output.mom.len());
+        return;
+    }
+
+    if args.asr_only {
+        println!("\n== done (asr-only) ==");
+        println!("transcript chars: {}", transcript.len());
+        println!("segments:         {}", segments.len());
         return;
     }
 
@@ -248,7 +274,7 @@ fn main() {
 
     let whisper_model = resolve_whisper_model(args.models_dir.as_ref());
     let llama_model = resolve_llama_model(args.models_dir.as_ref());
-    validate_models(&args.audio, &whisper_model, &llama_model);
+    validate_models(&args.audio, &whisper_model, &llama_model, args.asr_only);
 
     if args.out.is_some() {
         run_poc2_mode(&args, &whisper_model, &llama_model);

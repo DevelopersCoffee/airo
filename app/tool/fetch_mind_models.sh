@@ -27,11 +27,19 @@
 # --force.
 #
 # Usage:  app/tool/fetch_mind_models.sh
+#         app/tool/fetch_mind_models.sh --with-small   # optional long-meeting ASR
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ASSETS="$ROOT/packages/feature_mind/assets/models"
 mkdir -p "$ASSETS"
+
+FETCH_SMALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --with-small) FETCH_SMALL=true ;;
+  esac
+done
 
 # name | sha256 | url
 MODELS=(
@@ -39,6 +47,11 @@ MODELS=(
   "ggml-tiny.bin|be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21|https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
   "qwen2.5-0.5b-instruct-q4_k_m.gguf|74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db|https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
   "ecapa_tdnn_tiny_int8.onnx|f46380bbaeddb929fb3a10ab63a4b1877a50e3d1e5fdd55a1b618d5651d3f64e|https://huggingface.co/vedk00/ecapa-voxceleb-speaker-embedding-onnx/resolve/main/model/ecapa-speaker-v1.onnx"
+)
+
+OPTIONAL_MODELS=(
+  "ggml-small.bin|1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b|https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+  "ggml-small.en.bin|c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d|https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin"
 )
 
 digest_of() {
@@ -82,5 +95,32 @@ for entry in "${MODELS[@]}"; do
   mv "$target.partial" "$target"
   echo "==> $name verified"
 done
+
+if [[ "$FETCH_SMALL" == "true" ]]; then
+  for entry in "${OPTIONAL_MODELS[@]}"; do
+    IFS='|' read -r name sha url <<<"$entry"
+    target="$ASSETS/$name"
+    if [ -f "$target" ] && [ "$(digest_of "$target")" = "$sha" ]; then
+      echo "==> $name already present and verified"
+      continue
+    fi
+    cache="$ROOT/rust/airo_mind_core/models/$name"
+    if [ -f "$cache" ] && [ "$(digest_of "$cache")" = "$sha" ]; then
+      echo "==> $name from local cache"
+      cp "$cache" "$target"
+      continue
+    fi
+    echo "==> Fetching optional $name (~465 MB)"
+    curl --fail --location --progress-bar --output "$target.partial" "$url"
+    found="$(digest_of "$target.partial")"
+    if [ "$found" != "$sha" ]; then
+      rm -f "$target.partial"
+      echo "error: $name does not match its pinned digest." >&2
+      exit 1
+    fi
+    mv "$target.partial" "$target"
+    echo "==> $name verified"
+  done
+fi
 
 echo "==> Models staged in $ASSETS"

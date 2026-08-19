@@ -4,17 +4,27 @@ import 'package:flutter/foundation.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 import 'package:core_ai/core_ai.dart';
 
-/// Thin Android platform adapter for the backend-neutral GGUF path.
+import 'desktop_gguf_backend.dart';
+import 'gguf_load_outcome.dart';
+
+/// Thin platform adapter for the backend-neutral GGUF path.
 ///
 /// Product policy remains in `core_ai`/the assistant runtime. This adapter
 /// only translates model lifecycle and generation calls to llama.cpp's typed
 /// Flutter bridge. Non-Android targets report unavailable and keep their
 /// existing runtime fallbacks.
 class LlamaGgufService {
-  LlamaGgufService({LlamaController? nativeController})
-    : _controller = nativeController;
+  LlamaGgufService({
+    LlamaController? nativeController,
+    DesktopGgufBackend? desktopBackend,
+    Future<bool> Function()? desktopAvailabilityOverride,
+  }) : _controller = nativeController,
+       _desktopBackend = desktopBackend ?? const DesktopGgufBackend(),
+       _desktopAvailabilityOverride = desktopAvailabilityOverride;
 
   LlamaController? _controller;
+  final DesktopGgufBackend _desktopBackend;
+  final Future<bool> Function()? _desktopAvailabilityOverride;
   bool _loaded = false;
 
   LlamaController get _nativeController => _controller ??= LlamaController();
@@ -22,39 +32,79 @@ class LlamaGgufService {
   bool get isPlatformSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
+  bool get isDesktopGgufSupported => DesktopGgufBackend.isSupported;
+
   Future<bool> isAvailable() async {
-    if (!isPlatformSupported) return false;
-    try {
-      await _nativeController.detectGpu();
-      return true;
-    } on Object {
-      return false;
+    if (isPlatformSupported) {
+      try {
+        await _nativeController.detectGpu();
+        return true;
+      } on Object {
+        return false;
+      }
     }
+    if (isDesktopGgufSupported) {
+      return _desktopAvailabilityOverride?.call() ??
+          _desktopBackend.isAvailable();
+    }
+    return false;
   }
 
   Future<bool> loadModel(
     OfflineModelInfo model, {
     int? contextSize,
     int threads = 4,
+    int memoryBudgetMb = 4096,
+  }) async {
+    final outcome = await loadModelOutcome(
+      model,
+      contextSize: contextSize,
+      threads: threads,
+      memoryBudgetMb: memoryBudgetMb,
+    );
+    return outcome.succeeded;
+  }
+
+  Future<GgufLoadOutcome> loadModelOutcome(
+    OfflineModelInfo model, {
+    int? contextSize,
+    int threads = 4,
+    int memoryBudgetMb = 4096,
   }) async {
     final path = model.filePath?.trim();
-    if (!isPlatformSupported || path == null || path.isEmpty) return false;
-    try {
-      final gpu = await _nativeController.detectGpu();
-      final requestedContext = contextSize ?? model.contextLength;
-      final safeContext = requestedContext.clamp(512, 8192).toInt();
-      await _nativeController.loadModel(
-        modelPath: path,
-        threads: threads,
-        contextSize: safeContext,
-        gpuLayers: gpu.recommendedGpuLayers,
-      );
-      _loaded = true;
-      return true;
-    } on Object {
-      _loaded = false;
-      return false;
+    if (path == null || path.isEmpty) {
+      return const GgufLoadOutcome.fileMissing();
     }
+
+    if (isPlatformSupported) {
+      try {
+        final gpu = await _nativeController.detectGpu();
+        final requestedContext = contextSize ?? model.contextLength;
+        final safeContext = requestedContext.clamp(512, 8192).toInt();
+        await _nativeController.loadModel(
+          modelPath: path,
+          threads: threads,
+          contextSize: safeContext,
+          gpuLayers: gpu.recommendedGpuLayers,
+        );
+        _loaded = true;
+        return const GgufLoadOutcome.success();
+      } on Object catch (error) {
+        _loaded = false;
+        return GgufLoadOutcome.engineError(error.toString());
+      }
+    }
+
+    if (isDesktopGgufSupported) {
+      final outcome = await _desktopBackend.loadModel(
+        model,
+        memoryBudgetMb: memoryBudgetMb,
+      );
+      _loaded = outcome.succeeded;
+      return outcome;
+    }
+
+    return const GgufLoadOutcome.engineError('gguf_backend_unavailable');
   }
 
   Stream<String> generate({
@@ -67,13 +117,19 @@ class LlamaGgufService {
     if (!_loaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
-    return _guardedGeneration(
-      prompt: prompt,
-      maxTokens: maxTokens,
-      temperature: temperature,
-      topP: topP,
-      topK: topK,
-    );
+    if (isPlatformSupported) {
+      return _guardedGeneration(
+        prompt: prompt,
+        maxTokens: maxTokens,
+        temperature: temperature,
+        topP: topP,
+        topK: topK,
+      );
+    }
+    if (isDesktopGgufSupported) {
+      return _desktopBackend.generate(prompt: prompt, maxTokens: maxTokens);
+    }
+    return Stream<String>.error(StateError('gguf_backend_unavailable'));
   }
 
   /// The Android plugin normally closes its token stream with `onDone`.
@@ -106,11 +162,19 @@ class LlamaGgufService {
   }
 
   Future<void> stop() async {
+    if (isDesktopGgufSupported) {
+      await _desktopBackend.stop();
+      return;
+    }
     if (_controller?.isGenerating ?? false) await _nativeController.stop();
   }
 
   Future<void> unload() async {
     _loaded = false;
+    if (isDesktopGgufSupported) {
+      await _desktopBackend.unload();
+      return;
+    }
     if (!isPlatformSupported) return;
     await _controller?.dispose();
     _controller = null;

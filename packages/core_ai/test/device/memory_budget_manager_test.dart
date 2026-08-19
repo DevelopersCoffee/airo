@@ -93,30 +93,43 @@ void main() {
       expect(severity, equals(MemorySeverity.safe));
     });
 
-    test('returns warning when usage is 50-80% of budget', () {
+    test('returns safe when usage fits with comfortable headroom', () {
       const memoryInfo = MemoryInfo(
         totalBytes: totalBytes,
         availableBytes: availableBytes,
       );
 
-      // 65% of the currently available 6GB is warning.
+      // 65% of available still leaves >512 MB headroom on a 6 GB pool.
       final severity = manager.checkMemoryForModel(
         (6 * 0.65 * 1024 * 1024 * 1024).round(), // 3.9GB
+        memoryInfo,
+      );
+
+      expect(severity, equals(MemorySeverity.safe));
+    });
+
+    test('returns warning when usage fits but headroom is tight', () {
+      const memoryInfo = MemoryInfo(
+        totalBytes: totalBytes,
+        availableBytes: availableBytes,
+      );
+
+      final severity = manager.checkMemoryForModel(
+        (6 * 0.92 * 1024 * 1024 * 1024).round(),
         memoryInfo,
       );
 
       expect(severity, equals(MemorySeverity.warning));
     });
 
-    test('returns critical when usage is 80-100% of budget', () {
+    test('returns critical when usage exceeds currently available memory', () {
       const memoryInfo = MemoryInfo(
         totalBytes: totalBytes,
         availableBytes: availableBytes,
       );
 
-      // 90% of the currently available 6GB is critical.
       final severity = manager.checkMemoryForModel(
-        (6 * 0.90 * 1024 * 1024 * 1024).round(), // 5.4GB
+        (6.5 * 1024 * 1024 * 1024).round(),
         memoryInfo,
       );
 

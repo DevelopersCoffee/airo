@@ -1,4 +1,4 @@
-import 'package:core_ai/core_ai.dart' show SafetyProfile;
+import 'package:core_ai/core_ai.dart' show OfflineModelInfo, SafetyProfile;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -133,6 +133,11 @@ abstract class AssistantHostAdapter {
 
   /// Repairs a partially downloaded model package.
   Future<void> repairModelPackage(String packageId);
+
+  /// Extra on-device models the host registry knows about (for example Mind's
+  /// scribe weights) that should appear in the assistant library on desktop.
+  Future<List<OfflineModelInfo>> loadAssistantDownloadedModels() async =>
+      const [];
 
   // --- Platform -----------------------------------------------------------
 

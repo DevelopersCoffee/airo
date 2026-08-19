@@ -7,6 +7,9 @@ import 'mind_indic_intelligence.dart';
 abstract final class MindScribeModelIds {
   static const whisperMultilingual = 'mind-scribe-whisper-tiny-multilingual';
   static const whisperEnglish = 'mind-scribe-whisper-tiny-en';
+  static const whisperSmallMultilingual =
+      'mind-scribe-whisper-small-multilingual';
+  static const whisperSmallEnglish = 'mind-scribe-whisper-small-en';
   static const qwenGeneration = 'mind-scribe-qwen2.5-0.5b-instruct';
   static const sarvamGeneration = 'mind-scribe-sarvam-1-indic';
 }
@@ -107,13 +110,26 @@ class MindModelAdvisor {
     required Map<String, OfflineModelInfo> scribeModelsById,
   }) {
     final whisperMl = scribeModelsById[MindScribeModelIds.whisperMultilingual];
+    final whisperSmallMl =
+        scribeModelsById[MindScribeModelIds.whisperSmallMultilingual];
     final whisperEn = scribeModelsById[MindScribeModelIds.whisperEnglish];
+    final whisperSmallEn =
+        scribeModelsById[MindScribeModelIds.whisperSmallEnglish];
     final qwen = scribeModelsById[MindScribeModelIds.qwenGeneration];
     final sarvam = scribeModelsById[MindScribeModelIds.sarvamGeneration];
 
     final preferSarvam = capability.shouldPreferIndicGeneration(generationMode);
     final sarvamBlocked = _sarvamBlockedReason(capability, generationMode);
     final mobile = !capability.isDesktopHost;
+    final featuredSpeech = _featuredSpeechModel(
+      capability: capability,
+      whisperSmallMl: whisperSmallMl,
+      whisperMl: whisperMl,
+    );
+    final featuredSpeechName = featuredSpeech?.name ??
+        (featuredSpeech?.id == MindScribeModelIds.whisperSmallMultilingual
+            ? 'Whisper Small (Multilingual)'
+            : 'Whisper Tiny (Multilingual)');
 
     final featuredGenerationId = mobile || sarvamBlocked != null || !preferSarvam
         ? MindScribeModelIds.qwenGeneration
@@ -121,16 +137,16 @@ class MindModelAdvisor {
 
     final featured = _stackRecommendation(
       id: 'scribe-stack-featured',
-      speechModel: whisperMl,
+      speechModel: featuredSpeech,
       generationModel: _modelForId(scribeModelsById, featuredGenerationId),
-      speechFallbackName: 'Whisper Tiny (Multilingual)',
+      speechFallbackName: featuredSpeechName,
       generationFallbackName: featuredGenerationId == MindScribeModelIds.sarvamGeneration
           ? 'Sarvam-1 (Q4_K_M)'
           : 'Qwen2.5 0.5B Instruct (Q4_K_M)',
       badge: MindModelRecommendationBadge.bestOverall,
       featured: true,
       severity: _stackSeverity(
-        speech: whisperMl,
+        speech: featuredSpeech,
         generation: _modelForId(scribeModelsById, featuredGenerationId),
         capability: capability,
         blockedReason: sarvamBlocked,
@@ -140,6 +156,9 @@ class MindModelAdvisor {
           ? 'Meetings on phones and tablets stay on Whisper multilingual plus '
               'the compact Qwen minutes writer. Enhanced Indic generation is '
               'desktop-only.'
+          : featuredSpeech?.id == MindScribeModelIds.whisperSmallMultilingual
+          ? 'Best long-meeting stack on this device: Whisper Small multilingual '
+              'speech (fewer loops on 30+ min recordings) plus Qwen minutes.'
           : featuredGenerationId == MindScribeModelIds.sarvamGeneration
           ? 'Best Hindi/Marathi/Gujarati minutes on this device: Sarvam-1 after '
               'Whisper multilingual transcription with auto-detect.'
@@ -156,9 +175,9 @@ class MindModelAdvisor {
       alternates.add(
         _stackRecommendation(
           id: 'scribe-stack-qwen',
-          speechModel: whisperMl,
+          speechModel: featuredSpeech ?? whisperMl,
           generationModel: qwen,
-          speechFallbackName: 'Whisper Tiny (Multilingual)',
+          speechFallbackName: featuredSpeechName,
           generationFallbackName: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
           badge: MindModelRecommendationBadge.alternate,
           severity: _stackSeverity(
@@ -196,13 +215,35 @@ class MindModelAdvisor {
       );
     }
 
+    if (whisperSmallMl != null && featuredSpeech?.id != MindScribeModelIds.whisperSmallMultilingual) {
+      alternates.add(
+        _stackRecommendation(
+          id: 'scribe-stack-whisper-small',
+          speechModel: whisperSmallMl,
+          generationModel: qwen,
+          speechFallbackName: 'Whisper Small (Multilingual)',
+          generationFallbackName: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+          badge: MindModelRecommendationBadge.alternate,
+          severity: _stackSeverity(
+            speech: whisperSmallMl,
+            generation: qwen,
+            capability: capability,
+            usesSarvam: false,
+          ),
+          runtimeNote:
+              'Download for better accuracy on long meetings — fewer repetition '
+              'loops than Whisper Tiny after ~30 minutes.',
+        ),
+      );
+    }
+
     if (whisperEn != null || whisperMl != null) {
       alternates.add(
         _stackRecommendation(
           id: 'scribe-stack-whisper-en',
-          speechModel: whisperEn ?? whisperMl,
+          speechModel: whisperSmallEn ?? whisperEn ?? whisperMl,
           generationModel: qwen,
-          speechFallbackName: 'Whisper Tiny (English)',
+          speechFallbackName: whisperSmallEn?.name ?? 'Whisper Tiny (English)',
           generationFallbackName: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
           badge: MindModelRecommendationBadge.alternate,
           severity: _stackSeverity(
@@ -240,6 +281,28 @@ class MindModelAdvisor {
       alternates: alternates,
       speechStub: speechStub,
     );
+  }
+
+  OfflineModelInfo? _featuredSpeechModel({
+    required MindIndicCapability capability,
+    required OfflineModelInfo? whisperSmallMl,
+    required OfflineModelInfo? whisperMl,
+  }) {
+    if (capability.isDesktopHost &&
+        whisperSmallMl?.isDownloaded == true &&
+        _meetsSmallSpeechGate(capability)) {
+      return whisperSmallMl;
+    }
+    return whisperMl;
+  }
+
+  bool _meetsSmallSpeechGate(MindIndicCapability capability) {
+    final info = capability.memoryInfo;
+    if (info == null || !info.isAvailable) {
+      return capability.isDesktopHost;
+    }
+    const fourGb = 4 * 1024 * 1024 * 1024;
+    return info.totalBytes >= fourGb;
   }
 
   String? _sarvamBlockedReason(

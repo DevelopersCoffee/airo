@@ -47,7 +47,7 @@ void main() {
     expect(report.runtime, RuntimeId.liteRt);
     expect(report.accelerator, ComputeAccelerator.vulkan);
     expect(report.stage(ModelHealthStage.verified).isPassed, isTrue);
-    expect(report.explanation, contains('Airo'));
+    expect(report.explanation, contains('running'));
   });
 
   test('explains transient memory pressure and offers recovery', () {
@@ -308,5 +308,60 @@ void main() {
     expect(markdown, contains('- `reduceContext`'));
     expect(markdown, contains('- `1` `initializing` `0 ms`'));
     expect(markdown, isNot(contains('/models/')));
+  });
+
+  test('reports size-verified scribe installs as ready when runtime is ready', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      artifactPresent: true,
+      artifactSizeVerified: true,
+      compatibility: const ModelCompatibilityResult(
+        isCompatible: true,
+        memorySeverity: MemorySeverity.safe,
+        availableMemoryMB: 8_000,
+        requiredMemoryMB: 1_024,
+      ),
+      runtimeHealth: const RuntimeHealth(
+        state: RuntimeHealthState.ready,
+        detail: 'Ready on this device',
+      ),
+      plan: const ExecutionPlan(
+        ir: InferenceIr(
+          runtime: RuntimeId.llamaCpp,
+          accelerator: ComputeAccelerator.metal,
+          modelId: 'mind-scribe-qwen',
+          contextTokens: 2048,
+          outputTokens: 512,
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          priority: ExecutionPriority.interactive,
+        ),
+        batchSize: 1,
+        thermalLimited: false,
+        batterySaver: false,
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.ready);
+    expect(report.stage(ModelHealthStage.verified).isPassed, isTrue);
+    expect(report.explanation, contains('ready'));
+    expect(report.runtime, RuntimeId.llamaCpp);
+  });
+
+  test('explains installed models awaiting warmup', () {
+    final report = ModelHealthReport.fromFacts(
+      model: _model(),
+      artifactPresent: true,
+      artifactSizeVerified: true,
+      compatibility: const ModelCompatibilityResult(
+        isCompatible: true,
+        memorySeverity: MemorySeverity.safe,
+      ),
+    );
+
+    expect(report.status, ModelHealthReportStatus.preparing);
+    expect(report.explanation, contains('Select it in chat'));
+    expect(report.stage(ModelHealthStage.verified).detail, contains('catalog'));
   });
 }

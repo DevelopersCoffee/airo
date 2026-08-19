@@ -109,6 +109,14 @@ class ModelStorageManager {
     String modelId, {
     OfflineModelInfo? model,
   }) async {
+    final explicitPath = model?.filePath?.trim();
+    if (explicitPath != null && explicitPath.isNotEmpty) {
+      final explicitFile = File(explicitPath);
+      if (await explicitFile.exists()) {
+        return explicitPath;
+      }
+    }
+
     for (final candidate in await getCandidateModelPaths(
       modelId,
       model: model,
