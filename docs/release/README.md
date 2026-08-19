@@ -8,6 +8,8 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) | prepared | TV BACK fix, playlist merge, Coins AI; Mind under qualification |
+| [Airo v0.0.6](./AIRO_v0.0.6.md) | 2026-08-04 | Aggregate TV / full / Coins / macOS TV wave |
 | [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
 | [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | 2026-07-22 | Search, favorites, guide setup, provider add-flows, diagnostics |
 | [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | 2026-07-14 | Release trust update, checksums, clean assets, documentation |
@@ -17,7 +19,28 @@ Documentation for Airo releases and version history.
 
 ---
 
-## Latest Release: Airo TV v0.0.5
+## Latest public release: Airo v0.0.6
+
+Next candidate: [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) (prepared, not tagged).
+
+### v0.0.6 highlights
+- **Four SKUs from one orchestrator wave** — Airo TV, full app, Airo Coins, macOS TV.
+- **Offline Meeting Intelligence MVP** in the full app — record, transcribe, summarise, search.
+- **Fire TV D-pad and title-safe** fixes from the 0.0.6-rc.1 soak.
+
+### Quick Links
+- [Airo v0.0.6 Notes](./AIRO_v0.0.6.md)
+- [Airo v0.0.7-preview Notes](./AIRO_v0.0.7-preview.md)
+- [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
+- [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
+- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
+- [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
+- [Trust and transparency](../../TRUST.md)
+
+---
+
+## Previous: Airo TV v0.0.5
 
 ### New Features
 - **Focused product surface** - Airo TV is the active IPTV product target; obsolete Streaming/IPTV release targets are removed.
@@ -41,6 +64,8 @@ Documentation for Airo releases and version history.
 
 | Document | Description |
 |----------|-------------|
+| [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) | Next candidate: TV BACK, playlist merge, Coins AI; prepared, not tagged |
+| [Airo v0.0.6](./AIRO_v0.0.6.md) | Aggregate TV / full / Coins / macOS TV stable wave |
 | [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |
 | [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | Search, favorites, guide setup, provider add-flows, diagnostics |
 | [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
@@ -82,7 +107,7 @@ Documentation for Airo releases and version history.
 
 - **GitHub Releases**: https://github.com/DevelopersCoffee/airo/releases
 - **GitHub Actions**: https://github.com/DevelopersCoffee/airo/actions
-- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk
+- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk
 
 ---
 
