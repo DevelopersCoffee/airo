@@ -45,7 +45,16 @@ kernel work on a datacenter GPU, not llama.cpp decode on a phone.
 - Rust: `airo_mind_core::bench` (`run_generation_bench`, `aggregate`)
 - Dart: `packages/feature_mind/lib/src/model_bench/model_bench_protocol.dart`
 - Product port: `ModelPort.benchmark()` on `RustMindRuntime` — runs the
-  protocol when a `GenerationBenchRunner` is injected (production:
-  `BridgeGenerationBenchRunner` over a loaded llama engine). Stays
-  `MindPortUnavailable` rather than inventing tok/s when no runner is
-  present. `ModelPort.thermal()` probes `DeviceCapabilityService`.
+  protocol when a `GenerationBenchRunner` is injected. Production
+  (`mindRuntimeProvider` → `ScribeMindRuntime`) injects
+  `createProductionModelPort`: `LlamaGgufEngineController` for
+  load/unload and `LlamaGgufBenchRunner` for sampling.
+  - Desktop: llama.cpp `RuntimeStats` (prefill vs decode) after
+    `generateCompletion`.
+  - Android: wall-clock time to first chunk and chunk-rate for the rest
+    of the stream (`llama_flutter_android` has no `RuntimeStats` split).
+  Stays `MindPortUnavailable` rather than inventing tok/s when no runner
+  is present, the catalog id is unknown, or the artifact is not on disk.
+  `ModelPort.thermal()` probes `DeviceCapabilityService`.
+- Surface: `ModelManagementPanel` **Run bench** on resident/loaded rows;
+  **Load** puts a resident GGUF into inference memory first.

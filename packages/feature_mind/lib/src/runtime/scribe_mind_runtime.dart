@@ -10,7 +10,12 @@ import 'ports/projection_port.dart';
 import 'ports/vault_port.dart';
 import 'rust/rust_mind_runtime_vault.dart';
 
-/// Mind runtime for the standalone scribe shell: Rust vault + op log, fixture elsewhere.
+/// Mind runtime for the standalone scribe shell: Rust vault + op log, fixture
+/// elsewhere unless a [ModelPort] is injected.
+///
+/// Production (`mindRuntimeProvider`) injects `createProductionModelPort` so
+/// Model Bench and load/unload talk to the GGUF engine. Tests that omit
+/// [models] keep the fixture catalog (invented tok/s, no native load).
 ///
 /// [VaultPort] reads the vault opened when [MindService.initialize] boots the
 /// whisper library (`meetings::initialize` → `open_mind_runtime`). Contexts,
@@ -19,13 +24,16 @@ class ScribeMindRuntime implements MindRuntime {
   ScribeMindRuntime({
     required OperationLogPort log,
     VaultPort? vault,
+    ModelPort? models,
   }) : _inner = FixtureMindRuntime(),
        _log = log,
-       _vault = vault ?? const RustMindRuntimeVault();
+       _vault = vault ?? const RustMindRuntimeVault(),
+       _models = models;
 
   final FixtureMindRuntime _inner;
   final OperationLogPort _log;
   final VaultPort _vault;
+  final ModelPort? _models;
 
   @override
   VaultPort get vault => _vault;
@@ -46,7 +54,7 @@ class ScribeMindRuntime implements MindRuntime {
   CapabilityPort get capabilities => _inner.capabilities;
 
   @override
-  ModelPort get models => _inner.models;
+  ModelPort get models => _models ?? _inner.models;
 
   @override
   PortabilityPort get portability => _inner.portability;

@@ -23,6 +23,7 @@ import '../ports/portability_port.dart';
 import '../ports/projection_port.dart';
 import '../ports/vault_port.dart';
 import '../../model_bench/generation_bench_runner.dart';
+import '../../model_bench/generation_engine_controller.dart';
 import '../../model_bench/model_bench_protocol.dart';
 import 'rust_mind_runtime_vault.dart';
 
@@ -38,10 +39,11 @@ import 'rust_mind_runtime_vault.dart';
 class RustMindRuntime implements MindRuntime {
   RustMindRuntime({
     ModelPort? models,
+    GenerationBenchRunner? benchRunner,
+    GenerationEngineController? engine,
+    GenerationBenchMetadata? benchMetadata,
     @visibleForTesting core_ai.ModelDownloadService? downloadService,
     @visibleForTesting List<core_ai.OfflineModelInfo>? catalog,
-    @visibleForTesting GenerationBenchRunner? benchRunner,
-    @visibleForTesting GenerationBenchMetadata? benchMetadata,
     @visibleForTesting int? warmupIterations,
     @visibleForTesting int? timedIterations,
     @visibleForTesting Future<ThermalState> Function()? readThermal,
@@ -52,6 +54,7 @@ class RustMindRuntime implements MindRuntime {
              downloadService: downloadService,
              catalog: catalog,
              benchRunner: benchRunner,
+             engine: engine,
              benchMetadata: benchMetadata,
              warmupIterations: warmupIterations,
              timedIterations: timedIterations,
@@ -216,19 +219,20 @@ class _RustCapabilities implements CapabilityPort {
 /// on disk forever. [ModelManagementPanel] no longer has to run against
 /// [FixtureMindRuntime] to exercise that behavior.
 ///
-/// [load], [unload] still require a model running in real inference memory,
-/// which needs the Rust engine bindings tracked by #1628 (`LlmBackend` trait
-/// + llama.cpp GGUF backend) and #1638 (the Flutter plugin seam over that
-/// FFI) — neither has landed, so those two stay honest [MindPortUnavailable]
-/// stubs naming those issues. (The blanket "#1260" every method here used
-/// to cite is Vault/Operation-Log FFI, not model management -- it never
-/// actually gated this port; #1628/#1638 are the issues that do.)
+/// [load], [unload] stay [MindPortUnavailable] naming #1628/#1638 until a
+/// [GenerationEngineController] is injected — typically
+/// [LlamaGgufEngineController] over [LlamaGgufService]. With a controller,
+/// [load] hydrates the on-disk path and asks the GGUF adapter to put the
+/// model in inference memory; [all] then reports that id as
+/// [ModelResidency.loaded]. Without a controller those two stay honest
+/// stubs rather than pretending RAM residency.
 ///
 /// [benchmark] runs the generation-bench protocol (warmup, median, backend
 /// metadata including CUDA as a Windows seam) when a [GenerationBenchRunner]
-/// is injected — typically [BridgeGenerationBenchRunner] over a loaded llama
-/// engine. With no runner it still reports unavailable rather than inventing
-/// tok/s. [thermal] probes the device capability channel and emits on change.
+/// is injected — typically [LlamaGgufBenchRunner] or
+/// [BridgeGenerationBenchRunner] over a loaded llama engine. With no runner
+/// it still reports unavailable rather than inventing tok/s. [thermal]
+/// probes the device capability channel and emits on change.
 ///
 /// [ModelResidency] has three states -- `loaded` (in inference memory),
 /// `resident` (held on disk by a specific capability), and `available` (not
@@ -237,12 +241,14 @@ class _RustCapabilities implements CapabilityPort {
 /// this class can only tell the true two-state story disk access gives it:
 /// a downloaded, verified model reports as `resident` with an empty
 /// [MindModel.heldBy] (nothing artificially blocks unloading it), never as
-/// `loaded`.
+/// `loaded` — unless a [GenerationEngineController] reports that id as
+/// currently in inference memory.
 class _RustModels implements ModelPort {
   _RustModels({
     core_ai.ModelDownloadService? downloadService,
     List<core_ai.OfflineModelInfo>? catalog,
     GenerationBenchRunner? benchRunner,
+    GenerationEngineController? engine,
     GenerationBenchMetadata? benchMetadata,
     int? warmupIterations,
     int? timedIterations,
@@ -251,6 +257,7 @@ class _RustModels implements ModelPort {
   }) : _downloadService = downloadService ?? core_ai.ModelDownloadService(),
        _catalog = catalog ?? core_ai.ModelCatalog.bundledModels,
        _benchRunner = benchRunner,
+       _engine = engine,
        _benchMetadata = benchMetadata ?? const GenerationBenchMetadata(),
        _warmupIterations = warmupIterations ?? kModelBenchWarmupIterations,
        _timedIterations = timedIterations ?? kModelBenchTimedIterations,
@@ -263,6 +270,7 @@ class _RustModels implements ModelPort {
   final core_ai.ModelDownloadService _downloadService;
   final List<core_ai.OfflineModelInfo> _catalog;
   final GenerationBenchRunner? _benchRunner;
+  final GenerationEngineController? _engine;
   final GenerationBenchMetadata _benchMetadata;
   final int _warmupIterations;
   final int _timedIterations;
@@ -278,19 +286,23 @@ class _RustModels implements ModelPort {
 
   @override
   Future<List<MindModel>> all() async {
+    final loadedId = _engine?.loadedModelId;
     final results = await Future.wait(
       _catalog.map((model) async {
         final downloaded = await _downloadService.isModelDownloaded(
           model.id,
           model: model,
         );
+        final residency = loadedId == model.id
+            ? ModelResidency.loaded
+            : downloaded
+            ? ModelResidency.resident
+            : ModelResidency.available;
         return MindModel(
           id: model.id,
           name: model.name,
           sizeBytes: model.fileSizeBytes,
-          residency: downloaded
-              ? ModelResidency.resident
-              : ModelResidency.available,
+          residency: residency,
         );
       }),
     );
@@ -308,12 +320,44 @@ class _RustModels implements ModelPort {
   }
 
   @override
-  Future<void> load(String modelId) async =>
-      _pending('ModelPort', _runtimeIssue);
+  Future<void> load(String modelId) async {
+    final engine = _engine;
+    if (engine == null) return _pending('ModelPort', _runtimeIssue);
+    final catalogModel = _findCatalogModel(modelId);
+    if (catalogModel == null) {
+      return _pending(
+        'ModelPort',
+        'unknown model id "$modelId" -- not in the catalog',
+      );
+    }
+    final path = await _downloadService.resolveExistingModelPath(
+      catalogModel.id,
+      model: catalogModel,
+    );
+    if (path == null) {
+      return _pending(
+        'ModelPort',
+        'model "$modelId" is not on disk — download it before loading',
+      );
+    }
+    try {
+      await engine.load(catalogModel.copyWith(filePath: path));
+    } on Object catch (error) {
+      return _pending('ModelPort', 'load failed — $_runtimeIssue ($error)');
+    }
+  }
 
   @override
-  Future<void> unload(String modelId) async =>
-      _pending('ModelPort', _runtimeIssue);
+  Future<void> unload(String modelId) async {
+    final engine = _engine;
+    if (engine == null) return _pending('ModelPort', _runtimeIssue);
+    if (engine.loadedModelId != modelId) return;
+    try {
+      await engine.unload();
+    } on Object catch (error) {
+      return _pending('ModelPort', 'unload failed — $_runtimeIssue ($error)');
+    }
+  }
 
   @override
   Stream<({int received, int total})> download(String modelId) {

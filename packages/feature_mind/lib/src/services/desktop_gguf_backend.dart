@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import '../library_loader.dart';
 import '../llama/api/minutes.dart' as llama;
+import '../model_bench/model_bench_protocol.dart';
 import 'gguf_artifact_guard.dart';
 import 'gguf_load_outcome.dart';
 
@@ -141,5 +142,30 @@ class DesktopGgufBackend {
   Future<void> unload() async {
     if (!isLlamaLoaded) return;
     llama.unloadGeneration();
+  }
+
+  /// True when the Rust generation slot is initialised.
+  ///
+  /// Safe in tests that never called `RustLib.init` — FRB throws, and we
+  /// treat that as not ready rather than crashing the ModelPort.
+  bool get isEngineReady {
+    try {
+      return llama.isReady();
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Stats from the most recently completed [generate] / `generateCompletion`.
+  GenerationBenchSample lastBenchSample() {
+    final s = llama.generationStats();
+    return GenerationBenchSample(
+      prefillMs: s.prefillMs.toInt(),
+      prefillTokens: s.prefillTokens,
+      generationMs: s.generationMs.toInt(),
+      generatedTokens: s.generatedTokens,
+      tokensPerSecond: s.tokensPerSecond,
+      peakRssBytes: s.peakRssBytes.toInt(),
+    );
   }
 }

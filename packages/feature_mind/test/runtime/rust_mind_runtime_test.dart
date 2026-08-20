@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:core_ai/core_ai.dart' as core_ai;
 import 'package:feature_mind/feature_mind.dart';
 import 'package:feature_mind/src/model_bench/generation_bench_runner.dart';
+import 'package:feature_mind/src/model_bench/generation_engine_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
@@ -243,7 +244,9 @@ void main() {
         await File(
           path.join(modelsDir.path, '${catalogModel.id}.gguf'),
         ).writeAsBytes(List<int>.filled(catalogModel.fileSizeBytes, 0));
-        await Directory(path.join(tempDir.path, 'airo_mind')).create(recursive: true);
+        await Directory(
+          path.join(tempDir.path, 'airo_mind'),
+        ).create(recursive: true);
         await File(
           path.join(tempDir.path, 'airo_mind', 'mind_ops.jsonl'),
         ).writeAsString('');
@@ -279,6 +282,60 @@ void main() {
         expect(bench.residentBytes, catalogModel.fileSizeBytes);
       },
     );
+
+    test(
+      'load() hydrates the on-disk path and reports residency loaded',
+      () async {
+        final catalogModel = core_ai.ModelCatalog.bundledModels.firstWhere(
+          (m) => m.id == 'embeddinggemma-300m-tokenizer',
+        );
+        final modelsDir = Directory(path.join(tempDir.path, 'models'));
+        await modelsDir.create(recursive: true);
+        await File(
+          path.join(modelsDir.path, '${catalogModel.id}.gguf'),
+        ).writeAsBytes(List<int>.filled(catalogModel.fileSizeBytes, 0));
+
+        final engine = _FakeEngine();
+        final loadedRuntime = RustMindRuntime(engine: engine);
+
+        await loadedRuntime.models.load(catalogModel.id);
+
+        expect(engine.loadedPaths, hasLength(1));
+        expect(engine.loadedPaths.single, contains('${catalogModel.id}.gguf'));
+        expect(engine.loadedModelId, catalogModel.id);
+
+        final models = await loadedRuntime.models.all();
+        expect(
+          models.firstWhere((m) => m.id == catalogModel.id).residency,
+          ModelResidency.loaded,
+        );
+
+        await loadedRuntime.models.unload(catalogModel.id);
+        expect(engine.loadedModelId, isNull);
+        final after = await loadedRuntime.models.all();
+        expect(
+          after.firstWhere((m) => m.id == catalogModel.id).residency,
+          ModelResidency.resident,
+        );
+      },
+    );
+
+    test('load() of a catalog id not on disk reports unavailable', () async {
+      final catalogModel = core_ai.ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'embeddinggemma-300m-tokenizer',
+      );
+      final loadedRuntime = RustMindRuntime(engine: _FakeEngine());
+      await expectLater(
+        loadedRuntime.models.load(catalogModel.id),
+        throwsA(
+          isA<MindPortUnavailable>().having(
+            (e) => e.reason,
+            'reason',
+            contains('not on disk'),
+          ),
+        ),
+      );
+    });
   });
 }
 
@@ -300,4 +357,25 @@ class _ScriptedBenchRunner implements GenerationBenchRunner {
 
   @override
   Future<GenerationBenchSample> sample() async => _samples[_i++];
+}
+
+class _FakeEngine implements GenerationEngineController {
+  final loadedPaths = <String>[];
+
+  @override
+  bool get isLoaded => loadedModelId != null;
+
+  @override
+  String? loadedModelId;
+
+  @override
+  Future<void> load(core_ai.OfflineModelInfo model) async {
+    loadedPaths.add(model.filePath ?? '');
+    loadedModelId = model.id;
+  }
+
+  @override
+  Future<void> unload() async {
+    loadedModelId = null;
+  }
 }

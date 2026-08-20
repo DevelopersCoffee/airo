@@ -139,6 +139,42 @@ void main() {
 
     expect(disposed, isTrue);
   });
+
+  test('collectBenchSample times the Android token stream', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    _mockLlamaHost();
+    final controller = LlamaController(
+      binaryMessenger:
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger,
+    );
+    final service = LlamaGgufService(nativeController: controller);
+    const model = OfflineModelInfo(
+      id: 'gguf-bench',
+      name: 'GGUF bench',
+      family: ModelFamily.llama,
+      fileSizeBytes: 1024,
+      filePath: '/models/bench.gguf',
+    );
+
+    await expectLater(service.loadModel(model), completion(isTrue));
+    expect(service.isLoaded, isTrue);
+
+    final sampleFuture = service.collectBenchSample(
+      prompt: 'bench',
+      maxOutputTokens: 8,
+    );
+    await Future<void>.delayed(Duration.zero);
+    controller.onToken('one');
+    controller.onToken(' two');
+    controller.onDone();
+    final sample = await sampleFuture;
+
+    expect(sample.generatedTokens, 2);
+    expect(sample.tokensPerSecond, greaterThan(0));
+    expect(sample.peakRssBytes, 0);
+    expect(sample.prefillTokens, 0);
+    await expectLater(service.unload(), completes);
+  });
 }
 
 typedef _ModelConfigSpy = void Function(ModelConfig config);
