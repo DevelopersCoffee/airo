@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
@@ -49,4 +50,26 @@ Future<ExternalLibrary?> resolveEngineLibrary(String stem) async {
   // failing on a build that wired the library somewhere this file has not
   // heard of.
   return null;
+}
+
+/// Cmd-Q is AppKit terminate; `flutter run` stop and kill are SIGINT/SIGTERM.
+void listenForQuitSignals(void Function() onQuit) {
+  if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+  if (!(Platform.isMacOS || Platform.isLinux || Platform.isWindows)) return;
+  for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm]) {
+    try {
+      signal.watch().listen((_) => onQuit());
+    } on Object {
+      // A second listener in the isolate, or a platform that rejects the
+      // signal, must not prevent the AppLifecycle path from running.
+    }
+  }
+}
+
+/// Drops the whisper Supervisor while Metal is still valid.
+void unloadWhisperSpeech() {
+  final fn = DynamicLibrary.process()
+      .lookup<NativeFunction<Void Function()>>('airo_mind_whisper_unload_speech')
+      .asFunction<void Function()>();
+  fn();
 }

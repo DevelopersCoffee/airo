@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Airo Mind records meetings on this device. Audio never leaves it.</string>
+	<string>Airo Mind needs the microphone to record meetings and voice input on this device. Audio never leaves it.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Airo Mind uses speech recognition to transcribe audio you capture in Audio Scribe.</string>
+	<string>Airo Mind uses speech recognition to transcribe meetings and voice commands you capture on this device.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

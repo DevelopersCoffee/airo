@@ -32,7 +32,10 @@ use super::generation_state::{begin_job, lock, CANCEL, ENGINE, MODEL_ID};
 
 /// Where the models live and what the engine may spend.
 pub struct GenerationConfig {
-    /// Where the Model Manager looks. **Not** a model path — `ADR-0018 §4`.
+    /// Directory for capability resolve, or a weight file the Dart Model
+    /// Manager already chose. Minutes still pass a directory (`ADR-0018 §4`).
+    /// Chat selection is a file, so the engine must load that file rather than
+    /// asking resolve for Draft quality in the same folder.
     pub models_dir: String,
     /// Admission ceiling for the Supervisor (`C6`).
     pub memory_budget_mb: u32,
@@ -105,12 +108,53 @@ fn minutes_prompt(transcript: &str) -> String {
 // The capability surface
 // ---------------------------------------------------------------------------
 
+/// True when `models_dir` is already a weight file the Model Manager chose.
+fn chosen_weight_path(models_dir: &std::path::Path) -> Option<&std::path::Path> {
+    models_dir.is_file().then_some(models_dir)
+}
+
+fn install_generation(
+    model_path: &std::path::Path,
+    engine_memory_mb: u32,
+    supervisor_budget_mb: u32,
+    logical_id: String,
+    version: &str,
+) -> Result<(), String> {
+    let generation = LlamaGenerationEngine::load(model_path, engine_memory_mb, 2048)
+        .map_err(|e| format!("{logical_id}: {e}"))?;
+    let mut supervisor = Supervisor::new(ResourceBudget::new(supervisor_budget_mb));
+    supervisor.register_generation(Box::new(generation));
+    *lock(&ENGINE) = Some(supervisor);
+    // A file name would not survive a model update that changes quantisation,
+    // and replay must reproduce the reference.
+    *lock(&MODEL_ID) = Some(format!("{logical_id}@{version}"));
+    // Metal device globals are C++ function-local statics. Register after
+    // load so this handler runs *before* ggml's unique_ptr destructor.
+    register_generation_exit_guard();
+    Ok(())
+}
+
 /// Loads the generation model. Called on first use, not at startup: this
 /// library is large and only minutes need it.
 ///
 /// Safe to call again — a Flutter hot restart runs it a second time.
 pub fn initialize(config: GenerationConfig) -> Result<(), String> {
     let models_dir = std::path::Path::new(&config.models_dir);
+
+    if let Some(path) = chosen_weight_path(models_dir) {
+        let logical_id = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("chat")
+            .to_string();
+        return install_generation(
+            path,
+            config.memory_budget_mb,
+            config.memory_budget_mb,
+            logical_id,
+            "selected",
+        );
+    }
 
     // `ADR-0018 §1`: ask for a CAPABILITY and a budget, never for a file.
     let requirement = models::ModelRequirement {
@@ -145,24 +189,13 @@ pub fn initialize(config: GenerationConfig) -> Result<(), String> {
         Err(err) => return Err(err.to_string()),
     };
 
-    let generation = LlamaGenerationEngine::load(
+    install_generation(
         std::path::Path::new(&generation_model.path),
         generation_model.memory_mb,
-        2048,
+        config.memory_budget_mb,
+        generation_model.logical_id,
+        &generation_model.version,
     )
-    .map_err(|e| format!("{}: {e}", generation_model.logical_id))?;
-
-    let mut supervisor = Supervisor::new(ResourceBudget::new(config.memory_budget_mb));
-    supervisor.register_generation(Box::new(generation));
-
-    *lock(&ENGINE) = Some(supervisor);
-    // A file name would not survive a model update that changes quantisation,
-    // and replay must reproduce the reference.
-    *lock(&MODEL_ID) = Some(format!(
-        "{}@{}",
-        generation_model.logical_id, generation_model.version
-    ));
-    Ok(())
 }
 
 /// True once `initialize` has loaded a generation engine.
@@ -203,8 +236,8 @@ pub fn generate_minutes(
 
     let mut minutes = String::new();
     {
-        let mut engine = lock(&ENGINE);
-        let supervisor = engine.as_mut().ok_or("Airo Mind is not initialised")?;
+        let engine = lock(&ENGINE);
+        let supervisor = engine.as_ref().ok_or("Airo Mind is not initialised")?;
 
         let generation = supervisor.run_generation(
             &GenerationRequest {
@@ -247,8 +280,8 @@ pub fn generate_completion(
 
     let mut completion = String::new();
     {
-        let mut engine = lock(&ENGINE);
-        let supervisor = engine.as_mut().ok_or("Airo Mind is not initialised")?;
+        let engine = lock(&ENGINE);
+        let supervisor = engine.as_ref().ok_or("Airo Mind is not initialised")?;
 
         let generation = supervisor.run_generation(
             &GenerationRequest {
@@ -300,11 +333,42 @@ pub fn generation_stats() -> GenerationStats {
 /// only clears the Supervisor's generation slot, not the speech one (there
 /// is none here) or the recorded `MODEL_ID`, so `generation_model_id`
 /// continues to describe whatever was last generated until something new is.
+///
+/// Also the Metal-exit guard: Rust statics are never dropped, so without an
+/// explicit unload the llama.cpp `ggml_metal_device` unique_ptr vector
+/// destructor runs at `NSApplication terminate` while residency sets still
+/// hold model buffers and `GGML_ASSERT([rsets->data count] == 0)` aborts.
 #[frb(sync)]
 pub fn unload_generation() {
-    if let Some(supervisor) = lock(&ENGINE).as_mut() {
-        supervisor.unregister_generation();
-    }
+    release_generation_resources();
+}
+
+/// Drops the generation Supervisor so llama.cpp can `rsets_rm` every Metal
+/// buffer before ggml's process-exit device destructor runs.
+fn release_generation_resources() {
+    cancel_generation();
+    *lock(&ENGINE) = None;
+}
+
+/// Runs [unload_generation] at process exit, before C++ static destructors
+/// that were registered earlier (the Metal device vector is created during
+/// model load, which happens before this `atexit` registration).
+fn register_generation_exit_guard() {
+    use std::sync::Once;
+    static REGISTER: Once = Once::new();
+    REGISTER.call_once(|| {
+        #[allow(unsafe_code)]
+        {
+            // SAFETY: the handler only takes process-local mutexes and drops
+            // `ENGINE`. It must not panic: atexit callbacks that unwind abort.
+            let rc = unsafe { libc::atexit(release_generation_on_process_exit) };
+            debug_assert_eq!(rc, 0);
+        }
+    });
+}
+
+extern "C" fn release_generation_on_process_exit() {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(release_generation_resources));
 }
 
 #[cfg(test)]
@@ -318,8 +382,13 @@ mod tests {
         }
         assert!(!is_ready());
         assert!(generation_model_id().is_empty());
-        // Cancelling with nothing in flight is a no-op, not a crash.
+        // Cancelling / unloading with nothing in flight is a no-op, not a crash.
         cancel_generation();
+        unload_generation();
+        unload_generation();
+        register_generation_exit_guard();
+        register_generation_exit_guard();
+        assert!(!is_ready());
     }
 
     #[test]
@@ -340,5 +409,15 @@ mod tests {
                 "`{forbidden}` appears {occurrences} times -- the capability is naming model files again"
             );
         }
+    }
+
+    #[test]
+    fn a_regular_file_is_the_model_managers_choice() {
+        let path =
+            std::env::temp_dir().join(format!("airo-mind-chosen-weight-{}", std::process::id()));
+        std::fs::write(&path, b"x").expect("probe file");
+        assert!(chosen_weight_path(&path).is_some());
+        std::fs::remove_file(&path).ok();
+        assert!(chosen_weight_path(&std::env::temp_dir()).is_none());
     }
 }

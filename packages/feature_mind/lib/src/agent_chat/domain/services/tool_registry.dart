@@ -283,7 +283,7 @@ class SplitBillTool implements Tool {
   }
 }
 
-/// Diet planner tool for a practical first-pass draft.
+/// Retired: meal plans are written by the chat model via the Diet Plan plugin.
 class DietPlanTool implements Tool {
   @override
   String get key => 'diet_plan';
@@ -292,23 +292,10 @@ class DietPlanTool implements Tool {
   String get name => 'Diet Plan';
 
   @override
-  bool canHandle(Intent intent) => intent.type == IntentType.createDietPlan;
+  bool canHandle(Intent intent) => false;
 
   @override
-  Future<AgentToolResult?> handle(Intent intent) async {
-    return const AgentToolResult(
-      message:
-          '7-day diet plan draft\n'
-          'Day 1: oats, dal bowl, curd, fruit\n'
-          'Day 2: poha, paneer wrap, sprouts, vegetable khichdi\n'
-          'Day 3: eggs or tofu, rice bowl, nuts, soup\n'
-          'Day 4: idli, chana salad, buttermilk, roti sabzi\n'
-          'Day 5: smoothie, rajma rice, fruit, stir-fry\n'
-          'Day 6: upma, quinoa bowl, yogurt, dal roti\n'
-          'Day 7: dosa, grilled protein, salad, light dinner\n\n'
-          'I can refine this by calories, cuisine, allergies, budget, or workout goal.',
-    );
-  }
+  Future<AgentToolResult?> handle(Intent intent) async => null;
 }
 
 /// Routine planner tool for daily planning from chat.
@@ -497,8 +484,7 @@ class MeetingArchiveTool implements Tool {
         }
         return AgentToolResult(message: latest.minutes);
       case IntentType.myActionItems:
-        final owner =
-            (intent.parameters['owner'] as String?)?.trim() ?? 'me';
+        final owner = (intent.parameters['owner'] as String?)?.trim() ?? 'me';
         final items = await port.actionItemsForOwner(owner);
         if (items.isEmpty) {
           return AgentToolResult(
@@ -509,7 +495,10 @@ class MeetingArchiveTool implements Tool {
         }
         final lines = items
             .take(8)
-            .map((item) => '• ${item.task}${item.due == null ? '' : ' (due ${item.due})'}')
+            .map(
+              (item) =>
+                  '• ${item.task}${item.due == null ? '' : ' (due ${item.due})'}',
+            )
             .join('\n');
         return AgentToolResult(message: 'Action items:\n$lines');
       default:

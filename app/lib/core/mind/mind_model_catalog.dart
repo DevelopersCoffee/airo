@@ -27,17 +27,24 @@ List<Override> mindModelRegistryOverrides({
   Future<List<RequiredModel>> Function() requiredModels = pinnedRequiredModels,
 }) => [
   modelRegistryProvider.overrideWith((ref) {
+    final profile = ModelRuntimeProfile.resolve(
+      isAndroidHost: PlatformConfig.isAndroid,
+    );
+    final catalog = ModelCatalog.forProfile(profile);
     final registry = ModelRegistry();
-    registry.registerModels(
-      ModelCatalog.forProfile(
-        ModelRuntimeProfile.resolve(isAndroidHost: PlatformConfig.isAndroid),
+    registry.registerModels(catalog);
+    unawaited(
+      hydrateDownloadedModels(
+        registry,
+        ref.read(modelDownloadServiceProvider),
+        catalog: catalog,
       ),
     );
-    unawaited(
-      hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
-    );
     unawaited(() async {
-      final result = await hydratePublicHuggingFaceModels(registry);
+      final result = await hydratePublicHuggingFaceModels(
+        registry,
+        profile: profile,
+      );
       if (!ref.mounted) return;
       ref.read(huggingFaceCatalogAvailabilityProvider.notifier).state =
           result.availability;

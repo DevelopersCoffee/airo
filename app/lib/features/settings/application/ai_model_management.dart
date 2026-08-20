@@ -73,9 +73,10 @@ final modelRegistryEventsProvider = StreamProvider<ModelRegistryEvent>((ref) {
 /// re-implementing this check per shell is how they drift apart.
 Future<void> hydrateDownloadedModels(
   ModelRegistry registry,
-  ModelDownloadService service,
-) async {
-  for (final model in ModelCatalog.bundledModels) {
+  ModelDownloadService service, {
+  Iterable<OfflineModelInfo>? catalog,
+}) async {
+  for (final model in catalog ?? ModelCatalog.bundledModels) {
     // A path alone is not proof of an installed model. Require the download
     // service to validate size/checksum before the registry exposes it to the
     // picker or runtime health center.

@@ -25,10 +25,10 @@ void main() {
       find.byKey(const Key('indic_speech_backend_settings_tile')),
       findsOneWidget,
     );
-    expect(find.text('Auto (Whisper)'), findsOneWidget);
+    expect(find.text('Auto'), findsOneWidget);
   });
 
-  testWidgets('Sarvam Edge option is disabled', (tester) async {
+  testWidgets('does not advertise unpublished speech backends', (tester) async {
     SharedPreferences.setMockInitialValues({});
 
     await pumpTile(tester);
@@ -37,6 +37,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sarvam Edge (not available)'), findsOneWidget);
+    expect(find.textContaining('Sarvam Edge'), findsNothing);
+    expect(find.text('On-device speech'), findsOneWidget);
   });
 }

@@ -206,6 +206,10 @@ class IntentParser {
       return IntentType.createDietPlan;
     }
 
+    if (_extractDietStyle(text) != null) {
+      return IntentType.createDietPlan;
+    }
+
     if (_containsAny(text, ['routine', 'schedule my day', 'study plan'])) {
       return IntentType.createRoutine;
     }
@@ -248,7 +252,11 @@ class IntentParser {
       return IntentType.searchMeetings;
     }
 
-    if (_containsAny(text, ['open scribe', 'record meeting', 'meeting scribe'])) {
+    if (_containsAny(text, [
+      'open scribe',
+      'record meeting',
+      'meeting scribe',
+    ])) {
       return IntentType.openMeetingScribe;
     }
 
@@ -357,8 +365,17 @@ class IntentParser {
       'meal plan',
       'routine',
       'study plan',
+      'non veg',
+      'non-veg',
+      'vegetarian',
+      'vegan',
     ])) {
       params['prompt'] = text.trim();
+    }
+
+    final dietStyle = _extractDietStyle(lowerText);
+    if (dietStyle != null) {
+      params['dietStyle'] = dietStyle;
     }
 
     if (lowerText.contains('flashlight') || lowerText.contains('torch')) {
@@ -390,6 +407,25 @@ class IntentParser {
     }
 
     return params;
+  }
+
+  static String? _extractDietStyle(String lowerText) {
+    if (_containsAny(lowerText, [
+      'non veg',
+      'non-veg',
+      'non vegetarian',
+      'non-vegetarian',
+      'nonvegetarian',
+    ])) {
+      return 'nonVegetarian';
+    }
+    if (_containsAny(lowerText, ['vegan'])) {
+      return 'vegan';
+    }
+    if (_containsAny(lowerText, ['vegetarian', 'veg only', 'veg-only'])) {
+      return 'vegetarian';
+    }
+    return null;
   }
 
   static int? _extractAmountCents(String text) {

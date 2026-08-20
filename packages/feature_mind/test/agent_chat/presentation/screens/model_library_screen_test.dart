@@ -436,6 +436,11 @@ void main() {
       );
 
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Start chat'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Start chat'));
       await tester.pump();
       await tester.pumpAndSettle();
@@ -673,6 +678,10 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -740,6 +749,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Start chat'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Start chat'));
     await tester.pumpAndSettle();
     expect(selected?.id, litertGemmaAssistantModelId);
@@ -748,6 +762,10 @@ void main() {
 
   testWidgets('setup failure dialog shows memory diagnostics', (tester) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -817,6 +835,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Start chat'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Start chat'));
     await tester.pumpAndSettle();
 
@@ -840,6 +863,10 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -1050,6 +1077,92 @@ void main() {
     final setup = state.candidateById('assistant-setup-required');
     expect(setup, isNotNull);
     expect(setup!.description, contains('GGUF'));
+  });
+
+  testWidgets('change-model picker lists installed GGUF packages', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final qwen = AssistantModelCandidate(
+      id: assistantModelIdForOfflineModel('mind-scribe-qwen2.5-0.5b-instruct'),
+      name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+      runtime: 'GGUF · llama.cpp',
+      description: 'Scribe chat package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Private',
+      sizeLabel: '469 MB',
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: const OfflineModelInfo(
+        id: 'mind-scribe-qwen2.5-0.5b-instruct',
+        name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+        family: ModelFamily.qwen,
+        fileSizeBytes: 491000000,
+        filePath: '/models/qwen.gguf',
+        provider: AIProvider.gguf,
+        capabilities: [ModelCapability.chat],
+      ),
+    );
+    final phi = AssistantModelCandidate(
+      id: assistantModelIdForOfflineModel('phi-3-mini-4k-q4'),
+      name: 'Phi-3 Mini 4K',
+      runtime: 'GGUF · llama.cpp',
+      description: 'Downloaded chat package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Private',
+      sizeLabel: '2.1 GB',
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: const OfflineModelInfo(
+        id: 'phi-3-mini-4k-q4',
+        name: 'Phi-3 Mini 4K',
+        family: ModelFamily.phi,
+        fileSizeBytes: 2300000000,
+        filePath: '/models/phi.gguf',
+        provider: AIProvider.phi,
+        capabilities: [ModelCapability.chat],
+      ),
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Mac',
+      platformLabel: 'MACOS',
+      candidates: [qwen, phi],
+      recommended: qwen,
+      defaultPackages: const {},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            runtimeService: AssistantRuntimeService(
+              loadDeviceInfo: () async => const {},
+            ),
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('On this device'), findsOneWidget);
+    expect(find.text('Qwen2.5 0.5B Instruct (Q4_K_M)'), findsWidgets);
+    expect(find.text('Phi-3 Mini 4K'), findsOneWidget);
   });
 }
 

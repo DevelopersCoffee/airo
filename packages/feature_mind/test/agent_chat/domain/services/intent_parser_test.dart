@@ -25,6 +25,21 @@ void main() {
         intent.parameters['prompt'],
         'make me a 7 day vegetarian diet plan',
       );
+      expect(intent.parameters['dietStyle'], 'vegetarian');
+    });
+
+    test('treats a non-veg follow-up as a diet plan refinement', () {
+      final intent = IntentParser.parse('non veg only');
+
+      expect(intent.type, IntentType.createDietPlan);
+      expect(intent.parameters['dietStyle'], 'nonVegetarian');
+    });
+
+    test('treats veg only as a diet plan refinement', () {
+      final intent = IntentParser.parse('veg only');
+
+      expect(intent.type, IntentType.createDietPlan);
+      expect(intent.parameters['dietStyle'], 'vegetarian');
     });
 
     test('detects routine planning requests', () {

@@ -462,8 +462,8 @@ class MindService {
       // Loaded now rather than at startup: it is roughly 48 MB and only this
       // step needs it.
       final dir = await modelsDirectory();
-      final memoryInfo =
-          await core_ai.DeviceCapabilityService().getMemoryInfo();
+      final memoryInfo = await core_ai.DeviceCapabilityService()
+          .getMemoryInfo();
       final generationMode = await MindIndicPreferences.readGenerationMode();
       final indicCapability = MindIndicCapability(
         entitlements: _entitlements,
@@ -567,9 +567,9 @@ class MindService {
     final message = '$error';
     if (message.contains('airo.generation.indic.standard') &&
         message.contains('sarvam-1-Q4_K_M.gguf')) {
-      return 'Sarvam-1 is not installed on this device. '
-          'Open Models → Meeting scribe picks and choose Standard (Qwen), '
-          'or download the Sarvam stack from On-device models.';
+      return 'The Indic minutes pack is not installed on this device. '
+          'Open Models → Meeting scribe picks and choose Standard, '
+          'or download the Indic stack from On-device models.';
     }
     return message;
   }

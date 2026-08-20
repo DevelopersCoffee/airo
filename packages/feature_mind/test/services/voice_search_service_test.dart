@@ -137,4 +137,67 @@ void main() {
     expect(result.errorMessage, 'Mic denied');
     expect(service.state, VoiceSearchState.error);
   });
+
+  test('desktop whisper path never throws when permission is denied', () async {
+    final service = DesktopWhisperVoiceSearchService(
+      hasPermission: () async => false,
+      startCapture: (_) async => fail('must not start the encoder'),
+      stopCapture: () async => fail('must not stop the encoder'),
+      transcribe: (_) async => fail('must not transcribe'),
+      tempPath: () async => '/tmp/unused.wav',
+    );
+    addTearDown(service.dispose);
+
+    final result = await service.startListening();
+
+    expect(result.isSuccess, isFalse);
+    expect(result.errorMessage, contains('Microphone access'));
+    expect(service.state, VoiceSearchState.error);
+  });
+
+  test('desktop whisper path transcribes after stop', () async {
+    var started = false;
+    String? capturedPath;
+    final service = DesktopWhisperVoiceSearchService(
+      hasPermission: () async => true,
+      startCapture: (path) async {
+        started = true;
+        capturedPath = path;
+      },
+      stopCapture: () async => capturedPath,
+      transcribe: (path) async {
+        expect(path, capturedPath);
+        return 'what is on my calendar today';
+      },
+      tempPath: () async => '/tmp/airo-voice-test.wav',
+    );
+    addTearDown(service.dispose);
+
+    final pending = service.startListening();
+    await Future<void>.delayed(Duration.zero);
+    expect(started, isTrue);
+    expect(service.state, VoiceSearchState.listening);
+    await service.stopListening();
+    final result = await pending;
+
+    expect(result.isSuccess, isTrue);
+    expect(result.text, 'what is on my calendar today');
+  });
+
+  test('desktop whisper path returns an error instead of throwing', () async {
+    final service = DesktopWhisperVoiceSearchService(
+      hasPermission: () async => true,
+      startCapture: (_) async => throw StateError('encoder exploded'),
+      stopCapture: () async => null,
+      transcribe: (_) async => '',
+      tempPath: () async => '/tmp/airo-voice-test.wav',
+    );
+    addTearDown(service.dispose);
+
+    final result = await service.startListening();
+
+    expect(result.isSuccess, isFalse);
+    expect(result.errorMessage, contains('Voice input failed'));
+    expect(service.state, VoiceSearchState.error);
+  });
 }

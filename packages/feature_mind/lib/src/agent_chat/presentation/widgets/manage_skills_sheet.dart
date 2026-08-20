@@ -23,7 +23,7 @@ class _ManageSkillsSheetState extends State<ManageSkillsSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final skills = widget.registry.getAllSkills().where((skill) {
+    final skills = widget.registry.getToolSkills().where((skill) {
       final query = _query.toLowerCase();
       return skill.name.toLowerCase().contains(query) ||
           skill.description.toLowerCase().contains(query) ||
@@ -80,7 +80,7 @@ class _ManageSkillsSheetState extends State<ManageSkillsSheet> {
             Row(
               children: [
                 Text(
-                  '${widget.registry.getAllSkills().length} skills',
+                  '${widget.registry.getToolSkills().length} skills',
                   style: theme.textTheme.bodySmall,
                 ),
                 const Spacer(),

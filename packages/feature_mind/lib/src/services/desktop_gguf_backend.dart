@@ -3,18 +3,61 @@ import 'dart:io';
 
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 
 import '../library_loader.dart';
 import '../llama/api/minutes.dart' as llama;
 import 'gguf_artifact_guard.dart';
 import 'gguf_load_outcome.dart';
+import 'gguf_runtime_stats.dart';
+
+/// FFI session used by [DesktopGgufBackend]. Tests inject a fake so load
+/// policy can be proven without the native llama library.
+@visibleForTesting
+abstract class DesktopLlamaSession {
+  const DesktopLlamaSession();
+
+  Future<void> load({required String modelPath, required int memoryBudgetMb});
+
+  bool get isReady;
+
+  void unload();
+}
+
+class LiveDesktopLlamaSession extends DesktopLlamaSession {
+  const LiveDesktopLlamaSession();
+
+  @override
+  Future<void> load({required String modelPath, required int memoryBudgetMb}) {
+    return llama.initialize(
+      config: llama.GenerationConfig(
+        modelsDir: modelPath,
+        memoryBudgetMb: memoryBudgetMb,
+        preferIndicGeneration: false,
+        allowCompactFallback: true,
+      ),
+    );
+  }
+
+  @override
+  bool get isReady => llama.isReady();
+
+  @override
+  void unload() => llama.unloadGeneration();
+}
 
 /// macOS / Windows / Linux GGUF path via the Rust `airo_mind_llama` bridge.
 ///
 /// Android keeps using [LlamaGgufService]'s `llama_flutter_android` adapter.
 class DesktopGgufBackend {
-  const DesktopGgufBackend();
+  DesktopGgufBackend({
+    Future<void> Function()? ensureBridge,
+    DesktopLlamaSession? session,
+  }) : _ensureBridge = ensureBridge ?? initializeLlamaBridge,
+       _session = session ?? const LiveDesktopLlamaSession();
+
+  final Future<void> Function() _ensureBridge;
+  final DesktopLlamaSession _session;
+  String? _loadedPath;
 
   static bool get isSupported {
     if (kIsWeb) return false;
@@ -34,7 +77,7 @@ class DesktopGgufBackend {
   Future<GgufLoadOutcome> probe() async {
     if (!isSupported) return const GgufLoadOutcome.engineError('unsupported');
     try {
-      await initializeLlamaBridge();
+      await _ensureBridge();
       return const GgufLoadOutcome.success();
     } on Object catch (error) {
       return GgufLoadOutcome.engineError(error.toString());
@@ -64,59 +107,40 @@ class DesktopGgufBackend {
       );
     }
 
-    final modelsDir = p.dirname(path);
-    if (!Directory(modelsDir).existsSync()) {
-      return const GgufLoadOutcome.fileMissing();
-    }
-
     try {
-      await initializeLlamaBridge();
-      if (!llama.isReady()) {
-        if (isLlamaLoaded) {
-          llama.unloadGeneration();
-        }
-        await _initializeEngine(
-          modelsDir: modelsDir,
-          memoryBudgetMb: memoryBudgetMb,
-        );
+      await _ensureBridge();
+      if (_session.isReady && _loadedPath == path) {
+        return const GgufLoadOutcome.success();
       }
-      if (llama.isReady()) {
+      if (_session.isReady) {
+        _session.unload();
+        _loadedPath = null;
+      }
+      await _session.load(modelPath: path, memoryBudgetMb: memoryBudgetMb);
+      if (_session.isReady) {
+        _loadedPath = path;
         return const GgufLoadOutcome.success();
       }
 
-      // One recovery attempt: clear a half-initialised generation slot.
-      llama.unloadGeneration();
-      await _initializeEngine(
-        modelsDir: modelsDir,
-        memoryBudgetMb: memoryBudgetMb,
-      );
-      return llama.isReady()
-          ? const GgufLoadOutcome.success()
-          : const GgufLoadOutcome.engineError('engine_not_ready');
+      _session.unload();
+      await _session.load(modelPath: path, memoryBudgetMb: memoryBudgetMb);
+      if (_session.isReady) {
+        _loadedPath = path;
+        return const GgufLoadOutcome.success();
+      }
+      _loadedPath = null;
+      return const GgufLoadOutcome.engineError('engine_not_ready');
     } on Object catch (error) {
+      _loadedPath = null;
       return GgufLoadOutcome.engineError(error.toString());
     }
-  }
-
-  Future<void> _initializeEngine({
-    required String modelsDir,
-    required int memoryBudgetMb,
-  }) async {
-    await llama.initialize(
-      config: llama.GenerationConfig(
-        modelsDir: modelsDir,
-        memoryBudgetMb: memoryBudgetMb,
-        preferIndicGeneration: false,
-        allowCompactFallback: true,
-      ),
-    );
   }
 
   Stream<String> generate({
     required String prompt,
     int maxTokens = 512,
   }) async* {
-    if (!llama.isReady()) {
+    if (!_session.isReady) {
       throw StateError('gguf_model_not_loaded');
     }
     await for (final event in llama.generateCompletion(
@@ -133,13 +157,33 @@ class DesktopGgufBackend {
     }
   }
 
+  GgufRuntimeStats? readLastStats() {
+    if (!isLlamaLoaded) return null;
+    try {
+      final stats = llama.generationStats();
+      if (stats.prefillTokens <= 0 && stats.generatedTokens <= 0) {
+        return null;
+      }
+      return GgufRuntimeStats(
+        prefillMs: stats.prefillMs.toInt(),
+        prefillTokens: stats.prefillTokens,
+        generationMs: stats.generationMs.toInt(),
+        generatedTokens: stats.generatedTokens,
+        tokensPerSecond: stats.tokensPerSecond,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
   Future<void> stop() async {
     if (!isLlamaLoaded) return;
     llama.cancelGeneration();
   }
 
   Future<void> unload() async {
-    if (!isLlamaLoaded) return;
-    llama.unloadGeneration();
+    _loadedPath = null;
+    if (!isLlamaLoaded && _session is LiveDesktopLlamaSession) return;
+    _session.unload();
   }
 }

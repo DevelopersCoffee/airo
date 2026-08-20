@@ -347,14 +347,10 @@ fn apply_diarization_labels(
         Some(&*enrollment),
     ) {
         Ok(result) => result,
-        Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => diarize_segments(
-            &segments,
-            None,
-            DiarizationStrategy::Solo,
-            None,
-            None,
-        )
-        .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?,
+        Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => {
+            diarize_segments(&segments, None, DiarizationStrategy::Solo, None, None)
+                .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?
+        }
         Err(error) => return Err(error.to_string()),
     };
     for (record, diarized) in records.iter_mut().zip(result.segments.iter()) {
@@ -514,6 +510,9 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
     *lock(&LIBRARY) = Some(Library { store, index });
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
+    // Metal device globals are C++ function-local statics. Register after
+    // load so this handler runs *before* ggml's unique_ptr destructor.
+    register_speech_exit_guard();
     Ok(())
 }
 
@@ -562,15 +561,10 @@ pub struct EnrolledSpeakerRecord {
 
 /// Replaces the in-memory enrollment store used during diarization.
 pub fn sync_speaker_enrollment_json(raw: String) {
-    let profiles: Vec<EnrolledSpeakerRecord> =
-        serde_json::from_str(&raw).unwrap_or_default();
+    let profiles: Vec<EnrolledSpeakerRecord> = serde_json::from_str(&raw).unwrap_or_default();
     let mut store = SpeakerEnrollmentStore::new();
     for profile in profiles {
-        store.replace_or_insert(
-            profile.id,
-            profile.display_name,
-            profile.embedding,
-        );
+        store.replace_or_insert(profile.id, profile.display_name, profile.embedding);
     }
     *lock(&*SPEAKER_ENROLLMENT) = store;
 }
@@ -588,8 +582,7 @@ pub fn embed_speaker_segment(
     start_ms: u64,
     end_ms: u64,
 ) -> Result<Vec<f32>, String> {
-    let pcm = airo_mind_audio::preprocess_path(Path::new(&wav_path))
-        .map_err(|e| e.to_string())?;
+    let pcm = airo_mind_audio::preprocess_path(Path::new(&wav_path)).map_err(|e| e.to_string())?;
     let core_pcm = Pcm {
         samples: pcm.samples,
         sample_rate_hz: pcm.sample_rate_hz,
@@ -815,6 +808,53 @@ pub fn cancel_processing() {
     }
 }
 
+/// Drops the speech Supervisor so whisper.cpp can release Metal buffers
+/// before ggml's process-exit `ggml_metal_device` destructor runs.
+///
+/// Rust statics are never dropped, so without this `NSApplication terminate`
+/// hits `GGML_ASSERT([rsets->data count] == 0)` in `ggml_metal_rsets_free`.
+/// Safe to call when nothing is loaded. Dart reaches this through the
+/// exported C symbol — a new FRB method would require regenerating the
+/// bridge, and quit must work on the already-linked dylib.
+pub fn unload_speech() {
+    release_speech_resources();
+}
+
+/// Exported so Dart can drop the speech engine on Cmd-Q / SIGTERM while
+/// AppKit Metal is still valid. Hidden ggml symbols stay unexported; this
+/// is a `#[no_mangle]` cdylib entry like the FRB wire functions.
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn airo_mind_whisper_unload_speech() {
+    release_speech_resources();
+}
+
+fn release_speech_resources() {
+    cancel_processing();
+    *lock(&ENGINES) = None;
+}
+
+fn register_speech_exit_guard() {
+    use std::sync::Once;
+    static REGISTER: Once = Once::new();
+    REGISTER.call_once(|| {
+        #[allow(unsafe_code)]
+        {
+            extern "C" {
+                fn atexit(cb: extern "C" fn()) -> i32;
+            }
+            // SAFETY: the handler only takes process-local mutexes and drops
+            // `ENGINES`. It must not panic: atexit callbacks that unwind abort.
+            let rc = unsafe { atexit(release_speech_on_process_exit) };
+            debug_assert_eq!(rc, 0);
+        }
+    });
+}
+
+extern "C" fn release_speech_on_process_exit() {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(release_speech_resources));
+}
+
 /// Every meeting, newest first.
 pub fn list_meetings() -> Result<Vec<MeetingRecord>, String> {
     let library = lock(&LIBRARY);
@@ -862,10 +902,8 @@ mod tests {
 
     #[test]
     fn sarvam_edge_speech_available_when_model_file_present() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_sarvam_edge_test_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_sarvam_edge_test_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         let model_path = dir.join(SARVAM_EDGE_SPEECH_FILE);
         std::fs::write(&model_path, b"stub").expect("write stub onnx");
@@ -880,10 +918,8 @@ mod tests {
 
     #[test]
     fn sarvam_edge_speech_unavailable_without_model_file() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_sarvam_edge_empty_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_sarvam_edge_empty_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         assert!(sarvam_edge_speech_model_path(&dir).is_none());
         let _ = std::fs::remove_dir_all(&dir);
@@ -891,21 +927,20 @@ mod tests {
 
     #[test]
     fn embed_speaker_segment_returns_stub_vector_without_ecapa() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_embed_segment_test_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_embed_segment_test_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         let wav_path = dir.join("tone.wav");
         write_test_wav_i16(
             &wav_path,
-            &(0..16_000).map(|i| ((i % 200) as i16) - 100).collect::<Vec<_>>(),
+            &(0..16_000)
+                .map(|i| ((i % 200) as i16) - 100)
+                .collect::<Vec<_>>(),
             16_000,
         );
 
-        let embedding =
-            embed_speaker_segment(wav_path.to_string_lossy().into_owned(), 0, 1_000)
-                .expect("embed segment");
+        let embedding = embed_speaker_segment(wav_path.to_string_lossy().into_owned(), 0, 1_000)
+            .expect("embed segment");
         assert!(!embedding.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1067,9 +1102,14 @@ mod tests {
         )
         .is_err());
         assert!(get_transcript("nope".into()).is_err());
-        // Cancelling with nothing in flight is a no-op, not a crash: the user
-        // can press Stop on a screen whose job already finished.
+        // Cancelling / releasing with nothing in flight is a no-op, not a crash:
+        // the user can press Stop on a screen whose job already finished.
         cancel_processing();
+        release_speech_resources();
+        release_speech_resources();
+        register_speech_exit_guard();
+        register_speech_exit_guard();
+        assert!(!is_ready());
     }
 
     /// `ADR-0018 §4`: nothing above the Model Manager names a file. If a

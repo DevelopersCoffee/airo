@@ -107,7 +107,8 @@ cd "${ROOT}/packages/feature_mind"
 dart run build_runner build --delete-conflicting-outputs
 cd "${ROOT}/app"
 cp pubspec_mind.yaml pubspec.yaml
-trap 'git -C "${ROOT}" checkout app/pubspec.yaml app/pubspec.lock 2>/dev/null || true' EXIT
+cp "${ROOT}/app/tool/mind_macos_pubspec_overrides.yaml" pubspec_overrides.yaml
+trap 'git -C "${ROOT}" checkout app/pubspec.yaml app/pubspec.lock 2>/dev/null || true; rm -f "${ROOT}/app/pubspec_overrides.yaml"' EXIT
 flutter pub get
 flutter build macos -t lib/main_mind.dart \
   --dart-define=APP_VARIANT=mind \

@@ -182,7 +182,12 @@ class MindModule extends AppModule {
     GoRoute(
       path: AssistantRouteNames.assistant,
       name: AssistantRouteNames.assistantName,
-      builder: (context, state) => const AssistantScreen(),
+      builder: (context, state) {
+        if (shell == ShellId.mind) {
+          return ChatScreen(initialDraft: state.uri.queryParameters['prefill']);
+        }
+        return const AssistantScreen();
+      },
       routes: [
         GoRoute(
           path: AssistantRouteNames.chatSegment,
@@ -265,17 +270,17 @@ class MindModule extends AppModule {
     ),
   ];
 
-  /// Destinations the hub links out to that must not live inside the Mind
-  /// navigation branch.
+  /// Destinations reached from the hub that are not a Mind tab.
   ///
-  /// Wellbeing split off the old Mind hub in milestone 22: three cards and a
-  /// streak do not earn a slot in the bottom nav, so it is a pushed
-  /// destination rather than a tab.
+  /// Wellbeing is a skill plugin on the Mind desktop shell — tools run from
+  /// chat — so that shell does not mount a `/wellbeing` screen. The phone
+  /// super app still keeps the legacy destination.
   List<RouteBase> rootRoutesFor(ShellId shell) => [
-    GoRoute(
-      path: AssistantRouteNames.wellbeing,
-      name: AssistantRouteNames.wellbeingName,
-      builder: (context, state) => const WellbeingScreen(),
-    ),
+    if (shell != ShellId.mind)
+      GoRoute(
+        path: AssistantRouteNames.wellbeing,
+        name: AssistantRouteNames.wellbeingName,
+        builder: (context, state) => const WellbeingScreen(),
+      ),
   ];
 }

@@ -226,25 +226,27 @@ class ModelCatalog {
       task: ModelTask.textGeneration,
     ),
 
-    // Gemma 2B models (small, mobile-friendly)
+    // Gemma 2 2B Instruct — Unsloth public GGUF (Google's HF repo is gated
+    // and returns HTTP 401 without a token).
     const OfflineModelInfo(
       id: 'gemma-2b-it-q4',
-      name: 'Gemma 2B Instruct',
+      name: 'Gemma 2 2B Instruct',
       family: ModelFamily.gemma,
-      fileSizeBytes: 1500000000, // ~1.5 GB
+      fileSizeBytes: 1708582464,
       downloadUrl:
-          'https://huggingface.co/google/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf',
+          'https://huggingface.co/unsloth/gemma-2-it-GGUF/resolve/main/gemma-2-2b-it.q4_k_m.gguf',
       quantization: ModelQuantization.q4,
       parameterCount: 2000000000,
       contextLength: 8192,
-      credibility: ModelCredibility.official,
+      credibility: ModelCredibility.community,
       provider: AIProvider.gemma,
       description:
-          'Google Gemma 2B instruction-tuned model. '
-          'Compact and efficient for mobile devices.',
-      author: 'Google',
+          'Gemma 2 2B Instruct Q4_K_M GGUF from Unsloth. Public download — '
+          'no Hugging Face login or token.',
+      author: 'Unsloth',
       license: 'Apache-2.0',
-      huggingFaceId: 'google/gemma-2b-it-GGUF',
+      huggingFaceId: 'unsloth/gemma-2-it-GGUF',
+      licenseState: ModelLicenseState.open,
       modalities: [ModelModality.text],
       capabilities: [
         ModelCapability.chat,
@@ -252,7 +254,7 @@ class ModelCatalog {
         ModelCapability.documents,
         ModelCapability.meetingSummarization,
       ],
-      tags: ['chat', 'instruction', 'small', 'mobile-friendly'],
+      tags: ['chat', 'instruction', 'small', 'mobile-friendly', 'unsloth'],
     ),
 
     // Phi-3 Mini (Microsoft's small model)

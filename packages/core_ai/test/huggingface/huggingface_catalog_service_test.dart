@@ -168,6 +168,44 @@ void main() {
       expect(sawAuthor, isTrue);
     });
 
+    test(
+      'fetchGgufModels skips gated Google Gemma without touching the tree',
+      () async {
+        final dio = mockDio((options) {
+          if (options.uri.path == '/api/models') {
+            return jsonBytes([
+              {
+                'id': 'google/gemma-2b-it-GGUF',
+                'gated': 'manual',
+                'tags': ['gguf', 'gated', 'license:gemma'],
+              },
+            ]);
+          }
+          throw StateError('gated repos must not fetch ${options.uri}');
+        });
+
+        final service = HuggingFaceCatalogService(dio: dio);
+        final models = await service.fetchGgufModels(limit: 5);
+        expect(models, isEmpty);
+      },
+    );
+
+    test('isGatedHuggingFaceRepo treats Google Gemma as gated', () {
+      expect(
+        HuggingFaceCatalogService.isGatedHuggingFaceRepo({
+          'id': 'google/gemma-2b-it-GGUF',
+        }),
+        isTrue,
+      );
+      expect(
+        HuggingFaceCatalogService.isGatedHuggingFaceRepo({
+          'id': 'unsloth/gemma-4-E2B-it-GGUF',
+          'gated': false,
+        }),
+        isFalse,
+      );
+    });
+
     test('resolveFromRepoUrl parses URL and builds OfflineModelInfo', () async {
       final dio = mockDio((options) {
         final path = options.uri.path;
@@ -395,6 +433,62 @@ void main() {
       expect(registry.getModel('hf-Live-LiteRT'), isNotNull);
     });
 
+    test('desktop GGUF profile drops LiteRT rows from cache', () async {
+      final temp = await Directory.systemTemp.createTemp('hf_hydrate_desktop_');
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final cache = HuggingFaceCatalogCache(resolveRoot: () => temp);
+      await cache.save([
+        const OfflineModelInfo(
+          id: 'hf-litert-only',
+          name: 'LiteRT only',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 222,
+          downloadUrl: 'https://example.test/model.litertlm',
+          huggingFaceId: 'litert-community/cache-litert',
+          runtime: InferenceRuntime.litertLm,
+        ),
+        const OfflineModelInfo(
+          id: 'hf-gguf-only',
+          name: 'GGUF only',
+          family: ModelFamily.qwen,
+          fileSizeBytes: 111,
+          downloadUrl: 'https://example.test/model.gguf',
+          huggingFaceId: 'bartowski/cache-gguf',
+          provider: AIProvider.gguf,
+        ),
+      ]);
+      final dio = Dio(BaseOptions(responseType: ResponseType.bytes));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError,
+              ),
+            );
+          },
+        ),
+      );
+
+      final registry = ModelRegistry();
+      final hydration = await hydratePublicHuggingFaceModels(
+        registry,
+        service: HuggingFaceCatalogService(dio: dio, cache: cache),
+        cache: cache,
+        profile: ModelRuntimeProfile.desktopGguf,
+      );
+
+      expect(
+        hydration.availability,
+        HuggingFaceCatalogAvailability.offlineCached,
+      );
+      expect(registry.getModel('hf-litert-only'), isNull);
+      expect(registry.getModel('hf-gguf-only'), isNotNull);
+    });
+
     test('neverFetched when offline with empty cache', () async {
       final temp = await Directory.systemTemp.createTemp('hf_hydrate_empty_');
       addTearDown(() async {
@@ -425,6 +519,123 @@ void main() {
         HuggingFaceCatalogAvailability.neverFetched,
       );
       expect(hydration.models, isEmpty);
+    });
+
+    test(
+      'discovers Unsloth Gemma instruct GGUF from the Hub, not Google gated URLs',
+      () async {
+        final temp = await Directory.systemTemp.createTemp(
+          'hf_hydrate_unsloth_',
+        );
+        addTearDown(() async {
+          if (await temp.exists()) await temp.delete(recursive: true);
+        });
+        final cache = HuggingFaceCatalogCache(resolveRoot: () => temp);
+        var sawUnslothGemmaQuery = false;
+
+        final dio = mockDio((options) {
+          final path = options.uri.path;
+          final query = options.queryParameters;
+          if (path == '/api/models' &&
+              query['author'] == 'unsloth' &&
+              query['search'] == 'gemma') {
+            expect(query['filter'], 'gguf');
+            expect(query['sort'], 'lastModified');
+            sawUnslothGemmaQuery = true;
+            return jsonBytes([
+              {
+                'id': 'unsloth/gemma-4-E2B-it-GGUF',
+                'gated': false,
+                'tags': ['gguf', 'license:apache-2.0'],
+              },
+            ]);
+          }
+          if (path == '/api/models' && query['filter'] == 'gguf') {
+            return jsonBytes(const []);
+          }
+          if (path == '/api/models') {
+            return jsonBytes(const []);
+          }
+          if (path == '/api/models/unsloth/gemma-4-E2B-it-GGUF/tree/main') {
+            return jsonBytes([
+              {
+                'type': 'file',
+                'path': 'gemma-4-E2B-it-Q8_0.gguf',
+                'size': 5048352864,
+              },
+              {
+                'type': 'file',
+                'path': 'gemma-4-E2B-it-Q4_K_M.gguf',
+                'size': 3106738272,
+              },
+            ]);
+          }
+          throw StateError('unexpected ${options.uri}');
+        });
+
+        final registry = ModelRegistry();
+        final hydration = await hydratePublicHuggingFaceModels(
+          registry,
+          service: HuggingFaceCatalogService(dio: dio, cache: cache),
+          cache: cache,
+          organizationLimit: 5,
+          ggufLimit: 5,
+        );
+
+        expect(sawUnslothGemmaQuery, isTrue);
+        expect(hydration.availability, HuggingFaceCatalogAvailability.online);
+        final model = registry.getModel('hf-gemma-4-E2B-it-GGUF');
+        expect(model, isNotNull);
+        expect(model!.huggingFaceId, 'unsloth/gemma-4-E2B-it-GGUF');
+        expect(
+          model.downloadUrl,
+          'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf',
+        );
+        expect(model.downloadUrl, isNot(contains('google/gemma')));
+        expect(model.author, 'unsloth');
+      },
+    );
+
+    test('drops cached Google Gemma GGUF rows that would 401', () async {
+      final temp = await Directory.systemTemp.createTemp('hf_hydrate_gated_');
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final cache = HuggingFaceCatalogCache(resolveRoot: () => temp);
+      await cache.save([
+        const OfflineModelInfo(
+          id: 'hf-gemma-2b-it-GGUF',
+          name: 'Gemma 2B Instruct',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 1500000000,
+          downloadUrl:
+              'https://huggingface.co/google/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf',
+          huggingFaceId: 'google/gemma-2b-it-GGUF',
+          author: 'Google',
+        ),
+      ]);
+      final dio = Dio(BaseOptions(responseType: ResponseType.bytes));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError,
+              ),
+            );
+          },
+        ),
+      );
+
+      final registry = ModelRegistry();
+      await hydratePublicHuggingFaceModels(
+        registry,
+        service: HuggingFaceCatalogService(dio: dio, cache: cache),
+        cache: cache,
+      );
+
+      expect(registry.getModel('hf-gemma-2b-it-GGUF'), isNull);
     });
   });
 

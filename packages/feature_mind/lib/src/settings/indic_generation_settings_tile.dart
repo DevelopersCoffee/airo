@@ -6,10 +6,11 @@ import '../mind_indic_intelligence.dart';
 import 'indic_intelligence_preferences.dart';
 import 'mind_entitlements_provider.dart';
 
-/// Profile setting for meeting minutes generation: Auto, Qwen, or Sarvam-1.
+/// Profile setting for meeting minutes generation: Auto, Standard, or Enhanced Indic.
 ///
 /// Mirrors the generation mode chips on the Mind Models scribe panel so
-/// capture settings and the model hub stay aligned.
+/// capture settings and the model hub stay aligned. Labels stay vendor-free;
+/// catalog rows supply the actual package names.
 class IndicGenerationSettingsTile extends ConsumerWidget {
   const IndicGenerationSettingsTile({super.key});
 
@@ -46,12 +47,12 @@ class IndicGenerationSettingsTile extends ConsumerWidget {
           ),
           const DropdownMenuItem(
             value: MindIndicGenerationMode.standard,
-            child: Text('Standard (Qwen)'),
+            child: Text('Standard'),
           ),
           if (showEnhanced)
             const DropdownMenuItem(
               value: MindIndicGenerationMode.enhancedIndic,
-              child: Text('Enhanced Indic (Sarvam)'),
+              child: Text('Enhanced Indic'),
             ),
         ],
       ),
@@ -63,14 +64,14 @@ class IndicGenerationSettingsTile extends ConsumerWidget {
     MindIndicCapability capability,
   ) {
     if (!capability.isDesktopHost) {
-      return 'Mobile uses Qwen for minutes. Enhanced Indic is desktop-only.';
+      return 'Mobile uses the standard minutes pack. Enhanced Indic is desktop-only.';
     }
     return switch (mode) {
       MindIndicGenerationMode.auto =>
-        'Sarvam-1 when RAM and install allow; otherwise Qwen 0.5B.',
-      MindIndicGenerationMode.standard => 'Always Qwen 0.5B for minutes.',
+        'Indic pack when RAM and install allow; otherwise the standard minutes pack.',
+      MindIndicGenerationMode.standard => 'Always the standard minutes pack.',
       MindIndicGenerationMode.enhancedIndic =>
-        'Sarvam-1 when installed; fails if missing.',
+        'Indic pack when installed; fails if missing.',
     };
   }
 }

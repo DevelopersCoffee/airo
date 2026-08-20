@@ -27,6 +27,26 @@ void main() {
     expect(copy.repairActions.first, contains('Models'));
   });
 
+  test('maps mac missing-weights copy to the selected model name', () {
+    const gemma = OfflineModelInfo(
+      id: 'gemma-2b-it-q4',
+      name: 'Gemma 2 2B Instruct',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1_600_000_000,
+      filePath: '/tmp/gemma.gguf',
+    );
+    final copy = GgufLoadDiagnostics.describe(
+      model: gemma,
+      outcome: const GgufLoadOutcome.engineError('NotInstalled'),
+      isMacLike: true,
+    );
+
+    expect(copy.summary, contains('Gemma 2 2B Instruct'));
+    expect(copy.detail, isNot(contains('Qwen')));
+    expect(copy.detail, contains('Gemma 2 2B Instruct'));
+    expect(copy.reasonCode, 'model_missing');
+  });
+
   test('maps mac engine failures to actionable copy', () {
     final copy = GgufLoadDiagnostics.describe(
       model: model,

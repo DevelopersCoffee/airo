@@ -6,3 +6,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// surfaces that as `MindUnavailable.bridgeMissing` — the same status a build
 /// with no native artifact linked in gets.
 Future<ExternalLibrary?> resolveEngineLibrary(String stem) async => null;
+
+/// Web has no process signals and no native speech dylib.
+void listenForQuitSignals(void Function() onQuit) {}
+
+void unloadWhisperSpeech() {}

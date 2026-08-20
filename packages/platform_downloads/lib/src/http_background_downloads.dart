@@ -115,7 +115,19 @@ class HttpBackgroundDownloads implements BackgroundDownloads {
 
     try {
       final request = await client.getUrl(job.request.source);
+      request.followRedirects = true;
+      request.maxRedirects = 8;
       final response = await request.close();
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        final host = job.request.source.host;
+        final gatedHf = host.contains('huggingface.co');
+        throw HttpException(
+          gatedHf
+              ? 'HTTP ${response.statusCode}: this Hugging Face file is gated. '
+                    'Use a public GGUF (Unsloth) or a token with license access.'
+              : 'HTTP ${response.statusCode}',
+        );
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException('HTTP ${response.statusCode}');
       }

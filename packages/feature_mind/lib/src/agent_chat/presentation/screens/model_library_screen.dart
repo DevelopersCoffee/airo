@@ -587,7 +587,7 @@ class AssistantModelLibraryState {
       name: 'Choose a local model',
       runtime: 'On-device package required',
       description: isMacLike
-          ? 'Download a GGUF package (for example Qwen 1.5B) from Models, then pick it here to chat on $platformLabel.'
+          ? 'Download a GGUF package from Models, then pick it here to chat on $platformLabel.'
           : 'Download a compatible on-device package from Models to chat on $platformLabel.',
       bestFor: const [AssistantTask.chat],
       tags: const ['Setup'],
@@ -929,6 +929,7 @@ class _ModelLibraryContent extends ConsumerWidget {
           candidate: state.recommended,
           onOpenModelManager: onOpenModelManager,
         ),
+        ..._installedModelSection(context, ref, theme, selectedModelId),
         const SizedBox(height: 16),
         Text('Choose category', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
@@ -966,12 +967,70 @@ class _ModelLibraryContent extends ConsumerWidget {
     );
   }
 
+  List<Widget> _installedModelSection(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    String? selectedModelId,
+  ) {
+    final installed = [
+      for (final candidate in state.candidates)
+        if (candidate.local && candidate.available && candidate.package != null)
+          candidate,
+    ];
+    if (installed.isEmpty) return const [];
+
+    final chatTemplate = AssistantProjectTemplate.values.firstWhere(
+      (template) => template.task == AssistantTask.chat,
+    );
+    return [
+      const SizedBox(height: 16),
+      Text('On this device', style: theme.textTheme.titleSmall),
+      const SizedBox(height: 8),
+      for (final candidate in installed)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Card(
+            child: ListTile(
+              selected: selectedModelId == candidate.id,
+              title: Text(candidate.name),
+              subtitle: Text('${candidate.runtime} · ${candidate.sizeLabel}'),
+              trailing: Icon(
+                selectedModelId == candidate.id
+                    ? Icons.check_circle
+                    : Icons.chevron_right,
+              ),
+              onTap: () => _handleStartCandidate(
+                context,
+                ref,
+                candidate: candidate,
+                template: chatTemplate,
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
   Future<void> _handleStartProject(
     BuildContext context,
     WidgetRef ref,
     AssistantProjectTemplate template,
-  ) async {
-    final candidate = _startCandidateFor(state, template.task);
+  ) {
+    return _handleStartCandidate(
+      context,
+      ref,
+      candidate: _startCandidateFor(state, template.task),
+      template: template,
+    );
+  }
+
+  Future<void> _handleStartCandidate(
+    BuildContext context,
+    WidgetRef ref, {
+    required AssistantModelCandidate candidate,
+    required AssistantProjectTemplate template,
+  }) async {
     final hasDownloadedPackage = candidate.package?.isDownloaded ?? false;
     ref.read(selectedAssistantTaskProvider.notifier).state = template.task;
     // Read the notifier up front: the library provider can reload while a
