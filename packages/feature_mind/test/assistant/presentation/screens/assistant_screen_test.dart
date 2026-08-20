@@ -26,7 +26,7 @@ void main() {
       'Audio Scribe',
       'Prompt Lab',
       'Mobile Actions & Tiny Garden',
-      'Model Management & Benchmark',
+      'Intelligence',
       'Device Capability Report',
       'Model Advisor',
     ]) {

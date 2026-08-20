@@ -14,7 +14,10 @@ import '../intelligent_model_manager_provider.dart';
 /// Screen for displaying and managing AI models using glassmorphic UI elements,
 /// gradient backgrounds, and animations.
 class IntelligentModelManagerScreen extends ConsumerWidget {
-  const IntelligentModelManagerScreen({super.key});
+  const IntelligentModelManagerScreen({super.key, this.embedded = false});
+
+  /// When true, omit the local app bar so Intelligence can host this tab.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,11 +27,13 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
 
     return AiroResponsiveScaffold(
       padding: EdgeInsets.zero,
-      appBar: AppBar(
-        title: const Text('Intelligent Model Manager'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: embedded
+          ? null
+          : AppBar(
+              title: const Text('Intelligent Model Manager'),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -61,6 +66,30 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
               );
             }
 
+            const query = IntelligenceQuery();
+            const resolver = AiProfileResolver();
+            final catalog = registry.allModels;
+            final grouped = query.groupByCapability(catalog);
+            final assigned = <String>{};
+            final sections = <(String, List<ModelEntry>)>[];
+            for (final entry in grouped.entries) {
+              final inGroup = models
+                  .where(
+                    (model) =>
+                        entry.value.any((info) => info.id == model.id) &&
+                        assigned.add(model.id),
+                  )
+                  .toList(growable: false);
+              if (inGroup.isEmpty) continue;
+              sections.add((entry.key.displayName, inGroup));
+            }
+            final leftovers = models
+                .where((model) => assigned.add(model.id))
+                .toList(growable: false);
+            if (leftovers.isNotEmpty) {
+              sections.add(('Other', leftovers));
+            }
+
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               children: [
@@ -69,32 +98,40 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _buildQueueSummary(context, visibleQueue),
                 ],
-                const SizedBox(height: 20),
-                for (final model in models) ...[
-                  Builder(
-                    builder: (context) {
-                      final modelInfo = registry.getModel(model.id);
-                      if (modelInfo == null) return const SizedBox.shrink();
-
-                      final downloadProgress = activeDownloads[model.id];
-                      final isDownloading =
-                          downloadProgress?.isActive == true ||
-                          downloadProgress?.isFailed == true;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildGlassModelCard(
-                          context,
-                          ref,
-                          model: model,
-                          modelInfo: modelInfo,
-                          isActive: model.isActive,
-                          isDownloading: isDownloading,
-                          downloadProgress: downloadProgress,
-                        ),
-                      );
-                    },
+                for (final section in sections) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    section.$1.toUpperCase(),
+                    style: IntelligenceTypography.kicker(),
                   ),
+                  const SizedBox(height: 12),
+                  for (final model in section.$2)
+                    Builder(
+                      builder: (context) {
+                        final modelInfo = registry.getModel(model.id);
+                        if (modelInfo == null) return const SizedBox.shrink();
+
+                        final downloadProgress = activeDownloads[model.id];
+                        final isDownloading =
+                            downloadProgress?.isActive == true ||
+                            downloadProgress?.isFailed == true;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildGlassModelCard(
+                            context,
+                            ref,
+                            model: model,
+                            modelInfo: modelInfo,
+                            isActive: model.isActive,
+                            isDownloading: isDownloading,
+                            downloadProgress: downloadProgress,
+                            usedBy: resolver.usedBy(modelInfo, catalog),
+                            badges: query.badgesFor(modelInfo),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ],
             );
@@ -242,6 +279,8 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     required bool isActive,
     required bool isDownloading,
     required ModelDownloadProgress? downloadProgress,
+    List<String> usedBy = const [],
+    List<String> badges = const [],
   }) {
     final theme = Theme.of(context);
     // The scribe owns its own weights: it downloads, verifies and loads them
@@ -343,17 +382,30 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                               ],
                             ),
                           ],
+                          const SizedBox(height: 8),
+                          if (badges.isNotEmpty)
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                for (final badge in badges.take(4))
+                                  Text(
+                                    badge,
+                                    style: IntelligenceTypography.status(),
+                                  ),
+                              ],
+                            ),
                           const SizedBox(height: 4),
                           Text(
-                            modelInfo.author != null
-                                ? 'By ${modelInfo.author}'
-                                : 'Local Model',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
+                            '${_formatBytes(modelInfo.fileSizeBytes)}'
+                            '${modelInfo.contextLength > 0 ? ' · ${modelInfo.contextLength} ctx' : ''}',
+                            style: IntelligenceTypography.metadata(),
                           ),
+                          if (usedBy.isNotEmpty)
+                            Text(
+                              'Used by ${usedBy.join(', ')}',
+                              style: IntelligenceTypography.metadata(),
+                            ),
                         ],
                       ),
                     ),
@@ -381,14 +433,42 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  model.description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                _buildModelMetrics(context, modelInfo),
+                const SizedBox(height: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: Text(
+                      'Technical details',
+                      style: IntelligenceTypography.status(),
+                    ),
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          model.description,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.85,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Runtime ${modelInfo.effectiveRuntime.displayName}'
+                        '${modelInfo.quantization != ModelQuantization.unknown ? ' · ${modelInfo.quantization.displayName}' : ''}',
+                        style: IntelligenceTypography.metadata(),
+                      ),
+                      if (modelInfo.languages.isNotEmpty)
+                        Text(
+                          'Languages ${modelInfo.languages.join(', ')}',
+                          style: IntelligenceTypography.metadata(),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                _buildModelMetrics(context, modelInfo),
                 const SizedBox(height: 16),
                 if (isExternallyManaged)
                   _buildManagedByScribePanel(context, modelInfo)
@@ -873,9 +953,14 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 label: const Text('Benchmark'),
               ),
               OutlinedButton.icon(
-                onPressed: () => _openHealthCenter(context, ref, modelInfo),
-                icon: const Icon(Icons.help_outline),
+                onPressed: () => _openWhySelected(context, modelInfo),
+                icon: const Icon(Icons.auto_awesome_outlined),
                 label: const Text('Why?'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openHealthCenter(context, ref, modelInfo),
+                icon: const Icon(Icons.monitor_heart_outlined),
+                label: const Text('Runtime'),
               ),
               if (model.hasUpdate)
                 OutlinedButton.icon(
@@ -967,6 +1052,27 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openWhySelected(BuildContext context, OfflineModelInfo model) {
+    const query = IntelligenceQuery();
+    final capability = model.capabilities.isNotEmpty
+        ? model.capabilities.first
+        : ModelCapability.chat;
+    final selection = query.select(capability: capability, catalog: [model]);
+    final why =
+        selection.why ??
+        WhySelected(
+          modelId: model.id,
+          automatic: true,
+          reasons: const [
+            WhySelectedReason(
+              code: WhySelectedCode.taskFit,
+              message: 'This package is in the catalog for this device.',
+            ),
+          ],
+        );
+    showWhySelectedSheet(context, why);
   }
 
   void _openHealthCenter(

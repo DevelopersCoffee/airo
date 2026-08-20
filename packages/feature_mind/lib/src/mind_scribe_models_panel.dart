@@ -5,12 +5,15 @@ import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'intelligence/intelligence_typography.dart';
+import 'intelligence/why_selected_sheet.dart';
 import 'mind_indic_intelligence.dart';
 import 'mind_model_advisor.dart';
 import 'mind_service.dart';
 import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
 import 'settings/indic_intelligence_preferences.dart';
+import 'widgets/mind_palette.dart';
 
 /// Shell override supplies the live scribe [MindService] (optional downloads,
 /// Try it navigation). Mind shell overrides this at composition root.
@@ -150,21 +153,46 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
       memoryInfo: widget.memoryInfo,
     );
     final theme = Theme.of(context);
+    const query = IntelligenceQuery();
+    final catalog = widget.scribeModelsById.values.toList(growable: false);
+    final speechSelection = query.select(
+      capability: ModelCapability.audioUnderstanding,
+      catalog: catalog,
+      constraints: IntelligenceConstraints(
+        memory: widget.memoryInfo,
+        languages: const ['en', 'hi', 'mr'],
+        sizeBias: IntelligenceSizeBias.compact,
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text('MEETING ASSISTANT', style: IntelligenceTypography.kicker()),
+        const SizedBox(height: 8),
         Text(
-          'Meeting scribe picks',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          'Meeting Assistant',
+          style: IntelligenceTypography.sectionTitle(theme),
         ),
         const SizedBox(height: 4),
         Text(
-          'Airo recommends a speech + minutes stack for your device. '
-          'Nothing runs until the weights are on disk.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          'Speech Automatic. Airo picks the pipeline for this device.',
+          style: IntelligenceTypography.secondary(theme),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Text('Speech', style: IntelligenceTypography.cardTitle(theme)),
+            const SizedBox(width: 12),
+            Text('Automatic', style: IntelligenceTypography.status()),
+            const Spacer(),
+            if (speechSelection.why != null)
+              TextButton(
+                onPressed: () =>
+                    showWhySelectedSheet(context, speechSelection.why!),
+                child: const Text('Why?'),
+              ),
+          ],
         ),
         if (capability.proEnabled && capability.isDesktopHost) ...[
           const SizedBox(height: 12),
@@ -175,7 +203,7 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
           ),
         ],
         const SizedBox(height: 16),
-        _RecommendationCard(
+        _StrategyCard(
           recommendation: recommendation.featured,
           downloading: _downloadingStackId == recommendation.featured.id,
           progress: _downloadingStackId == recommendation.featured.id
@@ -192,12 +220,12 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
         ],
         if (recommendation.alternates.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Text('Alternates', style: theme.textTheme.titleSmall),
+          Text('STRATEGIES', style: IntelligenceTypography.kicker()),
           const SizedBox(height: 8),
           for (final alternate in recommendation.alternates)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _RecommendationCard(
+              child: _StrategyCard(
                 recommendation: alternate,
                 downloading: _downloadingStackId == alternate.id,
                 progress: _downloadingStackId == alternate.id
@@ -206,13 +234,6 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
                 onPrimary: () => _handlePrimary(alternate),
               ),
             ),
-        ],
-        if (recommendation.speechStub != null) ...[
-          const SizedBox(height: 8),
-          _RecommendationCard(
-            recommendation: recommendation.speechStub!,
-            onPrimary: null,
-          ),
         ],
       ],
     );
@@ -231,10 +252,7 @@ class _MindScribeModelsPanelState extends ConsumerState<MindScribeModelsPanel> {
 }
 
 class _GenerationModeSelector extends StatelessWidget {
-  const _GenerationModeSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _GenerationModeSelector({required this.value, required this.onChanged});
 
   final MindIndicGenerationMode value;
   final ValueChanged<MindIndicGenerationMode> onChanged;
@@ -257,13 +275,13 @@ class _GenerationModeSelector extends StatelessWidget {
 
   static String _label(MindIndicGenerationMode mode) => switch (mode) {
     MindIndicGenerationMode.auto => 'Auto',
-    MindIndicGenerationMode.standard => 'Standard (Qwen)',
-    MindIndicGenerationMode.enhancedIndic => 'Enhanced Indic (Sarvam)',
+    MindIndicGenerationMode.standard => 'Standard',
+    MindIndicGenerationMode.enhancedIndic => 'Enhanced Indic',
   };
 }
 
-class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({
+class _StrategyCard extends StatelessWidget {
+  const _StrategyCard({
     required this.recommendation,
     required this.onPrimary,
     this.downloading = false,
@@ -279,16 +297,17 @@ class _RecommendationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final outline = recommendation.featured
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outlineVariant;
+        ? MindPalette.local
+        : MindPalette.grid;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border.all(color: outline, width: recommendation.featured ? 2 : 1),
+        border: Border.all(
+          color: outline,
+          width: recommendation.featured ? 2 : 1,
+        ),
         borderRadius: BorderRadius.circular(12),
-        color: recommendation.featured
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.22)
-            : theme.colorScheme.surface,
+        color: MindPalette.surface,
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -303,43 +322,35 @@ class _RecommendationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        recommendation.badgeLabel,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        recommendation.featured ? 'READY' : 'STRATEGY',
+                        style: IntelligenceTypography.kicker(),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        recommendation.headline,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        recommendation.strategyTitle,
+                        style: IntelligenceTypography.cardTitle(theme),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        recommendation.subheadline,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        recommendation.strategySubtitle,
+                        style: IntelligenceTypography.secondary(theme),
                       ),
                     ],
                   ),
                 ),
                 Text(
                   recommendation.sizeLabel,
-                  style: theme.textTheme.bodySmall,
+                  style: IntelligenceTypography.metadata(),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(recommendation.runtimeNote, style: theme.textTheme.bodyMedium),
             if (recommendation.blockedReason != null) ...[
               const SizedBox(height: 8),
               Text(
                 recommendation.blockedReason!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
+                style: IntelligenceTypography.secondary(
+                  theme,
+                ).copyWith(color: theme.colorScheme.error),
               ),
             ],
             const SizedBox(height: 12),
@@ -350,10 +361,7 @@ class _RecommendationCard extends StatelessWidget {
                     : null,
               ),
               const SizedBox(height: 6),
-              Text(
-                'Downloading ${progress!.fileName}…',
-                style: theme.textTheme.bodySmall,
-              ),
+              Text('Downloading…', style: IntelligenceTypography.metadata()),
             ] else if (onPrimary != null &&
                 recommendation.action != MindModelRecommendationAction.disabled)
               Align(

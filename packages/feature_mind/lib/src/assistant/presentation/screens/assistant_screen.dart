@@ -89,10 +89,10 @@ class AssistantScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 10),
           AiroActionCard(
-            title: 'Model Management & Benchmark',
+            title: 'Intelligence',
             subtitle:
-                'Install models, check readiness, and understand performance.',
-            icon: Icons.analytics_outlined,
+                'Pick a job. Airo selects, installs, and explains the models.',
+            icon: Icons.auto_awesome_outlined,
             onTap: () => context.push('/assistant/models'),
           ),
           const SizedBox(height: 10),

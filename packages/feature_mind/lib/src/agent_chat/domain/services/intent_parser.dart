@@ -487,7 +487,7 @@ class IntentParser {
       case IntentType.openMap:
         return 'Opening a map';
       case IntentType.modelManagement:
-        return 'Opening Model Management';
+        return 'Opening Intelligence';
       case IntentType.openOffers:
         return 'Opening Offers';
       case IntentType.openReader:

@@ -43,12 +43,14 @@ export 'src/mind_model_advisor.dart'
         MindModelRecommendationBadge,
         MindModelRecommendationSeverity,
         MindScribeModelIds,
-        MindScribeStackRecommendation;
+        MindScribeStackRecommendation,
+        MindScribeStrategy;
 
 export 'src/mind_scribe_models_panel.dart'
     show
         mindScribeServiceProvider,
         MindScribeModelsPanel,
+        requiredModelForScribeCatalogId,
         scribeCatalogIdToFileName;
 
 export 'src/settings/indic_generation_settings_tile.dart'
@@ -121,6 +123,14 @@ export 'src/agent_chat/presentation/screens/model_health_center_screen.dart';
 export 'src/agent_chat/presentation/screens/model_library_screen.dart';
 export 'src/agent_chat/presentation/screens/notifications_screen.dart';
 export 'src/agent_chat/presentation/screens/profile_screen.dart';
+
+// Task-first Intelligence control center
+export 'src/intelligence/ai_profile.dart';
+export 'src/intelligence/intelligence_home_screen.dart';
+export 'src/intelligence/intelligence_providers.dart';
+export 'src/intelligence/intelligence_typography.dart';
+export 'src/intelligence/profile_customize_sheet.dart';
+export 'src/intelligence/why_selected_sheet.dart';
 
 // Wellbeing
 export 'src/wellbeing/presentation/screens/wellbeing_screen.dart';

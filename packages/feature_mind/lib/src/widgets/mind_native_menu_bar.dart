@@ -9,6 +9,7 @@ import '../runtime/models/log_models.dart';
 /// Optional navigation hook for shell routes the menu bar cannot import.
 abstract final class MindRuntimeNavigation {
   static void Function()? openHub;
+  static void Function()? openIntelligence;
 }
 
 /// The macOS native menu bar for a Mind surface.
@@ -99,11 +100,11 @@ class MindNativeMenuBar extends StatelessWidget {
           ],
         ),
         PlatformMenu(
-          label: 'Model',
+          label: 'Intelligence',
           menus: [
             PlatformMenuItem(
-              label: 'Model Library',
-              onSelected: () => unawaited(runtime.models.all()),
+              label: 'Intelligence',
+              onSelected: () => MindRuntimeNavigation.openIntelligence?.call(),
             ),
           ],
         ),

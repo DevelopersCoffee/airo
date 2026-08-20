@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/iptv/iptv_cast_provider_override.dart';
+import '../../features/settings/application/ai_model_management.dart';
 import '../providers/navigation_provider.dart';
 
 /// Shell-owned provider overrides, plus whatever the composed modules bring.
@@ -38,5 +39,6 @@ List<Override> buildMainProviderOverrides({
         appNavigationPolicy.without(AppNavigationTab.assistant),
       ),
     ...moduleRegistry.allProviderOverrides,
+    ...intelligenceLiveCatalogOverrides(),
   ];
 }

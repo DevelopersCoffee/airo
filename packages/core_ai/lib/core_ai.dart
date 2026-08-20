@@ -102,3 +102,5 @@ export 'src/intelligent_model_manager/model_entry.dart';
 export 'src/intelligent_model_manager/model_install_receipt.dart';
 export 'src/intelligent_model_manager/intelligent_model_manager.dart';
 export 'src/intelligent_model_manager/model_manager_contracts.dart';
+export 'src/intelligence/intelligence_query.dart';
+export 'src/intelligence/why_selected.dart';
