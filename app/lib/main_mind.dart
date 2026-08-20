@@ -102,9 +102,7 @@ Future<void> main() {
       registry = buildMindModuleRegistry();
       return ProviderScope(
         overrides: buildMindProviderOverrides(prefs: prefs, registry: registry),
-        child: MindMacOsRoot(
-          child: AiroMindApp(registry: registry),
-        ),
+        child: MindMacOsRoot(child: AiroMindApp(registry: registry)),
       );
     },
     afterRunApp: () {
