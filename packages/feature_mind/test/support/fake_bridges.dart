@@ -130,6 +130,9 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   bool get isLoaded => _loaded;
 
   @override
+  bool get isEngineReady => _loaded;
+
+  @override
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,

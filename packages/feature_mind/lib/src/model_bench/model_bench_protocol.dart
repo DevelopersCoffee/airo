@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../runtime/models/model_models.dart';
 
 /// Default warmup / timed counts. Matches `airo_mind_core::BenchProtocol`.
@@ -195,5 +197,25 @@ Future<GenerationBenchReport> runGenerationBench({
     warmupIterations: warmupIterations,
     timedIterations: timedIterations,
     metadata: metadata,
+  );
+}
+
+/// Backend / thread labels for a production Model Bench reading.
+///
+/// macOS llama.cpp is built with Metal. Windows CUDA is a named seam, not a
+/// claim that this build linked `llama-cpp-2/cuda` — unlabeled Windows stays
+/// [InferenceAccelBackend.auto] until a CUDA-enabled binary records `cuda`.
+/// Supervisor pins generation to one thread.
+GenerationBenchMetadata productionGenerationBenchMetadata() {
+  final backend = switch (defaultTargetPlatform) {
+    TargetPlatform.macOS || TargetPlatform.iOS => InferenceAccelBackend.metal,
+    TargetPlatform.android => InferenceAccelBackend.auto,
+    _ => InferenceAccelBackend.auto,
+  };
+  return GenerationBenchMetadata(
+    backend: backend,
+    clockControl: GpuClockControl.unlocked,
+    gpuLayers: backend == InferenceAccelBackend.metal ? -1 : 0,
+    threadCount: 1,
   );
 }

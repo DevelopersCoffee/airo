@@ -13,8 +13,12 @@ class _FakeModelPort implements ModelPort {
   List<MindModel> mindModels;
   ({int usedBytes, int budgetBytes}) storageResult;
   Object? unloadError;
+  Object? benchError;
+  ModelBench? nextBench;
+  Future<ModelBench>? pendingBench;
 
-  final _downloadControllers = <String, StreamController<({int received, int total})>>{};
+  final _downloadControllers =
+      <String, StreamController<({int received, int total})>>{};
 
   StreamController<({int received, int total})> controllerFor(String id) =>
       _downloadControllers.putIfAbsent(
@@ -42,8 +46,13 @@ class _FakeModelPort implements ModelPort {
       controllerFor(modelId).stream;
 
   @override
-  Future<ModelBench> benchmark(String modelId) async =>
-      throw UnimplementedError();
+  Future<ModelBench> benchmark(String modelId) async {
+    final error = benchError;
+    if (error != null) throw error;
+    final pending = pendingBench;
+    if (pending != null) return pending;
+    return nextBench ?? (throw UnimplementedError());
+  }
 
   @override
   Stream<ThermalState> thermal() => const Stream.empty();
@@ -158,15 +167,15 @@ void main() {
     expect(find.text('Download anyway'), findsOneWidget);
   });
 
-  testWidgets('an eviction that breaks a capability names it', (
-    tester,
-  ) async {
-    final port = _FakeModelPort(
-      mindModels: const [_residentModel],
-      storageResult: (usedBytes: 200, budgetBytes: 1000),
-    )..unloadError = StateError(
-        'Unloading Whisper base would break Audio Scribe.',
-      );
+  testWidgets('an eviction that breaks a capability names it', (tester) async {
+    final port =
+        _FakeModelPort(
+            mindModels: const [_residentModel],
+            storageResult: (usedBytes: 200, budgetBytes: 1000),
+          )
+          ..unloadError = StateError(
+            'Unloading Whisper base would break Audio Scribe.',
+          );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -185,10 +194,7 @@ void main() {
     await tester.tap(find.text('Unload'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('would break Audio Scribe'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('would break Audio Scribe'), findsOneWidget);
   });
 
   testWidgets('distinguishes loaded, resident, and available badges', (
@@ -221,4 +227,75 @@ void main() {
     expect(find.text('Resident'), findsOneWidget);
     expect(find.text('Available to download'), findsOneWidget);
   });
+
+  testWidgets('Run bench shows tok/s after ModelPort.benchmark resolves', (
+    tester,
+  ) async {
+    final pending = Completer<ModelBench>();
+    final port = _FakeModelPort(
+      mindModels: const [_residentModel],
+      storageResult: (usedBytes: 200, budgetBytes: 1000),
+    )..pendingBench = pending.future;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ModelManagementPanel(
+            models: port,
+            connectivity: _FakeConnectivity(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Run bench'));
+    await tester.pump();
+    expect(find.text('Measuring…'), findsOneWidget);
+
+    pending.complete(
+      ModelBench(
+        tokensPerSecond: 21.5,
+        firstTokenMs: 120,
+        residentBytes: 200,
+        batteryPercentPerHour: 0,
+        measuredUnder: ThermalState.nominal,
+        measuredAtMs: 1,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('21.5 tok/s · 120 ms to first token'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Run bench names an unavailable engine instead of inventing tok/s',
+    (tester) async {
+      final port = _FakeModelPort(
+        mindModels: const [_residentModel],
+        storageResult: (usedBytes: 200, budgetBytes: 1000),
+      )..benchError = StateError('generation engine is not loaded');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ModelManagementPanel(
+              models: port,
+              connectivity: _FakeConnectivity(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Run bench'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Bench unavailable:'), findsOneWidget);
+      expect(
+        find.textContaining('generation engine is not loaded'),
+        findsOneWidget,
+      );
+    },
+  );
 }

@@ -130,6 +130,10 @@ rust.MeetingMetricRecord toWhisperMetric(llama_mi.MeetingMetricRecord record) =>
 abstract interface class MindGenerationBridge {
   bool get isLoaded;
 
+  /// True when a generate() would hit a live engine, including one this
+  /// Dart instance did not itself load (the llama slot is process-global).
+  bool get isEngineReady;
+
   Future<void> ensureLoaded({
     required String modelsDir,
     required int memoryBudgetMb,
@@ -173,6 +177,16 @@ class RustMindGenerationBridge implements MindGenerationBridge {
 
   @override
   bool get isLoaded => _loaded;
+
+  @override
+  bool get isEngineReady {
+    if (_loaded) return true;
+    try {
+      return llama.isReady();
+    } on Object {
+      return false;
+    }
+  }
 
   @override
   Future<void> ensureLoaded({
