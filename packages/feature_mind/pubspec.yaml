@@ -57,6 +57,8 @@ dependencies:
   # isolate once it crosses ~50 KB, per the repo's own parsing rule.
   core_workers:
     path: ../core_workers
+  platform_calendar:
+    path: ../platform_calendar
   # Share-sheet + save-to-folder for markdown export (#1663). Same package,
   # same pinned version, as feature_iptv's backup/restore export -- see
   # platform_backup_document_gateway.dart there for the house pattern this

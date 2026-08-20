@@ -99,6 +99,7 @@ export 'src/assistant/assistant_surface_policy.dart'
     show AssistantSurfacePolicy, assistantSurfacePolicyProvider;
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
+export 'src/assistant/presentation/screens/calendar_screen.dart';
 export 'src/assistant/presentation/screens/mobile_actions_screen.dart';
 export 'src/assistant/presentation/screens/prompt_lab_screen.dart';
 

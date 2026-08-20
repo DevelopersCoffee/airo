@@ -94,7 +94,7 @@ implementation detail — that's the domain agent's job.
 | Playback Architect | `platform_player`, `platform_streams`, `platform_media`, `core_media_routing` | Decoder/renderer changes, DRM, subtitle/audio pipeline | Changes that bypass the media routing contract |
 | Media Intelligence Architect | `platform_epg`, `feature_iptv`, `platform_playlist`, `platform_playlist_export`, `platform_playlist_import`, `platform_favorites`, `platform_history` | Provider adapters, EPG parsing/normalization, ranking | Provider-specific hacks that leak into shared models |
 | TV Experience Architect | `core_remote_control`, `platform_receiver_modes` | Focus engine, remote input mapping, overscan handling | Focus traversal that breaks 10-foot navigation |
-| Platform Architect | `core_native`, `platform_channels`, `core_device_identity`, `core_pairing`, `core_protocol`, `platform_device_profile`, `platform_device_qualification` | Native bridge/FFI shape, platform channel contracts | Direct native calls bypassing the channel contract |
+| Platform Architect | `core_native`, `platform_channels`, `platform_calendar`, `core_device_identity`, `core_pairing`, `core_protocol`, `platform_device_profile`, `platform_device_qualification` | Native bridge/FFI shape, platform channel contracts | Direct native calls bypassing the channel contract |
 | Edge Architect | `core_orchestration_storage`, `core_watch_progress`, `core_presence` | Offline/caching/sync design, background workers | Sync logic duplicated outside these packages |
 
 ### Other sub-app domains (existing, kept)

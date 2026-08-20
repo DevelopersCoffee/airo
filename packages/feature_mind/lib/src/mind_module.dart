@@ -15,6 +15,7 @@ import 'agent_chat/presentation/screens/profile_screen.dart';
 import 'assistant/assistant_surface_policy.dart';
 import 'assistant/presentation/screens/assistant_screen.dart';
 import 'assistant/presentation/screens/audio_scribe_screen.dart';
+import 'assistant/presentation/screens/calendar_screen.dart';
 import 'assistant/presentation/screens/mobile_actions_screen.dart';
 import 'assistant/presentation/screens/prompt_lab_screen.dart';
 import 'capture/application/speech_language_preference.dart';
@@ -260,6 +261,11 @@ class MindModule extends AppModule {
           path: AssistantRouteNames.mobileActionsSegment,
           name: AssistantRouteNames.mobileActionsName,
           builder: (context, state) => const MobileActionsScreen(),
+        ),
+        GoRoute(
+          path: AssistantRouteNames.calendarSegment,
+          name: AssistantRouteNames.calendarName,
+          builder: (context, state) => const CalendarScreen(),
         ),
       ],
     ),

@@ -38,6 +38,7 @@ class AssistantRouteNames {
   static const String audioScribe = '$assistant/$audioScribeSegment';
   static const String agentSkills = '$assistant/$agentSkillsSegment';
   static const String mobileActions = '$assistant/$mobileActionsSegment';
+  static const String calendar = '$assistant/$calendarSegment';
 
   /// Wellbeing is a destination rather than a tab, so it sits at the root.
   static const String wellbeing = '/wellbeing';
@@ -57,6 +58,7 @@ class AssistantRouteNames {
   static const String audioScribeName = 'assistant_audio_scribe';
   static const String agentSkillsName = 'assistant_agent_skills';
   static const String mobileActionsName = 'assistant_mobile_actions';
+  static const String calendarName = 'assistant_calendar';
   static const String wellbeingName = 'Wellbeing';
 
   // Child segments, for shells that declare the routes as nested `GoRoute`s.
@@ -70,4 +72,5 @@ class AssistantRouteNames {
   static const String audioScribeSegment = 'audio-scribe';
   static const String agentSkillsSegment = 'skills';
   static const String mobileActionsSegment = 'mobile-actions';
+  static const String calendarSegment = 'calendar';
 }
