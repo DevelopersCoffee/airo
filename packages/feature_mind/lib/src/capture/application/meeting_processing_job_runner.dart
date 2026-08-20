@@ -34,13 +34,16 @@ class MeetingProcessingJobRunner {
     required MindService mindService,
     required AudioRetentionPolicy Function() retentionPolicy,
     SpeechLanguageMode Function()? languageMode,
+    MeetingProcessedCallback? onProcessed,
   }) : _mindService = mindService,
        _retentionPolicy = retentionPolicy,
-       _languageMode = languageMode ?? (() => SpeechLanguageMode.fallback);
+       _languageMode = languageMode ?? (() => SpeechLanguageMode.fallback),
+       _onProcessed = onProcessed;
 
   final MindService _mindService;
   final AudioRetentionPolicy Function() _retentionPolicy;
   final SpeechLanguageMode Function() _languageMode;
+  final MeetingProcessedCallback? _onProcessed;
 
   Future<void> call(MeetingProcessingJob job) async {
     final mode = _languageMode();
@@ -48,7 +51,9 @@ class MeetingProcessingJobRunner {
       speechLanguage: mode.speechLanguage,
     );
     if (!ready.isReady) {
-      throw StateError(ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.');
+      throw StateError(
+        ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.',
+      );
     }
     MindProgress? last;
     await for (final progress in _mindService.process(
@@ -60,6 +65,10 @@ class MeetingProcessingJobRunner {
     }
     if (last == null || last.stage == MindStage.failed) {
       throw StateError(last?.error ?? 'Processing produced no result.');
+    }
+    final onProcessed = _onProcessed;
+    if (onProcessed != null) {
+      await onProcessed(job, last);
     }
     await _deleteAudioIfPolicySaysDelete(job);
   }
@@ -79,3 +88,9 @@ class MeetingProcessingJobRunner {
     }
   }
 }
+
+/// Called after a job's transcription + minutes pipeline succeeds, before
+/// retention cleanup. Notebook ingest hooks in here so a live recording, an
+/// uploaded file, and a podcast URL all become searchable notes.
+typedef MeetingProcessedCallback =
+    Future<void> Function(MeetingProcessingJob job, MindProgress last);

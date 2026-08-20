@@ -120,6 +120,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         audioPath: path,
         title: 'Meeting ${DateTime.now().toLocal()}',
         enqueuedAtMs: DateTime.now().millisecondsSinceEpoch,
+        source: MeetingProcessingSource.live,
       ),
     );
   }

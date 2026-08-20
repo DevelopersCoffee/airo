@@ -205,6 +205,13 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
         actions: [
           if (status != null && status.isReady)
             IconButton(
+              key: const Key('mind_home_notes_button'),
+              tooltip: 'Notes',
+              icon: const Icon(Icons.edit_note),
+              onPressed: () => context.push('notes'),
+            ),
+          if (status != null && status.isReady)
+            IconButton(
               key: const Key('mind_home_record_meeting_button'),
               tooltip: 'Record a meeting',
               icon: const Icon(Icons.mic_none),
