@@ -208,6 +208,7 @@ class AgentRunResult extends Equatable {
   final String? route;
   final Map<String, dynamic> parameters;
   final Map<String, dynamic>? pendingCalendarEvent;
+  final bool pendingCalendarPermission;
 
   /// Ops the final answer was replayed from. Empty unless [groundingState]
   /// is [GroundingState.grounded].
@@ -229,6 +230,7 @@ class AgentRunResult extends Equatable {
     this.route,
     this.parameters = const {},
     this.pendingCalendarEvent,
+    this.pendingCalendarPermission = false,
     this.citations = const [],
     this.groundingState = GroundingState.notApplicable,
     this.safetyClass,
@@ -242,6 +244,7 @@ class AgentRunResult extends Equatable {
       route = null,
       parameters = const {},
       pendingCalendarEvent = null,
+      pendingCalendarPermission = false,
       citations = const [],
       groundingState = GroundingState.notApplicable,
       safetyClass = null;
@@ -257,6 +260,7 @@ class AgentRunResult extends Equatable {
     route,
     parameters,
     pendingCalendarEvent,
+    pendingCalendarPermission,
     citations,
     groundingState,
     safetyClass,

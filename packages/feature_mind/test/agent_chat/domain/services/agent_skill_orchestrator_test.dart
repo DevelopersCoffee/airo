@@ -54,11 +54,12 @@ void main() {
       final result = await orchestrator.run('Check my schedule for today');
 
       expect(result.handled, true);
-      expect(result.message, contains('no events scheduled'));
+      expect(result.message, contains('no calendar events'));
       expect(
         result.traces.map((trace) => trace.detail),
         containsAll([
           'read-calendar-events',
+          'calendar_permission_status',
           'get_current_date_time',
           'read_calendar_events',
         ]),
@@ -86,6 +87,107 @@ void main() {
       expect(result.handled, true);
       expect(result.message, contains('Team standup'));
       expect(result.message, contains('10:00'));
+    });
+
+    test('does not treat a greeting as a calendar request', () async {
+      final result = await _buildOrchestrator().run('hi');
+      expect(result.handled, false);
+    });
+
+    test('still lists events when the model selects no skill', () async {
+      final orchestrator = _buildOrchestrator(
+        events: {
+          '2026-06-20': const [
+            CalendarEventData(
+              title: 'Team standup',
+              start: '2026-06-20T10:00:00+05:30',
+              end: '2026-06-20T10:30:00+05:30',
+              calendar: 'Work',
+            ),
+          ],
+        },
+        modelClient: const _JsonModelClient(
+          selectedSkillJson: '{"skill_id":null}',
+          actionJson:
+              '{"type":"final","message":"What kind of schedule are you looking for? Work or personal?"}',
+        ),
+        preferDeterministicSkills: true,
+      );
+
+      final result = await orchestrator.run('Check my schedule for today');
+
+      expect(result.handled, true);
+      expect(result.message, contains('Team standup'));
+      expect(result.message.toLowerCase(), isNot(contains('work or personal')));
+    });
+
+    test(
+      'lists events even when the model asks work versus personal',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          events: {
+            '2026-06-20': const [
+              CalendarEventData(
+                title: 'Architecture Review',
+                start: '2026-06-20T14:00:00+05:30',
+                end: '2026-06-20T15:00:00+05:30',
+                calendar: 'Work',
+              ),
+            ],
+          },
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: const [
+              SkillModelAction.finalAnswer(
+                'What kind of schedule are you looking for? Work or personal?',
+              ),
+            ],
+          ),
+        );
+
+        final result = await orchestrator.run('Check my schedule for today');
+
+        expect(result.handled, true);
+        expect(result.message, contains('Architecture Review'));
+        expect(
+          result.message.toLowerCase(),
+          isNot(contains('work or personal')),
+        );
+      },
+    );
+
+    test(
+      'queries tomorrow and this week without asking work versus personal',
+      () async {
+        final tomorrow = await _buildOrchestrator().run(
+          'What is on my calendar tomorrow?',
+        );
+        expect(tomorrow.handled, true);
+        expect(tomorrow.message, contains('no calendar events tomorrow'));
+        expect(tomorrow.traces.last.parameters['date'], '2026-06-21');
+
+        final week = await _buildOrchestrator().run(
+          'Show my schedule for this week',
+        );
+        expect(week.handled, true);
+        expect(week.message, contains('no calendar events this week'));
+        expect(week.traces.last.parameters['end_date'], '2026-06-26');
+      },
+    );
+
+    test('asks for calendar permission instead of inventing events', () async {
+      final orchestrator = _buildOrchestrator(
+        permission: InMemoryCalendarPermissionConnector(
+          status: 'notDetermined',
+          granted: false,
+        ),
+      );
+
+      final result = await orchestrator.run('Check my schedule for today');
+
+      expect(result.handled, true);
+      expect(result.pendingCalendarPermission, true);
+      expect(result.message, contains('calendar access'));
     });
 
     test(
@@ -586,14 +688,17 @@ AgentSkillOrchestrator _buildOrchestrator({
   List<AgentSkill>? skills,
   LifeTrackRepository? lifeTrackRepository,
   bool useFallbackModelClient = true,
+  bool preferDeterministicSkills = false,
   int maxSteps = 4,
   OperationLogPort? operationLogPort,
+  InMemoryCalendarPermissionConnector? permission,
 }) {
   return AgentSkillOrchestrator(
     skillRegistry: AgentSkillRegistry(skills: skills),
     connectorRegistry: AgentConnectorRegistry(
       connectors: [
         DateTimeConnector(now: () => DateTime(2026, 6, 20, 9, 3)),
+        permission ?? InMemoryCalendarPermissionConnector(),
         InMemoryCalendarConnector(events: events),
         InMemoryCreateCalendarEventConnector(),
         ScheduleNotificationConnector(
@@ -606,6 +711,7 @@ AgentSkillOrchestrator _buildOrchestrator({
     ),
     modelClient: modelClient,
     useFallbackModelClient: useFallbackModelClient,
+    preferDeterministicSkills: preferDeterministicSkills,
     maxSteps: maxSteps,
     operationLogPort: operationLogPort,
   );
