@@ -15,6 +15,7 @@ class _FakeModelPort implements ModelPort {
   Object? unloadError;
   Object? benchError;
   ModelBench? nextBench;
+  Future<ModelBench>? pendingBench;
 
   final _downloadControllers =
       <String, StreamController<({int received, int total})>>{};
@@ -48,6 +49,8 @@ class _FakeModelPort implements ModelPort {
   Future<ModelBench> benchmark(String modelId) async {
     final error = benchError;
     if (error != null) throw error;
+    final pending = pendingBench;
+    if (pending != null) return pending;
     return nextBench ?? (throw UnimplementedError());
   }
 
@@ -228,18 +231,11 @@ void main() {
   testWidgets('Run bench shows tok/s after ModelPort.benchmark resolves', (
     tester,
   ) async {
+    final pending = Completer<ModelBench>();
     final port = _FakeModelPort(
       mindModels: const [_residentModel],
       storageResult: (usedBytes: 200, budgetBytes: 1000),
-    );
-    port.nextBench = ModelBench(
-      tokensPerSecond: 21.5,
-      firstTokenMs: 120,
-      residentBytes: 200,
-      batteryPercentPerHour: 0,
-      measuredUnder: ThermalState.nominal,
-      measuredAtMs: 1,
-    );
+    )..pendingBench = pending.future;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -256,6 +252,17 @@ void main() {
     await tester.tap(find.text('Run bench'));
     await tester.pump();
     expect(find.text('Measuring…'), findsOneWidget);
+
+    pending.complete(
+      ModelBench(
+        tokensPerSecond: 21.5,
+        firstTokenMs: 120,
+        residentBytes: 200,
+        batteryPercentPerHour: 0,
+        measuredUnder: ThermalState.nominal,
+        measuredAtMs: 1,
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('21.5 tok/s · 120 ms to first token'), findsOneWidget);
