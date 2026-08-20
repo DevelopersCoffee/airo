@@ -28,7 +28,8 @@ class AssistantChatContextBuilder {
         : pinnedPersonaIdentity == null
         ? 'Enabled plugins:\n${pluginPlaybooks.join('\n\n')}'
         : pluginPlaybooks.join('\n\n');
-    if (pinnedPersonaIdentity != null && pinnedPersonaIdentity.trim().isNotEmpty) {
+    if (pinnedPersonaIdentity != null &&
+        pinnedPersonaIdentity.trim().isNotEmpty) {
       final sections = <String>[
         pinnedPersonaIdentity.trim(),
         if (pluginSection != null) pluginSection,
@@ -44,7 +45,7 @@ class AssistantChatContextBuilder {
         if (pluginSection != null) pluginSection,
         if (recentHistory.isNotEmpty)
           'Recent conversation:\n${recentHistory.join('\n')}',
-        'Answer the last user message directly. Do not continue system notices or invent a project setup.',
+        'Answer the last user message directly. Do not continue system notices, invent a project setup, or repeat a previous reply.',
       ];
       return sections.join('\n\n');
     }
@@ -55,6 +56,7 @@ class AssistantChatContextBuilder {
         'Recent conversation:\n${recentHistory.join('\n')}',
       'Assume "Airo" refers to this app and assistant unless the user clearly means something else.',
       'Use the recent conversation for continuity so the user does not need to restate prior context.',
+      'Answer only the latest user question. Do not repeat a previous greeting, meal-ideas pitch, or capability list unless they asked for that.',
     ];
     return sections.join('\n\n');
   }
@@ -67,6 +69,10 @@ class AssistantChatContextBuilder {
     final filtered = history
         .where((message) => message.text.trim().isNotEmpty)
         .where((message) => !isAssistantOperationalStatus(message.text))
+        .where(
+          (message) =>
+              message.isUser || !looksLikeUnsolicitedMealPitch(message.text),
+        )
         .where(
           (message) =>
               !message.isUser ||
@@ -116,6 +122,15 @@ bool isAssistantOperationalStatus(String text) {
     return true;
   }
   return false;
+}
+
+/// Gemma often copied an unsolicited meal-ideas greeting into later turns.
+bool looksLikeUnsolicitedMealPitch(String text) {
+  final lower = text.toLowerCase();
+  return lower.contains('healthy and delicious meal') ||
+      (lower.contains('meal ideas') &&
+          (lower.contains('dietary restrictions') ||
+              lower.contains('what kind of meals')));
 }
 
 const String _airoCompactContext =

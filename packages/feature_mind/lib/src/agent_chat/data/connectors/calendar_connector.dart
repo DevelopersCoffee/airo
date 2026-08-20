@@ -147,12 +147,9 @@ class NativeCalendarConnector implements AgentConnector {
       }
       return ConnectorResult(data: response);
     } on MissingPluginException {
-      return ConnectorResult(
-        data: {
-          'date': date,
-          'events': const [],
-          'source': 'calendar_channel_unavailable',
-        },
+      return const ConnectorResult.error(
+        code: 'calendar_channel_unavailable',
+        message: 'Calendar events are not available on this device yet.',
       );
     } on PlatformException catch (error) {
       return ConnectorResult.error(

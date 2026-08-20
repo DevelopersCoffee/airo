@@ -126,14 +126,18 @@ void main() {
     });
 
     test(
-      'falls back cleanly when the platform channel is unavailable',
+      'returns unavailable error when the platform channel is missing',
       () async {
         final connector = NativeCalendarConnector(channel: methodChannel);
 
         final result = await connector.execute({'date': '2026-06-20'});
 
-        expect(result.isError, false);
-        expect(result.data['source'], 'calendar_channel_unavailable');
+        expect(result.isError, true);
+        expect(result.errorCode, 'calendar_channel_unavailable');
+        expect(
+          result.message,
+          'Calendar events are not available on this device yet.',
+        );
       },
     );
   });

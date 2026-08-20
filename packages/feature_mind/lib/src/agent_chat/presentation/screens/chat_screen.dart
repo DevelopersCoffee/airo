@@ -15,6 +15,7 @@ import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/built_in_skills/wellbeing.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
+import '../../../agent_chat/data/services/assistant_grounded_reply.dart';
 import '../../../agent_chat/data/services/diet_plan_plugin_prompt.dart';
 import '../../../agent_chat/data/services/chat_history_store.dart';
 import '../../../widgets/mind_desktop_chrome.dart';
@@ -22,7 +23,6 @@ import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
-import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -32,6 +32,7 @@ import '../../../agent_chat/domain/services/agent_connector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
+import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/persona_session.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
@@ -260,10 +261,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return AgentSkillOrchestrator(
       skillRegistry: registry,
       connectorRegistry: _connectorRegistry,
-      modelClient: SelectedRuntimeAgentSkillModelClient(
-        runtimeService: _assistantRuntime,
-        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
-      ),
+      modelClient: RuleBasedAgentSkillModelClient(),
       useFallbackModelClient: false,
       operationLogPort: _operationLogPort,
     );
@@ -664,9 +662,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _isCapturingVoice = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Voice input failed. $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Voice input failed. $error')));
       return;
     }
     if (!mounted) return;
@@ -1206,43 +1204,67 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final grounded = AssistantGroundedReply.tryHandle(
+      prompt: message,
+      selectedModelName: _selectedModelDisplayName(),
+      selectedModelId: ref.read(selectedAssistantModelIdProvider),
+    );
+    if (grounded != null) {
+      setState(() {
+        _messages.add(AgentChatMessage(text: grounded, isUser: false));
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
+    final intercepted = await AgentToolInterceptor(
+      connectors: _connectorRegistry,
+    ).handle(message);
+    if (intercepted != null) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(text: intercepted.message, isUser: false),
+        );
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
     final intent = IntentParser.parse(message);
     if (await _handleParsedIntent(intent)) {
       return;
     }
 
     final skillStopwatch = Stopwatch()..start();
-    if (!_useCompactLocalChat()) {
-      final skillResult = await _skillOrchestrator.run(
-        message,
-        pinnedPersonaId: _pinnedPersonaId,
+    final skillResult = await _skillOrchestrator.run(
+      message,
+      pinnedPersonaId: _pinnedPersonaId,
+    );
+    skillStopwatch.stop();
+    if (skillResult.handled) {
+      _pendingCalendarEvent = skillResult.pendingCalendarEvent;
+      final metadata = _buildSkillMetadata(
+        traces: skillResult.traces,
+        totalDuration: skillStopwatch.elapsed,
       );
-      skillStopwatch.stop();
-      if (skillResult.handled) {
-        _pendingCalendarEvent = skillResult.pendingCalendarEvent;
-        final metadata = _buildSkillMetadata(
-          traces: skillResult.traces,
-          totalDuration: skillStopwatch.elapsed,
+      setState(() {
+        _messages.add(
+          AgentChatMessage(
+            text: skillResult.message,
+            isUser: false,
+            traces: skillResult.traces,
+            metadata: metadata,
+            citations: skillResult.citations,
+            groundingState: skillResult.groundingState,
+            safetyClass: skillResult.safetyClass,
+          ),
         );
-        setState(() {
-          _messages.add(
-            AgentChatMessage(
-              text: skillResult.message,
-              isUser: false,
-              traces: skillResult.traces,
-              metadata: metadata,
-              citations: skillResult.citations,
-              groundingState: skillResult.groundingState,
-              safetyClass: skillResult.safetyClass,
-            ),
-          );
-        });
-        _scrollMessagesToLatest();
-        if (skillResult.shouldNavigate && mounted) {
-          context.go(skillResult.route!, extra: skillResult.parameters);
-        }
-        return;
+      });
+      _scrollMessagesToLatest();
+      if (skillResult.shouldNavigate && mounted) {
+        context.go(skillResult.route!, extra: skillResult.parameters);
       }
+      return;
     }
 
     final selectedModelId = ref.read(selectedAssistantModelIdProvider);
@@ -1540,6 +1562,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final library = ref.read(assistantModelLibraryProvider).asData?.value;
     final package = library?.candidateById(selectedId)?.package;
     return isCompactLocalPackage(package);
+  }
+
+  String? _selectedModelDisplayName() {
+    final selectedId = ref.read(selectedAssistantModelIdProvider);
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    return library?.candidateById(selectedId)?.name;
   }
 
   Future<ChatResponseMetadata> _buildRuntimeMetadata({
@@ -1926,7 +1954,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _pinPersona(String? personaId) {
-    final persona = personaId == null ? null : _skillRegistry.getById(personaId);
+    final persona = personaId == null
+        ? null
+        : _skillRegistry.getById(personaId);
     setState(() {
       _pinnedPersonaId = personaId;
       if (persona != null) {
@@ -1941,10 +1971,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       } else {
         _messages.add(
-          AgentChatMessage(
-            text: 'Back to normal chat.',
-            isUser: false,
-          ),
+          AgentChatMessage(text: 'Back to normal chat.', isUser: false),
         );
       }
     });

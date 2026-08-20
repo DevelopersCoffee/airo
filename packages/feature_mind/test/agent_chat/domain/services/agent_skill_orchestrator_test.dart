@@ -69,19 +69,22 @@ void main() {
       expect(result.handled, false);
     });
 
-    test('pinned generative assistant falls through to the chat model', () async {
-      final orchestrator = _buildOrchestrator(
-        skills: [lessonPlanningAssistant],
-        useFallbackModelClient: false,
-      );
+    test(
+      'pinned generative assistant falls through to the chat model',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          skills: [lessonPlanningAssistant],
+          useFallbackModelClient: false,
+        );
 
-      final result = await orchestrator.run(
-        'For Grade 6 science on ecosystems, draft a lesson.',
-        pinnedPersonaId: 'lesson-planning-assistant',
-      );
+        final result = await orchestrator.run(
+          'For Grade 6 science on ecosystems, draft a lesson.',
+          pinnedPersonaId: 'lesson-planning-assistant',
+        );
 
-      expect(result.handled, false);
-    });
+        expect(result.handled, false);
+      },
+    );
 
     test(
       'pinned insurance planner answers pending tasks from LifeTrack',
@@ -179,6 +182,39 @@ void main() {
       expect(result.message, contains('Team standup'));
       expect(result.message, contains('10:00'));
     });
+
+    test('lists events without requiring the word calendar', () async {
+      final orchestrator = _buildOrchestrator(
+        events: {
+          '2026-06-20': const [
+            CalendarEventData(
+              title: 'Team standup',
+              start: '2026-06-20T10:00:00+05:30',
+              end: '2026-06-20T10:30:00+05:30',
+              calendar: 'Work',
+            ),
+          ],
+        },
+      );
+
+      final result = await orchestrator.run('list all events');
+
+      expect(result.handled, true);
+      expect(result.isError, false);
+      expect(result.message, contains('Team standup'));
+      expect(result.message, isNot(contains('too many steps')));
+    });
+
+    test(
+      'does not open a feature when the user asks what Airo can do',
+      () async {
+        final orchestrator = _buildOrchestrator();
+
+        final result = await orchestrator.run('what can u do');
+
+        expect(result.handled, false);
+      },
+    );
 
     test(
       'answers LifeTrack status questions through deterministic local tool',

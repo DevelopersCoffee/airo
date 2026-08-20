@@ -103,9 +103,7 @@ void main() {
       final prompt = builder.buildSystemPrompt(
         currentUserPrompt: 'Draft a lesson on fractions',
         history: const [],
-        pluginPlaybooks: const [
-          'Lesson Planning: Suggest a lesson outline.',
-        ],
+        pluginPlaybooks: const ['Lesson Planning: Suggest a lesson outline.'],
         pinnedPersonaIdentity:
             'You are Lesson Planning, a private on-device Airo assistant.',
       );
@@ -142,6 +140,23 @@ void main() {
         prompt,
         isNot(contains('User: what   can airo do for reminders?')),
       );
+    });
+
+    test('drops unsolicited meal-ideas pitches from later turns', () {
+      final prompt = builder.buildSystemPrompt(
+        currentUserPrompt: 'what model are we using',
+        history: const [
+          AssistantChatContextMessage(text: 'hi', isUser: true),
+          AssistantChatContextMessage(
+            text:
+                'Hey there! I can help you brainstorm some healthy and delicious meal ideas. What kind of meals are you looking for?',
+            isUser: false,
+          ),
+        ],
+      );
+
+      expect(prompt, isNot(contains('healthy and delicious meal')));
+      expect(prompt, contains('Do not repeat a previous greeting'));
     });
   });
 }

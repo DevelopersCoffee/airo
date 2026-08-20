@@ -1,0 +1,8 @@
+# Applied by app/tool/run_mind_macos.sh and scripts/verify-mind-macos-e2e.sh.
+# Replaces the Android-only llama.cpp plugin so the macOS Mind binary does
+# not compile or link JNI/Vulkan from llama_flutter_android.
+#
+# Do not use this file for the Android Mind APK (scripts/build-mind.sh).
+dependency_overrides:
+  llama_flutter_android:
+    path: ../packages/stubs/llama_flutter_android_stub

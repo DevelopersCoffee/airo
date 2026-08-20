@@ -79,18 +79,7 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       return 'query-lifetrack-status';
     }
 
-    final wantsCalendar =
-        lower.contains('calendar') ||
-        lower.contains('meeting') ||
-        lower.contains('agenda') ||
-        lower.contains('appointment') ||
-        (lower.contains('schedule') &&
-            (lower.contains('check') ||
-                lower.contains('show') ||
-                lower.contains('what') ||
-                lower.contains('today') ||
-                lower.contains('tomorrow')));
-    if (!wantsCalendar) return null;
+    if (!promptWantsCalendarRead(prompt)) return null;
     if (enabledSkills.any((skill) => skill.id == 'read-calendar-events')) {
       return 'read-calendar-events';
     }
@@ -140,19 +129,11 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       );
     }
 
-    final wantsCalendar =
-        lower.contains('calendar') ||
-        lower.contains('meeting') ||
-        lower.contains('agenda') ||
-        lower.contains('appointment') ||
-        (lower.contains('schedule') &&
-            (lower.contains('check') ||
-                lower.contains('show') ||
-                lower.contains('what') ||
-                lower.contains('today') ||
-                lower.contains('tomorrow')));
     if (!skill.tools.contains('read_calendar_events')) return null;
-    if (skill.id != 'read-calendar-events' && !wantsCalendar) return null;
+    if (skill.id != 'read-calendar-events' &&
+        !promptWantsCalendarRead(prompt)) {
+      return null;
+    }
 
     final hasDateTime = toolResults.any(
       (result) => result['tool'] == 'get_current_date_time',
@@ -179,6 +160,12 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
 
     final result =
         calendarResult['result'] as Map<String, dynamic>? ?? const {};
+    if (result['source'] == 'calendar_channel_unavailable' ||
+        calendarResult['error'] == 'calendar_channel_unavailable') {
+      return const SkillModelAction.finalAnswer(
+        'Calendar events are not available on this device yet.',
+      );
+    }
     final events = result['events'] as List? ?? const [];
     if (events.isEmpty) {
       return const SkillModelAction.finalAnswer(
@@ -395,6 +382,35 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
   }
 }
 
+bool promptWantsCalendarRead(String prompt) {
+  final lower = prompt.toLowerCase();
+  if (lower.contains('calendar') ||
+      lower.contains('meeting') ||
+      lower.contains('agenda') ||
+      lower.contains('appointment')) {
+    return true;
+  }
+  if (lower.contains('schedule') &&
+      (lower.contains('check') ||
+          lower.contains('show') ||
+          lower.contains('what') ||
+          lower.contains('today') ||
+          lower.contains('tomorrow') ||
+          lower.contains('list'))) {
+    return true;
+  }
+  if (lower.contains('event') &&
+      (lower.contains('list') ||
+          lower.contains('show') ||
+          lower.contains('all') ||
+          lower.contains('my') ||
+          lower.contains('today') ||
+          lower.contains('tomorrow'))) {
+    return true;
+  }
+  return false;
+}
+
 class AgentSkillOrchestrator {
   AgentSkillOrchestrator({
     required this._skillRegistry,
@@ -437,10 +453,7 @@ class AgentSkillOrchestrator {
     ].join('\n');
   }
 
-  Future<AgentRunResult> run(
-    String prompt, {
-    String? pinnedPersonaId,
-  }) async {
+  Future<AgentRunResult> run(String prompt, {String? pinnedPersonaId}) async {
     final pinned = pinnedPersonaId == null
         ? null
         : _skillRegistry.getById(pinnedPersonaId);
