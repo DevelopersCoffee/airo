@@ -158,6 +158,10 @@ OfflineModelInfo _scribeModel(RequiredModel model, {String? filePath}) {
     huggingFaceId: descriptor.huggingFaceId,
     description: descriptor.description,
     tags: const [mindScribeModelTag],
+    task: descriptor.task,
+    runtime: descriptor.runtime,
+    languages: descriptor.languages,
+    contextLength: descriptor.contextLength,
   );
 }
 
@@ -176,6 +180,10 @@ class _ScribeDescriptor {
     this.author,
     this.license,
     this.huggingFaceId,
+    this.task,
+    this.runtime,
+    this.languages = const ['en'],
+    this.contextLength = 2048,
   });
 
   final String id;
@@ -189,6 +197,10 @@ class _ScribeDescriptor {
   final String? author;
   final String? license;
   final String? huggingFaceId;
+  final ModelTask? task;
+  final InferenceRuntime? runtime;
+  final List<String> languages;
+  final int contextLength;
 }
 
 const Map<String, _ScribeDescriptor> _scribeDescriptors = {
@@ -205,6 +217,9 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'transcribe with auto-detect.',
     modalities: [ModelModality.audio, ModelModality.text],
     capabilities: [ModelCapability.audioUnderstanding],
+    task: ModelTask.speechToText,
+    runtime: InferenceRuntime.whisper,
+    languages: ['en'],
     author: 'OpenAI (ggml build by ggerganov)',
     license: 'MIT',
     huggingFaceId: 'ggerganov/whisper.cpp',
@@ -219,6 +234,9 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'recording (`#1629`). Required by the standalone Mind shell.',
     modalities: [ModelModality.audio, ModelModality.text],
     capabilities: [ModelCapability.audioUnderstanding],
+    task: ModelTask.speechToText,
+    runtime: InferenceRuntime.whisper,
+    languages: ['en', 'hi', 'mr', 'gu'],
     author: 'OpenAI (ggml build by ggerganov)',
     license: 'MIT',
     huggingFaceId: 'ggerganov/whisper.cpp',
@@ -233,6 +251,9 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'Auto-selected when installed and the device has enough RAM.',
     modalities: [ModelModality.audio, ModelModality.text],
     capabilities: [ModelCapability.audioUnderstanding],
+    task: ModelTask.speechToText,
+    runtime: InferenceRuntime.whisper,
+    languages: ['en', 'hi', 'mr', 'gu'],
     author: 'OpenAI (ggml build by ggerganov)',
     license: 'MIT',
     huggingFaceId: 'ggerganov/whisper.cpp',
@@ -246,6 +267,9 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'Whisper Tiny for long recordings.',
     modalities: [ModelModality.audio, ModelModality.text],
     capabilities: [ModelCapability.audioUnderstanding],
+    task: ModelTask.speechToText,
+    runtime: InferenceRuntime.whisper,
+    languages: ['en'],
     author: 'OpenAI (ggml build by ggerganov)',
     license: 'MIT',
     huggingFaceId: 'ggerganov/whisper.cpp',
@@ -259,7 +283,13 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'questions about what was said. Also used for local chat on desktop.',
     quantization: ModelQuantization.q4,
     parameterCount: 500000000,
-    capabilities: [ModelCapability.chat, ModelCapability.documents],
+    capabilities: [
+      ModelCapability.chat,
+      ModelCapability.documents,
+      ModelCapability.meetingSummarization,
+    ],
+    languages: ['en', 'zh'],
+    contextLength: 8192,
     author: 'Alibaba Qwen',
     license: 'Apache-2.0',
     huggingFaceId: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF',
@@ -274,7 +304,14 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'sarvamai/sarvam-1 on Hugging Face — not Sarvam Edge ASR.',
     quantization: ModelQuantization.q4,
     parameterCount: 2000000000,
-    capabilities: [ModelCapability.documents],
+    capabilities: [
+      ModelCapability.documents,
+      ModelCapability.meetingSummarization,
+      ModelCapability.translation,
+      ModelCapability.chat,
+    ],
+    languages: ['hi', 'mr', 'gu', 'en'],
+    contextLength: 8192,
     author: 'Sarvam AI (GGUF by bartowski)',
     license: 'Apache-2.0',
     huggingFaceId: 'bartowski/sarvam-1-GGUF',
@@ -288,6 +325,7 @@ const Map<String, _ScribeDescriptor> _scribeDescriptors = {
         'vedk00 SpeechBrain ECAPA export on Hugging Face (~83 MB).',
     modalities: [ModelModality.audio],
     capabilities: [ModelCapability.audioUnderstanding],
+    runtime: InferenceRuntime.onnx,
     author: 'vedk00 (SpeechBrain ECAPA)',
     license: 'Apache-2.0',
     huggingFaceId: 'vedk00/ecapa-voxceleb-speaker-embedding-onnx',

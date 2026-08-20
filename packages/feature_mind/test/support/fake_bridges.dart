@@ -54,7 +54,10 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   }
 
   @override
-  Stream<TranscriptEvent> transcribe({required String wavPath, String? language}) {
+  Stream<TranscriptEvent> transcribe({
+    required String wavPath,
+    String? language,
+  }) {
     transcribeLanguage = language;
     return Stream.fromIterable(transcriptEvents);
   }
@@ -83,8 +86,9 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   }
 
   @override
-  Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId) async =>
-      transcriptDocumentToReturn;
+  Future<rust.TranscriptDocumentRecord?> getTranscript(
+    String meetingId,
+  ) async => transcriptDocumentToReturn;
 
   @override
   void cancel() => cancelCalls++;
@@ -104,6 +108,7 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
 class FakeMindGenerationBridge implements MindGenerationBridge {
   List<MeetingIntelligenceEvent> meetingIntelligenceEvents = const [];
   List<GenerationEvent> generationEvents = const [];
+  List<GenerationEvent>? completeEvents;
   String modelIdValue = 'test-model@1';
   GenerationStats statsValue = const GenerationStats(
     prefillMs: 0,
@@ -117,6 +122,8 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   var cancelCalls = 0;
   var unloadCalls = 0;
   String? lastGrammar;
+  String? lastCompletePrompt;
+  int? lastCompleteMaxOutputTokens;
   var _loaded = false;
 
   @override
@@ -147,6 +154,16 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   }) {
     lastGrammar = grammar;
     return Stream.fromIterable(generationEvents);
+  }
+
+  @override
+  Stream<GenerationEvent> complete({
+    required String prompt,
+    required int maxOutputTokens,
+  }) {
+    lastCompletePrompt = prompt;
+    lastCompleteMaxOutputTokens = maxOutputTokens;
+    return Stream.fromIterable(completeEvents ?? generationEvents);
   }
 
   @override

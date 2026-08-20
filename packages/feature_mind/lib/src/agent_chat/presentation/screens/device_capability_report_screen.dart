@@ -6,15 +6,22 @@ import 'package:flutter/services.dart';
 
 /// Shows the normalized device facts consumed by the runtime planner.
 class DeviceCapabilityReportScreen extends StatelessWidget {
-  const DeviceCapabilityReportScreen({super.key, required this.report});
+  const DeviceCapabilityReportScreen({
+    super.key,
+    required this.report,
+    this.embedded = false,
+  });
 
   final DeviceCapabilityReport report;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Device Capability Report')),
+      appBar: embedded
+          ? null
+          : AppBar(title: const Text('Device Capability Report')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
@@ -128,7 +135,7 @@ class DeviceCapabilityReportScreen extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.info_outline),
                 title: Text('No model metadata loaded yet'),
-                subtitle: Text('Open Model Management to refresh the catalog.'),
+                subtitle: Text('Open Intelligence to refresh the catalog.'),
               ),
             )
           else
@@ -206,10 +213,12 @@ class DeviceCapabilityReportLoaderScreen extends StatefulWidget {
     super.key,
     this.models = const <OfflineModelInfo>[],
     this.reportFuture,
+    this.embedded = false,
   });
 
   final Iterable<OfflineModelInfo> models;
   final Future<DeviceCapabilityReport>? reportFuture;
+  final bool embedded;
 
   @override
   State<DeviceCapabilityReportLoaderScreen> createState() =>
@@ -280,7 +289,10 @@ class _DeviceCapabilityReportLoaderScreenState
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return DeviceCapabilityReportScreen(report: report);
+        return DeviceCapabilityReportScreen(
+          report: report,
+          embedded: widget.embedded,
+        );
       },
     );
   }

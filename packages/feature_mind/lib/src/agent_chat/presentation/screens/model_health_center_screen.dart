@@ -6,7 +6,7 @@ import '../../../health/model_health_facts.dart';
 
 /// Loads live compatibility facts without blocking navigation to the health
 /// center. Platform probes can be slow or unavailable after an OS update.
-class ModelHealthCenterLoaderScreen extends StatelessWidget {
+class ModelHealthCenterLoaderScreen extends StatefulWidget {
   const ModelHealthCenterLoaderScreen({
     super.key,
     required this.model,
@@ -25,27 +25,51 @@ class ModelHealthCenterLoaderScreen extends StatelessWidget {
   final ValueChanged<ModelHealthAction>? onAction;
 
   @override
+  State<ModelHealthCenterLoaderScreen> createState() =>
+      _ModelHealthCenterLoaderScreenState();
+}
+
+class _ModelHealthCenterLoaderScreenState
+    extends State<ModelHealthCenterLoaderScreen> {
+  late final Future<ModelHealthReport> _reportFuture = _load();
+
+  Future<ModelHealthReport> _load() async {
+    bool? artifactPresent;
+    try {
+      artifactPresent = widget.artifactPresentFuture == null
+          ? null
+          : await widget.artifactPresentFuture;
+      final compatibility = await widget.compatibilityFuture;
+      return ModelHealthFacts.build(
+        model: widget.model,
+        compatibility: compatibility,
+        readiness: widget.readiness,
+        contextTokens: widget.contextTokens,
+        artifactPresent: artifactPresent,
+      );
+    } on Object {
+      return ModelHealthReport.fromFacts(
+        model: widget.model,
+        artifactPresent: artifactPresent,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<ModelHealthReport>(
-      future: compatibilityFuture.then(
-        (compatibility) => ModelHealthFacts.build(
-          model: model,
-          compatibility: compatibility,
-          readiness: readiness,
-          contextTokens: contextTokens,
-        ),
-      ),
+      future: _reportFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           return ModelHealthCenterScreen(
             report: snapshot.data!,
-            onAction: onAction,
+            onAction: widget.onAction,
           );
         }
         if (snapshot.hasError) {
           return ModelHealthCenterScreen(
-            report: ModelHealthReport.fromFacts(model: model),
-            onAction: onAction,
+            report: ModelHealthReport.fromFacts(model: widget.model),
+            onAction: widget.onAction,
           );
         }
         return Scaffold(

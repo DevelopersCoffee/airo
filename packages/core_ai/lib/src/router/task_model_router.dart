@@ -1,3 +1,4 @@
+import '../intelligence/intelligence_query.dart';
 import '../models/offline_model_info.dart';
 import 'ai_task.dart';
 
@@ -26,10 +27,12 @@ class UnroutableTaskException implements Exception {
 ///
 /// 1. An explicit per-task override in [taskOverrides] (a model id), if
 ///    configured and present in [available].
-/// 2. Otherwise, the first model in [available] that declares the task's
-///    [AiTask.requiredCapability]. [available]'s order is the caller's
-///    preference order (most-recently-used, catalog declaration order,
-///    whatever the caller means by "first") -- this does not re-rank it.
+/// 2. Otherwise [IntelligenceQuery] ranks models that serve the task's
+///    [AiTask.requiredCapability] (installed first, then memory/size).
+///
+/// Speech stays out of this router. Callers that need transcription must
+/// query [IntelligenceQuery] with [ModelCapability.audioUnderstanding] /
+/// [ModelTask.speechToText] rather than [AiTask.speechToText].
 ///
 /// Task-to-model selection only. Where the request executes (on-device vs.
 /// cloud) stays `AIRouter`/`AIRoutingStrategy`'s job.
@@ -58,16 +61,16 @@ class TaskModelRouter {
       );
     }
 
-    final overrideId = taskOverrides[task];
-    if (overrideId != null) {
-      final override = available.where((m) => m.id == overrideId).firstOrNull;
-      if (override != null) return override;
-      // A configured override that isn't currently installed degrades to the
-      // capability search below rather than failing the whole request.
-    }
-
-    return available
-        .where((m) => m.capabilities.contains(requiredCapability))
-        .firstOrNull;
+    const query = IntelligenceQuery();
+    final selection = query.select(
+      capability: requiredCapability,
+      catalog: available,
+      constraints: const IntelligenceConstraints(
+        preferInstalled: true,
+        requireCurrentPlatform: false,
+      ),
+      overrideModelId: taskOverrides[task],
+    );
+    return selection.model;
   }
 }

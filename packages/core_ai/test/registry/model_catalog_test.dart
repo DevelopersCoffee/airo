@@ -136,4 +136,48 @@ void main() {
       expect(ModelCatalog.companionsFor(companions.single), isEmpty);
     });
   });
+
+  group('Honest capability tags', () {
+    test(
+      'chat packages that summarize meetings declare meetingSummarization',
+      () {
+        final chatModels = ModelCatalog.bundledModels.where(
+          (model) => model.capabilities.contains(ModelCapability.chat),
+        );
+        expect(
+          chatModels.any(
+            (model) => model.capabilities.contains(
+              ModelCapability.meetingSummarization,
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'no catalog row invents vision without image modality or capability',
+      () {
+        for (final model in ModelCatalog.bundledModels) {
+          if (model.capabilities.contains(ModelCapability.imageUnderstanding)) {
+            expect(
+              model.supportsVision ||
+                  model.modalities.contains(ModelModality.image),
+              isTrue,
+              reason: '${model.id} tagged vision without image support',
+            );
+          }
+        }
+      },
+    );
+
+    test('tokenizer companions stay capability-empty', () {
+      final tokenizer = ModelCatalog.bundledModels.where(
+        (model) => model.id.contains('tokenizer'),
+      );
+      for (final model in tokenizer) {
+        expect(model.capabilities, isEmpty);
+      }
+    });
+  });
 }

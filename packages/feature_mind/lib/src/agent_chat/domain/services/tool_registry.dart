@@ -695,8 +695,8 @@ class ToolRegistry {
       ),
       AgentSkillCard(
         key: 'model_management',
-        title: 'Model Management',
-        description: 'Manage offline AI models',
+        title: 'Intelligence',
+        description: 'Pick a job. Airo selects the models.',
         iconKey: 'model',
         route: '/agent/models',
       ),

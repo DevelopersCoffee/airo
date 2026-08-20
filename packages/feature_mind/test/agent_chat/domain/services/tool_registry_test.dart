@@ -76,7 +76,7 @@ void main() {
       expect(titles, contains('Audio Scribe'));
       expect(titles, contains('Mobile Actions'));
       expect(titles, contains('Tiny Garden'));
-      expect(titles, contains('Model Management'));
+      expect(titles, contains('Intelligence'));
       expect(titles, contains('Arena Games'));
       expect(
         cards.singleWhere((card) => card.title == 'Ask Image').route,

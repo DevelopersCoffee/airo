@@ -147,6 +147,7 @@ void main() {
       expect(GpuBackend.values, contains(GpuBackend.metal));
       expect(GpuBackend.values, contains(GpuBackend.openCL));
       expect(GpuBackend.values, contains(GpuBackend.vulkan));
+      expect(GpuBackend.values, contains(GpuBackend.cuda));
       expect(GpuBackend.values, contains(GpuBackend.auto));
     });
   });
