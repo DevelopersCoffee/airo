@@ -45,6 +45,64 @@ enum SkillSource { builtIn, local, remote }
 
 enum SkillInstallState { enabled, disabled, notInstalled }
 
+/// A pin-able Jan-style assistant versus an auto-selected tool skill.
+enum AgentSkillMode {
+  skill('skill'),
+  persona('persona');
+
+  const AgentSkillMode(this.key);
+
+  final String key;
+
+  static AgentSkillMode? fromKey(String key) {
+    for (final mode in values) {
+      if (mode.key == key) return mode;
+    }
+    return null;
+  }
+}
+
+/// Domain family for grouping assistants in the switcher.
+enum AgentPersonaFamily {
+  general('general'),
+  teacher('teacher'),
+  law('law'),
+  health('health'),
+  insurance('insurance'),
+  property('property'),
+  education('education'),
+  vehicle('vehicle'),
+  project('project');
+
+  const AgentPersonaFamily(this.key);
+
+  final String key;
+
+  static AgentPersonaFamily? fromKey(String key) {
+    for (final family in values) {
+      if (family.key == key) return family;
+    }
+    return null;
+  }
+}
+
+enum SkillFollowUpPolicy {
+  none('none'),
+  dailyUntilDone('daily_until_done'),
+  offerCalendar('offer_calendar');
+
+  const SkillFollowUpPolicy(this.key);
+
+  final String key;
+
+  static SkillFollowUpPolicy? fromKey(String key) {
+    for (final policy in values) {
+      if (policy.key == key) return policy;
+    }
+    return null;
+  }
+}
+
 class AgentSkillManifest extends Equatable {
   final String id;
   final String name;
@@ -56,6 +114,12 @@ class AgentSkillManifest extends Equatable {
   final SkillInstallState installState;
   final List<SkillCapability> capabilities;
   final List<String> tools;
+  final AgentSkillMode mode;
+  final AgentPersonaFamily family;
+  final CapabilitySafetyClass safetyClass;
+  final List<String> starterPrompts;
+  final SkillFollowUpPolicy followUpPolicy;
+  final String? lifeTrackTemplateId;
 
   const AgentSkillManifest({
     required this.id,
@@ -68,6 +132,12 @@ class AgentSkillManifest extends Equatable {
     required this.installState,
     required this.capabilities,
     required this.tools,
+    this.mode = AgentSkillMode.skill,
+    this.family = AgentPersonaFamily.general,
+    this.safetyClass = CapabilitySafetyClass.general,
+    this.starterPrompts = const [],
+    this.followUpPolicy = SkillFollowUpPolicy.none,
+    this.lifeTrackTemplateId,
   });
 
   AgentSkillManifest copyWith({SkillInstallState? installState}) {
@@ -82,6 +152,12 @@ class AgentSkillManifest extends Equatable {
       installState: installState ?? this.installState,
       capabilities: capabilities,
       tools: tools,
+      mode: mode,
+      family: family,
+      safetyClass: safetyClass,
+      starterPrompts: starterPrompts,
+      followUpPolicy: followUpPolicy,
+      lifeTrackTemplateId: lifeTrackTemplateId,
     );
   }
 
@@ -97,6 +173,12 @@ class AgentSkillManifest extends Equatable {
     installState,
     capabilities,
     tools,
+    mode,
+    family,
+    safetyClass,
+    starterPrompts,
+    followUpPolicy,
+    lifeTrackTemplateId,
   ];
 }
 
@@ -115,6 +197,12 @@ class AgentSkill extends Equatable {
     bool enabled = true,
     List<String> tools = const [],
     List<SkillCapability> capabilities = const [],
+    AgentSkillMode mode = AgentSkillMode.skill,
+    AgentPersonaFamily family = AgentPersonaFamily.general,
+    CapabilitySafetyClass safetyClass = CapabilitySafetyClass.general,
+    List<String> starterPrompts = const [],
+    SkillFollowUpPolicy followUpPolicy = SkillFollowUpPolicy.none,
+    String? lifeTrackTemplateId,
     required this.instructions,
   }) : manifest = AgentSkillManifest(
          id: id,
@@ -129,6 +217,12 @@ class AgentSkill extends Equatable {
              : SkillInstallState.disabled,
          capabilities: capabilities,
          tools: tools,
+         mode: mode,
+         family: family,
+         safetyClass: safetyClass,
+         starterPrompts: starterPrompts,
+         followUpPolicy: followUpPolicy,
+         lifeTrackTemplateId: lifeTrackTemplateId,
        );
 
   const AgentSkill.fromManifest({
@@ -142,13 +236,29 @@ class AgentSkill extends Equatable {
   List<String> get tools => manifest.tools;
   List<SkillCapability> get capabilities => manifest.capabilities;
   SkillRuntime get runtime => manifest.runtime;
+  AgentSkillMode get mode => manifest.mode;
+  AgentPersonaFamily get family => manifest.family;
+  CapabilitySafetyClass get safetyClass => manifest.safetyClass;
+  List<String> get starterPrompts => manifest.starterPrompts;
+  SkillFollowUpPolicy get followUpPolicy => manifest.followUpPolicy;
+  String? get lifeTrackTemplateId => manifest.lifeTrackTemplateId;
   bool get enabled => manifest.installState == SkillInstallState.enabled;
   bool get isEnabled => enabled;
+  bool get isPersona => mode == AgentSkillMode.persona;
+
+  /// No native tools — the chat model follows [instructions] as a plugin.
+  bool get isGenerativePlugin => tools.isEmpty;
 
   String get summaryForPrompt {
     final normalizedDescription = description.endsWith('.')
         ? description.substring(0, description.length - 1)
         : description;
+    if (isPersona) {
+      return '- $id: $name — $normalizedDescription. Pinned assistant';
+    }
+    if (isGenerativePlugin) {
+      return '- $id: $name — $normalizedDescription. Plugin for the chat model';
+    }
     return '- $id: $name — $normalizedDescription. Tools: ${tools.join(', ')}';
   }
 

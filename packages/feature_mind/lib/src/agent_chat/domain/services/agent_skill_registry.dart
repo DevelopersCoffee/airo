@@ -50,6 +50,12 @@ class AgentSkillRegistry {
 
   List<AgentSkill> getEnabledSkills() => _repository.getEnabledSkills();
 
+  List<AgentSkill> getToolSkills() =>
+      getAllSkills().where((skill) => !skill.isPersona).toList();
+
+  List<AgentSkill> getPersonas() =>
+      getAllSkills().where((skill) => skill.isPersona).toList();
+
   AgentSkill? getById(String id) => _repository.getById(id);
 
   bool addSkill(AgentSkill skill) => _repository.addSkill(skill);

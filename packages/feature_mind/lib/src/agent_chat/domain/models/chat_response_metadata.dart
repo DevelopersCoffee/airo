@@ -15,6 +15,7 @@ class ChatResponseMetadata {
     this.timeToFirstTokenMs,
     this.promptTokens,
     this.completionTokens,
+    this.tokensPerSecond,
     this.finishReason,
     this.toolCount,
     this.systemPromptPreview,
@@ -31,6 +32,7 @@ class ChatResponseMetadata {
   final int? timeToFirstTokenMs;
   final int? promptTokens;
   final int? completionTokens;
+  final double? tokensPerSecond;
   final String? finishReason;
   final int? toolCount;
   final String? systemPromptPreview;
@@ -52,6 +54,9 @@ ChatResponseMetadata buildRuntimeChatResponseMetadata({
   required DateTime recordedAt,
   String? modelId,
   int? timeToFirstTokenMs,
+  int? promptTokens,
+  int? completionTokens,
+  double? tokensPerSecond,
   String? finishReason,
   String? systemPromptPreview,
   String? promptPreview,
@@ -65,8 +70,9 @@ ChatResponseMetadata buildRuntimeChatResponseMetadata({
     totalDurationMs: totalDurationMs,
     modelId: modelId,
     timeToFirstTokenMs: timeToFirstTokenMs,
-    promptTokens: TokenCounter.estimate(prompt),
-    completionTokens: TokenCounter.estimate(response),
+    promptTokens: promptTokens ?? TokenCounter.estimate(prompt),
+    completionTokens: completionTokens ?? TokenCounter.estimate(response),
+    tokensPerSecond: tokensPerSecond,
     finishReason: finishReason ?? 'stop',
     systemPromptPreview: systemPromptPreview,
     promptPreview: promptPreview,

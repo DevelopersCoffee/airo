@@ -14,9 +14,16 @@ import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
+import '../../../agent_chat/data/built_in_skills/wellbeing.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
+import '../../../agent_chat/data/services/assistant_grounded_reply.dart';
+import '../../../agent_chat/data/services/diet_plan_plugin_prompt.dart';
 import '../../../agent_chat/data/services/chat_history_store.dart';
+import '../../../widgets/mind_desktop_chrome.dart';
+import '../../../widgets/mind_palette.dart';
+import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
@@ -27,12 +34,15 @@ import '../../../agent_chat/domain/services/agent_connector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
+import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
+import '../../../agent_chat/domain/services/persona_session.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
 import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
 import '../../../agent_chat/presentation/widgets/grounded_answer_block.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/mind_safety_banner.dart';
+import '../../../agent_chat/presentation/widgets/pick_assistant_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
@@ -126,6 +136,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.enableAiInitialization = true,
     this.initialMessages,
     this.initialDraft,
+    this.initialPinnedPersonaId,
     this.operationLogPort,
     this.calendarService,
   });
@@ -136,6 +147,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   final bool enableAiInitialization;
   final List<AgentChatMessage>? initialMessages;
   final String? initialDraft;
+  final String? initialPinnedPersonaId;
 
   /// Grounds skill answers in the log. Defaults to `FixtureMindRuntime().log`
   /// so the surface always has a real, if fixture-backed, log to cite —
@@ -149,6 +161,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
+  final ScrollController _messageScrollController = ScrollController();
   final List<AgentChatMessage> _messages = [];
   final ChatHistoryStore _chatHistoryStore = ChatHistoryStore();
   Timer? _historyPersistTimer;
@@ -163,8 +176,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late AgentSkillOrchestrator _skillOrchestrator;
   late final OperationLogPort _operationLogPort;
   final AssistantChatContextBuilder _chatContextBuilder =
-      const AssistantChatContextBuilder();
+      const AssistantChatContextBuilder(maxMessageChars: 1200);
   Map<String, dynamic>? _pendingCalendarEvent;
+  String? _pinnedPersonaId;
   String? _pendingCalendarPermissionPrompt;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
@@ -173,18 +187,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
   final FocusNode _messageInputFocusNode = FocusNode();
-  final FocusNode _sendButtonFocusNode = FocusNode();
+  final FocusNode _sendButtonFocusNode = FocusNode(canRequestFocus: false);
 
   @override
   void initState() {
     super.initState();
+    _pinnedPersonaId = widget.initialPinnedPersonaId;
     _messageController = TextEditingController(text: widget.initialDraft ?? '');
     _connectorRegistry = _buildConnectorRegistry();
     _operationLogPort = widget.operationLogPort ?? FixtureMindRuntime().log;
     _moveComposerCursorToEnd();
     _assistantRuntime =
         widget.assistantRuntimeService ??
-        AssistantRuntimeService(geminiNano: _geminiNano, liteRtLm: _liteRtLm);
+        AssistantRuntimeService(
+          geminiNano: _geminiNano,
+          liteRtLm: _liteRtLm,
+          loadAssistantModelLibrary: () =>
+              ref.read(assistantModelLibraryProvider.future),
+        );
     _localRuntimePreloader =
         widget.localRuntimePreloader ??
         LocalRuntimePreloaderService(
@@ -219,6 +239,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     }
     unawaited(initializeLifeTrackStatusConnector());
+    MindChatMenuActions.attach(
+      this,
+      newChat: () => unawaited(_clearConversation(confirm: false)),
+      exportChat: () => unawaited(_copyTranscript()),
+      clearChat: () => unawaited(_confirmClearConversation()),
+    );
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
@@ -230,6 +256,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       NativeCreateCalendarEventConnector(),
       ScheduleNotificationConnector(),
       RouteConnector(),
+      GuideBreathingConnector(),
+      LogReflectionConnector(),
     ];
     final lifeTrackStatusConnector = createLifeTrackStatusConnector();
     if (lifeTrackStatusConnector != null) {
@@ -359,10 +387,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    MindChatMenuActions.detach(this);
     _selectedModelBarFocusNode.dispose();
     _skillsButtonFocusNode.dispose();
     _messageInputFocusNode.dispose();
     _sendButtonFocusNode.dispose();
+    _messageScrollController.dispose();
     _localRuntimePreloader.abortPreload();
     unawaited(closeLifeTrackStatusConnector());
     _messageController.dispose();
@@ -412,6 +442,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController.selection = TextSelection.collapsed(
       offset: _messageController.text.length,
     );
+  }
+
+  void _restoreComposerFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _messageInputFocusNode.requestFocus();
+      _moveComposerCursorToEnd();
+    });
   }
 
   @override
@@ -487,6 +525,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final readiness = ref.watch(assistantRuntimeReadinessProvider);
     final canSend = readiness.canSend && !_isGenerating;
+    final session = _personaSession;
     return AiroResponsiveScaffold(
       backgroundColor: Colors.transparent,
       body: ref
@@ -495,10 +534,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: Column(
               children: [
                 _buildSelectedModelBar(selectedAssistantModelId),
+                if (session.isPinned) _buildPinnedAssistantBar(session),
 
                 // Messages list
                 Expanded(
                   child: ListView.builder(
+                    key: const Key('agent_chat_message_list'),
+                    controller: _messageScrollController,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     itemCount:
                         _messages.length +
@@ -555,6 +597,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           key: const Key('agent_chat_input'),
                           focusNode: _messageInputFocusNode,
                           controller: _messageController,
+                          autofocus: true,
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
                             border: OutlineInputBorder(
@@ -567,7 +610,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                           maxLines: null,
                           textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
+                          onSubmitted: (_) {
+                            _sendMessage();
+                            _restoreComposerFocus();
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -586,6 +632,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  PersonaSession get _personaSession => PersonaSession(
+    pinned: _pinnedPersonaId == null
+        ? null
+        : _skillRegistry.getById(_pinnedPersonaId!),
+  );
+
+  Widget _buildPinnedAssistantBar(PersonaSession session) {
+    final persona = session.pinned!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            key: const Key('agent_chat_pinned_assistant_label'),
+            'Assistant: ${persona.name}',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          MindSafetyBanner(safetyClass: session.safetyClass),
+        ],
+      ),
+    );
+  }
+
   bool get _shouldShowPromptSuggestions {
     return !_messages.any((message) => message.isUser);
   }
@@ -599,7 +669,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     setState(() => _isCapturingVoice = true);
-    final result = await service.startListening();
+    VoiceSearchResult result;
+    try {
+      result = await service.startListening();
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _isCapturingVoice = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Voice input failed. $error')));
+      return;
+    }
     if (!mounted) return;
     setState(() => _isCapturingVoice = false);
     if (result.isSuccess && result.text != null) {
@@ -626,16 +706,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final label = candidate?.name ?? 'Selected model';
         final runtime = candidate?.runtime ?? selectedModelId;
         final percent = (readiness.progress * 100).clamp(0, 100).round();
+        final stats = _assistantRuntime.lastGenerationStats;
+        final tok = stats != null && stats.tokensPerSecond > 0
+            ? ' · ${stats.tokensPerSecond.toStringAsFixed(0)} TOK/S'
+            : '';
+        final isLocal = candidate?.local != false;
         final statusLine = readiness.canSend
-            ? runtime
+            ? '${isLocal ? 'NO NETWORK' : runtime}$tok'
             : '${readiness.label} · $percent%';
 
         return Container(
           margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: const BoxDecoration(
+            color: MindPalette.surface,
+            border: Border(bottom: BorderSide(color: MindPalette.grid)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -643,13 +728,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    candidate?.local == false
-                        ? Icons.cloud_outlined
-                        : Icons.memory_outlined,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
+                  MindPresencePip(isLocal: isLocal),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,7 +743,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge,
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: MindPalette.ink,
+                                letterSpacing: 0.8,
+                              ),
                         ),
                         Text(
                           statusLine,
@@ -671,12 +755,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: MindPalette.local,
+                                letterSpacing: 1.2,
                               ),
                         ),
                       ],
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('agent_chat_assistants_button'),
+                    tooltip: _personaSession.pinned?.name ?? 'Assistants',
+                    onPressed: _showPickAssistant,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      _personaSession.isPinned
+                          ? Icons.badge
+                          : Icons.badge_outlined,
+                      size: 20,
                     ),
                   ),
                   IconButton(
@@ -756,6 +855,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildSamplePrompts() {
+    final session = _personaSession;
+    final personaPrompts = session.starterPrompts;
+    if (personaPrompts.isNotEmpty) {
+      final theme = Theme.of(context);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+            child: Text(
+              'Try a prompt',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final prompt in personaPrompts)
+                ActionChip(
+                  key: Key('persona_starter_${prompt.hashCode}'),
+                  label: Text(prompt),
+                  onPressed: () {
+                    _messageController.text = prompt;
+                    _sendMessage();
+                  },
+                ),
+            ],
+          ),
+        ],
+      );
+    }
     final policy = ref.watch(assistantSurfacePolicyProvider);
     final prompts = _toolRegistry.getSkillCards(policy: policy);
     final theme = Theme.of(context);
@@ -789,9 +922,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 backgroundColor: color.withValues(alpha: 0.08),
                 onPressed: () {
                   _messageController.text = _promptForSkill(prompt);
-                  _messageController.selection = TextSelection.collapsed(
-                    offset: _messageController.text.length,
-                  );
+                  _restoreComposerFocus();
                 },
               );
             },
@@ -812,6 +943,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return true;
     }
 
+    if (intent.type == IntentType.createDietPlan) {
+      return false;
+    }
+
     final toolResult = await _toolRegistry.executeIntent(intent);
     if (toolResult.isError) {
       return false;
@@ -820,6 +955,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _messages.add(AgentChatMessage(text: toolResult.message, isUser: false));
     });
+    _scrollMessagesToLatest();
 
     if (toolResult.shouldNavigate && mounted) {
       context.go(toolResult.route!, extra: toolResult.parameters);
@@ -996,27 +1132,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Future<void> _confirmClearConversation() async {
-    final shouldClear = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear conversation?'),
-        content: const Text(
-          'This removes the visible chat from this device. It will not delete downloaded models or settings.',
+  Future<void> _confirmClearConversation() => _clearConversation(confirm: true);
+
+  Future<void> _clearConversation({required bool confirm}) async {
+    if (confirm) {
+      final shouldClear = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Clear conversation?'),
+          content: const Text(
+            'This removes the visible chat from this device. It will not delete downloaded models or settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Clear chat'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear chat'),
-          ),
-        ],
-      ),
-    );
-    if (shouldClear != true || !mounted) return;
+      );
+      if (shouldClear != true || !mounted) return;
+    }
     setState(_messages.clear);
     await _chatHistoryStore.clear();
     if (!mounted) return;
@@ -1054,11 +1194,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     _messageController.clear();
+    _restoreComposerFocus();
 
     // Add user message
     setState(() {
       _messages.add(AgentChatMessage(text: message, isUser: true));
     });
+    _scrollMessagesToLatest();
 
     final pendingCalendarEvent = _pendingCalendarEvent;
     if (pendingCalendarEvent != null && _isCalendarConfirmation(message)) {
@@ -1090,13 +1232,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final grounded = AssistantGroundedReply.tryHandle(
+      prompt: message,
+      selectedModelName: _selectedModelDisplayName(),
+      selectedModelId: ref.read(selectedAssistantModelIdProvider),
+    );
+    if (grounded != null) {
+      setState(() {
+        _messages.add(AgentChatMessage(text: grounded, isUser: false));
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
+    final intercepted = await AgentToolInterceptor(
+      connectors: _connectorRegistry,
+    ).handle(message);
+    if (intercepted != null) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(text: intercepted.message, isUser: false),
+        );
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
     final intent = IntentParser.parse(message);
     if (await _handleParsedIntent(intent)) {
       return;
     }
 
     final skillStopwatch = Stopwatch()..start();
-    final skillResult = await _skillOrchestrator.run(message);
+    final skillResult = await _skillOrchestrator.run(
+      message,
+      pinnedPersonaId: _pinnedPersonaId,
+    );
     skillStopwatch.stop();
     if (skillResult.handled) {
       _pendingCalendarEvent = skillResult.pendingCalendarEvent;
@@ -1121,6 +1292,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       });
+      _scrollMessagesToLatest();
       if (skillResult.shouldNavigate && mounted) {
         context.go(skillResult.route!, extra: skillResult.parameters);
       }
@@ -1147,6 +1319,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       _isGenerating = true;
     });
+    _scrollMessagesToLatest();
 
     try {
       final metadata = await _generateSelectedModelResponse(
@@ -1334,16 +1507,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     String selectedModelId,
     String message, {
     Set<String> attemptedRuntimeIds = const {},
+    bool dietRetry = false,
   }) async {
     final stopwatch = Stopwatch()..start();
     int? timeToFirstTokenMs;
     String latestChunk = '';
     final attempted = {...attemptedRuntimeIds, selectedModelId};
+    final history = _chatHistoryMessages();
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: message,
+      history: history,
+    );
+    var modelPrompt = dietApplies
+        ? DietPlanPluginPrompt.modelUserPrompt(
+            currentPrompt: message,
+            history: history,
+          )
+        : message;
+    if (dietRetry) {
+      modelPrompt =
+          '$modelPrompt\n\nDo not refuse. Write the meal plan now. Honor veg '
+          'and allergy constraints, write every requested day, and use '
+          'different dishes each day.';
+    }
     final systemPrompt = _buildChatSystemPrompt(message);
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
-        prompt: message,
+        prompt: modelPrompt,
         systemPrompt: systemPrompt,
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
@@ -1353,6 +1544,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       stopwatch.stop();
       if (latestChunk.trim().isEmpty) {
         return null;
+      }
+      if (dietApplies) {
+        final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
+          currentPrompt: message,
+          history: history,
+        );
+        latestChunk = DietPlanPluginPrompt.trimExtraDays(
+          latestChunk,
+          DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
+        );
+        if (latestChunk != _messages.last.text) {
+          _replaceStreamingMessage(latestChunk);
+        }
+        if (!dietRetry &&
+            DietPlanPluginPrompt.shouldRetryPlan(
+              output: latestChunk,
+              constraints: dietConstraints,
+            )) {
+          return _generateSelectedModelResponse(
+            selectedModelId,
+            message,
+            attemptedRuntimeIds: attemptedRuntimeIds,
+            dietRetry: true,
+          );
+        }
       }
       final outputResult = SafetyGuardrails.withDefaults(
         profile: ref.read(assistantHostAdapterProvider).safetyProfile,
@@ -1414,6 +1630,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         metadata: current.metadata,
       );
     });
+    _scrollMessagesToLatest(animated: false);
+  }
+
+  void _scrollMessagesToLatest({bool animated = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_messageScrollController.hasClients) return;
+      final target = _messageScrollController.position.maxScrollExtent;
+      if (animated) {
+        _messageScrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _messageScrollController.jumpTo(target);
+      }
+    });
+  }
+
+  bool _useCompactLocalChat() {
+    final selectedId = ref.read(selectedAssistantModelIdProvider);
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    final package = library?.candidateById(selectedId)?.package;
+    return isCompactLocalPackage(package);
+  }
+
+  String? _selectedModelDisplayName() {
+    final selectedId = ref.read(selectedAssistantModelIdProvider);
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    return library?.candidateById(selectedId)?.name;
   }
 
   Future<ChatResponseMetadata> _buildRuntimeMetadata({
@@ -1437,6 +1683,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isLocal =
         candidate?.local ?? selectedModelId != geminiCloudAssistantModelId;
 
+    final stats = _assistantRuntime.lastGenerationStats;
+    final promptForEstimate = [
+      if (systemPrompt != null && systemPrompt.trim().isNotEmpty) systemPrompt,
+      prompt,
+    ].join('\n\n');
+    final promptTokens = stats != null && stats.prefillTokens > 0
+        ? stats.prefillTokens
+        : null;
+    final completionTokens = stats != null && stats.generatedTokens > 0
+        ? stats.generatedTokens
+        : null;
+    final estimatedCompletion =
+        completionTokens ?? TokenCounter.estimate(response);
+    final generationMs = timeToFirstTokenMs == null
+        ? totalDuration.inMilliseconds
+        : (totalDuration.inMilliseconds - timeToFirstTokenMs).clamp(
+            1,
+            totalDuration.inMilliseconds,
+          );
+    final tokensPerSecond = stats != null && stats.tokensPerSecond > 0
+        ? stats.tokensPerSecond
+        : generationMs > 0 && estimatedCompletion > 0
+        ? estimatedCompletion / (generationMs / 1000)
+        : null;
+
     return buildRuntimeChatResponseMetadata(
       title: title,
       runtime: runtime,
@@ -1445,27 +1716,102 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       totalDurationMs: totalDuration.inMilliseconds,
       modelId: selectedModelId,
       timeToFirstTokenMs: timeToFirstTokenMs,
-      prompt: prompt,
+      prompt: promptForEstimate,
       response: response,
+      promptTokens: promptTokens,
+      completionTokens: completionTokens,
+      tokensPerSecond: tokensPerSecond,
       systemPromptPreview: _previewForMetadata(systemPrompt),
       promptPreview: _previewForMetadata(prompt),
       responsePreview: _previewForMetadata(response),
     );
   }
 
+  List<AssistantChatContextMessage> _chatHistoryMessages() {
+    return _messages
+        .where((message) => message.text.trim().isNotEmpty)
+        .where((message) => !isAssistantOperationalStatus(message.text))
+        .map(
+          (message) => AssistantChatContextMessage(
+            text: message.text,
+            isUser: message.isUser,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   String _buildChatSystemPrompt(String currentPrompt) {
-    return _chatContextBuilder.buildSystemPrompt(
-      currentUserPrompt: currentPrompt,
-      history: _messages
-          .where((message) => message.text.trim().isNotEmpty)
-          .map(
-            (message) => AssistantChatContextMessage(
-              text: message.text,
-              isUser: message.isUser,
-            ),
-          )
-          .toList(growable: false),
+    final history = _chatHistoryMessages();
+    final session = _personaSession;
+    if (session.isPinned) {
+      final dietPinned = session.pinnedId == 'draft-diet-plan';
+      final dietApplies =
+          dietPinned &&
+          DietPlanPluginPrompt.applies(
+            currentPrompt: currentPrompt,
+            history: history,
+          );
+      return _chatContextBuilder.buildSystemPrompt(
+        currentUserPrompt: dietApplies
+            ? DietPlanPluginPrompt.modelUserPrompt(
+                currentPrompt: currentPrompt,
+                history: history,
+              )
+            : currentPrompt,
+        compact: _useCompactLocalChat(),
+        pluginPlaybooks: session.playbooks(),
+        pinnedPersonaIdentity: session.identityPreamble(),
+        history: dietApplies
+            ? DietPlanPluginPrompt.contextHistory(
+                currentPrompt: currentPrompt,
+                history: history,
+              )
+            : history,
+      );
+    }
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: currentPrompt,
+      history: history,
     );
+    return _chatContextBuilder.buildSystemPrompt(
+      currentUserPrompt: dietApplies
+          ? DietPlanPluginPrompt.modelUserPrompt(
+              currentPrompt: currentPrompt,
+              history: history,
+            )
+          : currentPrompt,
+      compact: _useCompactLocalChat(),
+      pluginPlaybooks: _enabledGenerativePluginPlaybooks(
+        currentPrompt: currentPrompt,
+        history: history,
+      ),
+      history: dietApplies
+          ? DietPlanPluginPrompt.contextHistory(
+              currentPrompt: currentPrompt,
+              history: history,
+            )
+          : DietPlanPluginPrompt.collapseAssistantDietDrafts(history),
+    );
+  }
+
+  List<String> _enabledGenerativePluginPlaybooks({
+    required String currentPrompt,
+    required List<AssistantChatContextMessage> history,
+  }) {
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: currentPrompt,
+      history: history,
+    );
+    return _skillRegistry
+        .getEnabledSkills()
+        .where(
+          (skill) =>
+              skill.isGenerativePlugin &&
+              (!skill.isPersona || skill.id == 'draft-diet-plan'),
+        )
+        .where((skill) => skill.id != 'draft-diet-plan' || dietApplies)
+        .map((skill) => '${skill.name}: ${skill.instructions}')
+        .toList(growable: false);
   }
 
   String _previewForMetadata(String? value) {
@@ -1539,6 +1885,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ('Completion tokens', '${metadata.completionTokens}'),
           if (metadata.totalTokens != null)
             ('Total tokens', '${metadata.totalTokens}'),
+          if (metadata.tokensPerSecond != null)
+            ('Tokens per second', metadata.tokensPerSecond!.toStringAsFixed(1)),
           if (metadata.toolCount != null)
             ('Tool calls', '${metadata.toolCount}'),
           if (metadata.finishReason != null)
@@ -1557,38 +1905,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Response details',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                for (final row in rows) ...[
-                  _MetadataRow(label: row.$1, value: row.$2),
-                  const SizedBox(height: 8),
-                ],
-                if (message.traces.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Action timings',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    'Response details',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 8),
-                  for (final trace in message.traces)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _MetadataRow(
-                        label: trace.detail,
-                        value: trace.durationMs == null
-                            ? (trace.success ? 'Completed' : 'Failed')
-                            : _formatDuration(trace.durationMs!),
-                      ),
+                  const SizedBox(height: 12),
+                  for (final row in rows) ...[
+                    _MetadataRow(label: row.$1, value: row.$2),
+                    const SizedBox(height: 8),
+                  ],
+                  if (message.traces.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Action timings',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    const SizedBox(height: 8),
+                    for (final trace in message.traces)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _MetadataRow(
+                          label: trace.detail,
+                          value: trace.durationMs == null
+                              ? (trace.success ? 'Completed' : 'Failed')
+                              : _formatDuration(trace.durationMs!),
+                        ),
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -1619,16 +1969,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .select(candidate.id);
 
     if (!mounted) return;
-    setState(() {
-      _messages.add(
-        AgentChatMessage(
-          text:
-              'You selected ${candidate.name}. '
-              '${candidate.local ? 'Warming it on device before you can send.' : 'Cloud runtime is ready when you are.'}',
-          isUser: false,
-        ),
-      );
-    });
+    // Warmup status lives in the model bar. Putting it in the transcript made
+    // 0.5B GGUF models continue "You selected Qwen…" instead of answering.
   }
 
   void _openModelManager() {
@@ -1678,7 +2020,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'smart_reminders' =>
         'Remind me to take Minoxidil every 12 hours starting at 8am',
       'split_bill' => 'Split this ₹2400 bill with Asha, Ben and Chen',
-      'diet_plan' => 'Make me a 7 day vegetarian diet plan',
+      'diet_plan' => 'Make me a 7 day diet plan',
       'routine_planner' => 'Create a morning study routine for tomorrow',
       'ask_image' => 'Ask image about this receipt',
       'mobile_actions' => 'Open mobile actions',
@@ -1686,6 +2028,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'arena_games' => 'I am bored, start chess',
       _ => skill.description,
     };
+  }
+
+  void _showPickAssistant() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return PickAssistantSheet(
+          registry: _skillRegistry,
+          pinnedPersonaId: _pinnedPersonaId,
+          onPinnedChanged: _pinPersona,
+        );
+      },
+    );
+  }
+
+  void _pinPersona(String? personaId) {
+    final persona = personaId == null
+        ? null
+        : _skillRegistry.getById(personaId);
+    setState(() {
+      _pinnedPersonaId = personaId;
+      if (persona != null) {
+        _messages.add(
+          AgentChatMessage(
+            text: 'Switched to ${persona.name}. ${persona.description}',
+            isUser: false,
+            safetyClass: persona.safetyClass == CapabilitySafetyClass.general
+                ? null
+                : persona.safetyClass,
+          ),
+        );
+      } else {
+        _messages.add(
+          AgentChatMessage(text: 'Back to normal chat.', isUser: false),
+        );
+      }
+    });
   }
 
   void _showManageSkills() {

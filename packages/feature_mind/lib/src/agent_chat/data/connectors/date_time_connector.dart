@@ -20,6 +20,9 @@ class DateTimeConnector implements AgentConnector {
         'date': _formatDate(current),
         'time': _formatTime(current),
         'timezone': current.timeZoneName,
+        'timezone_offset': current.timeZoneOffset.inMinutes,
+        'weekday': _weekdayName(current.weekday),
+        'iso8601': current.toIso8601String(),
       },
     );
   }
@@ -33,5 +36,20 @@ String _formatDate(DateTime value) {
 
 String _formatTime(DateTime value) {
   return '${value.hour.toString().padLeft(2, '0')}:'
-      '${value.minute.toString().padLeft(2, '0')}';
+      '${value.minute.toString().padLeft(2, '0')}:'
+      '${value.second.toString().padLeft(2, '0')}';
+}
+
+String _weekdayName(int weekday) {
+  const names = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  if (weekday < 1 || weekday > 7) return 'unknown';
+  return names[weekday - 1];
 }

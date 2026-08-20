@@ -38,21 +38,12 @@ void main() {
     );
 
     final bar = tester.widget<PlatformMenuBar>(find.byType(PlatformMenuBar));
-    final labels = <String, VoidCallback?>{};
-    void collect(List<PlatformMenuItem> items) {
-      for (final item in items) {
-        if (item is PlatformMenu) {
-          collect(item.menus.whereType<PlatformMenuItem>().toList());
-          continue;
-        }
-        labels[item.label] = item.onSelected;
-      }
-    }
-
-    collect(bar.menus);
+    final labels = MindNativeMenuBar.collectActions(bar);
 
     expect(labels.containsKey('Search Everything'), isTrue);
     expect(labels.containsKey('Everything Browser'), isTrue);
+    expect(labels.containsKey('New Chat'), isTrue);
+    expect(labels.containsKey('Model Manager'), isTrue);
 
     labels['Search Everything']!();
     labels['Everything Browser']!();
@@ -78,14 +69,7 @@ void main() {
     final before = await runtime.log.count();
 
     final bar = tester.widget<PlatformMenuBar>(find.byType(PlatformMenuBar));
-    final fileMenu = bar.menus.whereType<PlatformMenu>().firstWhere(
-      (menu) => menu.label == 'File',
-    );
-    final newNote = fileMenu.menus
-        .whereType<PlatformMenuItem>()
-        .firstWhere((item) => item.label == 'New Note');
-
-    newNote.onSelected!();
+    MindNativeMenuBar.collectActions(bar)['New Note']!();
     await tester.pumpAndSettle();
 
     final after = await runtime.log.count();

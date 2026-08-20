@@ -136,8 +136,9 @@ class AssistantRuntimeReadinessNotifier
     final runtimeService = AssistantRuntimeService();
     final result = await runtimeService.prepareRuntime(
       candidate: candidate,
-      contextLengthOverride:
-          _ref.read(assistantHostAdapterProvider).modelContextLength,
+      contextLengthOverride: _ref
+          .read(assistantHostAdapterProvider)
+          .modelContextLength,
       onProgress: (value) {
         if (generation != _generation) return;
         final phase = switch (value.phase) {
@@ -176,7 +177,8 @@ class AssistantRuntimeReadinessNotifier
     state = AssistantRuntimeReadiness(
       phase: AssistantRuntimeReadinessPhase.blocked,
       progress: 0,
-      label: result.diagnostic?.summary ?? 'Could not prepare ${candidate.name}',
+      label:
+          result.diagnostic?.summary ?? 'Could not prepare ${candidate.name}',
       detail:
           result.diagnostic?.detail ??
           'Try another model or open Models to repair the download.',
@@ -184,6 +186,5 @@ class AssistantRuntimeReadinessNotifier
     );
   }
 
-  Future<void> refresh() =>
-      _sync(_ref.read(selectedAssistantModelIdProvider));
+  Future<void> refresh() => _sync(_ref.read(selectedAssistantModelIdProvider));
 }

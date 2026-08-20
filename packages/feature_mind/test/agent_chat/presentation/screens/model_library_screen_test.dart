@@ -121,44 +121,47 @@ void main() {
     );
   });
 
-  test('chat prefers an installed Gemma package over Gemini Nano on Android', () {
-    const nano = AssistantModelCandidate(
-      id: geminiNanoAssistantModelId,
-      name: 'Gemini Nano',
-      runtime: 'AICore on-device',
-      description: 'System runtime',
-      bestFor: [AssistantTask.chat],
-      tags: ['Local'],
-      privacyLabel: 'Prompt stays on device',
-      sizeLabel: 'System managed',
-      available: true,
-      actionLabel: 'Start chat',
-      local: true,
-    );
-    const gemma = AssistantModelCandidate(
-      id: litertGemmaAssistantModelId,
-      name: 'Gemma mobile package',
-      runtime: 'LiteRT-LM local model',
-      description: 'Downloaded package',
-      bestFor: [AssistantTask.chat],
-      tags: ['Local', 'Gemma'],
-      privacyLabel: 'Prompt stays on device',
-      sizeLabel: '2.4 GB',
-      available: true,
-      actionLabel: 'Start chat',
-      local: true,
-    );
+  test(
+    'chat prefers an installed Gemma package over Gemini Nano on Android',
+    () {
+      const nano = AssistantModelCandidate(
+        id: geminiNanoAssistantModelId,
+        name: 'Gemini Nano',
+        runtime: 'AICore on-device',
+        description: 'System runtime',
+        bestFor: [AssistantTask.chat],
+        tags: ['Local'],
+        privacyLabel: 'Prompt stays on device',
+        sizeLabel: 'System managed',
+        available: true,
+        actionLabel: 'Start chat',
+        local: true,
+      );
+      const gemma = AssistantModelCandidate(
+        id: litertGemmaAssistantModelId,
+        name: 'Gemma mobile package',
+        runtime: 'LiteRT-LM local model',
+        description: 'Downloaded package',
+        bestFor: [AssistantTask.chat],
+        tags: ['Local', 'Gemma'],
+        privacyLabel: 'Prompt stays on device',
+        sizeLabel: '2.4 GB',
+        available: true,
+        actionLabel: 'Start chat',
+        local: true,
+      );
 
-    expect(
-      AssistantModelLibraryState.recommend(
-        [nano, gemma],
-        AssistantTask.chat,
-        const {},
-        isAndroidHost: true,
-      ).id,
-      litertGemmaAssistantModelId,
-    );
-  });
+      expect(
+        AssistantModelLibraryState.recommend(
+          [nano, gemma],
+          AssistantTask.chat,
+          const {},
+          isAndroidHost: true,
+        ).id,
+        litertGemmaAssistantModelId,
+      );
+    },
+  );
 
   test('recommend does not prefer LiteRT on desktop hosts', () {
     const nano = AssistantModelCandidate(
@@ -433,6 +436,11 @@ void main() {
       );
 
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Start chat'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Start chat'));
       await tester.pump();
       await tester.pumpAndSettle();
@@ -670,6 +678,10 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -737,6 +749,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Start chat'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Start chat'));
     await tester.pumpAndSettle();
     expect(selected?.id, litertGemmaAssistantModelId);
@@ -745,6 +762,10 @@ void main() {
 
   testWidgets('setup failure dialog shows memory diagnostics', (tester) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -814,6 +835,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Start chat'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Start chat'));
     await tester.pumpAndSettle();
 
@@ -837,6 +863,10 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final package = OfflineModelInfo(
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma 4 E2B',
@@ -975,6 +1005,58 @@ void main() {
     expect(openedManager, isTrue);
   });
 
+  test('desktop profile recommends installed GGUF and hides LiteRT', () async {
+    final gemma = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma-4-E2B-it',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+      provider: AIProvider.gemma,
+      runtime: InferenceRuntime.litertLm,
+      platformSupport: PlatformSupport.androidOnly(),
+      capabilities: const [ModelCapability.chat],
+    );
+    final tempDir = await Directory.systemTemp.createTemp('airo_desktop_gguf');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final ggufPath = '${tempDir.path}/qwen.gguf';
+    await File(ggufPath).writeAsBytes(List<int>.filled(1024, 0));
+    final gguf = OfflineModelInfo(
+      id: 'mind-scribe-qwen2.5-0.5b-instruct',
+      name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1024,
+      filePath: ggufPath,
+      provider: AIProvider.gguf,
+      capabilities: const [ModelCapability.chat],
+    );
+
+    final state = await AssistantModelLibraryState.load(
+      task: AssistantTask.chat,
+      isAndroidHost: false,
+      runtimeProfile: ModelRuntimeProfile.desktopGguf,
+      isNanoSupported: () async => false,
+      loadDeviceInfo: () async => {},
+      isLiteRtAvailable: () async => true,
+      isGgufAvailable: () async => true,
+      initializeCloud: () async {},
+      isCloudAvailable: () => false,
+      loadCompatibilityByModelId: (_) async => {},
+      hydrateDownloadedModel: (model) async => model,
+      mobileRecommended: [gemma],
+      loadAssistantDownloadedModels: () async => [gguf],
+      platformLabelOverride: 'MACOS',
+    );
+
+    expect(
+      state.candidateById(assistantModelIdForOfflineModel(gemma.id)),
+      isNull,
+    );
+    expect(state.recommended.id, assistantModelIdForOfflineModel(gguf.id));
+    expect(state.recommended.available, isTrue);
+    expect(state.recommended.opensModelManager, isFalse);
+  });
+
   test('desktop model library steers users toward GGUF setup copy', () async {
     final state = await AssistantModelLibraryState.load(
       task: AssistantTask.chat,
@@ -995,6 +1077,92 @@ void main() {
     final setup = state.candidateById('assistant-setup-required');
     expect(setup, isNotNull);
     expect(setup!.description, contains('GGUF'));
+  });
+
+  testWidgets('change-model picker lists installed GGUF packages', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final qwen = AssistantModelCandidate(
+      id: assistantModelIdForOfflineModel('mind-scribe-qwen2.5-0.5b-instruct'),
+      name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+      runtime: 'GGUF · llama.cpp',
+      description: 'Scribe chat package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Private',
+      sizeLabel: '469 MB',
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: const OfflineModelInfo(
+        id: 'mind-scribe-qwen2.5-0.5b-instruct',
+        name: 'Qwen2.5 0.5B Instruct (Q4_K_M)',
+        family: ModelFamily.qwen,
+        fileSizeBytes: 491000000,
+        filePath: '/models/qwen.gguf',
+        provider: AIProvider.gguf,
+        capabilities: [ModelCapability.chat],
+      ),
+    );
+    final phi = AssistantModelCandidate(
+      id: assistantModelIdForOfflineModel('phi-3-mini-4k-q4'),
+      name: 'Phi-3 Mini 4K',
+      runtime: 'GGUF · llama.cpp',
+      description: 'Downloaded chat package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Private',
+      sizeLabel: '2.1 GB',
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: const OfflineModelInfo(
+        id: 'phi-3-mini-4k-q4',
+        name: 'Phi-3 Mini 4K',
+        family: ModelFamily.phi,
+        fileSizeBytes: 2300000000,
+        filePath: '/models/phi.gguf',
+        provider: AIProvider.phi,
+        capabilities: [ModelCapability.chat],
+      ),
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Mac',
+      platformLabel: 'MACOS',
+      candidates: [qwen, phi],
+      recommended: qwen,
+      defaultPackages: const {},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            runtimeService: AssistantRuntimeService(
+              loadDeviceInfo: () async => const {},
+            ),
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('On this device'), findsOneWidget);
+    expect(find.text('Qwen2.5 0.5B Instruct (Q4_K_M)'), findsWidgets);
+    expect(find.text('Phi-3 Mini 4K'), findsOneWidget);
   });
 }
 

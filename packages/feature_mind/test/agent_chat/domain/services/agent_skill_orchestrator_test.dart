@@ -1,3 +1,7 @@
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/insurance_planner.dart';
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/teacher_personas.dart';
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/wellbeing.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/date_time_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/life_track_status_connector.dart';
@@ -48,6 +52,97 @@ void main() {
       expect(result.handled, false);
     });
 
+    test('lets generative plugins fall through to the chat model', () async {
+      final orchestrator = _buildOrchestrator(
+        skills: [draftDietPlanSkill],
+        modelClient: _FixedActionModelClient(
+          selectedSkillId: 'draft-diet-plan',
+          actions: const [],
+        ),
+        useFallbackModelClient: false,
+      );
+
+      final result = await orchestrator.run(
+        'Make me a 7 day vegetarian diet plan',
+      );
+
+      expect(result.handled, false);
+    });
+
+    test(
+      'pinned generative assistant falls through to the chat model',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          skills: [lessonPlanningAssistant],
+          useFallbackModelClient: false,
+        );
+
+        final result = await orchestrator.run(
+          'For Grade 6 science on ecosystems, draft a lesson.',
+          pinnedPersonaId: 'lesson-planning-assistant',
+        );
+
+        expect(result.handled, false);
+      },
+    );
+
+    test(
+      'pinned insurance planner answers pending tasks from LifeTrack',
+      () async {
+        final repository = _FakeLifeTrackRepository([
+          _track(
+            title: 'Health claim',
+            category: LifeTrackCategory.insurance,
+            milestones: [
+              _milestone(
+                name: 'Follow-up',
+                items: [
+                  _item(summary: 'Log insurer follow-up requests'),
+                  _item(
+                    summary: 'Record settlement outcome',
+                    status: ItemStatus.done,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ]);
+        final orchestrator = _buildOrchestrator(
+          skills: [insurancePlannerPersona],
+          lifeTrackRepository: repository,
+        );
+
+        final result = await orchestrator.run(
+          'What is pending on my insurance track?',
+          pinnedPersonaId: 'insurance-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.message, contains('Log insurer follow-up requests'));
+        expect(result.message, isNot(contains('Record settlement outcome')));
+        expect(result.safetyClass, CapabilitySafetyClass.financial);
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('query_lifetrack_status'),
+        );
+      },
+    );
+
+    test('runs wellbeing as a skill with tools, not a screen', () async {
+      final orchestrator = _buildOrchestrator(skills: [wellbeingSkill]);
+
+      final result = await orchestrator.run(
+        'Guide me through a breathing reset',
+      );
+
+      expect(result.handled, true);
+      expect(result.message, contains('box breathing'));
+      expect(
+        result.traces.map((trace) => trace.detail),
+        containsAll(['wellbeing-check-in', 'guide_breathing']),
+      );
+    });
+
     test('runs calendar skill with date and calendar connectors', () async {
       final orchestrator = _buildOrchestrator();
 
@@ -87,6 +182,36 @@ void main() {
       expect(result.handled, true);
       expect(result.message, contains('Team standup'));
       expect(result.message, contains('10:00'));
+    });
+
+    test('lists events without requiring the word calendar', () async {
+      final orchestrator = _buildOrchestrator(
+        events: {
+          '2026-06-20': const [
+            CalendarEventData(
+              title: 'Team standup',
+              start: '2026-06-20T10:00:00+05:30',
+              end: '2026-06-20T10:30:00+05:30',
+              calendar: 'Work',
+            ),
+          ],
+        },
+      );
+
+      final result = await orchestrator.run('list all events');
+
+      expect(result.handled, true);
+      expect(result.isError, false);
+      expect(result.message, contains('Team standup'));
+      expect(result.message, isNot(contains('too many steps')));
+    });
+
+    test('does not open a feature when the user asks what Airo can do', () async {
+      final orchestrator = _buildOrchestrator();
+
+      final result = await orchestrator.run('what can u do');
+
+      expect(result.handled, false);
     });
 
     test('does not treat a greeting as a calendar request', () async {
@@ -429,6 +554,8 @@ void main() {
       expect(prompt, contains('Available enabled skills'));
       expect(prompt, contains('read-calendar-events'));
       expect(prompt, contains('schedule-notification'));
+      expect(prompt, isNot(contains('draft-diet-plan')));
+      expect(prompt, isNot(contains('lesson-planning-assistant')));
       expect(prompt, isNot(contains('create-calendar-event')));
       expect(prompt, contains('Return JSON only'));
     });
@@ -478,9 +605,8 @@ void main() {
 
       final result = await orchestrator.run('Check my schedule for today');
 
-      expect(result.handled, true);
-      expect(result.isError, true);
-      expect(result.message, contains('could not complete'));
+      expect(result.handled, isFalse);
+      expect(result.isError, isFalse);
     });
 
     test(
@@ -493,9 +619,8 @@ void main() {
 
         final result = await orchestrator.run('Check my schedule for today');
 
-        expect(result.handled, true);
-        expect(result.isError, true);
-        expect(result.message, contains('could not complete'));
+        expect(result.handled, isFalse);
+        expect(result.isError, isFalse);
       },
     );
 
@@ -707,6 +832,8 @@ AgentSkillOrchestrator _buildOrchestrator({
         if (lifeTrackRepository != null)
           LifeTrackStatusConnector(repository: lifeTrackRepository),
         RouteConnector(),
+        GuideBreathingConnector(),
+        LogReflectionConnector(),
       ],
     ),
     modelClient: modelClient,

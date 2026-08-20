@@ -12,17 +12,18 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late RustMindRuntime runtime;
-  late Directory supportDir;
+  late Directory tempDir;
 
-  setUp(() async {
-    supportDir = await Directory.systemTemp.createTemp('rust_runtime_test');
+  setUp(() {
+    tempDir = Directory.systemTemp.createTempSync('rust_mind_runtime_test_');
+    Directory(path.join(tempDir.path, 'airo_mind')).createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.flutter.io/path_provider'),
           (MethodCall methodCall) async {
-            if (methodCall.method == 'getApplicationDocumentsDirectory' ||
-                methodCall.method == 'getApplicationSupportDirectory') {
-              return supportDir.path;
+            if (methodCall.method == 'getApplicationSupportDirectory' ||
+                methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
             }
             return null;
           },
@@ -31,13 +32,21 @@ void main() {
   });
 
   tearDown(() async {
+    // RustMindRuntime opens the durable op log lazily on construction. Finish
+    // that work before deleting the temp support dir or a later test sees a
+    // PathNotFoundException from a stale openDefault() future.
+    try {
+      await runtime.log.count();
+    } on Object {
+      // Unimplemented Rust ports are irrelevant here; we only need the open.
+    }
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.flutter.io/path_provider'),
           null,
         );
-    if (await supportDir.exists()) {
-      await supportDir.delete(recursive: true);
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
     }
   });
 
@@ -147,34 +156,6 @@ void main() {
   });
 
   group('models.all/storage/download are real, not stubs (#1630)', () {
-    late Directory tempDir;
-
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('rust_models_test');
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/path_provider'),
-            (MethodCall methodCall) async {
-              if (methodCall.method == 'getApplicationDocumentsDirectory' ||
-                  methodCall.method == 'getApplicationSupportDirectory') {
-                return tempDir.path;
-              }
-              return null;
-            },
-          );
-    });
-
-    tearDown(() async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('plugins.flutter.io/path_provider'),
-            null,
-          );
-      if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
-      }
-    });
-
     test('all() reports the default catalog, nothing on disk yet', () async {
       final models = await runtime.models.all();
 

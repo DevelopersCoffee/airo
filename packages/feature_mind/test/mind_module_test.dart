@@ -47,7 +47,7 @@ void main() {
     ]);
   });
 
-  test('wellbeing is a root destination, never a hub child', () {
+  test('wellbeing is a root destination on mobile, never a hub child', () {
     final module = _module();
 
     expect(_namesOf(module.rootRoutesFor(ShellId.mobile)), [
@@ -57,6 +57,12 @@ void main() {
       _namesOf(module.hubRoutesFor(ShellId.mobile)),
       isNot(contains(AssistantRouteNames.wellbeingName)),
     );
+  });
+
+  test('wellbeing is not a Mind-shell destination', () {
+    final module = _module();
+
+    expect(_namesOf(module.rootRoutesFor(ShellId.mind)), isEmpty);
   });
 
   test('routesFor concatenates hub, root, then scribe routes', () {

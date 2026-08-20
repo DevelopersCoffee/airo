@@ -12,6 +12,7 @@
 //! `GenerationEngine::summarize(transcript) -> Minutes` would push meeting
 //! semantics below the capability boundary, which `C5` exists to prevent.
 
+use std::mem::ManuallyDrop;
 use std::num::NonZeroU32;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
@@ -77,10 +78,19 @@ fn peak_rss_bytes() -> u64 {
 /// around: an engine that owns a global is an engine you can only have one of,
 /// and `C6` expects the Supervisor to hold several.
 fn backend() -> Result<&'static LlamaBackend, EngineError> {
-    static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
+    static BACKEND: OnceLock<Result<ManuallyDrop<LlamaBackend>, String>> = OnceLock::new();
     BACKEND
-        .get_or_init(|| LlamaBackend::init().map_err(|e| e.to_string()))
+        .get_or_init(|| {
+            LlamaBackend::init()
+                // llama_backend_free at process exit races ggml's Metal
+                // device unique_ptr destructor (`ggml_metal_device_free` →
+                // `GGML_ASSERT` on leftover residency sets). The OS reclaims
+                // the process; we must not free the backend a second time.
+                .map(ManuallyDrop::new)
+                .map_err(|e| e.to_string())
+        })
         .as_ref()
+        .map(|backend| &**backend)
         .map_err(|e| EngineError::Backend(format!("llama backend init: {e}")))
 }
 

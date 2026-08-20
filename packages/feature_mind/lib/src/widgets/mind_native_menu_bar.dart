@@ -5,21 +5,32 @@ import 'package:flutter/services.dart';
 
 import '../runtime/mind_runtime.dart';
 import '../runtime/models/log_models.dart';
+import 'mind_desktop_chrome.dart';
 
 /// Optional navigation hook for shell routes the menu bar cannot import.
+///
+/// The Mind shell assigns these from [GoRouter] so File/Model/Help items
+/// reach chat, models, and profile without `feature_mind` depending on `app`.
 abstract final class MindRuntimeNavigation {
   static void Function()? openHub;
   static void Function()? openIntelligence;
+  static void Function()? openNewChat;
+  static void Function()? openSettings;
+  static void Function()? openModelManager;
+  static void Function()? openModelLibrary;
+  static void Function()? openDeviceCapabilities;
+  static void Function()? openPromptLab;
+  static void Function()? closeWindow;
+  static void Function()? openLogs;
 }
 
 /// The macOS native menu bar for a Mind surface.
 ///
-/// File, Edit, Capture, Context, Model, Window, Help — the design's own list.
-/// Wrapping [child] in [PlatformMenuBar] puts these in the OS's own menu bar
-/// rather than a Flutter-drawn imitation, which is the "Mac conventions
-/// supply the chrome" half of the surface. Every item calls a real
-/// [MindRuntime] method or [onOpenEverythingBrowser]; none is a placeholder
-/// that does nothing when chosen.
+/// App lifecycle, File, Edit, Capture, Model, View, Window, Help. Wrapping
+/// [child] in [PlatformMenuBar] puts these in the OS menu bar rather than a
+/// Flutter-drawn imitation. Standard items use [PlatformProvidedMenuItem] so
+/// Hide/Quit/Full Screen/Minimize are the real AppKit actions. Custom items
+/// call [MindRuntime], [MindRuntimeNavigation], or [MindChatMenuActions].
 class MindNativeMenuBar extends StatelessWidget {
   const MindNativeMenuBar({
     super.key,
@@ -27,50 +38,221 @@ class MindNativeMenuBar extends StatelessWidget {
     required this.child,
     required this.onOpenEverythingBrowser,
     this.onAbout,
+    this.onToggleTheme,
+    this.onToggleSidebar,
   });
 
   final MindRuntime runtime;
   final Widget child;
-
-  /// File > New Note, Edit > Search Everything, Capture > Quick Capture and
-  /// Window > Everything Browser all funnel here — opening the browser is
-  /// the one action nearly every menu leads to, matching what ⌘K already
-  /// does rather than adding a second path.
   final VoidCallback onOpenEverythingBrowser;
-
   final VoidCallback? onAbout;
+  final void Function(ThemeMode mode)? onToggleTheme;
+  final VoidCallback? onToggleSidebar;
 
+  static const _newChatShortcut = SingleActivator(
+    LogicalKeyboardKey.keyN,
+    meta: true,
+  );
+  static const _settingsShortcut = SingleActivator(
+    LogicalKeyboardKey.comma,
+    meta: true,
+  );
   static const _summonShortcut = SingleActivator(
     LogicalKeyboardKey.keyK,
     meta: true,
   );
+  static const _sidebarShortcut = SingleActivator(
+    LogicalKeyboardKey.keyB,
+    meta: true,
+  );
+  static const _exportShortcut = SingleActivator(
+    LogicalKeyboardKey.keyE,
+    meta: true,
+    shift: true,
+  );
+
+  /// Flattened menu actions for tests. Recurses submenus and groups.
+  static Map<String, VoidCallback?> collectActions(PlatformMenuBar bar) {
+    final labels = <String, VoidCallback?>{};
+    void collect(List<PlatformMenuItem> items) {
+      for (final item in items) {
+        if (item is PlatformMenu) {
+          collect(item.menus);
+          continue;
+        }
+        if (item is PlatformMenuItemGroup) {
+          collect(item.members);
+          continue;
+        }
+        if (item.label.isEmpty) continue;
+        labels[item.label] = item.onSelected;
+      }
+    }
+
+    collect(bar.menus);
+    return labels;
+  }
 
   @override
   Widget build(BuildContext context) {
     return PlatformMenuBar(
       menus: [
         PlatformMenu(
+          label: 'Airo Mind',
+          menus: [
+            PlatformMenuItemGroup(
+              members: [
+                ..._macosProvided(PlatformProvidedMenuItemType.about),
+                PlatformMenuItem(
+                  label: 'Settings…',
+                  shortcut: _settingsShortcut,
+                  onSelected: MindRuntimeNavigation.openSettings,
+                ),
+              ],
+            ),
+            ..._menuGroup([
+              ..._macosProvided(PlatformProvidedMenuItemType.hide),
+              ..._macosProvided(
+                PlatformProvidedMenuItemType.hideOtherApplications,
+              ),
+              ..._macosProvided(
+                PlatformProvidedMenuItemType.showAllApplications,
+              ),
+            ]),
+            ..._menuGroup([
+              ..._macosProvided(PlatformProvidedMenuItemType.quit),
+            ]),
+          ],
+        ),
+        PlatformMenu(
           label: 'File',
           menus: [
-            PlatformMenuItem(
-              label: 'New Note',
-              onSelected: () => unawaited(
-                runtime.log.append(
-                  kind: MindOpKind.note,
-                  title: 'Untitled note',
-                  contextId: '',
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'New Chat',
+                  shortcut: _newChatShortcut,
+                  onSelected: () {
+                    MindChatMenuActions.newChat?.call();
+                    MindRuntimeNavigation.openNewChat?.call();
+                  },
                 ),
+                PlatformMenuItem(
+                  label: 'New Note',
+                  onSelected: () => unawaited(
+                    runtime.log.append(
+                      kind: MindOpKind.note,
+                      title: 'Untitled note',
+                      contextId: '',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Export Chat',
+                  shortcut: _exportShortcut,
+                  onSelected: MindChatMenuActions.exportChat,
+                ),
+              ],
+            ),
+            PlatformMenuItem(
+              label: 'Close Window',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyW,
+                meta: true,
               ),
+              onSelected: MindRuntimeNavigation.closeWindow,
             ),
           ],
         ),
         PlatformMenu(
           label: 'Edit',
           menus: [
-            PlatformMenuItem(
-              label: 'Search Everything',
-              shortcut: _summonShortcut,
-              onSelected: onOpenEverythingBrowser,
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Undo',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyZ,
+                    meta: true,
+                  ),
+                  onSelected: () => _invokeFocused(
+                    const UndoTextIntent(SelectionChangedCause.keyboard),
+                  ),
+                ),
+                PlatformMenuItem(
+                  label: 'Redo',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyZ,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () => _invokeFocused(
+                    const RedoTextIntent(SelectionChangedCause.keyboard),
+                  ),
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Cut',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyX,
+                    meta: true,
+                  ),
+                  onSelected: () => _invokeFocused(
+                    const CopySelectionTextIntent.cut(
+                      SelectionChangedCause.keyboard,
+                    ),
+                  ),
+                ),
+                PlatformMenuItem(
+                  label: 'Copy',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyC,
+                    meta: true,
+                  ),
+                  onSelected: () =>
+                      _invokeFocused(CopySelectionTextIntent.copy),
+                ),
+                PlatformMenuItem(
+                  label: 'Paste',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyV,
+                    meta: true,
+                  ),
+                  onSelected: () => _invokeFocused(
+                    const PasteTextIntent(SelectionChangedCause.keyboard),
+                  ),
+                ),
+                PlatformMenuItem(
+                  label: 'Select All',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyA,
+                    meta: true,
+                  ),
+                  onSelected: () => _invokeFocused(
+                    const SelectAllTextIntent(SelectionChangedCause.keyboard),
+                  ),
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Clear Chat',
+                  onSelected: MindChatMenuActions.clearChat,
+                ),
+                PlatformMenuItem(
+                  label: 'Search Everything',
+                  shortcut: _summonShortcut,
+                  onSelected: onOpenEverythingBrowser,
+                ),
+              ],
             ),
           ],
         ),
@@ -87,11 +269,6 @@ class MindNativeMenuBar extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
-        PlatformMenu(
-          label: 'Context',
-          menus: [
             PlatformMenuItem(
               label: 'New Context…',
               onSelected: () =>
@@ -106,31 +283,87 @@ class MindNativeMenuBar extends StatelessWidget {
               label: 'Intelligence',
               onSelected: () => MindRuntimeNavigation.openIntelligence?.call(),
             ),
+            PlatformMenuItem(
+              label: 'Model Library',
+              onSelected: () {
+                MindRuntimeNavigation.openModelLibrary?.call();
+                unawaited(runtime.models.all());
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Device & Acceleration…',
+              onSelected: MindRuntimeNavigation.openDeviceCapabilities,
+            ),
+            PlatformMenuItem(
+              label: 'Prompt Lab / Persona',
+              onSelected: MindRuntimeNavigation.openPromptLab,
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'View',
+          menus: [
+            PlatformMenuItem(
+              label: 'Toggle Sidebar',
+              shortcut: _sidebarShortcut,
+              onSelected: onToggleSidebar,
+            ),
+            PlatformMenu(
+              label: 'Appearance',
+              menus: [
+                PlatformMenuItem(
+                  label: 'Light',
+                  onSelected: () => onToggleTheme?.call(ThemeMode.light),
+                ),
+                PlatformMenuItem(
+                  label: 'Dark',
+                  onSelected: () => onToggleTheme?.call(ThemeMode.dark),
+                ),
+                PlatformMenuItem(
+                  label: 'System',
+                  onSelected: () => onToggleTheme?.call(ThemeMode.system),
+                ),
+              ],
+            ),
+            ..._macosProvided(PlatformProvidedMenuItemType.toggleFullScreen),
           ],
         ),
         PlatformMenu(
           label: 'Window',
           menus: [
-            PlatformMenuItem(
-              label: 'Everything Browser',
-              shortcut: _summonShortcut,
-              onSelected: onOpenEverythingBrowser,
+            ..._menuGroup([
+              ..._macosProvided(PlatformProvidedMenuItemType.minimizeWindow),
+              ..._macosProvided(PlatformProvidedMenuItemType.zoomWindow),
+            ]),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Everything Browser',
+                  shortcut: _summonShortcut,
+                  onSelected: onOpenEverythingBrowser,
+                ),
+                PlatformMenuItem(
+                  label: 'Mind Runtime…',
+                  onSelected: () => MindRuntimeNavigation.openHub?.call(),
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: 'Mind Runtime…',
-              onSelected: () {
-                // Shell-owned route — menu cannot import go_router here.
-                MindRuntimeNavigation.openHub?.call();
-              },
+            ..._macosProvided(
+              PlatformProvidedMenuItemType.arrangeWindowsInFront,
             ),
           ],
         ),
         PlatformMenu(
           label: 'Help',
           menus: [
+            PlatformMenuItem(label: 'About Airo Mind', onSelected: onAbout),
             PlatformMenuItem(
-              label: 'About Airo Mind',
-              onSelected: onAbout ?? () {},
+              label: 'Documentation',
+              onSelected: MindRuntimeNavigation.openPromptLab,
+            ),
+            PlatformMenuItem(
+              label: 'Troubleshooting / Logs',
+              onSelected: MindRuntimeNavigation.openLogs,
             ),
           ],
         ),
@@ -138,4 +371,22 @@ class MindNativeMenuBar extends StatelessWidget {
       child: child,
     );
   }
+
+  static void _invokeFocused<T extends Intent>(T intent) {
+    final focused = WidgetsBinding.instance.focusManager.primaryFocus?.context;
+    if (focused == null) return;
+    Actions.maybeInvoke<T>(focused, intent);
+  }
+}
+
+List<PlatformMenuItem> _macosProvided(PlatformProvidedMenuItemType type) {
+  if (!PlatformProvidedMenuItem.hasMenu(type)) {
+    return const [];
+  }
+  return [PlatformProvidedMenuItem(type: type)];
+}
+
+List<PlatformMenuItem> _menuGroup(List<PlatformMenuItem> members) {
+  if (members.isEmpty) return const [];
+  return [PlatformMenuItemGroup(members: members)];
 }

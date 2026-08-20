@@ -510,6 +510,9 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
     *lock(&LIBRARY) = Some(Library { store, index });
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
+    // Metal device globals are C++ function-local statics. Register after
+    // load so this handler runs *before* ggml's unique_ptr destructor.
+    register_speech_exit_guard();
     Ok(())
 }
 
@@ -805,6 +808,53 @@ pub fn cancel_processing() {
     }
 }
 
+/// Drops the speech Supervisor so whisper.cpp can release Metal buffers
+/// before ggml's process-exit `ggml_metal_device` destructor runs.
+///
+/// Rust statics are never dropped, so without this `NSApplication terminate`
+/// hits `GGML_ASSERT([rsets->data count] == 0)` in `ggml_metal_rsets_free`.
+/// Safe to call when nothing is loaded. Dart reaches this through the
+/// exported C symbol — a new FRB method would require regenerating the
+/// bridge, and quit must work on the already-linked dylib.
+pub fn unload_speech() {
+    release_speech_resources();
+}
+
+/// Exported so Dart can drop the speech engine on Cmd-Q / SIGTERM while
+/// AppKit Metal is still valid. Hidden ggml symbols stay unexported; this
+/// is a `#[no_mangle]` cdylib entry like the FRB wire functions.
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn airo_mind_whisper_unload_speech() {
+    release_speech_resources();
+}
+
+fn release_speech_resources() {
+    cancel_processing();
+    *lock(&ENGINES) = None;
+}
+
+fn register_speech_exit_guard() {
+    use std::sync::Once;
+    static REGISTER: Once = Once::new();
+    REGISTER.call_once(|| {
+        #[allow(unsafe_code)]
+        {
+            extern "C" {
+                fn atexit(cb: extern "C" fn()) -> i32;
+            }
+            // SAFETY: the handler only takes process-local mutexes and drops
+            // `ENGINES`. It must not panic: atexit callbacks that unwind abort.
+            let rc = unsafe { atexit(release_speech_on_process_exit) };
+            debug_assert_eq!(rc, 0);
+        }
+    });
+}
+
+extern "C" fn release_speech_on_process_exit() {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(release_speech_resources));
+}
+
 /// Every meeting, newest first.
 pub fn list_meetings() -> Result<Vec<MeetingRecord>, String> {
     let library = lock(&LIBRARY);
@@ -1052,9 +1102,14 @@ mod tests {
         )
         .is_err());
         assert!(get_transcript("nope".into()).is_err());
-        // Cancelling with nothing in flight is a no-op, not a crash: the user
-        // can press Stop on a screen whose job already finished.
+        // Cancelling / releasing with nothing in flight is a no-op, not a crash:
+        // the user can press Stop on a screen whose job already finished.
         cancel_processing();
+        release_speech_resources();
+        release_speech_resources();
+        register_speech_exit_guard();
+        register_speech_exit_guard();
+        assert!(!is_ready());
     }
 
     /// `ADR-0018 §4`: nothing above the Model Manager names a file. If a

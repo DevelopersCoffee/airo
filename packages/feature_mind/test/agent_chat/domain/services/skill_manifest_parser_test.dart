@@ -107,5 +107,62 @@ Instructions.
         throwsA(isA<SkillManifestFormatException>()),
       );
     });
+
+    test('parses a pinned persona without tools', () {
+      const source = '''
+---
+id: lesson-planning-assistant
+name: Lesson Planning
+description: Draft lesson outlines.
+version: 1.0.0
+author: Airo
+runtime: native
+mode: persona
+family: teacher
+starter_prompts:
+  - For Grade 6 science on ecosystems
+---
+You are a lesson planning assistant.
+''';
+
+      final skill = SkillManifestParser.parse(source);
+
+      expect(skill.isPersona, isTrue);
+      expect(skill.family, AgentPersonaFamily.teacher);
+      expect(skill.tools, isEmpty);
+      expect(skill.starterPrompts, ['For Grade 6 science on ecosystems']);
+      expect(skill.instructions, contains('lesson planning assistant'));
+    });
+
+    test('parses life-workflow persona fields', () {
+      const source = '''
+---
+id: hospital-recovery-planner
+name: Hospital Recovery
+description: Stage a hospital stay.
+version: 1.0.0
+author: Airo
+runtime: native
+mode: persona
+family: health
+safety_class: health
+follow_up_policy: daily_until_done
+life_track_template_id: medical_surgery_v1
+starter_prompts:
+  - What is pending on my hospital recovery track?
+tools:
+  - query_lifetrack_status
+---
+You are a hospital recovery assistant.
+''';
+
+      final skill = SkillManifestParser.parse(source);
+
+      expect(skill.isPersona, isTrue);
+      expect(skill.family, AgentPersonaFamily.health);
+      expect(skill.followUpPolicy, SkillFollowUpPolicy.dailyUntilDone);
+      expect(skill.lifeTrackTemplateId, 'medical_surgery_v1');
+      expect(skill.tools, ['query_lifetrack_status']);
+    });
   });
 }

@@ -48,7 +48,8 @@ MindIndicCapability _desktopProCapability({MemoryInfo? memory}) {
   debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
   return MindIndicCapability(
     entitlements: const LaunchPromoEntitlements(),
-    memoryInfo: memory ??
+    memoryInfo:
+        memory ??
         MemoryInfo(
           totalBytes: kMindIndicMinTotalRamBytes,
           availableBytes: kMindIndicMinAvailableRamBytes,
@@ -66,7 +67,10 @@ void main() {
         scribeModelsById: _fullCatalog(),
       );
 
-      expect(result.featured.generationModelId, MindScribeModelIds.sarvamGeneration);
+      expect(
+        result.featured.generationModelId,
+        MindScribeModelIds.sarvamGeneration,
+      );
       expect(result.featured.badge, MindModelRecommendationBadge.bestOverall);
       expect(result.featured.action, MindModelRecommendationAction.download);
       debugDefaultTargetPlatformOverride = null;
@@ -127,7 +131,7 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    test('includes Sarvam Edge speech stub', () {
+    test('does not invent unpublished speech models', () {
       final advisor = MindModelAdvisor();
       final result = advisor.recommend(
         capability: _desktopProCapability(),
@@ -135,11 +139,52 @@ void main() {
         scribeModelsById: _fullCatalog(),
       );
 
-      expect(result.speechStub?.headline, 'Sarvam Edge ASR');
-      expect(
-        result.speechStub?.action,
-        MindModelRecommendationAction.disabled,
+      expect(result.speechStub, isNull);
+      expect(result.featured.headline, contains('Sarvam-1 (Q4_K_M)'));
+      expect(result.featured.headline, contains('Whisper Tiny (Multilingual)'));
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('uses catalog names and descriptions, not invented copy', () {
+      final advisor = MindModelAdvisor();
+      final catalog = Map<String, OfflineModelInfo>.from(_fullCatalog());
+      catalog[MindScribeModelIds.qwenGeneration] = OfflineModelInfo(
+        id: MindScribeModelIds.qwenGeneration,
+        name: 'Catalog minutes pack',
+        family: ModelFamily.other,
+        fileSizeBytes: 397807424,
+        filePath: '/tmp/qwen',
+        description: 'Catalog minutes description.',
       );
+      catalog[MindScribeModelIds.whisperMultilingual] = OfflineModelInfo(
+        id: MindScribeModelIds.whisperMultilingual,
+        name: 'Catalog speech pack',
+        family: ModelFamily.other,
+        fileSizeBytes: 77691713,
+        filePath: '/tmp/whisper',
+        description: 'Catalog speech description.',
+      );
+
+      final result = advisor.recommend(
+        capability: _desktopProCapability(
+          memory: MemoryInfo.fromMegabytes(totalMB: 6000, availableMB: 2000),
+        ),
+        generationMode: MindIndicGenerationMode.standard,
+        scribeModelsById: catalog,
+      );
+
+      expect(result.featured.headline, contains('Catalog minutes pack'));
+      expect(result.featured.headline, contains('Catalog speech pack'));
+      expect(
+        result.featured.runtimeNote,
+        contains('Catalog minutes description.'),
+      );
+      expect(
+        result.featured.runtimeNote,
+        contains('Catalog speech description.'),
+      );
+      expect(result.featured.runtimeNote, isNot(contains('Reliable stack')));
+      expect(result.speechStub, isNull);
       debugDefaultTargetPlatformOverride = null;
     });
   });

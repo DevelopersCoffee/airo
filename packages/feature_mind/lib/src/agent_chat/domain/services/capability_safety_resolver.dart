@@ -9,8 +9,10 @@ import '../models/agent_skill.dart';
 /// capability means adding one entry here, not hardcoding a banner per
 /// screen.
 CapabilitySafetyClass? resolveCapabilitySafetyClass(
-  List<SkillCapability> capabilities,
-) {
+  List<SkillCapability> capabilities, {
+  CapabilitySafetyClass declared = CapabilitySafetyClass.general,
+}) {
+  if (declared != CapabilitySafetyClass.general) return declared;
   for (final capability in capabilities) {
     final safetyClass = _safetyClassByCapability[capability];
     if (safetyClass != null && safetyClass != CapabilitySafetyClass.general) {

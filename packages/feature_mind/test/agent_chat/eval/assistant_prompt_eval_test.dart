@@ -1,0 +1,186 @@
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
+import 'package:feature_mind/src/agent_chat/data/services/assistant_chat_context_builder.dart';
+import 'package:feature_mind/src/agent_chat/data/services/diet_plan_plugin_prompt.dart';
+import 'package:feature_mind/src/agent_chat/data/services/gguf_instruct_prompt.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
+import 'package:core_ai/core_ai.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Deterministic eval of the Assistant chip prompts plus the transcript
+/// follow-ups that failed in the 0.5B Mind chat session.
+void main() {
+  final registry = ToolRegistry();
+
+  const chipPrompts = <String>[
+    'Help me think through a task',
+    'What can you do in Airo?',
+    'Check my schedule for today',
+    'Remind me to take Minoxidil every 12 hours starting at 8am',
+    'Split this ₹2400 bill with Asha, Ben and Chen',
+    'Make me a 7 day diet plan',
+    'Create a morning study routine for tomorrow',
+    'Ask image about this receipt',
+    'Open mobile actions',
+    'Manage offline models',
+    'I am bored, start chess',
+  ];
+
+  test('every Assistant chip prompt parses without throwing', () {
+    for (final prompt in chipPrompts) {
+      expect(() => IntentParser.parse(prompt), returnsNormally, reason: prompt);
+    }
+  });
+
+  test('tool-backed chip prompts return a usable draft or route', () async {
+    const toolBacked = [
+      'Split this ₹2400 bill with Asha, Ben and Chen',
+      'Create a morning study routine for tomorrow',
+      'Ask image about this receipt',
+      'Open mobile actions',
+      'Manage offline models',
+      'I am bored, start chess',
+    ];
+
+    for (final prompt in toolBacked) {
+      final intent = IntentParser.parse(prompt);
+      expect(intent.type, isNot(IntentType.unknown), reason: prompt);
+      final result = await registry.executeIntent(intent);
+      expect(result.isError, isFalse, reason: prompt);
+      expect(result.message.trim(), isNotEmpty, reason: prompt);
+    }
+  });
+
+  test('diet prompts are LLM plugin work, not a canned menu', () {
+    expect(
+      IntentParser.parse('Make me a 7 day vegetarian diet plan').type,
+      IntentType.createDietPlan,
+    );
+    expect(IntentParser.parse('non veg only').type, IntentType.createDietPlan);
+    expect(IntentParser.parse('veg only').type, IntentType.createDietPlan);
+
+    expect(draftDietPlanSkill.isGenerativePlugin, isTrue);
+    expect(draftDietPlanSkill.instructions, contains('stated constraints'));
+    expect(
+      draftDietPlanSkill.instructions.toLowerCase(),
+      isNot(contains('oats')),
+    );
+    expect(
+      draftDietPlanSkill.instructions.toLowerCase(),
+      isNot(contains('chicken')),
+    );
+  });
+
+  test('diet plugin playbook is injected for the chat model', () {
+    const builder = AssistantChatContextBuilder();
+    final prompt = builder.buildSystemPrompt(
+      currentUserPrompt: 'Make me a 7 day vegetarian diet plan',
+      compact: true,
+      pluginPlaybooks: [
+        '${draftDietPlanSkill.name}: ${draftDietPlanSkill.instructions}',
+      ],
+      history: const [],
+    );
+
+    expect(prompt, contains('Enabled plugins:'));
+    expect(prompt, contains('Diet Plan:'));
+    expect(prompt, contains('Do not invent a fixed menu from the app'));
+    expect(prompt, contains('follow it fully'));
+    expect(prompt, contains('Reply briefly unless an enabled plugin applies'));
+  });
+
+  test('hi and 2+2 stay free-form chat, not skill or diet intents', () {
+    expect(IntentParser.parse('hi').type, IntentType.unknown);
+    expect(IntentParser.parse('2+2').type, IntentType.unknown);
+    expect(
+      DietPlanPluginPrompt.applies(
+        currentPrompt: 'hi',
+        history: const [
+          AssistantChatContextMessage(
+            text: 'Make me a 7 day diet plan',
+            isUser: true,
+          ),
+          AssistantChatContextMessage(
+            text: 'Day 1: Breakfast — Oatmeal; lunch — Grilled chicken',
+            isUser: false,
+          ),
+        ],
+      ),
+      isFalse,
+    );
+  });
+
+  test('warming and catalog-missing copy never enter compact GGUF context', () {
+    const builder = AssistantChatContextBuilder();
+    final prompt = builder.buildSystemPrompt(
+      currentUserPrompt: 'hi',
+      compact: true,
+      history: const [
+        AssistantChatContextMessage(
+          text:
+              'You selected Qwen2.5 0.5B Instruct (Q4_K_M). Warming it on device before you can send.',
+          isUser: false,
+        ),
+        AssistantChatContextMessage(text: 'hi', isUser: true),
+      ],
+    );
+
+    expect(prompt, isNot(contains('Warming it on device')));
+    expect(
+      formatGgufInstructPrompt(
+        prompt: 'hi',
+        systemPrompt: prompt,
+        family: ModelFamily.qwen,
+      ),
+      contains('<|im_start|>assistant'),
+    );
+  });
+
+  test(
+    'wraps Gemma instruct turns instead of concatenating system and user',
+    () {
+      final wrapped = formatGgufInstructPrompt(
+        prompt: 'hi',
+        systemPrompt: 'You are Airo.',
+        family: ModelFamily.gemma,
+      );
+      expect(wrapped, contains('<start_of_turn>user'));
+      expect(wrapped, contains('<start_of_turn>model'));
+      expect(wrapped, isNot(contains('<|im_start|>')));
+      expect(wrapped, isNot(contains('Everyday meal ideas')));
+      expect(wrapped, contains('or repeat a previous reply'));
+    },
+  );
+
+  test('trims 0.5B transcript continuation after a short answer', () {
+    expect(
+      trimGgufRoleBleed(
+        '+2=4\nAiro: Sure, I can help you with that. Ready to proceed?',
+      ),
+      '+2=4',
+    );
+  });
+
+  test('trims Gemma role bleed, placeholders, and repeated lines', () {
+    expect(
+      trimGgufRoleBleed(
+        'Hello! How can I assist you today? Airo: Hello! How can I assist you today?',
+      ),
+      'Hello! How can I assist you today?',
+    );
+    expect(
+      trimGgufRoleBleed(
+        'Hello!\n[Type your information here]\n[Type your information here]',
+      ),
+      'Hello!',
+    );
+    expect(
+      trimGgufRoleBleed('Thanks.<end_of_turn><start_of_turn>user\nMore'),
+      'Thanks.',
+    );
+    expect(
+      trimGgufRoleBleed("I'm sorry, but I can't assist with that. </model>"),
+      "I'm sorry, but I can't assist with that.",
+    );
+  });
+}

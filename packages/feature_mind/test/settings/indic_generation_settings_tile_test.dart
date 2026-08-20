@@ -30,7 +30,7 @@ void main() {
     );
     expect(find.text('Auto'), findsOneWidget);
     expect(
-      find.textContaining('otherwise Qwen 0.5B'),
+      find.textContaining('otherwise the standard minutes pack'),
       findsOneWidget,
     );
     debugDefaultTargetPlatformOverride = null;
@@ -71,7 +71,7 @@ void main() {
       find.byKey(const Key('indic_generation_settings_dropdown')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Standard (Qwen)').last);
+    await tester.tap(find.text('Standard').last);
     await tester.pumpAndSettle();
 
     final prefs = await SharedPreferences.getInstance();

@@ -28,6 +28,9 @@ final assistantModelLibraryProvider =
       return AssistantModelLibraryState.load(
         task: task,
         isAndroidHost: host.isAndroidHost,
+        runtimeProfile: ModelRuntimeProfile.resolve(
+          isAndroidHost: host.isAndroidHost,
+        ),
         loadAssistantDownloadedModels: host.loadAssistantDownloadedModels,
       );
     });
@@ -168,6 +171,7 @@ class AssistantModelLibraryState {
     required this.candidates,
     required this.recommended,
     required this.defaultPackages,
+    this.isAndroidHost = false,
   });
 
   final AssistantTask task;
@@ -176,6 +180,11 @@ class AssistantModelLibraryState {
   final List<AssistantModelCandidate> candidates;
   final AssistantModelCandidate recommended;
   final Map<AssistantTask, OfflineModelInfo> defaultPackages;
+
+  /// Hosts where AICore / LiteRT-LM are meaningful. Desktop and web keep
+  /// [isAndroidHost] false so Gallery `.litertlm` packages cannot become the
+  /// chat default.
+  final bool isAndroidHost;
 
   /// A native LiteRT channel is not proof that a model can be loaded. The
   /// runtime must have an installed and verified package. A configured path is
@@ -233,7 +242,11 @@ class AssistantModelLibraryState {
     Iterable<OfflineModelInfo>? mobileRecommended,
     Future<List<OfflineModelInfo>> Function()? loadAssistantDownloadedModels,
     String? platformLabelOverride,
+    ModelRuntimeProfile? runtimeProfile,
   }) async {
+    final profile =
+        runtimeProfile ??
+        ModelRuntimeProfile.resolve(isAndroidHost: isAndroidHost);
     final nanoService = GeminiNanoService();
     // Gemini Nano is only exposed by Android's AICore. Do not probe the
     // native channel on desktop/web (including widget tests), where an
@@ -241,18 +254,20 @@ class AssistantModelLibraryState {
     // teardown.
     final nanoSupported = isNanoSupported != null
         ? await isNanoSupported()
-        : isAndroidHost
+        : profile.offersGeminiNano && isAndroidHost
         ? await nanoService.isSupported()
         : false;
     final deviceInfo = loadDeviceInfo != null
         ? await loadDeviceInfo()
-        : isAndroidHost
+        : profile.offersGeminiNano && isAndroidHost
         ? await nanoService.getDeviceInfo()
         : const <String, dynamic>{};
-    final liteRtService = LiteRtLmService();
-    final liteRtAvailable = isLiteRtAvailable != null
+    final liteRtService = profile.offersLiteRt ? LiteRtLmService() : null;
+    final liteRtAvailable = !profile.offersLiteRt
+        ? false
+        : isLiteRtAvailable != null
         ? await isLiteRtAvailable()
-        : await liteRtService.isAvailable();
+        : await liteRtService!.isAvailable();
     final ggufAvailable = isGgufAvailable != null
         ? await isGgufAvailable()
         : await LlamaGgufService().isAvailable();
@@ -267,16 +282,20 @@ class AssistantModelLibraryState {
         : false;
     final webMediaPipeAvailable = kIsWeb && cloudAvailable;
     final defaultPackages = loadDefaultPackages == null
-        ? await _defaultPackages(liteRtService)
+        ? (profile.offersLiteRt && liteRtService != null
+              ? await _defaultPackages(liteRtService)
+              : await _ggufDefaultPackages(loadAssistantDownloadedModels))
         : await loadDefaultPackages();
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
-    final liteRtReady = isLiteRtReady(
-      runtimeAvailable: liteRtAvailable,
-      hasDownloadedPackage: hasDownloadedBalancedPackage,
-      hasConfiguredModelPath:
-          hasConfiguredModelPath ?? liteRtService.hasConfiguredModelPath,
-    );
+    final liteRtReady = profile.offersLiteRt && liteRtService != null
+        ? isLiteRtReady(
+            runtimeAvailable: liteRtAvailable,
+            hasDownloadedPackage: hasDownloadedBalancedPackage,
+            hasConfiguredModelPath:
+                hasConfiguredModelPath ?? liteRtService.hasConfiguredModelPath,
+          )
+        : false;
     final compatibilityByModelId = loadCompatibilityByModelId == null
         ? await _loadCompatibilityByModelId(liteRtService, defaultPackages)
         : await loadCompatibilityByModelId(defaultPackages);
@@ -296,7 +315,7 @@ class AssistantModelLibraryState {
       candidatesById[candidate.id] = candidate;
     }
 
-    if (isAndroidHost) {
+    if (profile.offersGeminiNano && isAndroidHost) {
       addCandidate(
         AssistantModelCandidate(
           id: geminiNanoAssistantModelId,
@@ -325,7 +344,7 @@ class AssistantModelLibraryState {
     // in the Mind chooser when the device has neither an executable artifact
     // nor a configured model path. Model Management remains the explicit
     // place to download/install a package.
-    if (liteRtReady) {
+    if (profile.offersLiteRt && liteRtReady) {
       addCandidate(
         AssistantModelCandidate(
           id: litertGemmaAssistantModelId,
@@ -377,36 +396,35 @@ class AssistantModelLibraryState {
         ),
       );
     }
+    void addDownloadedPackage(OfflineModelInfo model) {
+      if (!model.isDownloaded) return;
+      if (!_offerPackageOnHost(model, isAndroidHost: isAndroidHost)) return;
+      addCandidate(
+        AssistantModelCandidate.fromOfflineModel(
+          model,
+          compatibilityByModelId: compatibilityByModelId,
+          nativeGgufAvailable: ggufAvailable,
+          liteRtNativeAvailable: liteRtAvailable,
+          webMediaPipeAvailable: webMediaPipeAvailable,
+        ),
+      );
+    }
+
     for (final model
-        in (mobileRecommended ?? ModelCatalog.mobileRecommended).take(3)) {
-      final hydrated = hydrateDownloadedModel == null
+        in (mobileRecommended ??
+                ModelCatalog.forProfile(profile).take(3).toList())
+            .take(3)) {
+      final hydrated = hydrateDownloadedModel != null
+          ? await hydrateDownloadedModel(model)
+          : liteRtService != null
           ? await liteRtService.hydrateDownloadedModel(model)
-          : await hydrateDownloadedModel(model);
-      if (hydrated.isDownloaded) {
-        addCandidate(
-          AssistantModelCandidate.fromOfflineModel(
-            hydrated,
-            compatibilityByModelId: compatibilityByModelId,
-            nativeGgufAvailable: ggufAvailable,
-            liteRtNativeAvailable: liteRtAvailable,
-            webMediaPipeAvailable: webMediaPipeAvailable,
-          ),
-        );
-      }
+          : model;
+      addDownloadedPackage(hydrated);
     }
     if (loadAssistantDownloadedModels != null) {
       final extraModels = await loadAssistantDownloadedModels();
       for (final model in extraModels) {
-        if (!model.isDownloaded) continue;
-        addCandidate(
-          AssistantModelCandidate.fromOfflineModel(
-            model,
-            compatibilityByModelId: compatibilityByModelId,
-            nativeGgufAvailable: ggufAvailable,
-            liteRtNativeAvailable: liteRtAvailable,
-            webMediaPipeAvailable: webMediaPipeAvailable,
-          ),
-        );
+        addDownloadedPackage(model);
       }
     }
     for (final task in [
@@ -417,17 +435,7 @@ class AssistantModelLibraryState {
       AssistantTask.tinyGarden,
     ]) {
       final model = defaultPackages[task];
-      if (model != null && model.isDownloaded) {
-        addCandidate(
-          AssistantModelCandidate.fromOfflineModel(
-            model,
-            compatibilityByModelId: compatibilityByModelId,
-            nativeGgufAvailable: ggufAvailable,
-            liteRtNativeAvailable: liteRtAvailable,
-            webMediaPipeAvailable: webMediaPipeAvailable,
-          ),
-        );
-      }
+      if (model != null) addDownloadedPackage(model);
     }
     if (candidatesById.isEmpty) {
       addCandidate(_setupRequiredCandidate(platformLabel));
@@ -447,7 +455,20 @@ class AssistantModelLibraryState {
       candidates: candidates,
       recommended: recommended,
       defaultPackages: defaultPackages,
+      isAndroidHost: isAndroidHost,
     );
+  }
+
+  /// Gallery LiteRT / MediaPipe packages are Android or web runtimes. Offering
+  /// them as chat defaults on desktop locks General Chat behind "Configure
+  /// runtime" even when a GGUF file is already on disk.
+  static bool _offerPackageOnHost(
+    OfflineModelInfo model, {
+    required bool isAndroidHost,
+  }) {
+    if (isAndroidHost || kIsWeb) return true;
+    return model.effectiveRuntime == InferenceRuntime.llamaCpp &&
+        !isLiteRtPackage(model);
   }
 
   static String? _firstRunnableGgufCandidateId(
@@ -468,12 +489,14 @@ class AssistantModelLibraryState {
     bool isAndroidHost = false,
   }) {
     final package = packages[task];
+    final preferCatalogPackage =
+        package != null && (isAndroidHost || !isLiteRtPackage(package));
     final preferredIds = switch (task) {
       AssistantTask.chat => [
         if (!isAndroidHost)
           if (_firstRunnableGgufCandidateId(candidates) case final ggufId?)
             ggufId,
-        if (package != null) assistantModelIdForOfflineModel(package.id),
+        if (preferCatalogPackage) assistantModelIdForOfflineModel(package.id),
         if (isAndroidHost) litertGemmaAssistantModelId,
         if (isAndroidHost) geminiNanoAssistantModelId,
       ],
@@ -516,10 +539,16 @@ class AssistantModelLibraryState {
       final ready = preferred.where((candidate) => candidate.available);
       if (ready.isNotEmpty) return ready.first;
 
-      final setup = preferred.where((candidate) => candidate.opensModelManager);
-      if (setup.isNotEmpty) return setup.first;
-
-      return preferred.first;
+      // Desktop: a downloaded LiteRT card is not a setup path. Fall through
+      // so ranking can pick a GGUF or the explicit "choose a local model"
+      // candidate instead of locking General Chat to Configure runtime.
+      if (isAndroidHost) {
+        final setup = preferred.where(
+          (candidate) => candidate.opensModelManager,
+        );
+        if (setup.isNotEmpty) return setup.first;
+        return preferred.first;
+      }
     }
 
     final ranked = [...candidates]
@@ -541,18 +570,24 @@ class AssistantModelLibraryState {
     }
     final ready = viable.where((candidate) => candidate.available);
     if (ready.isNotEmpty) return ready.first;
+    if (!isAndroidHost) {
+      for (final candidate in candidates) {
+        if (candidate.id == 'assistant-setup-required') return candidate;
+      }
+    }
     return viable.first;
   }
 
   static AssistantModelCandidate _setupRequiredCandidate(String platformLabel) {
-    final isMacLike = platformLabel.toUpperCase().contains('MACOS') ||
+    final isMacLike =
+        platformLabel.toUpperCase().contains('MACOS') ||
         platformLabel.toUpperCase().contains('MAC');
     return AssistantModelCandidate(
       id: 'assistant-setup-required',
       name: 'Choose a local model',
       runtime: 'On-device package required',
       description: isMacLike
-          ? 'Download a GGUF package (for example Qwen 1.5B) from Models, then pick it here to chat on $platformLabel.'
+          ? 'Download a GGUF package from Models, then pick it here to chat on $platformLabel.'
           : 'Download a compatible on-device package from Models to chat on $platformLabel.',
       bestFor: const [AssistantTask.chat],
       tags: const ['Setup'],
@@ -576,7 +611,12 @@ class AssistantModelLibraryState {
   }
 
   AssistantModelCandidate recommendedFor(AssistantTask task) {
-    return recommend(candidates, task, defaultPackages);
+    return recommend(
+      candidates,
+      task,
+      defaultPackages,
+      isAndroidHost: isAndroidHost,
+    );
   }
 
   OfflineModelInfo? packageFor(AssistantTask task) {
@@ -616,9 +656,28 @@ class AssistantModelLibraryState {
     };
   }
 
+  static Future<Map<AssistantTask, OfflineModelInfo>> _ggufDefaultPackages(
+    Future<List<OfflineModelInfo>> Function()? loadAssistantDownloadedModels,
+  ) async {
+    if (loadAssistantDownloadedModels == null) {
+      return const {};
+    }
+    final models = await loadAssistantDownloadedModels();
+    OfflineModelInfo? chat;
+    for (final model in models) {
+      if (!model.isDownloaded) continue;
+      if (model.effectiveRuntime != InferenceRuntime.llamaCpp) continue;
+      if (!model.capabilities.contains(ModelCapability.chat)) continue;
+      chat = model;
+      break;
+    }
+    if (chat == null) return const {};
+    return {for (final task in AssistantTask.values) task: chat};
+  }
+
   static Future<Map<String, ModelCompatibilityResult>>
   _loadCompatibilityByModelId(
-    LiteRtLmService liteRtService,
+    LiteRtLmService? liteRtService,
     Map<AssistantTask, OfflineModelInfo> defaultPackages,
   ) async {
     final registry = ModelRegistry();
@@ -631,8 +690,10 @@ class AssistantModelLibraryState {
     for (final model in defaultPackages.values) {
       addModel(model);
     }
-    for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addModel(await liteRtService.hydrateDownloadedModel(model));
+    if (liteRtService != null) {
+      for (final model in ModelCatalog.mobileRecommended.take(3)) {
+        addModel(await liteRtService.hydrateDownloadedModel(model));
+      }
     }
 
     final compatibilityByModelId = <String, ModelCompatibilityResult>{};
@@ -688,7 +749,9 @@ class AssistantModelCandidate {
         ? readiness
         : ModelReadinessState(
             phase: ModelReadinessPhase.runtimeUnavailable,
-            headline: mismatch == null ? 'Model file missing' : 'Download incomplete',
+            headline: mismatch == null
+                ? 'Model file missing'
+                : 'Download incomplete',
             detail: mismatch == null
                 ? 'The GGUF file is not in local storage. Open Models to install or repair it.'
                 : 'Expected ${mismatch.expected} bytes but found ${mismatch.found}. Re-download from Models.',
@@ -866,6 +929,7 @@ class _ModelLibraryContent extends ConsumerWidget {
           candidate: state.recommended,
           onOpenModelManager: onOpenModelManager,
         ),
+        ..._installedModelSection(context, ref, theme, selectedModelId),
         const SizedBox(height: 16),
         Text('Choose category', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
@@ -876,12 +940,10 @@ class _ModelLibraryContent extends ConsumerWidget {
               template: template,
               candidate: state.recommendedFor(template.task),
               // Keep the catalog package available to setup callbacks, but do
-              // not render an uninstalled LiteRT artifact as if it were part
+              // not render an unrunnable LiteRT artifact as if it were part
               // of the active project. The card should describe executable
               // state, not a download recommendation.
-              package: state.packageFor(template.task)?.isDownloaded == true
-                  ? state.packageFor(template.task)
-                  : null,
+              package: _visibleProjectPackage(state, template.task),
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
@@ -905,12 +967,70 @@ class _ModelLibraryContent extends ConsumerWidget {
     );
   }
 
+  List<Widget> _installedModelSection(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    String? selectedModelId,
+  ) {
+    final installed = [
+      for (final candidate in state.candidates)
+        if (candidate.local && candidate.available && candidate.package != null)
+          candidate,
+    ];
+    if (installed.isEmpty) return const [];
+
+    final chatTemplate = AssistantProjectTemplate.values.firstWhere(
+      (template) => template.task == AssistantTask.chat,
+    );
+    return [
+      const SizedBox(height: 16),
+      Text('On this device', style: theme.textTheme.titleSmall),
+      const SizedBox(height: 8),
+      for (final candidate in installed)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Card(
+            child: ListTile(
+              selected: selectedModelId == candidate.id,
+              title: Text(candidate.name),
+              subtitle: Text('${candidate.runtime} · ${candidate.sizeLabel}'),
+              trailing: Icon(
+                selectedModelId == candidate.id
+                    ? Icons.check_circle
+                    : Icons.chevron_right,
+              ),
+              onTap: () => _handleStartCandidate(
+                context,
+                ref,
+                candidate: candidate,
+                template: chatTemplate,
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
   Future<void> _handleStartProject(
     BuildContext context,
     WidgetRef ref,
     AssistantProjectTemplate template,
-  ) async {
-    final candidate = state.recommendedFor(template.task);
+  ) {
+    return _handleStartCandidate(
+      context,
+      ref,
+      candidate: _startCandidateFor(state, template.task),
+      template: template,
+    );
+  }
+
+  Future<void> _handleStartCandidate(
+    BuildContext context,
+    WidgetRef ref, {
+    required AssistantModelCandidate candidate,
+    required AssistantProjectTemplate template,
+  }) async {
     final hasDownloadedPackage = candidate.package?.isDownloaded ?? false;
     ref.read(selectedAssistantTaskProvider.notifier).state = template.task;
     // Read the notifier up front: the library provider can reload while a
@@ -961,6 +1081,38 @@ class _ModelLibraryContent extends ConsumerWidget {
     }
     await selection.select(candidate.id);
     onModelSelected(candidate);
+  }
+
+  static OfflineModelInfo? _visibleProjectPackage(
+    AssistantModelLibraryState state,
+    AssistantTask task,
+  ) {
+    final recommended = state.recommendedFor(task).package;
+    if (recommended != null && recommended.isDownloaded) {
+      return recommended;
+    }
+    final package = state.packageFor(task);
+    if (package == null || !package.isDownloaded) return null;
+    if (!state.isAndroidHost &&
+        AssistantModelLibraryState.isLiteRtPackage(package)) {
+      return null;
+    }
+    return package;
+  }
+
+  static AssistantModelCandidate _startCandidateFor(
+    AssistantModelLibraryState state,
+    AssistantTask task,
+  ) {
+    final recommended = state.recommendedFor(task);
+    if (recommended.available) return recommended;
+    for (final candidate in state.candidates) {
+      if (!candidate.available) continue;
+      if (candidate.bestFor.contains(task) || task == AssistantTask.chat) {
+        return candidate;
+      }
+    }
+    return recommended;
   }
 
   Future<AssistantRuntimePreparationResult> _prepareLocalRuntime(
@@ -1289,10 +1441,9 @@ class _RuntimeHealthButton extends ConsumerWidget {
             MaterialPageRoute<void>(
               builder: (_) => ModelHealthCenterLoaderScreen(
                 model: model,
-                compatibilityFuture:
-                    candidate.compatibility != null
-                        ? Future.value(candidate.compatibility!)
-                        : ModelHealthFacts.compatibilityFor(model),
+                compatibilityFuture: candidate.compatibility != null
+                    ? Future.value(candidate.compatibility!)
+                    : ModelHealthFacts.compatibilityFor(model),
                 artifactPresentFuture: Future.value(
                   GgufArtifactGuard.isVerified(model),
                 ),

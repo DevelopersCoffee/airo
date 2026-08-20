@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+
+import 'voice_search_desktop_stub.dart'
+    if (dart.library.io) 'voice_search_desktop.dart'
+    as desktop;
 
 /// Voice search state
 enum VoiceSearchState {
@@ -247,15 +250,31 @@ class AndroidVoiceSearchService implements VoiceSearchService {
   }
 }
 
-/// macOS speech-recognition adapter backed by Apple's Speech framework.
-class MacOSVoiceSearchService implements VoiceSearchService {
-  MacOSVoiceSearchService({SpeechToText? speech})
-    : _speech = speech ?? SpeechToText();
+/// Desktop mic path: record WAV, then transcribe with on-device whisper.
+///
+/// Does not call Apple's Speech framework. `speech_to_text` on macOS can
+/// abort the process (TCC) when the sandbox/prompt is not ready; chat voice
+/// must survive a tap even when permission is denied.
+class DesktopWhisperVoiceSearchService implements VoiceSearchService {
+  DesktopWhisperVoiceSearchService({
+    required this.hasPermission,
+    required this.startCapture,
+    required this.stopCapture,
+    required this.transcribe,
+    required this.tempPath,
+  });
 
-  final SpeechToText _speech;
+  final Future<bool> Function() hasPermission;
+  final Future<void> Function(String path) startCapture;
+  final Future<String?> Function() stopCapture;
+  final Future<String> Function(String path) transcribe;
+  final Future<String> Function() tempPath;
+
   VoiceSearchState _state = VoiceSearchState.idle;
   final _stateController = StreamController<VoiceSearchState>.broadcast();
-  bool _initialized = false;
+  Completer<void>? _untilStop;
+  var _recording = false;
+  var _disposed = false;
 
   @override
   VoiceSearchState get state => _state;
@@ -264,80 +283,80 @@ class MacOSVoiceSearchService implements VoiceSearchService {
   Stream<VoiceSearchState> get stateStream => _stateController.stream;
 
   void _setState(VoiceSearchState value) {
+    if (_disposed) return;
     _state = value;
     _stateController.add(value);
   }
 
-  Future<bool> _ensureInitialized() async {
-    if (_initialized) return _speech.isAvailable;
-    _initialized = await _speech.initialize();
-    return _speech.isAvailable;
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      return await hasPermission();
+    } on Object {
+      return false;
+    }
   }
 
   @override
-  Future<bool> isAvailable() => _ensureInitialized();
-
-  @override
   Future<VoiceSearchResult> startListening() async {
-    if (!await _ensureInitialized()) {
-      const message =
-          'Speech recognition is unavailable. Enable dictation in System Settings.';
-      _setState(VoiceSearchState.error);
-      return VoiceSearchResult.error(message);
-    }
-
-    _setState(VoiceSearchState.listening);
-    final completer = Completer<VoiceSearchResult>();
-    var completed = false;
-
-    await _speech.listen(
-      onResult: (result) {
-        if (completed || !result.finalResult) return;
-        completed = true;
-        final text = result.recognizedWords.trim();
-        if (text.isEmpty) {
-          _setState(VoiceSearchState.error);
-          completer.complete(
-            VoiceSearchResult.error('No speech was recognized.'),
-          );
-          return;
-        }
-        _setState(VoiceSearchState.completed);
-        completer.complete(
-          VoiceSearchResult.success(text, confidence: result.confidence),
-        );
-      },
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      cancelOnError: true,
-    );
-
     try {
-      return await completer.future.timeout(
-        const Duration(seconds: 45),
-        onTimeout: () {
-          unawaited(stopListening());
-          return VoiceSearchResult.error(
-            'Speech recognition timed out. Please try again.',
-          );
-        },
+      if (!await isAvailable()) {
+        _setState(VoiceSearchState.error);
+        return VoiceSearchResult.error(
+          'Microphone access is required. Allow it in System Settings → Privacy & Security → Microphone.',
+        );
+      }
+      final path = await tempPath();
+      await startCapture(path);
+      _recording = true;
+      _setState(VoiceSearchState.listening);
+      _untilStop = Completer<void>();
+      await _untilStop!.future.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {},
       );
+      final recorded = await _finishCapture() ?? path;
+      _setState(VoiceSearchState.processing);
+      final text = (await transcribe(recorded)).trim();
+      if (text.isEmpty) {
+        _setState(VoiceSearchState.error);
+        return VoiceSearchResult.error('No speech was recognized.');
+      }
+      _setState(VoiceSearchState.completed);
+      return VoiceSearchResult.success(text);
     } on Object catch (error) {
+      await _finishCapture();
       _setState(VoiceSearchState.error);
-      return VoiceSearchResult.error('$error');
+      return VoiceSearchResult.error(
+        'Voice input failed. ${error.toString()}',
+      );
+    }
+  }
+
+  Future<String?> _finishCapture() async {
+    if (!_recording) return null;
+    _recording = false;
+    try {
+      return await stopCapture();
+    } on Object {
+      return null;
     }
   }
 
   @override
   Future<void> stopListening() async {
-    if (_speech.isListening) {
-      await _speech.stop();
+    final gate = _untilStop;
+    if (gate != null && !gate.isCompleted) {
+      gate.complete();
     }
+    _untilStop = null;
+    await _finishCapture();
     _setState(VoiceSearchState.idle);
   }
 
   @override
   void dispose() {
+    _disposed = true;
     unawaited(stopListening());
     _stateController.close();
   }
@@ -348,8 +367,10 @@ final voiceSearchServiceProvider = Provider<VoiceSearchService>((ref) {
   final VoiceSearchService service;
   if (defaultTargetPlatform == TargetPlatform.android) {
     service = AndroidVoiceSearchService();
-  } else if (defaultTargetPlatform == TargetPlatform.macOS) {
-    service = MacOSVoiceSearchService();
+  } else if (defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux) {
+    service = desktop.createDesktopWhisperVoiceSearchService();
   } else {
     service = MockVoiceSearchService();
   }

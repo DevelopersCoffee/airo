@@ -63,7 +63,9 @@ class MindIndicPreferences {
 
   static Future<MindIndicGenerationMode> readGenerationMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return MindIndicGenerationMode.fromStableId(prefs.getString(_generationModeKey));
+    return MindIndicGenerationMode.fromStableId(
+      prefs.getString(_generationModeKey),
+    );
   }
 
   static Future<void> writeGenerationMode(MindIndicGenerationMode mode) async {
@@ -84,10 +86,7 @@ class MindIndicPreferences {
 
 /// Device + entitlement gate for optional Sarvam-backed backends.
 class MindIndicCapability {
-  const MindIndicCapability({
-    required this.entitlements,
-    this.memoryInfo,
-  });
+  const MindIndicCapability({required this.entitlements, this.memoryInfo});
 
   final Entitlements entitlements;
   final MemoryInfo? memoryInfo;
@@ -148,7 +147,7 @@ class MindIndicCapability {
     if (!meetsRamGate) {
       return 'Enhanced Indic needs about 8 GB total RAM and 4 GB free memory.';
     }
-    return 'Your device can run optional Sarvam-1 for better Hindi/Marathi minutes.';
+    return 'Your device can run the optional Indic minutes pack.';
   }
 }
 
@@ -156,6 +155,5 @@ class MindIndicCapability {
 const RequiredModel pinnedIndicGenerationModel = RequiredModel(
   fileName: 'sarvam-1-Q4_K_M.gguf',
   sizeBytes: 1547736928,
-  sha256:
-      '608cf36dc3f79d608a6d4f7c41c81e663bd919c44ac2d61af4029a0c2322c937',
+  sha256: '608cf36dc3f79d608a6d4f7c41c81e663bd919c44ac2d61af4029a0c2322c937',
 );

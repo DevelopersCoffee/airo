@@ -98,7 +98,21 @@ class DeviceCapabilityService {
     }
 
     if (_usesDesktopMemoryProbe) {
-      return DeviceInfo.desktop(platform: defaultTargetPlatform.name);
+      try {
+        final facts = await probeDesktopHostFacts().timeout(_probeTimeout);
+        return DeviceInfo.desktop(
+          platform: defaultTargetPlatform.name,
+          model: facts?.model,
+          osVersion: facts?.osVersion,
+          cpuSummary: facts?.cpuSummary,
+          gpuSummary: facts?.gpuSummary,
+          npuSummary: facts?.npuSummary,
+          storageSummary: facts?.storageSummary,
+          thermalSummary: facts?.thermalSummary,
+        );
+      } catch (_) {
+        return DeviceInfo.desktop(platform: defaultTargetPlatform.name);
+      }
     }
 
     if (!_usesGeminiNanoChannel) {
@@ -215,14 +229,30 @@ class DeviceInfo {
     supportsOnDeviceAI: false,
   );
 
-  factory DeviceInfo.desktop({required String platform}) => DeviceInfo(
+  factory DeviceInfo.desktop({
+    required String platform,
+    String? model,
+    String? osVersion,
+    String? cpuSummary,
+    String? gpuSummary,
+    String? npuSummary,
+    String? storageSummary,
+    String? thermalSummary,
+  }) => DeviceInfo(
     manufacturer: platform,
-    model: 'Desktop',
+    model: model?.trim().isNotEmpty == true ? model!.trim() : 'Desktop',
     brand: platform,
-    osVersion: 'Desktop',
+    osVersion: osVersion?.trim().isNotEmpty == true
+        ? osVersion!.trim()
+        : 'Desktop',
     sdkVersion: 0,
     isPixelDevice: false,
     supportsOnDeviceAI: false,
+    cpuSummary: cpuSummary,
+    gpuSummary: gpuSummary,
+    npuSummary: npuSummary,
+    storageSummary: storageSummary,
+    thermalSummary: thermalSummary,
   );
 
   String get displayName => '$manufacturer $model';

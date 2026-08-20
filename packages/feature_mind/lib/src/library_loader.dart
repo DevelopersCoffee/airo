@@ -24,12 +24,18 @@
 /// `library_loader_stub.dart` is what dart2js picks up instead.
 library;
 
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'library_loader_stub.dart'
     if (dart.library.io) 'library_loader_io.dart'
     as platform;
+import 'llama/api/meeting_intelligence.dart' as llama_mi;
+import 'llama/api/minutes.dart' as llama_api;
 import 'llama/frb_generated.dart' as llama;
+import 'whisper/api/meetings.dart' as whisper_api;
 import 'whisper/frb_generated.dart' as whisper;
 
 /// Runs `init` at most once per process, no matter how many callers ask.
@@ -82,6 +88,93 @@ void resetBridgeLoadersForTest() {
   _whisperInitialized = false;
   _llamaInit = null;
   _llamaInitialized = false;
+  debugReleaseLlamaEngine = null;
+  debugReleaseWhisperEngine = null;
+  _releasing = false;
+  _quitSignalsBound = false;
+  _exitListener?.dispose();
+  _exitListener = null;
+}
+
+/// Test seam: when set, [releaseMindNativeEngines] calls this instead of the
+/// generated llama unload (which needs a live `RustLib`).
+@visibleForTesting
+void Function()? debugReleaseLlamaEngine;
+
+/// Test seam for the whisper Supervisor drop.
+@visibleForTesting
+void Function()? debugReleaseWhisperEngine;
+
+AppLifecycleListener? _exitListener;
+var _quitSignalsBound = false;
+var _releasing = false;
+
+/// Installs quit hooks that unload llama/whisper before AppKit runs C++
+/// static destructors in the engine dylibs.
+///
+/// Idempotent. No-ops when there is no widget binding (unit tests).
+void ensureMindNativeExitGuard() {
+  if (kIsWeb) return;
+  if (!_quitSignalsBound) {
+    _quitSignalsBound = true;
+    platform.listenForQuitSignals(releaseMindNativeEngines);
+  }
+  if (_exitListener != null) return;
+  try {
+    WidgetsBinding.instance;
+  } on Object {
+    return;
+  }
+  _exitListener = AppLifecycleListener(
+    onExitRequested: () async {
+      releaseMindNativeEngines();
+      return AppExitResponse.exit;
+    },
+    onDetach: releaseMindNativeEngines,
+  );
+}
+
+/// Cancels in-flight jobs and drops loaded GGUF / whisper weights so ggml
+/// Metal residency sets are empty before `ggml_metal_device_free` runs at
+/// process exit. Idempotent.
+void releaseMindNativeEngines() {
+  if (_releasing) return;
+  _releasing = true;
+  try {
+    final llamaInjected = debugReleaseLlamaEngine;
+    final whisperInjected = debugReleaseWhisperEngine;
+    if (llamaInjected != null || whisperInjected != null) {
+      llamaInjected?.call();
+      whisperInjected?.call();
+      return;
+    }
+    if (_llamaInitialized) {
+      try {
+        llama_mi.cancelMeetingIntelligence();
+      } on Object {
+        // Exiting: a failed cancel must not become a second crash.
+      }
+      try {
+        llama_api.unloadGeneration();
+      } on Object {
+        // Exiting: a failed unload must not become a second crash.
+      }
+    }
+    if (_whisperInitialized) {
+      try {
+        whisper_api.cancelProcessing();
+      } on Object {
+        // Exiting: a failed cancel must not become a second crash.
+      }
+      try {
+        platform.unloadWhisperSpeech();
+      } on Object {
+        // Exiting: a failed unload must not become a second crash.
+      }
+    }
+  } finally {
+    _releasing = false;
+  }
 }
 
 Future<void>? _whisperInit;
@@ -96,6 +189,7 @@ Future<void> initializeWhisperBridge() =>
     _once(() => _whisperInit, (f) => _whisperInit = f, () async {
       await whisperRustInit();
       _whisperInitialized = true;
+      ensureMindNativeExitGuard();
     });
 
 /// Whether the speech library has been loaded into this process.
@@ -117,6 +211,7 @@ Future<void> initializeLlamaBridge() =>
     _once(() => _llamaInit, (f) => _llamaInit = f, () async {
       await llamaRustInit();
       _llamaInitialized = true;
+      ensureMindNativeExitGuard();
     });
 
 /// Whether the generation library has been loaded into this process.

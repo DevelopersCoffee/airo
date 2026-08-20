@@ -7,9 +7,10 @@ import '../whisper/api/meetings_seam.dart' show sarvamEdgeSpeechAvailable;
 import 'indic_intelligence_preferences.dart';
 import 'mind_entitlements_provider.dart';
 
-/// Reserved seam for a future on-device Indic ASR backend (Sarvam Edge).
+/// Speech-backend preference for meeting capture.
 ///
-/// Today every path uses Whisper; Sarvam Edge is not publicly downloadable.
+/// Unpublished ASR backends are omitted until public weights exist in this
+/// build. Catalog rows on Models supply the actual package names.
 class IndicSpeechBackendSettingsTile extends ConsumerWidget {
   const IndicSpeechBackendSettingsTile({super.key});
 
@@ -21,17 +22,19 @@ class IndicSpeechBackendSettingsTile extends ConsumerWidget {
     }
 
     final mode = ref.watch(indicSpeechModeProvider);
-    final capability = MindIndicCapability(entitlements: entitlements);
+    final extraBackendAvailable = sarvamEdgeSpeechAvailable();
+    final effectiveMode =
+        !extraBackendAvailable && mode == MindIndicSpeechMode.sarvamEdge
+        ? MindIndicSpeechMode.auto
+        : mode;
 
     return ListTile(
       key: const Key('indic_speech_backend_settings_tile'),
-      title: const Text('Indic speech backend (preview)'),
-      subtitle: Text(
-        _subtitle(mode, capability),
-      ),
+      title: const Text('Speech backend'),
+      subtitle: Text(_subtitle(effectiveMode, extraBackendAvailable)),
       trailing: DropdownButton<MindIndicSpeechMode>(
         key: const Key('indic_speech_backend_settings_dropdown'),
-        value: mode,
+        value: effectiveMode,
         onChanged: (value) {
           if (value == null) return;
           ref.read(indicSpeechModeProvider.notifier).select(value);
@@ -39,32 +42,29 @@ class IndicSpeechBackendSettingsTile extends ConsumerWidget {
         items: [
           const DropdownMenuItem(
             value: MindIndicSpeechMode.auto,
-            child: Text('Auto (Whisper)'),
+            child: Text('Auto'),
           ),
           const DropdownMenuItem(
             value: MindIndicSpeechMode.whisper,
-            child: Text('Whisper only'),
+            child: Text('On-device speech'),
           ),
-          DropdownMenuItem(
-            value: MindIndicSpeechMode.sarvamEdge,
-            enabled: capability.shouldPreferIndicSpeech(
-              MindIndicSpeechMode.sarvamEdge,
+          if (extraBackendAvailable)
+            const DropdownMenuItem(
+              value: MindIndicSpeechMode.sarvamEdge,
+              child: Text('Indic speech pack'),
             ),
-            child: Text(
-              sarvamEdgeSpeechAvailable()
-                  ? 'Sarvam Edge'
-                  : 'Sarvam Edge (not available)',
-            ),
-          ),
         ],
       ),
     );
   }
 
-  static String _subtitle(MindIndicSpeechMode mode, MindIndicCapability capability) {
-    if (mode == MindIndicSpeechMode.sarvamEdge) {
-      return 'Sarvam Edge is not publicly downloadable yet — Whisper stays active.';
+  static String _subtitle(
+    MindIndicSpeechMode mode,
+    bool extraBackendAvailable,
+  ) {
+    if (extraBackendAvailable && mode == MindIndicSpeechMode.sarvamEdge) {
+      return 'Uses the installed Indic speech pack.';
     }
-    return 'Whisper multilingual is the on-device speech engine today.';
+    return 'Uses the installed on-device speech weights.';
   }
 }

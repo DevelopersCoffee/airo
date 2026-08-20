@@ -284,8 +284,12 @@ class MindService {
         memoryBudgetMb: 4096,
         speechLanguage: language,
       );
-      await GlobalSpeakerEnrollmentStore().syncToRuntime();
       _activeSpeechLanguage = language;
+      try {
+        await GlobalSpeakerEnrollmentStore().syncToRuntime();
+      } on Object {
+        // Enrollment sync is best-effort; speech is already configured.
+      }
       return const MindStatus.ready();
     } on Object catch (e) {
       return MindStatus.unavailable(MindUnavailable.loadFailed, '$e');
@@ -570,9 +574,9 @@ class MindService {
     final message = '$error';
     if (message.contains('airo.generation.indic.standard') &&
         message.contains('sarvam-1-Q4_K_M.gguf')) {
-      return 'Sarvam-1 is not installed on this device. '
-          'Open Models → Meeting scribe picks and choose Standard (Qwen), '
-          'or download the Sarvam stack from On-device models.';
+      return 'The Indic minutes pack is not installed on this device. '
+          'Open Models → Meeting scribe picks and choose Standard, '
+          'or download the Indic stack from On-device models.';
     }
     return message;
   }

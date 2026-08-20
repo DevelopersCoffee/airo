@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:path/path.dart' as p;
 
 import '../../features/settings/application/ai_model_management.dart';
+import '../platform/platform_config.dart';
 import 'mind_model_sources.dart';
 
 /// The Mind shell's model registry: the shared catalog plus the scribe's own
@@ -26,26 +27,39 @@ List<Override> mindModelRegistryOverrides({
   Future<List<RequiredModel>> Function() requiredModels = pinnedRequiredModels,
 }) => [
   modelRegistryProvider.overrideWith((ref) {
+    final profile = ModelRuntimeProfile.resolve(
+      isAndroidHost: PlatformConfig.isAndroid,
+    );
+    final catalog = ModelCatalog.forProfile(profile);
     final registry = ModelRegistry();
-    registry.registerModels(ModelCatalog.bundledModels);
+    registry.registerModels(catalog);
     unawaited(
-      hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
+      hydrateDownloadedModels(
+        registry,
+        ref.read(modelDownloadServiceProvider),
+        catalog: catalog,
+      ),
     );
     unawaited(() async {
-      final result = await hydratePublicHuggingFaceModels(registry);
+      final result = await hydratePublicHuggingFaceModels(
+        registry,
+        profile: profile,
+      );
       if (!ref.mounted) return;
       ref.read(huggingFaceCatalogAvailabilityProvider.notifier).state =
           result.availability;
       ref.read(huggingFaceCatalogErrorProvider.notifier).state =
           result.errorMessage;
     }());
-    unawaited(
-      hydrateMindScribeModels(
+    unawaited(() async {
+      await hydrateMindScribeModels(
         registry,
         requiredModels: requiredModels,
         modelsDirectory: modelsDirectory,
-      ),
-    );
+      );
+      if (!ref.mounted) return;
+      ref.invalidate(assistantModelLibraryProvider);
+    }());
     ref.onDispose(registry.dispose);
     return registry;
   }),

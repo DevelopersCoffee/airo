@@ -1,3 +1,4 @@
+import '../../../runtime/models/capability_models.dart';
 import '../models/agent_skill.dart';
 
 class SkillManifestFormatException implements FormatException {
@@ -47,7 +48,7 @@ class SkillManifestParser {
       throw SkillManifestFormatException('Unsupported runtime: $runtimeKey');
     }
 
-    final capabilities = _requiredList(fields, 'capabilities').map((key) {
+    final capabilities = _optionalList(fields, 'capabilities').map((key) {
       final capability = SkillCapability.fromKey(key);
       if (capability == null) {
         throw SkillManifestFormatException('Unsupported capability: $key');
@@ -55,12 +56,37 @@ class SkillManifestParser {
       return capability;
     }).toList();
 
-    final tools = _requiredList(fields, 'tools');
+    final tools = _optionalList(fields, 'tools');
+    final mode = _optionalMode(fields);
     if (body.isEmpty) {
       throw SkillManifestFormatException(
         'Skill instructions body is required.',
       );
     }
+    if (tools.isEmpty && mode == AgentSkillMode.skill) {
+      throw SkillManifestFormatException('Missing required list: tools');
+    }
+
+    final safetyClassKey = _optionalString(fields, 'safety_class');
+    final safetyClass = safetyClassKey == null
+        ? CapabilitySafetyClass.general
+        : _parseSafetyClass(safetyClassKey);
+
+    final familyKey = _optionalString(fields, 'family');
+    final family = familyKey == null
+        ? AgentPersonaFamily.general
+        : (AgentPersonaFamily.fromKey(familyKey) ??
+              (throw SkillManifestFormatException(
+                'Unsupported family: $familyKey',
+              )));
+
+    final followUpKey = _optionalString(fields, 'follow_up_policy');
+    final followUpPolicy = followUpKey == null
+        ? SkillFollowUpPolicy.none
+        : (SkillFollowUpPolicy.fromKey(followUpKey) ??
+              (throw SkillManifestFormatException(
+                'Unsupported follow_up_policy: $followUpKey',
+              )));
 
     return AgentSkill.fromManifest(
       manifest: AgentSkillManifest(
@@ -74,6 +100,12 @@ class SkillManifestParser {
         installState: installState,
         capabilities: capabilities,
         tools: tools,
+        mode: mode,
+        family: family,
+        safetyClass: safetyClass,
+        starterPrompts: _optionalList(fields, 'starter_prompts'),
+        followUpPolicy: followUpPolicy,
+        lifeTrackTemplateId: _optionalString(fields, 'life_track_template_id'),
       ),
       instructions: body,
     );
@@ -125,12 +157,34 @@ class SkillManifestParser {
     throw SkillManifestFormatException('Missing required field: $key');
   }
 
-  static List<String> _requiredList(Map<String, Object> fields, String key) {
+  static List<String> _optionalList(Map<String, Object> fields, String key) {
     final value = fields[key];
-    if (value is List<String> && value.isNotEmpty) {
-      return List.unmodifiable(value);
+    if (value == null) return const [];
+    if (value is List<String>) return List.unmodifiable(value);
+    throw SkillManifestFormatException('Invalid list: $key');
+  }
+
+  static String? _optionalString(Map<String, Object> fields, String key) {
+    final value = fields[key];
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+    return null;
+  }
+
+  static AgentSkillMode _optionalMode(Map<String, Object> fields) {
+    final value = _optionalString(fields, 'mode');
+    if (value == null) return AgentSkillMode.skill;
+    final mode = AgentSkillMode.fromKey(value);
+    if (mode == null) {
+      throw SkillManifestFormatException('Unsupported mode: $value');
     }
-    throw SkillManifestFormatException('Missing required list: $key');
+    return mode;
+  }
+
+  static CapabilitySafetyClass _parseSafetyClass(String key) {
+    for (final value in CapabilitySafetyClass.values) {
+      if (value.name == key) return value;
+    }
+    throw SkillManifestFormatException('Unsupported safety_class: $key');
   }
 
   static String _stripQuotes(String value) {

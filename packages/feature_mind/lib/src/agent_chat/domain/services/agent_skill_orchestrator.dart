@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/models/log_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
 import '../models/agent_skill.dart';
@@ -81,23 +82,16 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
 
     final lower = prompt.toLowerCase();
+    if (_wantsWellbeing(lower) &&
+        enabledSkills.any((skill) => skill.id == 'wellbeing-check-in')) {
+      return 'wellbeing-check-in';
+    }
     if (_wantsLifeTrackStatus(lower) &&
         enabledSkills.any((skill) => skill.id == 'query-lifetrack-status')) {
       return 'query-lifetrack-status';
     }
 
-    final wantsCalendar =
-        lower.contains('calendar') ||
-        lower.contains('meeting') ||
-        lower.contains('agenda') ||
-        lower.contains('appointment') ||
-        (lower.contains('schedule') &&
-            (lower.contains('check') ||
-                lower.contains('show') ||
-                lower.contains('what') ||
-                lower.contains('today') ||
-                lower.contains('tomorrow')));
-    if (!wantsCalendar) return null;
+    if (!promptWantsCalendarRead(prompt)) return null;
     if (enabledSkills.any((skill) => skill.id == 'read-calendar-events')) {
       return 'read-calendar-events';
     }
@@ -124,7 +118,34 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       );
     }
 
-    if (skill.id != 'read-calendar-events') return null;
+    if (skill.id == 'wellbeing-check-in') {
+      return _nextWellbeingAction(prompt: prompt, toolResults: toolResults);
+    }
+
+    final lower = prompt.toLowerCase();
+    if (skill.tools.contains('query_lifetrack_status') &&
+        (skill.id == 'query-lifetrack-status' ||
+            _wantsLifeTrackStatus(lower))) {
+      return _nextLifeTrackStatusAction(
+        prompt: prompt,
+        toolResults: toolResults,
+      );
+    }
+
+    if (skill.tools.contains('schedule_notification') &&
+        skill.id != 'schedule-notification' &&
+        _reminderParser.shouldSelectReminderSkill(prompt)) {
+      return _nextScheduleNotificationAction(
+        prompt: prompt,
+        toolResults: toolResults,
+      );
+    }
+
+    if (!skill.tools.contains('read_calendar_events')) return null;
+    if (skill.id != 'read-calendar-events' &&
+        !promptWantsCalendarRead(prompt)) {
+      return null;
+    }
 
     final permissionResult = toolResults
         .cast<Map<String, dynamic>?>()
@@ -192,6 +213,12 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
 
     final result =
         calendarResult['result'] as Map<String, dynamic>? ?? const {};
+    if (result['source'] == 'calendar_channel_unavailable' ||
+        calendarResult['error'] == 'calendar_channel_unavailable') {
+      return const SkillModelAction.finalAnswer(
+        'Calendar events are not available on this device yet.',
+      );
+    }
     final events = result['events'] as List? ?? const [];
     if (events.isEmpty) {
       return SkillModelAction.finalAnswer(_emptyCalendarMessage(prompt));
@@ -342,6 +369,91 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         lowerPrompt.contains('need');
     return mentionsLifeTrack && asksStatus;
   }
+
+  SkillModelAction _nextWellbeingAction({
+    required String prompt,
+    required List<Map<String, dynamic>> toolResults,
+  }) {
+    final lower = prompt.toLowerCase();
+    final wantsBreathing =
+        lower.contains('breath') ||
+        lower.contains('calm') ||
+        lower.contains('anxious') ||
+        lower.contains('anxiety');
+    final tool = wantsBreathing ? 'guide_breathing' : 'log_reflection';
+    final existing = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+      (result) => result?['tool'] == tool,
+      orElse: () => null,
+    );
+    if (existing == null) {
+      return SkillModelAction.toolCall(
+        tool: tool,
+        arguments: wantsBreathing ? const {} : {'note': prompt.trim()},
+      );
+    }
+    final result = existing['result'] as Map<String, dynamic>? ?? const {};
+    final message = existing['message'] as String?;
+    if (tool == 'guide_breathing') {
+      final steps = (result['steps'] as List?)?.join('\n- ') ?? '';
+      return SkillModelAction.finalAnswer(
+        'Here is a ${result['duration_seconds'] ?? 60}-second box breathing '
+        'reset:\n- $steps',
+      );
+    }
+    return SkillModelAction.finalAnswer(
+      message ??
+          (result['prompt'] as String? ?? 'What felt heavy or light today?'),
+    );
+  }
+
+  bool _wantsWellbeing(String lowerPrompt) {
+    const markers = [
+      'wellbeing',
+      'well-being',
+      'breathing',
+      'breathe',
+      'breath',
+      'check-in',
+      'check in',
+      'reflection',
+      'reflect',
+      'daily insight',
+      'calm down',
+      'anxious',
+      'anxiety',
+      'how am i feeling',
+    ];
+    return markers.any(lowerPrompt.contains);
+  }
+}
+
+bool promptWantsCalendarRead(String prompt) {
+  final lower = prompt.toLowerCase();
+  if (lower.contains('calendar') ||
+      lower.contains('meeting') ||
+      lower.contains('agenda') ||
+      lower.contains('appointment')) {
+    return true;
+  }
+  if (lower.contains('schedule') &&
+      (lower.contains('check') ||
+          lower.contains('show') ||
+          lower.contains('what') ||
+          lower.contains('today') ||
+          lower.contains('tomorrow') ||
+          lower.contains('list'))) {
+    return true;
+  }
+  if (lower.contains('event') &&
+      (lower.contains('list') ||
+          lower.contains('show') ||
+          lower.contains('all') ||
+          lower.contains('my') ||
+          lower.contains('today') ||
+          lower.contains('tomorrow'))) {
+    return true;
+  }
+  return false;
 }
 
 class AgentSkillOrchestrator {
@@ -382,14 +494,31 @@ class AgentSkillOrchestrator {
     return [
       'Choose one Airo Agent Skill for the user request, or choose no skill.',
       'Return JSON only: {"skill_id":"skill-id"} or {"skill_id":null}.',
+      'If the best match is a plugin for the chat model, return {"skill_id":null}.',
       'Available enabled skills:',
       if (summaries.isEmpty) '- none' else ...summaries,
       'User request: $userPrompt',
     ].join('\n');
   }
 
-  Future<AgentRunResult> run(String prompt) async {
-    final enabledSkills = _skillRegistry.getEnabledSkills();
+  Future<AgentRunResult> run(
+    String prompt, {
+    String? pinnedPersonaId,
+  }) async {
+    final pinned = pinnedPersonaId == null
+        ? null
+        : _skillRegistry.getById(pinnedPersonaId);
+    if (pinned != null && pinned.isPersona) {
+      if (pinned.isGenerativePlugin) {
+        return const AgentRunResult.notHandled();
+      }
+      return _runSelectedSkill(prompt, pinned);
+    }
+
+    final enabledSkills = _skillRegistry
+        .getEnabledSkills()
+        .where((skill) => !skill.isPersona)
+        .toList(growable: false);
     final selectedSkillId = _preferDeterministicSkills
         ? await _fallbackModelClient?.selectSkill(
                 prompt: prompt,
@@ -420,10 +549,27 @@ class AgentSkillOrchestrator {
     if (skill == null || !skill.enabled) {
       return const AgentRunResult.notHandled();
     }
+    if (skill.isGenerativePlugin) {
+      return const AgentRunResult.notHandled();
+    }
 
+    return _runSelectedSkill(prompt, skill);
+  }
+
+  Future<AgentRunResult> _runSelectedSkill(
+    String prompt,
+    AgentSkill skill,
+  ) async {
     final traces = [AgentActionTrace(title: 'Load skill', detail: skill.id)];
     final toolResults = <Map<String, dynamic>>[];
-    final safetyClass = resolveCapabilitySafetyClass(skill.capabilities);
+    final safetyClass = skill.isPersona
+        ? (skill.safetyClass == CapabilitySafetyClass.general
+              ? null
+              : skill.safetyClass)
+        : resolveCapabilitySafetyClass(
+            skill.capabilities,
+            declared: skill.safetyClass,
+          );
     GroundedCitation? latestCitation;
 
     for (var step = 0; step < _maxSteps; step++) {
@@ -463,13 +609,7 @@ class AgentSkillOrchestrator {
       }
 
       if (action == null) {
-        return AgentRunResult(
-          handled: true,
-          message: 'I could not complete that skill.',
-          traces: traces,
-          isError: true,
-          safetyClass: safetyClass,
-        );
+        return const AgentRunResult.notHandled();
       }
 
       if (action.type == SkillModelActionType.finalAnswer) {

@@ -85,4 +85,30 @@ void main() {
       expect(isLlamaLoaded, isTrue);
     },
   );
+
+  test('releaseMindNativeEngines uses the injected seams', () {
+    var llamaReleased = 0;
+    var whisperReleased = 0;
+    debugReleaseLlamaEngine = () => llamaReleased += 1;
+    debugReleaseWhisperEngine = () => whisperReleased += 1;
+
+    releaseMindNativeEngines();
+    releaseMindNativeEngines();
+
+    expect(llamaReleased, 2);
+    expect(whisperReleased, 2);
+  });
+
+  test('ensureMindNativeExitGuard is a no-op without a widgets binding', () {
+    ensureMindNativeExitGuard();
+    ensureMindNativeExitGuard();
+  });
+
+  testWidgets('ensureMindNativeExitGuard is idempotent with a binding', (
+    tester,
+  ) async {
+    ensureMindNativeExitGuard();
+    ensureMindNativeExitGuard();
+    releaseMindNativeEngines();
+  });
 }

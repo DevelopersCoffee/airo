@@ -23,8 +23,7 @@ class _FakeMeetingArchivePort implements MeetingArchivePort {
   @override
   Future<List<rust.MeetingActionItemRecord>> actionItemsForOwner(
     String ownerName,
-  ) async =>
-      items;
+  ) async => items;
 
   @override
   Future<rust.MeetingRecord?> meeting(String id) async {
@@ -122,7 +121,7 @@ void main() {
       },
     );
 
-    test('creates diet and routine drafts inside chat', () async {
+    test('creates routine drafts inside chat', () async {
       final diet = await registry.executeIntent(
         IntentParser.parse('make me a 7 day vegetarian diet plan'),
       );
@@ -130,9 +129,8 @@ void main() {
         IntentParser.parse('create a study routine for tomorrow'),
       );
 
-      expect(diet.message, contains('7-day diet plan'));
+      expect(diet.isError, isTrue);
       expect(routine.message, contains('routine'));
-      expect(diet.shouldNavigate, false);
       expect(routine.shouldNavigate, false);
     });
 

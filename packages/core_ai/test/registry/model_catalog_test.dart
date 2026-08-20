@@ -83,6 +83,22 @@ void main() {
         expect(model.license, isNotEmpty);
       }
     });
+
+    test(
+      'Gemma 2 2B Instruct downloads from public Unsloth GGUF, not gated Google',
+      () {
+        final model = ModelCatalog.bundledModels.firstWhere(
+          (m) => m.id == 'gemma-2b-it-q4',
+        );
+
+        expect(model.downloadUrl, contains('unsloth/gemma-2-it-GGUF'));
+        expect(model.downloadUrl, contains('gemma-2-2b-it.q4_k_m.gguf'));
+        expect(model.downloadUrl, isNot(contains('google/gemma-2b-it-GGUF')));
+        expect(model.huggingFaceId, 'unsloth/gemma-2-it-GGUF');
+        expect(model.licenseState, ModelLicenseState.open);
+        expect(model.author, 'Unsloth');
+      },
+    );
   });
 
   group('EmbeddingGemma catalog entry', () {

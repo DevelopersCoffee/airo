@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +42,9 @@ class _ModelAdvisorScreenState extends ConsumerState<ModelAdvisorScreen> {
     return AssistantModelLibraryState.load(
       task: task,
       isAndroidHost: host.isAndroidHost,
+      runtimeProfile: ModelRuntimeProfile.resolve(
+        isAndroidHost: host.isAndroidHost,
+      ),
       loadAssistantDownloadedModels: host.loadAssistantDownloadedModels,
     );
   }

@@ -201,7 +201,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     final status = _status;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Airo Mind'),
+        title: const Text('Scribe'),
         actions: [
           if (status != null && status.isReady)
             IconButton(
@@ -695,10 +695,7 @@ class _Unavailable extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 24),
-              FilledButton(
-                onPressed: onRetry,
-                child: const Text('Try again'),
-              ),
+              FilledButton(onPressed: onRetry, child: const Text('Try again')),
             ],
           ],
         ),

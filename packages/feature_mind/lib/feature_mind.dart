@@ -228,10 +228,12 @@ export 'src/runtime/persistent/persistent_operation_log.dart'
     show LazyPersistentOperationLog, sharedMindOperationLog;
 export 'src/library_loader.dart'
     show
+        ensureMindNativeExitGuard,
         initializeLlamaBridge,
         initializeWhisperBridge,
         isLlamaLoaded,
-        isWhisperLoaded;
+        isWhisperLoaded,
+        releaseMindNativeEngines;
 
 // Portability -- surface 08's ".airobackup" envelope-sealing flow: pick
 // contexts, set the phrase, choose a destination on your own network.
@@ -277,6 +279,7 @@ export 'src/widgets/mind_projection_switcher.dart';
 export 'src/widgets/mind_everything_browser.dart';
 export 'src/widgets/mind_command_palette_scope.dart';
 export 'src/widgets/mind_native_menu_bar.dart';
+export 'src/widgets/mind_desktop_chrome.dart';
 
 // #1774 trust UX — multilingual / language badge + honest offline copy on
 // scribe and meeting surfaces. Complements #1664 without shipping the pin UI.

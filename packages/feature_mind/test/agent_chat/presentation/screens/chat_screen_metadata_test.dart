@@ -34,6 +34,22 @@ void main() {
     expect(metadata.completionTokens, isNotNull);
     expect(metadata.totalTokens, isNotNull);
     expect(metadata.finishReason, 'stop');
+    expect(
+      buildRuntimeChatResponseMetadata(
+        title: 'Gemma',
+        runtime: 'GGUF',
+        executionMode: 'Local',
+        prompt: 'hello',
+        response: 'hi',
+        totalDurationMs: 1000,
+        timeToFirstTokenMs: 200,
+        recordedAt: DateTime(2026, 6, 28, 10, 0),
+        promptTokens: 80,
+        completionTokens: 12,
+        tokensPerSecond: 30.4,
+      ).tokensPerSecond,
+      30.4,
+    );
   });
 
   test('buildSkillChatResponseMetadata counts executed tools', () {
@@ -172,6 +188,59 @@ void main() {
     expect(find.text('Action timings'), findsOneWidget);
     expect(find.text('schedule_notification'), findsWidgets);
   });
+
+  testWidgets(
+    'response details sheet scrolls instead of overflowing on a short window',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 520);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpChatScreen(
+        tester,
+        initialMessages: [
+          AgentChatMessage(
+            text: 'I could not complete that skill.',
+            isUser: false,
+            traces: const [
+              AgentActionTrace(
+                title: 'Load skill',
+                detail: 'read-calendar-events',
+              ),
+              AgentActionTrace(
+                title: 'Execute action',
+                detail: 'read-calendar-events',
+                durationMs: 3400,
+              ),
+            ],
+            metadata: buildSkillChatResponseMetadata(
+              traces: const [
+                AgentActionTrace(
+                  title: 'Load skill',
+                  detail: 'read-calendar-events',
+                ),
+                AgentActionTrace(
+                  title: 'Execute action',
+                  detail: 'read-calendar-events',
+                  durationMs: 3400,
+                ),
+              ],
+              totalDurationMs: 3400,
+              recordedAt: DateTime(2026, 8, 20, 11, 40, 2),
+            ),
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('agent_chat_metadata_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Response details'), findsOneWidget);
+      expect(find.text('Action timings'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'assistant messages without metadata hide the metadata affordance',
@@ -448,12 +517,57 @@ void main() {
       equals('final answer = true;\n'),
     );
   });
+
+  testWidgets(
+    'composer keeps focus after send so the next message can be typed',
+    (tester) async {
+      await _pumpChatScreen(
+        tester,
+        initialMessages: [AgentChatMessage(text: 'Welcome', isUser: false)],
+      );
+
+      final input = find.byKey(const Key('agent_chat_input'));
+      await tester.enterText(input, 'hello from composer');
+      await tester.ensureVisible(
+        find.byKey(const Key('agent_chat_send_button')),
+      );
+      await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+      await tester.pump();
+      await tester.pump();
+
+      final field = tester.widget<TextField>(input);
+      expect(field.focusNode?.hasFocus, isTrue);
+      expect(field.controller?.text, isEmpty);
+    },
+  );
+
+  testWidgets('pinned persona shows assistant label and legal safety banner', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+      initialPinnedPersonaId: 'contract-review-assistant',
+    );
+
+    expect(
+      find.byKey(const Key('agent_chat_assistants_button')),
+      findsOneWidget,
+    );
+    expect(find.text('Assistant: Contract Review'), findsOneWidget);
+    expect(find.byKey(const Key('mind.safetyBanner')), findsOneWidget);
+    expect(
+      find.textContaining('will not file or submit anything'),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpChatScreen(
   WidgetTester tester, {
   required List<AgentChatMessage> initialMessages,
   String? initialDraft,
+  String? initialPinnedPersonaId,
   FakeAssistantHostAdapter? host,
 }) async {
   tester.view.devicePixelRatio = 1.0;
@@ -487,6 +601,7 @@ Future<void> _pumpChatScreen(
           enableAiInitialization: false,
           initialMessages: initialMessages,
           initialDraft: initialDraft,
+          initialPinnedPersonaId: initialPinnedPersonaId,
         ),
       ),
     ),
@@ -511,7 +626,7 @@ const _chatCandidate = AssistantModelCandidate(
   sizeLabel: 'System managed',
   available: true,
   actionLabel: 'Start',
-  local: true,
+  local: false,
 );
 
 const _chatLibraryState = AssistantModelLibraryState(

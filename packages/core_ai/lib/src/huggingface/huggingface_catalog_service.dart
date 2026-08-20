@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../models/model_credibility.dart';
+import '../models/model_runtime_profile.dart';
 import '../models/offline_model_info.dart';
 import '../provider/ai_provider.dart';
 import '../registry/model_catalog.dart';
@@ -90,6 +91,13 @@ class HuggingFaceCatalogService {
       knownHuggingFaceIds: knownHuggingFaceIds,
     );
   }
+
+  /// Hugging Face org that publishes public Gemma GGUF for llama.cpp.
+  ///
+  /// Google's own `google/gemma*` weight repos are gated (HTTP 401 without a
+  /// token). Unsloth GGUF exports are the login-free download path for desktop
+  /// and mobile llama.cpp — not the Python/CUDA `unsloth` training package.
+  static const unslothAuthor = 'unsloth';
 
   /// Discovers public GGUF packages beyond the litert-community LiteRT feed.
   ///
@@ -227,6 +235,8 @@ class HuggingFaceCatalogService {
       final modelId = map['id'] as String?;
       if (modelId == null || modelId.isEmpty) continue;
       if (knownHuggingFaceIds.contains(modelId)) continue;
+      if (isGatedHuggingFaceRepo(map)) continue;
+      if (_isTrainingOnlyQuant(modelId)) continue;
       final parsed = await _modelFromRepo(map, ggufOnly: ggufOnly);
       if (parsed != null) {
         models.add(parsed);
@@ -241,6 +251,8 @@ class HuggingFaceCatalogService {
   }) async {
     final huggingFaceId = raw['id'] as String?;
     if (huggingFaceId == null || huggingFaceId.isEmpty) return null;
+    if (isGatedHuggingFaceRepo(raw)) return null;
+    if (_isTrainingOnlyQuant(huggingFaceId)) return null;
 
     final tree = await _fetchMainTree(huggingFaceId);
     if (tree.isEmpty) return null;
@@ -397,6 +409,42 @@ class HuggingFaceCatalogService {
     if (lower.contains('imatrix')) return false;
     if (lower.contains('ggml-vocab')) return false;
     return true;
+  }
+
+  /// True when Hub metadata says the repo needs a token / license click.
+  ///
+  /// Google Gemma GGUF is always gated even when the list payload omits the
+  /// `gated` field. Unsloth Gemma GGUF is public (`gated: false`).
+  static bool isGatedHuggingFaceRepo(Map<String, dynamic> raw) {
+    final gated = raw['gated'];
+    if (gated == true) return true;
+    if (gated is String) {
+      final normalized = gated.trim().toLowerCase();
+      if (normalized.isNotEmpty &&
+          normalized != 'false' &&
+          normalized != 'null') {
+        return true;
+      }
+    }
+    final id = (raw['id'] as String? ?? '').toLowerCase();
+    if (id.startsWith('google/gemma')) return true;
+    final tags = (raw['tags'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .map((tag) => tag.toLowerCase());
+    return tags.contains('gated');
+  }
+
+  static bool _isTrainingOnlyQuant(String huggingFaceId) {
+    final lower = huggingFaceId.toLowerCase();
+    return lower.contains('bnb-4bit') || lower.contains('bnb_4bit');
+  }
+
+  static bool _isInstructVariant(OfflineModelInfo model) {
+    final haystack = '${model.huggingFaceId ?? ''} ${model.id} ${model.name}'
+        .toLowerCase();
+    return haystack.contains('-it') ||
+        haystack.contains('_it') ||
+        haystack.contains(' instruct');
   }
 
   /// Authors treated as official vendors / first-party orgs.
@@ -568,23 +616,32 @@ Future<HuggingFaceCatalogHydration> hydratePublicHuggingFaceModels(
   String author = 'litert-community',
   int organizationLimit = 50,
   int ggufLimit = 40,
+  ModelRuntimeProfile profile = ModelRuntimeProfile.androidOnDevice,
 }) async {
   final catalogService = service ?? HuggingFaceCatalogService(cache: cache);
   final catalogCache = cache ?? catalogService.cache;
 
+  List<OfflineModelInfo> accept(Iterable<OfflineModelInfo> models) {
+    final public = models.where(_isPublicGgufOrLiteRtRow);
+    if (profile == ModelRuntimeProfile.androidOnDevice) {
+      return public.toList(growable: false);
+    }
+    return public.where(profile.offersPackage).toList(growable: false);
+  }
+
   final bundledIds = {
-    for (final model in ModelCatalog.bundledModels)
+    for (final model in ModelCatalog.forProfile(profile))
       if (model.huggingFaceId != null) model.huggingFaceId!,
   };
 
   final cached = await catalogCache.load();
-  final cachedWithoutBundled = cached
-      .where(
-        (model) =>
-            model.huggingFaceId == null ||
-            !bundledIds.contains(model.huggingFaceId),
-      )
-      .toList(growable: false);
+  final cachedWithoutBundled = accept(
+    cached.where(
+      (model) =>
+          model.huggingFaceId == null ||
+          !bundledIds.contains(model.huggingFaceId),
+    ),
+  );
   if (cachedWithoutBundled.isNotEmpty) {
     registry.registerModels(cachedWithoutBundled);
   }
@@ -596,18 +653,38 @@ Future<HuggingFaceCatalogHydration> hydratePublicHuggingFaceModels(
   };
 
   try {
+    // LiteRT org feed, live Unsloth Gemma GGUF, and general public GGUF.
+    // Google's own Gemma GGUF repos are gated (HTTP 401) and skipped.
     final results = await Future.wait([
-      catalogService.fetchOrganizationModels(
-        author: author,
-        limit: organizationLimit,
-        knownHuggingFaceIds: knownIds,
-      ),
+      if (profile.offersLiteRt)
+        catalogService.fetchOrganizationModels(
+          author: author,
+          limit: organizationLimit,
+          knownHuggingFaceIds: knownIds,
+        )
+      else
+        Future.value(const <OfflineModelInfo>[]),
+      catalogService
+          .fetchGgufModels(
+            limit: ggufLimit,
+            knownHuggingFaceIds: knownIds,
+            authors: const [HuggingFaceCatalogService.unslothAuthor],
+            search: 'gemma',
+            sort: 'lastModified',
+          )
+          .then(
+            (models) => models
+                .where(HuggingFaceCatalogService._isInstructVariant)
+                .toList(growable: false),
+          ),
       catalogService.fetchGgufModels(
         limit: ggufLimit,
         knownHuggingFaceIds: knownIds,
       ),
     ]);
-    final fetched = _dedupeById([...results[0], ...results[1]]);
+    final fetched = accept(
+      _dedupeById([...results[0], ...results[1], ...results[2]]),
+    );
     if (fetched.isNotEmpty) {
       registry.registerModels(fetched);
       final merged = _dedupeById([...cachedWithoutBundled, ...fetched]);
@@ -643,6 +720,16 @@ Future<HuggingFaceCatalogHydration> hydratePublicHuggingFaceModels(
       errorMessage: error.toString(),
     );
   }
+}
+
+bool _isPublicGgufOrLiteRtRow(OfflineModelInfo model) {
+  final hf = (model.huggingFaceId ?? '').toLowerCase();
+  if (hf.startsWith('google/gemma')) return false;
+  final url = (model.downloadUrl ?? '').toLowerCase();
+  if (url.contains('huggingface.co/google/gemma') && url.contains('.gguf')) {
+    return false;
+  }
+  return true;
 }
 
 List<OfflineModelInfo> _dedupeById(List<OfflineModelInfo> models) {

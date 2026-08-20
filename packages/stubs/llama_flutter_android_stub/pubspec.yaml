@@ -1,0 +1,12 @@
+name: llama_flutter_android
+description: Desktop stub for llama_flutter_android. macOS Mind uses llama.cpp via the Rust bridge, not this Android plugin.
+version: 0.2.6
+publish_to: none
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
+
+dependencies:
+  flutter:
+    sdk: flutter

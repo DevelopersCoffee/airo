@@ -29,6 +29,14 @@ restore_app_info() {
 cp "$APP_INFO_XCCONFIG" "$APP_INFO_BACKUP"
 sed -i '' 's/^PRODUCT_NAME = .*/PRODUCT_NAME = Airo Mind/' "$APP_INFO_XCCONFIG"
 
+OVERRIDES="$ROOT/app/pubspec_overrides.yaml"
+restore_overrides() {
+  rm -f "$OVERRIDES"
+}
+
+# Android-only llama.cpp plugin is not part of the macOS Mind binary.
+cp "$ROOT/app/tool/mind_macos_pubspec_overrides.yaml" "$OVERRIDES"
+
 "$ROOT/app/tool/fetch_mind_models.sh"
 
 # macOS sandbox: copy staged weights into Application Support so first launch
@@ -61,7 +69,9 @@ fi
 # Flavors are separate pubspecs in this repo, so selecting one means swapping
 # the file. Restored on exit, including on failure.
 cp app/pubspec_mind.yaml app/pubspec.yaml
-trap 'git -C "$ROOT" checkout app/pubspec.yaml app/pubspec.lock; restore_app_info' EXIT
+trap 'git -C "$ROOT" checkout app/pubspec.yaml app/pubspec.lock; restore_app_info; restore_overrides' EXIT
 cd app
 flutter pub get
-flutter run -d macos -t lib/main_mind.dart
+flutter run -d macos -t lib/main_mind.dart \
+  --dart-define=APP_VARIANT=mind \
+  --dart-define=AIRO_MIND_DESKTOP=true

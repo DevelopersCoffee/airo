@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../presentation/screens/model_library_screen.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'package:core_ai/core_ai.dart';
+import 'gguf_instruct_prompt.dart';
 
 typedef GeminiNanoSupportCheck = Future<bool> Function();
 typedef GeminiNanoInitializer = Future<bool> Function();
@@ -248,6 +249,9 @@ class AssistantRuntimeService {
   _loadAssistantModelLibraryOverride;
   final RuntimeDebugTraceEmitter? _debugTraceEmitter;
 
+  /// Native llama.cpp stats from the most recent GGUF completion, if any.
+  GgufRuntimeStats? lastGenerationStats;
+
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
     int? contextLengthOverride,
@@ -277,8 +281,9 @@ class AssistantRuntimeService {
       );
     }
 
-    final deviceInfo =
+    var deviceInfo =
         await (_loadDeviceInfoOverride?.call() ?? _geminiNano.getDeviceInfo());
+    deviceInfo = await _withDesktopDeviceFacts(deviceInfo);
     final platformLabel = _resolvePlatformLabel(deviceInfo);
     final isMacLike = platformLabel.contains('MAC');
     final deviceLabel = [
@@ -447,7 +452,7 @@ class AssistantRuntimeService {
                 reasonCode: 'native_backend_unavailable',
                 repairActions: isMacLike
                     ? const [
-                        'Open Models and confirm Qwen GGUF is installed.',
+                        'Open Models and confirm this GGUF package is installed.',
                         'Restart Airo Mind after models finish installing.',
                         'Pick another downloaded GGUF package.',
                       ]
@@ -669,6 +674,7 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
   }) async {
+    lastGenerationStats = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
     final fullPrompt = _withSystemPrompt(prompt, systemPrompt);
     _emitDebugTrace(
@@ -757,26 +763,21 @@ class AssistantRuntimeService {
         }
         final package = await _resolveOfflinePackage(runtimeId);
         if (!AssistantModelLibraryState.isLiteRtPackage(package)) {
-          if (!await _llamaGguf.isAvailable()) {
-            throw AssistantRuntimeUnavailableException(
-              runtimeId,
-              'This GGUF package is installed, but the native llama.cpp backend is unavailable on this device.',
-            );
-          }
-          final responseBuffer = StringBuffer();
-          await for (final chunk in _llamaGguf.generate(
-            prompt: fullPrompt,
-            maxTokens: 512,
+          String? response;
+          await for (final chunk in _streamGguf(
+            runtimeId: runtimeId,
+            package: package,
+            prompt: prompt,
+            systemPrompt: systemPrompt,
+            emitRequestTrace: false,
           )) {
-            responseBuffer.write(chunk);
+            response = chunk;
           }
-          final response = _nonEmptyOrUnavailable(
+          return _nonEmptyOrUnavailable(
             runtimeId,
-            responseBuffer.toString(),
+            response ?? '',
             offlinePackageUnavailableMessage,
           );
-          _emitResponseTrace(runtimeId, response, detail: package.id);
-          return response;
         }
         final response = _nonEmptyOrUnavailable(
           runtimeId,
@@ -802,9 +803,23 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
   }) async* {
+    lastGenerationStats = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
 
     if (runtimeId != geminiNanoAssistantModelId) {
+      final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
+      if (offlineModelId != null) {
+        final package = await _resolveOfflinePackage(runtimeId);
+        if (!AssistantModelLibraryState.isLiteRtPackage(package)) {
+          yield* _streamGguf(
+            runtimeId: runtimeId,
+            package: package,
+            prompt: prompt,
+            systemPrompt: systemPrompt,
+          );
+          return;
+        }
+      }
       yield await generateText(
         selectedModelId: runtimeId,
         prompt: prompt,
@@ -845,6 +860,87 @@ class AssistantRuntimeService {
         geminiNanoInitializationFailedMessage,
       );
     }
+  }
+
+  Stream<String> _streamGguf({
+    required String runtimeId,
+    required OfflineModelInfo package,
+    required String prompt,
+    String? systemPrompt,
+    bool emitRequestTrace = true,
+  }) async* {
+    if (emitRequestTrace) {
+      _emitDebugTrace(
+        AssistantRuntimeDebugTrace(
+          runtimeId: runtimeId,
+          stage: 'request',
+          recordedAt: DateTime.now(),
+          systemPromptPreview: _previewText(systemPrompt),
+          promptPreview: _previewText(prompt),
+          detail: 'generateTextStream',
+        ),
+      );
+    }
+    await _ensureGgufReady(runtimeId, package);
+    final instructPrompt = formatGgufInstructPrompt(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      family: package.family,
+    );
+    var accumulated = '';
+    var lastYielded = '';
+    var firstChunk = true;
+    await for (final token in _llamaGguf.generate(
+      prompt: instructPrompt,
+      maxTokens: ggufMaxOutputTokens(package),
+    )) {
+      accumulated += token;
+      final trimmed = trimGgufRoleBleed(accumulated);
+      if (trimmed.isNotEmpty && trimmed != lastYielded) {
+        lastYielded = trimmed;
+        if (firstChunk) {
+          firstChunk = false;
+          _emitResponseTrace(runtimeId, trimmed, detail: 'stream-chunk');
+        }
+        yield trimmed;
+      }
+      if (ggufHitStopMarker(accumulated)) {
+        await _llamaGguf.stop();
+        break;
+      }
+    }
+    lastGenerationStats = _llamaGguf.lastStats;
+    final response = lastYielded.trim();
+    if (response.isEmpty) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        offlinePackageUnavailableMessage,
+      );
+    }
+    _emitResponseTrace(runtimeId, response, detail: package.id);
+  }
+
+  Future<void> _ensureGgufReady(
+    String runtimeId,
+    OfflineModelInfo package,
+  ) async {
+    if (!await _llamaGguf.isAvailable()) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        'This GGUF package is installed, but the native llama.cpp backend is unavailable on this device.',
+      );
+    }
+    final loaded = await _llamaGguf.loadModelOutcome(
+      package,
+      contextSize: _effectiveContextLength(package),
+    );
+    if (loaded.succeeded) return;
+    final copy = GgufLoadDiagnostics.describe(
+      model: package,
+      outcome: loaded,
+      isMacLike: defaultTargetPlatform == TargetPlatform.macOS,
+    );
+    throw AssistantRuntimeUnavailableException(runtimeId, copy.summary);
   }
 
   Future<void> _ensureGeminiNanoReady() async {
@@ -890,6 +986,31 @@ class AssistantRuntimeService {
       return prompt;
     }
     return '$trimmedSystemPrompt\n\n$prompt';
+  }
+
+  Future<Map<String, dynamic>> _withDesktopDeviceFacts(
+    Map<String, dynamic> deviceInfo,
+  ) async {
+    final manufacturer = '${deviceInfo['manufacturer'] ?? ''}'.trim();
+    final model = '${deviceInfo['model'] ?? ''}'.trim();
+    final unknown =
+        manufacturer.isEmpty ||
+        manufacturer.toLowerCase() == 'unknown' ||
+        model.isEmpty ||
+        model.toLowerCase() == 'unknown';
+    if (!unknown) return deviceInfo;
+    try {
+      final host = await DeviceCapabilityService().getDeviceInfo();
+      return {
+        ...deviceInfo,
+        'manufacturer': host.manufacturer,
+        'model': host.model,
+        'osVersion': host.osVersion,
+        'platform': defaultTargetPlatform.name,
+      };
+    } on Object {
+      return deviceInfo;
+    }
   }
 
   String _nonEmptyOrUnavailable(
@@ -967,7 +1088,17 @@ class AssistantRuntimeService {
       final library =
           await (_loadAssistantModelLibraryOverride?.call() ??
               AssistantModelLibraryState.load(task: AssistantTask.chat));
-      return library.candidateById(runtimeId)?.package;
+      final direct = library.candidateById(runtimeId)?.package;
+      if (direct != null) return direct;
+      final offlineId = offlineModelIdFromAssistantModelId(runtimeId);
+      if (offlineId == null) return null;
+      for (final candidate in library.candidates) {
+        if (candidate.package?.id == offlineId) return candidate.package;
+      }
+      for (final package in library.defaultPackages.values) {
+        if (package.id == offlineId) return package;
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -1072,7 +1203,7 @@ class AssistantRuntimeService {
     if (runtime == InferenceRuntime.litertLm) {
       if (isMacLike) {
         return const [
-          'Download a GGUF model (for example Qwen 1.5B) from AI Models.',
+          'Download a GGUF model from AI Models.',
           'Choose the GGUF package in Mind chat.',
           'Use Gemini Cloud if you prefer a hosted model.',
         ];

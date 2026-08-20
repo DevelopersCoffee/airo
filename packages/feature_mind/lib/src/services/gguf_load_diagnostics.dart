@@ -48,10 +48,9 @@ class GgufLoadDiagnostics {
       ),
       _ => (
         summary: 'Could not start $name locally',
-        detail:
-            outcome.technicalDetail?.trim().isNotEmpty == true
-                ? outcome.technicalDetail!.trim()
-                : 'The on-device llama.cpp engine could not load this model. Try restarting the app or choosing another package.',
+        detail: outcome.technicalDetail?.trim().isNotEmpty == true
+            ? outcome.technicalDetail!.trim()
+            : 'The on-device llama.cpp engine could not load this model. Try restarting the app or choosing another package.',
         repairActions: const [
           'Restart the app and try again.',
           'Open Models to repair or re-download the package.',
@@ -97,23 +96,22 @@ class GgufLoadDiagnostics {
       return (
         summary: '$name is not installed yet',
         detail:
-            'Airo Mind could not find the pinned Qwen weights in Application Support. Open Models to install them.',
+            'Airo Mind could not find the $name weights on disk. Open Models to install this package.',
         repairActions: const [
-          'Open Models and wait for Qwen to finish installing.',
-          'Restart Airo Mind after models are on disk.',
+          'Open Models and wait for this package to finish installing.',
+          'Restart Airo Mind after the model file is on disk.',
         ],
         reasonCode: 'model_missing',
       );
     }
     return (
       summary: 'Local chat is not ready yet',
-      detail:
-          technicalDetail?.trim().isNotEmpty == true
-              ? 'We could not load $name on this Mac: ${technicalDetail!.trim()}'
-              : 'We could not load $name on this Mac. The file is present, but the on-device engine did not start. Try restarting the app.',
+      detail: technicalDetail?.trim().isNotEmpty == true
+          ? 'We could not load $name on this Mac: ${technicalDetail!.trim()}'
+          : 'We could not load $name on this Mac. The file is present, but the on-device engine did not start. Try restarting the app.',
       repairActions: const [
         'Restart Airo Mind, then pick this model again.',
-        'Open Models and confirm Qwen shows as installed.',
+        'Open Models and confirm this package shows as installed.',
         'If Scribe is processing a meeting, wait for it to finish and retry.',
       ],
       reasonCode: 'init_failed',

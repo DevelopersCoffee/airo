@@ -7,6 +7,9 @@ import 'package:core_ai/core_ai.dart';
 import '../model_bench/model_bench_protocol.dart';
 import 'desktop_gguf_backend.dart';
 import 'gguf_load_outcome.dart';
+import 'gguf_runtime_stats.dart';
+
+export 'gguf_runtime_stats.dart';
 
 /// Thin platform adapter for the backend-neutral GGUF path.
 ///
@@ -20,13 +23,17 @@ class LlamaGgufService {
     DesktopGgufBackend? desktopBackend,
     Future<bool> Function()? desktopAvailabilityOverride,
   }) : _controller = nativeController,
-       _desktopBackend = desktopBackend ?? const DesktopGgufBackend(),
+       _desktopBackend = desktopBackend ?? DesktopGgufBackend(),
        _desktopAvailabilityOverride = desktopAvailabilityOverride;
 
   LlamaController? _controller;
   final DesktopGgufBackend _desktopBackend;
   final Future<bool> Function()? _desktopAvailabilityOverride;
   bool _loaded = false;
+
+  /// Engine stats from the most recent desktop GGUF completion, if any.
+  GgufRuntimeStats? get lastStats =>
+      isDesktopGgufSupported ? _desktopBackend.readLastStats() : null;
 
   LlamaController get _nativeController => _controller ??= LlamaController();
 
