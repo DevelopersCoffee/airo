@@ -279,11 +279,54 @@ void main() {
 
       // ensureReady now re-inits when Settings picks a new speechLanguage;
       // with FakeReadyModelProvider that reaches the fake bridge.
-      expect(
-        speech.initializedSpeechLanguage,
-        rust.SpeechLanguage.englishOnly,
-      );
+      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.englishOnly);
       expect(speech.transcribeLanguage, 'en');
+    },
+  );
+
+  test(
+    'onProcessed runs after a successful pipeline and before retention delete',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', [
+          TranscriptSegment(
+            id: 's0',
+            startMs: 0,
+            endMs: 500,
+            text: 'hello world',
+          ),
+        ]),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      MeetingProcessingJob? seenJob;
+      MindProgress? seenProgress;
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.deleteAfterTranscript,
+        onProcessed: (job, last) async {
+          seenJob = job;
+          seenProgress = last;
+          expect(audioFile.existsSync(), isTrue);
+        },
+      );
+
+      await runner.call(
+        MeetingProcessingJob(
+          id: 'm1',
+          audioPath: audioFile.path,
+          title: 'Standup',
+          enqueuedAtMs: 0,
+          source: MeetingProcessingSource.upload,
+        ),
+      );
+
+      expect(seenJob?.source, MeetingProcessingSource.upload);
+      expect(seenProgress?.stage, MindStage.done);
+      expect(audioFile.existsSync(), isFalse);
     },
   );
 }

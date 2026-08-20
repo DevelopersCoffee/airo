@@ -34,10 +34,9 @@ class SpeechLanguageModeNotifier extends StateNotifier<SpeechLanguageMode> {
 
 /// Bridge mapping kept next to the preference so domain stays free of FRB types.
 extension SpeechLanguageModeBridge on SpeechLanguageMode {
-  rust.SpeechLanguage get speechLanguage => switch (this) {
-    SpeechLanguageMode.auto => rust.SpeechLanguage.multilingual,
-    SpeechLanguageMode.english => rust.SpeechLanguage.englishOnly,
-  };
+  rust.SpeechLanguage get speechLanguage => englishOnly
+      ? rust.SpeechLanguage.englishOnly
+      : rust.SpeechLanguage.multilingual;
 }
 
 /// Reads the persisted mode without Riverpod — used by shell composition
