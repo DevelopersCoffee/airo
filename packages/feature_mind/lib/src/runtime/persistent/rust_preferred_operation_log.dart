@@ -62,27 +62,10 @@ class RustPreferredOperationLog implements OperationLogPort {
       return await _fallback.range(offset: offset, limit: limit);
     }
     try {
-      final ops = mindRuntimeScribeOpsRecent(
+      return mindRuntimeScribeOpsRecent(
         offset: BigInt.from(offset),
         limit: BigInt.from(limit),
       );
-      return ops
-          .map(
-            (op) => MindOp(
-              sequence: op.sequence.toInt(),
-              kind: MindOpKind.values.firstWhere(
-                (value) => value.name == op.kind,
-                orElse: () => MindOpKind.inference,
-              ),
-              title: op.title,
-              contextId: op.contextId,
-              deviceName: op.deviceName,
-              signature: SignatureState.unsigned,
-              recordedAtMs: op.recordedAtMs.toInt(),
-              detail: op.detail,
-            ),
-          )
-          .toList(growable: false);
     } on Object {
       return await _fallback.range(offset: offset, limit: limit);
     }

@@ -1,44 +1,30 @@
-import 'dart:io';
-
+import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
 import 'package:feature_mind/src/capture/presentation/meeting_capture_screen.dart';
+import 'package:feature_mind/src/runtime/models/log_models.dart';
+import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
+import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-
-class _FakePathProviderPlatform extends PathProviderPlatform
-    with MockPlatformInterfaceMixin {
-  _FakePathProviderPlatform(this.supportPath);
-  final String supportPath;
-
-  @override
-  Future<String?> getApplicationSupportPath() async => supportPath;
-
-  @override
-  Future<String?> getApplicationDocumentsPath() async => supportPath;
-}
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  late Directory tempDir;
-
-  setUp(() {
-    tempDir = Directory.systemTemp.createTempSync('meeting_capture_test_');
-    PathProviderPlatform.instance = _FakePathProviderPlatform(tempDir.path);
-  });
-
-  tearDown(() {
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-  });
-
   Future<void> pumpScreen(WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
     // Tall surface so consent + trust strip + controls fit without scrolling
     // (the trust strip (#1774) pushed the start button off a default phone
     // viewport and broke key lookups).
     await tester.binding.setSurfaceSize(const Size(400, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: MeetingCaptureScreen())),
+      ProviderScope(
+        overrides: [
+          mindRuntimeProvider.overrideWith(
+            (ref) => ScribeMindRuntime(log: _MemoryLog()),
+          ),
+        ],
+        child: const MaterialApp(home: MeetingCaptureScreen()),
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -181,4 +167,32 @@ void main() {
       expect(confirmButton.onPressed, isNotNull);
     },
   );
+}
+
+class _MemoryLog implements OperationLogPort {
+  var _seq = 0;
+
+  @override
+  Future<int> append({
+    required MindOpKind kind,
+    required String title,
+    required String contextId,
+    String detail = '',
+  }) async => ++_seq;
+
+  @override
+  Future<int> count() async => _seq;
+
+  @override
+  Future<List<MindOp>> range({required int offset, required int limit}) async =>
+      const [];
+
+  @override
+  Future<MindOp?> bySequence(int sequence) async => null;
+
+  @override
+  Future<SignatureState> verify(int sequence) async => SignatureState.unsigned;
+
+  @override
+  Stream<double> replayFrom(int sequence) => const Stream.empty();
 }
