@@ -62,6 +62,22 @@ void main() {
       );
     });
 
+    test('resolves installed embedding rows that have no download URL', () {
+      const router = TaskModelRouter();
+      final embeddingModel = OfflineModelInfo(
+        id: 'embed-model',
+        name: 'embed-model',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1000,
+        capabilities: const [ModelCapability.embeddings],
+      );
+
+      expect(
+        router.resolve(AiTask.embeddings, [embeddingModel])?.id,
+        'embed-model',
+      );
+    });
+
     test('ranks an installed model ahead of catalog order', () {
       const router = TaskModelRouter();
       final laterInstalled = _model('later', downloaded: true, size: 500);

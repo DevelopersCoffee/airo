@@ -30,6 +30,7 @@ class IntelligenceConstraints {
     this.sizeBias = IntelligenceSizeBias.balanced,
     this.preferInstalled = true,
     this.requireCurrentPlatform = true,
+    this.requireInstallable = true,
   });
 
   final MemoryInfo? memory;
@@ -38,6 +39,11 @@ class IntelligenceConstraints {
   final IntelligenceSizeBias sizeBias;
   final bool preferInstalled;
   final bool requireCurrentPlatform;
+
+  /// When true, skip rows that have no download URL and are not already on
+  /// disk. [TaskModelRouter] sets this false: its `available` list is already
+  /// the installed/candidate set, including test fakes with no URL.
+  final bool requireInstallable;
 }
 
 /// A scored candidate. [score] is only meaningful relative to siblings of
@@ -164,7 +170,11 @@ class IntelligenceQuery {
           !model.isRunnableOnCurrentPlatform) {
         continue;
       }
-      if (!_isInstallable(model) && !model.isDownloaded) continue;
+      if (constraints.requireInstallable &&
+          !_isInstallable(model) &&
+          !model.isDownloaded) {
+        continue;
+      }
       matching.add(
         IntelligenceCandidate(
           model: model,
