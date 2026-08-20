@@ -70,9 +70,9 @@ impl SpeakerEmbedder for EcapaOnnxEmbedder {
             .run(inputs)
             .map_err(|e| DiarizationError::Internal(e.to_string()))?;
 
-        let embedding_value = outputs
-            .get("embedding")
-            .ok_or_else(|| DiarizationError::Internal("ECAPA ONNX missing embedding output".into()))?;
+        let embedding_value = outputs.get("embedding").ok_or_else(|| {
+            DiarizationError::Internal("ECAPA ONNX missing embedding output".into())
+        })?;
 
         let (_shape, data) = embedding_value
             .try_extract_raw_tensor::<f32>()

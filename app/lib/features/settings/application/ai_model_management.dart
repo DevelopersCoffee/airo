@@ -52,7 +52,14 @@ Future<void> _hydratePublicHuggingFaceCatalog(
   Ref ref,
   ModelRegistry registry,
 ) async {
-  final result = await hydratePublicHuggingFaceModels(registry);
+  final HuggingFaceCatalogHydration result;
+  try {
+    result = await hydratePublicHuggingFaceModels(registry);
+  } on Object catch (error) {
+    if (!ref.mounted) return;
+    ref.read(huggingFaceCatalogErrorProvider.notifier).state = error.toString();
+    return;
+  }
   if (!ref.mounted) return;
   ref.read(huggingFaceCatalogAvailabilityProvider.notifier).state =
       result.availability;

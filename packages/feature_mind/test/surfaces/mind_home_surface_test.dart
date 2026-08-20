@@ -1,24 +1,8 @@
-import 'dart:io';
-
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../support/mind_rule_harness.dart';
 import '../support/surface_harness.dart';
-
-class _FakePathProviderPlatform extends PathProviderPlatform
-    with MockPlatformInterfaceMixin {
-  _FakePathProviderPlatform(this.supportPath);
-  final String supportPath;
-
-  @override
-  Future<String?> getApplicationSupportPath() async => supportPath;
-
-  @override
-  Future<String?> getApplicationDocumentsPath() async => supportPath;
-}
 
 void main() {
   testWidgets('is a runtime dashboard, not a feed', (tester) async {
@@ -87,17 +71,21 @@ void main() {
   testWidgets('reports the missing port when the runtime is partial', (
     tester,
   ) async {
-    final tempDir = await Directory.systemTemp.createTemp('mind_home_partial_');
-    PathProviderPlatform.instance = _FakePathProviderPlatform(tempDir.path);
-    addTearDown(() async {
-      if (await tempDir.exists()) await tempDir.delete(recursive: true);
-    });
-
-    await pumpSurface(tester, MindHomeSurface(runtime: RustMindRuntime()));
+    // CUDA bench gave OperationLogPort a Dart fallback, so Home's first
+    // missing read on the real runtime is mesh.peers(). Proven against a
+    // mixed runtime so the assertion cannot pass for the unrelated reason
+    // of the log also failing (path_provider / thermal probe).
+    await pumpSurface(
+      tester,
+      MindHomeSurface(
+        runtime: _PartialHomeRuntime(
+          FixtureMindRuntime(),
+          mesh: const _UnavailableMesh(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    // The log now has a Dart fallback. Home's next read is mesh.peers(),
-    // which still names MeshPort. Fabricating "0 ops" would be a lie.
     expect(find.textContaining('MeshPort'), findsOneWidget);
     expect(find.byType(MindNumberStrip), findsNothing);
   });
@@ -116,4 +104,58 @@ void main() {
       matchesGoldenFile('goldens/mind_home.png'),
     );
   });
+}
+
+class _PartialHomeRuntime implements MindRuntime {
+  _PartialHomeRuntime(this._inner, {required this.mesh});
+
+  final MindRuntime _inner;
+
+  @override
+  final MeshPort mesh;
+
+  @override
+  VaultPort get vault => _inner.vault;
+
+  @override
+  OperationLogPort get log => _inner.log;
+
+  @override
+  ContextPort get contexts => _inner.contexts;
+
+  @override
+  ProjectionPort get projections => _inner.projections;
+
+  @override
+  CapabilityPort get capabilities => _inner.capabilities;
+
+  @override
+  ModelPort get models => _inner.models;
+
+  @override
+  PortabilityPort get portability => _inner.portability;
+}
+
+class _UnavailableMesh implements MeshPort {
+  const _UnavailableMesh();
+
+  static const _error = MindPortUnavailable(
+    'MeshPort',
+    'not implemented yet — #1200',
+  );
+
+  @override
+  Stream<List<MindPeer>> peers() => Stream.error(_error);
+
+  @override
+  Stream<PairingRequest?> pendingRequest() => Stream.error(_error);
+
+  @override
+  Future<void> authorise(PairingRequest request) async => throw _error;
+
+  @override
+  Future<void> deny(PairingRequest request) async => throw _error;
+
+  @override
+  Future<int> push(DeviceFingerprint peer) async => throw _error;
 }

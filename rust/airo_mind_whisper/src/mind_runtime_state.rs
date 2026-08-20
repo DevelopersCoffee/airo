@@ -6,9 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, Mutex};
 
 use airo_mind::{
-    generate_mnemonic, seed_from_mnemonic, ContextId, ContentId as VaultContentId,
-    DeviceCertificate, DeviceId, DeviceKey, RevocationSubject, RootIdentity, SealedEnvelope,
-    Vault,
+    generate_mnemonic, seed_from_mnemonic, ContentId as VaultContentId, ContextId,
+    DeviceCertificate, DeviceId, DeviceKey, RevocationSubject, RootIdentity, SealedEnvelope, Vault,
 };
 use airo_mind_core::notes::{NotesCapability, NOTES_CAPABILITY};
 use airo_mind_core::runtime::{Operation, OperationRequest, Runtime};
@@ -73,15 +72,14 @@ impl MindRuntimeState {
         std::fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
 
         let log_path = base_dir.join("operations.log");
-        let runtime = Runtime::boot(ResourceBudget::new(4096), &log_path)
-            .map_err(|e| e.to_string())?;
+        let runtime =
+            Runtime::boot(ResourceBudget::new(4096), &log_path).map_err(|e| e.to_string())?;
 
         let vault_dir = base_dir.join("vault");
         std::fs::create_dir_all(&vault_dir).map_err(|e| e.to_string())?;
         let mnemonic_path = vault_dir.join("recovery.mnemonic");
         let mnemonic = if mnemonic_path.exists() {
-            let existing =
-                std::fs::read_to_string(&mnemonic_path).map_err(|e| e.to_string())?;
+            let existing = std::fs::read_to_string(&mnemonic_path).map_err(|e| e.to_string())?;
             if seed_from_mnemonic(existing.trim()).is_ok() {
                 existing
             } else {
@@ -89,8 +87,7 @@ impl MindRuntimeState {
                 // "invalid recovery mnemonic". Regenerate rather than fail
                 // permanently — the vault has no recoverable state yet.
                 let generated = generate_mnemonic().map_err(|e| e.to_string())?;
-                std::fs::write(&mnemonic_path, generated.as_str())
-                    .map_err(|e| e.to_string())?;
+                std::fs::write(&mnemonic_path, generated.as_str()).map_err(|e| e.to_string())?;
                 generated.to_string()
             }
         } else {
@@ -111,12 +108,8 @@ impl MindRuntimeState {
         std::fs::create_dir_all(&envelope_dir).map_err(|e| e.to_string())?;
 
         let mut device_names = Self::load_device_names(&vault_dir)?;
-        let local_device_id = Self::bootstrap_local_device(
-            &vault_dir,
-            &mut vault,
-            &identity,
-            &mut device_names,
-        )?;
+        let local_device_id =
+            Self::bootstrap_local_device(&vault_dir, &mut vault, &identity, &mut device_names)?;
 
         let state = Self {
             base_dir,
@@ -395,7 +388,10 @@ impl MindRuntimeState {
         if !path.exists() {
             return Ok(());
         }
-        if self.runtime.replay().map_err(|e| e.to_string())?
+        if self
+            .runtime
+            .replay()
+            .map_err(|e| e.to_string())?
             .iter()
             .any(|op| op.capability == SCRIBE_CAPABILITY)
         {
@@ -556,18 +552,15 @@ impl MindRuntimeState {
     }
 
     fn envelope_path(&self, entity_id: &str) -> PathBuf {
-        self.envelope_dir.join(format!("{}.envelope.json", entity_id))
+        self.envelope_dir
+            .join(format!("{}.envelope.json", entity_id))
     }
 
     fn sync_speaker_enrollment_runtime(&self) -> Result<(), String> {
         let profiles = self.build_speaker_profiles()?;
         let mut store = SpeakerEnrollmentStore::new();
         for profile in profiles {
-            store.replace_or_insert(
-                profile.id,
-                profile.display_name,
-                profile.embedding,
-            );
+            store.replace_or_insert(profile.id, profile.display_name, profile.embedding);
         }
         crate::api::meetings::replace_speaker_enrollment_store(store);
         Ok(())
@@ -684,10 +677,7 @@ impl MindRuntimeState {
             .skip(offset as usize)
             .take(limit as usize)
             .collect::<Vec<_>>();
-        Ok(slice
-            .into_iter()
-            .map(|op| decode_scribe_op(op))
-            .collect())
+        Ok(slice.into_iter().map(|op| decode_scribe_op(op)).collect())
     }
 
     pub fn speaker_profiles_json(&self) -> Result<String, String> {
@@ -833,11 +823,7 @@ pub fn scribe_ops_recent(offset: u64, limit: u64) -> Result<Vec<ScribeOpWire>, S
     state.scribe_ops_recent(offset, limit)
 }
 
-pub fn enroll_speaker(
-    id: String,
-    display_name: String,
-    embedding: Vec<f32>,
-) -> Result<(), String> {
+pub fn enroll_speaker(id: String, display_name: String, embedding: Vec<f32>) -> Result<(), String> {
     let state = runtime_state()?;
     state.enroll_speaker(&id, &display_name, &embedding)?;
     state.sync_speaker_enrollment_runtime()?;

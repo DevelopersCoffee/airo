@@ -43,7 +43,13 @@ class HuggingFaceCatalogCache {
 
   /// Loads cached catalog rows, or an empty list when never fetched / corrupt.
   Future<List<OfflineModelInfo>> load() async {
-    final file = await _cacheFile();
+    final File file;
+    try {
+      file = await _cacheFile();
+    } on Object {
+      // Host tests and web have no path_provider plugin.
+      return const [];
+    }
     if (!await file.exists()) return const [];
 
     final bytes = await file.readAsBytes();

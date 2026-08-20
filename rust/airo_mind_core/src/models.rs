@@ -639,7 +639,9 @@ mod tests {
         assert!(files.iter().any(|(n, _, _)| n == "ggml-small.bin"));
         assert!(files.iter().any(|(n, _, _)| n == "ggml-small.en.bin"));
         assert!(files.iter().any(|(n, _, _)| n == "sarvam-1-Q4_K_M.gguf"));
-        assert!(files.iter().any(|(n, _, _)| n == "ecapa_tdnn_tiny_int8.onnx"));
+        assert!(files
+            .iter()
+            .any(|(n, _, _)| n == "ecapa_tdnn_tiny_int8.onnx"));
         let required = required_files();
         assert!(
             files

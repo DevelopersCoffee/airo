@@ -159,14 +159,8 @@ impl WhisperSpeechEngine {
             }
             let end_sample = (offset_sample + chunk_samples).min(pcm.len());
             let chunk = &pcm[offset_sample..end_sample];
-            let segments = self.transcribe_pcm_chunk(
-                &mut state,
-                chunk,
-                offset_ms,
-                options,
-                true,
-                cancel,
-            )?;
+            let segments =
+                self.transcribe_pcm_chunk(&mut state, chunk, offset_ms, options, true, cancel)?;
             all.extend(segments);
             offset_sample = end_sample;
             offset_ms += CHUNK_MS;
@@ -348,7 +342,11 @@ mod tests {
             text: "different phrase after the loop".into(),
         });
         let out = suppress_repetition_loops(input);
-        assert_eq!(out.len(), 1, "loop guard stops then consecutive dupes collapse");
+        assert_eq!(
+            out.len(),
+            1,
+            "loop guard stops then consecutive dupes collapse"
+        );
         assert_eq!(out[0].text, "I have to go under the insert.");
         assert_eq!(out[0].end_ms, 50_000);
     }

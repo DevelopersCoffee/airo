@@ -1,8 +1,6 @@
 //! Integration-style check that diarization preserves segment evidence fields.
 
-use airo_mind_diarize::{
-    DiarizationInput, Diarizer, SingleSpeakerDiarizer, SpeakerId,
-};
+use airo_mind_diarize::{DiarizationInput, Diarizer, SingleSpeakerDiarizer, SpeakerId};
 use airo_mind_transcript::Segment;
 
 #[test]

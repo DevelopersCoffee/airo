@@ -75,8 +75,12 @@ pub struct MeetingMetricRecord {
 
 pub enum MeetingIntelligenceEvent {
     Extracting,
-    Generating { text: String },
-    MinutesReady { text: String },
+    Generating {
+        text: String,
+    },
+    MinutesReady {
+        text: String,
+    },
     IrReady {
         decisions: Vec<MeetingDecisionRecord>,
         action_items: Vec<MeetingActionItemRecord>,
@@ -171,9 +175,7 @@ impl GenerationEngine for SupervisorGenerationEngine<'_> {
     }
 
     fn stats(&self) -> RuntimeStats {
-        self.supervisor
-            .generation_stats()
-            .unwrap_or_default()
+        self.supervisor.generation_stats().unwrap_or_default()
     }
 
     fn generate(
@@ -183,21 +185,17 @@ impl GenerationEngine for SupervisorGenerationEngine<'_> {
         sink: &mut dyn FnMut(GenerationChunk) -> Result<(), EngineError>,
     ) -> Result<(), EngineError> {
         self.supervisor
-            .run_generation(
-                request,
-                cancel,
-                &mut |chunk| {
-                    if let Some(event_sink) = self.sink {
-                        if let Err(error) = event_sink.add(MeetingIntelligenceEvent::Generating {
-                            text: chunk.text.clone(),
-                        }) {
-                            *self.emit_error.lock().unwrap() = Some(error.to_string());
-                            return Err(EngineError::Backend(error.to_string()));
-                        }
+            .run_generation(request, cancel, &mut |chunk| {
+                if let Some(event_sink) = self.sink {
+                    if let Err(error) = event_sink.add(MeetingIntelligenceEvent::Generating {
+                        text: chunk.text.clone(),
+                    }) {
+                        *self.emit_error.lock().unwrap() = Some(error.to_string());
+                        return Err(EngineError::Backend(error.to_string()));
                     }
-                    sink(chunk)
-                },
-            )
+                }
+                sink(chunk)
+            })
             .map_err(runtime_to_engine)
     }
 }

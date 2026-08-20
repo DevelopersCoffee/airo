@@ -347,14 +347,10 @@ fn apply_diarization_labels(
         Some(&*enrollment),
     ) {
         Ok(result) => result,
-        Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => diarize_segments(
-            &segments,
-            None,
-            DiarizationStrategy::Solo,
-            None,
-            None,
-        )
-        .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?,
+        Err(error) if !matches!(strategy, DiarizationStrategy::Solo) => {
+            diarize_segments(&segments, None, DiarizationStrategy::Solo, None, None)
+                .map_err(|e| format!("diarization failed ({error}); solo fallback failed: {e}"))?
+        }
         Err(error) => return Err(error.to_string()),
     };
     for (record, diarized) in records.iter_mut().zip(result.segments.iter()) {
@@ -562,15 +558,10 @@ pub struct EnrolledSpeakerRecord {
 
 /// Replaces the in-memory enrollment store used during diarization.
 pub fn sync_speaker_enrollment_json(raw: String) {
-    let profiles: Vec<EnrolledSpeakerRecord> =
-        serde_json::from_str(&raw).unwrap_or_default();
+    let profiles: Vec<EnrolledSpeakerRecord> = serde_json::from_str(&raw).unwrap_or_default();
     let mut store = SpeakerEnrollmentStore::new();
     for profile in profiles {
-        store.replace_or_insert(
-            profile.id,
-            profile.display_name,
-            profile.embedding,
-        );
+        store.replace_or_insert(profile.id, profile.display_name, profile.embedding);
     }
     *lock(&*SPEAKER_ENROLLMENT) = store;
 }
@@ -588,8 +579,7 @@ pub fn embed_speaker_segment(
     start_ms: u64,
     end_ms: u64,
 ) -> Result<Vec<f32>, String> {
-    let pcm = airo_mind_audio::preprocess_path(Path::new(&wav_path))
-        .map_err(|e| e.to_string())?;
+    let pcm = airo_mind_audio::preprocess_path(Path::new(&wav_path)).map_err(|e| e.to_string())?;
     let core_pcm = Pcm {
         samples: pcm.samples,
         sample_rate_hz: pcm.sample_rate_hz,
@@ -862,10 +852,8 @@ mod tests {
 
     #[test]
     fn sarvam_edge_speech_available_when_model_file_present() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_sarvam_edge_test_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_sarvam_edge_test_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         let model_path = dir.join(SARVAM_EDGE_SPEECH_FILE);
         std::fs::write(&model_path, b"stub").expect("write stub onnx");
@@ -880,10 +868,8 @@ mod tests {
 
     #[test]
     fn sarvam_edge_speech_unavailable_without_model_file() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_sarvam_edge_empty_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_sarvam_edge_empty_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         assert!(sarvam_edge_speech_model_path(&dir).is_none());
         let _ = std::fs::remove_dir_all(&dir);
@@ -891,21 +877,20 @@ mod tests {
 
     #[test]
     fn embed_speaker_segment_returns_stub_vector_without_ecapa() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_embed_segment_test_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_embed_segment_test_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("tempdir");
         let wav_path = dir.join("tone.wav");
         write_test_wav_i16(
             &wav_path,
-            &(0..16_000).map(|i| ((i % 200) as i16) - 100).collect::<Vec<_>>(),
+            &(0..16_000)
+                .map(|i| ((i % 200) as i16) - 100)
+                .collect::<Vec<_>>(),
             16_000,
         );
 
-        let embedding =
-            embed_speaker_segment(wav_path.to_string_lossy().into_owned(), 0, 1_000)
-                .expect("embed segment");
+        let embedding = embed_speaker_segment(wav_path.to_string_lossy().into_owned(), 0, 1_000)
+            .expect("embed segment");
         assert!(!embedding.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }

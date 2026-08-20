@@ -13,9 +13,7 @@ use airo_mind_diarize::{
 };
 
 fn synthetic_pcm() -> Pcm {
-    let samples: Vec<i16> = (0..48_000)
-        .map(|i| ((i % 200) as i16) - 100)
-        .collect();
+    let samples: Vec<i16> = (0..48_000).map(|i| ((i % 200) as i16) - 100).collect();
     Pcm {
         samples,
         sample_rate_hz: 16_000,
@@ -38,7 +36,10 @@ fn ecapa_onnx_produces_192_dim_normalized_embedding() {
 
     assert_eq!(embedding.len(), 192);
     let norm = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
-    assert!((norm - 1.0).abs() < 0.01, "expected L2-normalized embedding, norm={norm}");
+    assert!(
+        (norm - 1.0).abs() < 0.01,
+        "expected L2-normalized embedding, norm={norm}"
+    );
 }
 
 #[test]
@@ -71,14 +72,8 @@ fn ecapa_product_diarization_splits_or_labels_speakers() {
         "expected embedding strategy when ECAPA file is present"
     );
 
-    let result = diarize_segments(
-        &segments,
-        Some(&pcm),
-        strategy,
-        Some(models_dir),
-        None,
-    )
-    .expect("diarize with ECAPA");
+    let result = diarize_segments(&segments, Some(&pcm), strategy, Some(models_dir), None)
+        .expect("diarize with ECAPA");
 
     assert_eq!(result.segments.len(), 2);
     assert!(!result.speakers.is_empty());

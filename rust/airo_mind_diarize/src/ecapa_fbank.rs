@@ -30,7 +30,10 @@ pub fn features_from_pcm_i16(samples: &[i16]) -> Vec<f32> {
     }
 
     let matrix = filterbank_matrix();
-    let floats: Vec<f32> = samples.iter().map(|s| *s as f32 / i16::MAX as f32).collect();
+    let floats: Vec<f32> = samples
+        .iter()
+        .map(|s| *s as f32 / i16::MAX as f32)
+        .collect();
     let window = hamming(WIN_LENGTH);
     let mut planner = RealFftPlanner::new();
     let r2c = planner.plan_fft_forward(N_FFT);
@@ -40,24 +43,24 @@ pub fn features_from_pcm_i16(samples: &[i16]) -> Vec<f32> {
 
     let mut rows: Vec<Vec<f32>> = Vec::new();
     for start in (0..floats.len() - WIN_LENGTH + 1).step_by(HOP_LENGTH) {
-        for i in 0..WIN_LENGTH {
-            frame[i] = floats[start + i] * window[i];
-        }
-        for i in WIN_LENGTH..N_FFT {
-            frame[i] = 0.0;
+        for (dst, (sample, w)) in frame
+            .iter_mut()
+            .zip(floats[start..].iter().zip(window.iter()))
+            .take(WIN_LENGTH)
+        {
+            *dst = *sample * *w;
         }
         r2c.process_with_scratch(&mut frame, &mut spectrum, &mut scratch)
             .expect("rfft");
 
         let mut mel = vec![0.0f32; N_MELS];
-        for mel_idx in 0..N_MELS {
+        for (mel_idx, bin_out) in mel.iter_mut().enumerate() {
             let row_offset = mel_idx * N_FREQ_BINS;
             let mut acc = 0.0f32;
-            for bin in 0..N_FREQ_BINS {
-                let power = spectrum[bin].norm_sqr();
-                acc += matrix[row_offset + bin] * power;
+            for (bin, coeff) in spectrum.iter().zip(&matrix[row_offset..]).take(N_FREQ_BINS) {
+                acc += *coeff * bin.norm_sqr();
             }
-            mel[mel_idx] = ln_floor(acc);
+            *bin_out = ln_floor(acc);
         }
         rows.push(mel);
     }

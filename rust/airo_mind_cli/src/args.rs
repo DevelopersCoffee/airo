@@ -253,10 +253,7 @@ mod tests {
     #[test]
     fn default_audio_for_meeting_001_when_fixture_present() {
         let path = default_audio_for_golden_meeting("meeting_001");
-        if manifest_dir()
-            .join("../fixtures/meeting_001.m4a")
-            .exists()
-        {
+        if manifest_dir().join("../fixtures/meeting_001.m4a").exists() {
             assert!(path.is_some());
             assert!(path.unwrap().ends_with("meeting_001.m4a"));
         }

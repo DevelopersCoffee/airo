@@ -70,7 +70,8 @@ class MindOpRecord {
       sequence: json['sequence'] as int,
       kind: MindOpKind.values.firstWhere(
         (k) => k.name == json['kind'],
-        orElse: () => throw FormatException('unknown MindOpKind: ${json['kind']}'),
+        orElse: () =>
+            throw FormatException('unknown MindOpKind: ${json['kind']}'),
       ),
       title: json['title'] as String? ?? '',
       contextId: json['contextId'] as String? ?? '',
@@ -118,9 +119,9 @@ class PersistentOperationLog implements OperationLogPort {
 
   static Future<List<MindOp>> _replay(File file) async {
     if (!await file.exists()) return [];
-    final lines = await file
-        .readAsLines()
-        .then((raw) => raw.where((line) => line.trim().isNotEmpty));
+    final lines = await file.readAsLines().then(
+      (raw) => raw.where((line) => line.trim().isNotEmpty),
+    );
     final ops = <MindOp>[];
     for (final line in lines) {
       try {
@@ -135,8 +136,9 @@ class PersistentOperationLog implements OperationLogPort {
     return ops;
   }
 
-  int _nextSequence() =>
-      _ops.isEmpty ? 1 : _ops.map((op) => op.sequence).reduce((a, b) => a > b ? a : b) + 1;
+  int _nextSequence() => _ops.isEmpty
+      ? 1
+      : _ops.map((op) => op.sequence).reduce((a, b) => a > b ? a : b) + 1;
 
   @override
   Future<int> count() async => _ops.length;
@@ -144,7 +146,8 @@ class PersistentOperationLog implements OperationLogPort {
   @override
   Future<List<MindOp>> range({required int offset, required int limit}) async {
     if (limit <= 0 || offset >= _ops.length) return const [];
-    final sorted = _ops.toList()..sort((a, b) => b.sequence.compareTo(a.sequence));
+    final sorted = _ops.toList()
+      ..sort((a, b) => b.sequence.compareTo(a.sequence));
     final end = (offset + limit).clamp(0, sorted.length);
     return sorted.sublist(offset, end);
   }
@@ -202,16 +205,27 @@ class PersistentOperationLog implements OperationLogPort {
 ///
 /// Shared by [MindService] and [mindRuntimeProvider] so meeting IR ops and
 /// assistant consent entries land in one durable file.
+///
+/// [opener] / [open] must not run at construction: a top-level instance is
+/// created when this library loads, which is before widget tests can mock
+/// `path_provider`. Starting [PersistentOperationLog.openDefault] that early
+/// permanently caches a [MissingPluginException].
 class LazyPersistentOperationLog implements OperationLogPort {
-  LazyPersistentOperationLog({Future<PersistentOperationLog>? opener})
-    : _opener = opener ?? PersistentOperationLog.openDefault();
+  LazyPersistentOperationLog({
+    Future<PersistentOperationLog>? opener,
+    Future<PersistentOperationLog> Function()? open,
+  }) : _open =
+           open ??
+           (opener != null ? () => opener : PersistentOperationLog.openDefault);
 
-  final Future<PersistentOperationLog> _opener;
+  final Future<PersistentOperationLog> Function() _open;
+  Future<PersistentOperationLog>? _inFlight;
   PersistentOperationLog? _opened;
 
   Future<PersistentOperationLog> _ensure() async {
-    _opened ??= await _opener;
-    return _opened!;
+    if (_opened != null) return _opened!;
+    _inFlight ??= _open();
+    return _opened = await _inFlight!;
   }
 
   @override
@@ -231,13 +245,12 @@ class LazyPersistentOperationLog implements OperationLogPort {
     required String title,
     required String contextId,
     String detail = '',
-  }) async =>
-      (await _ensure()).append(
-        kind: kind,
-        title: title,
-        contextId: contextId,
-        detail: detail,
-      );
+  }) async => (await _ensure()).append(
+    kind: kind,
+    title: title,
+    contextId: contextId,
+    detail: detail,
+  );
 
   @override
   Future<SignatureState> verify(int sequence) async =>
@@ -253,7 +266,8 @@ RustPreferredOperationLog? _sharedMindOperationLog;
 
 /// One shared log instance for the Mind shell composition root.
 OperationLogPort sharedMindOperationLog() {
-  _sharedMindOperationLog ??=
-      RustPreferredOperationLog(_fallbackMindOperationLog);
+  _sharedMindOperationLog ??= RustPreferredOperationLog(
+    _fallbackMindOperationLog,
+  );
   return _sharedMindOperationLog!;
 }

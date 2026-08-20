@@ -37,13 +37,11 @@ impl<E: SpeakerEmbedder> Diarizer for EmbeddingDiarizer<E> {
         let enrollment_hints: Vec<Option<String>> = embeddings
             .iter()
             .map(|embedding| {
-                input
-                    .enrollment
-                    .and_then(|store| {
-                        store
-                            .match_embedding(embedding, self.similarity_threshold)
-                            .map(|profile| profile.id.clone())
-                    })
+                input.enrollment.and_then(|store| {
+                    store
+                        .match_embedding(embedding, self.similarity_threshold)
+                        .map(|profile| profile.id.clone())
+                })
             })
             .collect();
 
