@@ -6,6 +6,7 @@ use airo_mind_core::wav::Pcm;
 
 use crate::diarizer::DiarizationError;
 use crate::embedder::{SpeakerEmbedder, SpeakerEmbedding};
+#[cfg(feature = "ecapa-ort")]
 use crate::model_files::ecapa_model_path;
 use crate::stub_embedder::StubSpeakerEmbedder;
 
@@ -42,13 +43,13 @@ pub fn stub_embedder() -> ResolvedEmbedder {
 /// ECAPA when the optional ONNX file is installed and `ecapa-ort` is enabled;
 /// stub otherwise (dev/tests / CI without ORT).
 pub fn resolve_embedder(models_dir: Option<&Path>) -> ResolvedEmbedder {
-    if let Some(dir) = models_dir {
-        if let Some(path) = ecapa_model_path(dir) {
-            #[cfg(feature = "ecapa-ort")]
-            if let Ok(embedder) = EcapaOnnxEmbedder::try_new(path) {
-                return ResolvedEmbedder::EcapaOnnx(embedder);
-            }
+    #[cfg(feature = "ecapa-ort")]
+    if let Some(path) = models_dir.and_then(ecapa_model_path) {
+        if let Ok(embedder) = EcapaOnnxEmbedder::try_new(path) {
+            return ResolvedEmbedder::EcapaOnnx(embedder);
         }
     }
+    #[cfg(not(feature = "ecapa-ort"))]
+    let _ = models_dir;
     stub_embedder()
 }

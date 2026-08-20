@@ -15,24 +15,15 @@ use crate::single_speaker::SingleSpeakerDiarizer;
 use crate::stub_embedder::StubSpeakerEmbedder;
 
 /// Which diarizer runs for a recording.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DiarizationStrategy {
     /// v0 product default — one speaker for the whole recording (`sp0`).
+    #[default]
     Solo,
     /// Dev/CLI path: deterministic stub embedder + greedy clustering.
-    StubEmbedding {
-        similarity_threshold: f32,
-    },
+    StubEmbedding { similarity_threshold: f32 },
     /// Product embedding path — ECAPA when installed, stub in tests without weights.
-    Embedding {
-        similarity_threshold: f32,
-    },
-}
-
-impl Default for DiarizationStrategy {
-    fn default() -> Self {
-        Self::Solo
-    }
+    Embedding { similarity_threshold: f32 },
 }
 
 /// Strategy for transcribe: embedding when ECAPA weights are on disk, else solo.
@@ -77,13 +68,7 @@ pub fn diarize_segments(
         } => {
             let pcm = pcm.ok_or(DiarizationError::PcmRequired)?;
             let embedder = resolve_embedder(models_dir);
-            run_embedding_diarizer(
-                embedder,
-                segments,
-                pcm,
-                similarity_threshold,
-                enrollment,
-            )
+            run_embedding_diarizer(embedder, segments, pcm, similarity_threshold, enrollment)
         }
     }
 }
@@ -182,10 +167,8 @@ mod tests {
 
     #[test]
     fn product_strategy_picks_embedding_when_ecapa_file_present() {
-        let dir = std::env::temp_dir().join(format!(
-            "airo_diarize_strategy_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("airo_diarize_strategy_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("temp dir");
         std::fs::write(dir.join(crate::model_files::ECAPA_TINY_ONNX_FILE), [0u8; 8])
@@ -210,9 +193,7 @@ mod tests {
         };
         let segments = [seg("s0", 0, 1_000), seg("s1", 1_000, 2_000)];
         let stub = StubSpeakerEmbedder::new(8);
-        let embedding = stub
-            .embed_segment(&pcm, 0, 1_000)
-            .expect("stub embedding");
+        let embedding = stub.embed_segment(&pcm, 0, 1_000).expect("stub embedding");
         let mut enrollment = crate::enrollment::SpeakerEnrollmentStore::new();
         enrollment.enroll("Alice".into(), embedding);
 
