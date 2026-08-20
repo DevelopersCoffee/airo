@@ -66,11 +66,7 @@ impl SpeakerEnrollmentStore {
     }
 
     /// Returns the enrolled speaker id when cosine similarity exceeds [threshold].
-    pub fn match_embedding(
-        &self,
-        embedding: &[f32],
-        threshold: f32,
-    ) -> Option<&EnrolledSpeaker> {
+    pub fn match_embedding(&self, embedding: &[f32], threshold: f32) -> Option<&EnrolledSpeaker> {
         let mut best: Option<&EnrolledSpeaker> = None;
         let mut best_sim = threshold;
         for profile in &self.profiles {

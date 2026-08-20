@@ -91,10 +91,7 @@ pub fn mind_runtime_scribe_op_count() -> Result<u64, String> {
 }
 
 #[frb(sync)]
-pub fn mind_runtime_scribe_ops_recent(
-    offset: u64,
-    limit: u64,
-) -> Result<Vec<MindOpWire>, String> {
+pub fn mind_runtime_scribe_ops_recent(offset: u64, limit: u64) -> Result<Vec<MindOpWire>, String> {
     mind_runtime_state::scribe_ops_recent(offset, limit)
         .map(|ops| ops.into_iter().map(map_op).collect())
 }
@@ -122,8 +119,7 @@ pub fn mind_runtime_vault_state() -> Result<VaultStateWire, String> {
 
 #[frb(sync)]
 pub fn mind_runtime_vault_devices() -> Result<Vec<MindDeviceWire>, String> {
-    mind_runtime_state::vault_devices()
-        .map(|devices| devices.into_iter().map(map_device).collect())
+    mind_runtime_state::vault_devices().map(|devices| devices.into_iter().map(map_device).collect())
 }
 
 #[frb(sync)]

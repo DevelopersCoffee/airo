@@ -10,8 +10,8 @@ pub fn slice_segment_pcm(pcm: &Pcm, start_ms: u64, end_ms: u64) -> Vec<i16> {
 
     let rate = pcm.sample_rate_hz as u64;
     let start_sample = (start_ms * rate / 1000) as usize * pcm.channels as usize;
-    let end_sample = ((end_ms * rate / 1000) as usize * pcm.channels as usize)
-        .min(pcm.samples.len());
+    let end_sample =
+        ((end_ms * rate / 1000) as usize * pcm.channels as usize).min(pcm.samples.len());
     if end_sample <= start_sample {
         return Vec::new();
     }

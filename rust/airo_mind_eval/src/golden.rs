@@ -246,7 +246,11 @@ mod tests {
             consistency.checks
         );
         let completeness = crate::mom_quality::section_completeness(&set.golden_mom);
-        assert_eq!(completeness.coverage, 1.0, "missing: {:?}", completeness.missing);
+        assert_eq!(
+            completeness.coverage, 1.0,
+            "missing: {:?}",
+            completeness.missing
+        );
     }
 
     #[test]

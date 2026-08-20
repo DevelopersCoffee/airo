@@ -12,10 +12,7 @@ use crate::resample::normalize_pcm;
 
 /// Demux and decode a compressed or non-PCM container via symphonia.
 pub fn decode_container(bytes: &[u8], extension_hint: Option<&str>) -> Result<crate::Pcm, String> {
-    let mss = MediaSourceStream::new(
-        Box::new(Cursor::new(bytes.to_vec())),
-        Default::default(),
-    );
+    let mss = MediaSourceStream::new(Box::new(Cursor::new(bytes.to_vec())), Default::default());
 
     let mut hint = Hint::new();
     if let Some(ext) = extension_hint {

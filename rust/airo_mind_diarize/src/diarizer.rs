@@ -18,9 +18,7 @@ impl std::fmt::Display for DiarizationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DiarizationError::EmptyInput => f.write_str("no transcript segments to diarize"),
-            DiarizationError::PcmRequired => {
-                f.write_str("this diarizer requires 16 kHz mono PCM")
-            }
+            DiarizationError::PcmRequired => f.write_str("this diarizer requires 16 kHz mono PCM"),
             DiarizationError::Internal(msg) => f.write_str(msg),
         }
     }
