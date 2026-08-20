@@ -31,6 +31,9 @@ void main() {
           assistantHostAdapterProvider.overrideWith(
             (ref) => AppAssistantHostAdapter(ref),
           ),
+          assistantModelLibraryProvider.overrideWith(
+            (ref) async => _financeChatLibrary,
+          ),
           currencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('INR'),
           ),
@@ -52,7 +55,9 @@ void main() {
             ],
           ),
         ],
-        child: const MaterialApp(home: ChatScreen()),
+        child: const MaterialApp(
+          home: ChatScreen(enableAiInitialization: false),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -104,6 +109,9 @@ void main() {
           assistantHostAdapterProvider.overrideWith(
             (ref) => AppAssistantHostAdapter(ref),
           ),
+          assistantModelLibraryProvider.overrideWith(
+            (ref) async => _financeChatLibrary,
+          ),
           currencyFormatterProvider.overrideWithValue(
             CurrencyFormatter.fromCode('INR'),
           ),
@@ -125,7 +133,9 @@ void main() {
             ],
           ),
         ],
-        child: const MaterialApp(home: ChatScreen()),
+        child: const MaterialApp(
+          home: ChatScreen(enableAiInitialization: false),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -157,6 +167,29 @@ class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
     state = geminiNanoAssistantModelId;
   }
 }
+
+const _financeChatCandidate = AssistantModelCandidate(
+  id: geminiNanoAssistantModelId,
+  name: 'Gemini Nano',
+  runtime: 'AICore on-device',
+  description: 'System runtime',
+  bestFor: [AssistantTask.chat],
+  tags: ['Local'],
+  privacyLabel: 'Prompt stays on device',
+  sizeLabel: 'System managed',
+  available: true,
+  actionLabel: 'Start',
+  local: false,
+);
+
+const _financeChatLibrary = AssistantModelLibraryState(
+  task: AssistantTask.chat,
+  deviceLabel: 'test',
+  platformLabel: 'TEST',
+  candidates: [_financeChatCandidate],
+  recommended: _financeChatCandidate,
+  defaultPackages: {},
+);
 
 class _InMemoryTransactionRepository implements TransactionRepository {
   final List<Transaction> transactions = [];

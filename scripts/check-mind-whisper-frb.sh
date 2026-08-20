@@ -6,6 +6,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if ! command -v dart >/dev/null 2>&1 && ! command -v flutter >/dev/null 2>&1; then
+  echo "Skipping Mind whisper FRB bindings check: Dart/Flutter toolchain not available."
+  exit 0
+fi
+
 "${ROOT}/scripts/regenerate-mind-whisper-frb.sh"
 
 cd "${ROOT}"

@@ -132,7 +132,7 @@ class MindService {
     SemanticSearchRanker Function(Directory modelsDir)? rankerBuilder,
     rust.SpeechLanguage defaultSpeechLanguage = rust.SpeechLanguage.englishOnly,
     Entitlements entitlements = const LaunchPromoEntitlements(),
-  }) : _recorder = recorder ?? AudioRecorder(),
+  }) : _recorderOverride = recorder,
        _models = modelProvider ?? const ModelInstaller(),
        _speech = speechBridge ?? const RustMindSpeechBridge(),
        _generation = generationBridge ?? RustMindGenerationBridge(),
@@ -147,7 +147,14 @@ class MindService {
              embeddingStore: MeetingEmbeddingStore(dir),
            ));
 
-  final AudioRecorder _recorder;
+  final AudioRecorder? _recorderOverride;
+  AudioRecorder? _lazyRecorder;
+
+  /// Constructed on first capture use. Host registry overrides create a
+  /// [MindService] without a Flutter plugin binding; `AudioRecorder()` talks
+  /// to a platform channel at construction and would fail those tests.
+  AudioRecorder get _recorder =>
+      _recorderOverride ?? (_lazyRecorder ??= AudioRecorder());
   final ModelProvider _models;
   final MindSpeechBridge _speech;
   final MindGenerationBridge _generation;
@@ -458,8 +465,8 @@ class MindService {
       // Loaded now rather than at startup: it is roughly 48 MB and only this
       // step needs it.
       final dir = await modelsDirectory();
-      final memoryInfo =
-          await core_ai.DeviceCapabilityService().getMemoryInfo();
+      final memoryInfo = await core_ai.DeviceCapabilityService()
+          .getMemoryInfo();
       final generationMode = await MindIndicPreferences.readGenerationMode();
       final indicCapability = MindIndicCapability(
         entitlements: _entitlements,
@@ -656,7 +663,8 @@ class MindService {
   /// download stream, and the shell that composed it cannot reach it once it
   /// is in here.
   Future<void> dispose() async {
-    await _recorder.dispose();
+    await _recorderOverride?.dispose();
+    await _lazyRecorder?.dispose();
     await _models.dispose();
   }
 }
