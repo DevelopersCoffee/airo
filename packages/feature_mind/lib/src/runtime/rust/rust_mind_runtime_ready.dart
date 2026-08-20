@@ -31,7 +31,7 @@ BigInt mindRuntimeAppendScribeOp({
 
 BigInt mindRuntimeScribeOpCount() => rust.mindRuntimeScribeOpCount();
 
-List<MindOpWire> mindRuntimeScribeOpsRecent({
+List<rust.MindOpWire> mindRuntimeScribeOpsRecent({
   required BigInt offset,
   required BigInt limit,
 }) => rust.mindRuntimeScribeOpsRecent(offset: offset, limit: limit);
