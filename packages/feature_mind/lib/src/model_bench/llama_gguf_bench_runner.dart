@@ -20,7 +20,7 @@ class LlamaGgufBenchRunner implements GenerationBenchRunner {
   final int maxOutputTokens;
 
   @override
-  Future<GenerationBenchSample> sample() {
+  Future<GenerationBenchSample> sample() async {
     if (!_gguf.isLoaded) {
       throw StateError('gguf_model_not_loaded');
     }

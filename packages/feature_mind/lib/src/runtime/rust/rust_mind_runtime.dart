@@ -322,10 +322,12 @@ class _RustModels implements ModelPort {
   @override
   Future<void> load(String modelId) async {
     final engine = _engine;
-    if (engine == null) return _pending('ModelPort', _runtimeIssue);
+    if (engine == null) {
+      _pending('ModelPort', _runtimeIssue);
+    }
     final catalogModel = _findCatalogModel(modelId);
     if (catalogModel == null) {
-      return _pending(
+      _pending(
         'ModelPort',
         'unknown model id "$modelId" -- not in the catalog',
       );
@@ -335,7 +337,7 @@ class _RustModels implements ModelPort {
       model: catalogModel,
     );
     if (path == null) {
-      return _pending(
+      _pending(
         'ModelPort',
         'model "$modelId" is not on disk — download it before loading',
       );
@@ -343,19 +345,21 @@ class _RustModels implements ModelPort {
     try {
       await engine.load(catalogModel.copyWith(filePath: path));
     } on Object catch (error) {
-      return _pending('ModelPort', 'load failed — $_runtimeIssue ($error)');
+      _pending('ModelPort', 'load failed — $_runtimeIssue ($error)');
     }
   }
 
   @override
   Future<void> unload(String modelId) async {
     final engine = _engine;
-    if (engine == null) return _pending('ModelPort', _runtimeIssue);
+    if (engine == null) {
+      _pending('ModelPort', _runtimeIssue);
+    }
     if (engine.loadedModelId != modelId) return;
     try {
       await engine.unload();
     } on Object catch (error) {
-      return _pending('ModelPort', 'unload failed — $_runtimeIssue ($error)');
+      _pending('ModelPort', 'unload failed — $_runtimeIssue ($error)');
     }
   }
 
