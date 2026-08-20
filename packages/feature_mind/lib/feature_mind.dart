@@ -207,6 +207,7 @@ export 'src/runtime/models/vault_models.dart';
 export 'src/model_bench/model_bench_controller.dart';
 export 'src/model_bench/model_bench_display.dart';
 export 'src/model_bench/model_bench_protocol.dart';
+export 'src/model_bench/speech_bench_protocol.dart';
 
 // Runtime — the port milestone 19 implements against.
 export 'src/runtime/mind_runtime.dart';

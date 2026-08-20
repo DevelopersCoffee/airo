@@ -40,10 +40,33 @@ What we deliberately do **not** port from Jan: CUDA events, L2 cache
 flush, dummy 4096² FP32 matmul, `ncu` as a CI tool. Those belong to custom
 kernel work on a datacenter GPU, not llama.cpp decode on a phone.
 
+## Speech RTFx
+
+Same warmup + median protocol; different headline. Whisper has no
+prefill/decode split. One timed `transcribe()` yields:
+
+`RTFx = wall_ms / audio_duration_ms`
+
+Below 1.0 is faster than real time (whisper.cpp's real-time factor). Empty
+PCM is rejected rather than reported as RTFx 0 (which would look infinitely
+fast). Peak RSS stays 0 unless the caller measured it — `airo_mind_core`
+stays std-only.
+
+The speech engine trait is **not** widened with `stats()`. The protocol owns
+the wall clock (`sample_speech_engine` / Dart `Stopwatch`) so every
+`SpeechEngine` implementor does not have to answer a measurement question.
+
+Production: `BridgeSpeechBenchRunner` times `MindSpeechBridge.transcribe`
+when `isReady()`, using a caller-supplied clip duration (WAV/recorder),
+never transcript timestamps. Not wired into `ModelPort` — that port is
+generation.
+
 ## Code
 
-- Rust: `airo_mind_core::bench` (`run_generation_bench`, `aggregate`)
+- Rust: `airo_mind_core::bench` (`run_generation_bench`, `run_speech_bench`,
+  `aggregate` / `aggregate_speech`)
 - Dart: `packages/feature_mind/lib/src/model_bench/model_bench_protocol.dart`
+  (generation) and `speech_bench_protocol.dart` (RTFx)
 - Product port: `ModelPort.benchmark()` on `RustMindRuntime` — runs the
   protocol when a `GenerationBenchRunner` is injected. Production
   (`mindRuntimeProvider` → `ScribeMindRuntime`) injects

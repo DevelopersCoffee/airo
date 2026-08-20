@@ -130,8 +130,10 @@ pub mod verb;
 pub mod wav;
 
 pub use bench::{
-    aggregate, median_f64, median_u64, run_generation_bench, AccelBackend, BenchError,
-    BenchMetadata, BenchMode, BenchProtocol, BenchReport, GpuClockControl,
+    aggregate, aggregate_speech, audio_duration_ms, median_f64, median_u64, run_generation_bench,
+    run_speech_bench, run_speech_engine_bench, sample_speech_engine, AccelBackend, BenchError,
+    BenchMetadata, BenchMode, BenchProtocol, BenchReport, GpuClockControl, SpeechBenchReport,
+    SpeechStats,
 };
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
