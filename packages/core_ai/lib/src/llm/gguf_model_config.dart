@@ -16,6 +16,14 @@ enum GpuBackend {
   /// Vulkan (Android/Windows/Linux)
   vulkan,
 
+  /// NVIDIA CUDA (Windows testing seam).
+  ///
+  /// Named now so a Windows CUDA llama.cpp build can select this without a
+  /// config-schema change. Current macOS/Android builds do not link CUDA;
+  /// `airo_mind_llama`'s `cuda` Cargo feature is the opt-in on a machine
+  /// that has the NVIDIA toolkit.
+  cuda,
+
   /// Auto-detect best available backend
   auto,
 }
