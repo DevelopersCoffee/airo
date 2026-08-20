@@ -16,6 +16,9 @@ class BridgeGenerationBenchRunner implements GenerationBenchRunner {
 
   @override
   Future<GenerationBenchSample> sample() async {
+    if (!_bridge.isEngineReady) {
+      throw StateError('generation engine is not loaded');
+    }
     await _bridge
         .complete(prompt: prompt, maxOutputTokens: maxOutputTokens)
         .drain<void>();
