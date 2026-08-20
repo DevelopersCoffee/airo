@@ -25,10 +25,14 @@ enum MindModelRecommendationSeverity {
 }
 
 /// Primary call-to-action for a recommendation card.
-enum MindModelRecommendationAction {
-  tryNow,
-  download,
-  disabled,
+enum MindModelRecommendationAction { tryNow, download, disabled }
+
+/// Named pipeline the Scribe UI can show without branching on model ids.
+enum MindScribeStrategy {
+  recommended,
+  longMeetings,
+  indianLanguages,
+  englishOnly,
 }
 
 /// Featured vs alternate row styling.
@@ -53,6 +57,7 @@ class MindModelRecommendation {
     required this.speechModelId,
     required this.generationModelId,
     required this.sizeLabel,
+    this.strategy = MindScribeStrategy.recommended,
     this.blockedReason,
     this.featured = false,
   });
@@ -67,8 +72,27 @@ class MindModelRecommendation {
   final String speechModelId;
   final String? generationModelId;
   final String sizeLabel;
+  final MindScribeStrategy strategy;
   final String? blockedReason;
   final bool featured;
+
+  String get strategyTitle => switch (strategy) {
+    MindScribeStrategy.recommended => 'Recommended',
+    MindScribeStrategy.longMeetings => 'Long meetings',
+    MindScribeStrategy.indianLanguages => 'Indian languages',
+    MindScribeStrategy.englishOnly => 'English only',
+  };
+
+  String get strategySubtitle => switch (strategy) {
+    MindScribeStrategy.recommended =>
+      'Speech Automatic plus meeting intelligence',
+    MindScribeStrategy.longMeetings =>
+      'Higher-accuracy speech for longer recordings',
+    MindScribeStrategy.indianLanguages =>
+      'Speech Automatic with Indic meeting intelligence',
+    MindScribeStrategy.englishOnly =>
+      'English-only speech when you do not need auto-detect',
+  };
 
   String get badgeLabel => switch (badge) {
     MindModelRecommendationBadge.bestOverall => '★ Best overall',
@@ -126,12 +150,14 @@ class MindModelAdvisor {
       whisperSmallMl: whisperSmallMl,
       whisperMl: whisperMl,
     );
-    final featuredSpeechName = featuredSpeech?.name ??
+    final featuredSpeechName =
+        featuredSpeech?.name ??
         (featuredSpeech?.id == MindScribeModelIds.whisperSmallMultilingual
             ? 'Whisper Small (Multilingual)'
             : 'Whisper Tiny (Multilingual)');
 
-    final featuredGenerationId = mobile || sarvamBlocked != null || !preferSarvam
+    final featuredGenerationId =
+        mobile || sarvamBlocked != null || !preferSarvam
         ? MindScribeModelIds.qwenGeneration
         : MindScribeModelIds.sarvamGeneration;
 
@@ -140,7 +166,8 @@ class MindModelAdvisor {
       speechModel: featuredSpeech,
       generationModel: _modelForId(scribeModelsById, featuredGenerationId),
       speechFallbackName: featuredSpeechName,
-      generationFallbackName: featuredGenerationId == MindScribeModelIds.sarvamGeneration
+      generationFallbackName:
+          featuredGenerationId == MindScribeModelIds.sarvamGeneration
           ? 'Sarvam-1 (Q4_K_M)'
           : 'Qwen2.5 0.5B Instruct (Q4_K_M)',
       badge: MindModelRecommendationBadge.bestOverall,
@@ -154,19 +181,25 @@ class MindModelAdvisor {
       ),
       runtimeNote: mobile
           ? 'Meetings on phones and tablets stay on Whisper multilingual plus '
-              'the compact Qwen minutes writer. Enhanced Indic generation is '
-              'desktop-only.'
+                'the compact Qwen minutes writer. Enhanced Indic generation is '
+                'desktop-only.'
           : featuredSpeech?.id == MindScribeModelIds.whisperSmallMultilingual
           ? 'Best long-meeting stack on this device: Whisper Small multilingual '
-              'speech (fewer loops on 30+ min recordings) plus Qwen minutes.'
+                'speech (fewer loops on 30+ min recordings) plus Qwen minutes.'
           : featuredGenerationId == MindScribeModelIds.sarvamGeneration
           ? 'Best Hindi/Marathi/Gujarati minutes on this device: Sarvam-1 after '
-              'Whisper multilingual transcription with auto-detect.'
+                'Whisper multilingual transcription with auto-detect.'
           : 'Reliable stack when RAM is tight or you chose Standard minutes: '
-              'Whisper multilingual speech plus Qwen 0.5B generation.',
+                'Whisper multilingual speech plus Qwen 0.5B generation.',
       blockedReason: featuredGenerationId == MindScribeModelIds.sarvamGeneration
           ? sarvamBlocked
           : null,
+      strategy:
+          featuredSpeech?.id == MindScribeModelIds.whisperSmallMultilingual
+          ? MindScribeStrategy.longMeetings
+          : featuredGenerationId == MindScribeModelIds.sarvamGeneration
+          ? MindScribeStrategy.indianLanguages
+          : MindScribeStrategy.recommended,
     );
 
     final alternates = <MindModelRecommendation>[];
@@ -189,6 +222,7 @@ class MindModelAdvisor {
           runtimeNote:
               'Smaller minutes model — good fallback when you want English-heavy '
               'meetings or faster generation.',
+          strategy: MindScribeStrategy.recommended,
         ),
       );
     } else if (capability.proEnabled && capability.isDesktopHost) {
@@ -211,11 +245,13 @@ class MindModelAdvisor {
           ),
           runtimeNote: sarvamBlocked ?? capability.suggestionSummary(),
           blockedReason: sarvamBlocked,
+          strategy: MindScribeStrategy.indianLanguages,
         ),
       );
     }
 
-    if (whisperSmallMl != null && featuredSpeech?.id != MindScribeModelIds.whisperSmallMultilingual) {
+    if (whisperSmallMl != null &&
+        featuredSpeech?.id != MindScribeModelIds.whisperSmallMultilingual) {
       alternates.add(
         _stackRecommendation(
           id: 'scribe-stack-whisper-small',
@@ -233,6 +269,7 @@ class MindModelAdvisor {
           runtimeNote:
               'Download for better accuracy on long meetings — fewer repetition '
               'loops than Whisper Tiny after ~30 minutes.',
+          strategy: MindScribeStrategy.longMeetings,
         ),
       );
     }
@@ -255,6 +292,7 @@ class MindModelAdvisor {
           runtimeNote:
               'English-only transcription — smaller speech weights when you do '
               'not need Hindi or Marathi auto-detect.',
+          strategy: MindScribeStrategy.englishOnly,
         ),
       );
     }
@@ -341,9 +379,14 @@ class MindModelAdvisor {
     required String runtimeNote,
     bool featured = false,
     String? blockedReason,
+    MindScribeStrategy strategy = MindScribeStrategy.recommended,
   }) {
-    final speechName = speechModel?.name ?? speechFallbackName;
-    final generationName = generationModel?.name ?? generationFallbackName;
+    // Fallback names stay on the signature so callers can describe stacks
+    // when catalog rows are missing; ranking never branches on those strings.
+    final resolvedSpeechName = speechModel?.name ?? speechFallbackName;
+    final resolvedGenerationName =
+        generationModel?.name ?? generationFallbackName;
+    assert(resolvedSpeechName.isNotEmpty || resolvedGenerationName.isNotEmpty);
     final speechId = speechModel?.id ?? MindScribeModelIds.whisperMultilingual;
     final generationId = generationModel?.id;
 
@@ -354,7 +397,9 @@ class MindModelAdvisor {
 
     final speechReady = speechModel?.isDownloaded ?? false;
     final generationReady = generationModel?.isDownloaded ?? false;
-    final blocked = blockedReason != null || severity == MindModelRecommendationSeverity.blocked;
+    final blocked =
+        blockedReason != null ||
+        severity == MindModelRecommendationSeverity.blocked;
 
     final action = blocked
         ? MindModelRecommendationAction.disabled
@@ -364,8 +409,22 @@ class MindModelAdvisor {
 
     return MindModelRecommendation(
       id: id,
-      headline: '$generationName + $speechName',
-      subheadline: 'Meeting scribe stack',
+      headline: switch (strategy) {
+        MindScribeStrategy.recommended => 'Recommended',
+        MindScribeStrategy.longMeetings => 'Long meetings',
+        MindScribeStrategy.indianLanguages => 'Indian languages',
+        MindScribeStrategy.englishOnly => 'English only',
+      },
+      subheadline: switch (strategy) {
+        MindScribeStrategy.recommended =>
+          'Speech Automatic plus meeting intelligence',
+        MindScribeStrategy.longMeetings =>
+          'Higher-accuracy speech for longer recordings',
+        MindScribeStrategy.indianLanguages =>
+          'Speech Automatic with Indic meeting intelligence',
+        MindScribeStrategy.englishOnly =>
+          'English-only speech when you do not need auto-detect',
+      },
       runtimeNote: runtimeNote,
       severity: severity,
       action: action,
@@ -373,6 +432,7 @@ class MindModelAdvisor {
       speechModelId: speechId,
       generationModelId: generationId,
       sizeLabel: totalBytes > 0 ? _formatSize(totalBytes) : 'Size unknown',
+      strategy: strategy,
       blockedReason: blockedReason,
       featured: featured,
     );
@@ -388,7 +448,9 @@ class MindModelAdvisor {
     if (blockedReason != null) {
       return MindModelRecommendationSeverity.blocked;
     }
-    if (usesSarvam && !capability.meetsRamGate && capability.memoryInfo?.isAvailable == true) {
+    if (usesSarvam &&
+        !capability.meetsRamGate &&
+        capability.memoryInfo?.isAvailable == true) {
       return MindModelRecommendationSeverity.warning;
     }
     final speechReady = speech?.isDownloaded ?? false;

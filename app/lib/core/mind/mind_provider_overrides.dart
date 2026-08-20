@@ -5,6 +5,8 @@ import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/settings/application/ai_model_management.dart';
+
 /// Provider overrides the standalone Mind shell needs beyond what
 /// [ModuleRegistry.allProviderOverrides] contributes.
 ///
@@ -22,5 +24,6 @@ List<Override> buildMindProviderOverrides({
       pro_bootstrap.createEntitlements(),
     ),
     ...registry.allProviderOverrides,
+    ...intelligenceLiveCatalogOverrides(),
   ];
 }

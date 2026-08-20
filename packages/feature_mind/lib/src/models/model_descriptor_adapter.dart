@@ -20,11 +20,13 @@ library;
 import 'package:core_ai/core_ai.dart'
     show
         AIProvider,
+        InferenceRuntime,
         ModelCapability,
         ModelCredibility,
         ModelFamily,
         ModelModality,
         ModelQuantization,
+        ModelTask,
         OfflineModelInfo;
 
 import '../whisper/api/setup.dart' as rust;
@@ -176,6 +178,10 @@ OfflineModelInfo offlineModelInfoFromRequiredModel(
   String? license,
   String? huggingFaceId,
   List<String> tags = const [],
+  ModelTask? task,
+  InferenceRuntime? runtime,
+  List<String> languages = const ['en'],
+  int contextLength = 2048,
 }) => OfflineModelInfo(
   id: id,
   name: name,
@@ -195,4 +201,8 @@ OfflineModelInfo offlineModelInfoFromRequiredModel(
   huggingFaceId: huggingFaceId,
   description: description,
   tags: tags,
+  task: task,
+  runtime: runtime,
+  languages: languages,
+  contextLength: contextLength,
 );

@@ -449,8 +449,8 @@ void main() {
     await tester.ensureVisible(find.text('Warm now'));
     await tester.tap(find.text('Warm now'));
     await tester.pump();
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
     expect(find.text('Runtime Health Center'), findsOneWidget);
     await tester.pageBack();
@@ -642,8 +642,8 @@ void main() {
 
     expect(find.text('999'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Retry with reduced context'));
     await tester.pumpAndSettle();
@@ -653,8 +653,8 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 4));
 
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose another installed model'));
     await tester.pumpAndSettle();
@@ -737,25 +737,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Resume download'),
+      400,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Resume download'));
     await tester.pumpAndSettle();
     expect(find.text('Model download resumed.'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
 
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Retry runtime'),
+      400,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Retry runtime'));
     await tester.pumpAndSettle();
     expect(find.text('Model warm-up succeeded.'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
 
-    await tester.ensureVisible(find.text('Why?'));
-    await tester.tap(find.text('Why?'));
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Runtime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Runtime'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Retry runtime'),
+      400,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Retry runtime'));
     await tester.pumpAndSettle();
     expect(find.text('Warm-up failed: runtime failure.'), findsOneWidget);

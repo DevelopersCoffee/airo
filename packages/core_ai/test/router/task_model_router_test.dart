@@ -6,11 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 OfflineModelInfo _model(
   String id, {
   List<ModelCapability> capabilities = const [ModelCapability.chat],
+  bool downloaded = false,
+  int size = 1000,
 }) => OfflineModelInfo(
   id: id,
   name: id,
   family: ModelFamily.gemma,
-  fileSizeBytes: 1000,
+  fileSizeBytes: size,
+  filePath: downloaded ? '/tmp/$id' : null,
+  downloadUrl: 'https://example.test/$id',
   capabilities: capabilities,
 );
 
@@ -40,34 +44,33 @@ void main() {
   });
 
   group('TaskModelRouter.resolve', () {
-    test(
-      'picks the first available model declaring the required capability',
-      () {
-        const router = TaskModelRouter();
-        final chatModel = _model('chat-model');
-        final embeddingModel = _model(
-          'embed-model',
-          capabilities: [ModelCapability.embeddings],
-        );
-
-        expect(
-          router.resolve(AiTask.chat, [chatModel, embeddingModel]),
-          chatModel,
-        );
-        expect(
-          router.resolve(AiTask.embeddings, [chatModel, embeddingModel]),
-          embeddingModel,
-        );
-      },
-    );
-
-    test('does not re-rank -- returns the first capable match in order', () {
+    test('picks a model declaring the required capability', () {
       const router = TaskModelRouter();
-      final first = _model('first');
-      final second = _model('second');
+      final chatModel = _model('chat-model');
+      final embeddingModel = _model(
+        'embed-model',
+        capabilities: [ModelCapability.embeddings],
+      );
 
-      expect(router.resolve(AiTask.chat, [first, second]), first);
-      expect(router.resolve(AiTask.chat, [second, first]), second);
+      expect(
+        router.resolve(AiTask.chat, [chatModel, embeddingModel])?.id,
+        'chat-model',
+      );
+      expect(
+        router.resolve(AiTask.embeddings, [chatModel, embeddingModel])?.id,
+        'embed-model',
+      );
+    });
+
+    test('ranks an installed model ahead of catalog order', () {
+      const router = TaskModelRouter();
+      final laterInstalled = _model('later', downloaded: true, size: 500);
+      final earlier = _model('earlier', size: 4_000_000_000);
+
+      expect(
+        router.resolve(AiTask.chat, [earlier, laterInstalled])?.id,
+        'later',
+      );
     });
 
     test('returns null when no available model declares the capability', () {

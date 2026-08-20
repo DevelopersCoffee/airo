@@ -768,11 +768,15 @@ class ModelLibraryScreen extends ConsumerWidget {
     required this.onModelSelected,
     required this.onOpenModelManager,
     this.runtimeService,
+    this.browseMode = false,
   });
 
   final ValueChanged<AssistantModelCandidate> onModelSelected;
   final VoidCallback onOpenModelManager;
   final AssistantRuntimeService? runtimeService;
+
+  /// Browse/install chrome instead of the old "Start a Project" first-run.
+  final bool browseMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -788,6 +792,7 @@ class ModelLibraryScreen extends ConsumerWidget {
           onModelSelected: onModelSelected,
           onOpenModelManager: onOpenModelManager,
           runtimeService: runtimeService ?? AssistantRuntimeService(),
+          browseMode: browseMode,
         ),
         orElse: () => const SizedBox.shrink(),
       ),
@@ -801,12 +806,14 @@ class _ModelLibraryContent extends ConsumerWidget {
     required this.onModelSelected,
     required this.onOpenModelManager,
     required this.runtimeService,
+    this.browseMode = false,
   });
 
   final AssistantModelLibraryState state;
   final ValueChanged<AssistantModelCandidate> onModelSelected;
   final VoidCallback onOpenModelManager;
   final AssistantRuntimeService runtimeService;
+  final bool browseMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -829,13 +836,15 @@ class _ModelLibraryContent extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Start a Project',
+                    browseMode ? 'Library' : 'Browse packages',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
-                    'Airo picks the right local package for each use case.',
+                    browseMode
+                        ? 'Recommended, community, and downloaded packages.'
+                        : 'Airo picks the right local package for each use case.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

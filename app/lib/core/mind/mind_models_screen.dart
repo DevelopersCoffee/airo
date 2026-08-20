@@ -1,308 +1,103 @@
-import 'dart:async';
-
 import 'package:core_ai/core_ai.dart';
-import 'package:core_ui/core_ui.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'mind_model_catalog.dart';
 import '../../features/settings/application/ai_model_management.dart';
 import '../../features/settings/presentation/screens/ai_models_screen.dart';
 import '../../features/settings/presentation/screens/intelligent_model_manager_screen.dart';
+import 'mind_model_catalog.dart';
 
-/// Standalone Mind shell: model hub styled after on-device AI gallery apps.
-///
-/// Surfaces download, activation, and warmup status in one place instead of
-/// burying them under Profile → AI preferences (which the super app reaches
-/// through Settings).
-class MindModelsScreen extends ConsumerStatefulWidget {
+/// Standalone Mind shell: task-first Intelligence control center.
+class MindModelsScreen extends ConsumerWidget {
   const MindModelsScreen({super.key});
 
   @override
-  ConsumerState<MindModelsScreen> createState() => _MindModelsScreenState();
-}
-
-class _MindModelsScreenState extends ConsumerState<MindModelsScreen> {
-  MemoryInfo? _memoryInfo;
-  bool _loadingMemory = true;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadMemory());
-  }
-
-  Future<void> _loadMemory() async {
-    try {
-      final memory = await DeviceCapabilityService().getMemoryInfo(
-        forceRefresh: true,
-      );
-      if (!mounted) return;
-      setState(() {
-        _memoryInfo = memory;
-        _loadingMemory = false;
-      });
-    } on Object {
-      if (!mounted) return;
-      setState(() => _loadingMemory = false);
-    }
-  }
-
-  Map<String, OfflineModelInfo> _scribeModelsById() {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(modelRegistryEventsProvider);
     final registry = ref.watch(modelRegistryProvider);
-    final byId = <String, OfflineModelInfo>{};
-    for (final model in registry.allModels) {
-      if (model.tags.contains(mindScribeModelTag)) {
-        byId[model.id] = model;
-      }
-    }
-    return byId;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final selectedCatalog = ref.watch(selectedModelProvider);
-    final assistantId = ref.watch(selectedAssistantModelIdProvider);
-    final readiness = ref.watch(assistantRuntimeReadinessProvider);
-    final activeDownloads = ref.watch(activeDownloadsProvider);
     final service = ref.watch(mindScribeServiceProvider);
 
-    return AiroResponsiveScaffold(
-      appBar: AppBar(title: const Text('On-device models'), centerTitle: false),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          Text(
-            'Browse curated packages, litert-community releases, and public GGUF '
-            'models from Hugging Face. Meeting scribe stacks are recommended '
-            'below; download and warm a chat model before assistant use.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+    return ProviderScope(
+      overrides: [
+        intelligenceCatalogProvider.overrideWithValue(registry.allModels),
+      ],
+      child: IntelligenceHomeScreen(
+        modelsTab: const IntelligentModelManagerScreen(embedded: true),
+        libraryTab: _IntelligenceLibraryTab(
+          onOpenHuggingFace: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AIModelsScreen()),
           ),
-          const SizedBox(height: 16),
-          if (_loadingMemory)
-            const Center(child: CircularProgressIndicator())
-          else
-            MindScribeModelsPanel(
-              scribeModelsById: _scribeModelsById(),
-              entitlements: ref.watch(mindEntitlementsProvider),
-              memoryInfo: _memoryInfo,
-              onTryStack: () => context.go('/'),
-              onAcquireComplete: () async {
-                final registry = ref.read(modelRegistryProvider);
-                await hydrateMindScribeModels(
-                  registry,
-                  requiredModels: mindScribeRequiredModels,
-                  modelsDirectory: service.modelsDirectory,
-                );
-                if (mounted) setState(() {});
-              },
-            ),
-          const SizedBox(height: 20),
-          _ActiveModelCard(
-            catalogModel: selectedCatalog,
-            assistantRuntimeId: assistantId,
-            readiness: readiness,
-          ),
-          if (readiness.phase != AssistantRuntimeReadinessPhase.ready &&
-              readiness.phase != AssistantRuntimeReadinessPhase.idle &&
-              readiness.phase != AssistantRuntimeReadinessPhase.blocked) ...[
-            const SizedBox(height: 12),
-            _ProgressCard(readiness: readiness),
-          ],
-          if (activeDownloads.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _DownloadsCard(downloads: activeDownloads),
-          ],
-          const SizedBox(height: 20),
-          _ActionTile(
-            icon: Icons.cloud_download_outlined,
-            title: 'Browse Hugging Face catalog',
-            subtitle:
-                'Curated, litert-community, and public GGUF — cached for offline browse',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AIModelsScreen()),
-            ),
-          ),
-          _ActionTile(
-            icon: Icons.memory_outlined,
-            title: 'Model manager',
-            subtitle: 'Activate, warm, benchmark, and free storage',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const IntelligentModelManagerScreen(),
-              ),
-            ),
-          ),
-          _ActionTile(
-            icon: Icons.psychology_outlined,
-            title: 'Assistant projects',
-            subtitle: 'Pick which runtime powers chat, docs, and skills',
-            onTap: () => context.go('${AssistantRouteNames.assistant}/models'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActiveModelCard extends StatelessWidget {
-  const _ActiveModelCard({
-    required this.catalogModel,
-    required this.assistantRuntimeId,
-    required this.readiness,
-  });
-
-  final OfflineModelInfo? catalogModel;
-  final String? assistantRuntimeId;
-  final AssistantRuntimeReadiness readiness;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final name =
-        catalogModel?.name ?? assistantRuntimeId ?? 'No model selected';
-    final statusLabel = switch (readiness.phase) {
-      AssistantRuntimeReadinessPhase.idle => 'Choose a model to begin',
-      AssistantRuntimeReadinessPhase.loading => 'Loading weights…',
-      AssistantRuntimeReadinessPhase.warming => 'Warming up…',
-      AssistantRuntimeReadinessPhase.ready => 'Ready to chat',
-      AssistantRuntimeReadinessPhase.blocked => 'Setup required',
-      AssistantRuntimeReadinessPhase.error => 'Something went wrong',
-    };
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Active chat model', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Text(name, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(statusLabel, style: theme.textTheme.bodyMedium),
-            if (readiness.detail.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                readiness.detail,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
         ),
-      ),
-    );
-  }
-}
-
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.readiness});
-
-  final AssistantRuntimeReadiness readiness;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final percent = (readiness.progress * 100).clamp(0, 100).round();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    readiness.label,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                Text('$percent%', style: theme.textTheme.titleSmall),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: readiness.progress.clamp(0.0, 1.0)),
-          ],
+        diagnosticsTab: DeviceCapabilityReportLoaderScreen(
+          models: registry.allModels,
+          embedded: true,
         ),
+        onOpenChat: () => context.go(AssistantRouteNames.chat),
+        onOpenScribe: () => context.go('/'),
+        onInstallModels: (models) => _installRecommended(ref, models, service),
       ),
+    );
+  }
+
+  Future<void> _installRecommended(
+    WidgetRef ref,
+    List<OfflineModelInfo> models,
+    MindService service,
+  ) async {
+    final downloads = ref.read(activeDownloadsProvider.notifier);
+    final scribe = <OfflineModelInfo>[];
+    for (final model in models) {
+      if (model.tags.contains(mindScribeModelTag)) {
+        scribe.add(model);
+      } else {
+        downloads.startDownload(model);
+      }
+    }
+    if (scribe.isEmpty) return;
+    final required = <RequiredModel>[];
+    for (final model in scribe) {
+      final pinned = await requiredModelForScribeCatalogId(model.id);
+      if (pinned != null) required.add(pinned);
+    }
+    if (required.isEmpty) return;
+    await for (final _ in service.acquireModelFiles(required)) {}
+    await hydrateMindScribeModels(
+      ref.read(modelRegistryProvider),
+      requiredModels: mindScribeRequiredModels,
+      modelsDirectory: service.modelsDirectory,
     );
   }
 }
 
-class _DownloadsCard extends StatelessWidget {
-  const _DownloadsCard({required this.downloads});
+class _IntelligenceLibraryTab extends ConsumerWidget {
+  const _IntelligenceLibraryTab({required this.onOpenHuggingFace});
 
-  final Map<String, ModelDownloadProgress> downloads;
+  final VoidCallback onOpenHuggingFace;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Downloads', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 12),
-            for (final progress in downloads.values)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(progress.modelId)),
-                        Text('${progress.progressPercent}%'),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(value: progress.progress),
-                  ],
-                ),
-              ),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.travel_explore_outlined),
+          title: const Text('Community catalog'),
+          subtitle: const Text('Public GGUF and litert-community packages'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onOpenHuggingFace,
         ),
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
+        const Divider(height: 1),
+        Expanded(
+          child: ModelLibraryScreen(
+            browseMode: true,
+            onModelSelected: (candidate) {
+              context.go(AssistantRouteNames.chat);
+            },
+            onOpenModelManager: () {},
+          ),
+        ),
+      ],
     );
   }
 }
