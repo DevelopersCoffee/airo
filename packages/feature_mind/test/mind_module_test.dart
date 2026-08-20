@@ -43,6 +43,7 @@ void main() {
       AssistantRouteNames.audioScribeName,
       AssistantRouteNames.agentSkillsName,
       AssistantRouteNames.mobileActionsName,
+      AssistantRouteNames.calendarName,
     ]);
   });
 
@@ -106,6 +107,7 @@ void main() {
       AssistantRouteNames.audioScribe,
       AssistantRouteNames.agentSkills,
       AssistantRouteNames.mobileActions,
+      AssistantRouteNames.calendar,
     ]);
     expect(
       (module.rootRoutesFor(ShellId.mobile).first as GoRoute).path,

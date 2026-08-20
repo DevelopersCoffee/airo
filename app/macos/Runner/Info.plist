@@ -4,6 +4,10 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Airo Mind needs the microphone to record meetings and voice input on this device. Audio never leaves it.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Airo needs calendar access to check your schedule when you use calendar skills.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Airo needs calendar access to read your schedule when you use calendar skills.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Airo Mind uses speech recognition to transcribe meetings and voice commands you capture on this device.</string>
 	<key>CFBundleDevelopmentRegion</key>

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../assistant_surface_policy.dart';
 import '../../../widgets/airo_action_card.dart';
+import '../../../routing/assistant_route_names.dart';
 
 /// On-device AI: chat, skills, transcription, prompts, models.
 ///
@@ -87,6 +88,13 @@ class AssistantScreen extends ConsumerWidget {
               onTap: () => context.push('/assistant/mobile-actions'),
             ),
           ],
+          const SizedBox(height: 10),
+          AiroActionCard(
+            title: 'Calendar',
+            subtitle: 'See today\'s events from every connected calendar.',
+            icon: Icons.calendar_month_outlined,
+            onTap: () => context.push(AssistantRouteNames.calendar),
+          ),
           const SizedBox(height: 10),
           AiroActionCard(
             title: 'Intelligence',

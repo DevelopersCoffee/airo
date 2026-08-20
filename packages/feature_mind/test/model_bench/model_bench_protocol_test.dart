@@ -132,6 +132,19 @@ void main() {
       );
     });
   });
+
+  group('productionGenerationBenchMetadata', () {
+    test('records unlocked clocks and a single supervisor thread', () {
+      final metadata = productionGenerationBenchMetadata();
+      expect(metadata.clockControl, GpuClockControl.unlocked);
+      expect(metadata.threadCount, 1);
+      expect(
+        metadata.backend,
+        isNot(InferenceAccelBackend.cuda),
+        reason: 'CUDA is a named seam, not a default Windows/Linux label',
+      );
+    });
+  });
 }
 
 GenerationBenchSample _sample({required int prefillMs, required double tokS}) =>

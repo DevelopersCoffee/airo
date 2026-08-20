@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:platform_calendar/platform_calendar.dart';
 import '../../../host/assistant_host_adapter.dart';
 import '../../../assistant/assistant_surface_policy.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
@@ -23,6 +24,7 @@ import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
+import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -84,6 +86,8 @@ class AgentChatMessage {
   /// The safety banner this answer's capability requires, if any.
   final CapabilitySafetyClass? safetyClass;
 
+  final bool pendingCalendarPermission;
+
   AgentChatMessage({
     required this.text,
     required this.isUser,
@@ -93,6 +97,7 @@ class AgentChatMessage {
     this.citations = const [],
     this.groundingState = GroundingState.notApplicable,
     this.safetyClass,
+    this.pendingCalendarPermission = false,
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() =>
@@ -133,6 +138,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.initialDraft,
     this.initialPinnedPersonaId,
     this.operationLogPort,
+    this.calendarService,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -147,6 +153,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   /// so the surface always has a real, if fixture-backed, log to cite —
   /// swap in `RustMindRuntime().log` once M19 lands the real runtime.
   final OperationLogPort? operationLogPort;
+  final CalendarService? calendarService;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -172,6 +179,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       const AssistantChatContextBuilder(maxMessageChars: 1200);
   Map<String, dynamic>? _pendingCalendarEvent;
   String? _pinnedPersonaId;
+  String? _pendingCalendarPermissionPrompt;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
   bool _isCapturingVoice = false;
@@ -240,10 +248,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
+    final calendar = widget.calendarService ?? createCalendarService();
     final connectors = <AgentConnector>[
       DateTimeConnector(),
-      NativeCalendarPermissionConnector(),
-      NativeCalendarConnector(),
+      NativeCalendarPermissionConnector(calendar: calendar),
+      NativeCalendarConnector(calendar: calendar),
       NativeCreateCalendarEventConnector(),
       ScheduleNotificationConnector(),
       RouteConnector(),
@@ -261,8 +270,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return AgentSkillOrchestrator(
       skillRegistry: registry,
       connectorRegistry: _connectorRegistry,
-      modelClient: RuleBasedAgentSkillModelClient(),
-      useFallbackModelClient: false,
+      modelClient: SelectedRuntimeAgentSkillModelClient(
+        runtimeService: _assistantRuntime,
+        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
+      ),
+      useFallbackModelClient: true,
+      preferDeterministicSkills: true,
       operationLogPort: _operationLogPort,
     );
   }
@@ -1040,6 +1053,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
+            if (!message.isUser && message.pendingCalendarPermission)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FilledButton(
+                  key: const Key('allow_calendar_access'),
+                  onPressed: _allowCalendarAccess,
+                  child: const Text('Allow Calendar Access'),
+                ),
+              ),
             if (!message.isUser)
               GroundedAnswerBlock(
                 state: message.groundingState,
@@ -1200,6 +1222,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    if (_pendingCalendarPermissionPrompt != null &&
+        _isCalendarPermissionAllow(message)) {
+      await _allowCalendarAccess();
+      return;
+    }
+
     if (await _tryIngestFinanceMessage(message)) {
       return;
     }
@@ -1243,6 +1271,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     skillStopwatch.stop();
     if (skillResult.handled) {
       _pendingCalendarEvent = skillResult.pendingCalendarEvent;
+      if (skillResult.pendingCalendarPermission) {
+        _pendingCalendarPermissionPrompt = message;
+      }
       final metadata = _buildSkillMetadata(
         traces: skillResult.traces,
         totalDuration: skillStopwatch.elapsed,
@@ -1257,6 +1288,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             citations: skillResult.citations,
             groundingState: skillResult.groundingState,
             safetyClass: skillResult.safetyClass,
+            pendingCalendarPermission: skillResult.pendingCalendarPermission,
           ),
         );
       });
@@ -1364,6 +1396,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         lower.contains("don't") ||
         lower.contains('skip') ||
         lower.contains('not now');
+  }
+
+  bool _isCalendarPermissionAllow(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'allow' ||
+        lower.contains('allow calendar') ||
+        lower.contains('grant access');
+  }
+
+  Future<void> _allowCalendarAccess() async {
+    final prompt = _pendingCalendarPermissionPrompt;
+    _pendingCalendarPermissionPrompt = null;
+    final result = await _connectorRegistry.execute(
+      'calendar_permission_status',
+      const {'request': true},
+    );
+    if (!mounted) return;
+    if (result.isError || result.data['granted'] != true) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(
+            text:
+                'Calendar access is disabled. Enable it in system settings to let Airo read your calendar.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
+    if (prompt == null) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(
+            text: 'Calendar access is enabled. Ask me about your schedule.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
+    final skillStopwatch = Stopwatch()..start();
+    final skillResult = await _skillOrchestrator.run(prompt);
+    skillStopwatch.stop();
+    if (!mounted) return;
+    setState(() {
+      _messages.add(
+        AgentChatMessage(
+          text: skillResult.message,
+          isUser: false,
+          traces: skillResult.traces,
+          metadata: _buildSkillMetadata(
+            traces: skillResult.traces,
+            totalDuration: skillStopwatch.elapsed,
+          ),
+          citations: skillResult.citations,
+          groundingState: skillResult.groundingState,
+          safetyClass: skillResult.safetyClass,
+        ),
+      );
+    });
   }
 
   /// Offers the message to the host's finance ingestion before treating it as

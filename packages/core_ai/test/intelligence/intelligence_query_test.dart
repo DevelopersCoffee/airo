@@ -116,6 +116,30 @@ void main() {
       );
     });
 
+    test('includes already-available rows that have no download URL', () {
+      final installed = _model(
+        'embed-model',
+        capabilities: const [ModelCapability.embeddings],
+        downloadUrl: null,
+      );
+
+      final skipped = query.select(
+        capability: ModelCapability.embeddings,
+        catalog: [installed],
+      );
+      expect(skipped.model, isNull);
+
+      final selected = query.select(
+        capability: ModelCapability.embeddings,
+        catalog: [installed],
+        constraints: const IntelligenceConstraints(
+          requireInstallable: false,
+          requireCurrentPlatform: false,
+        ),
+      );
+      expect(selected.model?.id, 'embed-model');
+    });
+
     test('compact bias prefers the smaller speech model', () {
       final tiny = _model(
         'tiny-speech',

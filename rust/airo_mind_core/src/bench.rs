@@ -1,8 +1,8 @@
-//! Generation-engine benchmark protocol.
+//! On-device inference benchmark protocol (generation tok/s and speech RTFx).
 //!
 //! Backend-free: this crate links nothing native, so the protocol can sit in
-//! `airo_mind_core` and be shared by llama.cpp, a future CUDA Windows build,
-//! and tests that never load a model.
+//! `airo_mind_core` and be shared by llama.cpp, whisper.cpp, a future CUDA
+//! Windows build, and tests that never load a model.
 //!
 //! The methodology is the Jan.ai kernel-bench practices that survive contact
 //! with on-device inference, not a port of CUDA events / `ncu` / L2 flush:
@@ -20,8 +20,13 @@
 //! Absolute tok/s is still not a CI gate. Stochastic clocks (Jan §6) make
 //! wall-clock thresholds flaky; [`crate`] scaling tests stay the CI shape.
 
+use std::time::Instant;
+
 use crate::cancel::CancelToken;
-use crate::engine::{EngineError, GenerationEngine, GenerationRequest, RuntimeStats};
+use crate::engine::{
+    AudioInput, EngineError, GenerationEngine, GenerationRequest, RuntimeStats, SpeechEngine,
+    TranscriptSegment, TranscriptionOptions,
+};
 
 /// GPU / NPU / CPU accelerator the timed `generate()` actually used.
 ///
@@ -262,6 +267,153 @@ pub fn run_generation_bench(
     aggregate(&samples, protocol, metadata)
 }
 
+/// One timed `transcribe()` observation.
+///
+/// RTFx is `wall_ms / audio_duration_ms` (whisper.cpp's real-time factor).
+/// Values below 1.0 mean faster than real time. This is **not** tok/s:
+/// speech has no prefill/decode split on the whisper.cpp path we ship.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SpeechStats {
+    pub audio_duration_ms: u64,
+    pub wall_ms: u64,
+    /// Process-wide peak RSS when the caller measured it. `0` when unknown
+    /// — this crate stays std-only and does not call `getrusage`.
+    pub peak_rss_bytes: u64,
+}
+
+impl SpeechStats {
+    /// `wall_ms / audio_duration_ms`. `0.0` when duration is zero — callers
+    /// must not treat that as a real measurement; [`sample_speech_engine`]
+    /// rejects empty audio instead.
+    pub fn rtf(&self) -> f64 {
+        if self.audio_duration_ms == 0 {
+            0.0
+        } else {
+            self.wall_ms as f64 / self.audio_duration_ms as f64
+        }
+    }
+}
+
+/// Median-reduced result of a warmed speech bench.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpeechBenchReport {
+    pub median_rtf: f64,
+    pub median_wall_ms: u64,
+    pub audio_duration_ms: u64,
+    pub peak_rss_bytes: u64,
+    pub warmup_iterations: u32,
+    pub timed_iterations: u32,
+    pub metadata: BenchMetadata,
+}
+
+/// PCM duration in milliseconds. Channels and rate of `0` are treated as `1`
+/// so a malformed header cannot divide by zero; empty PCM still yields `0`.
+pub fn audio_duration_ms(audio: AudioInput<'_>) -> u64 {
+    let channels = u64::from(audio.channels.max(1));
+    let rate = u64::from(audio.sample_rate_hz.max(1));
+    (audio.samples.len() as u64).saturating_mul(1000) / rate.saturating_mul(channels)
+}
+
+/// Time one [`SpeechEngine::transcribe`] against [audio]. The protocol owns
+/// the wall clock so the engine trait does not grow a `stats()` method.
+pub fn sample_speech_engine(
+    engine: &dyn SpeechEngine,
+    audio: AudioInput<'_>,
+    options: &TranscriptionOptions,
+    cancel: &CancelToken,
+) -> Result<SpeechStats, EngineError> {
+    let audio_duration_ms = audio_duration_ms(audio);
+    if audio_duration_ms == 0 {
+        return Err(EngineError::InvalidInput("audio duration is zero".into()));
+    }
+    let start = Instant::now();
+    let mut sink = |_seg: TranscriptSegment| Ok(());
+    engine.transcribe(audio, options, cancel, &mut sink)?;
+    Ok(SpeechStats {
+        audio_duration_ms,
+        wall_ms: start.elapsed().as_millis() as u64,
+        peak_rss_bytes: 0,
+    })
+}
+
+/// Reduce timed [`SpeechStats`] samples. Empty → [`BenchError::NoSamples`].
+pub fn aggregate_speech(
+    samples: &[SpeechStats],
+    protocol: &BenchProtocol,
+    metadata: BenchMetadata,
+) -> Result<SpeechBenchReport, BenchError> {
+    if samples.is_empty() {
+        return Err(BenchError::NoSamples);
+    }
+    let rtf: Vec<f64> = samples.iter().map(SpeechStats::rtf).collect();
+    let wall: Vec<u64> = samples.iter().map(|s| s.wall_ms).collect();
+    let audio_duration_ms = samples
+        .iter()
+        .map(|s| s.audio_duration_ms)
+        .max()
+        .unwrap_or(0);
+    let peak_rss_bytes = samples.iter().map(|s| s.peak_rss_bytes).max().unwrap_or(0);
+    Ok(SpeechBenchReport {
+        median_rtf: median_f64(&rtf),
+        median_wall_ms: median_u64(&wall),
+        audio_duration_ms,
+        peak_rss_bytes,
+        warmup_iterations: protocol.warmup_iterations,
+        timed_iterations: protocol.timed_iterations,
+        metadata,
+    })
+}
+
+/// Warmup + timed `transcribe()` samples, then median RTFx.
+///
+/// Same iteration counts as [`run_generation_bench`]. The engine's model
+/// weights stay loaded between calls — warmup drops first-load mmap, not a
+/// GPU L2 flush.
+pub fn run_speech_bench<F>(
+    mut sample: F,
+    protocol: &BenchProtocol,
+    metadata: BenchMetadata,
+    cancel: &CancelToken,
+) -> Result<SpeechBenchReport, BenchError>
+where
+    F: FnMut() -> Result<SpeechStats, EngineError>,
+{
+    if protocol.timed_iterations == 0 {
+        return Err(BenchError::NoSamples);
+    }
+    for _ in 0..protocol.warmup_iterations {
+        if cancel.is_cancelled() {
+            return Err(BenchError::Engine(EngineError::Cancelled));
+        }
+        sample()?;
+    }
+    let mut samples = Vec::with_capacity(protocol.timed_iterations as usize);
+    for _ in 0..protocol.timed_iterations {
+        if cancel.is_cancelled() {
+            return Err(BenchError::Engine(EngineError::Cancelled));
+        }
+        samples.push(sample()?);
+    }
+    aggregate_speech(&samples, protocol, metadata)
+}
+
+/// [`run_speech_bench`] against a live [`SpeechEngine`] and one PCM clip.
+pub fn run_speech_engine_bench(
+    engine: &dyn SpeechEngine,
+    audio: AudioInput<'_>,
+    options: &TranscriptionOptions,
+    protocol: &BenchProtocol,
+    metadata: BenchMetadata,
+    cancel: &CancelToken,
+) -> Result<SpeechBenchReport, BenchError> {
+    run_speech_bench(
+        || sample_speech_engine(engine, audio, options, cancel),
+        protocol,
+        metadata,
+        cancel,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,5 +582,140 @@ mod tests {
         )
         .expect_err("cancelled");
         assert_eq!(err, BenchError::Engine(EngineError::Cancelled));
+    }
+
+    fn speech(audio_ms: u64, wall_ms: u64) -> SpeechStats {
+        SpeechStats {
+            audio_duration_ms: audio_ms,
+            wall_ms,
+            peak_rss_bytes: 2_000,
+        }
+    }
+
+    #[test]
+    fn speech_rtf_is_wall_over_audio() {
+        assert_eq!(speech(1000, 500).rtf(), 0.5);
+        assert_eq!(speech(0, 500).rtf(), 0.0);
+    }
+
+    #[test]
+    fn pcm_duration_is_samples_over_rate() {
+        let samples = [0i16; 16_000];
+        let audio = AudioInput {
+            samples: &samples,
+            sample_rate_hz: 16_000,
+            channels: 1,
+        };
+        assert_eq!(audio_duration_ms(audio), 1_000);
+        let empty = AudioInput {
+            samples: &[],
+            sample_rate_hz: 16_000,
+            channels: 1,
+        };
+        assert_eq!(audio_duration_ms(empty), 0);
+    }
+
+    #[test]
+    fn aggregate_speech_rejects_an_empty_timed_set() {
+        assert_eq!(
+            aggregate_speech(&[], &BenchProtocol::default(), BenchMetadata::default()),
+            Err(BenchError::NoSamples)
+        );
+    }
+
+    #[test]
+    fn speech_warmup_samples_are_discarded_from_the_median() {
+        let remaining = Mutex::new(vec![
+            speech(1000, 900),
+            speech(1000, 400),
+            speech(1000, 500),
+            speech(1000, 600),
+        ]);
+        let calls = AtomicU32::new(0);
+        let protocol = BenchProtocol {
+            warmup_iterations: 1,
+            timed_iterations: 3,
+        };
+        let report = run_speech_bench(
+            || {
+                calls.fetch_add(1, Ordering::SeqCst);
+                let mut remaining = remaining.lock().expect("scripted speech mutex");
+                Ok(remaining.remove(0))
+            },
+            &protocol,
+            BenchMetadata {
+                backend: AccelBackend::Metal,
+                clock_control: GpuClockControl::Unlocked,
+                gpu_layers: 0,
+                thread_count: 1,
+                mode: BenchMode::Combined,
+            },
+            &CancelToken::new(),
+        )
+        .expect("scripted speech bench");
+
+        assert_eq!(calls.load(Ordering::SeqCst), 4);
+        assert_eq!(report.median_wall_ms, 500);
+        assert_eq!(report.median_rtf, 0.5);
+        assert_eq!(report.audio_duration_ms, 1000);
+        assert_eq!(report.warmup_iterations, 1);
+        assert_eq!(report.timed_iterations, 3);
+        assert_eq!(report.metadata.backend, AccelBackend::Metal);
+        assert_eq!(report.peak_rss_bytes, 2_000);
+    }
+
+    #[test]
+    fn speech_zero_timed_iterations_is_no_samples() {
+        let calls = AtomicU32::new(0);
+        let err = run_speech_bench(
+            || {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Ok(speech(1000, 500))
+            },
+            &BenchProtocol {
+                warmup_iterations: 1,
+                timed_iterations: 0,
+            },
+            BenchMetadata::default(),
+            &CancelToken::new(),
+        )
+        .expect_err("zero timed");
+        assert_eq!(err, BenchError::NoSamples);
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+    }
+
+    struct EmptySpeech;
+
+    impl SpeechEngine for EmptySpeech {
+        fn resource_request(&self) -> ResourceRequest {
+            ResourceRequest::new(64)
+        }
+
+        fn transcribe(
+            &self,
+            _audio: AudioInput<'_>,
+            _options: &TranscriptionOptions,
+            _cancel: &CancelToken,
+            _sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
+        ) -> Result<(), EngineError> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn sample_speech_engine_rejects_zero_duration_audio() {
+        let audio = AudioInput {
+            samples: &[],
+            sample_rate_hz: 16_000,
+            channels: 1,
+        };
+        let err = sample_speech_engine(
+            &EmptySpeech,
+            audio,
+            &TranscriptionOptions::default(),
+            &CancelToken::new(),
+        )
+        .expect_err("empty pcm");
+        assert!(matches!(err, EngineError::InvalidInput(_)));
     }
 }

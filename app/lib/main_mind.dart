@@ -17,8 +17,9 @@
 /// ### Navigating between them
 ///
 /// The package does not link its own halves together — `MindHomeScreen`
-/// renders only the scribe — so before this shell grew a nav bar the assistant
-/// was unreachable on a device (#1555). Three destinations are therefore
+/// renders only the scribe, and the hub links out to Wellbeing but never back
+/// to the recorder — so before this shell grew a nav bar the assistant was
+/// unreachable on a device (#1555). The three destinations are therefore
 /// branches of a `StatefulShellRoute.indexedStack` wrapped in [MindShell]:
 /// Scribe (`/`), Assistant (the hub), Intelligence (`/models`), Wellbeing. The affordance is
 /// shell-owned; `feature_mind` stays untouched. See [buildMindRoutes] for how
@@ -52,7 +53,6 @@ library;
 
 import 'dart:async';
 
-import 'package:core_ai/core_ai.dart' show ModelCatalog;
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
@@ -102,7 +102,7 @@ Future<void> main() {
       registry = buildMindModuleRegistry();
       return ProviderScope(
         overrides: buildMindProviderOverrides(prefs: prefs, registry: registry),
-        child: AiroMindApp(registry: registry),
+        child: MindMacOsRoot(child: AiroMindApp(registry: registry)),
       );
     },
     afterRunApp: () {
@@ -176,15 +176,19 @@ List<GoRoute> _legacyHubRedirects(String legacyRoot) => <GoRoute>[
 ];
 
 /// The Mind shell's complete route table: the navigation shell holding the
-/// three destinations, the legacy aliases, and the account screens the host
+/// four destinations, the legacy aliases, and the account screens the host
 /// adapter navigates to.
 ///
 /// The three destinations are branches of a [StatefulShellRoute.indexedStack]
 /// wrapped in [MindShell], so each keeps its own navigation stack and the
 /// bottom bar is drawn once. That means the route table is *not*
-/// `registry.allRoutes`: [MindModule] contributes the scribe and hub mount
-/// points, and the shell adds Models. Wellbeing is a chat skill on this
-/// shell — `/wellbeing` is a redirect into `/mind`, not a fourth tab.
+/// `registry.allRoutes`: [MindModule] contributes three mount points and only
+/// the module knows which is which, so the branches are assembled from
+/// [MindModule.scribeRoutesFor], [MindModule.hubRoutesFor] and
+/// [MindModule.rootRoutesFor] the same way the super app's router does it.
+/// `allRoutes` still exists and is still what [ModuleRegistry] uses for
+/// conflict detection — the shell just does not mount the flattened list,
+/// which is what keeps `/wellbeing` from being mounted twice.
 ///
 /// Aliases, `/login` and `/register` stay at the router's top level: they are
 /// redirects and full-screen account screens, not destinations, and none of
@@ -242,10 +246,6 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
         ),
       ],
     ),
-    GoRoute(
-      path: AssistantRouteNames.wellbeing,
-      redirect: (context, state) => AssistantRouteNames.assistant,
-    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           MindShell(navigationShell: navigationShell),
@@ -258,30 +258,10 @@ List<RouteBase> buildMindRoutes(ModuleRegistry registry) {
               path: '/models',
               name: 'mind_models',
               builder: (context, state) => const MindModelsScreen(),
-              routes: [
-                GoRoute(
-                  path: 'library',
-                  name: 'mind_models_library',
-                  builder: (context, state) => Consumer(
-                    builder: (context, ref, _) => ModelLibraryScreen(
-                      onModelSelected: (_) =>
-                          context.go(AssistantRouteNames.assistant),
-                      onOpenModelManager: () => context.go('/models'),
-                    ),
-                  ),
-                ),
-                GoRoute(
-                  path: 'device',
-                  name: 'mind_models_device',
-                  builder: (context, state) =>
-                      DeviceCapabilityReportLoaderScreen(
-                        models: ModelCatalog.bundledModels,
-                      ),
-                ),
-              ],
             ),
           ],
         ),
+        StatefulShellBranch(routes: mind.rootRoutesFor(registry.shell)),
       ],
     ),
   ];
@@ -303,16 +283,16 @@ GoRouter buildMindRouter({
 }
 
 /// Root widget for the Airo Mind shell.
-class AiroMindApp extends ConsumerStatefulWidget {
+class AiroMindApp extends StatefulWidget {
   const AiroMindApp({super.key, required this.registry});
 
   final ModuleRegistry registry;
 
   @override
-  ConsumerState<AiroMindApp> createState() => _AiroMindAppState();
+  State<AiroMindApp> createState() => _AiroMindAppState();
 }
 
-class _AiroMindAppState extends ConsumerState<AiroMindApp> {
+class _AiroMindAppState extends State<AiroMindApp> {
   late final GoRouter _router = buildMindRouter(registry: widget.registry);
 
   @override
@@ -320,34 +300,12 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
     super.initState();
     MindRuntimeNavigation.openHub = () => _router.go('/runtime');
     MindRuntimeNavigation.openIntelligence = () => _router.go('/models');
-    MindRuntimeNavigation.openNewChat = () =>
-        _router.go(AssistantRouteNames.assistant);
-    MindRuntimeNavigation.openSettings = () =>
-        _router.go(AssistantRouteNames.profile);
-    MindRuntimeNavigation.openModelManager = () => _router.go('/models');
-    MindRuntimeNavigation.openModelLibrary = () =>
-        _router.go('/models/library');
-    MindRuntimeNavigation.openDeviceCapabilities = () =>
-        _router.go('/models/device');
-    MindRuntimeNavigation.openPromptLab = () =>
-        _router.go(AssistantRouteNames.promptLab);
-    MindRuntimeNavigation.closeWindow = () {
-      if (_router.canPop()) _router.pop();
-    };
   }
 
   @override
   void dispose() {
     MindRuntimeNavigation.openHub = null;
     MindRuntimeNavigation.openIntelligence = null;
-    MindRuntimeNavigation.openNewChat = null;
-    MindRuntimeNavigation.openSettings = null;
-    MindRuntimeNavigation.openModelManager = null;
-    MindRuntimeNavigation.openModelLibrary = null;
-    MindRuntimeNavigation.openDeviceCapabilities = null;
-    MindRuntimeNavigation.openPromptLab = null;
-    MindRuntimeNavigation.closeWindow = null;
-    MindRuntimeNavigation.openLogs = null;
     // The registry owns module teardown, and MindModule's is real work: it
     // releases the microphone and the loaded models. `State.dispose` cannot
     // await, so this is fire-and-forget — the shell is going away either way.
@@ -358,19 +316,14 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(mindDesktopThemeModeProvider);
     return MaterialApp.router(
       title: 'Airo Mind',
-      theme: AiroTheme.defaultLight,
-      darkTheme: AiroTheme.defaultDark,
-      themeMode: themeMode,
+      theme: AiroTheme.defaultDark,
       routerConfig: _router,
-      builder: (context, child) => MindMacOsRoot(
-        child: AiroDisplayScale(
-          child: AiroDomainTheme(
-            domain: AiroDomain.mind,
-            child: child ?? const SizedBox.shrink(),
-          ),
+      builder: (context, child) => AiroDisplayScale(
+        child: AiroDomainTheme(
+          domain: AiroDomain.mind,
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
     );

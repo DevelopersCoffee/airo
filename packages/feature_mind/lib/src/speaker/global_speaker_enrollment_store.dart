@@ -32,7 +32,8 @@ class GlobalEnrolledSpeaker {
       GlobalEnrolledSpeaker(
         id: json['id'] as String? ?? '',
         displayName: json['displayName'] as String? ?? '',
-        embedding: (json['embedding'] as List?)
+        embedding:
+            (json['embedding'] as List?)
                 ?.map((value) => (value as num).toDouble())
                 .toList(growable: false) ??
             const [],
@@ -95,13 +96,11 @@ class GlobalSpeakerEnrollmentStore {
       return decoded
           .whereType<Map>()
           .map(
-            (entry) => GlobalEnrolledSpeaker.fromJson(
-              entry.cast<String, Object?>(),
-            ),
+            (entry) =>
+                GlobalEnrolledSpeaker.fromJson(entry.cast<String, Object?>()),
           )
           .where(
-            (profile) =>
-                profile.id.isNotEmpty && profile.embedding.isNotEmpty,
+            (profile) => profile.id.isNotEmpty && profile.embedding.isNotEmpty,
           )
           .toList(growable: false);
     } catch (_) {
@@ -125,8 +124,13 @@ class GlobalSpeakerEnrollmentStore {
 
   /// Loads from Rust and pushes profiles into the diarizer.
   Future<void> syncToRuntime() async {
-    final profiles = await loadProfiles();
-    await _syncRuntime(profiles);
+    try {
+      final profiles = await loadProfiles();
+      await _syncRuntime(profiles);
+    } on Object {
+      // Host tests and public artifacts have no FRB; initialize must still
+      // finish so the Dart pipeline can run against fake bridges.
+    }
   }
 
   /// Enrolls a speaker from one meeting segment (#504).

@@ -1,12 +1,36 @@
-import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
+import 'dart:io';
+
 import 'package:feature_mind/src/capture/presentation/meeting_capture_screen.dart';
-import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
-import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+class _FakePathProviderPlatform extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  _FakePathProviderPlatform(this.supportPath);
+  final String supportPath;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => supportPath;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => supportPath;
+}
 
 void main() {
+  late Directory tempDir;
+
+  setUp(() {
+    tempDir = Directory.systemTemp.createTempSync('meeting_capture_test_');
+    PathProviderPlatform.instance = _FakePathProviderPlatform(tempDir.path);
+  });
+
+  tearDown(() {
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  });
+
   Future<void> pumpScreen(WidgetTester tester) async {
     // Tall surface so consent + trust strip + controls fit without scrolling
     // (the trust strip (#1774) pushed the start button off a default phone
@@ -14,14 +38,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          mindRuntimeProvider.overrideWithValue(
-            ScribeMindRuntime(log: FixtureMindRuntime().log),
-          ),
-        ],
-        child: const MaterialApp(home: MeetingCaptureScreen()),
-      ),
+      const ProviderScope(child: MaterialApp(home: MeetingCaptureScreen())),
     );
     await tester.pumpAndSettle();
   }

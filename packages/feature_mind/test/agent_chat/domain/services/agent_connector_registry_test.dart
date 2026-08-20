@@ -5,6 +5,7 @@ import 'package:feature_mind/src/agent_chat/domain/services/agent_connector.dart
 import 'package:feature_mind/src/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_calendar/platform_calendar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -121,21 +122,13 @@ void main() {
       },
     );
 
-    test('reads calendar permission status through app channel', () async {
-      const channel = MethodChannel(
-        'com.airo.agent_connectors.permission_test',
-      );
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-            expect(call.method, 'getCalendarPermissionStatus');
-            return <String, dynamic>{'status': 'granted', 'granted': true};
-          });
-      addTearDown(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(channel, null);
-      });
+    test('reads calendar permission status through CalendarService', () async {
       final registry = AgentConnectorRegistry(
-        connectors: [NativeCalendarPermissionConnector(channel: channel)],
+        connectors: [
+          NativeCalendarPermissionConnector(
+            calendar: InMemoryCalendarService(),
+          ),
+        ],
       );
 
       final result = await registry.execute(
@@ -163,19 +156,9 @@ void main() {
     });
 
     test('opens calendar permission settings after confirmation', () async {
-      const channel = MethodChannel('com.airo.agent_connectors.settings_test');
-      final calls = <MethodCall>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-            calls.add(call);
-            return <String, dynamic>{'opened': true};
-          });
-      addTearDown(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(channel, null);
-      });
+      final calendar = InMemoryCalendarService();
       final registry = AgentConnectorRegistry(
-        connectors: [NativeCalendarPermissionConnector(channel: channel)],
+        connectors: [NativeCalendarPermissionConnector(calendar: calendar)],
       );
 
       final result = await registry.execute(
@@ -185,7 +168,7 @@ void main() {
 
       expect(result.isError, false);
       expect(result.data['opened'], true);
-      expect(calls.single.method, 'openCalendarPermissionSettings');
+      expect(calendar.settingsOpened, true);
     });
   });
 }

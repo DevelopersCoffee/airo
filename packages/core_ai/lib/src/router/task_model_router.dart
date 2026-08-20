@@ -68,6 +68,7 @@ class TaskModelRouter {
       constraints: const IntelligenceConstraints(
         preferInstalled: true,
         requireCurrentPlatform: false,
+        requireInstallable: false,
       ),
       overrideModelId: taskOverrides[task],
     );

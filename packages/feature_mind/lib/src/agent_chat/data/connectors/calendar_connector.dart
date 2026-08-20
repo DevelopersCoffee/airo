@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:platform_calendar/platform_calendar.dart';
 
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_connector.dart';
@@ -100,12 +101,59 @@ class InMemoryCreateCalendarEventConnector implements AgentConnector {
   }
 }
 
-class NativeCalendarConnector implements AgentConnector {
-  NativeCalendarConnector({
-    this._channel = const MethodChannel('com.airo.agent_connectors'),
+class InMemoryCalendarPermissionConnector implements AgentConnector {
+  InMemoryCalendarPermissionConnector({
+    this.status = 'granted',
+    this.granted = true,
+    this.adapter = 'in_memory',
   });
 
-  final MethodChannel _channel;
+  String status;
+  bool granted;
+  final String adapter;
+  bool requested = false;
+  bool settingsOpened = false;
+
+  @override
+  String get name => 'calendar_permission_status';
+
+  @override
+  Set<SkillCapability> get requiredCapabilities => const {};
+
+  @override
+  Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
+    if (arguments['open_settings'] == true) {
+      if (arguments['confirmed'] != true) {
+        return const ConnectorResult.error(
+          code: 'confirmation_required',
+          message:
+              'Please confirm before opening calendar permission settings.',
+        );
+      }
+      settingsOpened = true;
+      return const ConnectorResult(data: {'opened': true});
+    }
+    if (arguments['request'] == true) {
+      requested = true;
+      status = 'granted';
+      granted = true;
+    }
+    return ConnectorResult(
+      data: {
+        'status': status,
+        'granted': granted,
+        'can_request': !granted,
+        'adapter': adapter,
+      },
+    );
+  }
+}
+
+class NativeCalendarConnector implements AgentConnector {
+  NativeCalendarConnector({CalendarService? calendar})
+    : _calendar = calendar ?? createCalendarService();
+
+  final CalendarService _calendar;
 
   @override
   String get name => 'read_calendar_events';
@@ -124,46 +172,70 @@ class NativeCalendarConnector implements AgentConnector {
         message: 'read_calendar_events requires a date.',
       );
     }
+    final endDate = arguments['end_date'] as String?;
+    if (!_isValidIsoDate(date) ||
+        (endDate != null && endDate.isNotEmpty && !_isValidIsoDate(endDate))) {
+      return const ConnectorResult.error(
+        code: 'invalid_date',
+        message: 'read_calendar_events date must be YYYY-MM-DD.',
+      );
+    }
+    final dates = _expandRequestedDates(date, endDate);
+    if (dates == null) {
+      return const ConnectorResult.error(
+        code: 'invalid_date_range',
+        message: 'read_calendar_events end_date must be on or after date.',
+      );
+    }
 
     try {
-      final response = await _channel
-          .invokeMapMethod<String, dynamic>('readCalendarEvents', {
-            'date': date,
-            if (arguments['end_date'] case final String endDate
-                when endDate.isNotEmpty)
-              'end_date': endDate,
-          });
-      if (response == null) {
-        return ConnectorResult(data: {'date': date, 'events': const []});
+      final start = _dateOnly(date);
+      final inclusiveEnd = _dateOnly(dates.last);
+      final after = arguments['after'] as String?;
+      var queryStart = DateTime(start.year, start.month, start.day);
+      if (after != null && after.isNotEmpty) {
+        final parts = after.split(':');
+        if (parts.length >= 2) {
+          queryStart = DateTime(
+            start.year,
+            start.month,
+            start.day,
+            int.tryParse(parts[0]) ?? 0,
+            int.tryParse(parts[1]) ?? 0,
+          );
+        }
       }
-      if (response['error'] is String) {
-        return ConnectorResult.error(
-          code: response['error'] as String,
-          message:
-              response['message'] as String? ??
-              'Calendar events could not be read.',
-          data: response,
-        );
-      }
-      return ConnectorResult(data: response);
-    } on MissingPluginException {
-      return const ConnectorResult.error(
-        code: 'calendar_channel_unavailable',
-        message: 'Calendar events are not available on this device yet.',
+      final events = await _calendar.getEvents(
+        CalendarQuery(
+          start: queryStart,
+          end: DateTime(
+            inclusiveEnd.year,
+            inclusiveEnd.month,
+            inclusiveEnd.day,
+          ).add(const Duration(days: 1)),
+        ),
       );
-    } on PlatformException catch (error) {
+      return ConnectorResult(
+        data: {
+          'date': date,
+          if (endDate != null && endDate.isNotEmpty) 'end_date': endDate,
+          'adapter': _calendar.adapterName,
+          'events': events.map((event) => event.toJson()).toList(),
+        },
+      );
+    } on CalendarException catch (error) {
       return ConnectorResult.error(
-        code: error.code,
-        message: error.message ?? 'Calendar events could not be read.',
+        code: error.wireCode,
+        message: error.message,
+        data: {'adapter': _calendar.adapterName},
       );
     }
   }
 }
 
 class NativeCreateCalendarEventConnector implements AgentConnector {
-  NativeCreateCalendarEventConnector({
-    this._channel = const MethodChannel('com.airo.agent_connectors'),
-  });
+  NativeCreateCalendarEventConnector({MethodChannel? channel})
+    : _channel = channel ?? const MethodChannel(calendarMethodChannelName);
 
   final MethodChannel _channel;
 
@@ -236,11 +308,10 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
 }
 
 class NativeCalendarPermissionConnector implements AgentConnector {
-  NativeCalendarPermissionConnector({
-    this._channel = const MethodChannel('com.airo.agent_connectors'),
-  });
+  NativeCalendarPermissionConnector({CalendarService? calendar})
+    : _calendar = calendar ?? createCalendarService();
 
-  final MethodChannel _channel;
+  final CalendarService _calendar;
 
   @override
   String get name => 'calendar_permission_status';
@@ -259,18 +330,25 @@ class NativeCalendarPermissionConnector implements AgentConnector {
     }
 
     try {
-      final response = await _channel.invokeMapMethod<String, dynamic>(
-        shouldOpenSettings
-            ? 'openCalendarPermissionSettings'
-            : 'getCalendarPermissionStatus',
-        const {},
+      if (shouldOpenSettings) {
+        final opened = await _calendar.openSettings();
+        return ConnectorResult(data: {'opened': opened});
+      }
+      if (arguments['request'] == true) {
+        final permission = await _calendar.requestPermission();
+        return ConnectorResult(data: permission.toJson());
+      }
+      final permission = await _calendar.permissionStatus();
+      return ConnectorResult(data: permission.toJson());
+    } on CalendarException catch (error) {
+      return ConnectorResult.error(
+        code: error.wireCode,
+        message: error.message,
       );
-      return ConnectorResult(data: response ?? const {});
     } on MissingPluginException {
       return const ConnectorResult.error(
-        code: 'calendar_channel_unavailable',
-        message:
-            'Calendar permission status is not available on this device yet.',
+        code: 'PLATFORM_UNSUPPORTED',
+        message: "Calendar access isn't supported on this device yet.",
       );
     } on PlatformException catch (error) {
       return ConnectorResult.error(
@@ -332,6 +410,11 @@ int? _readInt(Object? value) {
 
 bool _isValidIsoDate(String value) {
   return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
+}
+
+DateTime _dateOnly(String value) {
+  final parts = value.split('-').map(int.parse).toList();
+  return DateTime(parts[0], parts[1], parts[2]);
 }
 
 List<String>? _expandRequestedDates(String date, String? endDate) {

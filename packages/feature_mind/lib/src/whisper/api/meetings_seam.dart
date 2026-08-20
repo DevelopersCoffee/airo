@@ -6,6 +6,9 @@ import 'dart:convert';
 import '../frb_generated.dart';
 
 /// Whether Sarvam Edge on-device ASR weights are available in this build.
+///
+/// Returns false when flutter_rust_bridge is not initialized (host tests,
+/// web, public artifacts without the native plugin).
 bool sarvamEdgeSpeechAvailable() {
   try {
     return RustLib.instance.api.crateApiMeetingsSarvamEdgeSpeechAvailable();
@@ -29,8 +32,15 @@ List<double> embedSpeakerSegment({
 }
 
 /// Syncs cross-meeting speaker enrollment profiles into the Rust diarizer (#504).
+///
+/// No-ops when the native plugin is not loaded so Dart initialize can still
+/// finish in host tests.
 void syncSpeakerEnrollmentJson(List<Map<String, Object?>> profiles) {
-  RustLib.instance.api.crateApiMeetingsSyncSpeakerEnrollmentJson(
-    raw: jsonEncode(profiles),
-  );
+  try {
+    RustLib.instance.api.crateApiMeetingsSyncSpeakerEnrollmentJson(
+      raw: jsonEncode(profiles),
+    );
+  } on Object {
+    return;
+  }
 }

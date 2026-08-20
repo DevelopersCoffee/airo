@@ -99,6 +99,7 @@ export 'src/assistant/assistant_surface_policy.dart'
     show AssistantSurfacePolicy, assistantSurfacePolicyProvider;
 export 'src/assistant/presentation/screens/assistant_screen.dart';
 export 'src/assistant/presentation/screens/audio_scribe_screen.dart';
+export 'src/assistant/presentation/screens/calendar_screen.dart';
 export 'src/assistant/presentation/screens/mobile_actions_screen.dart';
 export 'src/assistant/presentation/screens/prompt_lab_screen.dart';
 
@@ -206,6 +207,7 @@ export 'src/runtime/models/vault_models.dart';
 export 'src/model_bench/model_bench_controller.dart';
 export 'src/model_bench/model_bench_display.dart';
 export 'src/model_bench/model_bench_protocol.dart';
+export 'src/model_bench/speech_bench_protocol.dart';
 
 // Runtime — the port milestone 19 implements against.
 export 'src/runtime/mind_runtime.dart';

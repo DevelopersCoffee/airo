@@ -1,9 +1,24 @@
+import 'dart:io';
+
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import '../support/faulty_mind_runtime.dart';
 import '../support/mind_rule_harness.dart';
 import '../support/surface_harness.dart';
+
+class _FakePathProviderPlatform extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  _FakePathProviderPlatform(this.supportPath);
+  final String supportPath;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => supportPath;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => supportPath;
+}
 
 void main() {
   testWidgets('is a runtime dashboard, not a feed', (tester) async {
@@ -72,18 +87,18 @@ void main() {
   testWidgets('reports the missing port when the runtime is partial', (
     tester,
   ) async {
-    await pumpSurface(
-      tester,
-      MindHomeSurface(
-        runtime: FaultyMindRuntime(
-          FixtureMindRuntime(),
-          log: const ThrowingOperationLogPort(),
-        ),
-      ),
-    );
+    final tempDir = await Directory.systemTemp.createTemp('mind_home_partial_');
+    PathProviderPlatform.instance = _FakePathProviderPlatform(tempDir.path);
+    addTearDown(() async {
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    });
+
+    await pumpSurface(tester, MindHomeSurface(runtime: RustMindRuntime()));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('OperationLogPort'), findsOneWidget);
+    // The log now has a Dart fallback. Home's next read is mesh.peers(),
+    // which still names MeshPort. Fabricating "0 ops" would be a lie.
+    expect(find.textContaining('MeshPort'), findsOneWidget);
     expect(find.byType(MindNumberStrip), findsNothing);
   });
 

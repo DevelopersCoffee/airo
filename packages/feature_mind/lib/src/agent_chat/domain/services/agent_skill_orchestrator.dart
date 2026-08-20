@@ -21,26 +21,38 @@ class SkillModelAction {
     this.arguments = const {},
   }) : type = SkillModelActionType.toolCall,
        message = null,
-       pendingCalendarEvent = null;
+       pendingCalendarEvent = null,
+       pendingCalendarPermission = false;
 
   const SkillModelAction.finalAnswer(this.message)
     : type = SkillModelActionType.finalAnswer,
       tool = null,
       arguments = const {},
-      pendingCalendarEvent = null;
+      pendingCalendarEvent = null,
+      pendingCalendarPermission = false;
 
   const SkillModelAction.finalAnswerWithCalendarPrompt({
     required this.message,
     required this.pendingCalendarEvent,
   }) : type = SkillModelActionType.finalAnswer,
        tool = null,
-       arguments = const {};
+       arguments = const {},
+       pendingCalendarPermission = false;
+
+  const SkillModelAction.finalAnswerWithCalendarPermission({
+    required this.message,
+  }) : type = SkillModelActionType.finalAnswer,
+       tool = null,
+       arguments = const {},
+       pendingCalendarEvent = null,
+       pendingCalendarPermission = true;
 
   final SkillModelActionType type;
   final String? tool;
   final Map<String, dynamic> arguments;
   final String? message;
   final Map<String, dynamic>? pendingCalendarEvent;
+  final bool pendingCalendarPermission;
 }
 
 abstract interface class AgentSkillModelClient {
@@ -135,6 +147,42 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       return null;
     }
 
+    final permissionResult = toolResults
+        .cast<Map<String, dynamic>?>()
+        .firstWhere(
+          (result) => result?['tool'] == 'calendar_permission_status',
+          orElse: () => null,
+        );
+    if (permissionResult == null &&
+        skill.tools.contains('calendar_permission_status')) {
+      return const SkillModelAction.toolCall(
+        tool: 'calendar_permission_status',
+      );
+    }
+    if (permissionResult != null) {
+      final data =
+          permissionResult['result'] as Map<String, dynamic>? ?? const {};
+      final status = data['status'] as String? ?? '';
+      final granted = data['granted'] == true;
+      if (status == 'unsupported' ||
+          permissionResult['error'] == 'PLATFORM_UNSUPPORTED') {
+        return const SkillModelAction.finalAnswer(
+          "Calendar access isn't supported on this device yet.",
+        );
+      }
+      if (!granted &&
+          (status == 'notDetermined' || status == 'not_determined')) {
+        return const SkillModelAction.finalAnswerWithCalendarPermission(
+          message: 'Airo needs calendar access to read your events.',
+        );
+      }
+      if (!granted) {
+        return const SkillModelAction.finalAnswer(
+          'Calendar access is disabled. Enable it in system settings to let Airo read your calendar.',
+        );
+      }
+    }
+
     final hasDateTime = toolResults.any(
       (result) => result['tool'] == 'get_current_date_time',
     );
@@ -152,9 +200,14 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         (result) => result['tool'] == 'get_current_date_time',
       );
       final data = dateResult['result'] as Map<String, dynamic>? ?? const {};
+      final today = data['date'] as String? ?? '';
       return SkillModelAction.toolCall(
         tool: 'read_calendar_events',
-        arguments: {'date': data['date']},
+        arguments: _calendarQueryArguments(
+          prompt,
+          today,
+          currentTime: data['time'] as String?,
+        ),
       );
     }
 
@@ -168,18 +221,10 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
     final events = result['events'] as List? ?? const [];
     if (events.isEmpty) {
-      return const SkillModelAction.finalAnswer(
-        'I checked your schedule, and there are no events scheduled for today.',
-      );
+      return SkillModelAction.finalAnswer(_emptyCalendarMessage(prompt));
     }
 
-    final lines = events
-        .map((event) {
-          final item = event as Map;
-          return '${_formatEventTime(item['start'])} ${item['title']}';
-        })
-        .join('\n');
-    return SkillModelAction.finalAnswer('Here is your schedule:\n$lines');
+    return SkillModelAction.finalAnswer(_summarizeCalendarEvents(events));
   }
 
   SkillModelAction _nextScheduleNotificationAction({
@@ -418,20 +463,23 @@ class AgentSkillOrchestrator {
     ToolRegistry? toolRegistry,
     AgentSkillModelClient? modelClient,
     bool useFallbackModelClient = true,
-    this._maxSteps = 4,
+    bool preferDeterministicSkills = false,
+    this._maxSteps = 6,
     this._modelActionTimeout = const Duration(seconds: 3),
     this._operationLogPort,
   }) : _toolRegistry = toolRegistry ?? ToolRegistry(),
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
        _fallbackModelClient = useFallbackModelClient
            ? RuleBasedAgentSkillModelClient()
-           : null;
+           : null,
+       _preferDeterministicSkills = preferDeterministicSkills;
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;
   final ToolRegistry _toolRegistry;
   final AgentSkillModelClient _modelClient;
   final RuleBasedAgentSkillModelClient? _fallbackModelClient;
+  final bool _preferDeterministicSkills;
   final int _maxSteps;
   final Duration _modelActionTimeout;
 
@@ -453,7 +501,10 @@ class AgentSkillOrchestrator {
     ].join('\n');
   }
 
-  Future<AgentRunResult> run(String prompt, {String? pinnedPersonaId}) async {
+  Future<AgentRunResult> run(
+    String prompt, {
+    String? pinnedPersonaId,
+  }) async {
     final pinned = pinnedPersonaId == null
         ? null
         : _skillRegistry.getById(pinnedPersonaId);
@@ -468,17 +519,27 @@ class AgentSkillOrchestrator {
         .getEnabledSkills()
         .where((skill) => !skill.isPersona)
         .toList(growable: false);
-    final selectedSkillId =
-        await _tryModelCall(
-          () => _modelClient.selectSkill(
-            prompt: prompt,
-            enabledSkills: enabledSkills,
-          ),
-        ) ??
-        await _fallbackModelClient?.selectSkill(
-          prompt: prompt,
-          enabledSkills: enabledSkills,
-        );
+    final selectedSkillId = _preferDeterministicSkills
+        ? await _fallbackModelClient?.selectSkill(
+                prompt: prompt,
+                enabledSkills: enabledSkills,
+              ) ??
+              await _tryModelCall(
+                () => _modelClient.selectSkill(
+                  prompt: prompt,
+                  enabledSkills: enabledSkills,
+                ),
+              )
+        : await _tryModelCall(
+                () => _modelClient.selectSkill(
+                  prompt: prompt,
+                  enabledSkills: enabledSkills,
+                ),
+              ) ??
+              await _fallbackModelClient?.selectSkill(
+                prompt: prompt,
+                enabledSkills: enabledSkills,
+              );
 
     if (selectedSkillId == null) {
       return _fallbackToRouteIntent(prompt);
@@ -512,19 +573,40 @@ class AgentSkillOrchestrator {
     GroundedCitation? latestCitation;
 
     for (var step = 0; step < _maxSteps; step++) {
-      final action =
-          await _tryModelCall(
-            () => _modelClient.nextAction(
+      SkillModelAction? action;
+      final fallback = _fallbackModelClient;
+      if (_preferDeterministicSkills &&
+          skill.id == 'read-calendar-events' &&
+          fallback != null) {
+        action = await fallback.nextAction(
+          prompt: prompt,
+          skill: skill,
+          toolResults: toolResults,
+        );
+      } else {
+        action =
+            await _tryModelCall(
+              () => _modelClient.nextAction(
+                prompt: prompt,
+                skill: skill,
+                toolResults: toolResults,
+              ),
+            ) ??
+            await fallback?.nextAction(
               prompt: prompt,
               skill: skill,
               toolResults: toolResults,
-            ),
-          ) ??
-          await _fallbackModelClient?.nextAction(
+            );
+        if (action?.type == SkillModelActionType.finalAnswer &&
+            skill.id == 'read-calendar-events' &&
+            fallback != null) {
+          action = await fallback.nextAction(
             prompt: prompt,
             skill: skill,
             toolResults: toolResults,
           );
+        }
+      }
 
       if (action == null) {
         return const AgentRunResult.notHandled();
@@ -536,6 +618,7 @@ class AgentSkillOrchestrator {
           message: action.message ?? '',
           traces: traces,
           pendingCalendarEvent: action.pendingCalendarEvent,
+          pendingCalendarPermission: action.pendingCalendarPermission,
           citations: latestCitation == null ? const [] : [latestCitation],
           groundingState: latestCitation == null
               ? GroundingState.ungrounded
@@ -862,6 +945,93 @@ String _formatEventTime(dynamic value) {
   final text = value?.toString() ?? '';
   if (text.length >= 16) return text.substring(11, 16);
   return text;
+}
+
+Map<String, dynamic> _calendarQueryArguments(
+  String prompt,
+  String today, {
+  String? currentTime,
+}) {
+  final lower = prompt.toLowerCase();
+  final arguments = <String, dynamic>{'date': today};
+  if (lower.contains('next event') ||
+      lower.contains('next meeting') ||
+      lower.contains("what's next") ||
+      lower.contains('whats next')) {
+    final after = currentTime?.trim();
+    if (after != null && after.isNotEmpty) {
+      arguments['after'] = after.length >= 5 ? after.substring(0, 5) : after;
+    }
+    return arguments;
+  }
+  if (lower.contains('tomorrow')) {
+    final parsed = DateTime.tryParse(today);
+    if (parsed != null) {
+      arguments['date'] = parsed
+          .add(const Duration(days: 1))
+          .toIso8601String()
+          .substring(0, 10);
+    }
+    return arguments;
+  }
+  if (lower.contains('this week') || lower.contains('the week')) {
+    final parsed = DateTime.tryParse(today);
+    if (parsed != null) {
+      arguments['end_date'] = parsed
+          .add(const Duration(days: 6))
+          .toIso8601String()
+          .substring(0, 10);
+    }
+    return arguments;
+  }
+  final afterMatch = RegExp(
+    r'after\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?',
+  ).firstMatch(lower);
+  if (afterMatch != null) {
+    var hour = int.parse(afterMatch.group(1)!);
+    final minute = int.parse(afterMatch.group(2) ?? '0');
+    final period = afterMatch.group(3);
+    if (period == 'pm' && hour < 12) hour += 12;
+    if (period == 'am' && hour == 12) hour = 0;
+    arguments['after'] =
+        '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+  return arguments;
+}
+
+String _emptyCalendarMessage(String prompt) {
+  final lower = prompt.toLowerCase();
+  if (lower.contains('tomorrow')) {
+    return 'You have no calendar events tomorrow.';
+  }
+  if (lower.contains('week')) {
+    return 'You have no calendar events this week.';
+  }
+  return 'You have no calendar events today.';
+}
+
+String _summarizeCalendarEvents(List<dynamic> events) {
+  final grouped = <String, List<String>>{};
+  for (final event in events) {
+    if (event is! Map) continue;
+    final calendar = (event['calendar'] as String?)?.trim();
+    final key = (calendar == null || calendar.isEmpty) ? 'Calendar' : calendar;
+    grouped
+        .putIfAbsent(key, () => [])
+        .add('${_formatEventTime(event['start'])} ${event['title']}');
+  }
+  final buffer = StringBuffer('Here is your schedule:\n');
+  if (grouped.length == 1) {
+    buffer.write(grouped.values.single.join('\n'));
+  } else {
+    for (final entry in grouped.entries) {
+      buffer
+        ..writeln()
+        ..writeln(entry.key)
+        ..write(entry.value.join('\n'));
+    }
+  }
+  return buffer.toString();
 }
 
 String? _currentDateFromToolResults(List<Map<String, dynamic>> toolResults) {

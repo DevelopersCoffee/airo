@@ -9,7 +9,7 @@ void main() {
       const ProviderScope(child: MaterialApp(home: AssistantScreen()));
 
   testWidgets('keeps every AI action from the old hub', (tester) async {
-    // Tall enough that the ListView builds all nine cards. The point of this
+    // Tall enough that the ListView builds every hub card. The point of this
     // test is that none was dropped in the split, which a scroll-as-you-go
     // check would not prove.
     tester.view.physicalSize = const Size(1200, 4000);
@@ -26,6 +26,7 @@ void main() {
       'Audio Scribe',
       'Prompt Lab',
       'Mobile Actions & Tiny Garden',
+      'Calendar',
       'Intelligence',
       'Device Capability Report',
       'Model Advisor',

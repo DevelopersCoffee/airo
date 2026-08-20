@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 import 'package:core_ai/core_ai.dart';
 
+import '../model_bench/model_bench_protocol.dart';
 import 'desktop_gguf_backend.dart';
 import 'gguf_load_outcome.dart';
 import 'gguf_runtime_stats.dart';
@@ -40,6 +41,13 @@ class LlamaGgufService {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   bool get isDesktopGgufSupported => DesktopGgufBackend.isSupported;
+
+  /// True when this adapter (or the shared desktop llama slot) has a model.
+  bool get isLoaded {
+    if (_loaded) return true;
+    if (isDesktopGgufSupported) return _desktopBackend.isEngineReady;
+    return false;
+  }
 
   Future<bool> isAvailable() async {
     if (isPlatformSupported) {
@@ -121,7 +129,7 @@ class LlamaGgufService {
     double topP = 0.9,
     int topK = 40,
   }) {
-    if (!_loaded) {
+    if (!isLoaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
     if (isPlatformSupported) {
@@ -185,5 +193,58 @@ class LlamaGgufService {
     if (!isPlatformSupported) return;
     await _controller?.dispose();
     _controller = null;
+  }
+
+  /// One generate()+stats cycle for Model Bench.
+  ///
+  /// Desktop reads llama.cpp [RuntimeStats]. Android times the token stream:
+  /// TTFT is wall clock to the first chunk; tok/s is remaining chunks over
+  /// the rest of the stream. Peak RSS and prompt-token counts are unknown
+  /// on Android and stay zero rather than guessed.
+  Future<GenerationBenchSample> collectBenchSample({
+    String prompt = kModelBenchPrompt,
+    int maxOutputTokens = kModelBenchMaxOutputTokens,
+  }) async {
+    if (!isLoaded) {
+      throw StateError('gguf_model_not_loaded');
+    }
+    if (isDesktopGgufSupported) {
+      await generate(prompt: prompt, maxTokens: maxOutputTokens).drain<void>();
+      return _desktopBackend.lastBenchSample();
+    }
+    if (isPlatformSupported) {
+      return _wallClockSample(prompt: prompt, maxOutputTokens: maxOutputTokens);
+    }
+    throw StateError('gguf_backend_unavailable');
+  }
+
+  Future<GenerationBenchSample> _wallClockSample({
+    required String prompt,
+    required int maxOutputTokens,
+  }) async {
+    final sw = Stopwatch()..start();
+    var firstChunkMs = 0;
+    var chunks = 0;
+    await for (final _ in generate(
+      prompt: prompt,
+      maxTokens: maxOutputTokens,
+    )) {
+      chunks += 1;
+      if (chunks == 1) firstChunkMs = sw.elapsedMilliseconds;
+    }
+    final totalMs = sw.elapsedMilliseconds;
+    if (chunks == 0) {
+      throw StateError('benchmark produced no generated chunks');
+    }
+    final decodeMs = (totalMs - firstChunkMs).clamp(1, 1 << 30);
+    final decodeChunks = chunks > 1 ? chunks - 1 : chunks;
+    return GenerationBenchSample(
+      prefillMs: firstChunkMs,
+      prefillTokens: 0,
+      generationMs: decodeMs,
+      generatedTokens: chunks,
+      tokensPerSecond: decodeChunks * 1000.0 / decodeMs,
+      peakRssBytes: 0,
+    );
   }
 }
