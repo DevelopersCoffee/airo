@@ -1,0 +1,16 @@
+name: platform_calendar
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief Performance Officer
+  - Chief QA Officer
+  - Chief Documentation Officer
+contracts:
+  - calendar-service/v1
+forbidden_dependencies:
+  - app
+  - core_ai
+  - feature_mind
+  - feature_coin
+quality_gates: {}

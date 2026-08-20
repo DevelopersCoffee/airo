@@ -1,11 +1,12 @@
 import 'package:feature_mind/src/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_calendar/platform_calendar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channelName = 'com.airo.agent_connectors';
+  const channelName = calendarMethodChannelName;
   const methodChannel = MethodChannel(channelName);
 
   tearDown(() async {
@@ -82,60 +83,50 @@ void main() {
   });
 
   group('NativeCalendarConnector', () {
-    test('passes date range arguments to the platform channel', () async {
-      late MethodCall capturedCall;
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (call) async {
-            capturedCall = call;
-            return {
-              'date': '2026-06-20',
-              'end_date': '2026-06-21',
-              'events': [],
-            };
-          });
-
-      final connector = NativeCalendarConnector(channel: methodChannel);
+    test('reads events through CalendarService', () async {
+      final calendar = InMemoryCalendarService(
+        events: [
+          CalendarEvent(
+            id: '1',
+            title: 'Team standup',
+            start: DateTime(2026, 6, 20, 10),
+            end: DateTime(2026, 6, 20, 10, 30),
+            calendar: 'Work',
+          ),
+        ],
+      );
+      final connector = NativeCalendarConnector(calendar: calendar);
       final result = await connector.execute({
         'date': '2026-06-20',
         'end_date': '2026-06-21',
       });
 
       expect(result.isError, false);
-      expect(capturedCall.method, 'readCalendarEvents');
-      expect(capturedCall.arguments, {
-        'date': '2026-06-20',
-        'end_date': '2026-06-21',
-      });
+      expect((result.data['events'] as List), hasLength(1));
     });
 
-    test('surfaces permission denied responses', () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (_) async {
-            return {
-              'error': 'calendar_permission_denied',
-              'message':
-                  'Calendar permission is required to check your schedule.',
-            };
-          });
-
-      final connector = NativeCalendarConnector(channel: methodChannel);
+    test('surfaces permission required responses', () async {
+      final connector = NativeCalendarConnector(
+        calendar: InMemoryCalendarService(
+          permission: CalendarPermissionStatus.notDetermined,
+        ),
+      );
       final result = await connector.execute({'date': '2026-06-20'});
 
       expect(result.isError, true);
-      expect(result.errorCode, 'calendar_permission_denied');
+      expect(result.errorCode, 'PERMISSION_REQUIRED');
     });
 
-    test(
-      'falls back cleanly when the platform channel is unavailable',
-      () async {
-        final connector = NativeCalendarConnector(channel: methodChannel);
+    test('does not fabricate events on unsupported platforms', () async {
+      final connector = NativeCalendarConnector(
+        calendar: const UnsupportedCalendarService(),
+      );
 
-        final result = await connector.execute({'date': '2026-06-20'});
+      final result = await connector.execute({'date': '2026-06-20'});
 
-        expect(result.isError, false);
-        expect(result.data['source'], 'calendar_channel_unavailable');
-      },
-    );
+      expect(result.isError, true);
+      expect(result.errorCode, 'PLATFORM_UNSUPPORTED');
+    });
   });
 
   group('NativeCreateCalendarEventConnector', () {

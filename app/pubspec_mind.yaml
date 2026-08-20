@@ -121,6 +121,8 @@ dependencies:
   # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md).
   feature_mind:
     path: ../packages/feature_mind
+  platform_calendar:
+    path: ../packages/platform_calendar
   # feature_coin / feature_coins_core: RouteNames re-exports the Coins route
   # names, and the adapter's finance chat ingestion uses the Coins services.
   feature_coin:
