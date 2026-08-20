@@ -341,7 +341,7 @@ pub fn resolve(
         return Err(ModelUnavailable::NoModelForTask);
     }
 
-    candidates.sort_by(|a, b| b.quality.cmp(&a.quality));
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.quality));
 
     let mut last_missing: Option<ModelUnavailable> = None;
     for entry in candidates {
