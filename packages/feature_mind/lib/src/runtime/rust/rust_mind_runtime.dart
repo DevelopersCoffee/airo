@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core_ai/core_ai.dart' as core_ai;
+import 'package:flutter/foundation.dart';
 
 import '../mind_runtime.dart';
 import '../models/capability_models.dart';
@@ -21,6 +22,8 @@ import '../persistent/rust_preferred_operation_log.dart';
 import '../ports/portability_port.dart';
 import '../ports/projection_port.dart';
 import '../ports/vault_port.dart';
+import '../../model_bench/generation_bench_runner.dart';
+import '../../model_bench/model_bench_protocol.dart';
 import 'rust_mind_runtime_vault.dart';
 
 /// The real runtime, honest about what milestone 19 has not landed.
@@ -33,7 +36,28 @@ import 'rust_mind_runtime_vault.dart';
 /// This is the only file in the module allowed to import the generated bridge.
 /// Nothing else may reach `src/api/` or `frb_generated`.
 class RustMindRuntime implements MindRuntime {
-  RustMindRuntime({ModelPort? models}) : models = models ?? _RustModels();
+  RustMindRuntime({
+    ModelPort? models,
+    @visibleForTesting core_ai.ModelDownloadService? downloadService,
+    @visibleForTesting List<core_ai.OfflineModelInfo>? catalog,
+    @visibleForTesting GenerationBenchRunner? benchRunner,
+    @visibleForTesting GenerationBenchMetadata? benchMetadata,
+    @visibleForTesting int? warmupIterations,
+    @visibleForTesting int? timedIterations,
+    @visibleForTesting Future<ThermalState> Function()? readThermal,
+    @visibleForTesting Stream<ThermalState>? thermal,
+  }) : models =
+           models ??
+           _RustModels(
+             downloadService: downloadService,
+             catalog: catalog,
+             benchRunner: benchRunner,
+             benchMetadata: benchMetadata,
+             warmupIterations: warmupIterations,
+             timedIterations: timedIterations,
+             readThermal: readThermal,
+             thermal: thermal,
+           );
 
   @override
   final VaultPort vault = const RustMindRuntimeVault();
@@ -192,14 +216,19 @@ class _RustCapabilities implements CapabilityPort {
 /// on disk forever. [ModelManagementPanel] no longer has to run against
 /// [FixtureMindRuntime] to exercise that behavior.
 ///
-/// [load], [unload], [benchmark], and [thermal] all require a model running
-/// in real inference memory, which needs the Rust engine bindings tracked by
-/// #1628 (`LlmBackend` trait + llama.cpp GGUF backend) and #1638 (the Flutter
-/// plugin seam over that FFI) -- neither has landed, so these four stay
-/// honest [MindPortUnavailable] stubs naming those issues. (The blanket
-/// "#1260" every method here used to cite is Vault/Operation-Log FFI, not
-/// model management -- it never actually gated this port; #1628/#1638 are
-/// the issues that do.)
+/// [load], [unload] still require a model running in real inference memory,
+/// which needs the Rust engine bindings tracked by #1628 (`LlmBackend` trait
+/// + llama.cpp GGUF backend) and #1638 (the Flutter plugin seam over that
+/// FFI) — neither has landed, so those two stay honest [MindPortUnavailable]
+/// stubs naming those issues. (The blanket "#1260" every method here used
+/// to cite is Vault/Operation-Log FFI, not model management -- it never
+/// actually gated this port; #1628/#1638 are the issues that do.)
+///
+/// [benchmark] runs the generation-bench protocol (warmup, median, backend
+/// metadata including CUDA as a Windows seam) when a [GenerationBenchRunner]
+/// is injected — typically [BridgeGenerationBenchRunner] over a loaded llama
+/// engine. With no runner it still reports unavailable rather than inventing
+/// tok/s. [thermal] probes the device capability channel and emits on change.
 ///
 /// [ModelResidency] has three states -- `loaded` (in inference memory),
 /// `resident` (held on disk by a specific capability), and `available` (not
@@ -213,13 +242,32 @@ class _RustModels implements ModelPort {
   _RustModels({
     core_ai.ModelDownloadService? downloadService,
     List<core_ai.OfflineModelInfo>? catalog,
+    GenerationBenchRunner? benchRunner,
+    GenerationBenchMetadata? benchMetadata,
+    int? warmupIterations,
+    int? timedIterations,
+    Future<ThermalState> Function()? readThermal,
+    Stream<ThermalState>? thermal,
   }) : _downloadService = downloadService ?? core_ai.ModelDownloadService(),
-       _catalog = catalog ?? core_ai.ModelCatalog.bundledModels;
+       _catalog = catalog ?? core_ai.ModelCatalog.bundledModels,
+       _benchRunner = benchRunner,
+       _benchMetadata = benchMetadata ?? const GenerationBenchMetadata(),
+       _warmupIterations = warmupIterations ?? kModelBenchWarmupIterations,
+       _timedIterations = timedIterations ?? kModelBenchTimedIterations,
+       _readThermal = readThermal,
+       _thermal = thermal;
 
   static const String _runtimeIssue = '#1628, #1638';
+  static const Duration _thermalPollInterval = Duration(seconds: 15);
 
   final core_ai.ModelDownloadService _downloadService;
   final List<core_ai.OfflineModelInfo> _catalog;
+  final GenerationBenchRunner? _benchRunner;
+  final GenerationBenchMetadata _benchMetadata;
+  final int _warmupIterations;
+  final int _timedIterations;
+  final Future<ThermalState> Function()? _readThermal;
+  final Stream<ThermalState>? _thermal;
 
   core_ai.OfflineModelInfo? _findCatalogModel(String modelId) {
     for (final model in _catalog) {
@@ -312,11 +360,78 @@ class _RustModels implements ModelPort {
   }
 
   @override
-  Future<ModelBench> benchmark(String modelId) async =>
-      _pending('ModelPort', _runtimeIssue);
+  Future<ModelBench> benchmark(String modelId) async {
+    final catalogModel = _findCatalogModel(modelId);
+    if (catalogModel == null) {
+      return _pending(
+        'ModelPort',
+        'unknown model id "$modelId" -- not in the catalog',
+      );
+    }
+    final downloaded = await _downloadService.isModelDownloaded(
+      catalogModel.id,
+      model: catalogModel,
+    );
+    if (!downloaded) {
+      return _pending(
+        'ModelPort',
+        'model "$modelId" is not on disk — download it before benchmarking',
+      );
+    }
+    final runner = _benchRunner;
+    if (runner == null) {
+      return _pending('ModelPort', _runtimeIssue);
+    }
+    final GenerationBenchReport report;
+    try {
+      report = await runGenerationBench(
+        sample: runner.sample,
+        warmupIterations: _warmupIterations,
+        timedIterations: _timedIterations,
+        metadata: _benchMetadata,
+      );
+    } on Object catch (error) {
+      return _pending(
+        'ModelPort',
+        'generation bench failed — $_runtimeIssue ($error)',
+      );
+    }
+    return report.toModelBench(
+      residentBytes: catalogModel.fileSizeBytes,
+      measuredUnder: await _currentThermal(),
+      measuredAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Future<ThermalState> _currentThermal() async {
+    final readThermal = _readThermal;
+    if (readThermal != null) return readThermal();
+    try {
+      final device = await core_ai.DeviceCapabilityService().getDeviceInfo();
+      return thermalStateFromSummary(device.thermalSummary);
+    } on Object {
+      return ThermalState.nominal;
+    }
+  }
 
   @override
-  Stream<ThermalState> thermal() => _pendingStream('ModelPort', _runtimeIssue);
+  Stream<ThermalState> thermal() {
+    final thermal = _thermal;
+    if (thermal != null) return thermal;
+    return _probeThermal();
+  }
+
+  Stream<ThermalState> _probeThermal() async* {
+    ThermalState? last;
+    while (true) {
+      final next = await _currentThermal();
+      if (last != next) {
+        last = next;
+        yield next;
+      }
+      await Future<void>.delayed(_thermalPollInterval);
+    }
+  }
 }
 
 class _RustPortability implements PortabilityPort {

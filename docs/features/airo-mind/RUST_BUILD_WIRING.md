@@ -286,6 +286,12 @@ constraint on this issue.
   podspec a new engine crate needs — each is still hand-copied from an
   existing one. Worth a generator if this milestone adds more than one or
   two more FFI-surfaced crates.
+- Windows CUDA for `airo_mind_llama` is a named seam, not a linked backend.
+  `AccelBackend::Cuda` / `GpuBackend.cuda` / the `cuda` Cargo feature exist
+  so a Windows rig with nvcc can opt in without a protocol change. The
+  feature currently only enables `llama`; turning it into
+  `llama-cpp-2/cuda` is the Windows-testing change, documented in
+  [GENERATION_BENCH_PROTOCOL.md](./GENERATION_BENCH_PROTOCOL.md).
 - `library_loader.dart`'s per-bridge `_once()` init guard is duplicated by
   hand per package (`feature_mind`, `core_native`); no shared helper package
   exists to extract it into. Not urgent at 2 packages; revisit if a third

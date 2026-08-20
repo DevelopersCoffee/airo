@@ -24,8 +24,7 @@ export 'src/meeting_screen.dart' show MeetingScreen;
 export 'src/mind_home_screen.dart' show MindHomeScreen, meetingListPreview;
 export 'src/export/application/meeting_export_service.dart'
     show MeetingExportService;
-export 'src/export/domain/meeting_export_models.dart'
-    show MeetingExportBundle;
+export 'src/export/domain/meeting_export_models.dart' show MeetingExportBundle;
 export 'src/mind_indic_intelligence.dart'
     show
         MindIndicCapability,
@@ -204,6 +203,10 @@ export 'src/runtime/models/portability_models.dart';
 export 'src/runtime/models/projection_models.dart';
 export 'src/runtime/models/vault_models.dart';
 
+export 'src/model_bench/model_bench_controller.dart';
+export 'src/model_bench/model_bench_display.dart';
+export 'src/model_bench/model_bench_protocol.dart';
+
 // Runtime — the port milestone 19 implements against.
 export 'src/runtime/mind_runtime.dart';
 export 'src/runtime/ports/capability_port.dart';
@@ -222,7 +225,11 @@ export 'src/runtime/rust/rust_mind_runtime.dart';
 export 'src/runtime/persistent/persistent_operation_log.dart'
     show LazyPersistentOperationLog, sharedMindOperationLog;
 export 'src/library_loader.dart'
-    show initializeLlamaBridge, initializeWhisperBridge, isLlamaLoaded, isWhisperLoaded;
+    show
+        initializeLlamaBridge,
+        initializeWhisperBridge,
+        isLlamaLoaded,
+        isWhisperLoaded;
 
 // Portability -- surface 08's ".airobackup" envelope-sealing flow: pick
 // contexts, set the phrase, choose a destination on your own network.

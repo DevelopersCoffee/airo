@@ -31,16 +31,19 @@ sealed class MeetingIntelligenceEvent {
   const MeetingIntelligenceEvent();
 }
 
-final class MeetingIntelligenceEventExtracting extends MeetingIntelligenceEvent {
+final class MeetingIntelligenceEventExtracting
+    extends MeetingIntelligenceEvent {
   const MeetingIntelligenceEventExtracting();
 }
 
-final class MeetingIntelligenceEventGenerating extends MeetingIntelligenceEvent {
+final class MeetingIntelligenceEventGenerating
+    extends MeetingIntelligenceEvent {
   const MeetingIntelligenceEventGenerating(this.text);
   final String text;
 }
 
-final class MeetingIntelligenceEventMinutesReady extends MeetingIntelligenceEvent {
+final class MeetingIntelligenceEventMinutesReady
+    extends MeetingIntelligenceEvent {
   const MeetingIntelligenceEventMinutesReady(this.text);
   final String text;
 }
@@ -109,8 +112,7 @@ rust.MeetingActionItemRecord toWhisperActionItem(
     llama_mi.MeetingActionStatus.inProgress =>
       rust.MeetingActionStatus.inProgress,
     llama_mi.MeetingActionStatus.done => rust.MeetingActionStatus.done,
-    llama_mi.MeetingActionStatus.blocked =>
-      rust.MeetingActionStatus.blocked,
+    llama_mi.MeetingActionStatus.blocked => rust.MeetingActionStatus.blocked,
   },
   evidenceSegmentIds: record.evidenceSegmentIds,
 );
@@ -143,7 +145,17 @@ abstract interface class MindGenerationBridge {
   });
 
   /// Legacy prose-minutes path — retained for tests that still script it.
-  Stream<GenerationEvent> generate({required String transcript, String? grammar});
+  Stream<GenerationEvent> generate({
+    required String transcript,
+    String? grammar,
+  });
+
+  /// Prompt-as-is completion for Model Bench and assistant chat.
+  /// Shares the generation engine; does not wrap a meeting-secretary prompt.
+  Stream<GenerationEvent> complete({
+    required String prompt,
+    required int maxOutputTokens,
+  });
 
   String modelId();
 
@@ -201,68 +213,78 @@ class RustMindGenerationBridge implements MindGenerationBridge {
     required String meetingId,
     required String title,
     required List<TranscriptSegment> segments,
-  }) =>
-      llama_mi
-          .processMeetingIntelligence(
-            meetingId: meetingId,
-            title: title,
-            segments: [
-              for (final segment in segments)
-                llama_mi.MeetingIntelligenceSegment(
-                  id: segment.id,
-                  startMs: BigInt.from(segment.startMs),
-                  endMs: BigInt.from(segment.endMs),
-                  text: segment.text,
-                ),
-            ],
-          )
-          .map((event) {
-            return switch (event) {
-              llama_mi.MeetingIntelligenceEvent_Extracting() =>
-                const MeetingIntelligenceEventExtracting(),
-              llama_mi.MeetingIntelligenceEvent_Generating(:final text) =>
-                MeetingIntelligenceEventGenerating(text),
-              llama_mi.MeetingIntelligenceEvent_MinutesReady(:final text) =>
-                MeetingIntelligenceEventMinutesReady(text),
-              llama_mi.MeetingIntelligenceEvent_IrReady(
-                :final decisions,
-                :final actionItems,
-                :final metrics,
-              ) =>
-                MeetingIntelligenceEventIrReady(
-                  decisions: [
-                    for (final decision in decisions)
-                      toWhisperDecision(decision),
-                  ],
-                  actionItems: [
-                    for (final item in actionItems) toWhisperActionItem(item),
-                  ],
-                  metrics: [
-                    for (final metric in metrics) toWhisperMetric(metric),
-                  ],
-                ),
-              llama_mi.MeetingIntelligenceEvent_Cancelled() =>
-                const MeetingIntelligenceEventCancelled(),
-            };
-          });
+  }) => llama_mi
+      .processMeetingIntelligence(
+        meetingId: meetingId,
+        title: title,
+        segments: [
+          for (final segment in segments)
+            llama_mi.MeetingIntelligenceSegment(
+              id: segment.id,
+              startMs: BigInt.from(segment.startMs),
+              endMs: BigInt.from(segment.endMs),
+              text: segment.text,
+            ),
+        ],
+      )
+      .map((event) {
+        return switch (event) {
+          llama_mi.MeetingIntelligenceEvent_Extracting() =>
+            const MeetingIntelligenceEventExtracting(),
+          llama_mi.MeetingIntelligenceEvent_Generating(:final text) =>
+            MeetingIntelligenceEventGenerating(text),
+          llama_mi.MeetingIntelligenceEvent_MinutesReady(:final text) =>
+            MeetingIntelligenceEventMinutesReady(text),
+          llama_mi.MeetingIntelligenceEvent_IrReady(
+            :final decisions,
+            :final actionItems,
+            :final metrics,
+          ) =>
+            MeetingIntelligenceEventIrReady(
+              decisions: [
+                for (final decision in decisions) toWhisperDecision(decision),
+              ],
+              actionItems: [
+                for (final item in actionItems) toWhisperActionItem(item),
+              ],
+              metrics: [for (final metric in metrics) toWhisperMetric(metric)],
+            ),
+          llama_mi.MeetingIntelligenceEvent_Cancelled() =>
+            const MeetingIntelligenceEventCancelled(),
+        };
+      });
 
   @override
   Stream<GenerationEvent> generate({
     required String transcript,
     String? grammar,
-  }) =>
-      llama
-          .generateMinutes(transcript: transcript, grammar: grammar)
-          .map((event) {
-            return switch (event) {
-              llama.GenerationEvent_Generating(:final text) =>
-                GenerationEventGenerating(text),
-              llama.GenerationEvent_MinutesReady(:final text) =>
-                GenerationEventMinutesReady(text),
-              llama.GenerationEvent_Cancelled() =>
-                const GenerationEventCancelled(),
-            };
-          });
+  }) => llama.generateMinutes(transcript: transcript, grammar: grammar).map((
+    event,
+  ) {
+    return switch (event) {
+      llama.GenerationEvent_Generating(:final text) =>
+        GenerationEventGenerating(text),
+      llama.GenerationEvent_MinutesReady(:final text) =>
+        GenerationEventMinutesReady(text),
+      llama.GenerationEvent_Cancelled() => const GenerationEventCancelled(),
+    };
+  });
+
+  @override
+  Stream<GenerationEvent> complete({
+    required String prompt,
+    required int maxOutputTokens,
+  }) => llama
+      .generateCompletion(prompt: prompt, maxOutputTokens: maxOutputTokens)
+      .map((event) {
+        return switch (event) {
+          llama.GenerationEvent_Generating(:final text) =>
+            GenerationEventGenerating(text),
+          llama.GenerationEvent_MinutesReady(:final text) =>
+            GenerationEventMinutesReady(text),
+          llama.GenerationEvent_Cancelled() => const GenerationEventCancelled(),
+        };
+      });
 
   @override
   String modelId() => llama.generationModelId();

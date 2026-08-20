@@ -96,6 +96,14 @@ llama = ["dep:llama-cpp-2", "dep:encoding_rs", "dep:libc", "llama-cpp-2/common"]
 # non-macOS build has a named flag available (a no-op there, since the
 # target-specific table above simply does not apply).
 metal = ["llama"]
+# Windows CUDA testing seam. Named now so a later Windows box with the CUDA
+# toolkit can opt in without a protocol change (`AccelBackend::Cuda` already
+# exists in `airo_mind_core::bench`). This does **not** enable llama-cpp-2's
+# CUDA backend today: that feature pulls the NVIDIA toolkit into every
+# consumer of `airo_mind_llama`, including Android/macOS CI that cannot
+# compile it. Turning this into `cuda = ["llama", "llama-cpp-2/cuda"]` is
+# the Windows-rig change, gated on a machine that actually has nvcc.
+cuda = ["llama"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

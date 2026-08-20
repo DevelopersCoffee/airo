@@ -49,6 +49,7 @@ pub mod digest;
 /// under `api` is generated into Dart.
 pub mod models;
 
+pub mod bench;
 pub mod budget;
 pub mod cancel;
 
@@ -128,6 +129,10 @@ pub mod verb;
 /// crate that decodes audio.
 pub mod wav;
 
+pub use bench::{
+    aggregate, median_f64, median_u64, run_generation_bench, AccelBackend, BenchError,
+    BenchMetadata, BenchMode, BenchProtocol, BenchReport, GpuClockControl,
+};
 pub use budget::{ResourceBudget, ResourceRequest};
 pub use cancel::CancelToken;
 pub use capability_api::{

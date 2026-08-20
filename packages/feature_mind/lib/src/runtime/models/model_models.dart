@@ -12,6 +12,24 @@ enum ModelResidency { loaded, resident, available }
 /// displayed while throttled is a false claim.
 enum ThermalState { nominal, fair, serious, critical }
 
+/// Accelerator the timed generate() actually used.
+///
+/// [cuda] is a first-class member so Windows CUDA testing can label a
+/// reading without a contract change. It is not linked on current
+/// macOS/Android builds.
+enum InferenceAccelBackend { none, metal, openCl, vulkan, cuda, auto }
+
+/// How GPU clocks were treated for this run.
+///
+/// Unlocked is user experience (boost is stochastic). [base] / [maxBoost]
+/// exist so a later Windows CUDA `ncu` pass can record the lock it used
+/// rather than mixing locked-clock numbers with unlocked ones.
+enum GpuClockControl { unlocked, base, maxBoost }
+
+/// Which headline this reading is answering. Both tok/s and TTFT are
+/// always collected from the same warmed timed runs.
+enum ModelBenchMode { combined, coldPrompt, steadyDecode }
+
 /// Numbers measured on this hardware. Never a spec sheet figure.
 @immutable
 class ModelBench {
@@ -24,6 +42,15 @@ class ModelBench {
     required this.measuredAtMs,
     this.cpuUtilizationPercent,
     this.npuUtilizationPercent,
+    this.accelBackend,
+    this.clockControl,
+    this.gpuLayers,
+    this.threadCount,
+    this.warmupIterations,
+    this.timedIterations,
+    this.protocol,
+    this.promptTokens,
+    this.generatedTokens,
   });
 
   final double tokensPerSecond;
@@ -41,6 +68,23 @@ class ModelBench {
   /// hardware with no NPU, or until measured.
   final double? npuUtilizationPercent;
 
+  /// Null on readings taken before the generation-bench protocol landed.
+  final InferenceAccelBackend? accelBackend;
+
+  /// Null means the reading did not record a clock policy (legacy).
+  final GpuClockControl? clockControl;
+
+  /// Layers offloaded to GPU. `0` is CPU. `-1` means all layers. Null on
+  /// legacy readings.
+  final int? gpuLayers;
+
+  final int? threadCount;
+  final int? warmupIterations;
+  final int? timedIterations;
+  final ModelBenchMode? protocol;
+  final int? promptTokens;
+  final int? generatedTokens;
+
   @override
   bool operator ==(Object other) =>
       other is ModelBench &&
@@ -51,7 +95,16 @@ class ModelBench {
       other.measuredUnder == measuredUnder &&
       other.measuredAtMs == measuredAtMs &&
       other.cpuUtilizationPercent == cpuUtilizationPercent &&
-      other.npuUtilizationPercent == npuUtilizationPercent;
+      other.npuUtilizationPercent == npuUtilizationPercent &&
+      other.accelBackend == accelBackend &&
+      other.clockControl == clockControl &&
+      other.gpuLayers == gpuLayers &&
+      other.threadCount == threadCount &&
+      other.warmupIterations == warmupIterations &&
+      other.timedIterations == timedIterations &&
+      other.protocol == protocol &&
+      other.promptTokens == promptTokens &&
+      other.generatedTokens == generatedTokens;
 
   @override
   int get hashCode => Object.hash(
@@ -63,6 +116,15 @@ class ModelBench {
     measuredAtMs,
     cpuUtilizationPercent,
     npuUtilizationPercent,
+    accelBackend,
+    clockControl,
+    gpuLayers,
+    threadCount,
+    warmupIterations,
+    timedIterations,
+    protocol,
+    promptTokens,
+    generatedTokens,
   );
 }
 
