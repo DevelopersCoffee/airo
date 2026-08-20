@@ -14,17 +14,21 @@ class ModelHealthFacts {
     ModelReadinessState? readiness,
     ModelDownloadProgress? download,
     int? contextTokens,
+    bool? artifactPresent,
   }) async {
     final resolvedCompatibility =
         compatibility ?? await _compatibilityFor(model);
-    final artifactPresent =
-        GgufArtifactGuard.isVerified(model) ||
-        (model.filePath?.trim().isNotEmpty == true && model.isDownloaded);
+    // A live probe (IMM `isModelInstalled`, on-disk verify) wins over a
+    // persisted path that can outlive the file.
+    final resolvedArtifact =
+        artifactPresent ??
+        (GgufArtifactGuard.isVerified(model) ||
+            (model.filePath?.trim().isNotEmpty == true && model.isDownloaded));
 
     return ModelHealthReport.fromFacts(
       model: model,
       download: download,
-      artifactPresent: artifactPresent,
+      artifactPresent: resolvedArtifact,
       artifactSizeVerified: GgufArtifactGuard.isVerified(model),
       compatibility: resolvedCompatibility,
       runtimeHealth: _runtimeHealth(readiness),
@@ -81,7 +85,8 @@ class ModelHealthFacts {
       TargetPlatform.android => ComputeAccelerator.nnapi,
       _ => ComputeAccelerator.cpu,
     };
-    final tokens = contextTokens ?? (model.contextLength > 0 ? model.contextLength : 2048);
+    final tokens =
+        contextTokens ?? (model.contextLength > 0 ? model.contextLength : 2048);
 
     return ExecutionPlan(
       ir: InferenceIr(

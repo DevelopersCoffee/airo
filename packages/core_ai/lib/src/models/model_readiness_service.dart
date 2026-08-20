@@ -69,8 +69,7 @@ class ModelReadinessService {
         'LiteRT-LM packages run on Android today. On $platform, download a GGUF model for local chat.',
       InferenceRuntime.mediaPipeWeb =>
         'This MediaPipe bundle targets the browser runtime.',
-      _ =>
-        'This package is not published for $platform yet.',
+      _ => 'This package is not published for $platform yet.',
     };
   }
 
@@ -82,8 +81,7 @@ class ModelReadinessService {
         'LiteRT-LM is not configured on this device. Install on Android or choose a GGUF package.',
       InferenceRuntime.mediaPipeWeb =>
         'The browser MediaPipe runtime is not available in this session.',
-      InferenceRuntime.onnx =>
-        'ONNX Runtime is not wired for this model yet.',
+      InferenceRuntime.onnx => 'ONNX Runtime is not wired for this model yet.',
       InferenceRuntime.whisper =>
         'Whisper runtime is managed by the Scribe pipeline.',
       InferenceRuntime.geminiNano =>
@@ -126,8 +124,7 @@ class ModelContractInference {
       InferenceRuntime.mediaPipeWeb => const PlatformSupport.webOnly(),
       InferenceRuntime.llamaCpp ||
       InferenceRuntime.onnx ||
-      InferenceRuntime.whisper =>
-        const PlatformSupport.allNative(),
+      InferenceRuntime.whisper => const PlatformSupport.allNative(),
       InferenceRuntime.geminiNano => const PlatformSupport(android: true),
       InferenceRuntime.geminiCloud => const PlatformSupport.allNative(),
     };
@@ -137,6 +134,19 @@ class ModelContractInference {
     if (model.task != null) return model.task!;
     if (model.capabilities.contains(ModelCapability.embeddings)) {
       return ModelTask.embedding;
+    }
+    final runtime = model.runtime ?? inferRuntime(model);
+    if (runtime == InferenceRuntime.whisper) {
+      return ModelTask.speechToText;
+    }
+    if (model.modalities.contains(ModelModality.audio) &&
+        model.capabilities.contains(ModelCapability.audioUnderstanding) &&
+        !model.capabilities.contains(ModelCapability.chat)) {
+      return ModelTask.speechToText;
+    }
+    if (model.capabilities.contains(ModelCapability.imageUnderstanding) &&
+        !model.capabilities.contains(ModelCapability.chat)) {
+      return ModelTask.vision;
     }
     return ModelTask.textGeneration;
   }

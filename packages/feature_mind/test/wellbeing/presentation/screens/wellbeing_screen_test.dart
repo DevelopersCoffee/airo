@@ -47,7 +47,7 @@ void main() {
       'Agent Skills',
       'Prompt Lab',
       'Audio Scribe',
-      'Model Management & Benchmark',
+      'Intelligence',
       'Model Advisor',
     ]) {
       expect(

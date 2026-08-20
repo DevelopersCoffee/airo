@@ -20,6 +20,7 @@ import 'assistant/presentation/screens/prompt_lab_screen.dart';
 import 'capture/application/speech_language_preference.dart';
 import 'capture/presentation/meeting_capture_screen.dart';
 import 'host/assistant_host_adapter.dart';
+import 'intelligence/intelligence_home_screen.dart';
 import 'meeting_archive/meeting_archive_port.dart';
 import 'mind_home_screen.dart';
 import 'mind_service.dart';
@@ -205,10 +206,22 @@ class MindModule extends AppModule {
           path: AssistantRouteNames.modelsSegment,
           name: AssistantRouteNames.modelsName,
           builder: (context, state) => Consumer(
-            builder: (context, ref, _) => ModelLibraryScreen(
-              onModelSelected: (candidate) =>
-                  context.go(AssistantRouteNames.assistant),
-              onOpenModelManager: () => ref
+            builder: (context, ref, _) => IntelligenceHomeScreen(
+              libraryTab: ModelLibraryScreen(
+                browseMode: true,
+                onModelSelected: (candidate) =>
+                    context.go(AssistantRouteNames.chat),
+                onOpenModelManager: () => ref
+                    .read(assistantHostAdapterProvider)
+                    .openModelManager(context),
+              ),
+              diagnosticsTab: DeviceCapabilityReportLoaderScreen(
+                models: ModelCatalog.bundledModels,
+                embedded: true,
+              ),
+              onOpenChat: () => context.go(AssistantRouteNames.chat),
+              onOpenScribe: () => context.go('/scribe'),
+              onOpenModels: () => ref
                   .read(assistantHostAdapterProvider)
                   .openModelManager(context),
             ),

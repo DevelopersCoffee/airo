@@ -96,4 +96,41 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('live artifact probe offers Resume download for a stale path', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const model = OfflineModelInfo(
+      id: 'stale',
+      name: 'Stale model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1024,
+      filePath: '/models/removed.gguf',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ModelHealthCenterLoaderScreen(
+          model: model,
+          compatibilityFuture: Future.value(
+            ModelCompatibilityResult.compatible(MemorySeverity.safe),
+          ),
+          artifactPresentFuture: Future<bool>.value(false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Resume download'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Resume download'), findsOneWidget);
+  });
 }

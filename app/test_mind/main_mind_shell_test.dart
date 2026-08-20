@@ -140,7 +140,12 @@ void main() {
       branches
           .map((branch) => branch.routes.whereType<GoRoute>().first.path)
           .toList(),
-      ['/', AssistantRouteNames.assistant, '/models', AssistantRouteNames.wellbeing],
+      [
+        '/',
+        AssistantRouteNames.assistant,
+        '/models',
+        AssistantRouteNames.wellbeing,
+      ],
       reason: 'branch order must match MindShell.destinations',
     );
   });
@@ -163,12 +168,15 @@ void main() {
     expect(paths.where((path) => path == '/'), hasLength(1));
   });
 
-  test('mind shell labels its destinations Scribe, Assistant, Models, Wellbeing', () {
-    expect(
-      MindShell.destinations.map((destination) => destination.label).toList(),
-      ['Scribe', 'Assistant', 'Models', 'Wellbeing'],
-    );
-  });
+  test(
+    'mind shell labels its destinations Scribe, Assistant, Intelligence, Wellbeing',
+    () {
+      expect(
+        MindShell.destinations.map((destination) => destination.label).toList(),
+        ['Scribe', 'Assistant', 'Intelligence', 'Wellbeing'],
+      );
+    },
+  );
 
   testWidgets('tapping a destination switches branches', (tester) async {
     // Exercises MindShell against stand-in branch content: the real branch
@@ -183,7 +191,12 @@ void main() {
           builder: (context, state, navigationShell) =>
               MindShell(navigationShell: navigationShell),
           branches: [
-            for (final path in const ['/', '/assistant', '/models', '/wellbeing'])
+            for (final path in const [
+              '/',
+              '/assistant',
+              '/models',
+              '/wellbeing',
+            ])
               StatefulShellBranch(
                 routes: [
                   GoRoute(
@@ -204,7 +217,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Scribe'), findsOneWidget);
     expect(find.text('Assistant'), findsOneWidget);
-    expect(find.text('Models'), findsOneWidget);
+    expect(find.text('Intelligence'), findsOneWidget);
     expect(find.text('Wellbeing'), findsOneWidget);
     expect(find.text('branch /'), findsOneWidget);
 
@@ -222,6 +235,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('branch /'), findsOneWidget);
     expect(router.state.uri.toString(), '/');
+  });
+
+  testWidgets('wide mind shell uses a navigation rail', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) =>
+              MindShell(navigationShell: navigationShell),
+          branches: [
+            for (final path in const [
+              '/',
+              '/assistant',
+              '/models',
+              '/wellbeing',
+            ])
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: path,
+                    builder: (context, state) => Text('branch $path'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('Intelligence'), findsWidgets);
   });
 
   testWidgets('super-app destinations degrade to the Mind explainer', (

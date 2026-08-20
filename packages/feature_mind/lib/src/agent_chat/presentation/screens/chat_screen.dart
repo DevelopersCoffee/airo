@@ -40,7 +40,12 @@ import '../../application/assistant_runtime_readiness.dart';
 import '../../../services/local_runtime_preloader_service.dart';
 import '../../../services/model_preload_preferences.dart';
 import '../../../services/voice_search_service.dart';
+import '../../../intelligence/ai_profile.dart';
+import '../../../intelligence/intelligence_providers.dart';
+import '../../../intelligence/intelligence_typography.dart';
+import '../../../intelligence/profile_customize_sheet.dart';
 import '../../../widgets/mind_op_row.dart';
+import 'chat_automatic_gate.dart';
 import 'model_library_screen.dart';
 
 /// A single bubble in [ChatScreen]'s transcript — the UI-rendering shape
@@ -402,14 +407,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Map<String, String>>(intelligenceOverridesProvider, (
+      previous,
+      next,
+    ) {
+      final catalog = ref.read(intelligenceCatalogProvider);
+      final readiness = const AiProfileResolver().resolve(
+        AiProfile.generalChat,
+        catalog,
+        overrides: next,
+      );
+      final model = readiness.slots.first.selection.model;
+      if (model == null || !model.isDownloaded) return;
+      final id = assistantModelIdForOfflineModel(model.id);
+      if (ref.read(selectedAssistantModelIdProvider) == id) return;
+      unawaited(ref.read(selectedAssistantModelIdProvider.notifier).select(id));
+    });
+
     final selectedAssistantModelId = ref.watch(
       selectedAssistantModelIdProvider,
     );
 
     if (selectedAssistantModelId == null) {
-      return ModelLibraryScreen(
-        onModelSelected: _selectAssistantModel,
-        onOpenModelManager: _openModelManager,
+      final library = ref.watch(assistantModelLibraryProvider);
+      return library.when(
+        loading: () => const AiroResponsiveScaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => AiroResponsiveScaffold(
+          errorMessage: error.toString(),
+          onRetry: () => ref.invalidate(assistantModelLibraryProvider),
+          body: const SizedBox.shrink(),
+        ),
+        data: (state) => ChatAutomaticGate(
+          library: state,
+          onModelSelected: _selectAssistantModel,
+          onOpenModelManager: _openModelManager,
+        ),
       );
     }
 
@@ -435,9 +469,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
       });
-      return ModelLibraryScreen(
-        onModelSelected: _selectAssistantModel,
-        onOpenModelManager: _openModelManager,
+      return const AiroResponsiveScaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -614,6 +647,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
+                          'AUTOMATIC',
+                          style: IntelligenceTypography.status(),
+                        ),
+                        Text(
                           label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -633,45 +670,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ],
                     ),
                   ),
-              IconButton(
-                focusNode: _selectedModelBarFocusNode,
-                tooltip: 'Change model',
-                onPressed: () {
-                  ref
-                      .read(selectedAssistantModelIdProvider.notifier)
-                      .select(null);
-                },
-                constraints: const BoxConstraints.tightFor(
-                  width: 36,
-                  height: 36,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.swap_horiz, size: 20),
-              ),
-              IconButton(
-                key: const Key('agent_chat_copy_transcript_button'),
-                tooltip: 'Copy transcript',
-                onPressed: _messages.isEmpty ? null : _copyTranscript,
-                constraints: const BoxConstraints.tightFor(
-                  width: 36,
-                  height: 36,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.ios_share_outlined, size: 20),
-              ),
-              IconButton(
-                key: const Key('agent_chat_clear_conversation_button'),
-                tooltip: 'Clear chat',
-                onPressed: _messages.isEmpty || _isGenerating
-                    ? null
-                    : _confirmClearConversation,
-                constraints: const BoxConstraints.tightFor(
-                  width: 36,
-                  height: 36,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.delete_sweep_outlined, size: 20),
-              ),
+                  IconButton(
+                    focusNode: _selectedModelBarFocusNode,
+                    tooltip: 'Customize',
+                    onPressed: _openChatCustomize,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.tune, size: 20),
+                  ),
+                  IconButton(
+                    key: const Key('agent_chat_copy_transcript_button'),
+                    tooltip: 'Copy transcript',
+                    onPressed: _messages.isEmpty ? null : _copyTranscript,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.ios_share_outlined, size: 20),
+                  ),
+                  IconButton(
+                    key: const Key('agent_chat_clear_conversation_button'),
+                    tooltip: 'Clear chat',
+                    onPressed: _messages.isEmpty || _isGenerating
+                        ? null
+                        : _confirmClearConversation,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                  ),
                 ],
               ),
               if (!readiness.canSend && readiness.progress > 0) ...[
@@ -681,19 +714,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ],
               if (!readiness.canSend &&
-                  readiness.phase == AssistantRuntimeReadinessPhase.blocked) ...[
+                  readiness.phase ==
+                      AssistantRuntimeReadinessPhase.blocked) ...[
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     OutlinedButton(
-                      onPressed: () {
-                        ref
-                            .read(selectedAssistantModelIdProvider.notifier)
-                            .select(null);
-                      },
-                      child: const Text('Select another model'),
+                      onPressed: _openChatCustomize,
+                      child: const Text('Customize'),
                     ),
                     FilledButton(
                       onPressed: () {
@@ -1475,6 +1505,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _openChatCustomize() {
+    final catalog = ref.read(intelligenceCatalogProvider);
+    final readiness = const AiProfileResolver().resolve(
+      AiProfile.generalChat,
+      catalog,
+      constraints: IntelligenceConstraints(
+        memory: ref.read(intelligenceMemoryProvider),
+      ),
+      overrides: ref.read(intelligenceOverridesProvider),
+    );
+    showProfileCustomizeSheet(
+      context: context,
+      readiness: readiness,
+      catalog: catalog,
     );
   }
 

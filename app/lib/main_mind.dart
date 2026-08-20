@@ -21,7 +21,7 @@
 /// to the recorder — so before this shell grew a nav bar the assistant was
 /// unreachable on a device (#1555). The three destinations are therefore
 /// branches of a `StatefulShellRoute.indexedStack` wrapped in [MindShell]:
-/// Scribe (`/`), Assistant (the hub), Models (`/models`), Wellbeing. The affordance is
+/// Scribe (`/`), Assistant (the hub), Intelligence (`/models`), Wellbeing. The affordance is
 /// shell-owned; `feature_mind` stays untouched. See [buildMindRoutes] for how
 /// the branches are assembled from the module's three route accessors.
 ///
@@ -301,11 +301,13 @@ class _AiroMindAppState extends State<AiroMindApp> {
   void initState() {
     super.initState();
     MindRuntimeNavigation.openHub = () => _router.go('/runtime');
+    MindRuntimeNavigation.openIntelligence = () => _router.go('/models');
   }
 
   @override
   void dispose() {
     MindRuntimeNavigation.openHub = null;
+    MindRuntimeNavigation.openIntelligence = null;
     // The registry owns module teardown, and MindModule's is real work: it
     // releases the microphone and the loaded models. `State.dispose` cannot
     // await, so this is fire-and-forget — the shell is going away either way.
