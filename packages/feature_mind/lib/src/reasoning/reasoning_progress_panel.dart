@@ -24,7 +24,11 @@ class ReasoningProgressPanel extends StatelessWidget {
 
     final theme = Theme.of(context);
     final count = steps.length;
-    final title = count == 1 ? 'Thinking · 1 step' : 'Thinking · $count steps';
+    final title = count == 0
+        ? 'Thinking'
+        : count == 1
+        ? 'Thinking · 1 step'
+        : 'Thinking · $count steps';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

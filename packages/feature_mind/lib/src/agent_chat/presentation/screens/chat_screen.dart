@@ -95,6 +95,7 @@ class AgentChatMessage {
   /// Stage labels from a reasoning pass. Never raw model thoughts.
   final List<ReasoningProgressStep> reasoningSteps;
   final String? reasoningSummary;
+  final MindReasoningLevel? reasoningLevel;
   final bool reasoningInProgress;
 
   AgentChatMessage({
@@ -109,17 +110,25 @@ class AgentChatMessage {
     this.pendingCalendarPermission = false,
     this.reasoningSteps = const [],
     this.reasoningSummary,
+    this.reasoningLevel,
     this.reasoningInProgress = false,
   }) : timestamp = timestamp ?? DateTime.now();
 
-  ChatHistoryEntry toHistoryEntry() =>
-      ChatHistoryEntry(text: text, isUser: isUser, timestamp: timestamp);
+  ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
+    text: text,
+    isUser: isUser,
+    timestamp: timestamp,
+    reasoningSummary: isUser ? null : reasoningSummary,
+    reasoningLevel: isUser ? null : reasoningLevelStableId(reasoningLevel),
+  );
 
   static AgentChatMessage fromHistoryEntry(ChatHistoryEntry entry) =>
       AgentChatMessage(
         text: entry.text,
         isUser: entry.isUser,
         timestamp: entry.timestamp,
+        reasoningSummary: entry.reasoningSummary,
+        reasoningLevel: reasoningLevelFromStableId(entry.reasoningLevel),
       );
 }
 
@@ -154,6 +163,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.generationBridge,
     this.useOnDeviceReasoning,
     this.reasoningDeviceTier,
+    this.deviceSignalsProbe,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -174,6 +184,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   /// Test seam. Production uses [shouldUseOnDeviceReasoning].
   final bool Function()? useOnDeviceReasoning;
   final LlmDeviceTier? reasoningDeviceTier;
+  final LlmDeviceSignalsProbe? deviceSignalsProbe;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -194,6 +205,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
   late final MindGenerationBridge _generationBridge;
+  LlmDeviceTier _reasoningTier = LlmDeviceTier.large;
+  LlmDeviceSignals? _reasoningSignals;
   late AgentSkillOrchestrator _skillOrchestrator;
   late final OperationLogPort _operationLogPort;
   final AssistantChatContextBuilder _chatContextBuilder =
@@ -1657,6 +1670,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<({LlmDeviceTier tier, LlmDeviceSignals? signals})>
+  _resolveReasoningDevice() async {
+    if (widget.reasoningDeviceTier != null && _reasoningSignals != null) {
+      return (tier: widget.reasoningDeviceTier!, signals: _reasoningSignals);
+    }
+    if (_reasoningSignals != null && widget.reasoningDeviceTier == null) {
+      return (tier: _reasoningTier, signals: _reasoningSignals);
+    }
+    try {
+      final probe =
+          widget.deviceSignalsProbe ??
+          RealLlmDeviceSignalsProbe(availableStorageMb: () async => 4096);
+      final signals = await probe.probe();
+      _reasoningSignals = signals;
+      _reasoningTier = const LlmDeviceTierPolicy().evaluate(signals).tier;
+    } on Object {
+      // Keep the last known tier. Hosts that cannot probe stay at large.
+    }
+    return (
+      tier: widget.reasoningDeviceTier ?? _reasoningTier,
+      signals: _reasoningSignals,
+    );
+  }
+
   bool _shouldUseReasoning(String selectedModelId) {
     if (widget.useOnDeviceReasoning != null) {
       return widget.useOnDeviceReasoning!();
@@ -1704,11 +1741,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ]
         : const <MindReasoningContextItem>[];
+    final device = await _resolveReasoningDevice();
     final request = buildMindReasoningRequest(
       userQuery: modelPrompt,
       intent: intent,
       history: history,
-      tier: widget.reasoningDeviceTier ?? LlmDeviceTier.large,
+      tier: device.tier,
+      signals: device.signals,
       documents: documents,
     );
     final fold = ReasoningStreamFold();
@@ -1796,6 +1835,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         safetyClass: current.safetyClass,
         reasoningSteps: List<ReasoningProgressStep>.from(fold.steps),
         reasoningSummary: fold.reasoningSummary,
+        reasoningLevel: fold.level,
         reasoningInProgress: !complete,
       );
     });
@@ -1817,6 +1857,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         safetyClass: current.safetyClass,
         reasoningSteps: current.reasoningSteps,
         reasoningSummary: current.reasoningSummary,
+        reasoningLevel: current.reasoningLevel,
         reasoningInProgress: current.reasoningInProgress,
       );
     });
@@ -2042,6 +2083,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         safetyClass: current.safetyClass,
         reasoningSteps: current.reasoningSteps,
         reasoningSummary: current.reasoningSummary,
+        reasoningLevel: current.reasoningLevel,
         reasoningInProgress: current.reasoningInProgress,
       );
     });

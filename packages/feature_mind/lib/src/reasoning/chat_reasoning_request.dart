@@ -87,6 +87,51 @@ MindReasoningLevel maxReasoningLevelForTier(LlmDeviceTier tier) {
   };
 }
 
+String? reasoningLevelStableId(MindReasoningLevel? level) {
+  if (level == null) return null;
+  return switch (level) {
+    MindReasoningLevel.none => 'none',
+    MindReasoningLevel.light => 'light',
+    MindReasoningLevel.standard => 'standard',
+    MindReasoningLevel.deep => 'deep',
+  };
+}
+
+MindReasoningLevel? reasoningLevelFromStableId(String? id) {
+  return switch (id) {
+    'none' => MindReasoningLevel.none,
+    'light' => MindReasoningLevel.light,
+    'standard' => MindReasoningLevel.standard,
+    'deep' => MindReasoningLevel.deep,
+    _ => null,
+  };
+}
+
+/// Keys that must never appear in persisted chat history.
+const bannedReasoningTraceKeys = {
+  'thoughts',
+  'thought',
+  'scratchpad',
+  'raw_thoughts',
+  'partialThinkingResult',
+};
+
+bool jsonContainsBannedReasoningTraceKeys(Object? value) {
+  if (value is Map) {
+    for (final key in value.keys) {
+      if (key is String && bannedReasoningTraceKeys.contains(key)) {
+        return true;
+      }
+      if (jsonContainsBannedReasoningTraceKeys(value[key])) return true;
+    }
+    return false;
+  }
+  if (value is List) {
+    return value.any(jsonContainsBannedReasoningTraceKeys);
+  }
+  return false;
+}
+
 List<MindReasoningContextItem> reasoningHistoryItems({
   required List<AssistantChatContextMessage> history,
   required String currentUserPrompt,

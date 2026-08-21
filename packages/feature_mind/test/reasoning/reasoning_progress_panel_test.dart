@@ -52,4 +52,25 @@ void main() {
     expect(find.text('Thinking · 1 step'), findsOneWidget);
     expect(find.text('Buy rice tomorrow.'), findsNothing);
   });
+
+  testWidgets('a restored summary-only panel uses Thinking, not 0 steps', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ReasoningProgressPanel(
+            steps: [],
+            summary: 'Used density, not a scratchpad.',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Thinking'), findsOneWidget);
+    expect(find.textContaining('0 steps'), findsNothing);
+    await tester.tap(find.text('Thinking'));
+    await tester.pumpAndSettle();
+    expect(find.text('Used density, not a scratchpad.'), findsOneWidget);
+  });
 }

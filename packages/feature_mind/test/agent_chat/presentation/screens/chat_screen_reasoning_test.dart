@@ -1,9 +1,12 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
+import 'package:feature_mind/src/agent_chat/data/services/chat_history_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/chat_screen.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/host/assistant_host_adapter.dart';
+import 'package:feature_mind/src/reasoning/chat_reasoning_request.dart';
 import 'package:feature_mind/src/reasoning/reasoning_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +18,23 @@ import '../../../support/fake_bridges.dart';
 import '../../../support/gemini_nano_channel.dart';
 
 void main() {
+  test('restored chat messages keep summary and level, never thought keys', () {
+    final message = AgentChatMessage(
+      text: 'Ice is less dense than water.',
+      isUser: false,
+      reasoningSummary: 'Used density, not a scratchpad.',
+      reasoningLevel: MindReasoningLevel.light,
+    );
+    final json = message.toHistoryEntry().toJson();
+    expect(jsonContainsBannedReasoningTraceKeys(json), isFalse);
+    expect(json['reasoningLevel'], 'light');
+    final restored = AgentChatMessage.fromHistoryEntry(
+      ChatHistoryEntry.fromJson(json)!,
+    );
+    expect(restored.reasoningSummary, 'Used density, not a scratchpad.');
+    expect(restored.reasoningLevel, MindReasoningLevel.light);
+    expect(restored.text, 'Ice is less dense than water.');
+  });
   testWidgets(
     'an assistant bubble shows thinking steps without putting the answer in them',
     (tester) async {
@@ -67,6 +87,9 @@ void main() {
         initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
         generationBridge: bridge,
         useOnDeviceReasoning: () => true,
+        deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+          LlmDeviceSignals(totalRamMb: 8192, availableStorageMb: 8192),
+        ),
       );
 
       await tester.enterText(
@@ -87,6 +110,44 @@ void main() {
       expect(bridge.lastReasonRequest?.intentKind, 'conversation');
     },
   );
+
+  testWidgets('a small-RAM probe clamps the request to light reasoning', (
+    tester,
+  ) async {
+    final bridge = FakeMindGenerationBridge()
+      ..reasoningEvents = const [
+        MindReasoningCompleted(
+          answer: 'Tuesday is free after 3.',
+          reasoningSummary: 'Looked at the calendar.',
+          level: MindReasoningLevel.none,
+        ),
+      ];
+    await bridge.ensureLoaded(modelsDir: '/tmp', memoryBudgetMb: 1024);
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+      generationBridge: bridge,
+      useOnDeviceReasoning: () => true,
+      deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+        LlmDeviceSignals(totalRamMb: 3072, availableStorageMb: 4096),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'Why is the sky blue on Earth?',
+    );
+    await tester.ensureVisible(find.byKey(const Key('agent_chat_send_button')));
+    await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      bridge.lastReasonRequest?.maxReasoningLevel,
+      MindReasoningLevel.light,
+    );
+    expect(bridge.lastReasonRequest?.availableMemoryMb, 3072);
+  });
 }
 
 Future<void> _pumpChatScreen(
@@ -94,6 +155,7 @@ Future<void> _pumpChatScreen(
   required List<AgentChatMessage> initialMessages,
   MindGenerationBridge? generationBridge,
   bool Function()? useOnDeviceReasoning,
+  LlmDeviceSignalsProbe? deviceSignalsProbe,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
@@ -127,6 +189,7 @@ Future<void> _pumpChatScreen(
           initialMessages: initialMessages,
           generationBridge: generationBridge,
           useOnDeviceReasoning: useOnDeviceReasoning,
+          deviceSignalsProbe: deviceSignalsProbe,
         ),
       ),
     ),
