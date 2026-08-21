@@ -90,7 +90,7 @@ User request:
 $prompt
 
 Previous tool results:
-$previousResults
+${ContextCompiler.wrapAsData(previousResults)}
 
 Return either:
 {"type":"tool_call","tool":"tool_name","arguments":{}}

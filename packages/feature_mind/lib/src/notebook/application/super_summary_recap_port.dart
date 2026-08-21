@@ -1,3 +1,5 @@
+import 'package:core_ai/core_ai.dart';
+
 import '../../bridges/mind_generation_bridge.dart';
 import '../domain/notebook_note.dart';
 import '../domain/super_summary_prompt.dart';
@@ -50,7 +52,8 @@ SuperSummaryRecapPort superSummaryRecapPort({
   complete,
   int maxOutputTokens = 1024,
 }) {
-  return SuperSummaryRecapPort((notes) {
+  return SuperSummaryRecapPort((notes) async {
+    if (!AiroPromptRegistry.notebookSuperSummary.isRegistered) return null;
     return drainGeneratedRecap(
       engineReady: isEngineReady(),
       events: () => complete(
