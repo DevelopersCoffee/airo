@@ -327,7 +327,7 @@ fn could_be_close(lower: &str) -> bool {
 /// tracks `answer` / `reasoning_summary` / `confidence`; the array is not
 /// streamed to the UI.
 pub fn extract_tool_calls(raw: &str) -> Vec<ToolCall> {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+    let Some(value) = parse_envelope_json(raw) else {
         return Vec::new();
     };
     let Some(items) = value.get("tool_calls").and_then(|v| v.as_array()) else {
@@ -351,6 +351,18 @@ pub fn extract_tool_calls(raw: &str) -> Vec<ToolCall> {
             })
         })
         .collect()
+}
+
+/// Accept a full object or the body after a teacher-forced `{`.
+fn parse_envelope_json(raw: &str) -> Option<serde_json::Value> {
+    if let Ok(value) = serde_json::from_str(raw) {
+        return Some(value);
+    }
+    let trimmed = raw.trim_start();
+    if trimmed.starts_with('{') {
+        return None;
+    }
+    serde_json::from_str(&format!("{{{trimmed}")).ok()
 }
 
 pub fn reject_unknown_trace_keys(raw: &str) -> Result<(), ReasoningError> {
@@ -426,6 +438,29 @@ mod tests {
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "read_calendar_events");
         assert!(calls[0].arguments_json.contains("tomorrow"));
+    }
+
+    #[test]
+    fn tool_calls_are_extracted_when_the_open_brace_was_teacher_forced() {
+        let raw = r#""answer":"","reasoning_summary":"Need calendar.","confidence":0.80,"tool_calls":[{"name":"read_calendar_events","arguments_json":"{}"}]}"#;
+        let calls = extract_tool_calls(raw);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "read_calendar_events");
+    }
+
+    #[test]
+    fn fragmented_tokens_rebuild_an_answer_without_the_open_brace() {
+        let mut p = ResultStreamParser::new();
+        let mut answer = String::new();
+        for piece in [
+            r#""answer":"You have "#,
+            r#"three meetings","reasoning_summary":"Checked calendar.","confidence":0.96}"#,
+        ] {
+            answer.push_str(&p.push(piece).unwrap());
+        }
+        let result = p.finish(ReasoningLevel::Light).unwrap();
+        assert_eq!(result.answer, "You have three meetings");
+        assert_eq!(answer, "You have three meetings");
     }
 
     #[test]

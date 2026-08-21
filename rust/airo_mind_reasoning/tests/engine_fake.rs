@@ -71,12 +71,21 @@ impl GenerationEngine for ScriptedEngine {
                 EngineError::Backend(m) => EngineError::Backend(m.clone()),
             });
         }
+        let grammar = request
+            .grammar
+            .as_deref()
+            .expect("reasoning must attach the result grammar");
         assert!(
-            request
-                .grammar
-                .as_deref()
-                .is_some_and(|g| g.contains("root") && g.contains("tool_calls")),
+            grammar.contains("root") && grammar.contains("tool_calls"),
             "reasoning must attach the result grammar"
+        );
+        assert!(
+            !grammar.contains(r#"root ::= "{""#),
+            "opening brace is teacher-forced; grammar must start at \"answer\""
+        );
+        assert!(
+            request.prompt.ends_with('{'),
+            "prompt must teacher-force '{{' so greedy GGUF does not EOG before JSON"
         );
         let body = {
             let mut queue = self.bodies.lock().unwrap();
