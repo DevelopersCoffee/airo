@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../notebook/application/notebook_repository.dart';
 import '../../notebook/application/notebook_share_port.dart';
+import '../../notebook/application/super_summary_recap_port.dart';
 import '../../notebook/domain/notebook_document.dart';
 import '../../notebook/domain/notebook_export.dart';
 import '../../notebook/domain/notebook_l10n.dart';
@@ -18,6 +19,7 @@ class NotesScreen extends StatefulWidget {
     super.key,
     required this.capability,
     this.sharePort,
+    this.recapPort,
     this.onRecordLive,
     this.onImportAudio,
     this.onImportPodcast,
@@ -27,6 +29,7 @@ class NotesScreen extends StatefulWidget {
 
   final NotesCapability capability;
   final NotebookSharePort? sharePort;
+  final SuperSummaryRecapPort? recapPort;
   final Future<void> Function()? onRecordLive;
   final Future<void> Function()? onImportAudio;
   final Future<void> Function()? onImportPodcast;
@@ -46,6 +49,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   List<NotebookNote> _notes = const [];
   bool _loading = true;
+  bool _combining = false;
   bool _selecting = false;
   final Set<String> _selected = {};
   String? _tagFilter;
@@ -279,15 +283,30 @@ class _NotesScreenState extends State<NotesScreen> {
       ).showSnackBar(SnackBar(content: Text(_l10n.needsTwoNotes)));
       return;
     }
-    await _repository.superSummary(
-      notes: selected,
-      recordedAtMs: DateTime.now().millisecondsSinceEpoch,
-    );
+    String? generatedRecap;
+    setState(() => _combining = true);
+    try {
+      try {
+        generatedRecap = await widget.recapPort?.generate(selected);
+      } on Object {
+        generatedRecap = null;
+      }
+      if (!mounted) return;
+      await _repository.superSummary(
+        notes: selected,
+        recordedAtMs: DateTime.now().millisecondsSinceEpoch,
+        generatedRecap: generatedRecap,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _combining = false;
+          _selecting = false;
+          _selected.clear();
+        });
+      }
+    }
     if (!mounted) return;
-    setState(() {
-      _selecting = false;
-      _selected.clear();
-    });
     await _reload();
   }
 
@@ -345,13 +364,24 @@ class _NotesScreenState extends State<NotesScreen> {
               IconButton(
                 key: const Key('notes_screen_combine_button'),
                 tooltip: l10n.combineSelected,
-                onPressed: _combineSelected,
+                onPressed: _combining ? null : _combineSelected,
                 icon: const Icon(Icons.merge_type),
               ),
           ],
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
+        body: _loading || _combining
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    if (_combining) ...[
+                      const SizedBox(height: 16),
+                      Text(l10n.generatingSuperSummary),
+                    ],
+                  ],
+                ),
+              )
             : Column(
                 children: [
                   Padding(

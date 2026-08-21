@@ -10,6 +10,7 @@ import '../application/audio_import_service.dart';
 import '../application/notebook_locale_preference.dart';
 import '../application/notebook_share_port.dart';
 import '../application/notebook_store.dart';
+import '../application/super_summary_recap_port.dart';
 import '../../capture/application/meeting_capture_providers.dart';
 import '../../capture/domain/meeting_processing_job.dart';
 import '../../notes/notes_capability.dart';
@@ -23,11 +24,13 @@ class NotebookHostScreen extends ConsumerStatefulWidget {
     this.onRecordLive,
     this.importer,
     this.sharePort,
+    this.recapPort,
   });
 
   final Future<void> Function()? onRecordLive;
   final AudioImportService? importer;
   final NotebookSharePort? sharePort;
+  final SuperSummaryRecapPort? recapPort;
 
   @override
   ConsumerState<NotebookHostScreen> createState() => _NotebookHostScreenState();
@@ -169,6 +172,7 @@ class _NotebookHostScreenState extends ConsumerState<NotebookHostScreen> {
     return NotesScreen(
       capability: _capability!,
       sharePort: _sharePort,
+      recapPort: widget.recapPort,
       localeCode: locale,
       onBack: () => Navigator.of(context).maybePop(),
       onRecordLive: widget.onRecordLive,

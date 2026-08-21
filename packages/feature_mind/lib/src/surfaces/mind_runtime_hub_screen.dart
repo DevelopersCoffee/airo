@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../assistant/consent/mind_runtime_provider.dart';
+import '../notebook/application/super_summary_recap_port.dart';
 import '../notebook/presentation/notebook_host_screen.dart';
 import '../runtime_console/runtime_console_controller.dart';
 import '../runtime_console/runtime_console_table.dart';
@@ -66,13 +67,14 @@ class MindRuntimeDevicesScreen extends ConsumerWidget {
 
 /// Notes host used by the runtime hub and the scribe `/notes` route.
 class MindRuntimeNotesScreen extends StatelessWidget {
-  const MindRuntimeNotesScreen({super.key, this.onRecordLive});
+  const MindRuntimeNotesScreen({super.key, this.onRecordLive, this.recapPort});
 
   final Future<void> Function()? onRecordLive;
+  final SuperSummaryRecapPort? recapPort;
 
   @override
   Widget build(BuildContext context) {
-    return NotebookHostScreen(onRecordLive: onRecordLive);
+    return NotebookHostScreen(onRecordLive: onRecordLive, recapPort: recapPort);
   }
 }
 

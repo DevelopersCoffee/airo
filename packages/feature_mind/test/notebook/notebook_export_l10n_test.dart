@@ -46,6 +46,10 @@ void main() {
     expect(NotebookL10n.of('hi').notesTitle, 'नोट्स');
     expect(NotebookL10n.of('es').share, 'Compartir');
     expect(NotebookL10n.of('ar').superSummary, isNotEmpty);
+    expect(
+      NotebookL10n.of('en').generatingSuperSummary,
+      contains('Super Summary'),
+    );
     expect(NotebookL10n.of('xx-ZZ').locale, 'en');
     expect(NotebookL10n.of('pt-BR').locale, 'pt');
   });

@@ -25,6 +25,7 @@ import 'intelligence/intelligence_home_screen.dart';
 import 'meeting_archive/meeting_archive_port.dart';
 import 'mind_home_screen.dart';
 import 'mind_service.dart';
+import 'notebook/application/super_summary_recap_port.dart';
 import 'routing/assistant_route_names.dart';
 import 'surfaces/mind_runtime_hub_screen.dart';
 import 'wellbeing/presentation/screens/wellbeing_screen.dart';
@@ -184,6 +185,15 @@ class MindModule extends AppModule {
                   shell == ShellId.mind ? '/record' : '/scribe/record',
                 );
               },
+              recapPort: superSummaryRecapPort(
+                isEngineReady: () => service.isGenerationReady,
+                complete:
+                    ({required String prompt, required int maxOutputTokens}) =>
+                        service.complete(
+                          prompt: prompt,
+                          maxOutputTokens: maxOutputTokens,
+                        ),
+              ),
             ),
           ),
         ],

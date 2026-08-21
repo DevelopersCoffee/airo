@@ -35,9 +35,10 @@ podcasts on a phone or desktop and wants the notes to stay on-device.
    enqueue the same processing job as a live recording.
 4. **AI summary and key points** — derived from minutes, action items, and
    transcript; stored on the note.
-5. **Super Summary** — select several notes and fold them into one recap
-   note, with an optional generation hook and a deterministic extractive
-   fallback when no model is available.
+5. **Super Summary** — select several notes; the UI asks the on-device
+   generation engine for a recap (`MindService.complete` / prompt-as-is).
+   If no model is loaded, generation is cancelled, or the call fails, a
+   deterministic extractive fold is stored instead.
 6. **Labels, tags, and search** — first-class on the notebook document;
    library filter is keyword + tag + label + language.
 7. **Export, copy, share** — markdown of one note or a Super Summary, via
@@ -68,7 +69,7 @@ NotebookIngest  →  NotesCapability.create/edit
 NotebookDocument (transcript, summary, key points, tags, labels, language)
         │
         ├─ search / tag filter
-        ├─ Super Summary (N notes → 1 recap note)
+        ├─ Super Summary (on-device LLM recap, extractive fallback)
         └─ export / copy / share markdown
 ```
 
