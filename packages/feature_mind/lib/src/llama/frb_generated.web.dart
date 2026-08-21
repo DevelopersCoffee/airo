@@ -8,6 +8,7 @@
 
 import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
+import 'api/reasoning.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -34,13 +35,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   dco_decode_StreamSink_meeting_intelligence_event_Sse(dynamic raw);
 
   @protected
+  RustStreamSink<ReasoningEvent> dco_decode_StreamSink_reasoning_event_Sse(
+    dynamic raw,
+  );
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  double dco_decode_box_autoadd_f_32(dynamic raw);
+
+  @protected
   GenerationConfig dco_decode_box_autoadd_generation_config(dynamic raw);
+
+  @protected
+  ReasoningLevel dco_decode_box_autoadd_reasoning_level(dynamic raw);
+
+  @protected
+  ReasoningRequest dco_decode_box_autoadd_reasoning_request(dynamic raw);
+
+  @protected
+  double dco_decode_f_32(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
@@ -82,6 +100,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ReasoningContextItem> dco_decode_list_reasoning_context_item(
+    dynamic raw,
+  );
+
+  @protected
   MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw);
 
   @protected
@@ -106,6 +129,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
+
+  @protected
+  ReasoningLevel? dco_decode_opt_box_autoadd_reasoning_level(dynamic raw);
+
+  @protected
+  ReasoningContextItem dco_decode_reasoning_context_item(dynamic raw);
+
+  @protected
+  ReasoningEvent dco_decode_reasoning_event(dynamic raw);
+
+  @protected
+  ReasoningLevel dco_decode_reasoning_level(dynamic raw);
+
+  @protected
+  ReasoningRequest dco_decode_reasoning_request(dynamic raw);
+
+  @protected
+  ReasoningStage dco_decode_reasoning_stage(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -134,15 +178,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<ReasoningEvent> sse_decode_StreamSink_reasoning_event_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
+
+  @protected
   GenerationConfig sse_decode_box_autoadd_generation_config(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ReasoningLevel sse_decode_box_autoadd_reasoning_level(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReasoningRequest sse_decode_box_autoadd_reasoning_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
@@ -186,6 +251,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ReasoningContextItem> sse_decode_list_reasoning_context_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MeetingActionItemRecord sse_decode_meeting_action_item_record(
     SseDeserializer deserializer,
   );
@@ -224,6 +294,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
+
+  @protected
+  ReasoningLevel? sse_decode_opt_box_autoadd_reasoning_level(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReasoningContextItem sse_decode_reasoning_context_item(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReasoningEvent sse_decode_reasoning_event(SseDeserializer deserializer);
+
+  @protected
+  ReasoningLevel sse_decode_reasoning_level(SseDeserializer deserializer);
+
+  @protected
+  ReasoningRequest sse_decode_reasoning_request(SseDeserializer deserializer);
+
+  @protected
+  ReasoningStage sse_decode_reasoning_stage(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
@@ -254,16 +349,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_StreamSink_reasoning_event_Sse(
+    RustStreamSink<ReasoningEvent> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_generation_config(
     GenerationConfig self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_box_autoadd_reasoning_level(
+    ReasoningLevel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_reasoning_request(
+    ReasoningRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
@@ -323,6 +442,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_reasoning_context_item(
+    List<ReasoningContextItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_meeting_action_item_record(
     MeetingActionItemRecord self,
     SseSerializer serializer,
@@ -366,6 +491,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_reasoning_level(
+    ReasoningLevel? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_context_item(
+    ReasoningContextItem self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_event(
+    ReasoningEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_level(
+    ReasoningLevel self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_request(
+    ReasoningRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_stage(
+    ReasoningStage self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);

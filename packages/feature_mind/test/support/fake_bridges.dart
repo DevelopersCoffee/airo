@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
+import 'package:feature_mind/src/reasoning/reasoning_models.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 
 /// Scripts a [TranscriptEvent] sequence for [MindSpeechBridge.transcribe] and
@@ -109,6 +110,8 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   List<MeetingIntelligenceEvent> meetingIntelligenceEvents = const [];
   List<GenerationEvent> generationEvents = const [];
   List<GenerationEvent>? completeEvents;
+  List<MindReasoningEvent> reasoningEvents = const [];
+  MindReasoningRequest? lastReasonRequest;
   String modelIdValue = 'test-model@1';
   GenerationStats statsValue = const GenerationStats(
     prefillMs: 0,
@@ -167,6 +170,12 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
     lastCompletePrompt = prompt;
     lastCompleteMaxOutputTokens = maxOutputTokens;
     return Stream.fromIterable(completeEvents ?? generationEvents);
+  }
+
+  @override
+  Stream<MindReasoningEvent> reason(MindReasoningRequest request) {
+    lastReasonRequest = request;
+    return Stream.fromIterable(reasoningEvents);
   }
 
   @override
