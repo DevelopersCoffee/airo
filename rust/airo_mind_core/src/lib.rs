@@ -129,6 +129,11 @@ pub mod verb;
 /// crate that decodes audio.
 pub mod wav;
 
+/// Deep Research IR and job state. Control plane only: no HTTP, no
+/// provider SDKs, no report text. Search engines implement
+/// [`research::SearchEngine`] in a later I/O crate.
+pub mod research;
+
 pub use bench::{
     aggregate, aggregate_speech, audio_duration_ms, median_f64, median_u64, run_generation_bench,
     run_speech_bench, run_speech_engine_bench, sample_speech_engine, AccelBackend, BenchError,
@@ -170,6 +175,16 @@ pub use projection::{
     encode_relation, encode_set_property, rebuild_from_scratch, ContentLedgerProjection,
     ContextHypergraphProjection, ContextRecord, EntityGraphProjection, EntityRecord,
     SurvivalReport,
+};
+pub use research::{
+    canonicalize_url, classify_url, dedupe_hits, excerpt_in_source, extract_html, interpret, queries_for, strategy_for, Claim, ClaimId,
+    ClaimStatus, Evidence, EvidenceGraph, EvidenceId, EvidenceSufficiencyPolicy, ExtractedDocument,
+    InterpretedGoal, PlanNodeKind, QuerySet, ResearchBudget, ResearchCommand, ResearchCompleteness,
+    ResearchIntent, ResearchJob, ResearchJobState, ResearchMode, ResearchPlan, ResearchPlanNode,
+    ResearchProgress, ResearchRequest, ResearchStateError, ResearchStrategy, SearchEngine,
+    SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse, Source, SourceClass,
+    SourceClassification, SourceContent, SourceId, SourceKind, SourceType, StopDecision,
+    StoppingPolicy, TrustLevel,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,

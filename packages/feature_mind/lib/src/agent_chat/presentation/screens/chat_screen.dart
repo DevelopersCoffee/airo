@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_calendar/platform_calendar.dart';
 import '../../../host/assistant_host_adapter.dart';
 import '../../../assistant/assistant_surface_policy.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
+import '../../../agent_chat/data/connectors/chat_entity_graph_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
@@ -18,7 +20,14 @@ import '../../../agent_chat/data/built_in_skills/wellbeing.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
 import '../../../agent_chat/data/services/assistant_grounded_reply.dart';
 import '../../../agent_chat/data/services/diet_plan_plugin_prompt.dart';
+import '../../../agent_chat/data/repositories/chat_entity_graph_session.dart';
+import '../../../agent_chat/data/repositories/chat_workspace_store.dart';
+import '../../../agent_chat/data/repositories/chat_workspace_store_factory.dart';
+import '../../../agent_chat/data/repositories/pinned_persona_store.dart';
+import '../../../agent_chat/data/repositories/remote_agent_skill_store.dart';
 import '../../../agent_chat/data/services/chat_history_store.dart';
+import '../../../agent_chat/data/services/chat_turn_trace_store.dart';
+import '../../../agent_chat/domain/services/chat_turn_inspector.dart';
 import '../../../widgets/mind_desktop_chrome.dart';
 import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
@@ -26,18 +35,31 @@ import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
+import '../../../agent_chat/domain/models/agent_plugin_catalog.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
+import '../../../agent_chat/domain/models/chat_entity_graph.dart';
+import '../../../agent_chat/domain/models/chat_transcript_turn.dart';
 import '../../../agent_chat/domain/models/chat_response_metadata.dart';
 import '../../../agent_chat/domain/models/grounded_citation.dart';
 import '../../../agent_chat/domain/services/agent_connector.dart';
+import '../../../agent_chat/domain/services/chat_entity_graph_projector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
+import '../../../agent_chat/domain/models/research_event.dart';
+import '../../../agent_chat/domain/models/research_request.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
+import '../../../agent_chat/domain/services/deep_research_engine.dart';
+import '../../../agent_chat/domain/services/remote_agent_skill_installer.dart';
 import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/persona_session.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
+import '../../../agent_chat/presentation/widgets/chat_entity_graph_panel.dart';
+import '../../../agent_chat/presentation/widgets/chat_markdown.dart';
+import '../../../agent_chat/presentation/widgets/deep_research_progress_panel.dart';
+import '../../../agent_chat/presentation/widgets/mind_directory_chats_pane.dart';
+import '../../../surfaces/memory_surface.dart';
 import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
 import '../../../agent_chat/presentation/widgets/grounded_answer_block.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
@@ -88,6 +110,9 @@ class AgentChatMessage {
 
   final bool pendingCalendarPermission;
 
+  /// Local inspector run for this assistant bubble, if one was recorded.
+  final ChatTurnTrace? turnTrace;
+
   AgentChatMessage({
     required this.text,
     required this.isUser,
@@ -98,17 +123,45 @@ class AgentChatMessage {
     this.groundingState = GroundingState.notApplicable,
     this.safetyClass,
     this.pendingCalendarPermission = false,
+    this.turnTrace,
   }) : timestamp = timestamp ?? DateTime.now();
 
-  ChatHistoryEntry toHistoryEntry() =>
-      ChatHistoryEntry(text: text, isUser: isUser, timestamp: timestamp);
+  ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
+    text: text,
+    isUser: isUser,
+    timestamp: timestamp,
+    runId: turnTrace?.runId,
+  );
 
-  static AgentChatMessage fromHistoryEntry(ChatHistoryEntry entry) =>
-      AgentChatMessage(
-        text: entry.text,
-        isUser: entry.isUser,
-        timestamp: entry.timestamp,
-      );
+  static AgentChatMessage fromHistoryEntry(
+    ChatHistoryEntry entry, {
+    ChatTurnTrace? turnTrace,
+  }) => AgentChatMessage(
+    text: entry.text,
+    isUser: entry.isUser,
+    timestamp: entry.timestamp,
+    turnTrace: turnTrace,
+  );
+
+  AgentChatMessage copyWith({
+    String? text,
+    List<AgentActionTrace>? traces,
+    ChatResponseMetadata? metadata,
+    ChatTurnTrace? turnTrace,
+  }) {
+    return AgentChatMessage(
+      text: text ?? this.text,
+      isUser: isUser,
+      timestamp: timestamp,
+      traces: traces ?? this.traces,
+      metadata: metadata ?? this.metadata,
+      citations: citations,
+      groundingState: groundingState,
+      safetyClass: safetyClass,
+      pendingCalendarPermission: pendingCalendarPermission,
+      turnTrace: turnTrace ?? this.turnTrace,
+    );
+  }
 }
 
 String formatChatTranscript(Iterable<AgentChatMessage> messages) {
@@ -139,6 +192,10 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.initialPinnedPersonaId,
     this.operationLogPort,
     this.calendarService,
+    this.pluginCatalog,
+    this.pluginInstaller,
+    this.workspace,
+    this.deepResearchEngine,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -154,6 +211,10 @@ class ChatScreen extends ConsumerStatefulWidget {
   /// swap in `RustMindRuntime().log` once M19 lands the real runtime.
   final OperationLogPort? operationLogPort;
   final CalendarService? calendarService;
+  final AgentPluginCatalog? pluginCatalog;
+  final RemoteAgentSkillInstaller? pluginInstaller;
+  final ChatWorkspaceStore? workspace;
+  final DeepResearchEngine? deepResearchEngine;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -164,8 +225,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _messageScrollController = ScrollController();
   final List<AgentChatMessage> _messages = [];
   final ChatHistoryStore _chatHistoryStore = ChatHistoryStore();
+  late ChatWorkspaceStore _workspace;
+  String? _conversationId;
+  List<MindChatRecord> _chats = const [];
+  static const _desktopBreakpoint = 1024.0;
+  static const _activeChatPref = 'airo_mind.active_chat_id';
+  final ChatTurnTraceStore _chatTurnTraceStore = ChatTurnTraceStore();
   Timer? _historyPersistTimer;
   bool _historyRestored = false;
+  ChatTurnTraceBuilder? _activeTurnBuilder;
+  bool _turnFinalized = false;
+  int _runSeq = 0;
   final ToolRegistry _toolRegistry = ToolRegistry();
   AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   late final AgentConnectorRegistry _connectorRegistry;
@@ -174,15 +244,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
   late AgentSkillOrchestrator _skillOrchestrator;
+  late final DeepResearchEngine _deepResearchEngine;
   late final OperationLogPort _operationLogPort;
   final AssistantChatContextBuilder _chatContextBuilder =
       const AssistantChatContextBuilder(maxMessageChars: 1200);
   Map<String, dynamic>? _pendingCalendarEvent;
+  Map<String, dynamic>? _pendingLifeTrackWrite;
+  ChatEntityGraph _entityGraph = ChatEntityGraph.empty;
+  static const _journeyProjector = ChatEntityGraphProjector();
   String? _pinnedPersonaId;
+  final PinnedPersonaStore _pinnedPersonaStore = PinnedPersonaStore();
   String? _pendingCalendarPermissionPrompt;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
   bool _isCapturingVoice = false;
+  bool _deepResearchEnabled = false;
+  ResearchSession? _researchSession;
+  int _researchEpoch = 0;
 
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
@@ -216,6 +294,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
           isGenerationActive: () => _isGenerating,
         );
+    _deepResearchEngine =
+        widget.deepResearchEngine ?? LocalDeepResearchEngine();
     _skillOrchestrator =
         widget.skillOrchestrator ?? _buildSkillOrchestrator(_skillRegistry);
     if (widget.skillOrchestrator == null) {
@@ -239,9 +319,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     }
     unawaited(initializeLifeTrackStatusConnector());
+    unawaited(_loadEntityGraph());
+    _workspace = widget.workspace ?? MemoryChatWorkspaceStore();
+    if (widget.enableAiInitialization && widget.workspace == null) {
+      unawaited(_openDiskWorkspace());
+    }
     MindChatMenuActions.attach(
       this,
-      newChat: () => unawaited(_clearConversation(confirm: false)),
+      newChat: () => unawaited(_startNewChat()),
       exportChat: () => unawaited(_copyTranscript()),
       clearChat: () => unawaited(_confirmClearConversation()),
     );
@@ -263,6 +348,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (lifeTrackStatusConnector != null) {
       connectors.add(lifeTrackStatusConnector);
     }
+    final lifeTrackRecordConnector = createLifeTrackRecordConnector();
+    if (lifeTrackRecordConnector != null) {
+      connectors.add(lifeTrackRecordConnector);
+    }
+    connectors.add(ChatEntityGraphConnector());
     return AgentConnectorRegistry(connectors: connectors);
   }
 
@@ -283,9 +373,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _loadPersistedSkillRegistry() async {
     final registry = await AgentSkillRegistry.loadPersisted();
     if (!mounted) return;
+    final storedPin = widget.initialPinnedPersonaId != null
+        ? widget.initialPinnedPersonaId
+        : await _pinnedPersonaStore.load();
+    final pinned = storedPin == null ? null : registry.getById(storedPin);
+    final resolved =
+        pinned != null &&
+            pinned.isPersona &&
+            (widget.initialPinnedPersonaId != null || pinned.isEnabled)
+        ? storedPin
+        : null;
+    if (widget.initialPinnedPersonaId == null &&
+        storedPin != null &&
+        resolved == null) {
+      await _pinnedPersonaStore.save(null);
+    }
+    if (!mounted) return;
     setState(() {
       _skillRegistry = registry;
       _skillOrchestrator = _buildSkillOrchestrator(registry);
+      if (widget.initialPinnedPersonaId == null) {
+        _pinnedPersonaId = resolved;
+      }
     });
   }
 
@@ -396,6 +505,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _localRuntimePreloader.abortPreload();
     unawaited(closeLifeTrackStatusConnector());
     _messageController.dispose();
+    if (_isGenerating && !_turnFinalized && _activeTurnBuilder != null) {
+      final trace = _finalizeTurn(
+        (builder) => builder.abort(reason: ChatTurnStopReason.processKilled),
+      );
+      if (trace != null && _messages.isNotEmpty && !_messages.last.isUser) {
+        _messages[_messages.length - 1] = _messages.last.copyWith(
+          turnTrace: trace,
+        );
+      }
+    }
     _historyPersistTimer?.cancel();
     if (_historyRestored) {
       unawaited(
@@ -410,12 +529,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _restoreChatHistory() async {
     final history = await _chatHistoryStore.load();
     if (!mounted) return;
+    final restored = <AgentChatMessage>[];
+    for (final entry in history) {
+      ChatTurnTrace? trace;
+      final runId = entry.runId;
+      if (runId != null && kMindChatTurnInspector) {
+        try {
+          trace = await _chatTurnTraceStore.byRunId(runId);
+        } catch (error) {
+          debugPrint('ChatTurnTraceStore load failed: $error');
+        }
+      }
+      restored.add(AgentChatMessage.fromHistoryEntry(entry, turnTrace: trace));
+    }
+    if (!mounted) return;
     setState(() {
       _historyRestored = true;
-      if (history.isNotEmpty) {
+      if (restored.isNotEmpty) {
         _messages
           ..clear()
-          ..addAll(history.map(AgentChatMessage.fromHistoryEntry));
+          ..addAll(restored);
       }
     });
   }
@@ -429,8 +562,142 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _messages.map((message) => message.toHistoryEntry()),
         ),
       );
+      unawaited(_persistWorkspace());
     });
   }
+
+  Future<void> _openDiskWorkspace() async {
+    final store = await openChatWorkspaceStore();
+    if (!mounted) return;
+    _workspace = store;
+    await _restoreFromWorkspace();
+  }
+
+  Future<void> _restoreFromWorkspace() async {
+    final chats = await _workspace.listChats();
+    if (!mounted || chats.isEmpty) {
+      if (mounted) setState(() => _chats = chats);
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString(_activeChatPref);
+    if (id == null || !chats.any((chat) => chat.id == id)) {
+      id = chats.first.id;
+    }
+    final turns = await _workspace.loadTranscript(id);
+    if (!mounted) return;
+    setState(() {
+      _conversationId = id;
+      _chats = chats;
+      _historyRestored = true;
+      if (turns.isNotEmpty) {
+        _messages
+          ..clear()
+          ..addAll(turns.map(_messageFromTurn));
+      }
+    });
+  }
+
+  Future<void> _persistWorkspace() async {
+    final turns = _messages
+        .where((message) => message.text.trim().isNotEmpty)
+        .map(_turnFromMessage)
+        .toList(growable: false);
+    if (turns.every((turn) => !turn.isUser) && _conversationId == null) {
+      return;
+    }
+    _conversationId ??= await _workspace.createChat();
+    final id = _conversationId!;
+    await _workspace.replaceTranscript(id, turns);
+    await _workspace.saveDirectory(_entityGraph);
+    await _workspace.saveChatGraph(id, _entityGraph);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeChatPref, id);
+    } on Object {
+      // Tests without a mock still persist the transcript in-memory.
+    }
+    final chats = await _workspace.listChats();
+    _chats = chats;
+  }
+
+  Future<void> _startNewChat() async {
+    await _persistWorkspace();
+    final id = await _workspace.createChat();
+    _conversationId = id;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeChatPref, id);
+    } on Object {
+      // Ignore missing prefs in tests.
+    }
+    setState(() {
+      _messages.clear();
+      _resetResearchUi();
+    });
+    _chats = await _workspace.listChats();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openChat(String id) async {
+    if (id == _conversationId) return;
+    await _persistWorkspace();
+    final turns = await _workspace.loadTranscript(id);
+    _conversationId = id;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeChatPref, id);
+    } on Object {
+      // Ignore missing prefs in tests.
+    }
+    if (!mounted) return;
+    setState(() {
+      _messages
+        ..clear()
+        ..addAll(turns.map(_messageFromTurn));
+      _researchEpoch++;
+      _researchSession = null;
+      _deepResearchEnabled = false;
+    });
+  }
+
+  void _openMemoryGraph() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => MemorySurface(
+          runtime: FixtureMindRuntime(),
+          contextId: 'kneesurgery2026',
+          directory: _entityGraph,
+          chats: _chats,
+          activeChatId: _conversationId,
+          onBack: () => Navigator.of(context).pop(),
+          onOpenChat: (id) {
+            Navigator.of(context).pop();
+            unawaited(_openChat(id));
+          },
+          onNewChat: () {
+            Navigator.of(context).pop();
+            unawaited(_startNewChat());
+          },
+        ),
+      ),
+    );
+  }
+
+  ChatTranscriptTurn _turnFromMessage(AgentChatMessage message) =>
+      ChatTranscriptTurn(
+        role: message.isUser ? 'user' : 'assistant',
+        text: message.text,
+        createdAt: message.timestamp,
+        runId: message.turnTrace?.runId,
+      );
+
+  AgentChatMessage _messageFromTurn(ChatTranscriptTurn turn) =>
+      AgentChatMessage(
+        text: turn.text,
+        isUser: turn.isUser,
+        timestamp: turn.createdAt,
+      );
 
   @override
   void setState(VoidCallback fn) {
@@ -528,105 +795,152 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final session = _personaSession;
     return AiroResponsiveScaffold(
       backgroundColor: Colors.transparent,
+      // Chat owns its chrome; extra scaffold padding on a Retina window
+      // was clipping the linked-memory strip by a couple of pixels.
+      padding: EdgeInsets.zero,
+      useResponsiveCenter: false,
       body: ref
           .read(assistantHostAdapterProvider)
           .wrapWithDictionarySelection(
-            child: Column(
-              children: [
-                _buildSelectedModelBar(selectedAssistantModelId),
-                if (session.isPinned) _buildPinnedAssistantBar(session),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= _desktopBreakpoint;
+                final transcript = Column(
+                  children: [
+                    _buildSelectedModelBar(selectedAssistantModelId),
+                    if (session.isPinned) _buildPinnedAssistantBar(session),
+                    if (!wide) ChatEntityGraphPanel(graph: _entityGraph),
+                    Expanded(
+                      child: ListView.builder(
+                        key: const Key('agent_chat_message_list'),
+                        controller: _messageScrollController,
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                        itemCount:
+                            _messages.length +
+                            (_shouldShowPromptSuggestions ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length) {
+                            return _buildSamplePrompts();
+                          }
 
-                // Messages list
-                Expanded(
-                  child: ListView.builder(
-                    key: const Key('agent_chat_message_list'),
-                    controller: _messageScrollController,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    itemCount:
-                        _messages.length +
-                        (_shouldShowPromptSuggestions ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildSamplePrompts();
-                      }
-
-                      final message = _messages[index];
-                      return _buildMessage(message, index);
-                    },
-                  ),
-                ),
-
-                // Input area
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface.withValues(alpha: 0.34),
-                    border: Border(
-                      top: BorderSide(color: colorScheme.outlineVariant),
+                          final message = _messages[index];
+                          return _buildMessage(message, index);
+                        },
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      OutlinedButton.icon(
-                        key: const Key('agent_chat_skills_button'),
-                        focusNode: _skillsButtonFocusNode,
-                        onPressed: _showManageSkills,
-                        icon: const Icon(Icons.auto_fix_high, size: 18),
-                        label: const Text('Skills'),
-                      ),
-                      const SizedBox(width: 8),
-                      Semantics(
-                        button: true,
-                        label: _isCapturingVoice
-                            ? 'Stop voice input'
-                            : 'Speak message',
-                        child: IconButton(
-                          key: const Key('agent_chat_voice_button'),
-                          tooltip: _isCapturingVoice
-                              ? 'Stop voice input'
-                              : 'Speak message',
-                          onPressed: _captureVoice,
-                          icon: Icon(
-                            _isCapturingVoice ? Icons.stop : Icons.mic_none,
-                          ),
+                    if (_researchSession != null)
+                      DeepResearchProgressPanel(session: _researchSession!),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.34),
+                        border: Border(
+                          top: BorderSide(color: colorScheme.outlineVariant),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          key: const Key('agent_chat_input'),
-                          focusNode: _messageInputFocusNode,
-                          controller: _messageController,
-                          autofocus: true,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(0),
+                      child: Row(
+                        children: [
+                          OutlinedButton.icon(
+                            key: const Key('agent_chat_skills_button'),
+                            focusNode: _skillsButtonFocusNode,
+                            onPressed: _showManageSkills,
+                            icon: const Icon(Icons.auto_fix_high, size: 18),
+                            label: const Text('Skills'),
+                          ),
+                          IconButton(
+                            key: const Key('agent_chat_deep_research_button'),
+                            tooltip: _deepResearchEnabled
+                                ? 'Deep Research on'
+                                : 'Deep Research',
+                            isSelected: _deepResearchEnabled,
+                            selectedIcon: const Icon(
+                              Icons.travel_explore,
+                              color: MindPalette.local,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                            onPressed: _isGenerating
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _deepResearchEnabled =
+                                          !_deepResearchEnabled;
+                                    });
+                                  },
+                            icon: const Icon(Icons.travel_explore_outlined),
+                          ),
+                          Semantics(
+                            button: true,
+                            label: _isCapturingVoice
+                                ? 'Stop voice input'
+                                : 'Speak message',
+                            child: IconButton(
+                              key: const Key('agent_chat_voice_button'),
+                              tooltip: _isCapturingVoice
+                                  ? 'Stop voice input'
+                                  : 'Speak message',
+                              onPressed: _captureVoice,
+                              icon: Icon(
+                                _isCapturingVoice ? Icons.stop : Icons.mic_none,
+                              ),
                             ),
                           ),
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) {
-                            _sendMessage();
-                            _restoreComposerFocus();
-                          },
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              key: const Key('agent_chat_input'),
+                              focusNode: _messageInputFocusNode,
+                              controller: _messageController,
+                              autofocus: true,
+                              decoration: InputDecoration(
+                                hintText: _deepResearchEnabled
+                                    ? 'Ask a research question...'
+                                    : 'Type a message...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(0),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              maxLines: null,
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) {
+                                _sendMessage();
+                                _restoreComposerFocus();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            key: const Key('agent_chat_send_button'),
+                            focusNode: _sendButtonFocusNode,
+                            onPressed: canSend ? _sendMessage : null,
+                            icon: const Icon(Icons.send),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        key: const Key('agent_chat_send_button'),
-                        focusNode: _sendButtonFocusNode,
-                        onPressed: canSend ? _sendMessage : null,
-                        icon: const Icon(Icons.send),
+                    ),
+                  ],
+                );
+                if (!wide) return transcript;
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: 260,
+                      child: MindDirectoryChatsPane(
+                        directory: _entityGraph,
+                        chats: _chats,
+                        activeChatId: _conversationId,
+                        onOpenChat: (id) => unawaited(_openChat(id)),
+                        onNewChat: () => unawaited(_startNewChat()),
+                        onOpenMemory: _openMemoryGraph,
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: transcript),
+                  ],
+                );
+              },
             ),
           ),
     );
@@ -1031,7 +1345,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
-            if (!message.isUser && message.metadata != null)
+            if (!message.isUser &&
+                (message.metadata != null || message.turnTrace != null))
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Align(
@@ -1049,7 +1364,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                     onPressed: () => _showMetadataSheet(message),
                     icon: const Icon(Icons.query_stats, size: 16),
-                    label: Text(_metadataSummary(message.metadata!)),
+                    label: Text(
+                      chatTurnInspectorSummary(
+                        turnTrace: message.turnTrace,
+                        metadata: message.metadata,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1157,8 +1477,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       if (shouldClear != true || !mounted) return;
     }
-    setState(_messages.clear);
+    setState(() {
+      _messages.clear();
+      _resetResearchUi();
+    });
     await _chatHistoryStore.clear();
+    try {
+      await _chatTurnTraceStore.clear();
+    } catch (error) {
+      debugPrint('ChatTurnTraceStore clear failed: $error');
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -1201,6 +1529,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(AgentChatMessage(text: message, isUser: true));
     });
     _scrollMessagesToLatest();
+    await _ingestChatEntities(message);
+
+    if (_deepResearchEnabled) {
+      await _runDeepResearch(message);
+      return;
+    }
+
+    final pendingLifeTrackWrite = _pendingLifeTrackWrite;
+    if (pendingLifeTrackWrite != null && _isCalendarConfirmation(message)) {
+      _pendingLifeTrackWrite = null;
+      await _savePendingLifeTrack(pendingLifeTrackWrite);
+      return;
+    }
+    if (pendingLifeTrackWrite != null && _isCalendarRejection(message)) {
+      _pendingLifeTrackWrite = null;
+      setState(() {
+        _messages.add(
+          AgentChatMessage(
+            text: 'Okay, I will not store that claim journey on this device.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
 
     final pendingCalendarEvent = _pendingCalendarEvent;
     if (pendingCalendarEvent != null && _isCalendarConfirmation(message)) {
@@ -1225,6 +1578,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (_pendingCalendarPermissionPrompt != null &&
         _isCalendarPermissionAllow(message)) {
       await _allowCalendarAccess();
+      return;
+    }
+
+    if (await _offerJourneyFromGraph(message)) {
       return;
     }
 
@@ -1263,40 +1620,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
-    final skillStopwatch = Stopwatch()..start();
-    final skillResult = await _skillOrchestrator.run(
-      message,
-      pinnedPersonaId: _pinnedPersonaId,
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: message,
+      history: _chatHistoryMessages(),
     );
-    skillStopwatch.stop();
-    if (skillResult.handled) {
-      _pendingCalendarEvent = skillResult.pendingCalendarEvent;
-      if (skillResult.pendingCalendarPermission) {
-        _pendingCalendarPermissionPrompt = message;
-      }
-      final metadata = _buildSkillMetadata(
-        traces: skillResult.traces,
-        totalDuration: skillStopwatch.elapsed,
+    if (!dietApplies) {
+      final skillStopwatch = Stopwatch()..start();
+      final skillResult = await _skillOrchestrator.run(
+        message,
+        pinnedPersonaId: _pinnedPersonaId,
       );
-      setState(() {
-        _messages.add(
-          AgentChatMessage(
-            text: skillResult.message,
-            isUser: false,
-            traces: skillResult.traces,
-            metadata: metadata,
-            citations: skillResult.citations,
-            groundingState: skillResult.groundingState,
-            safetyClass: skillResult.safetyClass,
-            pendingCalendarPermission: skillResult.pendingCalendarPermission,
-          ),
+      skillStopwatch.stop();
+      if (skillResult.handled) {
+        _pendingCalendarEvent = skillResult.pendingCalendarEvent;
+        _pendingLifeTrackWrite = skillResult.pendingLifeTrackWrite;
+        if (skillResult.pendingCalendarPermission) {
+          _pendingCalendarPermissionPrompt = message;
+        }
+        final metadata = _buildSkillMetadata(
+          traces: skillResult.traces,
+          totalDuration: skillStopwatch.elapsed,
         );
-      });
-      _scrollMessagesToLatest();
-      if (skillResult.shouldNavigate && mounted) {
-        context.go(skillResult.route!, extra: skillResult.parameters);
+        setState(() {
+          _messages.add(
+            AgentChatMessage(
+              text: skillResult.message,
+              isUser: false,
+              traces: skillResult.traces,
+              metadata: metadata,
+              citations: skillResult.citations,
+              groundingState: skillResult.groundingState,
+              safetyClass: skillResult.safetyClass,
+              pendingCalendarPermission: skillResult.pendingCalendarPermission,
+            ),
+          );
+        });
+        _scrollMessagesToLatest();
+        if (skillResult.shouldNavigate && mounted) {
+          context.go(skillResult.route!, extra: skillResult.parameters);
+        }
+        return;
       }
-      return;
     }
 
     final selectedModelId = ref.read(selectedAssistantModelIdProvider);
@@ -1327,14 +1691,87 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         message,
       );
       if (metadata != null) {
-        _attachMetadataToLastAssistantMessage(metadata);
+        final trace = _finalizeTurn((builder) => builder.finish());
+        _attachMetadataToLastAssistantMessage(metadata, turnTrace: trace);
+      } else {
+        final trace = _finalizeTurn(
+          (builder) => builder.abort(reason: ChatTurnStopReason.emptyOutput),
+        );
+        if (trace != null) {
+          _attachTurnTraceToLastAssistantMessage(trace);
+        }
       }
     } catch (e) {
-      // If AI fails, show error message
+      final trace = _finalizeTurn(
+        (builder) => builder.fail(
+          errorCode: 'generate_exception',
+          summary: e.toString(),
+        ),
+      );
       setState(() {
         _messages[_messages.length - 1] = AgentChatMessage(
           text: 'Sorry, I encountered an error: ${e.toString()}',
           isUser: false,
+          turnTrace: trace,
+        );
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      } else {
+        _isGenerating = false;
+        if (!_turnFinalized && _activeTurnBuilder != null) {
+          _finalizeTurn(
+            (builder) =>
+                builder.abort(reason: ChatTurnStopReason.processKilled),
+          );
+        }
+      }
+    }
+  }
+
+  void _resetResearchUi() {
+    _researchEpoch++;
+    _researchSession = null;
+    _deepResearchEnabled = false;
+  }
+
+  Future<void> _runDeepResearch(String question) async {
+    final request = ResearchRequest(question: question);
+    final epoch = ++_researchEpoch;
+    setState(() {
+      _researchSession = ResearchSession(request: request);
+      _isGenerating = true;
+    });
+    try {
+      await for (final event in _deepResearchEngine.run(request)) {
+        if (!mounted || epoch != _researchEpoch) {
+          return;
+        }
+        setState(() {
+          _researchSession = _researchSession!.append(event);
+        });
+      }
+      if (!mounted || epoch != _researchEpoch) {
+        return;
+      }
+      final report = _researchSession?.report ?? '';
+      if (report.isEmpty) {
+        return;
+      }
+      setState(() {
+        _messages.add(AgentChatMessage(text: report, isUser: false));
+      });
+      _scrollMessagesToLatest();
+    } catch (error) {
+      if (!mounted || epoch != _researchEpoch) {
+        return;
+      }
+      setState(() {
+        _messages.add(
+          AgentChatMessage(text: 'Deep Research failed: $error', isUser: false),
         );
       });
     } finally {
@@ -1346,6 +1783,80 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _isGenerating = false;
       }
     }
+  }
+
+  Future<void> _loadEntityGraph() async {
+    final graph = await chatEntityGraphSession.ensureLoaded();
+    if (!mounted) return;
+    setState(() => _entityGraph = graph);
+  }
+
+  Future<void> _ingestChatEntities(String message) async {
+    final graph = await chatEntityGraphSession.ingest(message);
+    if (!mounted) return;
+    setState(() => _entityGraph = graph);
+  }
+
+  Future<bool> _offerJourneyFromGraph(String message) async {
+    if (_isCalendarConfirmation(message) || _isCalendarRejection(message)) {
+      return false;
+    }
+    final lower = message.toLowerCase();
+    if (lower.contains('pending') || lower.contains('what is missing')) {
+      return false;
+    }
+    final journey = _journeyProjector.firstUnoffered(_entityGraph);
+    if (journey == null) return false;
+
+    _entityGraph = await chatEntityGraphSession.markAttribute(
+      journey.subjectNodeId,
+      'journey_offered',
+      'true',
+    );
+    _pendingLifeTrackWrite = journey.toPendingWrite();
+    if (!mounted) return true;
+    setState(() {
+      _entityGraph = chatEntityGraphSession.graph;
+      _messages.add(
+        AgentChatMessage(
+          text:
+              'I linked this as a local journey:\n'
+              '${journey.facts.entries.where((e) => !e.key.startsWith('_')).map((e) => '- ${e.key}: ${e.value}').join('\n')}\n\n'
+              'Reply yes to open "${journey.title}" as a LifeTrack checklist. '
+              'I will not file anything.',
+          isUser: false,
+        ),
+      );
+    });
+    _scrollMessagesToLatest();
+    return true;
+  }
+
+  Future<void> _savePendingLifeTrack(Map<String, dynamic> payload) async {
+    final result = await _connectorRegistry.execute(
+      'record_lifetrack_facts',
+      payload,
+    );
+    setState(() {
+      _messages.add(
+        AgentChatMessage(
+          text:
+              result.message ??
+              (result.isError
+                  ? 'I could not save that claim journey locally.'
+                  : 'Saved the claim journey on this device.'),
+          isUser: false,
+          traces: [
+            AgentActionTrace(
+              title: 'Execute action',
+              detail: 'record_lifetrack_facts',
+              parameters: payload,
+              success: !result.isError,
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Future<void> _createPendingCalendarEvent(
@@ -1530,16 +2041,50 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           'and allergy constraints, write every requested day, and use '
           'different dishes each day.';
     }
+    GenerationConstraint? generationConstraint;
+    if (dietApplies) {
+      final days = DietPlanPluginPrompt.parseDayCount(
+        DietPlanPluginPrompt.userConstraintLines(
+          currentPrompt: message,
+          history: history,
+        ).join(' '),
+      );
+      if (days != null) {
+        generationConstraint = GenerationConstraint.forcedPrefix(
+          "Here's a $days-day diet plan:\n\n",
+        );
+      }
+    }
+    if (!dietRetry) {
+      _beginGenerateTurn(
+        selectedModelId: selectedModelId,
+        userPrompt: message,
+        dietApplies: dietApplies,
+        constraint: generationConstraint,
+        history: history,
+      );
+    }
     final systemPrompt = _buildChatSystemPrompt(message);
+    var recordedFirstToken = false;
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
         systemPrompt: systemPrompt,
+        maxOutputTokens: dietApplies ? ggufDietPlanMaxOutputTokens : null,
+        constraint: generationConstraint,
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
         latestChunk = chunk;
-        _replaceStreamingMessage(chunk);
+        _activeTurnBuilder?.markFirstToken().markStreaming().stats(
+          timeToFirstTokenMs: timeToFirstTokenMs,
+        );
+        final snapshot = _activeTurnBuilder?.build();
+        _replaceStreamingMessage(chunk, turnTrace: snapshot);
+        if (!recordedFirstToken && snapshot != null) {
+          recordedFirstToken = true;
+          unawaited(_persistTurnTrace(snapshot));
+        }
       }
       stopwatch.stop();
       if (latestChunk.trim().isEmpty) {
@@ -1550,7 +2095,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           currentPrompt: message,
           history: history,
         );
-        latestChunk = DietPlanPluginPrompt.trimExtraDays(
+        latestChunk = DietPlanPluginPrompt.alignPlanTitle(
           latestChunk,
           DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
         );
@@ -1614,20 +2159,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       }
       _replaceStreamingMessage(e.message);
+      _finalizeTurn(
+        (builder) =>
+            builder.fail(errorCode: 'runtime_unavailable', summary: e.message),
+      );
       return null;
     }
   }
 
-  void _replaceStreamingMessage(String text) {
+  void _replaceStreamingMessage(String text, {ChatTurnTrace? turnTrace}) {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
-      final current = _messages.last;
-      _messages[_messages.length - 1] = AgentChatMessage(
+      _messages[_messages.length - 1] = _messages.last.copyWith(
         text: text,
-        isUser: false,
-        timestamp: current.timestamp,
-        traces: current.traces,
-        metadata: current.metadata,
+        turnTrace: turnTrace,
       );
     });
     _scrollMessagesToLatest(animated: false);
@@ -1837,69 +2382,99 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  void _attachMetadataToLastAssistantMessage(ChatResponseMetadata metadata) {
+  void _attachMetadataToLastAssistantMessage(
+    ChatResponseMetadata metadata, {
+    ChatTurnTrace? turnTrace,
+  }) {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
-      final current = _messages.last;
-      _messages[_messages.length - 1] = AgentChatMessage(
-        text: current.text,
-        isUser: current.isUser,
-        timestamp: current.timestamp,
-        traces: current.traces,
+      _messages[_messages.length - 1] = _messages.last.copyWith(
         metadata: metadata,
+        turnTrace: turnTrace,
       );
     });
   }
 
-  String _metadataSummary(ChatResponseMetadata metadata) {
-    final duration = _formatDuration(metadata.totalDurationMs);
-    final toolCount = metadata.toolCount;
-    if (toolCount != null && toolCount > 0) {
-      return '$toolCount ${toolCount == 1 ? 'tool' : 'tools'} · $duration';
-    }
-    return '${metadata.title} · $duration';
+  void _attachTurnTraceToLastAssistantMessage(ChatTurnTrace trace) {
+    if (!mounted || _messages.isEmpty) return;
+    setState(() {
+      _messages[_messages.length - 1] = _messages.last.copyWith(
+        turnTrace: trace,
+      );
+    });
   }
 
   void _showMetadataSheet(AgentChatMessage message) {
     final metadata = message.metadata;
-    if (metadata == null) return;
+    final turnTrace = message.turnTrace;
+    if (metadata == null && turnTrace == null) return;
 
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) {
         final rows = <(String, String)>[
-          ('Model', metadata.title),
-          ('Runtime', metadata.runtime),
-          ('Execution', metadata.executionMode),
-          ('Total duration', _formatDuration(metadata.totalDurationMs)),
-          ('Timestamp', _formatTimestamp(metadata.recordedAt)),
-          if (metadata.timeToFirstTokenMs != null)
+          if (turnTrace != null) ...[
+            ('Lifecycle', chatTurnLifecycleWireName(turnTrace.lifecycle)),
+            ('Stop reason', chatTurnStopReasonWireName(turnTrace.stopReason)),
+            ('Run ID', turnTrace.runId),
+            if (turnTrace.parentRunId != null)
+              ('Parent run ID', turnTrace.parentRunId!),
+            ('Runtime', turnTrace.runtimeId),
+            ('Routing', turnTrace.routing.name),
+            ('Plugin', turnTrace.pluginId ?? 'none'),
+            ('Skill', turnTrace.skillId ?? 'none (plugin generate)'),
             (
-              'Time to first token',
-              _formatDuration(metadata.timeToFirstTokenMs!),
+              'GBNF attached',
+              turnTrace.constraint.gbnfAttached ? 'true' : 'false',
             ),
-          if (metadata.promptTokens != null)
-            ('Prompt tokens', '${metadata.promptTokens}'),
-          if (metadata.completionTokens != null)
-            ('Completion tokens', '${metadata.completionTokens}'),
-          if (metadata.totalTokens != null)
-            ('Total tokens', '${metadata.totalTokens}'),
-          if (metadata.tokensPerSecond != null)
-            ('Tokens per second', metadata.tokensPerSecond!.toStringAsFixed(1)),
-          if (metadata.toolCount != null)
-            ('Tool calls', '${metadata.toolCount}'),
-          if (metadata.finishReason != null)
-            ('Finish reason', metadata.finishReason!),
-          if (metadata.systemPromptPreview != null &&
-              metadata.systemPromptPreview!.isNotEmpty)
-            ('System context', metadata.systemPromptPreview!),
-          if (metadata.promptPreview != null &&
-              metadata.promptPreview!.isNotEmpty)
-            ('Prompt preview', metadata.promptPreview!),
-          if (metadata.responsePreview != null &&
-              metadata.responsePreview!.isNotEmpty)
-            ('Response preview', metadata.responsePreview!),
+            if (turnTrace.inertia.isNotEmpty)
+              (
+                'Inertia',
+                turnTrace.inertia
+                    .map(
+                      (delta) =>
+                          '${delta.kindId} ${delta.previousValue}→${delta.currentValue}',
+                    )
+                    .join(', '),
+              ),
+          ],
+          if (metadata != null) ...[
+            ('Model', metadata.title),
+            ('Runtime', metadata.runtime),
+            ('Execution', metadata.executionMode),
+            ('Total duration', _formatDuration(metadata.totalDurationMs)),
+            ('Timestamp', _formatTimestamp(metadata.recordedAt)),
+            if (metadata.timeToFirstTokenMs != null)
+              (
+                'Time to first token',
+                _formatDuration(metadata.timeToFirstTokenMs!),
+              ),
+            if (metadata.promptTokens != null)
+              ('Prompt tokens', '${metadata.promptTokens}'),
+            if (metadata.completionTokens != null)
+              ('Completion tokens', '${metadata.completionTokens}'),
+            if (metadata.totalTokens != null)
+              ('Total tokens', '${metadata.totalTokens}'),
+            if (metadata.tokensPerSecond != null)
+              (
+                'Tokens per second',
+                metadata.tokensPerSecond!.toStringAsFixed(1),
+              ),
+            if (metadata.toolCount != null)
+              ('Tool calls', '${metadata.toolCount}'),
+            if (turnTrace == null && metadata.finishReason != null)
+              ('Finish reason', metadata.finishReason!),
+            if (metadata.systemPromptPreview != null &&
+                metadata.systemPromptPreview!.isNotEmpty)
+              ('System context', metadata.systemPromptPreview!),
+            if (metadata.promptPreview != null &&
+                metadata.promptPreview!.isNotEmpty)
+              ('Prompt preview', metadata.promptPreview!),
+            if (metadata.responsePreview != null &&
+                metadata.responsePreview!.isNotEmpty)
+              ('Response preview', metadata.responsePreview!),
+          ],
         ];
 
         return SafeArea(
@@ -1911,13 +2486,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Response details',
+                    turnTrace != null ? 'Turn inspector' : 'Response details',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 12),
                   for (final row in rows) ...[
                     _MetadataRow(label: row.$1, value: row.$2),
                     const SizedBox(height: 8),
+                  ],
+                  if (turnTrace != null &&
+                      turnTrace.trajectory.nodes.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Timeline',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    for (final node in turnTrace.trajectory.nodes)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _MetadataRow(
+                          label: node.label,
+                          value: node.summary ?? node.kind.name,
+                        ),
+                      ),
                   ],
                   if (message.traces.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -1944,6 +2536,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       },
     );
+  }
+
+  String _newRunId() =>
+      'run-${DateTime.now().toUtc().microsecondsSinceEpoch}-${_runSeq++}';
+
+  void _beginGenerateTurn({
+    required String selectedModelId,
+    required String userPrompt,
+    required bool dietApplies,
+    required GenerationConstraint? constraint,
+    required List<AssistantChatContextMessage> history,
+  }) {
+    if (!kMindChatTurnInspector) return;
+    final userTurns = history
+        .where((message) => message.isUser)
+        .map((message) => message.text)
+        .toList(growable: false);
+    final priorUser = userTurns.length <= 1
+        ? const <String>[]
+        : userTurns.sublist(0, userTurns.length - 1);
+    _turnFinalized = false;
+    _activeTurnBuilder = startChatGenerateTurn(
+      runId: _newRunId(),
+      parentRunId: parentRunIdFromMessages(
+        _messages.map(
+          (message) => AgentChatTurnRef(
+            isUser: message.isUser,
+            runId: message.turnTrace?.runId,
+            lifecycle: message.turnTrace?.lifecycle,
+          ),
+        ),
+      ),
+      runtimeId: selectedModelId,
+      routing: selectedModelId == geminiCloudAssistantModelId
+          ? ChatTurnRouting.cloud
+          : ChatTurnRouting.local,
+      userPrompt: userPrompt,
+      pluginId: dietApplies ? draftDietPlanPluginId : null,
+      gbnfAttached: _gbnfAttached(selectedModelId, constraint),
+      prefixHash: constraint?.forcedPrefix == null
+          ? null
+          : constraint!.forcedPrefix.hashCode.toRadixString(16),
+      inertia: chatTurnInertiaDeltas(
+        currentPrompt: userPrompt,
+        priorUserPrompts: priorUser,
+      ),
+    );
+  }
+
+  bool _gbnfAttached(String selectedModelId, GenerationConstraint? constraint) {
+    if (constraint?.gbnf == null) return false;
+    if (selectedModelId == geminiNanoAssistantModelId ||
+        selectedModelId == geminiCloudAssistantModelId) {
+      return false;
+    }
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    final package = library?.candidateById(selectedModelId)?.package;
+    if (package != null &&
+        AssistantModelLibraryState.isLiteRtPackage(package)) {
+      return false;
+    }
+    return true;
+  }
+
+  ChatTurnTrace? _finalizeTurn(
+    ChatTurnTraceBuilder Function(ChatTurnTraceBuilder builder) update,
+  ) {
+    final builder = _activeTurnBuilder;
+    if (builder == null || _turnFinalized) {
+      return builder?.build();
+    }
+    _turnFinalized = true;
+    final trace = update(builder).build();
+    unawaited(_persistTurnTrace(trace));
+    return trace;
+  }
+
+  Future<void> _persistTurnTrace(ChatTurnTrace? trace) async {
+    if (trace == null || !kMindChatTurnInspector) return;
+    try {
+      await _chatTurnTraceStore.upsert(trace);
+    } catch (error) {
+      debugPrint('ChatTurnTraceStore write failed: $error');
+    }
   }
 
   void _openChatCustomize() {
@@ -2040,15 +2716,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           registry: _skillRegistry,
           pinnedPersonaId: _pinnedPersonaId,
           onPinnedChanged: _pinPersona,
+          catalog: widget.pluginCatalog,
+          onInstall: _installCatalogPlugin,
         );
       },
     );
+  }
+
+  Future<void> _installCatalogPlugin(AgentPluginCatalogEntry entry) async {
+    final preferences = await SharedPreferences.getInstance();
+    final installer =
+        widget.pluginInstaller ??
+        RemoteAgentSkillInstaller(store: RemoteAgentSkillStore(preferences));
+    final skill = await installer.installFromCatalog(entry);
+    if (!mounted) return;
+    if (!_skillRegistry.addSkill(skill)) {
+      final enabled = _skillRegistry.getById(skill.id)?.isEnabled ?? true;
+      _skillRegistry.replaceSkill(skill.copyWith(enabled: enabled));
+    } else {
+      _skillRegistry.setSkillEnabled(skill.id, true);
+    }
+    _pinPersona(skill.id);
   }
 
   void _pinPersona(String? personaId) {
     final persona = personaId == null
         ? null
         : _skillRegistry.getById(personaId);
+    unawaited(_pinnedPersonaStore.save(personaId));
     setState(() {
       _pinnedPersonaId = personaId;
       if (persona != null) {
@@ -2193,17 +2888,28 @@ class _ChatMessageBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final matches = _codePattern.allMatches(text).toList(growable: false);
     if (matches.isEmpty) {
-      return SelectableText(text, style: TextStyle(color: color));
+      return SelectableText.rich(
+        TextSpan(
+          style: TextStyle(color: color),
+          children: chatMarkdownSpans(text, style: TextStyle(color: color)),
+        ),
+      );
     }
 
     final children = <Widget>[];
     var cursor = 0;
     for (final match in matches) {
       if (match.start > cursor) {
+        final prose = text.substring(cursor, match.start);
         children.add(
-          SelectableText(
-            text.substring(cursor, match.start),
-            style: TextStyle(color: color),
+          SelectableText.rich(
+            TextSpan(
+              style: TextStyle(color: color),
+              children: chatMarkdownSpans(
+                prose,
+                style: TextStyle(color: color),
+              ),
+            ),
           ),
         );
       }
@@ -2220,7 +2926,15 @@ class _ChatMessageBody extends StatelessWidget {
     }
     if (cursor < text.length) {
       children.add(
-        SelectableText(text.substring(cursor), style: TextStyle(color: color)),
+        SelectableText.rich(
+          TextSpan(
+            style: TextStyle(color: color),
+            children: chatMarkdownSpans(
+              text.substring(cursor),
+              style: TextStyle(color: color),
+            ),
+          ),
+        ),
       );
     }
     return Column(
@@ -2358,12 +3072,7 @@ class _MetadataRow extends StatelessWidget {
   }
 }
 
-String _formatDuration(int durationMs) {
-  if (durationMs < 1000) {
-    return '${durationMs}ms';
-  }
-  return '${(durationMs / 1000).toStringAsFixed(1)}s';
-}
+String _formatDuration(int durationMs) => formatChatTurnDuration(durationMs);
 
 String _formatTimestamp(DateTime value) {
   final local = value.toLocal();
