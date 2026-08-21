@@ -266,6 +266,31 @@ fn low_memory_device_clamps_deep_planning() {
 }
 
 #[test]
+fn thinking_channel_is_discarded_and_the_answer_survives() {
+    let gen = ScriptedEngine::once(format!(
+        "<think>do not persist this</think>{}",
+        envelope("Ice is less dense than water.", "Density.", "0.88")
+    ));
+    let events = collect(
+        &gen,
+        ReasoningRequest::fixture("planning", 0.6),
+        &CancelToken::new(),
+    )
+    .unwrap();
+    let result = completed(&events);
+    assert_eq!(result.answer, "Ice is less dense than water.");
+    assert!(!result.answer.contains("persist"));
+    let streamed: String = events
+        .iter()
+        .filter_map(|e| match e {
+            ReasoningEvent::AnswerDelta { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(!streamed.contains("persist"));
+}
+
+#[test]
 fn thoughts_in_model_output_are_rejected() {
     let gen = ScriptedEngine::once(
         r#"{"thoughts":"secret","answer":"x","reasoning_summary":"s","confidence":0.1}"#,

@@ -30,13 +30,15 @@ pub fn build_prompt(
         }
     }
     if request.available_tools.is_empty() {
-        out.push_str("\nRespond as JSON with keys answer, reasoning_summary, confidence only.\n");
+        out.push_str(
+            "\nRespond as JSON with keys answer, reasoning_summary, confidence only.\nJSON:\n",
+        );
     } else {
         out.push_str(
             "\nRespond as JSON with keys answer, reasoning_summary, confidence. \
 If you must call a listed tool, add tool_calls as an array of objects with \
 name and arguments_json, and set answer to an empty string. \
-Do not invent tools. Do not include a thoughts field.\n",
+Do not invent tools. Do not include a thoughts field.\nJSON:\n",
         );
     }
     out
@@ -51,10 +53,15 @@ fn system_for(level: ReasoningLevel) -> &'static str {
             "Solve the task with the supplied context. Return a concise answer and a one-sentence basis."
         }
         ReasoningLevel::Standard => {
-            "Solve the task carefully. Consider the supplied context and constraints. Check the conclusion before responding. Return the answer and a concise user-facing explanation."
+            "You may reason privately. Do not write thoughts, a scratchpad, or chain-of-thought \
+into the output. Check the conclusion, then return only the JSON envelope with the answer \
+and a concise user-facing explanation."
         }
         ReasoningLevel::Deep => {
-            "Solve the task systematically. Consider constraints, relevant context, available tools, alternatives, contradictions, and edge cases. Validate before the final response. Return a concise answer and a short explanation of the basis — not a private scratchpad."
+            "You may reason privately and systematically. Consider constraints, relevant context, \
+available tools, alternatives, contradictions, and edge cases. Never write thoughts, a \
+scratchpad, or chain-of-thought into the output. Validate, then return only the JSON envelope \
+with a concise answer and a short user-facing basis."
         }
     }
 }
@@ -130,5 +137,22 @@ mod tests {
             },
         );
         assert!(prompt.len() < 4_000);
+    }
+
+    #[test]
+    fn standard_and_deep_reason_privately_without_a_thoughts_field() {
+        let req = ReasoningRequest::fixture("planning", 0.8);
+        let standard = build_prompt(&req, ReasoningLevel::Standard, ContextLimits::default());
+        let deep = build_prompt(&req, ReasoningLevel::Deep, ContextLimits::default());
+        for prompt in [&standard, &deep] {
+            assert!(prompt.contains("reason privately"));
+            assert!(prompt.contains("JSON:"));
+            assert!(!prompt.contains("THINKING_TRACE"));
+            assert!(
+                prompt.contains("Do not write thoughts") || prompt.contains("Never write thoughts")
+            );
+        }
+        assert!(!standard.contains("systematically"));
+        assert!(deep.contains("systematically"));
     }
 }

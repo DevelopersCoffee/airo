@@ -9,7 +9,9 @@ use crate::error::ReasoningError;
 use crate::event::{ReasoningEvent, ReasoningStage};
 use crate::grammar::RESULT_GRAMMAR;
 use crate::level::ReasoningLevel;
-use crate::parser::{extract_tool_calls, reject_unknown_trace_keys, ResultStreamParser};
+use crate::parser::{
+    extract_tool_calls, reject_unknown_trace_keys, ResultStreamParser, ThinkingChannelStripper,
+};
 use crate::policy::{HeuristicReasoningPolicy, ReasoningPolicy};
 use crate::prompt::build_prompt;
 use crate::request::ReasoningRequest;
@@ -221,6 +223,7 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         emit: &mut dyn FnMut(ReasoningEvent) -> Result<(), ReasoningError>,
     ) -> Result<ReasoningResult, ReasoningError> {
         let mut parser = ResultStreamParser::new();
+        let mut stripper = ThinkingChannelStripper::new();
         let mut raw = String::new();
         const MAX_RAW: usize = 32_768;
         let request_gen = GenerationRequest {
@@ -237,13 +240,17 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
             if cancel.is_cancelled() {
                 return Err(airo_mind_core::EngineError::Cancelled);
             }
-            if raw.len() + chunk.text.len() > MAX_RAW {
+            let visible = stripper.push(&chunk.text);
+            if visible.is_empty() {
+                return Ok(());
+            }
+            if raw.len() + visible.len() > MAX_RAW {
                 return Err(airo_mind_core::EngineError::InvalidInput(
                     "reasoning envelope exceeded the parse window".into(),
                 ));
             }
-            raw.push_str(&chunk.text);
-            match parser.push(&chunk.text) {
+            raw.push_str(&visible);
+            match parser.push(&visible) {
                 Ok(delta) if !delta.is_empty() => emit(ReasoningEvent::AnswerDelta { text: delta })
                     .map_err(|_| airo_mind_core::EngineError::Cancelled),
                 Ok(_) => Ok(()),
@@ -252,6 +259,15 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
                 )),
             }
         })?;
+
+        let tail = stripper.finish();
+        if !tail.is_empty() {
+            if raw.len() + tail.len() > MAX_RAW {
+                return Err(ReasoningError::InvalidModelOutput);
+            }
+            raw.push_str(&tail);
+            let _ = parser.push(&tail)?;
+        }
 
         reject_unknown_trace_keys(&raw)?;
         let mut result = parser.finish(level)?;

@@ -223,6 +223,106 @@ fn unescape(ch: char) -> char {
     }
 }
 
+/// Drops a model thinking channel (`<think>`, `<thought>`, `<thinking>`)
+/// so only the JSON envelope reaches the parser. Partial tags that straddle
+/// tokens are held until they resolve.
+pub struct ThinkingChannelStripper {
+    skipping: bool,
+    pending: String,
+}
+
+impl Default for ThinkingChannelStripper {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ThinkingChannelStripper {
+    pub fn new() -> Self {
+        Self {
+            skipping: false,
+            pending: String::new(),
+        }
+    }
+
+    pub fn push(&mut self, chunk: &str) -> String {
+        let mut out = String::new();
+        for ch in chunk.chars() {
+            self.push_char(ch, &mut out);
+        }
+        out
+    }
+
+    pub fn finish(mut self) -> String {
+        let mut out = String::new();
+        if !self.skipping {
+            out.push_str(&self.pending);
+        }
+        self.pending.clear();
+        out
+    }
+
+    fn push_char(&mut self, ch: char, out: &mut String) {
+        self.pending.push(ch);
+        let lower = self.pending.to_ascii_lowercase();
+        if self.skipping {
+            if close_tag(&lower).is_some() {
+                self.pending.clear();
+                self.skipping = false;
+            } else if !could_be_close(&lower) {
+                self.pending.clear();
+            }
+            return;
+        }
+        if let Some(len) = open_tag(&lower) {
+            let _ = self.pending.drain(..len);
+            self.skipping = true;
+            if !self.pending.is_empty() {
+                let rest = std::mem::take(&mut self.pending);
+                for next in rest.chars() {
+                    self.push_char(next, out);
+                }
+            }
+            return;
+        }
+        if could_be_open(&lower) {
+            return;
+        }
+        let emit = std::mem::take(&mut self.pending);
+        out.push_str(&emit);
+    }
+}
+
+fn open_tag(lower: &str) -> Option<usize> {
+    for tag in ["<thinking>", "<thought>", "<think>"] {
+        if lower == tag {
+            return Some(tag.len());
+        }
+    }
+    None
+}
+
+fn close_tag(lower: &str) -> Option<usize> {
+    for tag in ["</thinking>", "</thought>", "</think>"] {
+        if lower == tag {
+            return Some(tag.len());
+        }
+    }
+    None
+}
+
+fn could_be_open(lower: &str) -> bool {
+    ["<think>", "<thought>", "<thinking>"]
+        .iter()
+        .any(|tag| tag.starts_with(lower))
+}
+
+fn could_be_close(lower: &str) -> bool {
+    ["</think>", "</thought>", "</thinking>"]
+        .iter()
+        .any(|tag| tag.starts_with(lower))
+}
+
 /// Pull `tool_calls` from the finished envelope. The streaming FSM only
 /// tracks `answer` / `reasoning_summary` / `confidence`; the array is not
 /// streamed to the UI.
@@ -334,5 +434,37 @@ mod tests {
             extract_tool_calls(r#"{"answer":"ok","reasoning_summary":"s","confidence":1}"#)
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn thinking_channel_is_stripped_before_the_envelope() {
+        let mut s = ThinkingChannelStripper::new();
+        let visible = s.push("<think>private chain</think>");
+        let visible = format!(
+            "{visible}{}",
+            s.push(
+                r#"{"answer":"Tuesday","reasoning_summary":"Named the day.","confidence":0.90}"#
+            )
+        );
+        let visible = format!("{visible}{}", s.finish());
+        assert!(!visible.to_ascii_lowercase().contains("private"));
+        assert!(visible.contains("\"answer\":\"Tuesday\""));
+
+        let mut p = ResultStreamParser::new();
+        p.push(&visible).unwrap();
+        let result = p.finish(ReasoningLevel::Standard).unwrap();
+        assert_eq!(result.answer, "Tuesday");
+        assert!(!result.answer.contains("private"));
+    }
+
+    #[test]
+    fn thinking_channel_strips_across_token_fragments() {
+        let mut s = ThinkingChannelStripper::new();
+        let mut visible = String::new();
+        for piece in ["<th", "ink>hide", " me</th", "ink>{\"answer\":\"ok\""] {
+            visible.push_str(&s.push(piece));
+        }
+        visible.push_str(&s.finish());
+        assert_eq!(visible, r#"{"answer":"ok""#);
     }
 }
