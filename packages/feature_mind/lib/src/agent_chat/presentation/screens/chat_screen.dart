@@ -1559,6 +1559,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       estimatedTokens: estimated,
       modelContextLimit: contextLimit,
       definition: AiroPromptRegistry.chatAssistant,
+      prefixCache: assistantRuntimeSupportsPrefixCache(selectedModelId)
+          ? PrefixCacheCapability.supported
+          : PrefixCacheCapability.unsupported,
+      cacheablePrefixTokens: TokenCounter.estimate(systemPrompt),
     );
     if (turn.rebuildContext) {
       contextBuilder = contextBuilder.rebuildForBudget();

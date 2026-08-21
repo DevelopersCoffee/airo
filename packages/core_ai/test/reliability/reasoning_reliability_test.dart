@@ -155,4 +155,35 @@ void main() {
       isNot(contains('PM-')),
     );
   });
+
+  test('missing prefix cache is a warning, not a blocked turn', () {
+    final report = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      prefixCache: PrefixCacheCapability.unsupported,
+      cacheablePrefixTokens: 400,
+    );
+    expect(report.defects, contains(PromptDefect.perf003NoPrefixCache));
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+    expect(report.userMessage, isEmpty);
+
+    final cached = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      prefixCache: PrefixCacheCapability.supported,
+      cacheablePrefixTokens: 400,
+    );
+    expect(cached.defects, isNot(contains(PromptDefect.perf003NoPrefixCache)));
+  });
+
+  test('recovery engine aborts after the skill JSON retry budget', () {
+    final engine = RecoveryEngine(RecoveryPolicy.skillJson);
+    expect(engine.select(RecoveryAction.retry), RecoveryDecision.execute);
+    engine.noteAttempt(RecoveryAction.retry);
+    expect(engine.select(RecoveryAction.retry), RecoveryDecision.abort);
+    expect(engine.select(RecoveryAction.abort), RecoveryDecision.abort);
+    expect(
+      engine.select(RecoveryAction.rebuildContext),
+      RecoveryDecision.execute,
+    );
+  });
 }

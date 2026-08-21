@@ -25,5 +25,24 @@ void main() {
       expect(isOfflineAssistantModelId('offline-phi-3-mini-4k-q4'), isTrue);
       expect(isOfflineAssistantModelId(geminiCloudAssistantModelId), isFalse);
     });
+
+    test('only GGUF offline runtimes advertise prefix cache', () {
+      expect(
+        assistantRuntimeSupportsPrefixCache('offline-phi-3-mini-4k-q4'),
+        isTrue,
+      );
+      expect(
+        assistantRuntimeSupportsPrefixCache(geminiNanoAssistantModelId),
+        isFalse,
+      );
+      expect(
+        assistantRuntimeSupportsPrefixCache(litertGemmaAssistantModelId),
+        isFalse,
+      );
+      expect(
+        assistantRuntimeSupportsPrefixCache(geminiCloudAssistantModelId),
+        isFalse,
+      );
+    });
   });
 }

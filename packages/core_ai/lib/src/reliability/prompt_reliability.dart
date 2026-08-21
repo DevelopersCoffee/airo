@@ -45,6 +45,10 @@ enum PromptDefect {
 
 enum PromptGateDecision { allow, askUser, rebuildContext, abort }
 
+/// Whether the active model adapter can reuse a static prompt prefix.
+/// Adapter capability only — never required, never a new Mind primitive.
+enum PrefixCacheCapability { unsupported, supported }
+
 @immutable
 class PromptGateReport {
   const PromptGateReport({
@@ -108,6 +112,8 @@ abstract final class PromptQualityGate {
     'book that one',
   };
 
+  static const prefixCacheWarnTokens = 256;
+
   static PromptGateReport inspectUserTurn({
     required String userText,
     bool historyEmpty = true,
@@ -116,6 +122,8 @@ abstract final class PromptQualityGate {
     int outputBudget = 256,
     bool requiresStructuredOutput = false,
     String outputContract = '',
+    PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
+    int cacheablePrefixTokens = 0,
   }) {
     final normalized = _normalize(userText);
     final defects = <PromptDefect>[];
@@ -138,6 +146,10 @@ abstract final class PromptQualityGate {
         estimatedTokens + outputBudget > modelContextLimit) {
       defects.add(PromptDefect.perf001ExcessiveLength);
       defects.add(PromptDefect.context001Overflow);
+    }
+    if (prefixCache == PrefixCacheCapability.unsupported &&
+        cacheablePrefixTokens > prefixCacheWarnTokens) {
+      defects.add(PromptDefect.perf003NoPrefixCache);
     }
 
     final decision = _decide(defects);
@@ -163,7 +175,13 @@ abstract final class PromptQualityGate {
         defects.contains(PromptDefect.perf001ExcessiveLength)) {
       return 'I need to narrow the context before I continue.';
     }
-    return 'I need a bit more detail before I continue.';
+    if (defects.contains(PromptDefect.spec001AmbiguousInstruction) ||
+        defects.contains(PromptDefect.spec002UnderspecifiedConstraints) ||
+        defects.contains(PromptDefect.context004Misreferencing) ||
+        defects.contains(PromptDefect.struct004UndefinedOutputFormat)) {
+      return 'I need a bit more detail before I continue.';
+    }
+    return '';
   }
 
   static PromptGateDecision _decide(List<PromptDefect> defects) {

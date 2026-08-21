@@ -857,7 +857,7 @@ class AssistantRuntimeService {
     if (!yielded) {
       throw AssistantRuntimeUnavailableException(
         runtimeId,
-        geminiNanoInitializationFailedMessage,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
   }
@@ -1018,9 +1018,15 @@ class AssistantRuntimeService {
     String? text,
     String message,
   ) {
-    final trimmed = text?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
+    if (text == null) {
       throw AssistantRuntimeUnavailableException(runtimeId, message);
+    }
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+      );
     }
     return trimmed;
   }
