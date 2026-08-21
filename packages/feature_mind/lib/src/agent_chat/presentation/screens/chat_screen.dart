@@ -44,6 +44,11 @@ import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/mind_safety_banner.dart';
 import '../../../agent_chat/presentation/widgets/pick_assistant_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
+import '../../../reasoning/chat_reasoning_request.dart';
+import '../../../reasoning/reasoning_models.dart';
+import '../../../reasoning/reasoning_progress_panel.dart';
+import '../../../reasoning/reasoning_tool_loop.dart';
+import '../../../bridges/mind_generation_bridge.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
@@ -88,6 +93,13 @@ class AgentChatMessage {
 
   final bool pendingCalendarPermission;
 
+  /// Stage labels from a reasoning pass. Never raw model thoughts.
+  final List<ReasoningProgressStep> reasoningSteps;
+  final String? reasoningSummary;
+  final MindReasoningLevel? reasoningLevel;
+  final bool reasoningInProgress;
+  final List<ChatHistoryToolCall> reasoningToolCalls;
+
   AgentChatMessage({
     required this.text,
     required this.isUser,
@@ -98,16 +110,30 @@ class AgentChatMessage {
     this.groundingState = GroundingState.notApplicable,
     this.safetyClass,
     this.pendingCalendarPermission = false,
+    this.reasoningSteps = const [],
+    this.reasoningSummary,
+    this.reasoningLevel,
+    this.reasoningInProgress = false,
+    this.reasoningToolCalls = const [],
   }) : timestamp = timestamp ?? DateTime.now();
 
-  ChatHistoryEntry toHistoryEntry() =>
-      ChatHistoryEntry(text: text, isUser: isUser, timestamp: timestamp);
+  ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
+    text: text,
+    isUser: isUser,
+    timestamp: timestamp,
+    reasoningSummary: isUser ? null : reasoningSummary,
+    reasoningLevel: isUser ? null : reasoningLevelStableId(reasoningLevel),
+    toolCalls: isUser ? const [] : reasoningToolCalls,
+  );
 
   static AgentChatMessage fromHistoryEntry(ChatHistoryEntry entry) =>
       AgentChatMessage(
         text: entry.text,
         isUser: entry.isUser,
         timestamp: entry.timestamp,
+        reasoningSummary: entry.reasoningSummary,
+        reasoningLevel: reasoningLevelFromStableId(entry.reasoningLevel),
+        reasoningToolCalls: entry.toolCalls,
       );
 }
 
@@ -139,6 +165,10 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.initialPinnedPersonaId,
     this.operationLogPort,
     this.calendarService,
+    this.generationBridge,
+    this.useOnDeviceReasoning,
+    this.reasoningDeviceTier,
+    this.deviceSignalsProbe,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -154,6 +184,12 @@ class ChatScreen extends ConsumerStatefulWidget {
   /// swap in `RustMindRuntime().log` once M19 lands the real runtime.
   final OperationLogPort? operationLogPort;
   final CalendarService? calendarService;
+  final MindGenerationBridge? generationBridge;
+
+  /// Test seam. Production uses [shouldUseOnDeviceReasoning].
+  final bool Function()? useOnDeviceReasoning;
+  final LlmDeviceTier? reasoningDeviceTier;
+  final LlmDeviceSignalsProbe? deviceSignalsProbe;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -173,6 +209,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
+  late final MindGenerationBridge _generationBridge;
+  LlmDeviceTier _reasoningTier = LlmDeviceTier.large;
+  LlmDeviceSignals? _reasoningSignals;
   late AgentSkillOrchestrator _skillOrchestrator;
   late final OperationLogPort _operationLogPort;
   final AssistantChatContextBuilder _chatContextBuilder =
@@ -205,6 +244,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           loadAssistantModelLibrary: () =>
               ref.read(assistantModelLibraryProvider.future),
         );
+    _generationBridge = widget.generationBridge ?? RustMindGenerationBridge();
     _localRuntimePreloader =
         widget.localRuntimePreloader ??
         LocalRuntimePreloaderService(
@@ -983,6 +1023,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               MindSafetyBanner(safetyClass: message.safetyClass),
             if (message.traces.isNotEmpty)
               SkillActionTraceCard(traces: message.traces),
+            if (!message.isUser)
+              ReasoningProgressPanel(
+                steps: message.reasoningSteps,
+                inProgress: message.reasoningInProgress,
+                summary: message.reasoningSummary,
+              ),
             Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1578,6 +1624,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     }
     try {
+      if (_shouldUseReasoning(selectedModelId)) {
+        return _generateReasonedResponse(
+          selectedModelId: selectedModelId,
+          message: message,
+          modelPrompt: modelPrompt,
+          dietApplies: dietApplies,
+          dietRetry: dietRetry,
+          attemptedRuntimeIds: attemptedRuntimeIds,
+          stopwatch: stopwatch,
+        );
+      }
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
@@ -1682,6 +1739,194 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<({LlmDeviceTier tier, LlmDeviceSignals? signals})>
+  _resolveReasoningDevice() async {
+    if (widget.reasoningDeviceTier != null && _reasoningSignals != null) {
+      return (tier: widget.reasoningDeviceTier!, signals: _reasoningSignals);
+    }
+    if (_reasoningSignals != null && widget.reasoningDeviceTier == null) {
+      return (tier: _reasoningTier, signals: _reasoningSignals);
+    }
+    try {
+      final probe =
+          widget.deviceSignalsProbe ??
+          RealLlmDeviceSignalsProbe(availableStorageMb: () async => 4096);
+      final signals = await probe.probe();
+      _reasoningSignals = signals;
+      _reasoningTier = const LlmDeviceTierPolicy().evaluate(signals).tier;
+    } on Object {
+      // Keep the last known tier. Hosts that cannot probe stay at large.
+    }
+    return (
+      tier: widget.reasoningDeviceTier ?? _reasoningTier,
+      signals: _reasoningSignals,
+    );
+  }
+
+  bool _shouldUseReasoning(String selectedModelId) {
+    if (widget.useOnDeviceReasoning != null) {
+      return widget.useOnDeviceReasoning!();
+    }
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    AssistantModelCandidate? candidate;
+    if (library != null) {
+      for (final item in library.candidates) {
+        if (item.id == selectedModelId) {
+          candidate = item;
+          break;
+        }
+      }
+    }
+    final package = candidate?.package;
+    return shouldUseOnDeviceReasoning(
+      engineReady: _generationBridge.isEngineReady,
+      selectedModelId: selectedModelId,
+      isLiteRt:
+          selectedModelId == litertGemmaAssistantModelId ||
+          (package != null &&
+              AssistantModelLibraryState.isLiteRtPackage(package)),
+    );
+  }
+
+  Future<ChatResponseMetadata?> _generateReasonedResponse({
+    required String selectedModelId,
+    required String message,
+    required String modelPrompt,
+    required bool dietApplies,
+    required bool dietRetry,
+    required Set<String> attemptedRuntimeIds,
+    required Stopwatch stopwatch,
+  }) async {
+    final history = _chatHistoryMessages();
+    final intent = IntentParser.parse(message);
+    final documents = dietApplies
+        ? [
+            MindReasoningContextItem(
+              source: 'diet_constraints',
+              text: DietPlanPluginPrompt.userConstraintLines(
+                currentPrompt: message,
+                history: history,
+              ).join('\n'),
+            ),
+          ]
+        : const <MindReasoningContextItem>[];
+    final device = await _resolveReasoningDevice();
+    final request = buildMindReasoningRequest(
+      userQuery: modelPrompt,
+      intent: intent,
+      history: history,
+      tier: device.tier,
+      signals: device.signals,
+      documents: documents,
+      toolNames: reasoningLookupToolNames(_connectorRegistry),
+    );
+    final fold = ReasoningStreamFold();
+    int? timeToFirstTokenMs;
+    await for (final event in runReasoningToolLoop(
+      request: request,
+      reason: _generationBridge.reason,
+      executeTool: (name, argumentsJson) => executeReasoningTool(
+        registry: _connectorRegistry,
+        name: name,
+        argumentsJson: argumentsJson,
+      ),
+    )) {
+      fold.add(event);
+      timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
+      _applyReasoningFold(fold);
+    }
+    stopwatch.stop();
+    var latest = fold.answer;
+    if (fold.error != null && latest.trim().isEmpty) {
+      _applyReasoningFold(fold);
+      return null;
+    }
+    if (fold.cancelled && latest.trim().isEmpty) {
+      _applyReasoningFold(fold);
+      return null;
+    }
+    if (latest.trim().isEmpty) {
+      return null;
+    }
+    if (dietApplies) {
+      final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
+        currentPrompt: message,
+        history: history,
+      );
+      latest = DietPlanPluginPrompt.trimExtraDays(
+        latest,
+        DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
+      );
+      fold.answer = latest;
+      _applyReasoningFold(fold);
+      if (!dietRetry &&
+          DietPlanPluginPrompt.shouldRetryPlan(
+            output: latest,
+            constraints: dietConstraints,
+          )) {
+        return _generateSelectedModelResponse(
+          selectedModelId,
+          message,
+          attemptedRuntimeIds: attemptedRuntimeIds,
+          dietRetry: true,
+        );
+      }
+    }
+    final outputResult = SafetyGuardrails.withDefaults(
+      profile: ref.read(assistantHostAdapterProvider).safetyProfile,
+    ).checkOutput(latest);
+    if (outputResult.isErr) {
+      _replaceStreamingMessage(
+        outputResult.getErrorOrNull()?.toString() ??
+            'The response was blocked by the selected safety profile.',
+      );
+      return null;
+    }
+    return _buildRuntimeMetadata(
+      selectedModelId: selectedModelId,
+      prompt: message,
+      response: latest,
+      systemPrompt: 'reasoning-engine',
+      totalDuration: stopwatch.elapsed,
+      timeToFirstTokenMs: timeToFirstTokenMs,
+    );
+  }
+
+  void _applyReasoningFold(ReasoningStreamFold fold) {
+    if (!mounted || _messages.isEmpty) return;
+    final complete = fold.level != null || fold.error != null || fold.cancelled;
+    final text = fold.error != null && fold.answer.trim().isEmpty
+        ? fold.error!
+        : fold.cancelled && fold.answer.trim().isEmpty
+        ? 'Stopped.'
+        : fold.answer;
+    setState(() {
+      final current = _messages.last;
+      _messages[_messages.length - 1] = AgentChatMessage(
+        text: text,
+        isUser: false,
+        timestamp: current.timestamp,
+        traces: current.traces,
+        metadata: current.metadata,
+        citations: current.citations,
+        groundingState: current.groundingState,
+        safetyClass: current.safetyClass,
+        reasoningSteps: List<ReasoningProgressStep>.from(fold.steps),
+        reasoningSummary: fold.reasoningSummary,
+        reasoningLevel: fold.level,
+        reasoningInProgress: !complete,
+        reasoningToolCalls: [
+          for (final call in fold.toolCalls)
+            ChatHistoryToolCall(
+              name: call.name,
+              argumentsJson: call.argumentsJson,
+            ),
+        ],
+      );
+    });
+    _scrollMessagesToLatest(animated: false);
+  }
+
   void _replaceStreamingMessage(String text) {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
@@ -1692,6 +1937,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         timestamp: current.timestamp,
         traces: current.traces,
         metadata: current.metadata,
+        citations: current.citations,
+        groundingState: current.groundingState,
+        safetyClass: current.safetyClass,
+        reasoningSteps: current.reasoningSteps,
+        reasoningSummary: current.reasoningSummary,
+        reasoningLevel: current.reasoningLevel,
+        reasoningInProgress: current.reasoningInProgress,
+        reasoningToolCalls: current.reasoningToolCalls,
       );
     });
     _scrollMessagesToLatest(animated: false);
@@ -1923,6 +2176,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         timestamp: current.timestamp,
         traces: current.traces,
         metadata: metadata,
+        citations: current.citations,
+        groundingState: current.groundingState,
+        safetyClass: current.safetyClass,
+        reasoningSteps: current.reasoningSteps,
+        reasoningSummary: current.reasoningSummary,
+        reasoningLevel: current.reasoningLevel,
+        reasoningInProgress: current.reasoningInProgress,
+        reasoningToolCalls: current.reasoningToolCalls,
       );
     });
   }

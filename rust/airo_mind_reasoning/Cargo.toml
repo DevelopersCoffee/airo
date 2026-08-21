@@ -1,0 +1,19 @@
+[package]
+name = "airo_mind_reasoning"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind Reasoning capability — policy, prompt, parse, validate. Drives GenerationEngine; owns no inference runtime."
+license = "MIT"
+
+[lib]
+name = "airo_mind_reasoning"
+# rlib only, same as airo_mind_meeting: capability above C5. No FFI of its own.
+crate-type = ["rlib"]
+
+[dependencies]
+airo_mind_core = { path = "../airo_mind_core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

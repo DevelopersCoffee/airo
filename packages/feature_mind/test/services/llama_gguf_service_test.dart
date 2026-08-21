@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 import 'package:llama_flutter_android/src/llama_api.dart' as llama_api;
 
+import 'package:feature_mind/src/services/desktop_gguf_backend.dart';
 import 'package:feature_mind/src/services/llama_gguf_service.dart';
 
 void main() {
@@ -175,6 +178,71 @@ void main() {
     expect(sample.prefillTokens, 0);
     await expectLater(service.unload(), completes);
   });
+
+  test('Android prefers the FRB llama slot when it can load', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final tempDir = await Directory.systemTemp.createTemp('airo-mind-gguf-');
+    addTearDown(() async {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+    final weight = File('${tempDir.path}/qwen.gguf');
+    await weight.writeAsBytes(const [1, 2, 3]);
+    final session = _FakeLlamaSession();
+    final backend = DesktopGgufBackend(
+      ensureBridge: () async {},
+      session: session,
+    );
+    var jniLoaded = false;
+    _mockLlamaHost(
+      onLoadModel: (_) {
+        jniLoaded = true;
+      },
+    );
+    final controller = LlamaController(
+      binaryMessenger:
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger,
+    );
+    final service = LlamaGgufService(
+      nativeController: controller,
+      desktopBackend: backend,
+    );
+    final model = OfflineModelInfo(
+      id: 'gguf-android-ffi',
+      name: 'GGUF Android FFI',
+      family: ModelFamily.llama,
+      fileSizeBytes: 3,
+      filePath: weight.path,
+    );
+
+    await expectLater(service.loadModel(model), completion(isTrue));
+    expect(session.loadPaths, [weight.path]);
+    expect(jniLoaded, isFalse);
+    expect(service.isLoaded, isTrue);
+  });
+}
+
+class _FakeLlamaSession extends DesktopLlamaSession {
+  final loadPaths = <String>[];
+  var ready = false;
+
+  @override
+  Future<void> load({
+    required String modelPath,
+    required int memoryBudgetMb,
+  }) async {
+    loadPaths.add(modelPath);
+    ready = true;
+  }
+
+  @override
+  bool get isReady => ready;
+
+  @override
+  void unload() {
+    ready = false;
+  }
 }
 
 typedef _ModelConfigSpy = void Function(ModelConfig config);

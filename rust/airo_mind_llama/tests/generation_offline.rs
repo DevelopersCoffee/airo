@@ -12,6 +12,13 @@ use airo_mind_llama::{
 };
 
 fn model() -> PathBuf {
+    for key in ["AIRO_LLAMA_MODEL", "AIRO_MIND_LLAMA_MODEL"] {
+        if let Ok(value) = std::env::var(key) {
+            if !value.trim().is_empty() {
+                return PathBuf::from(value);
+            }
+        }
+    }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models/qwen2.5-0.5b-instruct-q4_k_m.gguf")
 }
 
