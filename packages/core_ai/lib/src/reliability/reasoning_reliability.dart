@@ -168,6 +168,12 @@ class RetrievalAlignment {
 
   FailureMode? get failureMode =>
       isMismatch ? FailureMode.pm05SemanticEmbeddingMismatch : null;
+
+  /// User-facing caveat when keyword and embedding scores diverge.
+  /// Never includes PM codes.
+  static const userNote =
+      'Some matches ranked higher by keywords than by meaning. '
+      'Open the original meeting to confirm.';
 }
 
 /// Skill/JSON output contract. Parse failures are AIRO-R04, not Flutter crashes.

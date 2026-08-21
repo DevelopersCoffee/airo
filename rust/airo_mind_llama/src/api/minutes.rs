@@ -259,9 +259,23 @@ pub fn generate_minutes(
             emit(GenerationEvent::Cancelled)?;
             return Ok(());
         }
-        generation.map_err(|e| e.to_string())?;
+        if let Err(error) = generation {
+            let _ = record_chat_completion(
+                "meeting.minutes.v1",
+                "",
+                false,
+                DiagnosticLevel::ErrorsOnly,
+            );
+            return Err(error.to_string());
+        }
     }
 
+    let _ = record_chat_completion(
+        "meeting.minutes.v1",
+        &minutes,
+        true,
+        DiagnosticLevel::Standard,
+    );
     emit(GenerationEvent::MinutesReady { text: minutes })
 }
 

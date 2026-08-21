@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:core_ai/core_ai.dart';
+
 import '../../../assistant/assistant_surface_policy.dart';
 import '../../../meeting_archive/meeting_archive_port.dart';
 import '../../../services/device_actions_service.dart';
@@ -441,23 +443,27 @@ class MeetingArchiveTool implements Tool {
             message: 'Opening Meeting Scribe to search your archive.',
           );
         }
-        final hits = await port.search(query);
-        if (hits.isEmpty) {
+        final ranked = await port.searchAligned(query);
+        if (ranked.hits.isEmpty) {
           return AgentToolResult(
             message: 'No meetings matched "$query" in your local archive.',
           );
         }
-        final lines = hits
+        final lines = ranked.hits
             .take(5)
             .map((hit) => '• ${hit.title}: ${hit.snippet}')
             .join('\n');
+        final caveat = ranked.hasEmbeddingMismatch
+            ? '\n\n${RetrievalAlignment.userNote}'
+            : '';
         return AgentToolResult(
-          message: 'Found ${hits.length} meeting(s) for "$query":\n$lines',
+          message:
+              'Found ${ranked.hits.length} meeting(s) for "$query":\n$lines$caveat',
         );
       case IntentType.getMeetingMom:
         final query = (intent.parameters['query'] as String?)?.trim() ?? '';
         if (query.isNotEmpty) {
-          final hits = await port.search(query);
+          final hits = (await port.searchAligned(query)).hits;
           if (hits.isEmpty) {
             return AgentToolResult(
               message:

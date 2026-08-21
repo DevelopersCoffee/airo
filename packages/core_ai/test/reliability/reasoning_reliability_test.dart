@@ -9,6 +9,11 @@ void main() {
     expect(FailureMode.fromId('PM-17'), isNull);
   });
 
+  test('retrieval mismatch note never includes PM codes', () {
+    expect(RetrievalAlignment.userNote, contains('original meeting'));
+    expect(RetrievalAlignment.userNote, isNot(contains('PM-05')));
+  });
+
   test('user copy never includes PM codes', () {
     final message = ReliabilityUserMessage.fromFailure(
       mode: FailureMode.pm05SemanticEmbeddingMismatch,
