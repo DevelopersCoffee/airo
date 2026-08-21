@@ -70,6 +70,7 @@ class NotebookL10n {
   String get delete => t('delete');
   String get uiLanguage => t('uiLanguage');
   String get needsTwoNotes => t('needsTwoNotes');
+  String get generatingSuperSummary => t('generatingSuperSummary');
 
   static const _en = {
     'notesTitle': 'Notes',
@@ -105,6 +106,7 @@ class NotebookL10n {
     'delete': 'Delete',
     'uiLanguage': 'Notes language',
     'needsTwoNotes': 'Select at least two notes to combine',
+    'generatingSuperSummary': 'Writing Super Summary…',
   };
 
   static const _hi = {

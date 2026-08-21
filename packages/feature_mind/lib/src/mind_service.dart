@@ -600,6 +600,15 @@ class MindService {
     if (_generation.isLoaded) _generation.cancel();
   }
 
+  /// True when Super Summary (and similar recaps) can call [complete].
+  bool get isGenerationReady => _generation.isEngineReady;
+
+  /// Prompt-as-is completion. Does not wrap a meeting-secretary prompt.
+  Stream<GenerationEvent> complete({
+    required String prompt,
+    int maxOutputTokens = 1024,
+  }) => _generation.complete(prompt: prompt, maxOutputTokens: maxOutputTokens);
+
   Future<List<rust.MeetingRecord>> meetings() => _speech.meetings();
 
   /// Step 7 of the journey, now ranked by keyword **and** meaning

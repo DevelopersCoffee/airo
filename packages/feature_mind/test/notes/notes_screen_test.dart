@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_mind/src/notebook/application/notebook_share_port.dart';
+import 'package:feature_mind/src/notebook/application/super_summary_recap_port.dart';
 import 'package:feature_mind/src/notebook/domain/notebook_document.dart';
 import 'package:feature_mind/src/notes/domain/notes_operation_log.dart';
 import 'package:feature_mind/src/notes/notes_capability.dart';
@@ -253,6 +254,61 @@ void main() {
     final projection = await directly(tester, capability.notes);
     expect(projection.length, 3);
   });
+
+  testWidgets(
+    'Super Summary uses the generated recap when the port returns one',
+    (tester) async {
+      await directly(tester, () async {
+        await capability.createNote(
+          id: 'a',
+          title: 'One',
+          body: const NotebookDocument(summary: 'First').encode(),
+          recordedAtMs: 1,
+        );
+        await capability.createNote(
+          id: 'b',
+          title: 'Two',
+          body: const NotebookDocument(summary: 'Second').encode(),
+          recordedAtMs: 2,
+        );
+      });
+
+      var asked = false;
+      final recapPort = SuperSummaryRecapPort((notes) async {
+        asked = true;
+        expect(notes.map((n) => n.title), ['One', 'Two']);
+        return '''
+# Summary
+LLM recap of both threads.
+
+# Key points
+- Call the customer
+''';
+      });
+
+      await tester.pumpWidget(
+        wrap(NotesScreen(capability: capability, recapPort: recapPort)),
+      );
+      await settle(tester);
+
+      await tester.tap(
+        find.byKey(const Key('notes_screen_super_summary_button')),
+      );
+      await tester.pump();
+      await tester.tap(find.text('One'));
+      await tester.tap(find.text('Two'));
+      await tester.tap(find.byKey(const Key('notes_screen_combine_button')));
+      await settle(tester);
+
+      expect(asked, isTrue);
+      expect(find.text('Super summary · 2 notes'), findsOneWidget);
+      final projection = await directly(tester, capability.notes);
+      final recap = projection.all.singleWhere(
+        (note) => note.title.startsWith('Super summary'),
+      );
+      expect(recap.body, contains('LLM recap of both threads'));
+    },
+  );
 
   testWidgets('copy writes markdown through the share port', (tester) async {
     final share = MemoryNotebookSharePort();

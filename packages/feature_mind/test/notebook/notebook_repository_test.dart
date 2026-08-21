@@ -96,12 +96,48 @@ Launch Tuesday.
     final recap = await repo.superSummary(
       notes: await repo.all(),
       recordedAtMs: 3,
+      generatedRecap: '''
+# Summary
+LLM combined recap.
+
+# Key points
+- Delay the launch
+''',
     );
 
     expect(recap.title, 'Super summary · 2 notes');
     expect(recap.document.source, NotebookSource.superSummary);
     expect(recap.document.sourceNoteIds, ['a', 'b']);
+    expect(recap.document.summary, contains('LLM combined recap'));
+    expect(recap.document.keyPoints.first, contains('Delay the launch'));
     expect(recap.document.tags, containsAll(['alpha', 'beta']));
     expect((await repo.all()), hasLength(3));
   });
+
+  test(
+    'superSummary falls back to extractive recap without generated text',
+    () async {
+      await repo.save(
+        id: 'a',
+        title: 'One',
+        document: const NotebookDocument(summary: 'First thread.'),
+        recordedAtMs: 1,
+      );
+      await repo.save(
+        id: 'b',
+        title: 'Two',
+        document: const NotebookDocument(summary: 'Second thread.'),
+        recordedAtMs: 2,
+      );
+
+      final recap = await repo.superSummary(
+        notes: await repo.all(),
+        recordedAtMs: 3,
+      );
+
+    expect(recap.document.summary, contains('Combined recap of 2 notes'));
+    expect(recap.document.summary, contains('One'));
+    expect(recap.document.summary, contains('Two'));
+    },
+  );
 }

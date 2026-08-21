@@ -330,6 +330,7 @@ export 'src/notebook/domain/notebook_note.dart';
 export 'src/notebook/domain/key_points_extractor.dart';
 export 'src/notebook/domain/notebook_summary.dart';
 export 'src/notebook/domain/super_summary.dart';
+export 'src/notebook/domain/super_summary_prompt.dart';
 export 'src/notebook/domain/notebook_search.dart';
 export 'src/notebook/domain/notebook_export.dart';
 export 'src/notebook/domain/notebook_l10n.dart';
@@ -338,6 +339,7 @@ export 'src/notebook/application/audio_import_service.dart';
 export 'src/notebook/application/notebook_share_port.dart';
 export 'src/notebook/application/notebook_locale_preference.dart';
 export 'src/notebook/application/notebook_store.dart';
+export 'src/notebook/application/super_summary_recap_port.dart';
 export 'src/notebook/presentation/notebook_locale_settings_tile.dart';
 export 'src/notebook/presentation/notebook_host_screen.dart';
 
