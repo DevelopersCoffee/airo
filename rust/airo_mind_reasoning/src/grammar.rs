@@ -7,9 +7,15 @@
 //! (`parse_space(..., newline_ok=false)` after a symbol). Each rule must
 //! therefore live on one line. Meeting's `chunk_facts.v1.gbnf` uses the same
 //! constraint.
+//!
+//! The opening `{` is teacher-forced in the prompt so greedy GGUF does not
+//! sample EOG before JSON. Generated tokens start at `"answer"`.
+
+/// Prefixed onto the prompt so generation does not have to sample `{`.
+pub const ENVELOPE_OPEN: &str = "{";
 
 pub const RESULT_GRAMMAR: &str = r#"
-root ::= "{" ws "\"answer\":" ws string "," ws "\"reasoning_summary\":" ws string "," ws "\"confidence\":" ws confidence tool-calls-tail ws "}"
+root ::= "\"answer\":" ws string "," ws "\"reasoning_summary\":" ws string "," ws "\"confidence\":" ws confidence tool-calls-tail ws "}"
 tool-calls-tail ::= ("," ws "\"tool_calls\":" ws "[" ws tool-items ws "]")?
 tool-items ::= (tool-item (ws "," ws tool-item)*)?
 tool-item ::= "{" ws "\"name\":" ws string "," ws "\"arguments_json\":" ws string ws "}"
@@ -31,6 +37,10 @@ mod tests {
         assert!(RESULT_GRAMMAR.contains("tool_calls"));
         assert!(!RESULT_GRAMMAR.contains("thoughts"));
         assert!(!RESULT_GRAMMAR.contains("scratchpad"));
+        assert!(
+            !RESULT_GRAMMAR.contains(r#"root ::= "{""#),
+            "opening brace is teacher-forced in the prompt; GBNF must start at \"answer\""
+        );
         for line in RESULT_GRAMMAR.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("root ::=") {
@@ -42,4 +52,3 @@ mod tests {
         }
     }
 }
-

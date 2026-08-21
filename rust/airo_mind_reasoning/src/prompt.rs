@@ -1,6 +1,7 @@
 //! Prompt strategy by reasoning level. No public THINKING_TRACE protocol.
 
 use crate::context::{ContextLimits, ReasoningContext};
+use crate::grammar::ENVELOPE_OPEN;
 use crate::level::ReasoningLevel;
 use crate::request::ReasoningRequest;
 use airo_mind_reliability::wrap_as_data;
@@ -46,6 +47,7 @@ name and arguments_json, and set answer to an empty string. \
 Do not invent tools. Do not include a thoughts field.\nJSON:\n",
         );
     }
+    out.push_str(ENVELOPE_OPEN);
     out
 }
 
@@ -108,6 +110,10 @@ mod tests {
         assert!(prompt.contains("Do not perform unnecessary analysis"));
         assert!(!prompt.contains("THINKING_TRACE"));
         assert!(!prompt.contains("scratchpad"));
+        assert!(
+            prompt.ends_with("JSON:\n{"),
+            "teacher-force the envelope open so generation starts at \"answer\", not EOG: {prompt}"
+        );
     }
 
     #[test]

@@ -267,7 +267,7 @@ pub fn process_meeting_intelligence(
             &engine,
             &processed,
             &MeetingInput {
-                id: meeting_id,
+                id: meeting_id.clone(),
                 title: Some(title),
                 model_id,
             },
