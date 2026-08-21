@@ -1109,7 +1109,13 @@ void main() {
               prompt: 'hello',
             )
             .drain<void>(),
-        throwsA(isA<AssistantRuntimeUnavailableException>()),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
+          ),
+        ),
       );
     });
 
@@ -1185,7 +1191,7 @@ void main() {
           isA<AssistantRuntimeUnavailableException>().having(
             (error) => error.message,
             'message',
-            geminiCloudEmptyResponseMessage,
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
           ),
         ),
       );

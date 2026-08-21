@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:core_ai/core_ai.dart';
+
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_skill_orchestrator.dart';
 import 'assistant_runtime_service.dart';
@@ -19,12 +21,12 @@ class SelectedRuntimeAgentSkillModelClient implements AgentSkillModelClient {
     required List<AgentSkill> enabledSkills,
   }) async {
     if (enabledSkills.isEmpty) return null;
-
+    if (!AiroPromptRegistry.skillSelect.isRegistered) return null;
     final skillList = enabledSkills
         .map((skill) => '- ${skill.id}: ${skill.description}')
         .join('\n');
-
-    final response = await _generate('''
+    final instruction =
+        '''
 You are choosing whether an Airo skill should handle the user request.
 
 Available skills:
@@ -38,12 +40,21 @@ Return JSON only:
 
 If no skill applies:
 {"skill_id":null}
-''');
+''';
 
+    final response = await _generate(instruction);
     if (response == null) return null;
 
-    final selected = parseSelectedSkillId(response);
-    if (selected == null) return null;
+    final recovery = RecoveryEngine(RecoveryPolicy.skillJson);
+    var selected = parseSelectedSkillId(response);
+    while (selected == null) {
+      if (recovery.select(RecoveryAction.retry) != RecoveryDecision.execute) {
+        return null;
+      }
+      recovery.noteAttempt(RecoveryAction.retry);
+      final retry = await _generate(instruction);
+      selected = retry == null ? null : parseSelectedSkillId(retry);
+    }
     if (enabledSkills.any((skill) => skill.id == selected)) return selected;
     return null;
   }
@@ -55,7 +66,8 @@ If no skill applies:
     required List<Map<String, dynamic>> toolResults,
   }) async {
     final previousResults = toolResults.isEmpty ? 'none' : '$toolResults';
-    final response = await _generate('''
+    final instruction =
+        '''
 You are executing an Airo skill.
 
 Runtime rules:
@@ -78,19 +90,43 @@ User request:
 $prompt
 
 Previous tool results:
-$previousResults
+${ContextCompiler.wrapAsData(previousResults)}
 
 Return either:
 {"type":"tool_call","tool":"tool_name","arguments":{}}
 
 or:
 {"type":"final","message":"final answer"}
-''');
+''';
+    final definition = AiroPromptRegistry.skillNextAction;
+    final contract = PromptQualityGate.inspectUserTurn(
+      userText: prompt,
+      requiresStructuredOutput: true,
+      outputContract: definition.outputSchema,
+    );
+    if (contract.decision == PromptGateDecision.abort) {
+      return SkillModelAction.finalAnswer(
+        contract.userMessage,
+        schemaInvalid: true,
+      );
+    }
+    final response = await _generate(instruction);
 
     if (response == null) return null;
 
-    final action = parseSkillModelAction(response);
-    if (action == null) return null;
+    final recovery = RecoveryEngine(RecoveryPolicy.skillJson);
+    var action = parseSkillModelAction(response);
+    while (action == null) {
+      if (recovery.select(RecoveryAction.retry) != RecoveryDecision.execute) {
+        return SkillModelAction.finalAnswer(
+          OutputSchemaGuard.userMessage(),
+          schemaInvalid: true,
+        );
+      }
+      recovery.noteAttempt(RecoveryAction.retry);
+      final retry = await _generate(instruction);
+      action = retry == null ? null : parseSkillModelAction(retry);
+    }
     if (action.type == SkillModelActionType.toolCall &&
         !skill.tools.contains(action.tool)) {
       return null;

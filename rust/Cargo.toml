@@ -10,6 +10,7 @@ members = [
   "airo_mind_llama",
   "airo_mind_meeting",
   "airo_mind_reasoning",
+  "airo_mind_reliability",
   "airo_mind_transcript",
   "airo_mind_whisper",
 ]
@@ -28,6 +29,7 @@ default-members = [
   "airo_mind_llama",
   "airo_mind_meeting",
   "airo_mind_reasoning",
+  "airo_mind_reliability",
   "airo_mind_transcript",
   "airo_mind_whisper",
 ]

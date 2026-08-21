@@ -18,6 +18,7 @@ airo_mind_core = { path = "../airo_mind_core" }
 airo_mind_diarize = { path = "../airo_mind_diarize" }
 airo_mind_meeting = { path = "../airo_mind_meeting" }
 airo_mind_reasoning = { path = "../airo_mind_reasoning" }
+airo_mind_reliability = { path = "../airo_mind_reliability" }
 airo_mind_transcript = { path = "../airo_mind_transcript" }
 flutter_rust_bridge = "=2.11.1"
 # `default-features = false` is a CORRECTNESS setting, not a size one.

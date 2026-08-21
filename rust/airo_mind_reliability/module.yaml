@@ -1,0 +1,5 @@
+owner: Rust Architect
+description: >
+  Airo Reasoning Reliability Engine — WFGY-compatible PM-01..PM-16
+  diagnostic taxonomy, execution checkpoints, deterministic classification,
+  and recovery policy. Not a WFGY dependency. Not a new Mind primitive.

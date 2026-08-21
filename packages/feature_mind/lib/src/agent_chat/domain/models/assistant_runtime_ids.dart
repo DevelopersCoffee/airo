@@ -41,3 +41,9 @@ String? offlineModelIdFromAssistantModelId(String assistantModelId) {
 bool isOfflineAssistantModelId(String assistantModelId) {
   return offlineModelIdFromAssistantModelId(assistantModelId) != null;
 }
+
+/// llama.cpp GGUF sessions can reuse a KV prefix. Gemini Nano, LiteRT, and
+/// cloud adapters do not expose a prefix-cache API to Airo.
+bool assistantRuntimeSupportsPrefixCache(String runtimeId) {
+  return isOfflineAssistantModelId(runtimeId);
+}
