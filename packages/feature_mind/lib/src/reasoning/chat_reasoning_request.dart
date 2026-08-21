@@ -8,8 +8,9 @@ import 'reasoning_models.dart';
 /// True when chat should call [MindGenerationBridge.reason] instead of
 /// unconstrained GGUF completion.
 ///
-/// LiteRT, Nano, and cloud stay on their existing runtimes. Android JNI
-/// GGUF is excluded because [engineReady] is the FRB llama slot.
+/// LiteRT, Nano, and cloud stay on their existing runtimes. Android GGUF
+/// uses `reason()` when the FRB llama slot is loaded; JNI-only loads stay
+/// on unconstrained completion.
 bool shouldUseOnDeviceReasoning({
   required bool engineReady,
   required String selectedModelId,

@@ -14,9 +14,9 @@ export 'gguf_runtime_stats.dart';
 /// Thin platform adapter for the backend-neutral GGUF path.
 ///
 /// Product policy remains in `core_ai`/the assistant runtime. This adapter
-/// only translates model lifecycle and generation calls to llama.cpp's typed
-/// Flutter bridge. Non-Android targets report unavailable and keep their
-/// existing runtime fallbacks.
+/// prefers the shared `airo_mind_llama` FRB slot (macOS/Windows/Linux/Android)
+/// so chat `reason()` can drive the same engine. Android JNI
+/// (`llama_flutter_android`) is the fallback when that slot cannot load.
 class LlamaGgufService {
   LlamaGgufService({
     LlamaController? nativeController,
@@ -31,9 +31,9 @@ class LlamaGgufService {
   final Future<bool> Function()? _desktopAvailabilityOverride;
   bool _loaded = false;
 
-  /// Engine stats from the most recent desktop GGUF completion, if any.
+  /// Engine stats from the most recent FFI GGUF completion, if any.
   GgufRuntimeStats? get lastStats =>
-      isDesktopGgufSupported ? _desktopBackend.readLastStats() : null;
+      _ffiEngineReady ? _desktopBackend.readLastStats() : null;
 
   LlamaController get _nativeController => _controller ??= LlamaController();
 
@@ -42,14 +42,25 @@ class LlamaGgufService {
 
   bool get isDesktopGgufSupported => DesktopGgufBackend.isSupported;
 
-  /// True when this adapter (or the shared desktop llama slot) has a model.
+  bool get _ffiEngineReady =>
+      isDesktopGgufSupported && _desktopBackend.isEngineReady;
+
+  /// True when this adapter (or the shared FRB llama slot) has a model.
   bool get isLoaded {
-    if (_loaded) return true;
-    if (isDesktopGgufSupported) return _desktopBackend.isEngineReady;
-    return false;
+    if (_ffiEngineReady) return true;
+    return _loaded;
+  }
+
+  Future<bool> _ffiSlotUsable() async {
+    if (!isDesktopGgufSupported) return false;
+    if (_desktopAvailabilityOverride != null) {
+      return _desktopAvailabilityOverride!();
+    }
+    return _desktopBackend.isAvailable();
   }
 
   Future<bool> isAvailable() async {
+    if (await _ffiSlotUsable()) return true;
     if (isPlatformSupported) {
       try {
         await _nativeController.detectGpu();
@@ -57,10 +68,6 @@ class LlamaGgufService {
       } on Object {
         return false;
       }
-    }
-    if (isDesktopGgufSupported) {
-      return _desktopAvailabilityOverride?.call() ??
-          _desktopBackend.isAvailable();
     }
     return false;
   }
@@ -89,6 +96,15 @@ class LlamaGgufService {
     final path = model.filePath?.trim();
     if (path == null || path.isEmpty) {
       return const GgufLoadOutcome.fileMissing();
+    }
+
+    if (await _ffiSlotUsable()) {
+      final outcome = await _desktopBackend.loadModel(
+        model,
+        memoryBudgetMb: memoryBudgetMb,
+      );
+      _loaded = outcome.succeeded;
+      return outcome;
     }
 
     if (isPlatformSupported) {
@@ -132,6 +148,9 @@ class LlamaGgufService {
     if (!isLoaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
+    if (_ffiEngineReady) {
+      return _desktopBackend.generate(prompt: prompt, maxTokens: maxTokens);
+    }
     if (isPlatformSupported) {
       return _guardedGeneration(
         prompt: prompt,
@@ -140,9 +159,6 @@ class LlamaGgufService {
         topP: topP,
         topK: topK,
       );
-    }
-    if (isDesktopGgufSupported) {
-      return _desktopBackend.generate(prompt: prompt, maxTokens: maxTokens);
     }
     return Stream<String>.error(StateError('gguf_backend_unavailable'));
   }
@@ -177,7 +193,7 @@ class LlamaGgufService {
   }
 
   Future<void> stop() async {
-    if (isDesktopGgufSupported) {
+    if (_ffiEngineReady) {
       await _desktopBackend.stop();
       return;
     }
@@ -188,7 +204,6 @@ class LlamaGgufService {
     _loaded = false;
     if (isDesktopGgufSupported) {
       await _desktopBackend.unload();
-      return;
     }
     if (!isPlatformSupported) return;
     await _controller?.dispose();
@@ -208,7 +223,7 @@ class LlamaGgufService {
     if (!isLoaded) {
       throw StateError('gguf_model_not_loaded');
     }
-    if (isDesktopGgufSupported) {
+    if (_ffiEngineReady) {
       await generate(prompt: prompt, maxTokens: maxOutputTokens).drain<void>();
       return _desktopBackend.lastBenchSample();
     }
