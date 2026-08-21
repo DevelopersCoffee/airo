@@ -54,10 +54,28 @@ abstract final class AiroPromptRegistry {
     hasEvalSuite: true,
   );
 
+  static const notebookSuperSummary = RegisteredPrompt(
+    id: 'notebook.super_summary',
+    version: '1',
+    taskType: 'summary',
+    outputSchema: '# Summary\n# Key points',
+    hasEvalSuite: true,
+  );
+
+  static const meetingMinutes = RegisteredPrompt(
+    id: 'meeting.minutes',
+    version: '1',
+    taskType: 'minutes',
+    outputSchema: 'Markdown',
+    hasEvalSuite: true,
+  );
+
   static const all = <RegisteredPrompt>[
     chatAssistant,
     skillSelect,
     skillNextAction,
+    notebookSuperSummary,
+    meetingMinutes,
   ];
 
   static RegisteredPrompt? byId(String id) {

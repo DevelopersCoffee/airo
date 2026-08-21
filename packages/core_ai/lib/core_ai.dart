@@ -99,6 +99,7 @@ export 'src/reliability/reasoning_reliability.dart';
 export 'src/reliability/prompt_reliability.dart';
 export 'src/reliability/prompt_registry.dart';
 export 'src/reliability/recovery_engine.dart';
+export 'src/reliability/context_compiler.dart';
 
 // Parsing
 export 'src/parsing/json_parser.dart';
