@@ -175,6 +175,22 @@ void main() {
     expect(cached.defects, isNot(contains(PromptDefect.perf003NoPrefixCache)));
   });
 
+  test('more than two few-shots is PD-PERF-002 and still allowed', () {
+    final report = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: 5,
+    );
+    expect(report.defects, contains(PromptDefect.perf002InefficientFewShot));
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+
+    final ok = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: PromptQualityGate.maxFewShots,
+    );
+    expect(ok.defects, isNot(contains(PromptDefect.perf002InefficientFewShot)));
+  });
+
   test('recovery engine aborts after the skill JSON retry budget', () {
     final engine = RecoveryEngine(RecoveryPolicy.skillJson);
     expect(engine.select(RecoveryAction.retry), RecoveryDecision.execute);
