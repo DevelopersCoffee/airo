@@ -31,8 +31,10 @@ stat_bytes() {
 
 module_size_bytes() {
   local module="$1"
+  # test/ and integration_test/ are not shipped. Counting fixtures as bundled
+  # size trips Always-Ship packages (feature_mind) as soon as tests grow.
   find "$module" \
-    \( -path '*/.dart_tool/*' -o -path '*/build/*' -o -path '*/.git/*' -o -path '*/coverage/*' -o -path '*/.pub-cache/*' -o -path '*/ios/Pods/*' -o -path '*/android/.gradle/*' \) -prune \
+    \( -path '*/.dart_tool/*' -o -path '*/build/*' -o -path '*/.git/*' -o -path '*/coverage/*' -o -path '*/.pub-cache/*' -o -path '*/ios/Pods/*' -o -path '*/android/.gradle/*' -o -path '*/test' -o -path '*/test/*' -o -path '*/integration_test' -o -path '*/integration_test/*' \) -prune \
     -o -type f -print0 \
     | while IFS= read -r -d '' file; do
         stat_bytes "$file"
