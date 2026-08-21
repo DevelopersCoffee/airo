@@ -29,8 +29,26 @@ String formatGgufInstructPrompt({
     return '<start_of_turn>user\n$sys\n\n$user<end_of_turn>\n'
         '<start_of_turn>model\n';
   }
-  if (system.isEmpty) return user;
-  return '$system\n\n$user';
+  if (family == ModelFamily.llama) {
+    final sys = system.isEmpty
+        ? 'You are a helpful assistant. Answer the last user message directly.'
+        : system;
+    return '<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n'
+        '$sys<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n'
+        '$user<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n';
+  }
+  if (family == ModelFamily.mistral) {
+    final sys = system.isEmpty
+        ? 'You are a helpful assistant. Answer the last user message directly.'
+        : system;
+    return '<s>[INST] $sys\n\n$user [/INST]';
+  }
+  final sys = system.isEmpty
+      ? 'You are a helpful assistant. Answer the last user message directly.'
+      : system;
+  return '<|im_start|>system\n$sys<|im_end|>\n'
+      '<|im_start|>user\n$user<|im_end|>\n'
+      '<|im_start|>assistant\n';
 }
 
 const _ggufStopMarkers = [
@@ -39,8 +57,10 @@ const _ggufStopMarkers = [
   '</model>',
   '</user>',
   '<eos>',
-  '<|im_end|>',
-  '<|im_start|>',
+  '<|eot_id|>',
+  '<|end_of_text|>',
+  '<|start_header_id|>',
+  '[/INST]',
   '\nUser:',
   '\nAiro:',
   ' Airo:',

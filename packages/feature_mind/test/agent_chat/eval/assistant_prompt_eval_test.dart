@@ -159,7 +159,7 @@ void main() {
     },
   );
 
-  test('Llama concatenates system and user; Qwen stays on ChatML', () {
+  test('Llama uses Llama-3 headers; Qwen stays on ChatML', () {
     for (final family in [ModelFamily.llama, ModelFamily.qwen]) {
       final wrapped = formatGgufInstructPrompt(
         prompt: '2+2',
@@ -169,8 +169,10 @@ void main() {
       if (family == ModelFamily.qwen) {
         expect(wrapped, contains('<|im_start|>assistant'));
       } else {
+        expect(wrapped, contains('<|start_header_id|>system'));
         expect(wrapped, contains('You are Airo.'));
         expect(wrapped, contains('2+2'));
+        expect(wrapped, isNot(contains('<|im_start|>')));
       }
       expect(wrapped, isNot(contains('<start_of_turn>')));
     }

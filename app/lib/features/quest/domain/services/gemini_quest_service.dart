@@ -184,6 +184,10 @@ class GeminiQuestService implements QuestService {
             '${recognizedImageText.join('\n\n')}\n\n';
       }
 
+      if (context.isNotEmpty) {
+        context = ContextCompiler.wrapAsData(context);
+      }
+
       final systemPrompt = '''You are a helpful AI assistant.
 You help users with:
 - Creating personalized diet plans

@@ -151,6 +151,9 @@ abstract final class PromptQualityGate {
         cacheablePrefixTokens > prefixCacheWarnTokens) {
       defects.add(PromptDefect.perf003NoPrefixCache);
     }
+    if (_hasUnsatisfiablePolarity(userText)) {
+      defects.add(PromptDefect.spec003ConflictingInstructions);
+    }
 
     final decision = _decide(defects);
     final recovery = switch (decision) {
@@ -177,6 +180,8 @@ abstract final class PromptQualityGate {
     }
     if (defects.contains(PromptDefect.spec001AmbiguousInstruction) ||
         defects.contains(PromptDefect.spec002UnderspecifiedConstraints) ||
+        defects.contains(PromptDefect.spec003ConflictingInstructions) ||
+        defects.contains(PromptDefect.context002MissingContext) ||
         defects.contains(PromptDefect.context004Misreferencing) ||
         defects.contains(PromptDefect.struct004UndefinedOutputFormat)) {
       return 'I need a bit more detail before I continue.';
@@ -192,6 +197,7 @@ abstract final class PromptQualityGate {
     }
     if (defects.contains(PromptDefect.spec001AmbiguousInstruction) ||
         defects.contains(PromptDefect.spec002UnderspecifiedConstraints) ||
+        defects.contains(PromptDefect.spec003ConflictingInstructions) ||
         defects.contains(PromptDefect.context002MissingContext) ||
         defects.contains(PromptDefect.context004Misreferencing) ||
         defects.contains(PromptDefect.struct004UndefinedOutputFormat)) {
@@ -211,5 +217,39 @@ abstract final class PromptQualityGate {
         .split(RegExp(r'\s+'))
         .where((part) => part.isNotEmpty)
         .join(' ');
+  }
+
+  static bool _hasUnsatisfiablePolarity(String userText) {
+    final text = userText.toLowerCase();
+    return _axisConflict(
+          text,
+          const ['be brief', 'concise', 'one sentence', 'short answer'],
+          const [
+            'extensive detail',
+            'be detailed',
+            'comprehensive',
+            'as much detail',
+          ],
+        ) ||
+        _axisConflict(
+          text,
+          const ['json only', 'respond in json', 'output json', 'return json'],
+          const [
+            'markdown only',
+            'respond in markdown',
+            'output markdown',
+            'explain this normally',
+            'explain normally',
+            'in prose',
+          ],
+        );
+  }
+
+  static bool _axisConflict(
+    String text,
+    List<String> left,
+    List<String> right,
+  ) {
+    return left.any(text.contains) && right.any(text.contains);
   }
 }

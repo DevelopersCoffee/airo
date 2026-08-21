@@ -1117,6 +1117,10 @@ void main() {
           ),
         ),
       );
+      expect(
+        service.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
+      );
     });
 
     test('routes non-stream runtimes through single response stream', () async {
@@ -1176,6 +1180,7 @@ void main() {
         prompt: 'hello',
       );
       expect(text, 'trimmed cloud');
+      expect(service.lastReliabilityDiagnostic, isNull);
 
       final emptyService = AssistantRuntimeService(
         initializeCloud: () async {},
@@ -1194,6 +1199,10 @@ void main() {
             ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
           ),
         ),
+      );
+      expect(
+        emptyService.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
       );
     });
 
