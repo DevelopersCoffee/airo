@@ -71,6 +71,29 @@ class MindReasoningRequest {
   final List<MindReasoningContextItem> toolResults;
   final List<MindReasoningContextItem> history;
   final List<String> toolNames;
+
+  MindReasoningRequest copyWith({
+    List<MindReasoningContextItem>? toolResults,
+    List<String>? toolNames,
+  }) {
+    return MindReasoningRequest(
+      userQuery: userQuery,
+      intentKind: intentKind,
+      intentComplexity: intentComplexity,
+      requestedLevel: requestedLevel,
+      maxReasoningLevel: maxReasoningLevel,
+      availableMemoryMb: availableMemoryMb,
+      gpuAvailable: gpuAvailable,
+      npuAvailable: npuAvailable,
+      thermalConstrained: thermalConstrained,
+      batteryConstrained: batteryConstrained,
+      memories: memories,
+      documents: documents,
+      toolResults: toolResults ?? this.toolResults,
+      history: history,
+      toolNames: toolNames ?? this.toolNames,
+    );
+  }
 }
 
 @immutable
@@ -107,18 +130,42 @@ final class MindReasoningAnswerDelta extends MindReasoningEvent {
   final String text;
 }
 
+@immutable
+class MindReasoningToolCall {
+  const MindReasoningToolCall({
+    required this.name,
+    required this.argumentsJson,
+  });
+
+  final String name;
+  final String argumentsJson;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MindReasoningToolCall &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          argumentsJson == other.argumentsJson;
+
+  @override
+  int get hashCode => Object.hash(name, argumentsJson);
+}
+
 final class MindReasoningCompleted extends MindReasoningEvent {
   const MindReasoningCompleted({
     required this.answer,
     this.reasoningSummary,
     required this.level,
     this.confidence,
+    this.toolCalls = const [],
   });
 
   final String answer;
   final String? reasoningSummary;
   final MindReasoningLevel level;
   final double? confidence;
+  final List<MindReasoningToolCall> toolCalls;
 }
 
 final class MindReasoningError extends MindReasoningEvent {
@@ -160,6 +207,7 @@ class ReasoningStreamFold {
   String? error;
   var cancelled = false;
   final List<ReasoningProgressStep> steps = [];
+  final List<MindReasoningToolCall> toolCalls = [];
 
   void add(MindReasoningEvent event) {
     switch (event) {
@@ -182,11 +230,17 @@ class ReasoningStreamFold {
         :final reasoningSummary,
         :final level,
         :final confidence,
+        :final toolCalls,
       ):
         this.answer = answer;
         this.reasoningSummary = reasoningSummary;
         this.level = level;
         this.confidence = confidence;
+        if (toolCalls.isNotEmpty) {
+          this.toolCalls
+            ..clear()
+            ..addAll(toolCalls);
+        }
       case MindReasoningError(:final message):
         error = message;
       case MindReasoningCancelled():

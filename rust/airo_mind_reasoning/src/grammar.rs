@@ -8,7 +8,12 @@ root ::= "{" ws
   "\"answer\":" ws string "," ws
   "\"reasoning_summary\":" ws string "," ws
   "\"confidence\":" ws confidence
+  tool_calls_tail
 ws "}"
+
+tool_calls_tail ::= "," ws "\"tool_calls\":" ws "[" ws tool_items ws "]" | ""
+tool_items ::= tool_item ("," ws tool_item)* | ""
+tool_item ::= "{" ws "\"name\":" ws string "," ws "\"arguments_json\":" ws string ws "}"
 
 confidence ::= "0." [0-9] [0-9] | "1.00" | "1.0" | "0"
 
@@ -26,6 +31,7 @@ mod tests {
     fn grammar_has_root_and_no_thoughts_key() {
         assert!(RESULT_GRAMMAR.contains("root ::="));
         assert!(RESULT_GRAMMAR.contains("answer"));
+        assert!(RESULT_GRAMMAR.contains("tool_calls"));
         assert!(!RESULT_GRAMMAR.contains("thoughts"));
         assert!(!RESULT_GRAMMAR.contains("scratchpad"));
     }

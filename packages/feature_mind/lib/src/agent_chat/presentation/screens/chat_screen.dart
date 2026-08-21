@@ -47,6 +47,7 @@ import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../reasoning/chat_reasoning_request.dart';
 import '../../../reasoning/reasoning_models.dart';
 import '../../../reasoning/reasoning_progress_panel.dart';
+import '../../../reasoning/reasoning_tool_loop.dart';
 import '../../../bridges/mind_generation_bridge.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
@@ -97,6 +98,7 @@ class AgentChatMessage {
   final String? reasoningSummary;
   final MindReasoningLevel? reasoningLevel;
   final bool reasoningInProgress;
+  final List<ChatHistoryToolCall> reasoningToolCalls;
 
   AgentChatMessage({
     required this.text,
@@ -112,6 +114,7 @@ class AgentChatMessage {
     this.reasoningSummary,
     this.reasoningLevel,
     this.reasoningInProgress = false,
+    this.reasoningToolCalls = const [],
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
@@ -120,6 +123,7 @@ class AgentChatMessage {
     timestamp: timestamp,
     reasoningSummary: isUser ? null : reasoningSummary,
     reasoningLevel: isUser ? null : reasoningLevelStableId(reasoningLevel),
+    toolCalls: isUser ? const [] : reasoningToolCalls,
   );
 
   static AgentChatMessage fromHistoryEntry(ChatHistoryEntry entry) =>
@@ -129,6 +133,7 @@ class AgentChatMessage {
         timestamp: entry.timestamp,
         reasoningSummary: entry.reasoningSummary,
         reasoningLevel: reasoningLevelFromStableId(entry.reasoningLevel),
+        reasoningToolCalls: entry.toolCalls,
       );
 }
 
@@ -1749,10 +1754,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       tier: device.tier,
       signals: device.signals,
       documents: documents,
+      toolNames: reasoningLookupToolNames(_connectorRegistry),
     );
     final fold = ReasoningStreamFold();
     int? timeToFirstTokenMs;
-    await for (final event in _generationBridge.reason(request)) {
+    await for (final event in runReasoningToolLoop(
+      request: request,
+      reason: _generationBridge.reason,
+      executeTool: (name, argumentsJson) => executeReasoningTool(
+        registry: _connectorRegistry,
+        name: name,
+        argumentsJson: argumentsJson,
+      ),
+    )) {
       fold.add(event);
       timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
       _applyReasoningFold(fold);
@@ -1837,6 +1851,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         reasoningSummary: fold.reasoningSummary,
         reasoningLevel: fold.level,
         reasoningInProgress: !complete,
+        reasoningToolCalls: [
+          for (final call in fold.toolCalls)
+            ChatHistoryToolCall(
+              name: call.name,
+              argumentsJson: call.argumentsJson,
+            ),
+        ],
       );
     });
     _scrollMessagesToLatest(animated: false);
@@ -1859,6 +1880,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         reasoningSummary: current.reasoningSummary,
         reasoningLevel: current.reasoningLevel,
         reasoningInProgress: current.reasoningInProgress,
+        reasoningToolCalls: current.reasoningToolCalls,
       );
     });
     _scrollMessagesToLatest(animated: false);
@@ -2085,6 +2107,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         reasoningSummary: current.reasoningSummary,
         reasoningLevel: current.reasoningLevel,
         reasoningInProgress: current.reasoningInProgress,
+        reasoningToolCalls: current.reasoningToolCalls,
       );
     });
   }

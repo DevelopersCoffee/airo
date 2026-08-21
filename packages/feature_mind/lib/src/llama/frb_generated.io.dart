@@ -103,6 +103,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<ReasoningToolCall> dco_decode_list_reasoning_tool_call(dynamic raw);
+
+  @protected
   MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw);
 
   @protected
@@ -148,6 +151,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ReasoningStage dco_decode_reasoning_stage(dynamic raw);
+
+  @protected
+  ReasoningToolCall dco_decode_reasoning_tool_call(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -254,6 +260,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<ReasoningToolCall> sse_decode_list_reasoning_tool_call(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MeetingActionItemRecord sse_decode_meeting_action_item_record(
     SseDeserializer deserializer,
   );
@@ -315,6 +326,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ReasoningStage sse_decode_reasoning_stage(SseDeserializer deserializer);
+
+  @protected
+  ReasoningToolCall sse_decode_reasoning_tool_call(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -446,6 +462,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_reasoning_tool_call(
+    List<ReasoningToolCall> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_meeting_action_item_record(
     MeetingActionItemRecord self,
     SseSerializer serializer,
@@ -526,6 +548,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_reasoning_stage(
     ReasoningStage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reasoning_tool_call(
+    ReasoningToolCall self,
     SseSerializer serializer,
   );
 

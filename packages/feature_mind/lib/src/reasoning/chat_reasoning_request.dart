@@ -171,6 +171,7 @@ MindReasoningRequest buildMindReasoningRequest({
   LlmDeviceTier tier = LlmDeviceTier.large,
   LlmDeviceSignals? signals,
   List<MindReasoningContextItem> documents = const [],
+  List<String> toolNames = const [],
 }) {
   final thermal = signals?.thermalPressure;
   return MindReasoningRequest(
@@ -190,5 +191,6 @@ MindReasoningRequest buildMindReasoningRequest({
       currentUserPrompt: userQuery,
     ),
     documents: documents,
+    toolNames: toolNames,
   );
 }

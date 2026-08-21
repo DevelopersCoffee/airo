@@ -123,4 +123,20 @@ void main() {
     expect(request.thermalConstrained, isTrue);
     expect(request.gpuAvailable, isFalse);
   });
+
+  test('lookup tool names are forwarded on the request', () {
+    final request = buildMindReasoningRequest(
+      userQuery: "What's tomorrow?",
+      intent: const Intent(
+        type: IntentType.unknown,
+        originalText: "What's tomorrow?",
+      ),
+      history: const [],
+      toolNames: const ['read_calendar_events', 'get_current_date_time'],
+    );
+    expect(request.toolNames, [
+      'read_calendar_events',
+      'get_current_date_time',
+    ]);
+  });
 }

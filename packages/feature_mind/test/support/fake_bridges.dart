@@ -110,6 +110,8 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   List<MeetingIntelligenceEvent> meetingIntelligenceEvents = const [];
   List<GenerationEvent> generationEvents = const [];
   List<GenerationEvent>? completeEvents;
+  Stream<MindReasoningEvent> Function(MindReasoningRequest)? reasonHandler;
+  final reasonRequests = <MindReasoningRequest>[];
   List<MindReasoningEvent> reasoningEvents = const [];
   MindReasoningRequest? lastReasonRequest;
   String modelIdValue = 'test-model@1';
@@ -175,6 +177,10 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   @override
   Stream<MindReasoningEvent> reason(MindReasoningRequest request) {
     lastReasonRequest = request;
+    reasonRequests.add(request);
+    if (reasonHandler != null) {
+      return reasonHandler!(request);
+    }
     return Stream.fromIterable(reasoningEvents);
   }
 

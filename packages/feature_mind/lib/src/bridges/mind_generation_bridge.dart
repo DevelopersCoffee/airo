@@ -424,12 +424,20 @@ MindReasoningEvent fromLlamaReasoningEvent(llama_reason.ReasoningEvent event) {
       :final reasoningSummary,
       :final level,
       :final confidence,
+      :final toolCalls,
     ) =>
       MindReasoningCompleted(
         answer: answer,
         reasoningSummary: reasoningSummary,
         level: fromLlamaReasoningLevel(level),
         confidence: confidence,
+        toolCalls: [
+          for (final call in toolCalls)
+            MindReasoningToolCall(
+              name: call.name,
+              argumentsJson: call.argumentsJson,
+            ),
+        ],
       ),
     llama_reason.ReasoningEvent_Error(:final message) => MindReasoningError(
       message,

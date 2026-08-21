@@ -8,6 +8,7 @@ pub enum ReasoningError {
     InvalidModelOutput,
     Cancelled,
     UnsupportedCapability,
+    ToolBudgetExceeded,
     Backend(String),
 }
 
@@ -21,6 +22,9 @@ impl ReasoningError {
             Self::InvalidModelOutput => "The model returned an answer that could not be used.",
             Self::Cancelled => "Stopped.",
             Self::UnsupportedCapability => "This device cannot run that kind of reasoning.",
+            Self::ToolBudgetExceeded => {
+                "This request needed too many steps. Try a simpler question."
+            }
             Self::Backend(_) => "Generation failed. Try again.",
         }
     }

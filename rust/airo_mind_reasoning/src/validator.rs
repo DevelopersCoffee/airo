@@ -4,7 +4,7 @@ use crate::result::ReasoningResult;
 const MAX_SUMMARY_CHARS: usize = 280;
 
 pub fn validate_result(result: &ReasoningResult) -> Result<(), ReasoningError> {
-    if result.answer.trim().is_empty() {
+    if result.answer.trim().is_empty() && result.tool_calls.is_empty() {
         return Err(ReasoningError::InvalidModelOutput);
     }
     if let Some(summary) = &result.reasoning_summary {
@@ -40,5 +40,20 @@ mod tests {
         let mut result = ReasoningResult::answer_only("ok", ReasoningLevel::Light);
         result.reasoning_summary = Some("<thought>secret</thought>".into());
         assert!(validate_result(&result).is_err());
+    }
+
+    #[test]
+    fn empty_answer_with_tool_call_is_ok() {
+        let result = ReasoningResult {
+            answer: String::new(),
+            reasoning_summary: Some("Need calendar.".into()),
+            level: ReasoningLevel::None,
+            confidence: Some(0.8),
+            tool_calls: vec![crate::result::ToolCall {
+                name: "read_calendar_events".into(),
+                arguments_json: "{}".into(),
+            }],
+        };
+        assert!(validate_result(&result).is_ok());
     }
 }

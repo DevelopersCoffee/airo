@@ -30,6 +30,30 @@ void main() {
     expect(fold.steps.any((s) => s.label.contains('level=')), isFalse);
   });
 
+  test('completed tool calls land on the fold, not the step list', () {
+    final fold = ReasoningStreamFold();
+    fold.add(const MindReasoningToolStarted('read_calendar_events'));
+    fold.add(const MindReasoningToolCompleted('read_calendar_events'));
+    fold.add(
+      const MindReasoningCompleted(
+        answer: 'Three meetings.',
+        reasoningSummary: 'Used the calendar.',
+        level: MindReasoningLevel.none,
+        toolCalls: [
+          MindReasoningToolCall(
+            name: 'read_calendar_events',
+            argumentsJson: '{}',
+          ),
+        ],
+      ),
+    );
+    expect(fold.toolCalls.single.name, 'read_calendar_events');
+    expect(fold.steps, [
+      const ReasoningProgressStep(label: 'Using read_calendar_events'),
+      const ReasoningProgressStep(label: 'Finished read_calendar_events'),
+    ]);
+  });
+
   test('the fake bridge records the request and never exposes thoughts', () {
     final bridge = FakeMindGenerationBridge()
       ..reasoningEvents = const [

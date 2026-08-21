@@ -5,7 +5,7 @@
 
 use crate::error::ReasoningError;
 use crate::level::ReasoningLevel;
-use crate::result::ReasoningResult;
+use crate::result::{ReasoningResult, ToolCall};
 
 #[derive(Debug)]
 enum Phase {
@@ -70,9 +70,6 @@ impl ResultStreamParser {
     pub fn finish(mut self, level: ReasoningLevel) -> Result<ReasoningResult, ReasoningError> {
         if matches!(self.phase, Phase::Confidence) && !self.current.is_empty() {
             self.flush_confidence()?;
-        }
-        if self.answer.is_empty() {
-            return Err(ReasoningError::InvalidModelOutput);
         }
         let summary = if self.summary.trim().is_empty() {
             None
@@ -226,6 +223,36 @@ fn unescape(ch: char) -> char {
     }
 }
 
+/// Pull `tool_calls` from the finished envelope. The streaming FSM only
+/// tracks `answer` / `reasoning_summary` / `confidence`; the array is not
+/// streamed to the UI.
+pub fn extract_tool_calls(raw: &str) -> Vec<ToolCall> {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return Vec::new();
+    };
+    let Some(items) = value.get("tool_calls").and_then(|v| v.as_array()) else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .filter_map(|item| {
+            let name = item.get("name")?.as_str()?.trim();
+            if name.is_empty() {
+                return None;
+            }
+            let arguments_json = item
+                .get("arguments_json")
+                .and_then(|v| v.as_str())
+                .unwrap_or("{}")
+                .to_string();
+            Some(ToolCall {
+                name: name.to_string(),
+                arguments_json,
+            })
+        })
+        .collect()
+}
+
 pub fn reject_unknown_trace_keys(raw: &str) -> Result<(), ReasoningError> {
     let lowered = raw.to_ascii_lowercase();
     for banned in [
@@ -267,12 +294,11 @@ mod tests {
     }
 
     #[test]
-    fn missing_answer_is_invalid() {
+    fn missing_answer_is_empty_until_validated() {
         let p = ResultStreamParser::new();
-        assert_eq!(
-            p.finish(ReasoningLevel::None),
-            Err(ReasoningError::InvalidModelOutput)
-        );
+        let result = p.finish(ReasoningLevel::None).unwrap();
+        assert!(result.answer.is_empty());
+        assert!(crate::validator::validate_result(&result).is_err());
     }
 
     #[test]
@@ -291,5 +317,22 @@ mod tests {
             .unwrap();
         let result = p.finish(ReasoningLevel::None).unwrap();
         assert_eq!(result.answer, r#"He said "hi""#);
+    }
+
+    #[test]
+    fn tool_calls_are_extracted_from_the_envelope() {
+        let raw = r#"{"answer":"","reasoning_summary":"Need calendar.","confidence":0.80,"tool_calls":[{"name":"read_calendar_events","arguments_json":"{\"day\":\"tomorrow\"}"}]}"#;
+        let calls = extract_tool_calls(raw);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "read_calendar_events");
+        assert!(calls[0].arguments_json.contains("tomorrow"));
+    }
+
+    #[test]
+    fn missing_tool_calls_is_empty() {
+        assert!(
+            extract_tool_calls(r#"{"answer":"ok","reasoning_summary":"s","confidence":1}"#)
+                .is_empty()
+        );
     }
 }

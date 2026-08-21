@@ -24,16 +24,24 @@ void main() {
       isUser: false,
       reasoningSummary: 'Used density, not a scratchpad.',
       reasoningLevel: MindReasoningLevel.light,
+      reasoningToolCalls: const [
+        ChatHistoryToolCall(name: 'read_calendar_events', argumentsJson: '{}'),
+      ],
     );
     final json = message.toHistoryEntry().toJson();
     expect(jsonContainsBannedReasoningTraceKeys(json), isFalse);
     expect(json['reasoningLevel'], 'light');
+    expect((json['toolCalls'] as List).single, {
+      'name': 'read_calendar_events',
+      'argumentsJson': '{}',
+    });
     final restored = AgentChatMessage.fromHistoryEntry(
       ChatHistoryEntry.fromJson(json)!,
     );
     expect(restored.reasoningSummary, 'Used density, not a scratchpad.');
     expect(restored.reasoningLevel, MindReasoningLevel.light);
     expect(restored.text, 'Ice is less dense than water.');
+    expect(restored.reasoningToolCalls.single.name, 'read_calendar_events');
   });
   testWidgets(
     'an assistant bubble shows thinking steps without putting the answer in them',

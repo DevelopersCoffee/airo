@@ -12,7 +12,8 @@ use airo_mind_core::{
 use airo_mind_reasoning::{
     ClassifiedIntent, ContextItem, DeviceInferenceProfile, ReasoningContext, ReasoningEngine,
     ReasoningError, ReasoningEvent as DomainEvent, ReasoningLevel as DomainLevel,
-    ReasoningRequest as DomainRequest, ReasoningStage as DomainStage, ToolDefinition,
+    ReasoningRequest as DomainRequest, ReasoningStage as DomainStage, ToolCall as DomainToolCall,
+    ToolDefinition,
 };
 use flutter_rust_bridge::frb;
 
@@ -42,6 +43,20 @@ pub enum ReasoningStage {
     Validating,
     ComposingAnswer,
     Complete,
+}
+
+pub struct ReasoningToolCall {
+    pub name: String,
+    pub arguments_json: String,
+}
+
+impl From<DomainToolCall> for ReasoningToolCall {
+    fn from(value: DomainToolCall) -> Self {
+        Self {
+            name: value.name,
+            arguments_json: value.arguments_json,
+        }
+    }
 }
 
 pub struct ReasoningRequest {
@@ -84,6 +99,7 @@ pub enum ReasoningEvent {
         reasoning_summary: Option<String>,
         level: ReasoningLevel,
         confidence: Option<f32>,
+        tool_calls: Vec<ReasoningToolCall>,
     },
     Error {
         message: String,
@@ -182,6 +198,11 @@ fn wire_event(event: DomainEvent) -> ReasoningEvent {
             reasoning_summary: result.reasoning_summary,
             level: result.level.into(),
             confidence: result.confidence,
+            tool_calls: result
+                .tool_calls
+                .into_iter()
+                .map(ReasoningToolCall::from)
+                .collect(),
         },
         DomainEvent::Error { message } => ReasoningEvent::Error { message },
     }

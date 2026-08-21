@@ -662,6 +662,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ReasoningToolCall> dco_decode_list_reasoning_tool_call(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_reasoning_tool_call).toList();
+  }
+
+  @protected
   MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -814,6 +820,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           reasoningSummary: dco_decode_opt_String(raw[2]),
           level: dco_decode_reasoning_level(raw[3]),
           confidence: dco_decode_opt_box_autoadd_f_32(raw[4]),
+          toolCalls: dco_decode_list_reasoning_tool_call(raw[5]),
         );
       case 7:
         return ReasoningEvent_Error(message: dco_decode_String(raw[1]));
@@ -859,6 +866,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ReasoningStage dco_decode_reasoning_stage(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ReasoningStage.values[raw as int];
+  }
+
+  @protected
+  ReasoningToolCall dco_decode_reasoning_tool_call(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ReasoningToolCall(
+      name: dco_decode_String(arr[0]),
+      argumentsJson: dco_decode_String(arr[1]),
+    );
   }
 
   @protected
@@ -1121,6 +1140,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ReasoningToolCall> sse_decode_list_reasoning_tool_call(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ReasoningToolCall>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_reasoning_tool_call(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   MeetingActionItemRecord sse_decode_meeting_action_item_record(
     SseDeserializer deserializer,
   ) {
@@ -1319,11 +1352,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         var var_reasoningSummary = sse_decode_opt_String(deserializer);
         var var_level = sse_decode_reasoning_level(deserializer);
         var var_confidence = sse_decode_opt_box_autoadd_f_32(deserializer);
+        var var_toolCalls = sse_decode_list_reasoning_tool_call(deserializer);
         return ReasoningEvent_Completed(
           answer: var_answer,
           reasoningSummary: var_reasoningSummary,
           level: var_level,
           confidence: var_confidence,
+          toolCalls: var_toolCalls,
         );
       case 7:
         var var_message = sse_decode_String(deserializer);
@@ -1386,6 +1421,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return ReasoningStage.values[inner];
+  }
+
+  @protected
+  ReasoningToolCall sse_decode_reasoning_tool_call(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_argumentsJson = sse_decode_String(deserializer);
+    return ReasoningToolCall(name: var_name, argumentsJson: var_argumentsJson);
   }
 
   @protected
@@ -1658,6 +1703,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_reasoning_tool_call(
+    List<ReasoningToolCall> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_reasoning_tool_call(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_meeting_action_item_record(
     MeetingActionItemRecord self,
     SseSerializer serializer,
@@ -1826,12 +1883,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         reasoningSummary: final reasoningSummary,
         level: final level,
         confidence: final confidence,
+        toolCalls: final toolCalls,
       ):
         sse_encode_i_32(6, serializer);
         sse_encode_String(answer, serializer);
         sse_encode_opt_String(reasoningSummary, serializer);
         sse_encode_reasoning_level(level, serializer);
         sse_encode_opt_box_autoadd_f_32(confidence, serializer);
+        sse_encode_list_reasoning_tool_call(toolCalls, serializer);
       case ReasoningEvent_Error(message: final message):
         sse_encode_i_32(7, serializer);
         sse_encode_String(message, serializer);
@@ -1879,6 +1938,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_reasoning_tool_call(
+    ReasoningToolCall self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.argumentsJson, serializer);
   }
 
   @protected

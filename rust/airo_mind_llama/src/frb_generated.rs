@@ -701,6 +701,20 @@ impl SseDecode for Vec<crate::api::reasoning::ReasoningContextItem> {
     }
 }
 
+impl SseDecode for Vec<crate::api::reasoning::ReasoningToolCall> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::reasoning::ReasoningToolCall>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for crate::api::meeting_intelligence::MeetingActionItemRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -930,11 +944,14 @@ impl SseDecode for crate::api::reasoning::ReasoningEvent {
                 let mut var_level =
                     <crate::api::reasoning::ReasoningLevel>::sse_decode(deserializer);
                 let mut var_confidence = <Option<f32>>::sse_decode(deserializer);
+                let mut var_toolCalls =
+                    <Vec<crate::api::reasoning::ReasoningToolCall>>::sse_decode(deserializer);
                 return crate::api::reasoning::ReasoningEvent::Completed {
                     answer: var_answer,
                     reasoning_summary: var_reasoningSummary,
                     level: var_level,
                     confidence: var_confidence,
+                    tool_calls: var_toolCalls,
                 };
             }
             7 => {
@@ -1024,6 +1041,18 @@ impl SseDecode for crate::api::reasoning::ReasoningStage {
             5 => crate::api::reasoning::ReasoningStage::ComposingAnswer,
             6 => crate::api::reasoning::ReasoningStage::Complete,
             _ => unreachable!("Invalid variant for ReasoningStage: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningToolCall {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_argumentsJson = <String>::sse_decode(deserializer);
+        return crate::api::reasoning::ReasoningToolCall {
+            name: var_name,
+            arguments_json: var_argumentsJson,
         };
     }
 }
@@ -1410,12 +1439,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningEvent {
                 reasoning_summary,
                 level,
                 confidence,
+                tool_calls,
             } => [
                 6.into_dart(),
                 answer.into_into_dart().into_dart(),
                 reasoning_summary.into_into_dart().into_dart(),
                 level.into_into_dart().into_dart(),
                 confidence.into_into_dart().into_dart(),
+                tool_calls.into_into_dart().into_dart(),
             ]
             .into_dart(),
             crate::api::reasoning::ReasoningEvent::Error { message } => {
@@ -1519,6 +1550,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningStage>
     for crate::api::reasoning::ReasoningStage
 {
     fn into_into_dart(self) -> crate::api::reasoning::ReasoningStage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningToolCall {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.arguments_json.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningToolCall
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningToolCall>
+    for crate::api::reasoning::ReasoningToolCall
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningToolCall {
         self
     }
 }
@@ -1719,6 +1771,16 @@ impl SseEncode for Vec<crate::api::reasoning::ReasoningContextItem> {
     }
 }
 
+impl SseEncode for Vec<crate::api::reasoning::ReasoningToolCall> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::reasoning::ReasoningToolCall>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::meeting_intelligence::MeetingActionItemRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1915,12 +1977,14 @@ impl SseEncode for crate::api::reasoning::ReasoningEvent {
                 reasoning_summary,
                 level,
                 confidence,
+                tool_calls,
             } => {
                 <i32>::sse_encode(6, serializer);
                 <String>::sse_encode(answer, serializer);
                 <Option<String>>::sse_encode(reasoning_summary, serializer);
                 <crate::api::reasoning::ReasoningLevel>::sse_encode(level, serializer);
                 <Option<f32>>::sse_encode(confidence, serializer);
+                <Vec<crate::api::reasoning::ReasoningToolCall>>::sse_encode(tool_calls, serializer);
             }
             crate::api::reasoning::ReasoningEvent::Error { message } => {
                 <i32>::sse_encode(7, serializer);
@@ -1999,6 +2063,14 @@ impl SseEncode for crate::api::reasoning::ReasoningStage {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningToolCall {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.arguments_json, serializer);
     }
 }
 

@@ -10,7 +10,7 @@ part 'reasoning.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `into_domain`, `wire_event`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `SupervisorGenerationAdapter`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `from`, `from`, `generate`, `resource_request`, `stats`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `generate`, `resource_request`, `stats`
 
 /// Intent + context → streamed reasoning events over the loaded generation
 /// engine. Requires `initialize` from `minutes`.
@@ -63,6 +63,7 @@ sealed class ReasoningEvent with _$ReasoningEvent {
     String? reasoningSummary,
     required ReasoningLevel level,
     double? confidence,
+    required List<ReasoningToolCall> toolCalls,
   }) = ReasoningEvent_Completed;
   const factory ReasoningEvent.error({required String message}) =
       ReasoningEvent_Error;
@@ -154,4 +155,22 @@ enum ReasoningStage {
   validating,
   composingAnswer,
   complete,
+}
+
+class ReasoningToolCall {
+  final String name;
+  final String argumentsJson;
+
+  const ReasoningToolCall({required this.name, required this.argumentsJson});
+
+  @override
+  int get hashCode => name.hashCode ^ argumentsJson.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReasoningToolCall &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          argumentsJson == other.argumentsJson;
 }

@@ -29,7 +29,16 @@ pub fn build_prompt(
             out.push('\n');
         }
     }
-    out.push_str("\nRespond as JSON with keys answer, reasoning_summary, confidence only.\n");
+    if request.available_tools.is_empty() {
+        out.push_str("\nRespond as JSON with keys answer, reasoning_summary, confidence only.\n");
+    } else {
+        out.push_str(
+            "\nRespond as JSON with keys answer, reasoning_summary, confidence. \
+If you must call a listed tool, add tool_calls as an array of objects with \
+name and arguments_json, and set answer to an empty string. \
+Do not invent tools. Do not include a thoughts field.\n",
+        );
+    }
     out
 }
 
@@ -85,6 +94,20 @@ mod tests {
         let req = ReasoningRequest::fixture("time_query", 0.0);
         let prompt = build_prompt(&req, ReasoningLevel::None, ContextLimits::default());
         assert!(prompt.contains("Do not perform unnecessary analysis"));
+        assert!(!prompt.contains("THINKING_TRACE"));
+        assert!(!prompt.contains("scratchpad"));
+    }
+
+    #[test]
+    fn tools_prompt_mentions_tool_calls_not_thoughts() {
+        let mut req = ReasoningRequest::fixture("calendar_retrieval", 0.1);
+        req.available_tools = vec![crate::request::ToolDefinition {
+            name: "read_calendar_events".into(),
+            description: "List events for a day.".into(),
+        }];
+        let prompt = build_prompt(&req, ReasoningLevel::None, ContextLimits::default());
+        assert!(prompt.contains("tool_calls"));
+        assert!(prompt.contains("read_calendar_events"));
         assert!(!prompt.contains("THINKING_TRACE"));
         assert!(!prompt.contains("scratchpad"));
     }

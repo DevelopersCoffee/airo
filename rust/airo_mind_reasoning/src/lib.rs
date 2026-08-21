@@ -7,7 +7,7 @@
 //! level — it consumes [`ReasoningEvent`].
 //!
 //! Chain-of-thought is not a public field. The result envelope admits
-//! `answer`, `reasoning_summary`, and `confidence` only.
+//! `answer`, `reasoning_summary`, `confidence`, and optional `tool_calls`.
 
 pub mod context;
 pub mod device;
@@ -22,6 +22,7 @@ pub mod policy;
 pub mod prompt;
 pub mod request;
 pub mod result;
+pub mod tools;
 pub mod validator;
 
 pub use context::{ContextItem, ContextLimits, ReasoningContext};
@@ -35,3 +36,4 @@ pub use level::ReasoningLevel;
 pub use policy::{HeuristicReasoningPolicy, ReasoningPolicy};
 pub use request::{ReasoningRequest, ToolDefinition};
 pub use result::{ReasoningResult, ToolCall};
+pub use tools::{ToolExecutor, MAX_TOOL_ITERATIONS};
