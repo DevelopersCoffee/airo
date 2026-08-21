@@ -70,12 +70,73 @@ abstract final class AiroPromptRegistry {
     hasEvalSuite: true,
   );
 
+  static const meetingChunkFacts = RegisteredPrompt(
+    id: 'meeting.chunk_facts',
+    version: '1',
+    taskType: 'extraction',
+    outputSchema: '{"facts":[]}',
+    hasEvalSuite: true,
+  );
+
+  static const meetingMomObjective = RegisteredPrompt(
+    id: 'meeting.mom_objective',
+    version: '1',
+    taskType: 'minutes',
+    outputSchema: 'prose',
+    hasEvalSuite: true,
+  );
+
+  static const meetingMomDiscussion = RegisteredPrompt(
+    id: 'meeting.mom_discussion',
+    version: '1',
+    taskType: 'minutes',
+    outputSchema: 'prose',
+    hasEvalSuite: true,
+  );
+
+  static const dietPlan = RegisteredPrompt(
+    id: 'diet.plan',
+    version: '1',
+    taskType: 'plugin',
+    outputSchema: 'Day N meals',
+    hasEvalSuite: true,
+  );
+
+  static const skillPersona = RegisteredPrompt(
+    id: 'skill.persona',
+    version: '1',
+    taskType: 'persona',
+    hasEvalSuite: true,
+  );
+
+  static const questGemini = RegisteredPrompt(
+    id: 'quest.gemini',
+    version: '1',
+    taskType: 'quest',
+    hasEvalSuite: true,
+  );
+
+  static const coinsReceipt = RegisteredPrompt(
+    id: 'coins.receipt',
+    version: '1',
+    taskType: 'extraction',
+    outputSchema: '{"vendor":null,"items":[]}',
+    hasEvalSuite: true,
+  );
+
   static const all = <RegisteredPrompt>[
     chatAssistant,
     skillSelect,
     skillNextAction,
     notebookSuperSummary,
     meetingMinutes,
+    meetingChunkFacts,
+    meetingMomObjective,
+    meetingMomDiscussion,
+    dietPlan,
+    skillPersona,
+    questGemini,
+    coinsReceipt,
   ];
 
   static RegisteredPrompt? byId(String id) {

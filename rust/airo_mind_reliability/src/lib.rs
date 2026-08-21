@@ -41,7 +41,7 @@ pub use recovery::{
     apply_recovery_to_goal, AttemptCounts, RecoveryDecision, RecoveryEngine, RecoveryPolicy,
 };
 pub use task::{
-    compile_context, verify_completion, CompiledContext, CompletionCriterion,
+    compile_context, verify_completion, wrap_as_data, CompiledContext, CompletionCriterion,
     CompletionVerification, ContextItem, ContextRole, GoalState, GoalStatus, StateMachineError,
-    TaskIr, TrustClass,
+    TaskIr, TrustClass, SOURCE_DATA_BEGIN, SOURCE_DATA_END,
 };

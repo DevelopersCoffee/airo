@@ -206,4 +206,56 @@ void main() {
     expect(wrapped, isNot(contains('${ContextCompiler.dataBegin}\njailbreak')));
     expect(wrapped, isNot(contains('PD-')));
   });
+
+  test('conflicting output formats ask before inference', () {
+    final report = PromptQualityGate.inspectUserTurn(
+      userText: 'Always return JSON. Explain this normally.',
+    );
+    expect(report.decision, PromptGateDecision.askUser);
+    expect(
+      report.defects,
+      contains(PromptDefect.spec003ConflictingInstructions),
+    );
+    expect(report.userMessage, isNot(contains('PD-')));
+  });
+
+  test('empty backend output is PM-06 not success', () {
+    final diagnostic = FailureClassifier.recordChatCompletion(
+      executionId: 'exec-1',
+      text: '   ',
+      engineOk: true,
+    );
+    expect(diagnostic?.failureMode, FailureMode.pm06LogicCollapse);
+    expect(diagnostic?.runtimeError, RuntimeFailure.r06VerificationFailure);
+    expect(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'exec-2',
+        text: '',
+        engineOk: false,
+      )?.runtimeError,
+      RuntimeFailure.r07ModelAdapter,
+    );
+    expect(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'exec-3',
+        text: '2+2 is 4.',
+        engineOk: true,
+      ),
+      isNull,
+    );
+  });
+
+  test('chat goal cannot complete without verification', () {
+    final running = ChatTurnGoal(goal: 'What is 2+2?').start();
+    expect(running.succeeded, isFalse);
+    expect(running.verify(OutputVerification.incomplete).succeeded, isFalse);
+    expect(running.verify(OutputVerification.passed).succeeded, isTrue);
+    expect(
+      () => ChatTurnGoal(
+        goal: 'What is 2+2?',
+        status: GoalStatus.completed,
+      ).verify(OutputVerification.passed),
+      throwsStateError,
+    );
+  });
 }
