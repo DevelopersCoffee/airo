@@ -163,7 +163,7 @@ Local: Airo Memory, Research Library, user files.
 | A | Interpreter + strategy + stopping + untrusted sources |
 | B | Source manager + HTML main-content extraction + freshness/credibility (**this slice**) |
 | C | Evidence graph claims from retrieved text + citation validation (**this slice**) |
-| D | Counter-research as a first-class wave + contradiction explanations |
+| D | Counter-research as a first-class wave + contradiction explanations (**this slice**) |
 | E | Job manager pause/resume/cancel + operation-log checkpoints |
 | F | Additional `SearchEngine` adapters one provider at a time (never Google-implied) |
 | G | PDF/tables/code document intelligence off the main isolate |

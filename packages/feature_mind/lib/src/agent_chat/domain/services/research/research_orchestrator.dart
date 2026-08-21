@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import 'claim_extractor.dart';
+import 'contradiction_engine.dart';
 import 'query_generator.dart';
 import 'research_interpreter.dart';
 import 'research_planner.dart';
@@ -154,7 +155,8 @@ class ResearchOrchestrator {
       maxIterations: budget.maxIterations,
     );
     if (goal.decisionRequired &&
-        stopping.shouldStop(progress) == StopDecision.continueWork) {
+        searchesUsed < budget.maxSearches &&
+        iterationsUsed < budget.maxIterations) {
       yield ResearchEvent(
         kind: ResearchEventKind.counterResearchStarted,
         label: 'Finding missing evidence',
@@ -222,6 +224,14 @@ class ResearchOrchestrator {
         detail: '${claim.status.name}: ${claim.text}',
       );
     }
+    final conflicts = explainContradictions(claims, documents);
+    for (final conflict in conflicts) {
+      yield ResearchEvent(
+        kind: ResearchEventKind.conflictDetected,
+        label: 'Comparing evidence',
+        detail: conflict.explanation,
+      );
+    }
 
     yield const ResearchEvent(
       kind: ResearchEventKind.synthesisStarted,
@@ -238,6 +248,7 @@ class ResearchOrchestrator {
         hits: unique,
         documents: documents,
         claims: claims,
+        conflicts: conflicts,
         waves: iterationsUsed,
         searchesUsed: searchesUsed,
       ),
@@ -251,6 +262,7 @@ class ResearchOrchestrator {
     required List<ResearchHit> hits,
     required List<SourceDocument> documents,
     required List<ResearchClaim> claims,
+    required List<ClaimConflict> conflicts,
     required int waves,
     required int searchesUsed,
   }) {
@@ -325,6 +337,15 @@ class ResearchOrchestrator {
       lines.addAll(['', '## Unverified', '']);
       for (final claim in unverified) {
         lines.add('- ${claim.text}');
+      }
+    }
+    if (conflicts.isNotEmpty) {
+      lines.addAll(['', '## Contradictions', '']);
+      for (final conflict in conflicts) {
+        lines.add(
+          '- ${conflict.left.text} vs ${conflict.right.text} '
+          '(${conflict.reasons.join(', ')}). Neither result is discarded.',
+        );
       }
     }
     lines.addAll(['', '## Sources', '']);

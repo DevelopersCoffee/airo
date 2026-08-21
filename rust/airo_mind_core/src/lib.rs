@@ -177,7 +177,8 @@ pub use projection::{
     SurvivalReport,
 };
 pub use research::{
-    canonicalize_url, classify_url, dedupe_hits, excerpt_in_source, extract_html, interpret, queries_for, strategy_for, Claim, ClaimId,
+    canonicalize_url, classify_url, contradiction_reasons, dedupe_hits, excerpt_in_source,
+    extract_html, interpret, queries_for, strategy_for, Claim, ClaimId,
     ClaimStatus, Evidence, EvidenceGraph, EvidenceId, EvidenceSufficiencyPolicy, ExtractedDocument,
     InterpretedGoal, PlanNodeKind, QuerySet, ResearchBudget, ResearchCommand, ResearchCompleteness,
     ResearchIntent, ResearchJob, ResearchJobState, ResearchMode, ResearchPlan, ResearchPlanNode,

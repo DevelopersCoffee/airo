@@ -133,6 +133,66 @@ pub fn excerpt_in_source(source_text: &str, excerpt: &str) -> bool {
     !needle.is_empty() && source_text.to_ascii_lowercase().contains(&needle)
 }
 
+/// Numeric disagreement on a shared topic. Reasons explain; they do not pick.
+pub fn contradiction_reasons(left: &str, right: &str) -> Vec<&'static str> {
+    let left_nums = numbers(left);
+    let right_nums = numbers(right);
+    if left_nums.is_empty() || right_nums.is_empty() || left_nums == right_nums {
+        return Vec::new();
+    }
+    if topic_overlap(left, right).is_empty() {
+        return Vec::new();
+    }
+    let mut reasons = vec!["different result"];
+    if hardware(left) != hardware(right)
+        && hardware(left) != Hardware::Unknown
+        && hardware(right) != Hardware::Unknown
+    {
+        reasons.push("different hardware");
+    }
+    reasons
+}
+
+fn numbers(text: &str) -> std::collections::BTreeSet<u32> {
+    text.split(|c: char| !c.is_ascii_digit())
+        .filter_map(|part| part.parse().ok())
+        .collect()
+}
+
+fn topic_overlap(left: &str, right: &str) -> std::collections::BTreeSet<String> {
+    let left_tokens = tokens(left);
+    left_tokens
+        .intersection(&tokens(right))
+        .cloned()
+        .collect()
+}
+
+fn tokens(text: &str) -> std::collections::BTreeSet<String> {
+    text.to_ascii_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|token| token.len() >= 4)
+        .map(|token| token.to_string())
+        .collect()
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Hardware {
+    Mobile,
+    Desktop,
+    Unknown,
+}
+
+fn hardware(text: &str) -> Hardware {
+    let lower = text.to_ascii_lowercase();
+    if ["mobile", "phone", "pixel", "android"].iter().any(|k| lower.contains(k)) {
+        Hardware::Mobile
+    } else if ["desktop", "workstation", "server"].iter().any(|k| lower.contains(k)) {
+        Hardware::Desktop
+    } else {
+        Hardware::Unknown
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,5 +279,15 @@ mod tests {
         let page = "Qwen is a family of large language models from Alibaba.";
         assert!(excerpt_in_source(page, "family of large language models"));
         assert!(!excerpt_in_source(page, "Qwen uses 2 GB of RAM."));
+    }
+
+    #[test]
+    fn numeric_conflicts_are_explained_not_picked() {
+        let reasons = contradiction_reasons(
+            "Qwen 7B uses 8 GB RAM on a desktop workstation.",
+            "Qwen 7B uses 5 GB RAM on Pixel phones.",
+        );
+        assert!(reasons.contains(&"different result"));
+        assert!(reasons.contains(&"different hardware"));
     }
 }

@@ -22,7 +22,7 @@ pub use document::{
     classify_url, extract_html, ExtractedDocument, SourceClass, SourceClassification, SourceKind,
 };
 pub use evidence::{
-    excerpt_in_source, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph, EvidenceId, Source,
+    excerpt_in_source, contradiction_reasons, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph, EvidenceId, Source,
     SourceId, SourceType,
 };
 pub use interpreter::{interpret, InterpretedGoal, ResearchIntent};
