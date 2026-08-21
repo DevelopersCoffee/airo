@@ -106,6 +106,12 @@ class AssistantChatContextBuilder {
 
   String _normalizeForComparison(String value) =>
       value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+
+  /// Recovery for PD-CONTEXT-001 / PD-PERF-001: keep identity, drop noise.
+  AssistantChatContextBuilder rebuildForBudget() => AssistantChatContextBuilder(
+    maxHistoryMessages: 2,
+    maxMessageChars: maxMessageChars > 280 ? 280 : maxMessageChars,
+  );
 }
 
 /// Status / setup copy that must never be fed back into the local model.

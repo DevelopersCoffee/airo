@@ -23,6 +23,9 @@ crate-type = ["rlib"]
 # against `GenerationEngine`, so the real engine and the test double are the
 # same shape to it.
 airo_mind_core = { path = "../airo_mind_core" }
+# Domain-free reliability classification. This crate maps IR `Violation`s into
+# `PipelineObservation`; it does not take a WFGY dependency.
+airo_mind_reliability = { path = "../airo_mind_reliability" }
 # `Chunk` and `ProcessedTranscript` (#1632). Pass 1 consumes chunks as
 # produced; this crate never re-chunks.
 airo_mind_transcript = { path = "../airo_mind_transcript" }

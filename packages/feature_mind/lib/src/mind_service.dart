@@ -616,6 +616,11 @@ class MindService {
   /// Signature is unchanged from the keyword-only version this replaced —
   /// [MindHomeScreen]'s search box needed no changes for this.
   Future<List<rust.SearchHit>> search(String query) async {
+    return (await searchWithAlignment(query)).hits;
+  }
+
+  /// Keyword+semantic union plus PM-05 provenance. Cosine is not proof.
+  Future<SemanticRankResult> searchWithAlignment(String query) async {
     final keywordHits = await _speech.search(query);
     _ranker ??= _rankerBuilder(await modelsDirectory());
     final allMeetings = await _speech.meetings();
@@ -627,7 +632,7 @@ class MindService {
         for (final segment in doc.segments) segment.text,
       ];
     }
-    return _ranker!.rank(
+    return _ranker!.rankWithAlignment(
       query: query,
       keywordHits: keywordHits,
       meetings: allMeetings,

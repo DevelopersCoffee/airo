@@ -1263,6 +1263,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final promptGate = PromptQualityGate.inspectUserTurn(
+      userText: message,
+      historyEmpty: _messages.where((m) => m.isUser).length <= 1,
+    );
+    if (promptGate.blocksInference) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(text: promptGate.userMessage, isUser: false),
+        );
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
     final skillStopwatch = Stopwatch()..start();
     final skillResult = await _skillOrchestrator.run(
       message,
@@ -1530,7 +1544,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           'and allergy constraints, write every requested day, and use '
           'different dishes each day.';
     }
-    final systemPrompt = _buildChatSystemPrompt(message);
+    var contextBuilder = _chatContextBuilder;
+    var compact = _useCompactLocalChat();
+    var systemPrompt = _buildChatSystemPrompt(
+      message,
+      builder: contextBuilder,
+      compact: compact,
+    );
+    final contextLimit = _selectedContextLimit();
+    final estimated = TokenCounter.estimate('$systemPrompt\n$modelPrompt');
+    final turn = ChatTurnReliability.plan(
+      userText: message,
+      historyEmpty: false,
+      estimatedTokens: estimated,
+      modelContextLimit: contextLimit,
+      definition: AiroPromptRegistry.chatAssistant,
+    );
+    if (turn.rebuildContext) {
+      contextBuilder = contextBuilder.rebuildForBudget();
+      compact = true;
+      systemPrompt = _buildChatSystemPrompt(
+        message,
+        builder: contextBuilder,
+        compact: compact,
+      );
+    }
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
@@ -1543,6 +1581,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       stopwatch.stop();
       if (latestChunk.trim().isEmpty) {
+        _replaceStreamingMessage(
+          ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+        );
         return null;
       }
       if (dietApplies) {
@@ -1578,6 +1619,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           outputResult.getErrorOrNull()?.toString() ??
               'The response was blocked by the selected safety profile.',
         );
+        return null;
+      }
+      final denied = ToolAuthorityGuard.denyUngroundedClaim(
+        message: latestChunk,
+        executedTools: const [],
+      );
+      if (denied != null) {
+        _replaceStreamingMessage(denied);
         return null;
       }
       return _buildRuntimeMetadata(
@@ -1647,6 +1696,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _messageScrollController.jumpTo(target);
       }
     });
+  }
+
+  int _selectedContextLimit() {
+    final selectedId = ref.read(selectedAssistantModelIdProvider);
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    return library?.candidateById(selectedId)?.package?.contextLength ?? 0;
   }
 
   bool _useCompactLocalChat() {
@@ -1740,7 +1795,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .toList(growable: false);
   }
 
-  String _buildChatSystemPrompt(String currentPrompt) {
+  String _buildChatSystemPrompt(
+    String currentPrompt, {
+    AssistantChatContextBuilder? builder,
+    bool? compact,
+  }) {
+    final contextBuilder = builder ?? _chatContextBuilder;
+    final useCompact = compact ?? _useCompactLocalChat();
     final history = _chatHistoryMessages();
     final session = _personaSession;
     if (session.isPinned) {
@@ -1751,14 +1812,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             currentPrompt: currentPrompt,
             history: history,
           );
-      return _chatContextBuilder.buildSystemPrompt(
+      return contextBuilder.buildSystemPrompt(
         currentUserPrompt: dietApplies
             ? DietPlanPluginPrompt.modelUserPrompt(
                 currentPrompt: currentPrompt,
                 history: history,
               )
             : currentPrompt,
-        compact: _useCompactLocalChat(),
+        compact: useCompact,
         pluginPlaybooks: session.playbooks(),
         pinnedPersonaIdentity: session.identityPreamble(),
         history: dietApplies
@@ -1773,14 +1834,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentPrompt: currentPrompt,
       history: history,
     );
-    return _chatContextBuilder.buildSystemPrompt(
+    return contextBuilder.buildSystemPrompt(
       currentUserPrompt: dietApplies
           ? DietPlanPluginPrompt.modelUserPrompt(
               currentPrompt: currentPrompt,
               history: history,
             )
           : currentPrompt,
-      compact: _useCompactLocalChat(),
+      compact: useCompact,
       pluginPlaybooks: _enabledGenerativePluginPlaybooks(
         currentPrompt: currentPrompt,
         history: history,

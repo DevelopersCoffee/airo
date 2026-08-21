@@ -1,3 +1,5 @@
+import 'package:core_ai/core_ai.dart';
+import 'package:core_domain/core_domain.dart';
 import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
 import 'package:feature_mind/src/agent_chat/data/built_in_skills/insurance_planner.dart';
 import 'package:feature_mind/src/agent_chat/data/built_in_skills/teacher_personas.dart';
@@ -15,7 +17,6 @@ import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_registry
 import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
 import 'package:feature_mind/src/runtime/models/capability_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
-import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -143,6 +144,53 @@ void main() {
       );
     });
 
+    test('refuses a calendar claim when no calendar tool ran', () async {
+      final orchestrator = _buildOrchestrator(
+        useFallbackModelClient: false,
+        modelClient: _FixedActionModelClient(
+          selectedSkillId: 'read-calendar-events',
+          actions: const [
+            SkillModelAction.finalAnswer(
+              'I checked your calendar. The meeting is at 4 PM.',
+            ),
+          ],
+        ),
+      );
+
+      final result = await orchestrator.run('Where is my meeting?');
+
+      expect(result.handled, true);
+      expect(result.isError, true);
+      expect(result.message, 'I can only report tools I actually ran.');
+      expect(result.traces.last.detail, 'AIRO-R03');
+    });
+
+    test(
+      'invalid skill JSON is refused as AIRO-R04 without codes in copy',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          useFallbackModelClient: false,
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: [
+              SkillModelAction.finalAnswer(
+                OutputSchemaGuard.userMessage(),
+                schemaInvalid: true,
+              ),
+            ],
+          ),
+        );
+
+        final result = await orchestrator.run('Where is my meeting?');
+
+        expect(result.handled, true);
+        expect(result.isError, true);
+        expect(result.message, isNot(contains('AIRO-R04')));
+        expect(result.message, isNot(contains('PM-11')));
+        expect(result.traces.last.detail, 'AIRO-R04');
+      },
+    );
+
     test('runs calendar skill with date and calendar connectors', () async {
       final orchestrator = _buildOrchestrator();
 
@@ -206,13 +254,16 @@ void main() {
       expect(result.message, isNot(contains('too many steps')));
     });
 
-    test('does not open a feature when the user asks what Airo can do', () async {
-      final orchestrator = _buildOrchestrator();
+    test(
+      'does not open a feature when the user asks what Airo can do',
+      () async {
+        final orchestrator = _buildOrchestrator();
 
-      final result = await orchestrator.run('what can u do');
+        final result = await orchestrator.run('what can u do');
 
-      expect(result.handled, false);
-    });
+        expect(result.handled, false);
+      },
+    );
 
     test('does not treat a greeting as a calendar request', () async {
       final result = await _buildOrchestrator().run('hi');
