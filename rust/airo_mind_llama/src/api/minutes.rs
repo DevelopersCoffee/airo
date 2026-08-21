@@ -23,6 +23,7 @@ use crate::frb_generated::StreamSink;
 use crate::LlamaGenerationEngine;
 use airo_mind_core::models;
 use airo_mind_core::{GenerationRequest, ResourceBudget, RuntimeStats, Supervisor};
+use airo_mind_reliability::{record_chat_completion, DiagnosticLevel};
 
 use super::generation_state::{begin_job, lock, CANCEL, ENGINE, MODEL_ID};
 
@@ -302,9 +303,19 @@ pub fn generate_completion(
             emit(GenerationEvent::Cancelled)?;
             return Ok(());
         }
-        generation.map_err(|e| e.to_string())?;
+        if let Err(error) = generation {
+            let _ =
+                record_chat_completion("chat.assistant.v1", "", false, DiagnosticLevel::ErrorsOnly);
+            return Err(error.to_string());
+        }
     }
 
+    let _ = record_chat_completion(
+        "chat.assistant.v1",
+        &completion,
+        true,
+        DiagnosticLevel::Standard,
+    );
     emit(GenerationEvent::MinutesReady { text: completion })
 }
 

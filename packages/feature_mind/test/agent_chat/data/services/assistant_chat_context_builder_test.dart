@@ -158,5 +158,30 @@ void main() {
       expect(prompt, isNot(contains('healthy and delicious meal')));
       expect(prompt, contains('Do not repeat a previous greeting'));
     });
+
+    test('rebuildForBudget keeps identity and drops older history', () {
+      const longHistory = [
+        AssistantChatContextMessage(text: 'first', isUser: true),
+        AssistantChatContextMessage(text: 'ok', isUser: false),
+        AssistantChatContextMessage(text: 'second', isUser: true),
+        AssistantChatContextMessage(text: 'sure', isUser: false),
+        AssistantChatContextMessage(text: 'third', isUser: true),
+        AssistantChatContextMessage(text: 'done', isUser: false),
+      ];
+      final full = builder.buildSystemPrompt(
+        currentUserPrompt: 'and now',
+        history: longHistory,
+      );
+      final rebuilt = builder.rebuildForBudget().buildSystemPrompt(
+        currentUserPrompt: 'and now',
+        compact: true,
+        history: longHistory,
+      );
+
+      expect(full, contains('User: first'));
+      expect(rebuilt, isNot(contains('User: first')));
+      expect(rebuilt, contains('User: third'));
+      expect(rebuilt.length, lessThan(full.length));
+    });
   });
 }

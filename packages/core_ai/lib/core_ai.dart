@@ -94,6 +94,11 @@ export 'src/skills/skill_trigger_eval.dart';
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
 
+// Reasoning reliability (Dart mirrors of airo_mind_reliability IDs)
+export 'src/reliability/reasoning_reliability.dart';
+export 'src/reliability/prompt_reliability.dart';
+export 'src/reliability/prompt_registry.dart';
+
 // Parsing
 export 'src/parsing/json_parser.dart';
 
