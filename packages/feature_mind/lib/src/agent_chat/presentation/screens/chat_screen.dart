@@ -1690,15 +1690,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         message: latestChunk,
         executedTools: const [],
       );
-      final verification = ChatOutputVerifier.verify(
+      if (!_completeVerifiedTurn(
+        goal: message,
         output: latestChunk,
         executedTools: const [],
-      );
-      final goal = ChatTurnGoal(goal: message).start().verify(verification);
-      if (!goal.succeeded) {
-        _replaceStreamingMessage(
-          denied ?? ChatOutputVerifier.userMessageFor(verification)!,
-        );
+        denied: denied,
+      )) {
         return null;
       }
       return _buildRuntimeMetadata(
@@ -1837,17 +1834,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     stopwatch.stop();
     var latest = fold.answer;
-    if (fold.error != null && latest.trim().isEmpty) {
-      _applyReasoningFold(fold);
-      return null;
-    }
     if (fold.cancelled && latest.trim().isEmpty) {
       _applyReasoningFold(fold);
       return null;
     }
-    if (latest.trim().isEmpty) {
+    if (fold.error != null && latest.trim().isEmpty) {
+      _assistantRuntime.lastReliabilityDiagnostic =
+          FailureClassifier.recordChatCompletion(
+            executionId: selectedModelId,
+            text: '',
+            engineOk: false,
+          );
+      _applyReasoningFold(fold);
       return null;
     }
+    if (latest.trim().isEmpty) {
+      _assistantRuntime.lastReliabilityDiagnostic =
+          FailureClassifier.recordChatCompletion(
+            executionId: selectedModelId,
+            text: '',
+            engineOk: true,
+          );
+      _replaceStreamingMessage(
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+      );
+      return null;
+    }
+    _assistantRuntime.lastReliabilityDiagnostic =
+        FailureClassifier.recordChatCompletion(
+          executionId: selectedModelId,
+          text: latest,
+          engineOk: true,
+        );
     if (dietApplies) {
       final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
         currentPrompt: message,
@@ -1880,6 +1898,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         outputResult.getErrorOrNull()?.toString() ??
             'The response was blocked by the selected safety profile.',
       );
+      return null;
+    }
+    final executedTools = [for (final call in fold.toolCalls) call.name];
+    final denied = ToolAuthorityGuard.denyUngroundedClaim(
+      message: latest,
+      executedTools: executedTools,
+    );
+    if (!_completeVerifiedTurn(
+      goal: message,
+      output: latest,
+      executedTools: executedTools,
+      denied: denied,
+    )) {
       return null;
     }
     return _buildRuntimeMetadata(
@@ -1925,6 +1956,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     });
     _scrollMessagesToLatest(animated: false);
+  }
+
+  bool _completeVerifiedTurn({
+    required String goal,
+    required String output,
+    required Iterable<String> executedTools,
+    String? denied,
+  }) {
+    final verification = ChatOutputVerifier.verify(
+      output: output,
+      executedTools: executedTools,
+    );
+    final turn = ChatTurnGoal(goal: goal).start().verify(verification);
+    if (!turn.succeeded) {
+      _replaceStreamingMessage(
+        denied ?? ChatOutputVerifier.userMessageFor(verification)!,
+      );
+      return false;
+    }
+    return true;
   }
 
   void _replaceStreamingMessage(String text) {

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:core_ai/core_ai.dart';
+
 import '../agent_chat/domain/services/agent_connector_registry.dart';
 import 'reasoning_models.dart';
 
@@ -117,7 +119,10 @@ Stream<MindReasoningEvent> runReasoningToolLoop({
       yield MindReasoningToolCompleted(call.name);
       executed.add(call);
       nextResults.add(
-        MindReasoningContextItem(source: call.name, text: output),
+        MindReasoningContextItem(
+          source: call.name,
+          text: ContextCompiler.wrapAsData(output),
+        ),
       );
       if (completed.level == MindReasoningLevel.none) {
         yield MindReasoningCompleted(

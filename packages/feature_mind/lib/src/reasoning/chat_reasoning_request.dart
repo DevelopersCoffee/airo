@@ -155,7 +155,9 @@ List<MindReasoningContextItem> reasoningHistoryItems({
     for (final message in sliced)
       MindReasoningContextItem(
         source: message.isUser ? 'user' : 'assistant',
-        text: _preview(message.text.trim(), maxChars),
+        text: ContextCompiler.wrapAsData(
+          _preview(message.text.trim(), maxChars),
+        ),
       ),
   ];
 }
@@ -191,7 +193,13 @@ MindReasoningRequest buildMindReasoningRequest({
       history: history,
       currentUserPrompt: userQuery,
     ),
-    documents: documents,
+    documents: [
+      for (final document in documents)
+        MindReasoningContextItem(
+          source: document.source,
+          text: ContextCompiler.wrapAsData(document.text),
+        ),
+    ],
     toolNames: toolNames,
   );
 }
