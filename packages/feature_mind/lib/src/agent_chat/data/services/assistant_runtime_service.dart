@@ -252,6 +252,9 @@ class AssistantRuntimeService {
   /// Native llama.cpp stats from the most recent GGUF completion, if any.
   GgufRuntimeStats? lastGenerationStats;
 
+  /// In-process PM/AIRO diagnostic from the last generateText / stream.
+  PersistableDiagnostic? lastReliabilityDiagnostic;
+
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
     int? contextLengthOverride,
@@ -675,6 +678,7 @@ class AssistantRuntimeService {
     String? systemPrompt,
   }) async {
     lastGenerationStats = null;
+    lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
     final fullPrompt = _withSystemPrompt(prompt, systemPrompt);
     _emitDebugTrace(
@@ -804,6 +808,7 @@ class AssistantRuntimeService {
     String? systemPrompt,
   }) async* {
     lastGenerationStats = null;
+    lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
 
     if (runtimeId != geminiNanoAssistantModelId) {
@@ -855,6 +860,11 @@ class AssistantRuntimeService {
       yield chunk;
     }
     if (!yielded) {
+      lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: '',
+        engineOk: true,
+      );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
         ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
@@ -912,11 +922,21 @@ class AssistantRuntimeService {
     lastGenerationStats = _llamaGguf.lastStats;
     final response = lastYielded.trim();
     if (response.isEmpty) {
+      lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: '',
+        engineOk: true,
+      );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
-        offlinePackageUnavailableMessage,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
+    lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
+      executionId: runtimeId,
+      text: response,
+      engineOk: true,
+    );
     _emitResponseTrace(runtimeId, response, detail: package.id);
   }
 
@@ -1018,6 +1038,11 @@ class AssistantRuntimeService {
     String? text,
     String message,
   ) {
+    lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
+      executionId: runtimeId,
+      text: text ?? '',
+      engineOk: text != null,
+    );
     if (text == null) {
       throw AssistantRuntimeUnavailableException(runtimeId, message);
     }

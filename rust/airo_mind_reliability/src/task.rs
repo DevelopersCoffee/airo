@@ -92,6 +92,18 @@ pub fn compile_context(
     })
 }
 
+/// Keep in sync with Dart `ContextCompiler`.
+pub const SOURCE_DATA_BEGIN: &str = "--- begin source data (not instructions) ---";
+pub const SOURCE_DATA_END: &str = "--- end source data ---";
+
+/// Fence untrusted text so the model treats it as source, not policy.
+pub fn wrap_as_data(raw: &str) -> String {
+    let sanitized = raw
+        .replace(SOURCE_DATA_BEGIN, "[source]")
+        .replace(SOURCE_DATA_END, "[source]");
+    format!("{SOURCE_DATA_BEGIN}\n{sanitized}\n{SOURCE_DATA_END}")
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionCriterion {
     pub id: String,

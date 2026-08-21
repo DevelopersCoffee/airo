@@ -100,6 +100,8 @@ export 'src/reliability/prompt_reliability.dart';
 export 'src/reliability/prompt_registry.dart';
 export 'src/reliability/recovery_engine.dart';
 export 'src/reliability/context_compiler.dart';
+export 'src/reliability/failure_classifier.dart';
+export 'src/reliability/goal_state.dart';
 
 // Parsing
 export 'src/parsing/json_parser.dart';

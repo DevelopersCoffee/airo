@@ -193,6 +193,16 @@ impl InstructionSet {
     fn collect_polarity_issues(&self, issues: &mut Vec<InstructionIssue>) {
         collect_axis(self, issues, brevity_polarity);
         collect_axis(self, issues, format_polarity);
+        for (idx, item) in self.items.iter().enumerate() {
+            if both_poles(brevity_markers(&item.text)) || both_poles(format_markers(&item.text)) {
+                issues.push(InstructionIssue {
+                    kind: InstructionIssueKind::Unsatisfiable,
+                    defect: PromptDefect::Spec003ConflictingInstructions,
+                    left: idx,
+                    right: idx,
+                });
+            }
+        }
     }
 }
 
@@ -234,17 +244,42 @@ fn normalize(text: &str) -> String {
         .to_ascii_lowercase()
 }
 
-fn brevity_polarity(text: &str) -> Option<bool> {
+fn both_poles(markers: (bool, bool)) -> bool {
+    markers.0 && markers.1
+}
+
+fn brevity_markers(text: &str) -> (bool, bool) {
     let t = text.to_ascii_lowercase();
-    let brief = t.contains("be brief")
-        || t.contains("concise")
-        || t.contains("one sentence")
-        || t.contains("short answer");
-    let detailed = t.contains("extensive detail")
-        || t.contains("be detailed")
-        || t.contains("comprehensive")
-        || t.contains("as much detail");
-    match (brief, detailed) {
+    (
+        t.contains("be brief")
+            || t.contains("concise")
+            || t.contains("one sentence")
+            || t.contains("short answer"),
+        t.contains("extensive detail")
+            || t.contains("be detailed")
+            || t.contains("comprehensive")
+            || t.contains("as much detail"),
+    )
+}
+
+fn format_markers(text: &str) -> (bool, bool) {
+    let t = text.to_ascii_lowercase();
+    (
+        t.contains("json only")
+            || t.contains("respond in json")
+            || t.contains("output json")
+            || t.contains("return json"),
+        t.contains("markdown only")
+            || t.contains("respond in markdown")
+            || t.contains("output markdown")
+            || t.contains("explain this normally")
+            || t.contains("explain normally")
+            || t.contains("in prose"),
+    )
+}
+
+fn brevity_polarity(text: &str) -> Option<bool> {
+    match brevity_markers(text) {
         (true, false) => Some(true),
         (false, true) => Some(false),
         _ => None,
@@ -252,13 +287,7 @@ fn brevity_polarity(text: &str) -> Option<bool> {
 }
 
 fn format_polarity(text: &str) -> Option<bool> {
-    let t = text.to_ascii_lowercase();
-    let json =
-        t.contains("json only") || t.contains("respond in json") || t.contains("output json");
-    let markdown = t.contains("markdown only")
-        || t.contains("respond in markdown")
-        || t.contains("output markdown");
-    match (json, markdown) {
+    match format_markers(text) {
         (true, false) => Some(true),
         (false, true) => Some(false),
         _ => None,
@@ -364,6 +393,20 @@ mod tests {
             .iter()
             .any(|i| i.kind == InstructionIssueKind::Conflict));
         assert!(!issues
+            .iter()
+            .any(|i| i.kind == InstructionIssueKind::Unsatisfiable));
+    }
+
+    #[test]
+    fn json_vs_explain_normally_same_user_is_unsatisfiable() {
+        let set = InstructionSet {
+            items: vec![Instruction {
+                layer: InstructionLayer::User,
+                text: "Always return JSON. Explain this normally.".into(),
+            }],
+        };
+        let issues = set.analyze(true);
+        assert!(issues
             .iter()
             .any(|i| i.kind == InstructionIssueKind::Unsatisfiable));
     }

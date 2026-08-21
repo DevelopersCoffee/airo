@@ -1558,7 +1558,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       historyEmpty: false,
       estimatedTokens: estimated,
       modelContextLimit: contextLimit,
-      definition: AiroPromptRegistry.chatAssistant,
+      definition: dietApplies
+          ? AiroPromptRegistry.dietPlan
+          : _personaSession.isPinned
+          ? AiroPromptRegistry.skillPersona
+          : AiroPromptRegistry.chatAssistant,
       prefixCache: assistantRuntimeSupportsPrefixCache(selectedModelId)
           ? PrefixCacheCapability.supported
           : PrefixCacheCapability.unsupported,
@@ -1629,8 +1633,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         message: latestChunk,
         executedTools: const [],
       );
-      if (denied != null) {
-        _replaceStreamingMessage(denied);
+      final verification = ChatOutputVerifier.verify(
+        output: latestChunk,
+        executedTools: const [],
+      );
+      final goal = ChatTurnGoal(goal: message).start().verify(verification);
+      if (!goal.succeeded) {
+        _replaceStreamingMessage(
+          denied ?? ChatOutputVerifier.userMessageFor(verification)!,
+        );
         return null;
       }
       return _buildRuntimeMetadata(

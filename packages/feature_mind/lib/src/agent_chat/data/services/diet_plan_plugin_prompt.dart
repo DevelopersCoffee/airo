@@ -1,3 +1,5 @@
+import 'package:core_ai/core_ai.dart';
+
 import 'assistant_chat_context_builder.dart';
 import 'diet_plan_output_eval.dart';
 import '../../domain/services/intent_parser.dart';
@@ -107,9 +109,11 @@ class DietPlanPluginPrompt {
         return [
           'Continue the existing diet plan. Do not rewrite days already written.',
           'Constraints:',
-          ...constraints.map((line) => '- $line'),
+          ContextCompiler.wrapAsData(
+            constraints.map((line) => '- $line').join('\n'),
+          ),
           'Already written:',
-          lastPlan,
+          ContextCompiler.wrapAsData(lastPlan),
           'Write Day $nextDay through Day $targetDays. Stop after Day $targetDays.',
           'Use different dishes from the days already written.',
           'For each day list breakfast, lunch, dinner, and snack.',
@@ -123,7 +127,9 @@ class DietPlanPluginPrompt {
     return [
       'Write a new diet plan that satisfies every user constraint below.',
       'Constraints:',
-      ...constraints.map((line) => '- $line'),
+      ContextCompiler.wrapAsData(
+        constraints.map((line) => '- $line').join('\n'),
+      ),
       'Rules:',
       '- Rewrite the whole plan when constraints change. Do not copy a previous draft.',
       '- If they named a cuisine, every meal must be from that cuisine — do not keep old meals and add bread.',
