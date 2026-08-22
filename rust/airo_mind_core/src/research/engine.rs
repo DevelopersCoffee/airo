@@ -53,15 +53,18 @@ pub trait SourceFetcher: Send + Sync {
 }
 
 /// Owns the research loop. Not a prompt.
-pub struct ResearchEngine<'a> {
-    engines: Vec<&'a dyn SearchEngine>,
-    fetcher: &'a dyn SourceFetcher,
+pub struct ResearchEngine {
+    engines: Vec<Box<dyn SearchEngine>>,
+    fetcher: Box<dyn SourceFetcher>,
     service: InMemoryResearchService,
     reports: BTreeMap<String, String>,
 }
 
-impl<'a> ResearchEngine<'a> {
-    pub fn new(engines: Vec<&'a dyn SearchEngine>, fetcher: &'a dyn SourceFetcher) -> Self {
+impl ResearchEngine {
+    pub fn new(
+        engines: Vec<Box<dyn SearchEngine>>,
+        fetcher: Box<dyn SourceFetcher>,
+    ) -> Self {
         Self {
             engines,
             fetcher,
@@ -188,7 +191,7 @@ impl<'a> ResearchEngine<'a> {
         let routed: Vec<&dyn SearchEngine> = self
             .engines
             .iter()
-            .copied()
+            .map(|engine| engine.as_ref())
             .filter(|engine| engine_allowed(request.policy, engine.id()))
             .collect();
         let budget = request.budget();
@@ -559,7 +562,8 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine = ResearchEngine::new(vec![&search], &fetch);
+        let mut engine =
+            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("   "));
         let events = engine.run(&job_id).expect("empty questions still admit");
         assert_eq!(
@@ -577,7 +581,8 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine = ResearchEngine::new(vec![&search], &fetch);
+        let mut engine =
+            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         assert_eq!(engine.status(&job_id), Some(ResearchJobState::Created));
         let events = engine.run(&job_id).expect("run");
@@ -610,7 +615,8 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine = ResearchEngine::new(vec![&search], &fetch);
+        let mut engine =
+            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         engine.cancel(&job_id).unwrap();
         let events = engine
@@ -634,7 +640,8 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine = ResearchEngine::new(vec![&search], &fetch);
+        let mut engine =
+            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         engine.pause(&job_id).unwrap();
         let paused = engine.run(&job_id).unwrap();

@@ -109,14 +109,19 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
     `MindModule.deepResearchEngineFactory` and
     `createLocalDeepResearchEngine(searxngBaseUri: ...)`; both Chat routes use
     that host-owned engine.
+19. PubMed, GitHub, Crossref, and local-memory `SearchEngine` adapters.
+20. `ResearchService` FFI in `airo_mind_llama`: `start` / `status` / `pause` /
+    `resume` / `cancel` / `report` / `run` with Dart-injected search/fetch. Web
+    and pre-init builds keep the Dart orchestrator.
 
 Not shipped (locked below, do not pretend they exist):
 
-- Google / Bing / Brave / DuckDuckGo / Tavily / PubMed / GitHub / news APIs
+- Google / Bing / Brave / DuckDuckGo / Tavily / news APIs
 - SearXNG endpoint settings UI and persisted endpoint configuration
 - HTML/PDF tables-from-scanned-pages, PDF binary extraction
 - Claim-level citation validation, contradiction explanations, confidence scores
-- HTTP cache, automatic continuation without user reattachment, `ResearchService` FFI
+- HTTP cache, automatic checkpoint restore through FRB, automatic continuation
+  without user reattachment, richer event stream parity with the Dart orchestrator
 - Weighted decision scoring beyond contested-row flags
 
 ## 5. Locked production scope (do not drop)

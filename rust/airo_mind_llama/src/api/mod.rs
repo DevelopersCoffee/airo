@@ -9,3 +9,4 @@ mod generation_state;
 pub mod meeting_intelligence;
 pub mod minutes;
 pub mod reasoning;
+pub mod research;

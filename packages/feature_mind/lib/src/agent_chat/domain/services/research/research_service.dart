@@ -1,5 +1,6 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
+import '../../../../library_loader.dart' show isLlamaLoaded;
 import 'arxiv_search_engine.dart';
 import 'crossref_search_engine.dart';
 import 'github_search_engine.dart';
@@ -10,11 +11,13 @@ import 'research_control.dart';
 import 'research_http.dart';
 import 'research_library.dart';
 import 'research_orchestrator.dart';
+import 'research_search.dart';
+import 'rust_research_service.dart';
 import 'searxng_search_engine.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
 import 'wikipedia_search_engine.dart';
-import '../../../runtime/ports/operation_log_port.dart';
+import '../../../../runtime/ports/operation_log_port.dart';
 
 /// Flutter-facing Deep Research API. The model does not own this workflow.
 ///
@@ -30,6 +33,48 @@ abstract class ResearchService {
     List<String> knownSourceUrls = const [],
     void Function(ResearchLibraryEntry entry)? onLibrary,
   });
+}
+
+List<ResearchSearchEngine> defaultResearchEngines({
+  Uri? searxngBaseUri,
+  OperationLogPort? operationLogPort,
+}) {
+  return [
+    WikipediaSearchEngine(),
+    ArxivSearchEngine(),
+    SemanticScholarSearchEngine(),
+    PubMedSearchEngine(),
+    GitHubSearchEngine(),
+    CrossrefSearchEngine(),
+    if (operationLogPort != null)
+      LocalMemorySearchEngine(operationLog: operationLogPort),
+    if (searxngBaseUri != null) SearxngSearchEngine(baseUri: searxngBaseUri),
+  ];
+}
+
+/// Host-owned research service. Uses the Rust engine when the llama bridge is
+/// loaded; otherwise the Dart orchestrator.
+ResearchService createProductionResearchService({
+  ResearchOrchestrator? orchestrator,
+  Uri? searxngBaseUri,
+  OperationLogPort? operationLogPort,
+}) {
+  final local = LocalResearchService(
+    orchestrator: orchestrator,
+    searxngBaseUri: searxngBaseUri,
+    operationLogPort: operationLogPort,
+  );
+  if (!isLlamaLoaded) {
+    return local;
+  }
+  return RustResearchService(
+    engines: defaultResearchEngines(
+      searxngBaseUri: searxngBaseUri,
+      operationLogPort: operationLogPort,
+    ),
+    fetch: const ResearchHttpClient().get,
+    fallback: local,
+  );
 }
 
 /// I/O adapter: allowlisted HTTPS search + fetch, then the in-process
@@ -70,18 +115,10 @@ class LocalResearchService implements ResearchService {
     OperationLogPort? operationLogPort,
   }) {
     return ResearchOrchestrator(
-      engines: [
-        WikipediaSearchEngine(),
-        ArxivSearchEngine(),
-        SemanticScholarSearchEngine(),
-        PubMedSearchEngine(),
-        GitHubSearchEngine(),
-        CrossrefSearchEngine(),
-        if (operationLogPort != null)
-          LocalMemorySearchEngine(operationLog: operationLogPort),
-        if (searxngBaseUri != null)
-          SearxngSearchEngine(baseUri: searxngBaseUri),
-      ],
+      engines: defaultResearchEngines(
+        searxngBaseUri: searxngBaseUri,
+        operationLogPort: operationLogPort,
+      ),
       sourceManager: SourceManager(fetcher: const ResearchHttpClient().get),
     );
   }

@@ -52,7 +52,7 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
     }
     return LocalDeepResearchEngine._(
       service ??
-          LocalResearchService(
+          createProductionResearchService(
             orchestrator: orchestrator,
             searxngBaseUri: searxngBaseUri,
             operationLogPort: operationLogPort,
