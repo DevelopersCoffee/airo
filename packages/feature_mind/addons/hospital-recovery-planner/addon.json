@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "hospital-recovery-planner",
+  "version": "1.0.0",
+  "behaviors": ["graph_workflow"],
+  "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
+  "tools": ["query_entity_graph"],
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "graph_workflow_v1"
+  },
+  "workflow": { "subject_kind": "hospital_stay" },
+  "built_in_priority": 15
+}

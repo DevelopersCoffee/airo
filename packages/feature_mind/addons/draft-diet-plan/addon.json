@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "id": "draft-diet-plan",
+  "version": "1.0.0",
+  "behaviors": ["generative"],
+  "capabilities": [
+    "conversation.current_turn",
+    "conversation.thread_history"
+  ],
+  "tools": [],
+  "safety_class": "health",
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "generative_v1"
+  },
+  "built_in_priority": 10
+}
