@@ -73,6 +73,35 @@ void main() {
         'person': ['Brad Doe'],
         'money': ['\$5 million'],
       });
+      final chicago = entities.singleWhere((e) => e.text == 'Chicago');
+      final brad = entities.singleWhere((e) => e.text == 'Brad Doe');
+      expect(text.substring(chicago.start, chicago.end), 'Chicago');
+      expect(text.substring(brad.start, brad.end), 'Brad Doe');
+    });
+
+    test('does not treat Co-founder, hours, or Dr Drive as entities', () {
+      final entities = extractor.extract(
+        'Apple Co-founder waited 3 hours 12 minutes. See Dr Drive.',
+      );
+
+      expect(
+        entities.map((e) => e.type),
+        isNot(contains(EntityType.organization)),
+      );
+      expect(entities.map((e) => e.type), isNot(contains(EntityType.money)));
+      expect(entities.map((e) => e.type), isNot(contains(EntityType.person)));
+    });
+
+    test('does not treat in The X or in August as a location', () {
+      final entities = extractor.extract(
+        'prescribed in The Ibuprofen and filed in August after review.',
+      );
+
+      expect(entities.map((e) => e.type), isNot(contains(EntityType.location)));
+      expect(entities.map((e) => e.text), isNot(contains('August')));
+      expect(entities, [
+        const ExtractedEntity(text: 'Ibuprofen', type: EntityType.term),
+      ]);
     });
 
     test('records UTF-16 spans for the first date mention', () {

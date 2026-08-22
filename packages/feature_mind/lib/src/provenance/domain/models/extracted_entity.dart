@@ -7,12 +7,12 @@ import 'package:flutter/foundation.dart';
 /// inspector can render, not a typo that shows up unstyled.
 enum EntityType {
   person,
+  date,
+  term,
   organization,
   location,
-  date,
   money,
   identifier,
-  term,
 }
 
 /// One entity pulled out of an op's title and detail text.

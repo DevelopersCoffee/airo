@@ -54,7 +54,7 @@ class RuleBasedEntityExtractor implements EntityExtractor {
   );
 
   static final RegExp _money = RegExp(
-    r'(?:\$|USD|INR|EUR|GBP|Rs\.?)\s*\d[\d,]*(?:\.\d+)?'
+    r'(?:\$|\b(?:USD|INR|EUR|GBP|Rs\.?)\b)\s*\d[\d,]*(?:\.\d+)?'
     r'(?:\s*(?:million|billion|thousand|hundred))?\b',
     caseSensitive: false,
   );
@@ -78,7 +78,7 @@ class RuleBasedEntityExtractor implements EntityExtractor {
   static final RegExp _isoDate = RegExp(r'\b\d{4}-\d{2}-\d{2}\b');
 
   static final RegExp _honorific = RegExp(
-    r'\b(?:Dr|Mr|Mrs|Ms|Prof|Sir)\.?\s+[A-Z][A-Za-z]+'
+    r'\b(?:(?:Dr|Mr|Mrs|Ms|Prof)\.|Sir)\s+[A-Z][A-Za-z]+'
     r'(?:\s+[A-Z][A-Za-z]+)?\b',
   );
 
@@ -89,9 +89,9 @@ class RuleBasedEntityExtractor implements EntityExtractor {
   );
 
   static final RegExp _organization = RegExp(
-    r'\b[A-Z][A-Za-z0-9&]+(?:\s+[A-Z][A-Za-z0-9&]+)*\s+'
-    r'(?:Corp|Inc|Ltd|LLC|LLP|PLC|GmbH|Co|University|Hospital|'
-    r'Foundation|Institute|Organization)\b\.?',
+    r'\b[A-Z][A-Za-z0-9&]+(?:\s+[A-Z][A-Za-z0-9&]+){0,7}\s+'
+    r'(?:(?:Corp|Inc|Ltd|LLC|LLP|PLC|GmbH|University|Hospital|'
+    r'Foundation|Institute|Organization)\b\.?|Co\.)',
   );
 
   static final RegExp _location = RegExp(
@@ -229,11 +229,17 @@ class RuleBasedEntityExtractor implements EntityExtractor {
   ) {
     for (final match in _location.allMatches(text)) {
       final mention = match.group(1)!;
-      if (_monthWords.contains(mention)) continue;
       final start = _groupStart(match, 1);
       final end = start + mention.length;
       final span = _Span(start, end);
       if (claimed.any(span.overlaps)) continue;
+      final firstWord = mention.split(RegExp(r'\s+')).first;
+      // Months and sentence-starters after in/at/from/near are not places.
+      // Do not claim the span: "in The Ibuprofen" must still yield the term.
+      if (_monthWords.contains(mention) ||
+          _leadingStopwords.contains(firstWord)) {
+        continue;
+      }
       claimed.add(span);
       positioned.add(
         _Positioned(
@@ -293,7 +299,7 @@ class RuleBasedEntityExtractor implements EntityExtractor {
       }
 
       final phrase = text.substring(token.start, end);
-      if (_roleTitles.contains(phrase)) {
+      if (_roleTitles.contains(phrase) || _monthWords.contains(phrase)) {
         i = j;
         continue;
       }
@@ -318,9 +324,12 @@ class RuleBasedEntityExtractor implements EntityExtractor {
 
 int _groupStart(RegExpMatch match, int group) {
   if (group == 0) return match.start;
-  final full = match.group(0)!;
-  final part = match.group(group)!;
-  return match.start + full.lastIndexOf(part);
+  final part = match.group(group);
+  final full = match.group(0);
+  if (part == null || part.isEmpty || full == null) return match.start;
+  final offset = full.lastIndexOf(part);
+  if (offset < 0) return match.start;
+  return match.start + offset;
 }
 
 class _Span {
