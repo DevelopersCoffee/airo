@@ -11,9 +11,19 @@ class ChatEntityGraphSession {
     LegacyChatEntityGraphImporter? legacyImporter,
     GraphWorkflowCoordinator? graphCoordinator,
   }) : _store = store ?? ChatEntityGraphStore.memory(),
-       _legacyImporter = legacyImporter ?? const LegacyChatEntityGraphImporter(),
+       _legacyImporter = legacyImporter ?? _legacyImporterFor(store),
        _graphCoordinator =
            graphCoordinator ?? BuiltInAddonRegistry.create().graphCoordinator;
+
+  static LegacyChatEntityGraphImporter _legacyImporterFor(
+    ChatEntityGraphStore? store,
+  ) {
+    final resolved = store ?? ChatEntityGraphStore.memory();
+    if (resolved.isMemoryOnly) {
+      return const LegacyChatEntityGraphImporter(legacyStore: null);
+    }
+    return const LegacyChatEntityGraphImporter();
+  }
 
   final ChatEntityGraphStore _store;
   final LegacyChatEntityGraphImporter _legacyImporter;

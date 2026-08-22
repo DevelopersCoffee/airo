@@ -4,24 +4,25 @@ import 'package:core_domain/core_domain.dart';
 import '../../agent_chat/domain/models/chat_entity_graph.dart';
 import '../../agent_chat/domain/models/entity_graph_bridge.dart';
 import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
-import '../../agent_chat/domain/services/chat_entity_graph_projector.dart';
-import '../../agent_chat/domain/services/chat_entity_linker.dart';
+import '../../agent_chat/domain/services/projected_chat_journey.dart';
+import 'legacy_chat_entity_linker.dart';
+import 'legacy_workflow_graph_patch.dart';
 import 'graph_workflow_projection_bridge.dart';
 
 /// Routes graph-workflow add-ons through the registry without host ID switches.
 class GraphWorkflowCoordinator {
   GraphWorkflowCoordinator(
     this._registry, {
-    ChatEntityLinker linker = const ChatEntityLinker(),
+    LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
     GraphWorkflowProjectionBridge projectionBridge =
         const GraphWorkflowProjectionBridge(),
     ChatEntityGraphPending pending = const ChatEntityGraphPending(),
-  }) : _linker = linker,
+  }) : _legacyLinker = linker,
        _projectionBridge = projectionBridge,
        _pending = pending;
 
   final AddonRegistry _registry;
-  final ChatEntityLinker _linker;
+  final LegacyChatEntityLinker _legacyLinker;
   final GraphWorkflowProjectionBridge _projectionBridge;
   final ChatEntityGraphPending _pending;
 
@@ -36,7 +37,7 @@ class GraphWorkflowCoordinator {
 
   ChatEntityGraph ingest(ChatEntityGraph graph, String text) {
     if (!shouldIngest(text, graph)) return graph;
-    return _linker.ingest(graph, text);
+    return _legacyLinker.ingest(graph, text);
   }
 
   Future<ChatEntityGraph> ingestWithAddonPatches(
@@ -44,23 +45,19 @@ class GraphWorkflowCoordinator {
     String text,
   ) async {
     if (!shouldIngest(text, graph)) return graph;
-    var updated = _linker.ingest(graph, text);
-    var entityGraph = updated.toEntityGraph();
+    var chatGraph = graph;
+    var entityGraph = chatGraph.toEntityGraph();
     var context = GraphIngestContext(text: text, graph: entityGraph);
     for (final adapter in _registry.eligibleGraphAdapters()) {
       if (!adapter.accepts(context)) continue;
       final patch = await adapter.extract(context);
       if (patch.isEmpty) continue;
-      entityGraph = entityGraph.merge(
-        EntityGraph(
-          nodes: patch.nodes,
-          edges: patch.edges,
-          recentNodeIds: patch.mentionedNodeIds,
-        ),
-      );
+      chatGraph = LegacyWorkflowGraphPatch.apply(chatGraph, patch);
+      entityGraph = chatGraph.toEntityGraph();
       context = GraphIngestContext(text: text, graph: entityGraph);
     }
-    return ChatEntityGraphBridge.fromEntityGraph(entityGraph);
+    chatGraph = _legacyLinker.ingestGenericMentions(chatGraph, text);
+    return chatGraph;
   }
 
   List<ProjectedChatJourney> projectJourneys(ChatEntityGraph graph) =>

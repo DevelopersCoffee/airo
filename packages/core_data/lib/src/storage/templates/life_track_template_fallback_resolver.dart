@@ -151,15 +151,4 @@ class _ScoredTemplateMatch {
   int get score => matchedKeywords.length;
 }
 
-const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
-  'study_progress_v1': <String>[
-    'chapter',
-    'coursework',
-    'exam',
-    'homework',
-    'revision',
-    'study progress',
-    'study',
-    'syllabus',
-  ],
-};
+const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {};

@@ -226,7 +226,7 @@ class LifeTrackRecordConnector implements AgentConnector {
 
   String _savedMessage(LifeTrack track, {required bool created}) {
     final verb = created ? 'Started' : 'Updated';
-    return '$verb local LifeTrack "${track.title}". ${_followUpHint(track.templateId)}';
+    return '$verb local LifeTrack "${track.title}". ${_followUpHint(track.templateId ?? '')}';
   }
 
   Map<String, String> _stringMap(Object? raw) {

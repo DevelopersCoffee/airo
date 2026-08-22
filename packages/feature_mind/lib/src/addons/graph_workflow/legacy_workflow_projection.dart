@@ -1,40 +1,14 @@
 import 'package:core_domain/core_domain.dart';
 
-import '../../../provenance/domain/models/extracted_entity.dart';
-import '../models/chat_entity_graph.dart';
-import 'projected_chat_journey.dart';
+import '../../provenance/domain/models/extracted_entity.dart';
+import '../../agent_chat/domain/models/chat_entity_graph.dart';
+import '../../agent_chat/domain/services/projected_chat_journey.dart';
 
-/// conversation → entities → workflow: turns stored graph nodes into a
-/// template payload. Does not invent facts that are not on the graph.
-class ChatEntityGraphProjector {
-  const ChatEntityGraphProjector();
+/// Legacy workflow projections retained for characterization parity.
+class LegacyWorkflowProjection {
+  const LegacyWorkflowProjection._();
 
-  List<ProjectedChatJourney> project(ChatEntityGraph graph) {
-    return [
-      ...graph.nodes.where(_isClaim).map((node) => _projectClaim(graph, node)),
-      ...graph.nodes
-          .where(_isHospitalStay)
-          .map((node) => _projectHospital(graph, node)),
-      ...graph.nodes
-          .where(_isProperty)
-          .map((node) => _projectProperty(graph, node)),
-    ];
-  }
-
-  ProjectedChatJourney? firstUnoffered(ChatEntityGraph graph) {
-    for (final journey in project(graph)) {
-      final node = graph.nodeById(journey.subjectNodeId);
-      if (node?.attributes['journey_offered'] == 'true') continue;
-      if (!journey.isOfferable) continue;
-      return journey;
-    }
-    return null;
-  }
-
-  ProjectedChatJourney _projectClaim(
-    ChatEntityGraph graph,
-    ChatGraphNode claim,
-  ) {
+  static ProjectedChatJourney claim(ChatEntityGraph graph, ChatGraphNode claim) {
     final facts = <String, String>{};
     final claimId = claim.attributes['value'] ?? _digits(claim.name);
     if (claimId.isNotEmpty) facts['Claim ID'] = claimId;
@@ -89,7 +63,7 @@ class ChatEntityGraphProjector {
     );
   }
 
-  ProjectedChatJourney _projectHospital(
+  static ProjectedChatJourney hospital(
     ChatEntityGraph graph,
     ChatGraphNode stay,
   ) {
@@ -134,7 +108,7 @@ class ChatEntityGraphProjector {
     );
   }
 
-  ProjectedChatJourney _projectProperty(
+  static ProjectedChatJourney property(
     ChatEntityGraph graph,
     ChatGraphNode property,
   ) {
@@ -186,19 +160,11 @@ class ChatEntityGraphProjector {
     );
   }
 
-  void _copyIfPresent(Map<String, String> facts, String key, String? value) {
+  static void _copyIfPresent(Map<String, String> facts, String key, String? value) {
     if (value == null || value.isEmpty) return;
     facts[key] = value;
   }
 
-  bool _isClaim(ChatGraphNode node) =>
-      node.type == EntityType.identifier && node.attributes['kind'] == 'claim';
-
-  bool _isHospitalStay(ChatGraphNode node) =>
-      node.attributes['kind'] == 'hospital_stay';
-
-  bool _isProperty(ChatGraphNode node) => node.attributes['kind'] == 'property';
-
-  String _digits(String name) =>
+  static String _digits(String name) =>
       RegExp(r'[A-Z0-9]{5,20}').firstMatch(name)?.group(0) ?? name;
 }

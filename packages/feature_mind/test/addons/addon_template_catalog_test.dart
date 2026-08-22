@@ -15,6 +15,7 @@ void main() {
         'real_estate_under_construction_v1',
         'car_purchase_v1',
         'university_admission_v1',
+        'study_progress_v1',
       ]),
     );
   });

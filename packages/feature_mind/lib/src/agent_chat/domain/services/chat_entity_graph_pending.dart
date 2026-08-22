@@ -3,6 +3,7 @@ import 'package:core_domain/core_domain.dart';
 import '../../../provenance/domain/models/extracted_entity.dart';
 import '../models/chat_entity_graph.dart';
 import 'chat_entity_graph_projector.dart';
+import 'projected_chat_journey.dart';
 
 /// Deterministic "what's pending" answer from stored chat entities.
 ///

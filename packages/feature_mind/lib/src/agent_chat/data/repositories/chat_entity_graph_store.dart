@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_data/core_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +13,7 @@ class ChatEntityGraphStore {
   static const key = 'agent_chat.entity_graph.v1';
 
   final bool _memoryOnly;
+  bool get isMemoryOnly => _memoryOnly;
   ChatEntityGraph _memory = ChatEntityGraph.empty;
 
   Future<ChatEntityGraph> load() async {

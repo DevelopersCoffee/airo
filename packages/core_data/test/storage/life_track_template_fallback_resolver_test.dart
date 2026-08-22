@@ -65,6 +65,16 @@ void main() {
             'university',
             'visa',
           ],
+          'study_progress_v1': [
+            'chapter',
+            'coursework',
+            'exam',
+            'homework',
+            'revision',
+            'study progress',
+            'study',
+            'syllabus',
+          ],
         },
       );
     });
