@@ -161,10 +161,7 @@ jobs:
           cd app && flutter pub get
 
       - name: Run code generation
-        run: |
-          cd app
-          dart run build_runner clean
-          dart run build_runner build
+        run: scripts/run-ci-codegen.sh
 
       - name: Configure firebase_options.dart
         env:

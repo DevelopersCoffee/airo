@@ -29,7 +29,7 @@ impl PrivacyProfile {
     }
 
     pub fn allows(self, engine_id: &str) -> bool {
-        self.engine_ids().iter().any(|id| *id == engine_id)
+        self.engine_ids().contains(&engine_id)
     }
 }
 

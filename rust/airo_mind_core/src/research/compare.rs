@@ -53,7 +53,7 @@ pub fn decide(subjects: &[String], cells: &[MatrixCell], conflicts: usize) -> Ve
             }
         })
         .collect();
-    rows.sort_by(|a, b| b.covered_criteria.cmp(&a.covered_criteria));
+    rows.sort_by_key(|row| std::cmp::Reverse(row.covered_criteria));
     rows
 }
 

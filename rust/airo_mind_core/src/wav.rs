@@ -80,10 +80,13 @@ pub fn decode(bytes: &[u8]) -> Result<Pcm, String> {
     }
 
     Ok(Pcm {
-        samples: data
-            .chunks_exact(2)
-            .map(|p| i16::from_le_bytes([p[0], p[1]]))
-            .collect(),
+        samples: {
+            // Clippy 1.98 prefers `as_chunks::<2>()`; keep `chunks_exact`
+            // until the workspace pins a toolchain where that API is stable.
+            #[allow(clippy::chunks_exact_to_as_chunks)]
+            let pairs = data.chunks_exact(2);
+            pairs.map(|p| i16::from_le_bytes([p[0], p[1]])).collect()
+        },
         sample_rate_hz,
         channels,
     })
