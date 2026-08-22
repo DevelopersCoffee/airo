@@ -64,7 +64,7 @@ pub enum CheckpointStatus {
 }
 
 /// Privacy-safe checkpoint payload. No prompt, memory, or tool-result bodies.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct CheckpointMetadata {
     pub invariant: Option<InvariantId>,
     pub failure_mode: Option<FailureMode>,
@@ -74,21 +74,6 @@ pub struct CheckpointMetadata {
     pub model_id: Option<String>,
     pub runtime_id: Option<String>,
     pub platform: Option<String>,
-}
-
-impl Default for CheckpointMetadata {
-    fn default() -> Self {
-        Self {
-            invariant: None,
-            failure_mode: None,
-            runtime_error: None,
-            recovery: None,
-            attempt: 0,
-            model_id: None,
-            runtime_id: None,
-            platform: None,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
