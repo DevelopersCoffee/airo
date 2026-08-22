@@ -179,6 +179,36 @@ void main() {
     expect(saved, ['draft-diet-plan']);
   });
 
+  testWidgets('empty add-ons dialog redirects to browse', (tester) async {
+    var browsed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MindDirectoryChatsPane(
+            directory: ChatEntityGraph.empty,
+            folders: const [MindChatFolder(id: 'study', name: 'Study')],
+            chats: const [],
+            onSetFolderPlugins: (_, _) {},
+            onBrowseAddOns: () => browsed = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('mind.chats.folder.study.plugins')));
+    await tester.pumpAndSettle();
+    expect(find.text('Add-ons for Study'), findsOneWidget);
+    expect(find.text('No add-ons installed yet.'), findsOneWidget);
+    expect(find.text('Save'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('mind.chats.folder.study.addons.browse')),
+    );
+    await tester.pumpAndSettle();
+    expect(browsed, isTrue);
+    expect(find.text('Add-ons for Study'), findsNothing);
+  });
+
   testWidgets('remove chat asks before deleting', (tester) async {
     final removed = <String>[];
     await tester.pumpWidget(

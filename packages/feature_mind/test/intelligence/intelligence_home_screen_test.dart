@@ -46,6 +46,34 @@ void main() {
     expect(find.text('Overview'), findsOneWidget);
   });
 
+  testWidgets('Add-ons section chip opens the add-ons tab', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          intelligenceCatalogProvider.overrideWithValue([
+            _chat(downloaded: true),
+          ]),
+          intelligenceMemoryLoaderProvider.overrideWith((ref) async => null),
+        ],
+        child: const MaterialApp(
+          home: IntelligenceHomeScreen(addOnsTab: Text('addons-body')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add-ons'), findsOneWidget);
+    await tester.tap(find.text('Add-ons'));
+    await tester.pumpAndSettle();
+    expect(find.text('addons-body'), findsOneWidget);
+  });
+
   testWidgets('phone Overview pushes Advanced instead of inner chips', (
     tester,
   ) async {

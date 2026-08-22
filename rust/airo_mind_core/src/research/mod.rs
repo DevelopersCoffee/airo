@@ -6,10 +6,12 @@
 //! interpret → plan → acquire → extract → evidence → verify → iterate →
 //! synthesize → provenance.
 
+mod compare;
 mod document;
 mod engine;
 mod evidence;
 mod interpreter;
+mod library;
 mod planner;
 mod query;
 mod request;
@@ -19,6 +21,7 @@ mod stopping;
 mod strategy;
 mod trust;
 
+pub use compare::{comparison_matrix, decide, matrix_markdown, DecisionRow, MatrixCell};
 pub use document::{
     classify_url, extract_document, extract_html, extract_markdown, extract_pdf, ExtractedDocument,
     SourceClass, SourceClassification, SourceKind,
@@ -29,6 +32,7 @@ pub use evidence::{
     EvidenceId, Source, SourceId, SourceType,
 };
 pub use interpreter::{interpret, InterpretedGoal, ResearchIntent};
+pub use library::{delta_urls, topic_key, InMemoryResearchLibrary, ResearchLibraryEntry};
 pub use planner::{PlanNodeKind, ResearchPlan, ResearchPlanNode};
 pub use query::{queries_for, QuerySet};
 pub use request::{ResearchBudget, ResearchMode, ResearchRequest, SearchPolicy};

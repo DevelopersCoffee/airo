@@ -4,6 +4,7 @@ import 'package:core_ai/core_ai.dart';
 import '../../../assistant/assistant_surface_policy.dart';
 import '../../../meeting_archive/meeting_archive_port.dart';
 import '../../../services/device_actions_service.dart';
+import '../../../routing/assistant_route_names.dart';
 import 'intent_parser.dart';
 
 /// Gallery-style card describing an agent skill/use case.
@@ -625,6 +626,14 @@ class ToolRegistry {
         title: 'Agent Skills',
         description: 'Use tools for routine tasks',
         iconKey: 'send',
+        featured: true,
+      ),
+      AgentSkillCard(
+        key: 'add_ons',
+        title: 'Add-ons',
+        description: 'Install skills and plugins for folders',
+        iconKey: 'extension',
+        route: AssistantRouteNames.agentSkills,
         featured: true,
       ),
       AgentSkillCard(

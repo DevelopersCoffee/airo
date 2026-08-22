@@ -77,6 +77,7 @@ void main() {
 
       expect(titles, contains('AI Chat'));
       expect(titles, contains('Agent Skills'));
+      expect(titles, contains('Add-ons'));
       expect(titles, contains('Split Bill'));
       expect(titles, contains('Diet Plan'));
       expect(titles, contains('Ask Image'));

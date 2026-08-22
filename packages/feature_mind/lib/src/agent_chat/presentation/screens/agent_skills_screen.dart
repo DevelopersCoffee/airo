@@ -9,9 +9,14 @@ import '../../domain/services/remote_agent_skill_installer.dart';
 
 /// User-facing catalogue for enabling the tools that the Airo agent may use.
 class AgentSkillsScreen extends StatefulWidget {
-  const AgentSkillsScreen({super.key, this.registryFuture});
+  const AgentSkillsScreen({
+    super.key,
+    this.registryFuture,
+    this.embedded = false,
+  });
 
   final Future<AgentSkillRegistry>? registryFuture;
+  final bool embedded;
 
   @override
   State<AgentSkillsScreen> createState() => _AgentSkillsScreenState();
@@ -65,7 +70,10 @@ class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Agent Skills')),
+      backgroundColor: widget.embedded ? Colors.transparent : null,
+      appBar: widget.embedded
+          ? null
+          : AppBar(title: const Text('Agent Skills')),
       body: FutureBuilder<AgentSkillRegistry>(
         future: _registryFuture,
         builder: (context, snapshot) {
