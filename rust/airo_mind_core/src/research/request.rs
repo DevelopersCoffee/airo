@@ -28,6 +28,7 @@ pub struct ResearchBudget {
     pub max_parallel_tasks: u32,
     pub max_tokens: u64,
     pub max_duration_secs: u64,
+    pub max_cost_micros: u64,
 }
 
 impl ResearchBudget {
@@ -40,6 +41,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 2,
                 max_tokens: 4096,
                 max_duration_secs: 30,
+                max_cost_micros: 8_000,
             },
             ResearchMode::Standard => Self {
                 max_searches: 15,
@@ -48,6 +50,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 4,
                 max_tokens: 12_288,
                 max_duration_secs: 120,
+                max_cost_micros: 40_000,
             },
             ResearchMode::Deep => Self {
                 max_searches: 40,
@@ -56,6 +59,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 6,
                 max_tokens: 32_768,
                 max_duration_secs: 480,
+                max_cost_micros: 150_000,
             },
             ResearchMode::Exhaustive => Self {
                 max_searches: 100,
@@ -64,6 +68,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 8,
                 max_tokens: 65_536,
                 max_duration_secs: 1_200,
+                max_cost_micros: 500_000,
             },
         }
     }

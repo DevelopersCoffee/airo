@@ -219,6 +219,12 @@ impl<'a> ResearchEngine<'a> {
             uncovered_nodes: depth.len(),
             iterations_used: 1,
             max_iterations: budget.max_iterations,
+            cost_used: super::metrics::ResearchCostModel::default().estimate(
+                searches_used,
+                unique.len() as u32,
+                0,
+            ),
+            max_cost: budget.max_cost_micros,
         };
         if !depth.is_empty()
             && EvidenceSufficiencyPolicy.should_stop(&progress) == StopDecision::Continue
@@ -248,12 +254,14 @@ impl<'a> ResearchEngine<'a> {
                 format!("{} — {}", hit.title, hit.url),
             ));
         }
+        let mut rejected = 0u32;
         let mut documents = Vec::new();
         for hit in &unique {
             match self.fetcher.fetch(&hit.url) {
                 Ok(raw) => {
                     let extracted = extract_document(&raw, Some(&hit.url));
                     if extracted.evidence_text().trim().is_empty() {
+                        rejected = rejected.saturating_add(1);
                         events.push(event(
                             ResearchEventKind::SourceRejected,
                             job_id,
@@ -287,12 +295,15 @@ impl<'a> ResearchEngine<'a> {
                         class,
                     });
                 }
-                Err(reason) => events.push(event(
-                    ResearchEventKind::SourceRejected,
-                    job_id,
-                    "Reading documents",
-                    reason,
-                )),
+                Err(reason) => {
+                    rejected = rejected.saturating_add(1);
+                    events.push(event(
+                        ResearchEventKind::SourceRejected,
+                        job_id,
+                        "Reading documents",
+                        reason,
+                    ))
+                }
             }
         }
         self.service
@@ -331,7 +342,25 @@ impl<'a> ResearchEngine<'a> {
             "Writing report",
             "",
         ));
-        let report = compose_report(&request, &plan, goal.intent.as_str(), &documents, &claims);
+        let metrics = super::metrics::ResearchMetrics {
+            duration_ms: 0,
+            searches: searches_used,
+            sources_used: documents.len() as u32,
+            sources_rejected: rejected,
+            claims: claims.len() as u32,
+            contradictions: 0,
+            tokens: 0,
+            cost_micros: 0,
+        }
+        .with_cost(super::metrics::ResearchCostModel::default());
+        let report = compose_report(
+            &request,
+            &plan,
+            goal.intent.as_str(),
+            &documents,
+            &claims,
+            metrics,
+        );
         self.service
             .apply(job_id, ResearchCommand::SynthesisFinished)?;
         self.service
@@ -372,9 +401,11 @@ fn event(
 fn engine_allowed(policy: SearchPolicy, id: &str) -> bool {
     match policy {
         SearchPolicy::LocalOnly => false,
-        SearchPolicy::PrivacyFirst => id == "wikipedia",
+        SearchPolicy::PrivacyFirst => id == "wikipedia" || id == "searxng",
         SearchPolicy::Academic => id == "arxiv" || id == "semantic_scholar",
-        SearchPolicy::Balanced | SearchPolicy::MaximumQuality => true,
+        SearchPolicy::Balanced | SearchPolicy::MaximumQuality => {
+            id != "google" && id != "bing" && id != "tavily" && id != "duckduckgo"
+        }
     }
 }
 
@@ -411,6 +442,7 @@ fn compose_report(
     intent: &str,
     documents: &[Acquired],
     claims: &[(String, String)],
+    metrics: super::metrics::ResearchMetrics,
 ) -> String {
     let mut lines = vec![
         "# Research Report".into(),
@@ -460,6 +492,8 @@ fn compose_report(
             document.class.kind
         ));
     }
+    lines.push(String::new());
+    lines.push(metrics.markdown());
     lines.join("\n")
 }
 
@@ -554,6 +588,9 @@ mod tests {
         assert!(report.contains("[1]"));
         assert!(report.contains("https://en.wikipedia.org/wiki/Qwen"));
         assert!(!report.contains("SEARCH SNIPPET ONLY"));
+        assert!(report.contains("## Observability"));
+        assert!(report.contains("Searches:"));
+        assert!(report.contains("Cost:"));
         assert!(events
             .iter()
             .any(|e| e.kind == ResearchEventKind::JobAdmitted));
@@ -610,5 +647,17 @@ mod tests {
             Some(ResearchEventKind::Completed)
         );
         assert!(engine.report(&job_id).unwrap().contains("[1]"));
+    }
+
+    #[test]
+    fn privacy_first_allows_searxng_and_never_google() {
+        assert!(engine_allowed(SearchPolicy::PrivacyFirst, "wikipedia"));
+        assert!(engine_allowed(SearchPolicy::PrivacyFirst, "searxng"));
+        assert!(!engine_allowed(
+            SearchPolicy::PrivacyFirst,
+            "semantic_scholar"
+        ));
+        assert!(!engine_allowed(SearchPolicy::MaximumQuality, "google"));
+        assert!(!engine_allowed(SearchPolicy::Balanced, "bing"));
     }
 }

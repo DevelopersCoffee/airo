@@ -24,9 +24,10 @@ void main() {
 
   test('privacy-first does not include commercial web search', () {
     final ids = SearchRouter.engineIds(SearchPolicy.privacyFirst);
-    expect(ids, ['wikipedia']);
+    expect(ids, containsAll(['wikipedia', 'searxng']));
     expect(ids, isNot(contains('google')));
     expect(ids, isNot(contains('bing')));
+    expect(ids, isNot(contains('semantic_scholar')));
   });
 
   test('local-only uses no remote engines', () {

@@ -17,6 +17,8 @@ pub struct ResearchProgress {
     pub uncovered_nodes: usize,
     pub iterations_used: u32,
     pub max_iterations: u32,
+    pub cost_used: u64,
+    pub max_cost: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +42,9 @@ impl StoppingPolicy for EvidenceSufficiencyPolicy {
         if progress.searches_used >= progress.max_searches {
             return StopDecision::Stop("budget");
         }
+        if progress.max_cost > 0 && progress.cost_used >= progress.max_cost {
+            return StopDecision::Stop("budget");
+        }
         if progress.iterations_used >= progress.max_iterations && progress.sources > 0 {
             return StopDecision::Stop("iteration_cap");
         }
@@ -60,6 +65,8 @@ mod tests {
             uncovered_nodes: 3,
             iterations_used: 1,
             max_iterations: 8,
+            cost_used: 0,
+            max_cost: 150_000,
         };
         assert_eq!(
             EvidenceSufficiencyPolicy.should_stop(&progress),
@@ -77,10 +84,30 @@ mod tests {
             uncovered_nodes: 0,
             iterations_used: 1,
             max_iterations: 8,
+            cost_used: 0,
+            max_cost: 150_000,
         };
         assert_eq!(
             EvidenceSufficiencyPolicy.should_stop(&progress),
             StopDecision::Stop("coverage")
+        );
+    }
+
+    #[test]
+    fn stops_when_the_cost_ceiling_is_spent() {
+        let progress = ResearchProgress {
+            searches_used: 2,
+            max_searches: 40,
+            sources: 1,
+            uncovered_nodes: 3,
+            iterations_used: 1,
+            max_iterations: 8,
+            cost_used: 150_000,
+            max_cost: 150_000,
+        };
+        assert_eq!(
+            EvidenceSufficiencyPolicy.should_stop(&progress),
+            StopDecision::Stop("budget")
         );
     }
 }
