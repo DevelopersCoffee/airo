@@ -72,7 +72,7 @@ impl VocabularyContext {
             .chain(&self.domain)
             .chain(&self.conversation)
             .collect();
-        entries.sort_by(|a, b| b.priority.cmp(&a.priority));
+        entries.sort_by_key(|a| std::cmp::Reverse(a.priority));
         entries
     }
 }
@@ -337,10 +337,8 @@ fn correct_fuzzy_words(
                 continue;
             }
             let score = *base * (1.0 - dist as f32 * 0.15);
-            if score >= min_confidence {
-                if best.map(|(_, s)| score > s).unwrap_or(true) {
-                    best = Some((entry, score));
-                }
+            if score >= min_confidence && best.map(|(_, s)| score > s).unwrap_or(true) {
+                best = Some((entry, score));
             }
         }
         if let Some((entry, score)) = best {
