@@ -2085,6 +2085,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       );
     });
+    if (checkpoint.state != ResearchPhase.paused) {
+      unawaited(
+        _runDeepResearch(checkpoint.question, resumeFrom: checkpoint),
+      );
+    }
   }
 
   void _resumePersistedResearch() {

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_http.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_http_cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -80,6 +82,32 @@ void main() {
       ).get(baseUri),
       throwsA(isA<ResearchHttpException>()),
     );
+  });
+
+  test('caches successful responses by canonical url', () async {
+    final cache = ResearchHttpCache(defaultTtl: const Duration(hours: 1));
+    final transport = _SequenceTransport([
+      _response(
+        statusCode: 200,
+        chunks: [utf8.encode('<article><p>cached body</p></article>')],
+      ),
+      _response(
+        statusCode: 200,
+        chunks: [utf8.encode('<article><p>should not fetch</p></article>')],
+      ),
+    ]);
+    final client = ResearchHttpClient(
+      allowedHosts: {baseUri.host},
+      cache: cache,
+      transport: transport.call,
+    );
+
+    final first = await client.get(baseUri);
+    final second = await client.get(baseUri);
+
+    expect(first, contains('cached body'));
+    expect(second, first);
+    expect(transport.requested, [baseUri]);
   });
 }
 

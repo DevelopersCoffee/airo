@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 
 use super::document::{classify_url, extract_document};
-use super::interpreter::interpret;
+use super::interpreter::{interpret, InterpretedGoal, ResearchIntent};
 use super::planner::{PlanNodeKind, ResearchPlan};
 use super::query::queries_for;
 use super::request::{ResearchRequest, SearchPolicy};
@@ -32,6 +32,9 @@ pub enum ResearchEventKind {
     DocumentParsed,
     AnalyzingStarted,
     ClaimCreated,
+    GapDetected,
+    CounterResearchStarted,
+    ConflictDetected,
     SynthesisStarted,
     Completed,
     Failed,
@@ -248,6 +251,12 @@ impl ResearchEngine {
         if !depth.is_empty()
             && EvidenceSufficiencyPolicy.should_stop(&progress) == StopDecision::Continue
         {
+            events.push(event(
+                ResearchEventKind::GapDetected,
+                job_id,
+                "Finding missing evidence",
+                "Depth facets were not covered by the first search wave.",
+            ));
             search_nodes(
                 &routed,
                 &depth,
@@ -256,6 +265,14 @@ impl ResearchEngine {
                 &mut hits,
             );
             unique = filter_known_hits(super::search::dedupe_hits(hits), known_source_urls);
+        }
+        if goal.decision_required && searches_used < budget.max_searches {
+            events.push(event(
+                ResearchEventKind::CounterResearchStarted,
+                job_id,
+                "Finding missing evidence",
+                queries_for(&goal.topic).counterargument,
+            ));
         }
         self.service
             .apply(job_id, ResearchCommand::SearchFinished)?;
@@ -352,6 +369,28 @@ impl ResearchEngine {
         }
         self.service
             .apply(job_id, ResearchCommand::AnalysisFinished)?;
+        let mut conflicts = 0u32;
+        for i in 0..claims.len() {
+            for j in (i + 1)..claims.len() {
+                let reasons =
+                    super::evidence::contradiction_reasons(&claims[i].0, &claims[j].0);
+                if reasons.is_empty() {
+                    continue;
+                }
+                conflicts += 1;
+                events.push(event(
+                    ResearchEventKind::ConflictDetected,
+                    job_id,
+                    "Comparing evidence",
+                    format!(
+                        "{} vs {} ({})",
+                        claims[i].0,
+                        claims[j].0,
+                        reasons.join(", ")
+                    ),
+                ));
+            }
+        }
         self.service
             .apply(job_id, ResearchCommand::VerificationFinished)?;
         self.service.apply(job_id, ResearchCommand::GapsResolved)?;
@@ -367,7 +406,7 @@ impl ResearchEngine {
             sources_used: documents.len() as u32,
             sources_rejected: rejected,
             claims: claims.len() as u32,
-            contradictions: 0,
+            contradictions: conflicts,
             tokens: 0,
             cost_micros: 0,
         }
@@ -375,9 +414,10 @@ impl ResearchEngine {
         let report = compose_report(
             &request,
             &plan,
-            goal.intent.as_str(),
+            &goal,
             &documents,
             &claims,
+            conflicts as usize,
             metrics,
         );
         self.service
@@ -472,11 +512,13 @@ fn search_nodes(
 fn compose_report(
     request: &ResearchRequest,
     plan: &ResearchPlan,
-    intent: &str,
+    goal: &InterpretedGoal,
     documents: &[Acquired],
     claims: &[(String, String)],
+    conflicts: usize,
     metrics: super::metrics::ResearchMetrics,
 ) -> String {
+    let intent = goal.intent.as_str();
     let mut lines = vec![
         "# Research Report".into(),
         String::new(),
@@ -510,6 +552,33 @@ fn compose_report(
                 text,
                 citation.map(|n| format!(" ([{n}])")).unwrap_or_default()
             ));
+        }
+    }
+    if matches!(goal.intent, ResearchIntent::Comparison) {
+        let subjects = super::interpreter::split_subjects(&goal.topic);
+        let criteria = &goal.dimensions;
+        let weights = super::compare::criterion_weights(criteria);
+        let cells = super::compare::comparison_matrix(&subjects, criteria, claims);
+        let matrix = super::compare::matrix_markdown(&cells);
+        if !matrix.is_empty() {
+            lines.push(String::new());
+            lines.push(matrix);
+        }
+        let rows = super::compare::decide(&subjects, &cells, criteria, &weights, conflicts);
+        if rows.iter().any(|row| row.contested) {
+            lines.push(String::new());
+            lines.push("## Decision".into());
+            lines.push(String::new());
+            lines.push("Contested criteria stay visible. No silent winner.".into());
+            for row in rows {
+                lines.push(format!(
+                    "- {}: {:.1} weighted score ({} cited cell(s)){}",
+                    row.subject,
+                    row.weighted_score,
+                    row.covered_criteria,
+                    if row.contested { " (contested)" } else { "" }
+                ));
+            }
         }
     }
     lines.push(String::new());

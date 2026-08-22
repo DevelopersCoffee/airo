@@ -117,21 +117,12 @@ class RustResearchService implements ResearchService {
         knownSourceUrls: knownSourceUrls,
       )) {
         final mapped = mapFrbResearchEvent(event);
+        _maybeEmitCheckpoint(handle, jobId, mapped.kind, onCheckpoint);
         if (mapped.kind == ResearchEventKind.sourceFetched) {
           fetchedUrls.add(mapped.detail);
         } else if (mapped.kind == ResearchEventKind.claimCreated &&
             mapped.detail.startsWith('supported: ')) {
           findings.add(mapped.detail.substring('supported: '.length));
-        } else if (mapped.kind == ResearchEventKind.researchPaused) {
-          final checkpoint = frb.researchCheckpoint(
-            handle: handle,
-            jobId: jobId,
-          );
-          if (checkpoint != null) {
-            onCheckpoint?.call(
-              ResearchCheckpoint.fromRecord(checkpoint.record),
-            );
-          }
         } else if (mapped.kind == ResearchEventKind.researchCompleted) {
           onLibrary?.call(
             ResearchLibraryEntry.fromQuestion(
@@ -146,6 +137,32 @@ class RustResearchService implements ResearchService {
       }
     } finally {
       controlTimer?.cancel();
+    }
+  }
+
+  void _maybeEmitCheckpoint(
+    frb.ResearchServiceHandle handle,
+    String jobId,
+    ResearchEventKind kind,
+    void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+  ) {
+    if (onCheckpoint == null) {
+      return;
+    }
+    const checkpointKinds = {
+      ResearchEventKind.searchCompleted,
+      ResearchEventKind.gapDetected,
+      ResearchEventKind.researchPaused,
+      ResearchEventKind.researchCompleted,
+      ResearchEventKind.researchFailed,
+      ResearchEventKind.researchCancelled,
+    };
+    if (!checkpointKinds.contains(kind)) {
+      return;
+    }
+    final checkpoint = frb.researchCheckpoint(handle: handle, jobId: jobId);
+    if (checkpoint != null) {
+      onCheckpoint(ResearchCheckpoint.fromRecord(checkpoint.record));
     }
   }
 }
