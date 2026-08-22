@@ -9,6 +9,54 @@ class ResearchHttpException implements Exception {
   String toString() => message;
 }
 
+typedef ResearchHttpTransport =
+    Future<ResearchHttpTransportResponse> Function(Uri uri, Duration timeout);
+
+class ResearchHttpTransportResponse {
+  const ResearchHttpTransportResponse({
+    required this.statusCode,
+    required this.chunks,
+    this.location,
+    this.close = _noop,
+  });
+
+  final int statusCode;
+  final Stream<List<int>> chunks;
+  final String? location;
+  final void Function() close;
+
+  bool get isRedirect => const {
+    HttpStatus.movedPermanently,
+    HttpStatus.found,
+    HttpStatus.seeOther,
+    HttpStatus.temporaryRedirect,
+    HttpStatus.permanentRedirect,
+  }.contains(statusCode);
+}
+
+void _noop() {}
+
+Future<ResearchHttpTransportResponse> _ioResearchHttpTransport(
+  Uri uri,
+  Duration timeout,
+) async {
+  final client = HttpClient()..connectionTimeout = timeout;
+  try {
+    final request = await client.getUrl(uri);
+    request.followRedirects = false;
+    final response = await request.close().timeout(timeout);
+    return ResearchHttpTransportResponse(
+      statusCode: response.statusCode,
+      location: response.headers.value(HttpHeaders.locationHeader),
+      chunks: response,
+      close: () => client.close(force: true),
+    );
+  } catch (_) {
+    client.close(force: true);
+    rethrow;
+  }
+}
+
 /// HTTPS + host allowlist + size/timeout caps. Retrieved pages are content,
 /// never tool endpoints.
 class ResearchHttpClient {
@@ -18,6 +66,7 @@ class ResearchHttpClient {
     this.maxBytes = 256 * 1024,
     this.timeout = const Duration(seconds: 8),
     this.maxRedirects = 3,
+    this.transport = _ioResearchHttpTransport,
   });
 
   static const defaultAllowedHosts = {
@@ -33,6 +82,7 @@ class ResearchHttpClient {
   final int maxBytes;
   final Duration timeout;
   final int maxRedirects;
+  final ResearchHttpTransport transport;
 
   void validate(Uri uri) {
     if (uri.scheme != 'https') {
@@ -69,44 +119,39 @@ class ResearchHttpClient {
   }
 
   Future<String> _fetch(Uri uri) async {
-    final client = HttpClient()..connectionTimeout = timeout;
-    try {
-      var current = uri;
-      for (var redirects = 0; ; redirects++) {
-        final request = await client.getUrl(current);
-        request.followRedirects = false;
-        final response = await request.close().timeout(timeout);
+    var current = uri;
+    for (var redirects = 0; ; redirects++) {
+      final response = await transport(current, timeout).timeout(timeout);
+      try {
         if (response.isRedirect) {
           if (redirects >= maxRedirects) {
-            await response.drain<void>();
             throw const ResearchHttpException(
               'Research response exceeded redirect limit.',
             );
           }
-          final location = response.headers.value(HttpHeaders.locationHeader);
-          await response.drain<void>();
-          current = resolveRedirect(current, location ?? '');
+          current = resolveRedirect(current, response.location ?? '');
           continue;
         }
         if (response.statusCode < HttpStatus.ok ||
             response.statusCode >= HttpStatus.multipleChoices) {
-          await response.drain<void>();
           throw ResearchHttpException(
             'Research provider returned HTTP ${response.statusCode}.',
           );
         }
-        final bytes = await response.fold<List<int>>(<int>[], (buffer, chunk) {
-          if (buffer.length + chunk.length > maxBytes) {
-            throw const ResearchHttpException(
-              'Research response exceeded size limit.',
-            );
-          }
-          return buffer..addAll(chunk);
-        });
+        final bytes = await response.chunks
+            .fold<List<int>>(<int>[], (buffer, chunk) {
+              if (buffer.length + chunk.length > maxBytes) {
+                throw const ResearchHttpException(
+                  'Research response exceeded size limit.',
+                );
+              }
+              return buffer..addAll(chunk);
+            })
+            .timeout(timeout);
         return utf8.decode(bytes);
+      } finally {
+        response.close();
       }
-    } finally {
-      client.close(force: true);
     }
   }
 }

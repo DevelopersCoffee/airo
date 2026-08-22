@@ -117,6 +117,8 @@ export 'src/agent_chat/domain/models/assistant_runtime_ids.dart';
 export 'src/agent_chat/domain/models/chat_models.dart';
 export 'src/agent_chat/domain/models/chat_response_metadata.dart';
 export 'src/agent_chat/domain/services/agent_skill_registry.dart';
+export 'src/agent_chat/domain/services/deep_research_engine.dart'
+    show DeepResearchEngine, LocalDeepResearchEngine;
 export 'src/agent_chat/presentation/screens/agent_skills_screen.dart';
 export 'src/agent_chat/presentation/screens/chat_screen.dart';
 export 'src/agent_chat/presentation/screens/device_capability_report_screen.dart';

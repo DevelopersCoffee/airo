@@ -21,6 +21,16 @@ void main() {
       "url": "http://insecure.example/result",
       "title": "Insecure result",
       "content": "Must not become a candidate."
+    },
+    {
+      "url": "https:///hostless",
+      "title": "Hostless result",
+      "content": "Must not become a candidate."
+    },
+    {
+      "url": "https://user:secret@example.com/result",
+      "title": "Credential result",
+      "content": "Must not become a candidate."
     }
   ]
 }
@@ -40,7 +50,7 @@ void main() {
   test(
     'large SearXNG JSON remains parseable across the worker boundary',
     () async {
-      final padding = List.filled(55 * 1024, 'x').join();
+      final padding = List.filled(18 * 1024, '界').join();
       final largeBody = body.replaceFirst('\n}', ',\n"padding":"$padding"\n}');
       final baseUri = Uri.parse('https://search.home.example/');
       final http = _FakeHttp(baseUri: baseUri, body: largeBody);
@@ -93,6 +103,18 @@ void main() {
     expect(
       () => LocalResearchService(searxngBaseUri: baseUri),
       returnsNormally,
+    );
+    expect(LocalResearchService().hasConfiguredSearxng, isFalse);
+    expect(
+      LocalResearchService(searxngBaseUri: baseUri).hasConfiguredSearxng,
+      isTrue,
+    );
+    expect(
+      () => LocalResearchService(
+        orchestrator: const ResearchOrchestrator(engines: []),
+        searxngBaseUri: baseUri,
+      ),
+      throwsArgumentError,
     );
     expect(
       () => LocalResearchService(
