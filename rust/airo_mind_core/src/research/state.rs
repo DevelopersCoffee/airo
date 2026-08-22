@@ -290,7 +290,7 @@ impl ResearchCheckpoint {
                 ResearchMode::parse(parts[8]).ok_or(ResearchStateError::InvalidCheckpoint)?
             },
             policy: if legacy {
-                SearchPolicy::Balanced
+                SearchPolicy::PrivacyFirst
             } else {
                 SearchPolicy::parse(parts[9]).ok_or(ResearchStateError::InvalidCheckpoint)?
             },
@@ -457,13 +457,13 @@ mod tests {
     }
 
     #[test]
-    fn legacy_v1_checkpoint_defaults_to_deep_balanced() {
+    fn legacy_v1_checkpoint_fails_closed_to_deep_private() {
         let restored = ResearchCheckpoint::from_record(
             "v1\u{1f}job-1\u{1f}Legacy\u{1f}paused\u{1f}searching\u{1f}2\u{1f}1\u{1f}n1",
         )
         .unwrap();
         assert_eq!(restored.mode, ResearchMode::Deep);
-        assert_eq!(restored.policy, SearchPolicy::Balanced);
+        assert_eq!(restored.policy, SearchPolicy::PrivacyFirst);
     }
 
     #[test]

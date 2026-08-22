@@ -30,14 +30,14 @@ void main() {
     },
   );
 
-  test('legacy v1 checkpoint decodes as deep Balanced research', () {
+  test('legacy v1 checkpoint fails closed as deep Private research', () {
     final restored = ResearchCheckpoint.fromRecord(
       'v1\u{1f}job-1\u{1f}Legacy\u{1f}paused\u{1f}searching'
       '\u{1f}2\u{1f}1\u{1f}n1',
     );
 
     expect(restored.mode, ResearchMode.deep);
-    expect(restored.policy, SearchPolicy.balanced);
-    expect(restored.privacy, PrivacyProfile.balanced);
+    expect(restored.policy, SearchPolicy.privacyFirst);
+    expect(restored.privacy, PrivacyProfile.private);
   });
 }
