@@ -52,6 +52,19 @@ mod tests {
     }
 
     #[test]
+    fn diet_plan_is_not_a_framework_capability() {
+        let mut intent = from_legacy("skill", 0.85, "veg plan");
+        intent.capability = "diet.plan".into();
+        intent.domain = "diet".into();
+        intent.intent = "meal_plan".into();
+        intent.action = "create".into();
+        assert_eq!(
+            validate_intent(&intent),
+            Err(ValidationError::UnknownCapability)
+        );
+    }
+
+    #[test]
     fn legacy_cannot_emit_research_deep() {
         let mut intent = from_legacy("conversation", 0.2, "hi");
         intent.capability = "research.deep".into();

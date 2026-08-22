@@ -44,7 +44,7 @@ void main() {
       type: IntentType.createDietPlan,
       originalText: 'Write a plan for the week',
     );
-    expect(reasoningIntentKind(planning.type), 'diet');
+    expect(reasoningIntentKind(planning.type), 'skill');
     expect(reasoningIntentComplexity(planning), 0.85);
 
     const routine = Intent(
