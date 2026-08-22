@@ -21,11 +21,10 @@
       "ciBuild": true,
       "edgeProfile": false,
       "requiredPackages": [
-        "feature_mind",
-        "feature_coin"
+        "airo"
       ],
       "featureModules": [
-        "feature_mind",
+        "airo",
         "feature_coin"
       ],
       "allowedNativePlugins": [
