@@ -15,10 +15,10 @@ class HospitalRecoveryGraphAdapter implements GraphWorkflowAddonAdapter {
   HospitalRecoveryGraphAdapter({
     LifeTrackFactExtractor facts = const LifeTrackFactExtractor(),
     LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
+    ChatEntityGraphPending? pending,
   }) : _facts = facts,
        _linker = linker,
-       _pending = pending;
+       _pending = pending ?? ChatEntityGraphPending();
 
   static const addonId = 'hospital-recovery-planner';
   static const templateId = 'medical_surgery_v1';

@@ -15,10 +15,10 @@ class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
   PropertyPurchaseGraphAdapter({
     LifeTrackFactExtractor facts = const LifeTrackFactExtractor(),
     LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
+    ChatEntityGraphPending? pending,
   }) : _facts = facts,
        _linker = linker,
-       _pending = pending;
+       _pending = pending ?? ChatEntityGraphPending();
 
   static const addonId = 'property-purchase-planner';
   static const templateId = 'real_estate_under_construction_v1';

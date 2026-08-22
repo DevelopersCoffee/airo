@@ -3,6 +3,7 @@ import 'package:core_domain/core_domain.dart';
 import '../../../addons/templates/addon_life_track_record_policy.dart';
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_connector.dart';
+import '../../domain/services/lifetrack_confirmation_token_service.dart';
 
 class LifeTrackRecordConnector implements AgentConnector {
   LifeTrackRecordConnector({
@@ -15,13 +16,20 @@ class LifeTrackRecordConnector implements AgentConnector {
     LifeTrackFactPatch patch = const LifeTrackFactPatch(),
     String Function(String templateId)? followUpHint,
     List<String> Function(String templateId)? dedupeFieldLabels,
+    LifeTrackConfirmationTokenService? confirmationTokens,
+    Future<bool> Function()? writeGate,
+    IdempotentEffectPort? idempotencyPort,
   }) : _repository = repository,
        _resolveTemplate = resolveTemplate,
        _now = now ?? DateTime.now,
        _newTrackId = newTrackId ?? _defaultTrackId,
        _patch = patch,
        _followUpHint = followUpHint ?? _defaultFollowUpHint,
-       _dedupeFieldLabels = dedupeFieldLabels ?? _defaultDedupeFieldLabels;
+       _dedupeFieldLabels = dedupeFieldLabels ?? _defaultDedupeFieldLabels,
+       _confirmationTokens =
+           confirmationTokens ?? LifeTrackConfirmationTokenService(),
+       _writeGate = writeGate,
+       _idempotencyPort = idempotencyPort;
 
   final LifeTrackRepository _repository;
   final Future<LifeTrackTemplate?> Function(String templateId) _resolveTemplate;
@@ -31,6 +39,9 @@ class LifeTrackRecordConnector implements AgentConnector {
   final LifeTrackFactPatch _patch;
   final String Function(String templateId) _followUpHint;
   final List<String> Function(String templateId) _dedupeFieldLabels;
+  final LifeTrackConfirmationTokenService _confirmationTokens;
+  final Future<bool> Function()? _writeGate;
+  final IdempotentEffectPort? _idempotencyPort;
 
   static String _defaultFollowUpHint(String templateId) {
     if (templateId == 'study_progress_v1') {
@@ -70,27 +81,62 @@ class LifeTrackRecordConnector implements AgentConnector {
 
     await ensureInitialized?.call();
 
+    if (_writeGate != null && !await _writeGate!()) {
+      return const ConnectorResult.error(
+        code: 'addon_write_failed',
+        message:
+            'LifeTrack writes require encrypted storage on this device. '
+            'Open Settings to finish secure storage setup, then try again.',
+      );
+    }
+
+    final payload = {
+      'title': title,
+      'template_id': templateId,
+      'facts': facts,
+    };
+
     final preview = _preview(
       title: title,
       templateId: templateId,
       facts: facts,
     );
-    final confirmed =
+
+    final token = arguments['confirmation_token'] as String?;
+    final legacyConfirmed =
         arguments['confirmed'] == true && arguments['source'] == 'user_confirm';
-    if (!confirmed) {
+    if (token == null && !legacyConfirmed) {
+      final issued = _confirmationTokens.issue(
+        destinationTool: name,
+        payload: payload,
+      );
       return ConnectorResult.error(
         code: 'confirmation_required',
         message: '$preview\n\nReply yes to save this journey on this device.',
         data: {
           'pending': {
-            'title': title,
-            'template_id': templateId,
-            'facts': facts,
+            ...payload,
             'confirmed': true,
             'source': 'user_confirm',
           },
+          'confirmation_token': issued,
         },
       );
+    }
+
+    if (token != null) {
+      final tokenError = _confirmationTokens.validateAndConsume(
+        token: token,
+        destinationTool: name,
+        payload: payload,
+      );
+      if (tokenError != null) {
+        return ConnectorResult.error(
+          code: tokenError,
+          message: 'That save confirmation expired or no longer matches. '
+              'Ask me to save again and confirm the new preview.',
+        );
+      }
     }
 
     final template = await _resolveTemplate(templateId);
@@ -126,9 +172,58 @@ class LifeTrackRecordConnector implements AgentConnector {
       now: now,
     );
 
+    final idempotencyKey =
+        arguments['idempotency_key'] as String? ??
+        'lifetrack:${updated.id}:${_confirmationTokens.confirmationHashFor(
+          destinationTool: name,
+          payload: payload,
+        )}';
+    final confirmationHash = _confirmationTokens.confirmationHashFor(
+      destinationTool: name,
+      payload: payload,
+    );
+
+    if (_idempotencyPort != null) {
+      final existingEffect = await _idempotencyPort!.findByKey(idempotencyKey);
+      if (existingEffect case Ok<IdempotentEffectRecord?>(value: final record)) {
+        if (record != null &&
+            record.state == IdempotentEffectState.committed) {
+          final trackResult = await _repository.getTrack(updated.id);
+          if (trackResult case Ok<LifeTrack>(value: final track)) {
+            return ConnectorResult(
+              data: {
+                'source': 'local_lifetrack_repository',
+                'created': created,
+                'track_id': track.id,
+                'title': track.title,
+                'template_id': track.templateId,
+                'markdown': _savedMessage(track, created: created),
+                'idempotent_replay': true,
+              },
+              message: _savedMessage(track, created: created),
+            );
+          }
+        }
+      }
+      final begin = await _idempotencyPort!.beginEffect(
+        idempotencyKey: idempotencyKey,
+        confirmationHash: confirmationHash,
+        resourceId: updated.id,
+      );
+      if (begin case Err<IdempotentEffectRecord>(error: final error)) {
+        return ConnectorResult.error(
+          code: 'addon_write_failed',
+          message: error.toString(),
+        );
+      }
+    }
+
     if (created) {
       final createResult = await _repository.createTrack(updated);
       if (createResult case Err<LifeTrack>(error: final error)) {
+        if (_idempotencyPort != null) {
+          await _idempotencyPort!.markFailed(idempotencyKey);
+        }
         return ConnectorResult.error(
           code: 'lifetrack_write_failed',
           message: error.toString(),
@@ -137,11 +232,21 @@ class LifeTrackRecordConnector implements AgentConnector {
     } else {
       final updateResult = await _repository.updateTrack(updated);
       if (updateResult case Err<void>(error: final error)) {
+        if (_idempotencyPort != null) {
+          await _idempotencyPort!.markFailed(idempotencyKey);
+        }
         return ConnectorResult.error(
           code: 'lifetrack_write_failed',
           message: error.toString(),
         );
       }
+    }
+
+    if (_idempotencyPort != null) {
+      await _idempotencyPort!.commitEffect(
+        idempotencyKey: idempotencyKey,
+        destinationReceipt: updated.id,
+      );
     }
 
     return ConnectorResult(

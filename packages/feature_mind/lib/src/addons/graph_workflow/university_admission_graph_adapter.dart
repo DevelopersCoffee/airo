@@ -8,8 +8,8 @@ import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
 /// Graph-workflow adapter for the University Admission built-in add-on.
 class UniversityAdmissionGraphAdapter implements GraphWorkflowAddonAdapter {
   UniversityAdmissionGraphAdapter({
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
-  }) : _pending = pending;
+    ChatEntityGraphPending? pending,
+  }) : _pending = pending ?? ChatEntityGraphPending();
 
   static const addonId = 'university-admission-planner';
   static const templateId = 'university_admission_v1';

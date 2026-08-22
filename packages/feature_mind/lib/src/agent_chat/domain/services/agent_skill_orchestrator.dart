@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:core_ai/core_ai.dart';
 
+import '../../../addons/workflow/addon_workflow_fact_service.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/models/log_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
@@ -92,9 +93,15 @@ abstract interface class AgentSkillModelClient {
 }
 
 class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
+  RuleBasedAgentSkillModelClient({
+    AddonWorkflowFactService? factService,
+    ChatEntityGraphPending? graphPending,
+  }) : _factService = factService ?? AddonWorkflowFactService(),
+       _graphPending = graphPending ?? ChatEntityGraphPending();
+
   static const _reminderParser = ReminderRequestParser();
-  static const _lifeTrackFacts = LifeTrackFactExtractor();
-  static const _graphPending = ChatEntityGraphPending();
+  final AddonWorkflowFactService _factService;
+  final ChatEntityGraphPending _graphPending;
 
   @override
   Future<String?> selectSkill({
@@ -111,7 +118,7 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         enabledSkills.any((skill) => skill.id == 'wellbeing-check-in')) {
       return 'wellbeing-check-in';
     }
-    if (_lifeTrackFacts.wantsStudyRecord(prompt) &&
+    if (_factService.facts.wantsStudyRecord(prompt) &&
         enabledSkills.any((skill) => skill.id == 'record-study-progress')) {
       return 'record-study-progress';
     }
@@ -152,14 +159,19 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
 
     final lower = prompt.toLowerCase();
-    if (skill.tools.contains('record_lifetrack_facts') &&
-        (_lifeTrackFacts.wantsRecord(prompt) ||
-            _lifeTrackFacts.wantsStudyRecord(prompt) ||
-            skill.id == 'record-study-progress')) {
+    final templateId = skill.lifeTrackTemplateId ?? 'insurance_claim_v1';
+    if (_factService.wantsRecord(
+      AgentSkillRecordContext(
+        skillId: skill.id,
+        skillTools: skill.tools,
+        templateId: templateId,
+        prompt: prompt,
+      ),
+    )) {
       return _nextRecordLifeTrackAction(
         prompt: prompt,
         toolResults: toolResults,
-        templateId: skill.lifeTrackTemplateId ?? 'insurance_claim_v1',
+        templateId: templateId,
       );
     }
     if (skill.tools.contains('query_entity_graph') &&
@@ -423,32 +435,11 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       );
     }
 
-    final extracted = switch (templateId) {
-      'study_progress_v1' => _lifeTrackFacts.extractStudyProgress(prompt),
-      'medical_surgery_v1' => _lifeTrackFacts.extractMedicalSurgery(prompt),
-      'real_estate_under_construction_v1' =>
-        _lifeTrackFacts.extractPropertyPurchase(prompt),
-      _ => _lifeTrackFacts.extractInsuranceClaim(prompt),
-    };
+    final extracted = _factService.extract(templateId, prompt);
     if (extracted.isEmpty) {
-      return SkillModelAction.finalAnswer(switch (templateId) {
-        'study_progress_v1' =>
-          'I store study progress as a local LifeTrack — not a notes app. '
-              'Tell me the subject, last topic, and exam date if you have one.',
-        'medical_surgery_v1' =>
-          'I can store this hospital stay on this device. Paste the hospital, '
-              'date, pre-op tests, and authorization reference if you have them. '
-              'I will not diagnose or change a care plan.',
-        'real_estate_under_construction_v1' =>
-          'I can store this purchase on this device. Paste the builder, '
-              'project, floor, and RERA number if you have them. I will not '
-              'give legal advice.',
-        _ =>
-          'I can store this claim on this device. Paste the insurer, claim '
-              'ID or broker reference, policy number if you have it, and '
-              'whether documents were received. I will not file the claim '
-              'or read your email.',
-      });
+      return SkillModelAction.finalAnswer(
+        _factService.clarificationHint(templateId),
+      );
     }
 
     return SkillModelAction.toolCall(
@@ -978,7 +969,7 @@ class AgentSkillOrchestrator {
             handled: true,
             message: result.message ?? 'Confirm to save this locally.',
             traces: traces,
-            pendingLifeTrackWrite: _pendingMap(result.data['pending']),
+            pendingLifeTrackWrite: _pendingLifeTrackPayload(result.data),
             groundingState: GroundingState.ungrounded,
             safetyClass: safetyClass,
           );
@@ -1019,6 +1010,16 @@ class AgentSkillOrchestrator {
   Map<String, dynamic>? _pendingMap(Object? raw) {
     if (raw is! Map) return null;
     return raw.map((key, value) => MapEntry(key.toString(), value));
+  }
+
+  Map<String, dynamic>? _pendingLifeTrackPayload(Map<String, dynamic> data) {
+    final pending = _pendingMap(data['pending']);
+    if (pending == null) return null;
+    final token = data['confirmation_token'];
+    if (token is String && token.trim().isNotEmpty) {
+      return {...pending, 'confirmation_token': token.trim()};
+    }
+    return pending;
   }
 
   /// Measures how much data a connector call actually moved.
