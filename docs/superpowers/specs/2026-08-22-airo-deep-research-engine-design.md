@@ -105,7 +105,10 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
     use the SearXNG adapter only when the host injects an explicit self-hosted
     HTTPS base URI. Airo has no default/public SearXNG endpoint. The adapter is
     origin-isolated and candidate-only: result URLs do not expand the separate
-    source-acquisition allowlist.
+    source-acquisition allowlist. Shells inject it through
+    `MindModule.deepResearchEngineFactory` and
+    `createLocalDeepResearchEngine(searxngBaseUri: ...)`; both Chat routes use
+    that host-owned engine.
 
 Not shipped (locked below, do not pretend they exist):
 

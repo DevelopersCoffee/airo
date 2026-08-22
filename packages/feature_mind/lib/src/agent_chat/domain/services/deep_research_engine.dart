@@ -21,6 +21,12 @@ abstract class DeepResearchEngine {
   });
 }
 
+typedef DeepResearchEngineFactory = DeepResearchEngine Function();
+
+DeepResearchEngine createLocalDeepResearchEngine({Uri? searxngBaseUri}) {
+  return LocalDeepResearchEngine(searxngBaseUri: searxngBaseUri);
+}
+
 /// Shim: Chat talks to [ResearchService], never to a research prompt.
 class LocalDeepResearchEngine implements DeepResearchEngine {
   factory LocalDeepResearchEngine({
