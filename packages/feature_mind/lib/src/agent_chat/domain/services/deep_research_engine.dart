@@ -2,6 +2,7 @@ import '../models/research_event.dart';
 import '../models/research_request.dart';
 import 'research/research_checkpoint.dart';
 import 'research/research_control.dart';
+import 'research/research_library.dart';
 import 'research/research_orchestrator.dart';
 import 'research/research_service.dart';
 
@@ -15,6 +16,8 @@ abstract class DeepResearchEngine {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   });
 }
 
@@ -33,10 +36,14 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) => _service.start(
     request,
     control: control,
     resumeFrom: resumeFrom,
     onCheckpoint: onCheckpoint,
+    knownSourceUrls: knownSourceUrls,
+    onLibrary: onLibrary,
   );
 }
