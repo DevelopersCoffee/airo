@@ -21,12 +21,34 @@ abstract class DeepResearchEngine {
   });
 }
 
+typedef DeepResearchEngineFactory = DeepResearchEngine Function();
+
+DeepResearchEngine createLocalDeepResearchEngine({Uri? searxngBaseUri}) {
+  return LocalDeepResearchEngine(searxngBaseUri: searxngBaseUri);
+}
+
 /// Shim: Chat talks to [ResearchService], never to a research prompt.
 class LocalDeepResearchEngine implements DeepResearchEngine {
-  LocalDeepResearchEngine({
+  factory LocalDeepResearchEngine({
     ResearchService? service,
     ResearchOrchestrator? orchestrator,
-  }) : _service = service ?? LocalResearchService(orchestrator: orchestrator);
+    Uri? searxngBaseUri,
+  }) {
+    if (service != null && (orchestrator != null || searxngBaseUri != null)) {
+      throw ArgumentError(
+        'Inject a service or engine configuration, not both.',
+      );
+    }
+    return LocalDeepResearchEngine._(
+      service ??
+          LocalResearchService(
+            orchestrator: orchestrator,
+            searxngBaseUri: searxngBaseUri,
+          ),
+    );
+  }
+
+  const LocalDeepResearchEngine._(this._service);
 
   final ResearchService _service;
 

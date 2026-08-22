@@ -6,6 +6,7 @@ import 'research_control.dart';
 import 'research_http.dart';
 import 'research_library.dart';
 import 'research_orchestrator.dart';
+import 'searxng_search_engine.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
 import 'wikipedia_search_engine.dart';
@@ -30,21 +31,41 @@ abstract class ResearchService {
 /// orchestrator. Replaced by FFI once the llama `api` surface exposes
 /// `ResearchEngine`.
 class LocalResearchService implements ResearchService {
-  LocalResearchService({ResearchOrchestrator? orchestrator})
-    : _orchestrator =
-          orchestrator ??
-          ResearchOrchestrator(
-            engines: [
-              WikipediaSearchEngine(),
-              ArxivSearchEngine(),
-              SemanticScholarSearchEngine(),
-            ],
-            sourceManager: SourceManager(
-              fetcher: const ResearchHttpClient().get,
-            ),
-          );
+  factory LocalResearchService({
+    ResearchOrchestrator? orchestrator,
+    Uri? searxngBaseUri,
+  }) {
+    if (orchestrator != null && searxngBaseUri != null) {
+      throw ArgumentError(
+        'Inject either an orchestrator or a SearXNG base URI, not both.',
+      );
+    }
+    return LocalResearchService._(
+      orchestrator ?? _defaultOrchestrator(searxngBaseUri),
+      hasConfiguredSearxng: searxngBaseUri != null,
+    );
+  }
+
+  const LocalResearchService._(
+    this._orchestrator, {
+    required this.hasConfiguredSearxng,
+  });
 
   final ResearchOrchestrator _orchestrator;
+  final bool hasConfiguredSearxng;
+
+  static ResearchOrchestrator _defaultOrchestrator(Uri? searxngBaseUri) {
+    return ResearchOrchestrator(
+      engines: [
+        WikipediaSearchEngine(),
+        ArxivSearchEngine(),
+        SemanticScholarSearchEngine(),
+        if (searxngBaseUri != null)
+          SearxngSearchEngine(baseUri: searxngBaseUri),
+      ],
+      sourceManager: SourceManager(fetcher: const ResearchHttpClient().get),
+    );
+  }
 
   @override
   Stream<ResearchEvent> start(

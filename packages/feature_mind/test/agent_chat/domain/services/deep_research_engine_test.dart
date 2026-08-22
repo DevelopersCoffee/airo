@@ -3,6 +3,7 @@ import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart'
 import 'package:feature_mind/src/agent_chat/domain/services/deep_research_engine.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_control.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_http.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_library.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_orchestrator.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_service.dart';
@@ -51,6 +52,28 @@ void main() {
 
     expect(service.knownSourceUrls, ['https://en.wikipedia.org/wiki/Qwen']);
     expect(service.onLibrary, same(onLibrary));
+  });
+
+  test('the public engine seam forwards explicit SearXNG configuration', () {
+    expect(
+      () => LocalDeepResearchEngine(
+        searxngBaseUri: Uri.parse('https://search.home.example/'),
+      ),
+      returnsNormally,
+    );
+    expect(
+      () => LocalDeepResearchEngine(
+        searxngBaseUri: Uri.parse('http://search.home.example/'),
+      ),
+      throwsA(isA<ResearchHttpException>()),
+    );
+    expect(
+      () => LocalDeepResearchEngine(
+        service: _RecordingService(),
+        searxngBaseUri: Uri.parse('https://search.home.example/'),
+      ),
+      throwsArgumentError,
+    );
   });
 }
 

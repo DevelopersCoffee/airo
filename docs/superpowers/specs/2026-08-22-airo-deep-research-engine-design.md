@@ -101,12 +101,19 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 17. Operation-log research library, incremental URL delta, cited comparison
     matrix, and contested-row decisions.
 18. User-facing Private / Balanced / Cloud profiles, observability metrics,
-    and abstract cost ceilings. Private currently routes to Wikipedia only;
-    the SearXNG adapter and configuration support are not implemented.
+    and abstract cost ceilings. Private routes to Wikipedia by default and can
+    use the SearXNG adapter only when the host injects an explicit self-hosted
+    HTTPS base URI. Airo has no default/public SearXNG endpoint. The adapter is
+    origin-isolated and candidate-only: result URLs do not expand the separate
+    source-acquisition allowlist. Shells inject it through
+    `MindModule.deepResearchEngineFactory` and
+    `createLocalDeepResearchEngine(searxngBaseUri: ...)`; both Chat routes use
+    that host-owned engine.
 
 Not shipped (locked below, do not pretend they exist):
 
-- Google / Bing / Brave / DuckDuckGo / SearXNG HTTP / Tavily / PubMed / GitHub / news APIs
+- Google / Bing / Brave / DuckDuckGo / Tavily / PubMed / GitHub / news APIs
+- SearXNG endpoint settings UI and persisted endpoint configuration
 - HTML/PDF tables-from-scanned-pages, PDF binary extraction
 - Claim-level citation validation, contradiction explanations, confidence scores
 - HTTP cache, automatic continuation without user reattachment, `ResearchService` FFI
