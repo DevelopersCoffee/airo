@@ -132,6 +132,12 @@ void main() {
     expect(AiroPromptRegistry.byId('skill.next_action')?.version, '1');
     expect(AiroPromptRegistry.skillNextAction.outputSchema, contains('type'));
     expect(AiroPromptRegistry.chatAssistant.hasEvalSuite, isTrue);
+    expect(
+      AiroPromptRegistry.reasoningEngine.qualifiedId,
+      'reasoning.engine.v1',
+    );
+    expect(AiroPromptRegistry.reasoningEngine.outputSchema, contains('answer'));
+    expect(AiroPromptRegistry.byId('reasoning.engine')?.hasEvalSuite, isTrue);
     expect(AiroPromptRegistry.byId('missing'), isNull);
   });
 
@@ -173,6 +179,22 @@ void main() {
       cacheablePrefixTokens: 400,
     );
     expect(cached.defects, isNot(contains(PromptDefect.perf003NoPrefixCache)));
+  });
+
+  test('more than two few-shots is PD-PERF-002 and still allowed', () {
+    final report = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: 5,
+    );
+    expect(report.defects, contains(PromptDefect.perf002InefficientFewShot));
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+
+    final ok = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: PromptQualityGate.maxFewShots,
+    );
+    expect(ok.defects, isNot(contains(PromptDefect.perf002InefficientFewShot)));
   });
 
   test('recovery engine aborts after the skill JSON retry budget', () {

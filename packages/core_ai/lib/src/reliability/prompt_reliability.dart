@@ -118,6 +118,7 @@ abstract final class PromptQualityGate {
     'book that one',
   };
 
+  static const maxFewShots = 2;
   static const prefixCacheWarnTokens = 256;
 
   static PromptGateReport inspectUserTurn({
@@ -130,6 +131,7 @@ abstract final class PromptQualityGate {
     String outputContract = '',
     PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
     int cacheablePrefixTokens = 0,
+    int fewShotCount = 0,
   }) {
     final normalized = _normalize(userText);
     final defects = <PromptDefect>[];
@@ -156,6 +158,9 @@ abstract final class PromptQualityGate {
     if (prefixCache == PrefixCacheCapability.unsupported &&
         cacheablePrefixTokens > prefixCacheWarnTokens) {
       defects.add(PromptDefect.perf003NoPrefixCache);
+    }
+    if (fewShotCount > maxFewShots) {
+      defects.add(PromptDefect.perf002InefficientFewShot);
     }
     if (_hasUnsatisfiablePolarity(userText)) {
       defects.add(PromptDefect.spec003ConflictingInstructions);

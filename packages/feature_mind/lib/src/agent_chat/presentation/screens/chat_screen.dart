@@ -1607,6 +1607,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       modelContextLimit: contextLimit,
       definition: dietApplies
           ? AiroPromptRegistry.dietPlan
+          : _shouldUseReasoning(selectedModelId)
+          ? AiroPromptRegistry.reasoningEngine
           : _personaSession.isPinned
           ? AiroPromptRegistry.skillPersona
           : AiroPromptRegistry.chatAssistant,
@@ -1887,7 +1889,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       selectedModelId: selectedModelId,
       prompt: message,
       response: latest,
-      systemPrompt: 'reasoning-engine',
+      systemPrompt: AiroPromptRegistry.reasoningEngine.qualifiedId,
       totalDuration: stopwatch.elapsed,
       timeToFirstTokenMs: timeToFirstTokenMs,
     );
