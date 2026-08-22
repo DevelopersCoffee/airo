@@ -140,10 +140,16 @@ class ResearchOrchestrator {
         final batch = routed.take(remaining).toList(growable: false);
         final query = queries.queriesFor(node.question).primary;
         final results = await Future.wait(
-          batch.map(
-            (engine) =>
-                engine.search(query, maxResults: budget.maxSources.clamp(1, 8)),
-          ),
+          batch.map((engine) async {
+            try {
+              return await engine.search(
+                query,
+                maxResults: budget.maxSources.clamp(1, 8),
+              );
+            } catch (_) {
+              return const <ResearchHit>[];
+            }
+          }),
         );
         searchesUsed += batch.length;
         completed.add(node.id);

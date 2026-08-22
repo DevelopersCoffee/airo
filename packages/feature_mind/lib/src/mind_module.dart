@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:go_router/go_router.dart';
 
 import 'agent_chat/domain/services/tool_registry.dart';
+import 'agent_chat/domain/services/deep_research_engine.dart';
 import 'agent_chat/presentation/screens/agent_skills_screen.dart';
 import 'agent_chat/presentation/screens/chat_screen.dart';
 import 'agent_chat/presentation/screens/device_capability_report_screen.dart';
@@ -73,6 +74,7 @@ class MindModule extends AppModule {
   MindModule({
     required this.hostAdapterBuilder,
     this.createService,
+    this.deepResearchEngineFactory,
     this.scribeOverrides,
   });
 
@@ -97,12 +99,26 @@ class MindModule extends AppModule {
   /// [service] is never touched. Which app ships the scribe route is a shell
   /// composition decision, not something this module defaults.
   final MindService Function()? createService;
+  final DeepResearchEngineFactory? deepResearchEngineFactory;
 
   MindService? _service;
+  DeepResearchEngine? _deepResearchEngine;
 
   /// The scribe's service, created on first use and torn down by [dispose].
   /// Only valid to call when [createService] was supplied.
   MindService get service => _service ??= createService!();
+
+  DeepResearchEngine? get deepResearchEngine =>
+      deepResearchEngineFactory == null
+      ? null
+      : _deepResearchEngine ??= deepResearchEngineFactory!();
+
+  ChatScreen buildChatScreen({String? initialDraft}) {
+    return ChatScreen(
+      initialDraft: initialDraft,
+      deepResearchEngine: deepResearchEngine,
+    );
+  }
 
   @override
   String get id => 'mind';
@@ -145,6 +161,7 @@ class MindModule extends AppModule {
   Future<void> dispose() async {
     await _service?.dispose();
     _service = null;
+    _deepResearchEngine = null;
   }
 
   @override
@@ -207,7 +224,9 @@ class MindModule extends AppModule {
       name: AssistantRouteNames.assistantName,
       builder: (context, state) {
         if (shell == ShellId.mind) {
-          return ChatScreen(initialDraft: state.uri.queryParameters['prefill']);
+          return buildChatScreen(
+            initialDraft: state.uri.queryParameters['prefill'],
+          );
         }
         return const AssistantScreen();
       },
@@ -215,8 +234,9 @@ class MindModule extends AppModule {
         GoRoute(
           path: AssistantRouteNames.chatSegment,
           name: AssistantRouteNames.chatName,
-          builder: (context, state) =>
-              ChatScreen(initialDraft: state.uri.queryParameters['prefill']),
+          builder: (context, state) => buildChatScreen(
+            initialDraft: state.uri.queryParameters['prefill'],
+          ),
         ),
         GoRoute(
           path: AssistantRouteNames.notificationsSegment,

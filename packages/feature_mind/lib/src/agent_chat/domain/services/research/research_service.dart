@@ -42,12 +42,17 @@ class LocalResearchService implements ResearchService {
     }
     return LocalResearchService._(
       orchestrator ?? _defaultOrchestrator(searxngBaseUri),
+      hasConfiguredSearxng: searxngBaseUri != null,
     );
   }
 
-  const LocalResearchService._(this._orchestrator);
+  const LocalResearchService._(
+    this._orchestrator, {
+    required this.hasConfiguredSearxng,
+  });
 
   final ResearchOrchestrator _orchestrator;
+  final bool hasConfiguredSearxng;
 
   static ResearchOrchestrator _defaultOrchestrator(Uri? searxngBaseUri) {
     return ResearchOrchestrator(

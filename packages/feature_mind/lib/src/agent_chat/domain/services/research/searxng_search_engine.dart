@@ -8,7 +8,9 @@ import 'research_search.dart';
 /// Search adapter for an explicitly configured self-hosted SearXNG instance.
 ///
 /// SearXNG results are candidates, not evidence. The configured API host is
-/// added only to this adapter's HTTP allowlist; there is no default public host.
+/// isolated to this adapter's HTTP origin; there is no default public host.
+/// Candidate URLs still pass through the independent source-acquisition
+/// allowlist, which this adapter never expands.
 class SearxngSearchEngine implements ResearchSearchEngine {
   factory SearxngSearchEngine({
     required Uri baseUri,
@@ -26,18 +28,27 @@ class SearxngSearchEngine implements ResearchSearchEngine {
     final client =
         http ??
         ResearchHttpClient(
-          allowedHosts: {
-            ...ResearchHttpClient.defaultAllowedHosts,
-            baseUri.host,
-          },
+          allowedHosts: {baseUri.host},
+          allowedOrigins: {baseUri.origin},
         );
+    if (client.allowedHosts.length != 1 ||
+        !client.allowedHosts.contains(baseUri.host) ||
+        client.allowedOrigins.length != 1 ||
+        !client.allowedOrigins.contains(baseUri.origin)) {
+      throw const ResearchHttpException(
+        'SearXNG HTTP access must be isolated to its configured origin.',
+      );
+    }
     client.validate(baseUri);
     return SearxngSearchEngine._(baseUri: baseUri, http: client);
   }
 
   const SearxngSearchEngine._({required this.baseUri, required this.http});
 
-  static const _offMainThreshold = 50 * 1024;
+  // UTF-8 can use up to three bytes per UTF-16 code unit for non-surrogate
+  // text. Offloading above 16 Ki code units guarantees any JSON that could
+  // exceed ~50 KiB never reaches jsonDecode on the main isolate.
+  static const _offMainCodeUnitThreshold = 16 * 1024;
 
   final Uri baseUri;
   final ResearchHttpClient http;
@@ -61,7 +72,11 @@ class SearxngSearchEngine implements ResearchSearchEngine {
       }
       final url = Uri.tryParse('${row['url'] ?? ''}'.trim());
       final title = _stripHtml('${row['title'] ?? ''}');
-      if (url == null || url.scheme != 'https' || title.isEmpty) {
+      if (url == null ||
+          url.scheme != 'https' ||
+          url.host.isEmpty ||
+          url.userInfo.isNotEmpty ||
+          title.isEmpty) {
         continue;
       }
       hits.add(
@@ -90,7 +105,7 @@ class SearxngSearchEngine implements ResearchSearchEngine {
       queryParameters: {'q': query, 'format': 'json', 'categories': 'general'},
     );
     final body = await http.get(uri);
-    final hits = body.length > _offMainThreshold
+    final hits = body.length > _offMainCodeUnitThreshold
         ? await runOffMain(() => parseSearchJson(body))
         : parseSearchJson(body);
     return hits.take(maxResults).toList(growable: false);
