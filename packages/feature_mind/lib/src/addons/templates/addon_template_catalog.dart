@@ -38,6 +38,8 @@ class AddonTemplateCatalog {
     'packages/feature_mind/addons/insurance-planner/addon.json',
     'packages/feature_mind/addons/hospital-recovery-planner/addon.json',
     'packages/feature_mind/addons/property-purchase-planner/addon.json',
+    'packages/feature_mind/addons/car-purchase-planner/addon.json',
+    'packages/feature_mind/addons/university-admission-planner/addon.json',
   ];
 
   static Future<AddonTemplateCatalog> loadBundled({AssetBundle? bundle}) async {

@@ -39,6 +39,30 @@ class GraphWorkflowCoordinator {
     return _linker.ingest(graph, text);
   }
 
+  Future<ChatEntityGraph> ingestWithAddonPatches(
+    ChatEntityGraph graph,
+    String text,
+  ) async {
+    if (!shouldIngest(text, graph)) return graph;
+    var updated = _linker.ingest(graph, text);
+    var entityGraph = updated.toEntityGraph();
+    var context = GraphIngestContext(text: text, graph: entityGraph);
+    for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (!adapter.accepts(context)) continue;
+      final patch = await adapter.extract(context);
+      if (patch.isEmpty) continue;
+      entityGraph = entityGraph.merge(
+        EntityGraph(
+          nodes: patch.nodes,
+          edges: patch.edges,
+          recentNodeIds: patch.mentionedNodeIds,
+        ),
+      );
+      context = GraphIngestContext(text: text, graph: entityGraph);
+    }
+    return ChatEntityGraphBridge.fromEntityGraph(entityGraph);
+  }
+
   List<ProjectedChatJourney> projectJourneys(ChatEntityGraph graph) =>
       _projectionBridge.projectChatJourneys(graph);
 

@@ -13,6 +13,8 @@ void main() {
         'insurance_claim_v1',
         'medical_surgery_v1',
         'real_estate_under_construction_v1',
+        'car_purchase_v1',
+        'university_admission_v1',
       ]),
     );
   });
@@ -35,6 +37,8 @@ void main() {
     final registry = await MindTemplateRegistryLoader().load();
     expect(registry.getById('insurance_claim_v1'), isNotNull);
     expect(registry.getById('car_purchase_v1'), isNotNull);
+    expect(registry.getById('university_admission_v1'), isNotNull);
+    expect(registry.getById('study_progress_v1'), isNotNull);
     expect(registry.getAll(), hasLength(6));
   });
 }

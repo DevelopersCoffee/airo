@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "id": "car-purchase-planner",
+  "version": "1.0.0",
+  "behaviors": ["graph_workflow"],
+  "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
+  "tools": ["query_entity_graph", "record_lifetrack_facts"],
+  "safety_class": "financial",
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "graph_workflow_v1"
+  },
+  "workflow": {
+    "subject_kind": "car_purchase",
+    "template_id": "car_purchase_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "auto",
+      "automobile",
+      "car",
+      "driving",
+      "loan",
+      "parking",
+      "vehicle"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this car purchase track whenever you want a status check.",
+    "dedupe_field_labels": [
+      "Shortlisted Cars",
+      "Budget Range",
+      "Parking Plan",
+      "Subject"
+    ]
+  },
+  "built_in_priority": 11
+}

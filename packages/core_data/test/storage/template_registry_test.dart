@@ -10,28 +10,12 @@ void main() {
       final registry = await TemplateRegistry.loadBundled();
 
       final templates = registry.getAll();
-      expect(templates, hasLength(3));
+      expect(templates, hasLength(1));
       expect(
         templates.map((template) => template.templateId),
-        containsAll([
-          'university_admission_v1',
-          'study_progress_v1',
-          'car_purchase_v1',
-        ]),
+        contains('study_progress_v1'),
       );
     });
-
-    test(
-      'returns the car purchase template by id with expected milestone count',
-      () async {
-        final registry = await TemplateRegistry.loadBundled();
-
-        final template = registry.getById('car_purchase_v1');
-
-        expect(template, isNotNull);
-        expect(template!.milestones, isNotEmpty);
-      },
-    );
 
     test('filters templates by category', () async {
       final registry = await TemplateRegistry.loadBundled();
@@ -40,10 +24,10 @@ void main() {
         LifeTrackCategory.education,
       );
 
-      expect(educationTemplates, hasLength(2));
+      expect(educationTemplates, hasLength(1));
       expect(
         educationTemplates.map((template) => template.templateId),
-        containsAll(['university_admission_v1', 'study_progress_v1']),
+        contains('study_progress_v1'),
       );
     });
 

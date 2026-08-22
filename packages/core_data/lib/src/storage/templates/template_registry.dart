@@ -7,9 +7,7 @@ class TemplateRegistry {
   TemplateRegistry._(this._templates);
 
   static const bundledAssetPaths = <String>[
-    'packages/core_data/lib/src/storage/templates/university_admission.json',
     'packages/core_data/lib/src/storage/templates/study_progress.json',
-    'packages/core_data/lib/src/storage/templates/car_purchase.json',
   ];
 
   final List<LifeTrackTemplate> _templates;

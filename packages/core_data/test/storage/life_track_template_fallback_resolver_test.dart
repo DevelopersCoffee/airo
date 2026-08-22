@@ -56,6 +56,15 @@ void main() {
             'surgery',
             'treatment',
           ],
+          'university_admission_v1': [
+            'admission',
+            'college',
+            'education',
+            'enrollment',
+            'student',
+            'university',
+            'visa',
+          ],
         },
       );
     });

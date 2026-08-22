@@ -152,15 +152,6 @@ class _ScoredTemplateMatch {
 }
 
 const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
-  'university_admission_v1': <String>[
-    'admission',
-    'college',
-    'education',
-    'enrollment',
-    'student',
-    'university',
-    'visa',
-  ],
   'study_progress_v1': <String>[
     'chapter',
     'coursework',
@@ -170,14 +161,5 @@ const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
     'study progress',
     'study',
     'syllabus',
-  ],
-  'car_purchase_v1': <String>[
-    'auto',
-    'automobile',
-    'car',
-    'driving',
-    'loan',
-    'parking',
-    'vehicle',
   ],
 };

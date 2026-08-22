@@ -1,0 +1,74 @@
+{
+  "template_id": "university_admission_v1",
+  "title": "University Admission Planning Template",
+  "description": "A bundled skeleton for shortlisting programs, preparing documents, applying, and completing enrollment.",
+  "category": "education",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: Shortlisting",
+      "objective": "Identify target programs and deadlines",
+      "tasks": [
+        {
+          "summary": "Build university shortlist",
+          "description": "List target, reach, and safety programs with deadlines.",
+          "requirements": [
+            {
+              "label": "University Shortlist",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Document Preparation",
+      "objective": "Prepare transcripts, test scores, essays, and recommendations",
+      "tasks": [
+        {
+          "summary": "Collect required application documents",
+          "requirements": [
+            {
+              "label": "Document Checklist",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Applications",
+      "objective": "Submit applications and track results",
+      "tasks": [
+        {
+          "summary": "Submit applications before deadlines",
+          "requirements": [
+            {
+              "label": "Submitted Programs",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Visa & Enrollment",
+      "objective": "Complete admission acceptance and relocation steps",
+      "tasks": [
+        {
+          "summary": "Prepare visa and enrollment confirmations",
+          "requirements": [
+            {
+              "label": "Visa or Enrollment Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -37,7 +37,7 @@ class ChatEntityGraphSession {
 
   Future<ChatEntityGraph> ingest(String text) async {
     await ensureLoaded();
-    graph = _graphCoordinator.ingest(graph, text);
+    graph = await _graphCoordinator.ingestWithAddonPatches(graph, text);
     await _store.save(graph);
     return graph;
   }
