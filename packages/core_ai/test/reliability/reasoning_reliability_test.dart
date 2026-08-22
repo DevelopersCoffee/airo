@@ -132,6 +132,12 @@ void main() {
     expect(AiroPromptRegistry.byId('skill.next_action')?.version, '1');
     expect(AiroPromptRegistry.skillNextAction.outputSchema, contains('type'));
     expect(AiroPromptRegistry.chatAssistant.hasEvalSuite, isTrue);
+    expect(
+      AiroPromptRegistry.reasoningEngine.qualifiedId,
+      'reasoning.engine.v1',
+    );
+    expect(AiroPromptRegistry.reasoningEngine.outputSchema, contains('answer'));
+    expect(AiroPromptRegistry.byId('reasoning.engine')?.hasEvalSuite, isTrue);
     expect(AiroPromptRegistry.byId('missing'), isNull);
   });
 

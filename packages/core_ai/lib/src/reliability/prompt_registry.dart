@@ -124,6 +124,14 @@ abstract final class AiroPromptRegistry {
     hasEvalSuite: true,
   );
 
+  static const reasoningEngine = RegisteredPrompt(
+    id: 'reasoning.engine',
+    version: '1',
+    taskType: 'reasoning',
+    outputSchema: '{"answer":"","reasoning_summary":"","confidence":0}',
+    hasEvalSuite: true,
+  );
+
   static const all = <RegisteredPrompt>[
     chatAssistant,
     skillSelect,
@@ -137,6 +145,7 @@ abstract final class AiroPromptRegistry {
     skillPersona,
     questGemini,
     coinsReceipt,
+    reasoningEngine,
   ];
 
   static RegisteredPrompt? byId(String id) {

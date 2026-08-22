@@ -37,18 +37,7 @@ pub fn build_prompt(
             out.push('\n');
         }
     }
-    if request.available_tools.is_empty() {
-        out.push_str(
-            "\nRespond as JSON with keys answer, reasoning_summary, confidence only.\nJSON:\n",
-        );
-    } else {
-        out.push_str(
-            "\nRespond as JSON with keys answer, reasoning_summary, confidence. \
-If you must call a listed tool, add tool_calls as an array of objects with \
-name and arguments_json, and set answer to an empty string. \
-Do not invent tools. Do not include a thoughts field.\nJSON:\n",
-        );
-    }
+    out.push_str(json_instruction(level, !request.available_tools.is_empty()));
     out.push_str(ENVELOPE_OPEN);
     out
 }
@@ -99,6 +88,31 @@ fn tool_envelope(name: &str) -> String {
     format!(
         r#"{{"answer":"","reasoning_summary":"Need listed tool.","confidence":0.80,"tool_calls":[{{"name":"{name}","arguments_json":"{{\"day\":\"tomorrow\"}}"}}]}}"#
     )
+}
+
+fn json_instruction(level: ReasoningLevel, has_tools: bool) -> &'static str {
+    let lookup = matches!(level, ReasoningLevel::None | ReasoningLevel::Light);
+    match (lookup, has_tools) {
+        (true, false) => {
+            "\nRespond as JSON. Key answer is required. reasoning_summary and \
+confidence are optional. Do not include a thoughts field.\nJSON:\n"
+        }
+        (true, true) => {
+            "\nRespond as JSON. Key answer is required. reasoning_summary and \
+confidence are optional. If you must call a listed tool, add tool_calls as an \
+array of objects with name and arguments_json, and set answer to an empty \
+string. Do not invent tools. Do not include a thoughts field.\nJSON:\n"
+        }
+        (false, false) => {
+            "\nRespond as JSON with keys answer, reasoning_summary, confidence only.\nJSON:\n"
+        }
+        (false, true) => {
+            "\nRespond as JSON with keys answer, reasoning_summary, confidence. \
+If you must call a listed tool, add tool_calls as an array of objects with \
+name and arguments_json, and set answer to an empty string. \
+Do not invent tools. Do not include a thoughts field.\nJSON:\n"
+        }
+    }
 }
 
 fn system_for(level: ReasoningLevel) -> &'static str {
@@ -164,6 +178,10 @@ mod tests {
             prompt.ends_with("JSON:\n{"),
             "teacher-force the envelope open so generation starts at \"answer\", not EOG: {prompt}"
         );
+        assert!(
+            prompt.contains("optional"),
+            "none/light must not require a summary: {prompt}"
+        );
     }
 
     #[test]
@@ -212,6 +230,10 @@ mod tests {
             assert!(
                 prompt.contains("Do not write thoughts") || prompt.contains("Never write thoughts")
             );
+            assert!(
+                !prompt.contains("are optional"),
+                "standard/deep keep the full envelope: {prompt}"
+            );
         }
         assert!(!standard.contains("systematically"));
         assert!(deep.contains("systematically"));
@@ -227,6 +249,10 @@ mod tests {
                 "{level:?} must stay zero-shot: {prompt}"
             );
             assert!(!prompt.contains("Why does ice float?"));
+            assert!(
+                prompt.contains("optional"),
+                "{level:?} must not require a summary: {prompt}"
+            );
         }
     }
 

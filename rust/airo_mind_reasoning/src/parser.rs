@@ -464,6 +464,16 @@ mod tests {
     }
 
     #[test]
+    fn answer_only_envelope_is_enough_for_none() {
+        let mut p = ResultStreamParser::new();
+        p.push(r#""answer":"It is Tuesday."}"#).unwrap();
+        let result = p.finish(ReasoningLevel::None).unwrap();
+        assert_eq!(result.answer, "It is Tuesday.");
+        assert!(result.reasoning_summary.is_none());
+        assert!(crate::validator::validate_result(&result).is_ok());
+    }
+
+    #[test]
     fn missing_tool_calls_is_empty() {
         assert!(
             extract_tool_calls(r#"{"answer":"ok","reasoning_summary":"s","confidence":1}"#)
