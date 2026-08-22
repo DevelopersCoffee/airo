@@ -30,6 +30,26 @@ void main() {
     expect(claims.single.status, ClaimSupport.supported);
   });
 
+  test('acquired table rows become claims bound to that source', () {
+    final scored = SourceDocument(
+      url: qwen.url,
+      title: qwen.title,
+      headings: qwen.headings,
+      paragraphs: const [],
+      tables: const ['Qwen-7B | 64.5 on MMLU'],
+      codeBlocks: const [],
+      retrievedAt: qwen.retrievedAt,
+      classification: qwen.classification,
+    );
+
+    final claims = extractClaims([scored]);
+
+    expect(claims, hasLength(1));
+    expect(claims.single.text, 'Qwen-7B | 64.5 on MMLU');
+    expect(claims.single.sourceUrl, qwen.url);
+    expect(claims.single.status, ClaimSupport.supported);
+  });
+
   test(
     'citation validation rejects claims whose source was never acquired',
     () {

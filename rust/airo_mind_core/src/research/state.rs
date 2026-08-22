@@ -314,6 +314,10 @@ impl InMemoryResearchService {
         self.jobs.get(job_id).map(|(job, _)| job.state)
     }
 
+    pub fn job(&self, job_id: &str) -> Option<&ResearchJob> {
+        self.jobs.get(job_id).map(|(job, _)| job)
+    }
+
     pub fn apply(
         &mut self,
         job_id: &str,

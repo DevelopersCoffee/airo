@@ -7,6 +7,7 @@
 //! synthesize → provenance.
 
 mod document;
+mod engine;
 mod evidence;
 mod interpreter;
 mod planner;
@@ -19,8 +20,10 @@ mod strategy;
 mod trust;
 
 pub use document::{
-    classify_url, extract_html, ExtractedDocument, SourceClass, SourceClassification, SourceKind,
+    classify_url, extract_document, extract_html, extract_markdown, extract_pdf, ExtractedDocument,
+    SourceClass, SourceClassification, SourceKind,
 };
+pub use engine::{ResearchEngine, ResearchEvent, ResearchEventKind, SourceFetcher};
 pub use evidence::{
     contradiction_reasons, excerpt_in_source, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph,
     EvidenceId, Source, SourceId, SourceType,

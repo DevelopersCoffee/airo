@@ -10,7 +10,16 @@ void main() {
   });
 
   test('academic policy prefers papers', () {
-    expect(SearchRouter.engineIds(SearchPolicy.academic), ['arxiv']);
+    final ids = SearchRouter.engineIds(SearchPolicy.academic);
+    expect(ids, containsAll(['arxiv', 'semantic_scholar']));
+    expect(ids, isNot(contains('google')));
+  });
+
+  test('balanced policy can use scholar without implying google', () {
+    final ids = SearchRouter.engineIds(SearchPolicy.balanced);
+    expect(ids, contains('semantic_scholar'));
+    expect(ids, isNot(contains('google')));
+    expect(ids, isNot(contains('bing')));
   });
 
   test('privacy-first does not include commercial web search', () {

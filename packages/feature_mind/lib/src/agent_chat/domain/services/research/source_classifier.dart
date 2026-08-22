@@ -38,6 +38,12 @@ SourceClassification classifySourceUrl(String url) {
       kind: SourceKind.academic,
     );
   }
+  if (host.contains('semanticscholar.org')) {
+    return const SourceClassification(
+      sourceClass: SourceClass.secondary,
+      kind: SourceKind.academic,
+    );
+  }
   if (lower.contains('wikipedia.org')) {
     return const SourceClassification(
       sourceClass: SourceClass.tertiary,
