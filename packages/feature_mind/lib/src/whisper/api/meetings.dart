@@ -8,9 +8,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `ensure_speech_engine_for_live`, `ensure_speech_engine_for_requirement`, `lock`, `maybe_emit_live_degraded`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `stored_speech_requirement_inputs`, `transcript_segment_record`
+// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `ensure_speech_engine_for_live`, `ensure_speech_engine_for_requirement`, `lock`, `maybe_emit_live_degraded`, `provisional_speaker_label`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `stored_speech_requirement_inputs`, `transcript_segment_record`, `vocabulary_correct_stable`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`, `LiveSessionState`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `airo_mind_whisper_delete_meeting`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -96,8 +97,15 @@ void resumeLiveSession({required String sessionId}) => RustLib.instance.api
     .crateApiMeetingsResumeLiveSession(sessionId: sessionId);
 
 /// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
-Future<void> stopLiveSession({required String sessionId}) =>
-    RustLib.instance.api.crateApiMeetingsStopLiveSession(sessionId: sessionId);
+///
+/// When `audio_path` is supplied (the recorded file after stop), ECAPA/solo
+/// diarization reconciles provisional live speaker lanes — same pass as
+/// [`transcribe_recording`], without re-running ASR.
+Future<void> stopLiveSession({required String sessionId, String? audioPath}) =>
+    RustLib.instance.api.crateApiMeetingsStopLiveSession(
+      sessionId: sessionId,
+      audioPath: audioPath,
+    );
 
 /// Aborts a live session without persisting transcript output.
 void cancelLiveSession({required String sessionId}) => RustLib.instance.api
@@ -187,6 +195,10 @@ Future<List<SearchHit>> searchMeetings({required String query}) =>
 /// Step 8. Opens one meeting.
 Future<MeetingRecord?> getMeeting({required String id}) =>
     RustLib.instance.api.crateApiMeetingsGetMeeting(id: id);
+
+/// Drops a meeting from the append-only store and search index.
+Future<bool> deleteMeeting({required String id}) =>
+    RustLib.instance.api.crateApiMeetingsDeleteMeeting(id: id);
 
 /// Wire mirror of `airo_mind_core::MeetingActionItem`.
 class MeetingActionItemRecord {

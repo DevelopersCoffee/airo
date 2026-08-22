@@ -203,7 +203,10 @@ abstract interface class MindSpeechBridge {
 
   void resumeLiveSession({required String sessionId});
 
-  Future<void> stopLiveSession({required String sessionId});
+  Future<void> stopLiveSession({
+    required String sessionId,
+    String? audioPath,
+  });
 
   void cancelLiveSession({required String sessionId});
 
@@ -337,8 +340,11 @@ class RustMindSpeechBridge implements MindSpeechBridge {
       rust.resumeLiveSession(sessionId: sessionId);
 
   @override
-  Future<void> stopLiveSession({required String sessionId}) =>
-      rust.stopLiveSession(sessionId: sessionId);
+  Future<void> stopLiveSession({
+    required String sessionId,
+    String? audioPath,
+  }) =>
+      rust.stopLiveSession(sessionId: sessionId, audioPath: audioPath);
 
   @override
   void cancelLiveSession({required String sessionId}) =>

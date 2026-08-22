@@ -1027,7 +1027,11 @@ pub fn resume_live_session(session_id: String) -> Result<(), String> {
 }
 
 /// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
-pub fn stop_live_session(session_id: String) -> Result<(), String> {
+///
+/// When `audio_path` is supplied (the recorded file after stop), ECAPA/solo
+/// diarization reconciles provisional live speaker lanes — same pass as
+/// [`transcribe_recording`], without re-running ASR.
+pub fn stop_live_session(session_id: String, audio_path: Option<String>) -> Result<(), String> {
     let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
@@ -1062,6 +1066,16 @@ pub fn stop_live_session(session_id: String) -> Result<(), String> {
 
     if transcript.trim().is_empty() {
         return Err("No speech was found in the live session.".into());
+    }
+
+    if let Some(path) = audio_path {
+        let pcm = airo_mind_audio::preprocess_path(std::path::Path::new(&path))?;
+        let models_dir_guard = lock(&MODELS_DIR);
+        let models_dir = models_dir_guard.as_deref();
+        let strategy = models_dir
+            .map(product_diarization_strategy)
+            .unwrap_or(DiarizationStrategy::Solo);
+        apply_diarization_labels(&mut segments, &pcm, strategy, models_dir)?;
     }
 
     session

@@ -308,4 +308,30 @@ mod tests {
             "expected stable after silence boundary"
         );
     }
+
+    #[test]
+    fn ring_overflow_marks_step_degraded() {
+        let config = LiveSpeechConfig {
+            ring_capacity_samples: 64,
+            window_samples: 32,
+            vad_energy_threshold: 0.01,
+            vad_silence_ms: 300,
+        };
+        let mut pipe = LiveSpeechPipeline::new(config);
+        let engine = WindowSpeech;
+        let cancel = CancelToken::new();
+
+        pipe.push_pcm(&loud_pcm(256));
+        assert!(pipe.ring_dropped_samples() > 0, "ring should drop oldest");
+
+        let report = pipe
+            .step(
+                &engine,
+                &TranscriptionOptions::default(),
+                &cancel,
+                &mut |_| Ok(()),
+            )
+            .unwrap();
+        assert!(report.degraded, "overflow should mark step degraded");
+    }
 }
