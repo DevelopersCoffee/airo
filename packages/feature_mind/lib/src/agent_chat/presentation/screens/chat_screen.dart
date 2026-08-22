@@ -56,7 +56,6 @@ import '../../../agent_chat/domain/services/deep_research_engine.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint_log.dart';
 import '../../../agent_chat/domain/services/research/research_control.dart';
-import '../../../agent_chat/domain/services/research/research_library.dart';
 import '../../../agent_chat/domain/services/research/research_library_log.dart';
 import '../../../agent_chat/domain/services/remote_agent_skill_installer.dart';
 import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';

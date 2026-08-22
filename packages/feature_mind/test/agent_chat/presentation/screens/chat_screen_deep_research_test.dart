@@ -1,6 +1,4 @@
-import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
-import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
