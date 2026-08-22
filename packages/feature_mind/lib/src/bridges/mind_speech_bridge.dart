@@ -132,6 +132,12 @@ final class TranscriptEventDelta extends TranscriptEvent {
   final TranscriptDelta delta;
 }
 
+/// Recoverable live degradation — ring overflow, thermal backoff, etc.
+final class TranscriptEventDegraded extends TranscriptEvent {
+  const TranscriptEventDegraded(this.message);
+  final String message;
+}
+
 /// The speech half of the pipeline, and the meeting library. Behind this
 /// abstraction rather than called directly is what makes `MindService`'s
 /// sequencing testable at all — see
@@ -313,6 +319,8 @@ class RustMindSpeechBridge implements MindSpeechBridge {
           segments.map(toTranscriptSegment).toList(growable: false),
         ),
       rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
+      rust.TranscriptEvent_Degraded(:final message) =>
+        TranscriptEventDegraded(message),
     };
   }
 

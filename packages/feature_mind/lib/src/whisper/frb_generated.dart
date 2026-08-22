@@ -1777,6 +1777,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         );
       case 3:
         return TranscriptEvent_Cancelled();
+      case 4:
+        return TranscriptEvent_Degraded(message: dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
     }
@@ -2434,6 +2436,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         );
       case 3:
         return TranscriptEvent_Cancelled();
+      case 4:
+        var var_message = sse_decode_String(deserializer);
+        return TranscriptEvent_Degraded(message: var_message);
       default:
         throw UnimplementedError('');
     }
@@ -3035,6 +3040,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_list_transcript_segment_record(segments, serializer);
       case TranscriptEvent_Cancelled():
         sse_encode_i_32(3, serializer);
+      case TranscriptEvent_Degraded(message: final message):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(message, serializer);
     }
   }
 

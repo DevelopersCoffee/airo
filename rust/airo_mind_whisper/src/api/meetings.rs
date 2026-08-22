@@ -49,7 +49,7 @@ use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
     ActionStatus, AudioInput, CancelToken, DecisionStatus, EngineError, Meeting, MeetingActionItem,
-    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, RuntimeError, SearchIndex,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex,
     Supervisor, TranscriptSegment, TranscriptionOptions,
 };
 use airo_mind_audio::{LiveSpeechConfig, LiveSpeechPipeline};
@@ -452,6 +452,8 @@ pub enum TranscriptEvent {
     },
     /// The user navigated away. Nothing was saved.
     Cancelled,
+    /// Ring overflow, thermal backoff, or another recoverable live degradation.
+    Degraded { message: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +478,13 @@ static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
 /// diarization strategy (ECAPA optional weights).
 static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
+static SPEECH_MEMORY_BUDGET_MB: Mutex<Option<u32>> = Mutex::new(None);
+
+static INITIALIZED_SPEECH_LANGUAGE: Mutex<Option<SpeechLanguage>> = Mutex::new(None);
+
+/// Path of the whisper weights currently registered on the Supervisor.
+static LOADED_SPEECH_PATH: Mutex<Option<String>> = Mutex::new(None);
+
 /// The in-flight job's token, so the UI can stop it.
 static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
 
@@ -489,6 +498,8 @@ struct LiveSessionState {
     segments: Vec<TranscriptSegmentRecord>,
     transcript: String,
     sink: StreamSink<TranscriptEvent>,
+    /// One degradation notice per session — ring overflow can drop many frames.
+    degraded_notified: bool,
 }
 
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
@@ -511,6 +522,72 @@ fn lock<T>(m: &'static Mutex<T>) -> std::sync::MutexGuard<'static, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+fn stored_speech_requirement_inputs() -> Result<(u32, models::ModelLanguage), String> {
+    let budget = lock(&SPEECH_MEMORY_BUDGET_MB)
+        .as_ref()
+        .copied()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+    let speech_language = lock(&INITIALIZED_SPEECH_LANGUAGE)
+        .as_ref()
+        .copied()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+    Ok((budget, speech_language.into()))
+}
+
+/// Loads or swaps the registered speech engine when the resolved model path
+/// differs from what is already registered (`ADR-0025` §6.7).
+fn ensure_speech_engine_for_requirement(
+    requirement: models::ModelRequirement,
+) -> Result<(), String> {
+    let models_dir = lock(&MODELS_DIR)
+        .clone()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+
+    let speech_model = models::resolve(&requirement, &models_dir, &[], false)
+        .map_err(|e| e.to_string())?;
+
+    if lock(&LOADED_SPEECH_PATH).as_deref() == Some(&speech_model.path) {
+        return Ok(());
+    }
+
+    let speech = WhisperSpeechEngine::load(
+        std::path::Path::new(&speech_model.path),
+        speech_model.memory_mb,
+    )
+    .map_err(|e| format!("{}: {e}", speech_model.logical_id))?;
+
+    let mut engines = lock(&ENGINES);
+    let supervisor = engines
+        .as_mut()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+    supervisor.register_speech(Box::new(speech));
+
+    *lock(&SPEECH_MODEL_VERSION) = Some(format!(
+        "{}@{}",
+        speech_model.logical_id, speech_model.version
+    ));
+    *lock(&LOADED_SPEECH_PATH) = Some(speech_model.path.clone());
+    Ok(())
+}
+
+fn ensure_speech_engine_for_live() -> Result<(), String> {
+    let (budget, language) = stored_speech_requirement_inputs()?;
+    ensure_speech_engine_for_requirement(models::speech_live_requirement(budget, language))
+}
+
+fn maybe_emit_live_degraded(session: &mut LiveSessionState, message: &str) -> Result<(), String> {
+    if session.degraded_notified {
+        return Ok(());
+    }
+    session.degraded_notified = true;
+    session
+        .sink
+        .add(TranscriptEvent::Degraded {
+            message: message.to_string(),
+        })
+        .map_err(|e| e.to_string())
+}
+
 // ---------------------------------------------------------------------------
 // The capability surface
 // ---------------------------------------------------------------------------
@@ -522,43 +599,21 @@ fn lock<T>(m: &'static Mutex<T>) -> std::sync::MutexGuard<'static, T> {
 /// A missing model is an ordinary error carrying the path, because on a real
 /// device it is the most likely failure and the user can act on it.
 pub fn initialize(config: MindConfig) -> Result<(), String> {
-    let models_dir = std::path::Path::new(&config.models_dir);
-
     // `ADR-0018 §1`: ask for a CAPABILITY and a budget, never for a file. The
     // capability does not know which model it got, only that one resolved.
-    let speech_model = models::resolve(
-        &models::ModelRequirement {
-            task: models::ModelTask::Speech,
-            memory_budget_mb: config.memory_budget_mb,
-            minimum_quality: models::ModelQuality::Draft,
-            maximum_quality: None,
-            language: config.speech_language.into(),
-        },
-        models_dir,
-        &[],
-        false,
-    )
-    .map_err(|e| e.to_string())?;
-
-    let speech = WhisperSpeechEngine::load(
-        std::path::Path::new(&speech_model.path),
-        speech_model.memory_mb,
-    )
-    .map_err(|e| format!("{}: {e}", speech_model.logical_id))?;
-
-    let mut supervisor = Supervisor::new(ResourceBudget::new(config.memory_budget_mb));
-    supervisor.register_speech(Box::new(speech));
-
     let store = MeetingStore::open(&config.store_path);
     let index = SearchIndex::rebuild(&store.all().map_err(|e| e.to_string())?);
 
+    let supervisor = Supervisor::new(ResourceBudget::new(config.memory_budget_mb));
     *lock(&ENGINES) = Some(supervisor);
-    *lock(&SPEECH_MODEL_VERSION) = Some(format!(
-        "{}@{}",
-        speech_model.logical_id, speech_model.version
-    ));
     *lock(&MODELS_DIR) = Some(PathBuf::from(config.models_dir.clone()));
+    *lock(&SPEECH_MEMORY_BUDGET_MB) = Some(config.memory_budget_mb);
+    *lock(&INITIALIZED_SPEECH_LANGUAGE) = Some(config.speech_language);
     *lock(&LIBRARY) = Some(Library { store, index });
+
+    ensure_speech_engine_for_requirement(
+        models::speech_file_requirement(config.memory_budget_mb, config.speech_language.into()),
+    )?;
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
     // Metal device globals are C++ function-local statics. Register after
     // load so this handler runs *before* ggml's unique_ptr destructor.
@@ -769,7 +824,7 @@ fn emit_live_delta(
     };
 
     let delta = TranscriptDeltaRecord {
-        session_id: session_id.clone(),
+        session_id: session_id.to_string(),
         segment_id,
         speaker_label: None,
         text: segment.text.trim().to_string(),
@@ -801,20 +856,29 @@ fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
     let options = session.options.clone();
     let mut produced = Vec::new();
 
-    session.pipeline.step_with_transcribe(
-        |audio, opts, token, sink| {
-            supervisor
-                .run_speech(audio, opts, token, sink)
-                .map_err(|e| EngineError::Backend(e.to_string()))
-        },
-        &options,
-        &cancel,
-        &mut |segment| {
-            produced.push(segment);
-            Ok(())
-        },
-    )
-    .map_err(|e| e.to_string())?;
+    let report = session
+        .pipeline
+        .step_with_transcribe(
+            |audio, opts, token, sink| {
+                supervisor
+                    .run_speech(audio, opts, token, sink)
+                    .map_err(|e| EngineError::Backend(e.to_string()))
+            },
+            &options,
+            &cancel,
+            &mut |segment| {
+                produced.push(segment);
+                Ok(())
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    if report.degraded {
+        maybe_emit_live_degraded(
+            session,
+            "Live transcript quality reduced — audio ring overflow.",
+        )?;
+    }
 
     for segment in produced {
         emit_live_delta(session, session_id, segment)?;
@@ -830,6 +894,8 @@ pub fn start_live_session(
     language: Option<String>,
     sink: StreamSink<TranscriptEvent>,
 ) -> Result<(), String> {
+    ensure_speech_engine_for_live()?;
+
     let engines = lock(&ENGINES);
     let supervisor = engines
         .as_ref()
@@ -852,6 +918,7 @@ pub fn start_live_session(
         segments: Vec::new(),
         transcript: String::new(),
         sink,
+        degraded_notified: false,
     };
 
     lock(&LIVE_SESSIONS).insert(session_id.clone(), session);
@@ -866,7 +933,13 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
     let session = sessions
         .get_mut(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
-    session.pipeline.push_pcm(&samples);
+    let push_report = session.pipeline.push_pcm(&samples);
+    if push_report.dropped > 0 {
+        maybe_emit_live_degraded(
+            session,
+            "Live transcript quality reduced — audio ring overflow.",
+        )?;
+    }
     if session.paused {
         return Ok(());
     }
@@ -898,7 +971,7 @@ pub fn resume_live_session(session_id: String) -> Result<(), String> {
 
 /// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
 pub fn stop_live_session(session_id: String) -> Result<(), String> {
-    let session = lock(&LIVE_SESSIONS)
+    let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
 

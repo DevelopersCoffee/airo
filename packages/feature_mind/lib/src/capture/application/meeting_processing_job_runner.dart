@@ -66,6 +66,15 @@ class MeetingProcessingJobRunner {
       )) {
         last = progress;
       }
+    } else if (job.hasRefineBaseline) {
+      await for (final progress in _mindService.processWithRefine(
+        wavPath: job.audioPath,
+        title: job.title,
+        baselineSegments: job.refineBaselineSegments!,
+        language: mode.processLanguageCode,
+      )) {
+        last = progress;
+      }
     } else {
       await for (final progress in _mindService.process(
         wavPath: job.audioPath,

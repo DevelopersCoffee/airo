@@ -67,6 +67,7 @@ class MeetingProcessingJob {
     this.source = MeetingProcessingSource.live,
     this.completedTranscript,
     this.completedSegments,
+    this.refineBaselineSegments,
   });
 
   /// Stable id for this job — the recording session id it was enqueued from.
@@ -99,8 +100,13 @@ class MeetingProcessingJob {
 
   final List<TranscriptSegment>? completedSegments;
 
+  /// Live baseline for `Live + refine` — file ASR reconciles by these ids.
+  final List<TranscriptSegment>? refineBaselineSegments;
+
   bool get hasCompletedTranscript =>
       completedTranscript != null && completedSegments != null;
+
+  bool get hasRefineBaseline => refineBaselineSegments != null && refineBaselineSegments!.isNotEmpty;
 
   MeetingProcessingJob copyWith({
     MeetingProcessingStatus? status,
@@ -109,6 +115,7 @@ class MeetingProcessingJob {
     MeetingProcessingSource? source,
     String? completedTranscript,
     List<TranscriptSegment>? completedSegments,
+    List<TranscriptSegment>? refineBaselineSegments,
   }) {
     return MeetingProcessingJob(
       id: id,
@@ -121,6 +128,8 @@ class MeetingProcessingJob {
       source: source ?? this.source,
       completedTranscript: completedTranscript ?? this.completedTranscript,
       completedSegments: completedSegments ?? this.completedSegments,
+      refineBaselineSegments:
+          refineBaselineSegments ?? this.refineBaselineSegments,
     );
   }
 
@@ -136,6 +145,18 @@ class MeetingProcessingJob {
     if (completedTranscript != null) 'completedTranscript': completedTranscript,
     if (completedSegments != null)
       'completedSegments': completedSegments!
+          .map(
+            (s) => {
+              'id': s.id,
+              'startMs': s.startMs,
+              'endMs': s.endMs,
+              'text': s.text,
+              'speakerLabel': s.speakerLabel,
+            },
+          )
+          .toList(growable: false),
+    if (refineBaselineSegments != null)
+      'refineBaselineSegments': refineBaselineSegments!
           .map(
             (s) => {
               'id': s.id,
@@ -163,6 +184,20 @@ class MeetingProcessingJob {
         );
       }).toList(growable: false);
     }
+    final rawBaseline = json['refineBaselineSegments'] as List<Object?>?;
+    List<TranscriptSegment>? baseline;
+    if (rawBaseline != null) {
+      baseline = rawBaseline.map((entry) {
+        final map = entry! as Map<Object?, Object?>;
+        return TranscriptSegment(
+          id: map['id']! as String,
+          startMs: map['startMs']! as int,
+          endMs: map['endMs']! as int,
+          text: map['text']! as String,
+          speakerLabel: map['speakerLabel'] as String?,
+        );
+      }).toList(growable: false);
+    }
     return MeetingProcessingJob(
       id: json['id']! as String,
       audioPath: json['audioPath']! as String,
@@ -177,6 +212,7 @@ class MeetingProcessingJob {
       source: MeetingProcessingSource.fromName(json['source'] as String?),
       completedTranscript: json['completedTranscript'] as String?,
       completedSegments: segments,
+      refineBaselineSegments: baseline,
     );
   }
 }

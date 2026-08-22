@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `lock`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `transcript_segment_record`
+// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `ensure_speech_engine_for_live`, `ensure_speech_engine_for_requirement`, `lock`, `maybe_emit_live_degraded`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `stored_speech_requirement_inputs`, `transcript_segment_record`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`, `LiveSessionState`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
@@ -572,6 +572,10 @@ sealed class TranscriptEvent with _$TranscriptEvent {
 
   /// The user navigated away. Nothing was saved.
   const factory TranscriptEvent.cancelled() = TranscriptEvent_Cancelled;
+
+  /// Ring overflow, thermal backoff, or another recoverable live degradation.
+  const factory TranscriptEvent.degraded({required String message}) =
+      TranscriptEvent_Degraded;
 }
 
 /// One transcript segment, with the evidence-grounding fields `#1657` needs:

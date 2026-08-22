@@ -54,6 +54,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   String? _meetingId;
   MeetingRecordingSnapshot _snapshot = MeetingRecordingSnapshot.idle;
   String? _startError;
+  String? _liveWarning;
 
   @override
   void dispose() {
@@ -87,7 +88,10 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   Future<void> _start() async {
     if (!_consentGate.isGranted) return;
-    setState(() => _startError = null);
+    setState(() {
+      _startError = null;
+      _liveWarning = null;
+    });
     final controller = ref.read(meetingCaptureControllerProvider);
     _controller = controller;
     controller.snapshots.listen((snapshot) {
@@ -110,10 +114,13 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         );
       } on Object catch (error) {
         if (!mounted) return;
-        setState(() => _startError = '$error');
+        setState(() {
+          _liveWarning =
+              'Live transcription could not start ($error). '
+              'Recording will continue — the file will be transcribed after you stop.';
+        });
         await _liveCoordinator?.dispose();
         _liveCoordinator = null;
-        return;
       }
     }
     final path = await nextMeetingRecordingPath();
@@ -166,6 +173,8 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final queue = await ref.read(meetingProcessingQueueProvider.future);
     final meetingId = _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
     final title = 'Meeting ${DateTime.now().toLocal()}';
+    final isLiveOnly = transcriptionMode == TranscriptionMode.live;
+    final isLiveRefine = transcriptionMode == TranscriptionMode.liveRefine;
     await queue.enqueue(
       MeetingProcessingJob(
         id: meetingId,
@@ -173,12 +182,9 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         title: title,
         enqueuedAtMs: DateTime.now().millisecondsSinceEpoch,
         source: MeetingProcessingSource.live,
-        completedTranscript: transcriptionMode == TranscriptionMode.live
-            ? liveResult?.text
-            : null,
-        completedSegments: transcriptionMode == TranscriptionMode.live
-            ? liveResult?.segments
-            : null,
+        completedTranscript: isLiveOnly ? liveResult?.text : null,
+        completedSegments: isLiveOnly ? liveResult?.segments : null,
+        refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
       ),
     );
   }
@@ -276,6 +282,14 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                 ),
             ],
           ),
+          if (_liveWarning != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _liveWarning!,
+              key: const Key('meeting_capture_live_warning'),
+              style: TextStyle(color: Theme.of(context).colorScheme.tertiary),
+            ),
+          ],
           if (_startError != null) ...[
             const SizedBox(height: 12),
             Text(
