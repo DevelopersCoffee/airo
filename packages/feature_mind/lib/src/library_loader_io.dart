@@ -69,7 +69,9 @@ void listenForQuitSignals(void Function() onQuit) {
 /// Drops the whisper Supervisor while Metal is still valid.
 void unloadWhisperSpeech() {
   final fn = DynamicLibrary.process()
-      .lookup<NativeFunction<Void Function()>>('airo_mind_whisper_unload_speech')
+      .lookup<NativeFunction<Void Function()>>(
+        'airo_mind_whisper_unload_speech',
+      )
       .asFunction<void Function()>();
   fn();
 }

@@ -249,15 +249,13 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
 
   Future<void> _pickReceiptFile() async {
     try {
-      final result = await FilePicker.pickFiles(
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-        // ignore: deprecated_member_use
-        withData: kIsWeb,
       );
-      if (result == null || result.files.isEmpty || !mounted) return;
+      if (files.isEmpty || !mounted) return;
 
-      final pickedFile = result.files.first;
+      final pickedFile = files.first;
       final mimeType = _mimeTypeForName(pickedFile.name);
       final isPdf = mimeType == 'application/pdf';
 
@@ -271,13 +269,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
         return;
       }
 
-      final bytes =
-          // ignore: deprecated_member_use
-          pickedFile.bytes ??
-          (path != null ? await File(path).readAsBytes() : null);
-      if (bytes == null) {
-        throw Exception('File bytes unavailable');
-      }
+      final bytes = await pickedFile.readAsBytes();
 
       await _loadReceiptFromBytes(bytes, mimeType: mimeType);
     } catch (e, stack) {

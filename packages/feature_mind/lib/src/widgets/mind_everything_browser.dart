@@ -562,7 +562,9 @@ class _PreviewColumn extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    field.isInferred ? '${field.label} (inferred)' : field.label,
+                    field.isInferred
+                        ? '${field.label} (inferred)'
+                        : field.label,
                     style: TextStyle(
                       fontSize: 10,
                       letterSpacing: 1.2,

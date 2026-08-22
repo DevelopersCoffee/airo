@@ -14,10 +14,7 @@ import '../domain/meeting_markdown_renderer.dart';
 /// `MeetingRecord.actionItems` (#1657 Stage 2), and timestamped transcript
 /// lines from `transcriptDocument` (#1629). The renderer stays pure Dart.
 class MeetingExportService {
-  const MeetingExportService(
-    this._mindService, {
-    this.speakerRegistryStore,
-  });
+  const MeetingExportService(this._mindService, {this.speakerRegistryStore});
 
   final MindService _mindService;
   final MeetingSpeakerRegistryStore? speakerRegistryStore;

@@ -48,9 +48,9 @@ dependencies:
 
   # State management -- ProviderScope in AiroMindApp, and 106 of the closure's
   # files import it. Only flutter_riverpod: nothing in the closure imports
-  # `package:riverpod` directly, and flutter_riverpod 3.3.2 pins the matching
+  # `package:riverpod` directly, and flutter_riverpod 3.4.2 pins the matching
   # riverpod itself.
-  flutter_riverpod: 3.3.2
+  flutter_riverpod: 3.4.2
 
   # Storage & persistence
   # shared_preferences: settings + AI preferences persistence.

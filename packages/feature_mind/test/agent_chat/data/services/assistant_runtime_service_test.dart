@@ -534,6 +534,154 @@ void main() {
     );
 
     test(
+      'prefills the assistant turn instead of relying on prefix GBNF',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'qwen2-1.5b-q4',
+          name: 'Qwen2 1.5B',
+          family: ModelFamily.qwen,
+          fileSizeBytes: 1_100_000_000,
+          filePath: '/models/qwen2-1.5b-q4.gguf',
+          provider: AIProvider.gguf,
+        );
+        final runtimeId = assistantModelIdForOfflineModel(package.id);
+        final llama = _FakeLlamaGgufService(
+          isAvailableResult: true,
+          loadModelResult: true,
+          generatedChunks: ['Day 1: oats'],
+        );
+        final service = AssistantRuntimeService(
+          llamaGguf: llama,
+          loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+            task: AssistantTask.chat,
+            deviceLabel: 'Mac',
+            platformLabel: 'MACOS',
+            candidates: [
+              AssistantModelCandidate(
+                id: runtimeId,
+                name: package.name,
+                runtime: 'GGUF',
+                description: 'Installed package',
+                bestFor: const [AssistantTask.chat],
+                tags: const ['Local'],
+                privacyLabel: 'Private',
+                sizeLabel: package.fileSizeDisplay,
+                available: true,
+                actionLabel: 'Start',
+                local: true,
+                package: package,
+              ),
+            ],
+            recommended: AssistantModelCandidate(
+              id: runtimeId,
+              name: package.name,
+              runtime: 'GGUF',
+              description: 'Installed package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Private',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+            defaultPackages: const {},
+          ),
+        );
+        const prefix = "Here's a 3-day diet plan:\n\n";
+        final constraint = GenerationConstraint.forcedPrefix(prefix);
+
+        final chunks = await service
+            .generateTextStream(
+              selectedModelId: runtimeId,
+              prompt: 'write the plan',
+              constraint: constraint,
+            )
+            .toList();
+
+        expect(llama.lastGrammar, isNull);
+        expect(llama.lastPrompt, contains('<|im_start|>assistant\n$prefix'));
+        expect(
+          llama.lastPrompt,
+          isNot(contains('Start your reply with exactly:')),
+        );
+        expect(chunks.last, startsWith(prefix.trim()));
+        expect(chunks.last, contains('Day 1: oats'));
+      },
+    );
+
+    test('keeps the prefill when Gemma stops after Here', () async {
+      final package = OfflineModelInfo(
+        id: 'gemma-2b-it-q4',
+        name: 'Gemma 2 2B Instruct',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1_600_000_000,
+        filePath: '/models/gemma-2-2b-it.gguf',
+        provider: AIProvider.gguf,
+      );
+      final runtimeId = assistantModelIdForOfflineModel(package.id);
+      final llama = _FakeLlamaGgufService(
+        isAvailableResult: true,
+        loadModelResult: true,
+        generatedChunks: ['Here'],
+      );
+      final service = AssistantRuntimeService(
+        llamaGguf: llama,
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Mac',
+          platformLabel: 'MACOS',
+          candidates: [
+            AssistantModelCandidate(
+              id: runtimeId,
+              name: package.name,
+              runtime: 'GGUF',
+              description: 'Installed package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Private',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: AssistantModelCandidate(
+            id: runtimeId,
+            name: package.name,
+            runtime: 'GGUF',
+            description: 'Installed package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Private',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+          defaultPackages: const {},
+        ),
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: runtimeId,
+            prompt: 'write the plan',
+            constraint: GenerationConstraint.forcedPrefix(
+              "Here's a 3-day diet plan:\n\n",
+            ),
+          )
+          .toList();
+
+      expect(llama.lastPrompt, contains('<start_of_turn>model\n'));
+      expect(llama.lastPrompt, contains("Here's a 3-day diet plan:"));
+      expect(chunks.last, contains("Here's a 3-day diet plan:"));
+    });
+
+    test(
       'wraps Gemma GGUF with turn markers and stops on role bleed',
       () async {
         final package = OfflineModelInfo(
@@ -1691,9 +1839,11 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     double temperature = 0.7,
     double topP = 0.9,
     int topK = 40,
+    String? grammar,
   }) {
     lastPrompt = prompt;
     lastMaxTokens = maxTokens;
+    lastGrammar = grammar;
     return Stream<String>.fromIterable(generatedChunks);
   }
 
@@ -1704,6 +1854,7 @@ class _FakeLlamaGgufService extends LlamaGgufService {
 
   String? lastPrompt;
   int? lastMaxTokens;
+  String? lastGrammar;
 }
 
 class _UrlOnlyLiteRtClient implements LiteRtLmClient {

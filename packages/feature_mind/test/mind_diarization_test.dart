@@ -12,25 +12,22 @@ void main() {
 
     final diarized = applySoloSpeakerDiarization(segments);
 
-    expect(
-      diarized,
-      [
-        const TranscriptSegment(
-          id: 's0',
-          startMs: 0,
-          endMs: 500,
-          text: 'hello',
-          speakerLabel: kMindSoloSpeakerLabel,
-        ),
-        const TranscriptSegment(
-          id: 's1',
-          startMs: 500,
-          endMs: 900,
-          text: 'world',
-          speakerLabel: kMindSoloSpeakerLabel,
-        ),
-      ],
-    );
+    expect(diarized, [
+      const TranscriptSegment(
+        id: 's0',
+        startMs: 0,
+        endMs: 500,
+        text: 'hello',
+        speakerLabel: kMindSoloSpeakerLabel,
+      ),
+      const TranscriptSegment(
+        id: 's1',
+        startMs: 500,
+        endMs: 900,
+        text: 'world',
+        speakerLabel: kMindSoloSpeakerLabel,
+      ),
+    ]);
   });
 
   test('empty segments stay empty', () {

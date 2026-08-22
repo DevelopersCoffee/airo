@@ -290,7 +290,9 @@ export 'src/trust/scribe_trust_signals.dart';
 // Provenance — on-device entity extraction and the Inspector (surfaces 09
 // and 11, issue #1463).
 export 'src/provenance/domain/models/extracted_entity.dart';
+export 'src/provenance/domain/models/entity_relation.dart';
 export 'src/provenance/domain/services/entity_extractor.dart';
+export 'src/provenance/domain/services/entity_relation_extractor.dart';
 export 'src/provenance/presentation/widgets/entity_chip.dart';
 export 'src/provenance/presentation/widgets/provenance_inspector.dart';
 

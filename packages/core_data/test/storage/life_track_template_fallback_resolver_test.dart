@@ -25,6 +25,11 @@ void main() {
           title: 'University admission',
           category: LifeTrackCategory.education,
         ),
+        _template(
+          templateId: 'study_progress_v1',
+          title: 'Study progress',
+          category: LifeTrackCategory.education,
+        ),
       ]);
       connectivityService = _FakeConnectivityService();
       resolver = LifeTrackTemplateFallbackResolver(
@@ -77,6 +82,18 @@ void main() {
       expect(result.status, LifeTrackTemplateFallbackStatus.recommended);
       expect(result.template?.templateId, 'university_admission_v1');
       expect(result.matchedKeywords, containsAll(['university', 'enrollment']));
+    });
+
+    test('recommends study progress for exam and revision prompts', () async {
+      connectivityService.connected = false;
+
+      final result = await resolver.resolve(
+        'Store my study progress and revision for the exam',
+      );
+
+      expect(result.status, LifeTrackTemplateFallbackStatus.recommended);
+      expect(result.template?.templateId, 'study_progress_v1');
+      expect(result.matchedKeywords, contains('study'));
     });
 
     test(

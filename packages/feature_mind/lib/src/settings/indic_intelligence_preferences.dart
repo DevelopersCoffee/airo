@@ -12,7 +12,8 @@ final indicSpeechModeProvider =
       (ref) => IndicSpeechModeNotifier(),
     );
 
-class IndicGenerationModeNotifier extends StateNotifier<MindIndicGenerationMode> {
+class IndicGenerationModeNotifier
+    extends StateNotifier<MindIndicGenerationMode> {
   IndicGenerationModeNotifier() : super(MindIndicGenerationMode.auto) {
     _load();
   }

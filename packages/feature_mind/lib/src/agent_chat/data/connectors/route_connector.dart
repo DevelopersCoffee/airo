@@ -81,8 +81,10 @@ _RouteTarget? _resolveTarget(String rawTarget) {
     'assistant' ||
     'agent' ||
     'chat' => const _RouteTarget('/agent', 'Assistant'),
-    'models' || 'model' || 'model_management' || 'offline_models' =>
-      const _RouteTarget('/agent/profile', 'Profile model settings'),
+    'models' ||
+    'model' ||
+    'model_management' ||
+    'offline_models' => const _RouteTarget('/agent/models', 'Model manager'),
     'music' || 'beats' => const _RouteTarget('/live/music', 'Music'),
     'tv' || 'stream' || 'streaming' => const _RouteTarget('/live/tv', 'TV'),
     'games' || 'arena' => const _RouteTarget('/games', 'Arena'),

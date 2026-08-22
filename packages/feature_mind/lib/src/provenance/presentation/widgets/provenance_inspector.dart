@@ -10,8 +10,10 @@ import '../../../runtime/ports/operation_log_port.dart';
 import '../../../runtime/ports/projection_port.dart';
 import '../../../widgets/mind_context_chip.dart';
 import '../../../widgets/mind_palette.dart';
+import '../../domain/models/entity_relation.dart';
 import '../../domain/models/extracted_entity.dart';
 import '../../domain/services/entity_extractor.dart';
+import '../../domain/services/entity_relation_extractor.dart';
 import 'entity_chip.dart';
 
 /// Surfaces 09 (Context Workspace) and 11 (Everything Browser)'s provenance
@@ -32,6 +34,7 @@ class ProvenanceInspector extends StatefulWidget {
     required this.contexts,
     required this.projections,
     this.extractor = const RuleBasedEntityExtractor(),
+    this.relations = const EntityRelationExtractor(),
     this.onContextTap,
     this.onCitationTap,
   });
@@ -43,6 +46,7 @@ class ProvenanceInspector extends StatefulWidget {
   final ContextPort contexts;
   final ProjectionPort projections;
   final EntityExtractor extractor;
+  final EntityRelationExtractor relations;
 
   /// Tapping a linked context chip (rule R02).
   final void Function(String contextId)? onContextTap;
@@ -100,6 +104,7 @@ class _ProvenanceInspectorState extends State<ProvenanceInspector> {
           contexts: widget.contexts,
           projections: widget.projections,
           extractor: widget.extractor,
+          relations: widget.relations,
           onContextTap: widget.onContextTap,
           onCitationTap: widget.onCitationTap,
         );
@@ -141,6 +146,7 @@ class _InspectorBody extends StatefulWidget {
     required this.contexts,
     required this.projections,
     required this.extractor,
+    required this.relations,
     required this.onContextTap,
     required this.onCitationTap,
   });
@@ -150,6 +156,7 @@ class _InspectorBody extends StatefulWidget {
   final ContextPort contexts;
   final ProjectionPort projections;
   final EntityExtractor extractor;
+  final EntityRelationExtractor relations;
   final void Function(String contextId)? onContextTap;
   final void Function(int opSequence)? onCitationTap;
 
@@ -163,6 +170,7 @@ class _InspectorBodyState extends State<_InspectorBody> {
   late final Future<List<ProjectionState>> _projectionsFuture;
 
   List<ExtractedEntity>? _entities;
+  List<EntityRelation> _relations = const [];
   Object? _extractionError;
 
   double? _replayProgress;
@@ -189,13 +197,14 @@ class _InspectorBodyState extends State<_InspectorBody> {
 
   void _runExtraction() {
     try {
-      _entities = widget.extractor.extract(
-        widget.op.detail.isEmpty
-            ? widget.op.title
-            : '${widget.op.title}. ${widget.op.detail}',
-      );
+      final text = widget.op.detail.isEmpty
+          ? widget.op.title
+          : '${widget.op.title}. ${widget.op.detail}';
+      _entities = widget.extractor.extract(text);
+      _relations = widget.relations.extractFrom(text, _entities!).relations;
     } on Object catch (error) {
       _extractionError = error;
+      _relations = const [];
     }
   }
 
@@ -294,6 +303,10 @@ class _InspectorBodyState extends State<_InspectorBody> {
           const SizedBox(height: 8),
           _buildEntities(),
           const SizedBox(height: 16),
+          Text('RELATIONS', style: _sectionStyle),
+          const SizedBox(height: 8),
+          _buildRelations(),
+          const SizedBox(height: 16),
           Text('LINKED CONTEXTS', style: _sectionStyle),
           const SizedBox(height: 8),
           _buildLinkedContexts(),
@@ -363,6 +376,29 @@ class _InspectorBodyState extends State<_InspectorBody> {
             ),
           )
           .toList(growable: false),
+    );
+  }
+
+  Widget _buildRelations() {
+    if (_extractionError != null || _relations.isEmpty) {
+      return const Text(
+        'No relations found in this op.',
+        key: Key('provenance.relations.empty'),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < _relations.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              _relations[i].toString(),
+              key: Key('provenance.relation.$i'),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+      ],
     );
   }
 

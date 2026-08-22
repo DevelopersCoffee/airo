@@ -284,9 +284,14 @@ pub fn generate_minutes(
 /// General text completion for assistant chat — prompt is used as-is (no
 /// meeting-secretary wrapper). Shares the same generation engine as
 /// [`generate_minutes`].
+///
+/// `grammar` is the same GBNF plumbing as [`generate_minutes`]: start symbol
+/// `root`, or `None` for unconstrained sampling. Chat uses this to lock
+/// headers when a later user turn supersedes an earlier constraint.
 pub fn generate_completion(
     prompt: String,
     max_output_tokens: u32,
+    grammar: Option<String>,
     sink: StreamSink<GenerationEvent>,
 ) -> Result<(), String> {
     let emit = |event: GenerationEvent| -> Result<(), String> {
@@ -304,7 +309,7 @@ pub fn generate_completion(
             &GenerationRequest {
                 prompt,
                 max_output_tokens,
-                grammar: None,
+                grammar,
             },
             &cancel,
             &mut |chunk| {

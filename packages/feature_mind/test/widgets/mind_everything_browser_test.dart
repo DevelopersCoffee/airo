@@ -340,9 +340,7 @@ void main() {
       });
     });
 
-    testWidgets('an unavailable projections port names itself', (
-      tester,
-    ) async {
+    testWidgets('an unavailable projections port names itself', (tester) async {
       await onPlatform(TargetPlatform.macOS, () async {
         await pumpBrowser(
           tester,
@@ -364,9 +362,7 @@ void main() {
         final base = FixtureMindRuntime();
         await pumpBrowser(
           tester,
-          _RuntimeWithProjections(
-            _RebuildingProjectionPort(base.projections),
-          ),
+          _RuntimeWithProjections(_RebuildingProjectionPort(base.projections)),
         );
 
         final banner = find.byKey(

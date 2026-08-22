@@ -144,12 +144,17 @@ class LlamaGgufService {
     double temperature = 0.7,
     double topP = 0.9,
     int topK = 40,
+    String? grammar,
   }) {
     if (!isLoaded) {
       return Stream<String>.error(StateError('gguf_model_not_loaded'));
     }
     if (_ffiEngineReady) {
-      return _desktopBackend.generate(prompt: prompt, maxTokens: maxTokens);
+      return _desktopBackend.generate(
+        prompt: prompt,
+        maxTokens: maxTokens,
+        grammar: grammar,
+      );
     }
     if (isPlatformSupported) {
       return _guardedGeneration(

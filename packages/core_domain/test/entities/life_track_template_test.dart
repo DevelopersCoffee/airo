@@ -75,4 +75,36 @@ void main() {
       FieldType.document,
     );
   });
+
+  test('instantiates a track graph and applies labeled facts', () {
+    final now = DateTime.utc(2026, 8, 21);
+    final track = template.instantiate(
+      trackId: 'lt-flat',
+      title: 'Noida flat',
+      now: now,
+    );
+
+    expect(track.templateId, 'real_estate_under_construction_v1');
+    expect(track.milestones, hasLength(1));
+    expect(
+      track.milestones.single.actionItems.single.requirements,
+      hasLength(1),
+    );
+    expect(track.milestones.single.actionItems.single.status, ItemStatus.todo);
+
+    final updated = const LifeTrackFactPatch().apply(
+      track: track,
+      facts: const {'RERA Registration Number': 'UPRERAPRJ123'},
+      now: now,
+    );
+
+    expect(
+      updated.milestones.single.actionItems.single.requirements.single.value,
+      'UPRERAPRJ123',
+    );
+    expect(
+      updated.milestones.single.actionItems.single.status,
+      ItemStatus.done,
+    );
+  });
 }

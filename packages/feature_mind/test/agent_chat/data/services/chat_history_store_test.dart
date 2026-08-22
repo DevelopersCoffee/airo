@@ -22,7 +22,47 @@ void main() {
     expect(loaded.first.text, 'hello');
     expect(loaded.first.isUser, isTrue);
     expect(loaded.last.timestamp, timestamp.toLocal());
+    expect(loaded.last.runId, isNull);
   });
+
+  test(
+    'chat history v2 round-trips assistant runId and loads v1 payloads',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final store = ChatHistoryStore(preferences: preferences);
+      final timestamp = DateTime.utc(2026, 8, 21, 15, 0);
+
+      await store.save([
+        ChatHistoryEntry(
+          text: 'Make me a 7 day diet plan',
+          isUser: true,
+          timestamp: timestamp,
+        ),
+        ChatHistoryEntry(
+          text: 'Here',
+          isUser: false,
+          timestamp: timestamp,
+          runId: 'run-diet-1',
+        ),
+      ]);
+
+      final loaded = await store.load();
+      expect(loaded.last.runId, 'run-diet-1');
+      expect(loaded.last.text, 'Here');
+
+      SharedPreferences.setMockInitialValues({
+        ChatHistoryStore.storageKey:
+            '{"schemaVersion":1,"entries":[{"text":"old","isUser":false,"timestamp":"2026-07-30T02:30:00.000Z"}]}',
+      });
+      final v1Store = ChatHistoryStore(
+        preferences: await SharedPreferences.getInstance(),
+      );
+      final v1 = await v1Store.load();
+      expect(v1.single.text, 'old');
+      expect(v1.single.runId, isNull);
+    },
+  );
 
   test('chat history ignores corrupt or incompatible payloads', () async {
     SharedPreferences.setMockInitialValues({

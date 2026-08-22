@@ -10,7 +10,9 @@ class SpeakerEnrollmentContentStore {
 
   final Directory _contentDir;
 
-  static Future<SpeakerEnrollmentContentStore> open(String contentDirPath) async {
+  static Future<SpeakerEnrollmentContentStore> open(
+    String contentDirPath,
+  ) async {
     final dir = Directory(contentDirPath);
     if (!await dir.exists()) {
       await dir.create(recursive: true);
@@ -26,10 +28,9 @@ class SpeakerEnrollmentContentStore {
     for (var i = 0; i < embedding.length; i++) {
       bytes.setFloat32(i * 4, embedding[i], Endian.little);
     }
-    await _fileFor(profileId).writeAsBytes(
-      bytes.buffer.asUint8List(),
-      flush: true,
-    );
+    await _fileFor(
+      profileId,
+    ).writeAsBytes(bytes.buffer.asUint8List(), flush: true);
   }
 
   Future<List<double>?> get(String profileId) async {

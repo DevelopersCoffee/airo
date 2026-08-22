@@ -162,6 +162,7 @@ fn wire__crate__api__minutes__generate_completion_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_prompt = <String>::sse_decode(&mut deserializer);
             let api_max_output_tokens = <u32>::sse_decode(&mut deserializer);
+            let api_grammar = <Option<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::minutes::GenerationEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -172,6 +173,7 @@ fn wire__crate__api__minutes__generate_completion_impl(
                     let output_ok = crate::api::minutes::generate_completion(
                         api_prompt,
                         api_max_output_tokens,
+                        api_grammar,
                         api_sink,
                     )?;
                     Ok(output_ok)

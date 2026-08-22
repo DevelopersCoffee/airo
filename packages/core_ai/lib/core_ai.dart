@@ -42,6 +42,15 @@ export 'src/embeddings/embedding_service.dart';
 export 'src/litert/litert_lm_execution_adapter.dart';
 export 'src/litert/mediapipe_web_runtime_adapter.dart';
 
+// Generation constraints (prompt inertia + GBNF)
+export 'src/generation/gbnf_grammar.dart';
+export 'src/generation/generation_constraint.dart';
+export 'src/generation/prompt_inertia_guard.dart';
+export 'src/generation/scalar_constraint_kind.dart';
+
+// Chat turn inspector (#386 wrapper)
+export 'src/observability/chat_turn_trace.dart';
+
 // LLM Client
 export 'src/llm/llm_client.dart';
 export 'src/llm/llm_response.dart';

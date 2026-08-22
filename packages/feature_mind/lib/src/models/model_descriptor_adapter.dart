@@ -79,24 +79,21 @@ Future<List<RequiredModel>> pinnedRequiredModels() async => [
 const RequiredModel pinnedMultilingualSpeechModel = RequiredModel(
   fileName: 'ggml-tiny.bin',
   sizeBytes: 77691713,
-  sha256:
-      'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
+  sha256: 'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
 );
 
 /// Optional Standard-tier multilingual whisper — better long-meeting ASR.
 const RequiredModel pinnedSmallMultilingualSpeechModel = RequiredModel(
   fileName: 'ggml-small.bin',
   sizeBytes: 487601967,
-  sha256:
-      '1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b',
+  sha256: '1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b',
 );
 
 /// Optional Standard-tier English-only whisper.
 const RequiredModel pinnedSmallEnglishSpeechModel = RequiredModel(
   fileName: 'ggml-small.en.bin',
   sizeBytes: 487614201,
-  sha256:
-      'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
+  sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
 );
 
 /// Optional speech upgrades (tiny remains the default install).
@@ -117,7 +114,9 @@ Future<List<RequiredModel>> mindScribeRequiredModels({
 }) async {
   final required = await pinnedRequiredModels();
   if (!includeMultilingual) return required;
-  if (required.any((m) => m.fileName == pinnedMultilingualSpeechModel.fileName)) {
+  if (required.any(
+    (m) => m.fileName == pinnedMultilingualSpeechModel.fileName,
+  )) {
     return required;
   }
   return [...required, pinnedMultilingualSpeechModel];
@@ -132,8 +131,7 @@ const String kMindEcapaOnnxFileName = 'ecapa_tdnn_tiny_int8.onnx';
 const RequiredModel pinnedEcapaDiarizeModel = RequiredModel(
   fileName: kMindEcapaOnnxFileName,
   sizeBytes: 83476039,
-  sha256:
-      'f46380bbaeddb929fb3a10ab63a4b1877a50e3d1e5fdd55a1b618d5651d3f64e',
+  sha256: 'f46380bbaeddb929fb3a10ab63a4b1877a50e3d1e5fdd55a1b618d5651d3f64e',
 );
 
 /// Optional ECAPA diarization weights for multi-speaker labels.

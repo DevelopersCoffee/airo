@@ -34,42 +34,43 @@ void main() {
     expect(preRevoked.single.name, 'MacBook · Old');
   });
 
-  test('revoking an active device keeps it in the list, marked revoked', () async {
-    final before = await runtime.vault.devices();
-    final target = before.firstWhere((d) => !d.isThisDevice && !d.isRevoked);
-    final countBefore = before.length;
+  test(
+    'revoking an active device keeps it in the list, marked revoked',
+    () async {
+      final before = await runtime.vault.devices();
+      final target = before.firstWhere((d) => !d.isThisDevice && !d.isRevoked);
+      final countBefore = before.length;
 
-    await runtime.vault.revokeDevice(target.fingerprint);
-    final after = await runtime.vault.devices();
+      await runtime.vault.revokeDevice(target.fingerprint);
+      final after = await runtime.vault.devices();
 
-    // Mutation test in spirit: a fixture whose devices() list is unaffected
-    // by revokeDevice() (as it was before this fix) would let this pass for
-    // the wrong reason if it only checked "still present" without also
-    // checking the row actually flipped to revoked.
-    expect(
-      after.length,
-      countBefore,
-      reason: 'Revoking a device must not remove a row from the list.',
-    );
+      // Mutation test in spirit: a fixture whose devices() list is unaffected
+      // by revokeDevice() (as it was before this fix) would let this pass for
+      // the wrong reason if it only checked "still present" without also
+      // checking the row actually flipped to revoked.
+      expect(
+        after.length,
+        countBefore,
+        reason: 'Revoking a device must not remove a row from the list.',
+      );
 
-    final revoked = after.firstWhere(
-      (d) => d.fingerprint == target.fingerprint,
-    );
-    expect(
-      revoked.isRevoked,
-      isTrue,
-      reason: 'The row must actually flip to revoked, not just survive.',
-    );
-    expect(revoked.name, target.name);
-    expect(revoked.revokedAtMs, isNotNull);
-  });
+      final revoked = after.firstWhere(
+        (d) => d.fingerprint == target.fingerprint,
+      );
+      expect(
+        revoked.isRevoked,
+        isTrue,
+        reason: 'The row must actually flip to revoked, not just survive.',
+      );
+      expect(revoked.name, target.name);
+      expect(revoked.revokedAtMs, isNotNull);
+    },
+  );
 
   test('revoking a device does not disturb any other row', () async {
     final before = await runtime.vault.devices();
     final target = before.firstWhere((d) => !d.isThisDevice && !d.isRevoked);
-    final others = before.where(
-      (d) => d.fingerprint != target.fingerprint,
-    );
+    final others = before.where((d) => d.fingerprint != target.fingerprint);
 
     await runtime.vault.revokeDevice(target.fingerprint);
     final after = await runtime.vault.devices();
@@ -85,9 +86,7 @@ void main() {
   test('vault state reports one more revoked key after a revocation', () async {
     final before = await runtime.vault.state();
     final devices = await runtime.vault.devices();
-    final target = devices.firstWhere(
-      (d) => !d.isThisDevice && !d.isRevoked,
-    );
+    final target = devices.firstWhere((d) => !d.isThisDevice && !d.isRevoked);
 
     await runtime.vault.revokeDevice(target.fingerprint);
     final after = await runtime.vault.state();
@@ -95,15 +94,12 @@ void main() {
     expect(after.revokedCount, before.revokedCount + 1);
   });
 
-  test(
-    'DeviceFingerprint equality — the key revoke and lookups both use',
-    () {
-      const a = DeviceFingerprint('A731', '0C4E', '9982');
-      const b = DeviceFingerprint('A731', '0C4E', '9982');
-      const c = DeviceFingerprint('4F2A', '9C71', 'E0B3');
+  test('DeviceFingerprint equality — the key revoke and lookups both use', () {
+    const a = DeviceFingerprint('A731', '0C4E', '9982');
+    const b = DeviceFingerprint('A731', '0C4E', '9982');
+    const c = DeviceFingerprint('4F2A', '9C71', 'E0B3');
 
-      expect(a, b);
-      expect(a, isNot(c));
-    },
-  );
+    expect(a, b);
+    expect(a, isNot(c));
+  });
 }

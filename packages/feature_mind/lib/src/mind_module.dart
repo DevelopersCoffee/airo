@@ -233,6 +233,13 @@ class MindModule extends AppModule {
         GoRoute(
           path: AssistantRouteNames.modelsSegment,
           name: AssistantRouteNames.modelsName,
+          redirect: (context, state) {
+            // Standalone Mind already owns a shell tab at `/models`. Land
+            // there instead of nesting a second Intelligence screen under
+            // the Assistant branch (legacy chat tools still emit this path).
+            if (shell == ShellId.mind) return '/models';
+            return null;
+          },
           builder: (context, state) => Consumer(
             builder: (context, ref, _) => IntelligenceHomeScreen(
               libraryTab: ModelLibraryScreen(
