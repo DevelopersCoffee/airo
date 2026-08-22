@@ -50,6 +50,9 @@ import '../../../agent_chat/domain/models/research_request.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
 import '../../../agent_chat/domain/services/deep_research_engine.dart';
+import '../../../agent_chat/domain/services/research/research_checkpoint.dart';
+import '../../../agent_chat/domain/services/research/research_checkpoint_log.dart';
+import '../../../agent_chat/domain/services/research/research_control.dart';
 import '../../../agent_chat/domain/services/remote_agent_skill_installer.dart';
 import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
@@ -261,6 +264,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _deepResearchEnabled = false;
   ResearchSession? _researchSession;
   int _researchEpoch = 0;
+  ResearchControl? _researchControl;
+  ResearchCheckpoint? _resumableCheckpoint;
 
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
@@ -318,6 +323,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         unawaited(_restoreChatHistory());
       }
     }
+    unawaited(_restorePausedResearch());
     unawaited(initializeLifeTrackStatusConnector());
     unawaited(_loadEntityGraph());
     _workspace = widget.workspace ?? MemoryChatWorkspaceStore();
@@ -496,6 +502,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _researchControl?.cancel();
     MindChatMenuActions.detach(this);
     _selectedModelBarFocusNode.dispose();
     _skillsButtonFocusNode.dispose();
@@ -631,9 +638,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } on Object {
       // Ignore missing prefs in tests.
     }
+    _resetResearchUi();
     setState(() {
       _messages.clear();
-      _resetResearchUi();
     });
     _chats = await _workspace.listChats();
     if (mounted) setState(() {});
@@ -651,13 +658,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Ignore missing prefs in tests.
     }
     if (!mounted) return;
+    _resetResearchUi();
     setState(() {
       _messages
         ..clear()
         ..addAll(turns.map(_messageFromTurn));
-      _researchEpoch++;
-      _researchSession = null;
-      _deepResearchEnabled = false;
     });
   }
 
@@ -829,7 +834,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     ),
                     if (_researchSession != null)
-                      DeepResearchProgressPanel(session: _researchSession!),
+                      DeepResearchProgressPanel(
+                        session: _researchSession!,
+                        onPause: _researchSession!.isPaused
+                            ? null
+                            : _researchControl?.pause,
+                        onResume: _researchSession!.isPaused
+                            ? (_researchControl?.resume ??
+                                  _resumePersistedResearch)
+                            : null,
+                        onCancel: _researchControl?.cancel,
+                      ),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -1477,9 +1492,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       if (shouldClear != true || !mounted) return;
     }
+    _resetResearchUi();
     setState(() {
       _messages.clear();
-      _resetResearchUi();
     });
     await _chatHistoryStore.clear();
     try {
@@ -1733,20 +1748,89 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _resetResearchUi() {
+    _researchControl?.cancel();
+    _researchControl = null;
+    final leftover = _resumableCheckpoint;
+    if (leftover != null && !leftover.isTerminal) {
+      unawaited(
+        appendResearchCheckpointOp(
+          log: _operationLogPort,
+          checkpoint: leftover.copyWith(state: ResearchPhase.cancelled),
+        ),
+      );
+    }
+    _resumableCheckpoint = null;
     _researchEpoch++;
     _researchSession = null;
     _deepResearchEnabled = false;
   }
 
-  Future<void> _runDeepResearch(String question) async {
+  Future<void> _restorePausedResearch() async {
+    final checkpoint = await latestResumableResearchCheckpoint(
+      _operationLogPort,
+    );
+    if (!mounted || checkpoint == null) {
+      return;
+    }
+    setState(() {
+      _resumableCheckpoint = checkpoint;
+      _deepResearchEnabled = true;
+      _researchSession = ResearchSession(
+        request: ResearchRequest(question: checkpoint.question),
+        events: [
+          const ResearchEvent(
+            kind: ResearchEventKind.planningStarted,
+            label: 'Understanding question',
+          ),
+          const ResearchEvent(
+            kind: ResearchEventKind.planCreated,
+            label: 'Creating research plan',
+          ),
+          if (checkpoint.state == ResearchPhase.paused)
+            const ResearchEvent(
+              kind: ResearchEventKind.researchPaused,
+              label: 'Research paused',
+            ),
+        ],
+      );
+    });
+  }
+
+  void _resumePersistedResearch() {
+    final checkpoint = _resumableCheckpoint;
+    if (checkpoint == null) {
+      return;
+    }
+    unawaited(_runDeepResearch(checkpoint.question, resumeFrom: checkpoint));
+  }
+
+  Future<void> _runDeepResearch(
+    String question, {
+    ResearchCheckpoint? resumeFrom,
+  }) async {
     final request = ResearchRequest(question: question);
     final epoch = ++_researchEpoch;
+    final control = ResearchControl();
     setState(() {
+      _researchControl = control;
       _researchSession = ResearchSession(request: request);
       _isGenerating = true;
     });
     try {
-      await for (final event in _deepResearchEngine.run(request)) {
+      await for (final event in _deepResearchEngine.run(
+        request,
+        control: control,
+        resumeFrom: resumeFrom,
+        onCheckpoint: (checkpoint) {
+          _resumableCheckpoint = checkpoint;
+          unawaited(
+            appendResearchCheckpointOp(
+              log: _operationLogPort,
+              checkpoint: checkpoint,
+            ),
+          );
+        },
+      )) {
         if (!mounted || epoch != _researchEpoch) {
           return;
         }

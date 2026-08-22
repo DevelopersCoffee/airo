@@ -5,6 +5,11 @@ import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.
 import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/deep_research_engine.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint_log.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_control.dart';
+import 'package:feature_mind/src/runtime/models/log_models.dart';
+import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/chat_screen.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:feature_mind/src/host/assistant_host_adapter.dart';
@@ -15,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/fake_assistant_host_adapter.dart';
 import '../../../support/gemini_nano_channel.dart';
+import '../../../support/recording_operation_log.dart';
 
 void main() {
   testWidgets('Deep Research button starts a typed research job, not chat', (
@@ -83,13 +89,44 @@ void main() {
     );
     expect(find.text('RESEARCH COMPLETE'), findsNothing);
   });
+
+  testWidgets('reattaches a paused research job from the operation log', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchCheckpointOp(
+      log: log,
+      checkpoint: const ResearchCheckpoint(
+        jobId: 'job-1',
+        question: 'What is Qwen?',
+        state: ResearchPhase.paused,
+        pausedFrom: ResearchPhase.searching,
+        searchesUsed: 1,
+        iterationsUsed: 1,
+        completedNodeIds: ['root'],
+      ),
+    );
+
+    await _pumpChatScreen(tester, operationLogPort: log);
+
+    expect(find.text('RESEARCH PAUSED'), findsOneWidget);
+    expect(
+      find.byKey(const Key('agent_chat_deep_research_resume')),
+      findsOneWidget,
+    );
+  });
 }
 
 class _ImmediateResearchEngine implements DeepResearchEngine {
   const _ImmediateResearchEngine();
 
   @override
-  Stream<ResearchEvent> run(ResearchRequest request) async* {
+  Stream<ResearchEvent> run(
+    ResearchRequest request, {
+    ResearchControl? control,
+    ResearchCheckpoint? resumeFrom,
+    void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+  }) async* {
     yield const ResearchEvent(
       kind: ResearchEventKind.planningStarted,
       label: 'Understanding question',
@@ -115,7 +152,10 @@ class _ImmediateResearchEngine implements DeepResearchEngine {
   }
 }
 
-Future<void> _pumpChatScreen(WidgetTester tester) async {
+Future<void> _pumpChatScreen(
+  WidgetTester tester, {
+  OperationLogPort? operationLogPort,
+}) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
   addTearDown(() {
@@ -146,6 +186,7 @@ Future<void> _pumpChatScreen(WidgetTester tester) async {
           enableAiInitialization: false,
           initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
           deepResearchEngine: const _ImmediateResearchEngine(),
+          operationLogPort: operationLogPort,
         ),
       ),
     ),

@@ -161,10 +161,7 @@ fn numbers(text: &str) -> std::collections::BTreeSet<u32> {
 
 fn topic_overlap(left: &str, right: &str) -> std::collections::BTreeSet<String> {
     let left_tokens = tokens(left);
-    left_tokens
-        .intersection(&tokens(right))
-        .cloned()
-        .collect()
+    left_tokens.intersection(&tokens(right)).cloned().collect()
 }
 
 fn tokens(text: &str) -> std::collections::BTreeSet<String> {
@@ -184,9 +181,15 @@ enum Hardware {
 
 fn hardware(text: &str) -> Hardware {
     let lower = text.to_ascii_lowercase();
-    if ["mobile", "phone", "pixel", "android"].iter().any(|k| lower.contains(k)) {
+    if ["mobile", "phone", "pixel", "android"]
+        .iter()
+        .any(|k| lower.contains(k))
+    {
         Hardware::Mobile
-    } else if ["desktop", "workstation", "server"].iter().any(|k| lower.contains(k)) {
+    } else if ["desktop", "workstation", "server"]
+        .iter()
+        .any(|k| lower.contains(k))
+    {
         Hardware::Desktop
     } else {
         Hardware::Unknown

@@ -105,10 +105,7 @@ pub fn split_subjects(question: &str) -> Vec<String> {
     } else {
         question
     };
-    let cut = rest
-        .split(" for ")
-        .next()
-        .unwrap_or(rest);
+    let cut = rest.split(" for ").next().unwrap_or(rest);
     let cut = cut.split(" vs ").next().unwrap_or(cut);
     let normalized = cut.replace(" versus ", ", ").replace(" and ", ", ");
     normalized
@@ -136,7 +133,11 @@ fn dimensions_for(intent: ResearchIntent) -> Vec<String> {
             "implementation".into(),
         ],
         ResearchIntent::AcademicResearch => {
-            vec!["primary literature".into(), "methods".into(), "replication".into()]
+            vec![
+                "primary literature".into(),
+                "methods".into(),
+                "replication".into(),
+            ]
         }
         _ => vec!["primary sources".into()],
     }
