@@ -97,6 +97,97 @@ class LifeTrackFactExtractor {
     ).hasMatch(prompt);
   }
 
+  bool looksHospitalStay(String prompt) {
+    final lower = prompt.toLowerCase();
+    return lower.contains('surgery') ||
+        lower.contains('hospital') ||
+        lower.contains('pre-op') ||
+        lower.contains('preop') ||
+        lower.contains('operation') ||
+        lower.contains('recovery');
+  }
+
+  ExtractedLifeTrackFacts extractMedicalSurgery(String prompt) {
+    if (!looksHospitalStay(prompt)) {
+      return const ExtractedLifeTrackFacts(
+        title: 'Hospital stay',
+        templateId: 'medical_surgery_v1',
+        facts: {},
+      );
+    }
+
+    final facts = <String, String>{};
+    final hospital = _hospital(prompt);
+    if (hospital != null) facts['Hospital'] = hospital;
+
+    final date = _surgeryDate(prompt);
+    if (date != null) facts['Surgery Date'] = date;
+
+    final tests = _requiredTests(prompt);
+    if (tests != null) facts['Required Tests List'] = tests;
+
+    final auth = _authorizationReference(prompt);
+    if (auth != null) facts['Insurance Authorization Reference'] = auth;
+
+    return ExtractedLifeTrackFacts(
+      title: hospital == null ? 'Hospital stay' : '$hospital surgery',
+      templateId: 'medical_surgery_v1',
+      facts: facts,
+    );
+  }
+
+  bool looksPropertyPurchase(String prompt) {
+    final lower = prompt.toLowerCase();
+    return lower.contains('rera') ||
+        lower.contains('flat') ||
+        lower.contains('property') ||
+        lower.contains('builder') ||
+        lower.contains('buying') ||
+        lower.contains('purchasing') ||
+        lower.contains('tower') ||
+        lower.contains('under-construction') ||
+        lower.contains('under construction');
+  }
+
+  ExtractedLifeTrackFacts extractPropertyPurchase(String prompt) {
+    if (!looksPropertyPurchase(prompt)) {
+      return const ExtractedLifeTrackFacts(
+        title: 'Property purchase',
+        templateId: 'real_estate_under_construction_v1',
+        facts: {},
+      );
+    }
+
+    final facts = <String, String>{};
+    final rera = _reraNumber(prompt);
+    if (rera != null) facts['RERA Registration Number'] = rera;
+
+    final builder = _builderName(prompt);
+    if (builder != null) {
+      facts['Builder'] = builder;
+      facts['Builder Track Record Notes'] = builder;
+    }
+
+    final project = _propertyProject(prompt);
+    if (project != null) facts['Project'] = project;
+
+    final floor = _targetFloor(prompt);
+    if (floor != null) facts['Your Target Floor'] = floor;
+
+    final amenities = _labeledValue(prompt, const [
+      'amenities',
+      'promised amenities',
+    ]);
+    if (amenities != null) facts['Promised Amenities List'] = amenities;
+
+    final titleParts = [?builder, ?project];
+    return ExtractedLifeTrackFacts(
+      title: titleParts.isEmpty ? 'Property purchase' : titleParts.join(' '),
+      templateId: 'real_estate_under_construction_v1',
+      facts: facts,
+    );
+  }
+
   ExtractedLifeTrackFacts extractStudyProgress(String prompt) {
     final facts = <String, String>{};
     final subject = _studySubject(prompt);
@@ -126,6 +217,92 @@ class LifeTrackFactExtractor {
       templateId: 'study_progress_v1',
       facts: facts,
     );
+  }
+
+  String? _hospital(String prompt) {
+    final labeled = _labeledValue(prompt, const ['hospital']);
+    if (labeled != null) return labeled;
+    final match = RegExp(
+      r'(?:at|in)\s+((?:[A-Z][A-Za-z0-9&]+\s+)+Hospital)\b',
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _surgeryDate(String prompt) {
+    final match = RegExp(
+      r'\bon\s+(\d{1,2}(?:st|nd|rd|th)?\s+'
+      r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _requiredTests(String prompt) {
+    final match = RegExp(
+      r'(?:pre-?op(?:erative)?\s+)?tests?\s*[:\-]?\s*(.+?)'
+      r'(?:,\s*auth|\s+auth|[.]|$)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    final value = match?.group(1)?.trim();
+    if (value == null || value.isEmpty) return null;
+    if (RegExp(r'^(list|the|my)\b', caseSensitive: false).hasMatch(value)) {
+      return null;
+    }
+    return value.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String? _authorizationReference(String prompt) {
+    final match = RegExp(
+      r'(?:(?:insurance\s+)?auth(?:orization)?(?:\s+ref(?:erence)?)?|'
+      r'pre-?auth(?:orization)?(?:\s+ref(?:erence)?)?)\s*[:\-]?\s*'
+      r'([A-Z0-9][A-Z0-9\-]{3,})',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _reraNumber(String prompt) {
+    final match = RegExp(
+      r'(?:rera(?:\s+(?:registration\s+)?(?:no\.?|number|id))?\s*[:\-]?\s*)'
+      r'([A-Z]\d{8,14})',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _builderName(String prompt) {
+    final labeled = _labeledValue(prompt, const ['builder']);
+    if (labeled != null) return labeled;
+    final match = RegExp(
+      r'\bfrom\s+([A-Z][A-Za-z0-9&]+(?:\s+[A-Z][A-Za-z0-9&]+){0,3})',
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _propertyProject(String prompt) {
+    final tower = RegExp(r'\b(Tower\s+[A-Z0-9]+)\b').firstMatch(prompt);
+    if (tower != null) return tower.group(1);
+    final buying = RegExp(
+      r'(?:buying|purchasing)\s+(?:an?\s+)?(.+?)(?:\s+floor|\s+from|,|$)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    final value = buying?.group(1)?.trim();
+    if (value == null || value.isEmpty) return null;
+    final lower = value.toLowerCase();
+    if (lower.contains('flat') ||
+        lower.contains('property') ||
+        lower.contains('apartment')) {
+      return null;
+    }
+    return value;
+  }
+
+  String? _targetFloor(String prompt) {
+    final match = RegExp(
+      r'(?:(?:your\s+)?target\s+floor|floor)\s*[:\-]?\s*(\d{1,3})\b',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
   }
 
   String? _studySubject(String prompt) {

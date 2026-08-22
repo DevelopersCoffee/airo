@@ -100,6 +100,18 @@ void main() {
         );
         expect(
           PersonaSession(
+            pinned: hospitalRecoveryPersona,
+          ).usesTool('query_entity_graph'),
+          isTrue,
+        );
+        expect(
+          PersonaSession(
+            pinned: hospitalRecoveryPersona,
+          ).usesTool('record_lifetrack_facts'),
+          isTrue,
+        );
+        expect(
+          PersonaSession(
             pinned: universityAdmissionPersona,
           ).usesTool('create_calendar_event'),
           isTrue,
