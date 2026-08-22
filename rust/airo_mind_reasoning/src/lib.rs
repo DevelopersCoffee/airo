@@ -34,6 +34,7 @@ pub use grammar::RESULT_GRAMMAR;
 pub use intent::ClassifiedIntent;
 pub use level::ReasoningLevel;
 pub use policy::{HeuristicReasoningPolicy, ReasoningPolicy};
+pub use prompt::MAX_ENVELOPE_SHOTS;
 pub use request::{ReasoningRequest, ToolDefinition};
 pub use result::{ReasoningResult, ToolCall};
 pub use tools::{ToolExecutor, MAX_TOOL_ITERATIONS};

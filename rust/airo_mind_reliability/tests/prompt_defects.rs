@@ -90,6 +90,7 @@ fn ambiguous_improve_request_asks_user_before_inference() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: false,
     });
@@ -116,6 +117,7 @@ fn specific_request_is_allowed() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: false,
     });
@@ -138,6 +140,7 @@ fn injection_aborts_before_the_model() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: false,
     });
@@ -172,6 +175,7 @@ fn unsatisfiable_same_layer_instructions_abort() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: false,
     });
@@ -202,6 +206,7 @@ fn over_budget_rebuilds_context_instead_of_calling_the_model() {
         },
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: false,
         requires_structured_output: false,
     });
@@ -238,6 +243,7 @@ fn missing_output_contract_blocks_structured_tasks() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: true,
     });
@@ -274,6 +280,7 @@ fn schema_mismatch_is_an_engineering_defect_not_pm04() {
         budget: budget_ok(),
         definition: Some(&def),
         prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 0,
         history_empty: true,
         requires_structured_output: true,
     });
@@ -283,6 +290,33 @@ fn schema_mismatch_is_an_engineering_defect_not_pm04() {
         .iter()
         .any(|f| f.defect == PromptDefect::Eng005IntegrationMismatch));
     assert!(FailureMode::from_id("PD-ENG-005").is_none());
+}
+
+#[test]
+fn more_than_two_few_shots_is_pd_perf_002_and_does_not_block() {
+    let (task, instructions, prompt) = empty_task(
+        "rename locals",
+        "Rename locals in parse_config for readability.",
+    );
+    let def = registered();
+    let report = PromptQualityGate::inspect(PromptInspection {
+        task: &task,
+        instructions: &instructions,
+        prompt: &prompt,
+        context: None,
+        budget: budget_ok(),
+        definition: Some(&def),
+        prefix_cache: PrefixCacheCapability::Unsupported,
+        few_shot_count: 5,
+        history_empty: true,
+        requires_structured_output: false,
+    });
+    assert_eq!(report.decision, PromptGateDecision::Allow);
+    assert!(!report.blocks_inference());
+    assert!(report
+        .findings
+        .iter()
+        .any(|f| f.defect == PromptDefect::Perf002InefficientFewShot));
 }
 
 #[test]

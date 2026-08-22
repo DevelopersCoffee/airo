@@ -183,6 +183,7 @@ abstract final class ChatTurnReliability {
     RegisteredPrompt definition = AiroPromptRegistry.chatAssistant,
     PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
     int cacheablePrefixTokens = 0,
+    int fewShotCount = 0,
   }) {
     final gate = PromptQualityGate.inspectUserTurn(
       userText: userText,
@@ -192,6 +193,7 @@ abstract final class ChatTurnReliability {
       outputBudget: outputBudget,
       prefixCache: prefixCache,
       cacheablePrefixTokens: cacheablePrefixTokens,
+      fewShotCount: fewShotCount,
     );
     final rebuild = gate.decision == PromptGateDecision.rebuildContext;
     return ChatTurnPlan(
