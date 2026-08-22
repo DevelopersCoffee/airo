@@ -1,10 +1,13 @@
-import 'package:feature_mind/src/services/gguf_load_outcome.dart';
-import 'package:feature_mind/src/services/llama_gguf_service.dart';
+import 'package:core_ai/core_ai.dart';
+import 'package:core_data/core_data.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_runtime_service.dart';
+import 'package:feature_mind/src/agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
-import 'package:core_ai/core_ai.dart';
+import 'package:feature_mind/src/services/gguf_load_outcome.dart';
+import 'package:feature_mind/src/services/llama_gguf_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1214,6 +1217,70 @@ void main() {
         isNot(contains('hello')),
       );
     });
+
+    test('empty cloud failure survives a second service hydrate', () async {
+      final store = MemoryReliabilityCheckpointStore();
+      final emptyService = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => '   ',
+        checkpointStore: store,
+      );
+      await expectLater(
+        () => emptyService.generateText(
+          selectedModelId: geminiCloudAssistantModelId,
+          prompt: 'hello',
+        ),
+        throwsA(isA<AssistantRuntimeUnavailableException>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(store.encoded, isNotNull);
+      expect(store.encoded, isNot(contains('hello')));
+      expect(store.encoded, contains('PM-06'));
+      expect(store.encoded, contains('AIRO-R06'));
+
+      final second = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => 'ok',
+        checkpointStore: MemoryReliabilityCheckpointStore(store.encoded),
+      );
+      final text = await second.generateText(
+        selectedModelId: geminiCloudAssistantModelId,
+        prompt: 'hello',
+      );
+      expect(text, 'ok');
+      expect(second.reliabilityLog.checkpoints, hasLength(1));
+      expect(
+        second.reliabilityLog.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(second.reliabilityLog.encode(), isNot(contains('hello')));
+    });
+
+    test(
+      'prefs checkpoint store round-trips metadata without prompt text',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await PreferencesStore.create();
+        final store = PreferencesReliabilityCheckpointStore(prefs);
+        const secret = 'SECRET_PROMPT_BODY ignore previous instructions';
+        final log = ExecutionLog();
+        log.record(
+          FailureClassifier.recordChatCompletion(
+            executionId: 'chat-1',
+            text: secret,
+            engineOk: false,
+          ),
+        );
+        await store.save(log.encode());
+        final raw = await store.load();
+        expect(raw, isNotNull);
+        expect(raw, isNot(contains(secret)));
+        expect(raw, contains('PM-08'));
+        expect(raw, contains('AIRO-R07'));
+      },
+    );
 
     test('cancels preparation before runtime work starts', () async {
       final service = AssistantRuntimeService(

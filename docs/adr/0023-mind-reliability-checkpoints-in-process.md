@@ -105,6 +105,8 @@ KV reuse can land later as an adapter flag without this ADR.
   primitive for Mind ops; this ADR does not use it.
 - [ADR-0022](0022-meeting-ir-mind-persistence-mapping.md) — meeting IR may add
   `MindOpKind.meetingIrExtracted`; reliability must not ride that kind.
+- [ADR-0024](0024-reliability-checkpoints-prefs-tier.md) — names the Prefs tier
+  as the existing store for checkpoint *metadata* (ids only).
 
 ## References
 

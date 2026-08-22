@@ -108,6 +108,7 @@ export 'src/agent_chat/application/assistant_model_preferences.dart';
 export 'src/agent_chat/application/assistant_runtime_readiness.dart';
 export 'src/agent_chat/data/services/agent_notification_scheduler.dart';
 export 'src/agent_chat/data/services/assistant_runtime_service.dart';
+export 'src/agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 export 'src/agent_chat/data/services/chat_history_store.dart';
 export 'src/agent_chat/data/services/notification_navigation_service.dart';
 export 'src/agent_chat/domain/models/agent_skill.dart';

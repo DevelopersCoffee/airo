@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:core_data/core_data.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:platform_calendar/platform_calendar.dart';
 import '../../../host/assistant_host_adapter.dart';
@@ -23,6 +24,7 @@ import '../../../widgets/mind_desktop_chrome.dart';
 import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
@@ -278,6 +280,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         unawaited(_restoreChatHistory());
       }
     }
+    unawaited(_attachReliabilityCheckpoints());
     unawaited(initializeLifeTrackStatusConnector());
     MindChatMenuActions.attach(
       this,
@@ -285,6 +288,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       exportChat: () => unawaited(_copyTranscript()),
       clearChat: () => unawaited(_confirmClearConversation()),
     );
+  }
+
+  Future<void> _attachReliabilityCheckpoints() async {
+    try {
+      final prefs = await PreferencesStore.create();
+      if (!mounted) return;
+      _assistantRuntime.attachCheckpointStore(
+        PreferencesReliabilityCheckpointStore(prefs),
+      );
+    } on Object {
+      // Prefs I/O must not fail chat (ADR-0024).
+    }
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {

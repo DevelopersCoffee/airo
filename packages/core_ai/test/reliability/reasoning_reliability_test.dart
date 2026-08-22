@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -358,6 +360,54 @@ void main() {
     expect(log.checkpoints.toString(), isNot(contains(secret)));
     expect(log.checkpoints.toString(), isNot(contains('PM-17')));
   });
+
+  test(
+    'checkpoint codec drops extra keys and never stores prompt text',
+    () async {
+      const secret = 'SECRET_PROMPT_BODY ignore previous instructions';
+      final polluted = jsonEncode([
+        {
+          'executionId': 'chat-1',
+          'failureMode': 'PM-06',
+          'runtimeError': 'AIRO-R06',
+          'prompt': secret,
+          'completion': 'hello',
+        },
+      ]);
+      final log = ExecutionLog();
+      log.restoreFromDisk(ExecutionLog.decode(polluted));
+      expect(log.checkpoints, hasLength(1));
+      expect(log.lastFailure?.failureMode, FailureMode.pm06LogicCollapse);
+      expect(log.encode(), isNot(contains(secret)));
+      expect(log.encode(), isNot(contains('hello')));
+      expect(log.encode(), isNot(contains('prompt')));
+      expect(ExecutionLog.decode('not-json'), isEmpty);
+      expect(ExecutionLog.decode('{}'), isEmpty);
+
+      final newer = FailureClassifier.recordChatCompletion(
+        executionId: 'chat-2',
+        text: secret,
+        engineOk: false,
+      );
+      final live = ExecutionLog();
+      live.record(newer);
+      live.restoreFromDisk(log.checkpoints);
+      expect(live.checkpoints.map((c) => c.executionId).toList(), [
+        'chat-1',
+        'chat-2',
+      ]);
+
+      final store = MemoryReliabilityCheckpointStore();
+      await store.save(log.encode());
+      final restored = ExecutionLog();
+      restored.restoreFromDisk(ExecutionLog.decode(await store.load() ?? ''));
+      expect(
+        restored.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(store.encoded, isNot(contains(secret)));
+    },
+  );
 
   test('chat goal cannot complete without verification', () {
     final running = ChatTurnGoal(goal: 'What is 2+2?').start();
