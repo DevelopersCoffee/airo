@@ -95,6 +95,28 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   void cancel() => cancelCalls++;
 
   @override
+  Stream<TranscriptEvent> startLiveSession({
+    required String meetingId,
+    String? language,
+  }) =>
+      Stream.fromIterable(transcriptEvents);
+
+  @override
+  void pushLivePcm({required String sessionId, required List<int> samples}) {}
+
+  @override
+  void pauseLiveSession({required String sessionId}) {}
+
+  @override
+  void resumeLiveSession({required String sessionId}) {}
+
+  @override
+  Future<void> stopLiveSession({required String sessionId}) async {}
+
+  @override
+  void cancelLiveSession({required String sessionId}) {}
+
+  @override
   Future<List<rust.MeetingRecord>> meetings() async => [];
 
   @override

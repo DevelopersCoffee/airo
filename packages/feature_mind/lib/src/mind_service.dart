@@ -11,6 +11,7 @@ import 'package:record/record.dart';
 
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
+import 'capture/domain/live_refine_reconciliation.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
 import 'mind_diarization.dart';
 import 'mind_indic_intelligence.dart';
@@ -460,6 +461,10 @@ class MindService {
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
             return;
+          case TranscriptEventDelta():
+            continue;
+          case TranscriptEventDegraded():
+            continue;
         }
         yield progress;
       }
@@ -545,6 +550,291 @@ class MindService {
       final savedMeeting = await _speech.meeting(savedMeetingId);
       if (savedMeeting != null) {
         // Agent G (#1770): warm semantic search index after each save.
+        await indexMeetingForSearch(savedMeeting);
+      }
+
+      final log = _operationLog;
+      if (log != null) {
+        await appendMeetingIrExtractedOp(
+          log: log,
+          meetingId: savedMeetingId,
+          meetingTitle: title,
+          contextId: _meetingContextId,
+          decisionCount: decisions.length,
+          actionItemCount: actionItems.length,
+          metricCount: metrics.length,
+        );
+      }
+
+      yield progress.copyWith(stage: MindStage.done, meetingId: savedMeetingId);
+    } on Object catch (e) {
+      yield progress.copyWith(
+        stage: MindStage.failed,
+        error: _formatProcessingError(e),
+      );
+    }
+  }
+
+  /// Minutes + save for a transcript that live STT already produced.
+  Stream<MindProgress> processWithTranscript({
+    required String wavPath,
+    required String title,
+    required String transcript,
+    required List<TranscriptSegment> segments,
+    String? language,
+  }) async* {
+    var progress = MindProgress(
+      stage: MindStage.extracting,
+      transcript: transcript,
+      segments: ensureSpeakerLabels(segments),
+    );
+    yield progress;
+
+    final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
+    final meetingId = 'm$recordedAtMs';
+
+    var decisions = const <rust.MeetingDecisionRecord>[];
+    var actionItems = const <rust.MeetingActionItemRecord>[];
+    var metrics = const <rust.MeetingMetricRecord>[];
+
+    try {
+      final speechMode = await MindIndicPreferences.readSpeechMode();
+      if (speechMode == MindIndicSpeechMode.sarvamEdge) {
+        yield progress.copyWith(
+          stage: MindStage.failed,
+          error:
+              'Sarvam Edge on-device ASR is not available in this build yet.',
+        );
+        return;
+      }
+
+      final dir = await modelsDirectory();
+      final memoryInfo = await core_ai.DeviceCapabilityService()
+          .getMemoryInfo();
+      final generationMode = await MindIndicPreferences.readGenerationMode();
+      final indicCapability = MindIndicCapability(
+        entitlements: _entitlements,
+        memoryInfo: memoryInfo,
+      );
+      final wantsIndicGeneration = indicCapability.shouldPreferIndicGeneration(
+        generationMode,
+      );
+      final sarvamOnDisk =
+          wantsIndicGeneration &&
+          PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
+      await _generation.ensureLoaded(
+        modelsDir: dir.path,
+        memoryBudgetMb: 4096,
+        preferIndicGeneration: sarvamOnDisk,
+        allowCompactFallback:
+            generationMode != MindIndicGenerationMode.enhancedIndic,
+      );
+
+      await for (final event in _generation.processMeetingIntelligence(
+        meetingId: meetingId,
+        title: title,
+        segments: progress.segments,
+      )) {
+        switch (event) {
+          case MeetingIntelligenceEventExtracting():
+            progress = progress.copyWith(stage: MindStage.extracting);
+          case MeetingIntelligenceEventGenerating(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.generating,
+              minutes: progress.minutes + text,
+            );
+          case MeetingIntelligenceEventIrReady(
+            decisions: final irDecisions,
+            actionItems: final irActionItems,
+            metrics: final irMetrics,
+          ):
+            decisions = irDecisions;
+            actionItems = irActionItems;
+            metrics = irMetrics;
+            continue;
+          case MeetingIntelligenceEventMinutesReady(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.saving,
+              minutes: text,
+            );
+          case MeetingIntelligenceEventCancelled():
+            yield progress.copyWith(stage: MindStage.idle);
+            return;
+        }
+        yield progress;
+      }
+
+      final savedMeetingId = await _speech.save(
+        title: title,
+        recordedAtMs: recordedAtMs,
+        transcript: progress.transcript,
+        minutes: progress.minutes,
+        model: _generation.modelId(),
+        segments: progress.segments,
+        wavPath: wavPath,
+        decisions: decisions,
+        actionItems: actionItems,
+        metrics: metrics,
+      );
+
+      final savedMeeting = await _speech.meeting(savedMeetingId);
+      if (savedMeeting != null) {
+        await indexMeetingForSearch(savedMeeting);
+      }
+
+      final log = _operationLog;
+      if (log != null) {
+        await appendMeetingIrExtractedOp(
+          log: log,
+          meetingId: savedMeetingId,
+          meetingTitle: title,
+          contextId: _meetingContextId,
+          decisionCount: decisions.length,
+          actionItemCount: actionItems.length,
+          metricCount: metrics.length,
+        );
+      }
+
+      yield progress.copyWith(stage: MindStage.done, meetingId: savedMeetingId);
+    } on Object catch (e) {
+      yield progress.copyWith(
+        stage: MindStage.failed,
+        error: _formatProcessingError(e),
+      );
+    }
+  }
+
+  /// File ASR followed by reconciliation with live baseline segments
+  /// (`ADR-0025` §3.1 live + refine).
+  Stream<MindProgress> processWithRefine({
+    required String wavPath,
+    required String title,
+    required List<TranscriptSegment> baselineSegments,
+    String? language,
+  }) async* {
+    var progress = const MindProgress(stage: MindStage.transcribing);
+    yield progress;
+
+    final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
+    final meetingId = 'm$recordedAtMs';
+
+    var decisions = const <rust.MeetingDecisionRecord>[];
+    var actionItems = const <rust.MeetingActionItemRecord>[];
+    var metrics = const <rust.MeetingMetricRecord>[];
+
+    try {
+      final speechMode = await MindIndicPreferences.readSpeechMode();
+      if (speechMode == MindIndicSpeechMode.sarvamEdge) {
+        yield progress.copyWith(
+          stage: MindStage.failed,
+          error:
+              'Sarvam Edge on-device ASR is not available in this build yet.',
+        );
+        return;
+      }
+
+      await for (final event in _speech.transcribe(
+        wavPath: wavPath,
+        language: language,
+      )) {
+        switch (event) {
+          case TranscriptEventTranscribing(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.transcribing,
+              transcript: _append(progress.transcript, text),
+            );
+          case TranscriptEventTranscriptReady(:final text, :final segments):
+            final reconciled = reconcileLiveRefineTranscript(
+              baseline: baselineSegments,
+              refined: segments,
+            );
+            progress = progress.copyWith(
+              stage: MindStage.extracting,
+              transcript: joinTranscriptSegments(reconciled),
+              segments: ensureSpeakerLabels(reconciled),
+            );
+          case TranscriptEventCancelled():
+            yield progress.copyWith(stage: MindStage.idle);
+            return;
+          case TranscriptEventDelta():
+            continue;
+          case TranscriptEventDegraded():
+            continue;
+        }
+        yield progress;
+      }
+
+      final dir = await modelsDirectory();
+      final memoryInfo = await core_ai.DeviceCapabilityService()
+          .getMemoryInfo();
+      final generationMode = await MindIndicPreferences.readGenerationMode();
+      final indicCapability = MindIndicCapability(
+        entitlements: _entitlements,
+        memoryInfo: memoryInfo,
+      );
+      final wantsIndicGeneration = indicCapability.shouldPreferIndicGeneration(
+        generationMode,
+      );
+      final sarvamOnDisk =
+          wantsIndicGeneration &&
+          PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
+      await _generation.ensureLoaded(
+        modelsDir: dir.path,
+        memoryBudgetMb: 4096,
+        preferIndicGeneration: sarvamOnDisk,
+        allowCompactFallback:
+            generationMode != MindIndicGenerationMode.enhancedIndic,
+      );
+
+      await for (final event in _generation.processMeetingIntelligence(
+        meetingId: meetingId,
+        title: title,
+        segments: progress.segments,
+      )) {
+        switch (event) {
+          case MeetingIntelligenceEventExtracting():
+            progress = progress.copyWith(stage: MindStage.extracting);
+          case MeetingIntelligenceEventGenerating(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.generating,
+              minutes: progress.minutes + text,
+            );
+          case MeetingIntelligenceEventIrReady(
+            decisions: final irDecisions,
+            actionItems: final irActionItems,
+            metrics: final irMetrics,
+          ):
+            decisions = irDecisions;
+            actionItems = irActionItems;
+            metrics = irMetrics;
+            continue;
+          case MeetingIntelligenceEventMinutesReady(:final text):
+            progress = progress.copyWith(
+              stage: MindStage.saving,
+              minutes: text,
+            );
+          case MeetingIntelligenceEventCancelled():
+            yield progress.copyWith(stage: MindStage.idle);
+            return;
+        }
+        yield progress;
+      }
+
+      final savedMeetingId = await _speech.save(
+        title: title,
+        recordedAtMs: recordedAtMs,
+        transcript: progress.transcript,
+        minutes: progress.minutes,
+        model: _generation.modelId(),
+        segments: progress.segments,
+        wavPath: wavPath,
+        decisions: decisions,
+        actionItems: actionItems,
+        metrics: metrics,
+      );
+
+      final savedMeeting = await _speech.meeting(savedMeetingId);
+      if (savedMeeting != null) {
         await indexMeetingForSearch(savedMeeting);
       }
 

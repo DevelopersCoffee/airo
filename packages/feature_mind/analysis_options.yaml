@@ -10,3 +10,10 @@ analyzer:
     # Vendored from Cargokit, with its own pubspec and its own analysis rules.
     # Analysing it here reports errors in code we do not own and must not edit.
     - cargokit/**
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
