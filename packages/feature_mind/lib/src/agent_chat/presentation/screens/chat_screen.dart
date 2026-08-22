@@ -2139,11 +2139,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   String _privacyDescription(PrivacyProfile profile) => switch (profile) {
     PrivacyProfile.private =>
-      'On-device plus Wikipedia and optional self-hosted SearXNG.',
+      'On-device orchestration with Wikipedia. '
+          'Self-hosted SearXNG is used when configured.',
     PrivacyProfile.balanced =>
       'Wikipedia, arXiv, and Semantic Scholar with local orchestration.',
     PrivacyProfile.cloud =>
-      'Remote allowlisted APIs: arXiv and Semantic Scholar.',
+      'Remote allowlisted sources: Wikipedia, arXiv, and Semantic Scholar.',
   };
 
   Future<void> _runDeepResearch(

@@ -79,7 +79,10 @@ void main() {
     );
     await tester.pump();
     expect(
-      find.text('On-device plus Wikipedia and optional self-hosted SearXNG.'),
+      find.text(
+        'On-device orchestration with Wikipedia. '
+        'Self-hosted SearXNG is used when configured.',
+      ),
       findsOneWidget,
     );
 
@@ -95,6 +98,26 @@ void main() {
     expect(
       engine.request!.privacy.engineIds,
       isNot(contains('semantic_scholar')),
+    );
+  });
+
+  testWidgets('Cloud copy names every currently routed remote source', (
+    tester,
+  ) async {
+    await _pumpChatScreen(tester);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('agent_chat_research_privacy_cloud')),
+    );
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Remote allowlisted sources: Wikipedia, arXiv, and Semantic Scholar.',
+      ),
+      findsOneWidget,
     );
   });
 
