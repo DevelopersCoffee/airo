@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1730392733;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1641887784;
 
 // Section: executor
 
@@ -497,6 +497,58 @@ fn wire__crate__api__research__research_cancel_impl(
         },
     )
 }
+fn wire__crate__api__research__research_checkpoint_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "research_checkpoint",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ResearchServiceHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_job_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let mut api_handle_guard = None;
+                let decode_indices_ =
+                    flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                        flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                            &api_handle,
+                            0,
+                            false,
+                        ),
+                    ]);
+                for i in decode_indices_ {
+                    match i {
+                        0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref()),
+                        _ => unreachable!(),
+                    }
+                }
+                let api_handle_guard = api_handle_guard.unwrap();
+                let output_ok = Result::<_, ()>::Ok(crate::api::research::research_checkpoint(
+                    &*api_handle_guard,
+                    api_job_id,
+                ))?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__research__research_pause_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -599,6 +651,57 @@ fn wire__crate__api__research__research_report_impl(
         },
     )
 }
+fn wire__crate__api__research__research_restore_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "research_restore",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ResearchServiceHandle>,
+            >>::sse_decode(&mut deserializer);
+            let api_checkpoint =
+                <crate::api::research::FrbResearchCheckpoint>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let mut api_handle_guard = None;
+                let decode_indices_ =
+                    flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                        flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                            &api_handle,
+                            0,
+                            false,
+                        ),
+                    ]);
+                for i in decode_indices_ {
+                    match i {
+                        0 => api_handle_guard = Some(api_handle.lockable_decode_sync_ref()),
+                        _ => unreachable!(),
+                    }
+                }
+                let api_handle_guard = api_handle_guard.unwrap();
+                let output_ok =
+                    crate::api::research::research_restore(&*api_handle_guard, api_checkpoint)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__research__research_resume_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -675,6 +778,7 @@ fn wire__crate__api__research__research_run_impl(
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ResearchServiceHandle>,
             >>::sse_decode(&mut deserializer);
             let api_job_id = <String>::sse_decode(&mut deserializer);
+            let api_known_source_urls = <Vec<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::research::FrbResearchEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -705,6 +809,7 @@ fn wire__crate__api__research__research_run_impl(
                         let output_ok = crate::api::research::research_run(
                             &*api_handle_guard,
                             api_job_id,
+                            api_known_source_urls,
                             api_sink,
                         )
                         .await?;
@@ -1054,6 +1159,14 @@ impl SseDecode for f64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for crate::api::research::FrbResearchCheckpoint {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_record = <String>::sse_decode(deserializer);
+        return crate::api::research::FrbResearchCheckpoint { record: var_record };
     }
 }
 
@@ -1572,6 +1685,19 @@ impl SseDecode for Option<f32> {
     }
 }
 
+impl SseDecode for Option<crate::api::research::FrbResearchCheckpoint> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::research::FrbResearchCheckpoint>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::research::FrbResearchJobState> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1818,7 +1944,7 @@ fn pde_ffi_dispatcher_primary_impl(
             data_len,
         ),
         12 => wire__crate__api__reasoning__reason_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__research__research_run_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__research__research_run_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1842,12 +1968,14 @@ fn pde_ffi_dispatcher_sync_impl(
         8 => wire__crate__api__minutes__generation_stats_impl(ptr, rust_vec_len, data_len),
         10 => wire__crate__api__minutes__is_ready_impl(ptr, rust_vec_len, data_len),
         13 => wire__crate__api__research__research_cancel_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__research__research_pause_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__research__research_report_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__research__research_resume_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__research__research_start_impl(ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__research__research_status_impl(ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__minutes__unload_generation_impl(ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__research__research_checkpoint_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__research__research_pause_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__research__research_report_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__research__research_restore_impl(ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__research__research_resume_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__research__research_start_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__research__research_status_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__minutes__unload_generation_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1874,6 +2002,23 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ResearchServiceHandle>>
     }
 }
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::research::FrbResearchCheckpoint {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.record.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::research::FrbResearchCheckpoint
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::research::FrbResearchCheckpoint>
+    for crate::api::research::FrbResearchCheckpoint
+{
+    fn into_into_dart(self) -> crate::api::research::FrbResearchCheckpoint {
+        self
+    }
+}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::research::FrbResearchEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -2658,6 +2803,13 @@ impl SseEncode for f64 {
     }
 }
 
+impl SseEncode for crate::api::research::FrbResearchCheckpoint {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.record, serializer);
+    }
+}
+
 impl SseEncode for crate::api::research::FrbResearchEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3095,6 +3247,16 @@ impl SseEncode for Option<f32> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <f32>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::research::FrbResearchCheckpoint> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::research::FrbResearchCheckpoint>::sse_encode(value, serializer);
         }
     }
 }

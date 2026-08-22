@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import '../../../../llama/api/research.dart' as frb;
+import 'research_checkpoint.dart';
 
 ResearchEvent mapFrbResearchEvent(frb.FrbResearchEvent event) {
   return ResearchEvent(
@@ -48,6 +49,10 @@ ResearchEventKind mapFrbResearchEventKind(frb.FrbResearchEventKind kind) {
     case frb.FrbResearchEventKind.cancelled:
       return ResearchEventKind.researchCancelled;
   }
+}
+
+frb.FrbResearchCheckpoint mapResearchCheckpoint(ResearchCheckpoint checkpoint) {
+  return frb.FrbResearchCheckpoint(record: checkpoint.toRecord());
 }
 
 frb.FrbResearchRequest mapResearchRequest(ResearchRequest request) {

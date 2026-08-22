@@ -90,6 +90,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_box_autoadd_f_32(dynamic raw);
 
   @protected
+  FrbResearchCheckpoint dco_decode_box_autoadd_frb_research_checkpoint(
+    dynamic raw,
+  );
+
+  @protected
   FrbResearchJobState dco_decode_box_autoadd_frb_research_job_state(
     dynamic raw,
   );
@@ -111,6 +116,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double dco_decode_f_64(dynamic raw);
+
+  @protected
+  FrbResearchCheckpoint dco_decode_frb_research_checkpoint(dynamic raw);
 
   @protected
   FrbResearchEvent dco_decode_frb_research_event(dynamic raw);
@@ -219,6 +227,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
 
   @protected
+  FrbResearchCheckpoint? dco_decode_opt_box_autoadd_frb_research_checkpoint(
+    dynamic raw,
+  );
+
+  @protected
   FrbResearchJobState? dco_decode_opt_box_autoadd_frb_research_job_state(
     dynamic raw,
   );
@@ -314,6 +327,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
 
   @protected
+  FrbResearchCheckpoint sse_decode_box_autoadd_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FrbResearchJobState sse_decode_box_autoadd_frb_research_job_state(
     SseDeserializer deserializer,
   );
@@ -343,6 +361,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  FrbResearchCheckpoint sse_decode_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FrbResearchEvent sse_decode_frb_research_event(SseDeserializer deserializer);
@@ -477,6 +500,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
 
   @protected
+  FrbResearchCheckpoint? sse_decode_opt_box_autoadd_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FrbResearchJobState? sse_decode_opt_box_autoadd_frb_research_job_state(
     SseDeserializer deserializer,
   );
@@ -600,6 +628,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_frb_research_checkpoint(
+    FrbResearchCheckpoint self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_frb_research_job_state(
     FrbResearchJobState self,
     SseSerializer serializer,
@@ -634,6 +668,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_frb_research_checkpoint(
+    FrbResearchCheckpoint self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_frb_research_event(
@@ -808,6 +848,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_frb_research_checkpoint(
+    FrbResearchCheckpoint? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_frb_research_job_state(

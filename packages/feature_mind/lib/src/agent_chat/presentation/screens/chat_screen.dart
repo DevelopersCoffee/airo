@@ -374,7 +374,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isGenerationActive: () => _isGenerating,
         );
     _deepResearchEngine =
-        widget.deepResearchEngine ?? LocalDeepResearchEngine();
+        widget.deepResearchEngine ??
+        LocalDeepResearchEngine(operationLogPort: _operationLogPort);
     _skillOrchestrator =
         widget.skillOrchestrator ?? _buildSkillOrchestrator(_skillRegistry);
     if (widget.skillOrchestrator == null) {

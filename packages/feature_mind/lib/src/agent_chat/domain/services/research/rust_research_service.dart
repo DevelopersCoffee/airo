@@ -77,10 +77,17 @@ class RustResearchService implements ResearchService {
       fetch: (url) => _fetch(Uri.parse(url)),
     );
 
-    final jobId = frb.researchStart(
-      handle: handle,
-      request: mapResearchRequest(request),
-    );
+    final jobId = resumeFrom?.jobId ??
+        frb.researchStart(
+          handle: handle,
+          request: mapResearchRequest(request),
+        );
+    if (resumeFrom != null) {
+      frb.researchRestore(
+        handle: handle,
+        checkpoint: mapResearchCheckpoint(resumeFrom),
+      );
+    }
 
     Timer? controlTimer;
     if (control != null) {
@@ -100,9 +107,42 @@ class RustResearchService implements ResearchService {
       });
     }
 
+    final fetchedUrls = <String>[];
+    final findings = <String>[];
+
     try {
-      await for (final event in frb.researchRun(handle: handle, jobId: jobId)) {
-        yield mapFrbResearchEvent(event);
+      await for (final event in frb.researchRun(
+        handle: handle,
+        jobId: jobId,
+        knownSourceUrls: knownSourceUrls,
+      )) {
+        final mapped = mapFrbResearchEvent(event);
+        if (mapped.kind == ResearchEventKind.sourceFetched) {
+          fetchedUrls.add(mapped.detail);
+        } else if (mapped.kind == ResearchEventKind.claimCreated &&
+            mapped.detail.startsWith('supported: ')) {
+          findings.add(mapped.detail.substring('supported: '.length));
+        } else if (mapped.kind == ResearchEventKind.researchPaused) {
+          final checkpoint = frb.researchCheckpoint(
+            handle: handle,
+            jobId: jobId,
+          );
+          if (checkpoint != null) {
+            onCheckpoint?.call(
+              ResearchCheckpoint.fromRecord(checkpoint.record),
+            );
+          }
+        } else if (mapped.kind == ResearchEventKind.researchCompleted) {
+          onLibrary?.call(
+            ResearchLibraryEntry.fromQuestion(
+              question: request.question,
+              retrievedAt: DateTime.now().toUtc().toIso8601String(),
+              sourceUrls: fetchedUrls,
+              findings: findings,
+            ),
+          );
+        }
+        yield mapped;
       }
     } finally {
       controlTimer?.cancel();
