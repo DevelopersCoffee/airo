@@ -71,7 +71,7 @@ void main() {
       contains(
         const ChatGraphEdge(
           fromId: 'identifier:9001001',
-          toId: 'term:city-hospital',
+          toId: 'organization:city-hospital',
           predicate: ChatEntityRelation.relatedTo,
         ),
       ),
