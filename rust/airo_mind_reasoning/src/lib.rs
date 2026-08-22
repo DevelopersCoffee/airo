@@ -30,7 +30,7 @@ pub use device::DeviceInferenceProfile;
 pub use engine::ReasoningEngine;
 pub use error::ReasoningError;
 pub use event::{ReasoningEvent, ReasoningStage};
-pub use grammar::RESULT_GRAMMAR;
+pub use grammar::{grammar_for, LOOKUP_GRAMMAR, RESULT_GRAMMAR};
 pub use intent::ClassifiedIntent;
 pub use level::ReasoningLevel;
 pub use policy::{HeuristicReasoningPolicy, ReasoningPolicy};

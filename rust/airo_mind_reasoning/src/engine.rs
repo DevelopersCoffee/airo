@@ -7,7 +7,7 @@ use airo_mind_core::{CancelToken, GenerationChunk, GenerationEngine, GenerationR
 use crate::context::{ContextItem, ContextLimits};
 use crate::error::ReasoningError;
 use crate::event::{ReasoningEvent, ReasoningStage};
-use crate::grammar::RESULT_GRAMMAR;
+use crate::grammar::grammar_for;
 use crate::level::ReasoningLevel;
 use crate::parser::{
     extract_tool_calls, reject_unknown_trace_keys, ResultStreamParser, ThinkingChannelStripper,
@@ -229,7 +229,7 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         let request_gen = GenerationRequest {
             prompt: prompt.to_string(),
             max_output_tokens: tokens_for(level, self.max_output_tokens),
-            grammar: Some(RESULT_GRAMMAR.trim().to_string()),
+            grammar: Some(grammar_for(level).trim().to_string()),
         };
 
         emit(ReasoningEvent::StageChanged {
