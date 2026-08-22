@@ -18,6 +18,7 @@ use crate::request::ReasoningRequest;
 use crate::result::ReasoningResult;
 use crate::tools::{ToolExecutor, MAX_TOOL_ITERATIONS};
 use crate::validator::validate_result;
+use airo_mind_intent::{classify, ClassifyRequest, IntentStatus};
 
 pub struct ReasoningTimings {
     pub policy_ms: u128,
@@ -73,14 +74,38 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         emit(ReasoningEvent::StageChanged {
             stage: ReasoningStage::Understanding,
         })?;
+        let decision = classify(ClassifyRequest {
+            user_query: request.user_query.clone(),
+            legacy_kind: Some(request.intent.kind.clone()),
+            legacy_complexity: Some(request.intent.complexity),
+            proposal: None,
+        });
+        if decision.status == IntentStatus::NeedsClarification {
+            let message = decision
+                .intent
+                .ambiguity
+                .clarification
+                .unwrap_or_else(|| "Could you clarify what you want me to do?".into());
+            emit(ReasoningEvent::Error { message })?;
+            return Ok(());
+        }
+        if decision.status == IntentStatus::Rejected {
+            emit(ReasoningEvent::Error {
+                message: "This request cannot be routed.".into(),
+            })?;
+            return Err(ReasoningError::UnsupportedCapability);
+        }
+        let mut gated = request.clone();
+        gated.intent = decision.intent;
+
         let policy_started = Instant::now();
-        let level = self.policy.evaluate(request);
+        let level = self.policy.evaluate(&gated);
         let policy_ms = policy_started.elapsed().as_millis();
         emit(ReasoningEvent::Progress {
             message: format!("level={level:?}"),
         })?;
 
-        if request.context.total_chars() > self.limits.max_chars.saturating_mul(4) {
+        if gated.context.total_chars() > self.limits.max_chars.saturating_mul(4) {
             return Err(ReasoningError::ContextLimitExceeded);
         }
 
@@ -89,7 +114,7 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         })?;
         check(cancel)?;
 
-        let mut working = request.clone();
+        let mut working = gated;
         let mut executed = Vec::new();
         let mut generation_ms = 0_u128;
         let mut prompt_ms = 0_u128;

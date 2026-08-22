@@ -22,6 +22,8 @@ command in this repo, not inferred from config.
 | `airo_mind_whisper` | `cdylib`, `staticlib`, `rlib` | Yes — `whisper` FRB bridge | whisper.cpp (via `whisper-rs`) |
 | `airo_mind_llama` | `cdylib`, `staticlib`, `rlib` | Yes — `llama` FRB bridge | llama.cpp (via `llama-cpp-2`) |
 | `airo_mind_meeting` | `rlib` only | None | None |
+| `airo_mind_reasoning` | `rlib` only | None | None |
+| `airo_mind_intent` | `rlib` only | None | None |
 | `airo_mind_transcript` | `rlib` only | None | None |
 | `airo_mind_core` | `rlib` (workspace dep) | None (linked into both engine cdylibs) | None |
 | `airo_core` | `cdylib`/`staticlib` (via `core_native`) | Yes — `core_native` FRB bridge | None |

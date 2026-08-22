@@ -134,6 +134,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "airo_mind_intent"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
@@ -165,6 +173,7 @@ name = "airo_mind_reasoning"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
+ "airo_mind_intent",
  "airo_mind_reliability",
  "serde",
  "serde_json",

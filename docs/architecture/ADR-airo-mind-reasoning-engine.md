@@ -65,7 +65,7 @@ a public SDK `thoughts` API, and not a Gallery-style thinking toggle.
 - iOS `ffiPlugin` enablement (`#1546` ggml ODR).
 - Silent vault writes (`#1202`).
 - Keyword `query.contains("plan")` as the permanent router. Policy takes
-  `ClassifiedIntent { kind, complexity }`.
+  `ClassifiedIntent` from [ADR-0003](./ADR-airo-mind-classified-intent.md).
 
 ## Decision
 
@@ -124,3 +124,4 @@ issues. Fake `GenerationEngine` tests prove the capability without GGUF.
 - Implementation plan: `docs/superpowers/plans/2026-08-21-airo-mind-reasoning-engine.md`
 - GitHub epic: [#1827](https://github.com/DevelopersCoffee/airo/issues/1827)
 - Remaining iOS backend: [#1828](https://github.com/DevelopersCoffee/airo/issues/1828)
+- Intent contract: [ADR-0003](./ADR-airo-mind-classified-intent.md)

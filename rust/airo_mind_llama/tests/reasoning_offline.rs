@@ -44,15 +44,11 @@ fn reason_over_a_real_gguf_does_not_emit_a_thought_trace() {
     request.requested_level = Some(ReasoningLevel::Light);
 
     let mut events = Vec::new();
-    let outcome = ReasoningEngine::default().reason(
-        &engine,
-        &request,
-        &CancelToken::new(),
-        &mut |event| {
+    let outcome =
+        ReasoningEngine::default().reason(&engine, &request, &CancelToken::new(), &mut |event| {
             events.push(event);
             Ok(())
-        },
-    );
+        });
 
     match outcome {
         Ok(()) => {
