@@ -10,7 +10,7 @@ use airo_mind_core::{
 use airo_mind_reasoning::{
     DeviceInferenceProfile, ReasoningEngine, ReasoningError, ReasoningEvent, ReasoningLevel,
     ReasoningRequest, ReasoningStage, ToolCall, ToolDefinition, ToolExecutor,
-    CLARIFY_PROGRESS_PREFIX, MAX_TOOL_ITERATIONS,
+    CLARIFY_PROGRESS_PREFIX, MAX_TOOL_ITERATIONS, SHADOW_PROGRESS_PREFIX,
 };
 
 struct ScriptedEngine {
@@ -216,6 +216,15 @@ fn collect_with_tools(
         tools,
     )?;
     Ok(events)
+}
+
+fn shadow_progress(events: &[ReasoningEvent]) -> Option<&str> {
+    events.iter().find_map(|event| match event {
+        ReasoningEvent::Progress { message } if message.starts_with(SHADOW_PROGRESS_PREFIX) => {
+            Some(message.as_str())
+        }
+        _ => None,
+    })
 }
 
 fn completed(events: &[ReasoningEvent]) -> &airo_mind_reasoning::ReasoningResult {
@@ -453,6 +462,15 @@ fn underspecified_action_asks_instead_of_generating() {
         ReasoningEvent::Progress { message } if message.starts_with(CLARIFY_PROGRESS_PREFIX)
             && message.contains("skill.execute")
     )));
+    let shadow = shadow_progress(&events).expect("shadow compare on reason()");
+    assert!(
+        shadow.contains("conversation") && shadow.contains("general.chat"),
+        "{shadow}"
+    );
+    assert!(
+        shadow.contains("needs_clarification"),
+        "underspecified leftover must still ask: {shadow}"
+    );
     assert!(events
         .iter()
         .all(|e| !matches!(e, ReasoningEvent::Completed { .. })));
@@ -550,6 +568,15 @@ fn analyzer_proposal_beats_a_wrong_legacy_kind() {
     let events = collect(&gen, req, &CancelToken::new()).unwrap();
     assert_eq!(completed(&events).answer, "A budget plan.");
     assert_eq!(gen.calls(), 2);
+    let shadow = shadow_progress(&events).expect("shadow compare on reason()");
+    assert!(
+        shadow.contains("navigation") && shadow.contains("planning.create"),
+        "leftover parser kind must be compared, not discarded: {shadow}"
+    );
+    assert!(
+        shadow.ends_with("|0"),
+        "analyzer vs navigation leftover is a mismatch: {shadow}"
+    );
     let prompts = gen.prompts();
     assert!(
         prompts[0].contains("Pick exactly one capability"),

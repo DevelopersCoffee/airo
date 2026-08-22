@@ -26,6 +26,7 @@ pub mod result;
 pub mod tools;
 pub mod validator;
 
+pub use airo_mind_intent::SHADOW_PROGRESS_PREFIX;
 pub use analyzer::CLARIFY_PROGRESS_PREFIX;
 pub use context::{ContextItem, ContextLimits, ReasoningContext};
 pub use device::DeviceInferenceProfile;

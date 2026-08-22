@@ -75,9 +75,11 @@ confirmation is not required. Otherwise ask.
 - DeBERTa, finance/health/legal verticals, keyword routing as the primary
   classifier.
 - LLM-direct tool execution, raw CoT as a contract, provider lock-in.
-- Document ingestion, cost/latency routers, shadow-mode dual-run, deleting
-  `IntentParser` — later phases against this same schema. FRB `classify()` as
-  its own method is optional; `reason()` already classifies.
+- Document ingestion, cost/latency routers, deleting `IntentParser` —
+  later phases against this same schema. Shadow-mode dual-run logs the
+  leftover parser kind against `classify()` without changing the route;
+  the parser is not deleted until evals say so. FRB `classify()` as its
+  own method is optional; `reason()` already classifies.
 - Treating LLM-emitted `0.93` as calibrated probability.
 - First-class product domains (`diet.*`, coins, games) in the intent
   registry. Those are skills/plugins.
@@ -89,7 +91,10 @@ confirmation is not required. Otherwise ask.
 - Application plugins (diet meal plans, etc.) map to `skill.execute`, never
   a `diet.*` capability.
 - Analyzer coverage replaces the keyword parser; the parser is deleted only
-  after evals say so.
+  after evals say so. Until then, `reason()` emits a `shadow:` compare of
+  the leftover parser kind against ClassifiedIntent. Routing still follows
+  `classify()`. Product intercepts (diet plugin, skills) still use
+  `IntentParser`.
 
 ## Related
 
