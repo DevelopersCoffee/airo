@@ -14,6 +14,9 @@ enum EntityType {
   money,
   identifier,
   document,
+  product,
+  event,
+  title,
 }
 
 /// One entity pulled out of an op's title and detail text.
