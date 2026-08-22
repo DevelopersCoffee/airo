@@ -1,8 +1,6 @@
 //! Strategy is selected from intent. There is no universal research algorithm.
 
-use crate::research::interpreter::{
-    split_subjects, InterpretedGoal, ResearchIntent,
-};
+use crate::research::interpreter::{split_subjects, InterpretedGoal, ResearchIntent};
 use crate::research::planner::{PlanNodeKind, ResearchPlan, ResearchPlanNode};
 use crate::research::request::{ResearchMode, ResearchRequest};
 

@@ -37,4 +37,39 @@ void main() {
     expect(find.text('Creating research plan'), findsOneWidget);
     expect(find.textContaining('I think'), findsNothing);
   });
+
+  testWidgets('running session exposes pause and cancel', (tester) async {
+    const session = ResearchSession(
+      request: ResearchRequest(question: 'Pixel 9 offline LLM'),
+      events: [
+        ResearchEvent(
+          kind: ResearchEventKind.planningStarted,
+          label: 'Understanding question',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: DeepResearchProgressPanel(
+            session: session,
+            onPause: _noop,
+            onCancel: _noop,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const Key('agent_chat_deep_research_pause')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('agent_chat_deep_research_cancel')),
+      findsOneWidget,
+    );
+  });
 }
+
+void _noop() {}

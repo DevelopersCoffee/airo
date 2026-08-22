@@ -42,9 +42,8 @@ mod tests {
 
     #[test]
     fn a_compare_question_becomes_per_subject_branches() {
-        let mut request = ResearchRequest::new(
-            "Compare Qwen, Llama and Gemma for offline mobile AI in 2026.",
-        );
+        let mut request =
+            ResearchRequest::new("Compare Qwen, Llama and Gemma for offline mobile AI in 2026.");
         request.mode = ResearchMode::Deep;
         let plan = ResearchPlan::from_request(&request);
         let questions: Vec<_> = plan.nodes.iter().map(|n| n.question.as_str()).collect();

@@ -6,9 +6,24 @@ import '../../domain/models/research_event.dart';
 
 /// Structured Deep Research progress. Execution state only — no model CoT.
 class DeepResearchProgressPanel extends StatelessWidget {
-  const DeepResearchProgressPanel({super.key, required this.session});
+  const DeepResearchProgressPanel({
+    super.key,
+    required this.session,
+    this.onPause,
+    this.onResume,
+    this.onCancel,
+  });
 
   final ResearchSession session;
+  final VoidCallback? onPause;
+  final VoidCallback? onResume;
+  final VoidCallback? onCancel;
+
+  bool get _showControls =>
+      !session.isComplete &&
+      !session.isFailed &&
+      !session.isCancelled &&
+      (onPause != null || onResume != null || onCancel != null);
 
   static const _steps = <(ResearchEventKind, String)>[
     (ResearchEventKind.planningStarted, 'Understanding question'),
@@ -41,9 +56,42 @@ class DeepResearchProgressPanel extends StatelessWidget {
                 ? 'RESEARCH COMPLETE'
                 : session.isFailed
                 ? 'RESEARCH FAILED'
+                : session.isCancelled
+                ? 'RESEARCH CANCELLED'
+                : session.isPaused
+                ? 'RESEARCH PAUSED'
                 : 'RESEARCHING',
             style: IntelligenceTypography.kicker(),
           ),
+          if (_showControls)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Row(
+                children: [
+                  if (onResume != null)
+                    IconButton(
+                      key: const Key('agent_chat_deep_research_resume'),
+                      tooltip: 'Resume research',
+                      onPressed: onResume,
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                    )
+                  else if (onPause != null)
+                    IconButton(
+                      key: const Key('agent_chat_deep_research_pause'),
+                      tooltip: 'Pause research',
+                      onPressed: onPause,
+                      icon: const Icon(Icons.pause, size: 18),
+                    ),
+                  if (onCancel != null)
+                    IconButton(
+                      key: const Key('agent_chat_deep_research_cancel'),
+                      tooltip: 'Cancel research',
+                      onPressed: onCancel,
+                      icon: const Icon(Icons.stop, size: 18),
+                    ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           for (final step in _steps)
             _StepRow(

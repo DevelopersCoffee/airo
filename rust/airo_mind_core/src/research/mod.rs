@@ -22,8 +22,8 @@ pub use document::{
     classify_url, extract_html, ExtractedDocument, SourceClass, SourceClassification, SourceKind,
 };
 pub use evidence::{
-    excerpt_in_source, contradiction_reasons, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph, EvidenceId, Source,
-    SourceId, SourceType,
+    contradiction_reasons, excerpt_in_source, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph,
+    EvidenceId, Source, SourceId, SourceType,
 };
 pub use interpreter::{interpret, InterpretedGoal, ResearchIntent};
 pub use planner::{PlanNodeKind, ResearchPlan, ResearchPlanNode};
@@ -33,7 +33,10 @@ pub use search::{
     canonicalize_url, dedupe_hits, SearchEngine, SearchError, SearchHit, SearchRequest,
     SearchResponse,
 };
-pub use state::{ResearchCommand, ResearchJob, ResearchJobState, ResearchStateError};
+pub use state::{
+    InMemoryResearchService, ResearchCheckpoint, ResearchCommand, ResearchJob, ResearchJobState,
+    ResearchStateError,
+};
 pub use stopping::{
     EvidenceSufficiencyPolicy, ResearchCompleteness, ResearchProgress, StopDecision, StoppingPolicy,
 };

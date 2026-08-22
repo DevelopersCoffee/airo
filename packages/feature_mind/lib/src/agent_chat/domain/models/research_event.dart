@@ -23,6 +23,8 @@ enum ResearchEventKind {
   reportSectionCompleted,
   researchCompleted,
   researchFailed,
+  researchPaused,
+  researchCancelled,
 }
 
 enum ResearchPhase {
@@ -51,7 +53,8 @@ class ResearchEvent {
 
   bool get isTerminal =>
       kind == ResearchEventKind.researchCompleted ||
-      kind == ResearchEventKind.researchFailed;
+      kind == ResearchEventKind.researchFailed ||
+      kind == ResearchEventKind.researchCancelled;
 }
 
 @immutable
@@ -68,6 +71,11 @@ class ResearchSession {
 
   bool get isFailed =>
       events.any((event) => event.kind == ResearchEventKind.researchFailed);
+
+  bool get isCancelled =>
+      events.any((event) => event.kind == ResearchEventKind.researchCancelled);
+
+  bool get isPaused => last?.kind == ResearchEventKind.researchPaused;
 
   String get report {
     for (final event in events.reversed) {

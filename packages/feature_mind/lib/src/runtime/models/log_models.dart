@@ -42,6 +42,10 @@ enum MindOpKind {
 
   /// A speaker voice profile was enrolled for cross-meeting recognition (#504).
   speakerEnrolled,
+
+  /// A Deep Research job wrote a durable checkpoint. Resume rebuilds from this
+  /// record — not from a model scratchpad or a sidecar research database.
+  researchCheckpoint,
 }
 
 /// Whether this operation's signature checked out.

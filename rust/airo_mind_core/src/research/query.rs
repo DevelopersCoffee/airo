@@ -30,8 +30,13 @@ mod tests {
         assert!(set.primary.contains("Qwen3"));
         assert!(set.alternatives.iter().any(|q| q.contains("benchmark")));
         assert!(
-            set.counterargument.to_ascii_lowercase().contains("limitations")
-                || set.counterargument.to_ascii_lowercase().contains("problems")
+            set.counterargument
+                .to_ascii_lowercase()
+                .contains("limitations")
+                || set
+                    .counterargument
+                    .to_ascii_lowercase()
+                    .contains("problems")
         );
     }
 }

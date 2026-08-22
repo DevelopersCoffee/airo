@@ -91,7 +91,9 @@ impl ExtractedDocument {
 
 pub fn extract_html(html: &str) -> ExtractedDocument {
     let mut body = html.to_string();
-    for tag in ["script", "style", "noscript", "nav", "footer", "header", "aside"] {
+    for tag in [
+        "script", "style", "noscript", "nav", "footer", "header", "aside",
+    ] {
         body = strip_blocks(&body, tag);
     }
     let title = first_inner(&body, "title")
@@ -239,7 +241,10 @@ mod tests {
     fn extract_drops_nav_scripts_and_keeps_article() {
         let doc = extract_html(PAGE);
         assert_eq!(doc.title, "Qwen");
-        assert!(doc.paragraphs.iter().any(|p| p.contains("Qwen is a family")));
+        assert!(doc
+            .paragraphs
+            .iter()
+            .any(|p| p.contains("Qwen is a family")));
         assert!(doc.tables.iter().any(|t| t.contains("7B")));
         let text = doc.evidence_text().to_ascii_lowercase();
         assert!(!text.contains("ignore previous instructions"));

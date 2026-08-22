@@ -178,14 +178,14 @@ pub use projection::{
 };
 pub use research::{
     canonicalize_url, classify_url, contradiction_reasons, dedupe_hits, excerpt_in_source,
-    extract_html, interpret, queries_for, strategy_for, Claim, ClaimId,
-    ClaimStatus, Evidence, EvidenceGraph, EvidenceId, EvidenceSufficiencyPolicy, ExtractedDocument,
-    InterpretedGoal, PlanNodeKind, QuerySet, ResearchBudget, ResearchCommand, ResearchCompleteness,
-    ResearchIntent, ResearchJob, ResearchJobState, ResearchMode, ResearchPlan, ResearchPlanNode,
-    ResearchProgress, ResearchRequest, ResearchStateError, ResearchStrategy, SearchEngine,
-    SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse, Source, SourceClass,
-    SourceClassification, SourceContent, SourceId, SourceKind, SourceType, StopDecision,
-    StoppingPolicy, TrustLevel,
+    extract_html, interpret, queries_for, strategy_for, Claim, ClaimId, ClaimStatus, Evidence,
+    EvidenceGraph, EvidenceId, EvidenceSufficiencyPolicy, ExtractedDocument,
+    InMemoryResearchService, InterpretedGoal, PlanNodeKind, QuerySet, ResearchBudget,
+    ResearchCheckpoint, ResearchCommand, ResearchCompleteness, ResearchIntent, ResearchJob,
+    ResearchJobState, ResearchMode, ResearchPlan, ResearchPlanNode, ResearchProgress,
+    ResearchRequest, ResearchStateError, ResearchStrategy, SearchEngine, SearchError, SearchHit,
+    SearchPolicy, SearchRequest, SearchResponse, Source, SourceClass, SourceClassification,
+    SourceContent, SourceId, SourceKind, SourceType, StopDecision, StoppingPolicy, TrustLevel,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,

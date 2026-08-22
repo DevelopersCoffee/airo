@@ -3,6 +3,8 @@ import '../../models/research_request.dart';
 import 'claim_extractor.dart';
 import 'contradiction_engine.dart';
 import 'query_generator.dart';
+import 'research_checkpoint.dart';
+import 'research_control.dart';
 import 'research_interpreter.dart';
 import 'research_planner.dart';
 import 'research_search.dart';
@@ -29,7 +31,12 @@ class ResearchOrchestrator {
   final StoppingPolicy stopping;
   final SourceManager? sourceManager;
 
-  Stream<ResearchEvent> run(ResearchRequest request) async* {
+  Stream<ResearchEvent> run(
+    ResearchRequest request, {
+    ResearchControl? control,
+    ResearchCheckpoint? resumeFrom,
+    void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+  }) async* {
     final question = request.question.trim();
     if (question.isEmpty) {
       yield const ResearchEvent(
@@ -62,8 +69,10 @@ class ResearchOrchestrator {
     );
 
     final budget = request.budget;
-    var searchesUsed = 0;
-    var iterationsUsed = 0;
+    var searchesUsed = resumeFrom?.searchesUsed ?? 0;
+    var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
+    final completed = {...?resumeFrom?.completedNodeIds};
+    final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
     final collected = <ResearchHit>[];
     final routed = engines
         .where(
@@ -72,8 +81,44 @@ class ResearchOrchestrator {
         )
         .toList(growable: false);
 
+    void emitCheckpoint(ResearchPhase state, {ResearchPhase? pausedFrom}) {
+      onCheckpoint?.call(
+        ResearchCheckpoint(
+          jobId: jobId,
+          question: question,
+          state: state,
+          pausedFrom: pausedFrom,
+          searchesUsed: searchesUsed,
+          iterationsUsed: iterationsUsed,
+          completedNodeIds: completed.toList(growable: false),
+        ),
+      );
+    }
+
+    emitCheckpoint(ResearchPhase.planning);
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.planning),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
+    }
+
     Future<void> runWave(List<ResearchPlanNode> nodes) async {
-      for (final node in nodes) {
+      final pending = nodes
+          .where((node) => !completed.contains(node.id))
+          .toList(growable: false);
+      if (pending.isEmpty) {
+        return;
+      }
+      if (pending.length == nodes.length) {
+        if (iterationsUsed >= budget.maxIterations) {
+          return;
+        }
+        iterationsUsed += 1;
+      }
+      for (final node in pending) {
         if (searchesUsed >= budget.maxSearches || routed.isEmpty) {
           return;
         }
@@ -87,6 +132,8 @@ class ResearchOrchestrator {
           ),
         );
         searchesUsed += batch.length;
+        completed.add(node.id);
+        emitCheckpoint(ResearchPhase.searching);
         for (final hits in results) {
           collected.addAll(hits);
         }
@@ -104,9 +151,14 @@ class ResearchOrchestrator {
       kind: ResearchEventKind.searchStarted,
       label: 'Searching sources',
     );
-    if (breadth.isNotEmpty && iterationsUsed < budget.maxIterations) {
-      iterationsUsed += 1;
-      await runWave(breadth);
+    await runWave(breadth);
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.searching),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
     }
 
     var unique = rankHits(dedupeHits(collected));
@@ -134,7 +186,6 @@ class ResearchOrchestrator {
         label: 'Finding missing evidence',
         detail: 'Depth facets were not covered by the first search wave.',
       );
-      iterationsUsed += 1;
       await runWave(depth);
       unique = rankHits(dedupeHits(collected));
       for (final hit in unique) {
@@ -144,6 +195,14 @@ class ResearchOrchestrator {
           detail: '${hit.title} — ${hit.url}',
         );
       }
+    }
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.searching),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
     }
 
     progress = ResearchProgress(
@@ -162,7 +221,6 @@ class ResearchOrchestrator {
         label: 'Finding missing evidence',
         detail: queries.queriesFor(goal.topic).counterargument,
       );
-      iterationsUsed += 1;
       await runWave([
         ResearchPlanNode(
           id: 'counter-query',
@@ -171,6 +229,14 @@ class ResearchOrchestrator {
         ),
       ]);
       unique = rankHits(dedupeHits(collected));
+    }
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.searching),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
     }
 
     yield const ResearchEvent(
@@ -210,6 +276,14 @@ class ResearchOrchestrator {
         documents.add(document);
       }
     }
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.searching),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
+    }
 
     yield const ResearchEvent(
       kind: ResearchEventKind.analyzingStarted,
@@ -237,7 +311,16 @@ class ResearchOrchestrator {
       kind: ResearchEventKind.synthesisStarted,
       label: 'Writing report',
     );
+    yield* _controlGate(
+      control,
+      onState: (state) =>
+          emitCheckpoint(state, pausedFrom: ResearchPhase.searching),
+    );
+    if (control?.isCancelled ?? false) {
+      return;
+    }
 
+    emitCheckpoint(ResearchPhase.completed);
     yield ResearchEvent(
       kind: ResearchEventKind.researchCompleted,
       label: 'Research completed',
@@ -358,5 +441,37 @@ class ResearchOrchestrator {
       );
     }
     return lines.join('\n');
+  }
+}
+
+Stream<ResearchEvent> _controlGate(
+  ResearchControl? control, {
+  void Function(ResearchPhase state)? onState,
+}) async* {
+  if (control == null) {
+    return;
+  }
+  if (control.isCancelled) {
+    onState?.call(ResearchPhase.cancelled);
+    yield const ResearchEvent(
+      kind: ResearchEventKind.researchCancelled,
+      label: 'Research cancelled',
+    );
+    return;
+  }
+  if (control.isPaused) {
+    onState?.call(ResearchPhase.paused);
+    yield const ResearchEvent(
+      kind: ResearchEventKind.researchPaused,
+      label: 'Research paused',
+    );
+    await control.barrier();
+    if (control.isCancelled) {
+      onState?.call(ResearchPhase.cancelled);
+      yield const ResearchEvent(
+        kind: ResearchEventKind.researchCancelled,
+        label: 'Research cancelled',
+      );
+    }
   }
 }
