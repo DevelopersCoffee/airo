@@ -4,6 +4,7 @@ import '../../bridges/mind_speech_bridge.dart';
 import '../../whisper/api/meetings.dart' as rust;
 import '../domain/live_speaker_label.dart';
 import '../domain/live_transcript_line.dart';
+import '../domain/speaker_activity_span.dart';
 import 'meeting_live_pcm_shim.dart';
 
 /// Result of a completed live STT session.
@@ -38,6 +39,30 @@ class MeetingLiveSessionCoordinator {
   List<TranscriptSegment> get stableSegments =>
       List<TranscriptSegment>.unmodifiable(_stableSegments);
 
+  /// Recent normalized amplitude samples for the live meter (oldest first).
+  List<double> get amplitudeSamples =>
+      List<double>.unmodifiable(_amplitudeSamples);
+
+  /// Provisional speaker lanes derived from stable utterances (`P1`).
+  List<SpeakerActivitySpan> get speakerActivitySpans {
+    return [
+      for (final segment in _stableSegments)
+        if (parseLiveSpeakerIndex(segment.speakerLabel) != null)
+          SpeakerActivitySpan(
+            speakerIndex: parseLiveSpeakerIndex(segment.speakerLabel)!,
+            startMs: segment.startMs,
+            endMs: segment.endMs,
+          ),
+    ];
+  }
+
+  int get speakerTimelineEndMs {
+    if (_stableSegments.isEmpty) return 0;
+    return _stableSegments.last.endMs;
+  }
+
+  int? get activeSpeakerIndex => _activeSpeakerIndex;
+
   /// Rows for the live transcript UI (stable + optional partial tail).
   List<LiveTranscriptLine> get transcriptLines {
     final lines = <LiveTranscriptLine>[
@@ -51,7 +76,9 @@ class MeetingLiveSessionCoordinator {
         ),
     ];
     if (_partialText != null && _partialText!.isNotEmpty) {
-      final tailSpeaker = _stableSegments.isNotEmpty
+      final tailSpeaker = _activeSpeakerLabel != null
+          ? formatLiveSpeakerLabel(_activeSpeakerLabel)
+          : _stableSegments.isNotEmpty
           ? formatLiveSpeakerLabel(_stableSegments.last.speakerLabel)
           : formatLiveSpeakerLabel(null);
       final tailStart = _stableSegments.isNotEmpty
@@ -71,7 +98,10 @@ class MeetingLiveSessionCoordinator {
   }
 
   String? _partialText;
+  String? _activeSpeakerLabel;
+  int? _activeSpeakerIndex;
   final List<TranscriptSegment> _stableSegments = [];
+  final List<double> _amplitudeSamples = [];
 
   Future<void> start({
     required String meetingId,
@@ -80,7 +110,12 @@ class MeetingLiveSessionCoordinator {
     _sessionId = meetingId;
     _readyCompleter = Completer<MeetingLiveSessionResult>();
     _partialText = null;
+    _activeSpeakerLabel = null;
+    _activeSpeakerIndex = null;
     _stableSegments.clear();
+    _amplitudeSamples.clear();
+
+    _pcmShim.onAmplitude = _onAmplitude;
 
     final stream = _speech.startLiveSession(
       meetingId: meetingId,
@@ -126,11 +161,21 @@ class MeetingLiveSessionCoordinator {
     await _eventsSub?.cancel();
     _eventsSub = null;
     _sessionId = null;
+    _pcmShim.onAmplitude = null;
   }
 
   Future<void> dispose() async {
     await cancel();
     await _pcmShim.dispose();
+  }
+
+  void _onAmplitude(double normalizedRms) {
+    _amplitudeSamples.add(normalizedRms);
+    const maxSamples = 12;
+    if (_amplitudeSamples.length > maxSamples) {
+      _amplitudeSamples.removeAt(0);
+    }
+    onTranscriptChanged?.call();
   }
 
   void _onEvent(TranscriptEvent event) {
@@ -139,8 +184,14 @@ class MeetingLiveSessionCoordinator {
         switch (delta.state) {
           case rust.TranscriptSegmentStateWire.partial:
             _partialText = delta.text;
+            if (delta.speakerLabel != null) {
+              _activeSpeakerLabel = delta.speakerLabel;
+              _activeSpeakerIndex = parseLiveSpeakerIndex(delta.speakerLabel);
+            }
           case rust.TranscriptSegmentStateWire.stable:
             _partialText = null;
+            _activeSpeakerLabel = delta.speakerLabel;
+            _activeSpeakerIndex = parseLiveSpeakerIndex(delta.speakerLabel);
             _stableSegments.add(
               TranscriptSegment(
                 id: delta.segmentId,
@@ -160,6 +211,8 @@ class MeetingLiveSessionCoordinator {
                 text: delta.text,
                 speakerLabel: delta.speakerLabel,
               );
+              _activeSpeakerLabel = delta.speakerLabel;
+              _activeSpeakerIndex = parseLiveSpeakerIndex(delta.speakerLabel);
             }
         }
       case TranscriptEventTranscriptReady(:final text, :final segments):

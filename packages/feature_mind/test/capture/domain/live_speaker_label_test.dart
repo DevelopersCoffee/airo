@@ -7,6 +7,13 @@ void main() {
     expect(formatLiveSpeakerLabel('sp1'), 'Speaker 2');
   });
 
+  test('parses sp labels to zero-based index', () {
+    expect(parseLiveSpeakerIndex('sp0'), 0);
+    expect(parseLiveSpeakerIndex('sp1'), 1);
+    expect(parseLiveSpeakerIndex(null), isNull);
+    expect(parseLiveSpeakerIndex('Rahul'), isNull);
+  });
+
   test('defaults to Speaker 1 when unknown', () {
     expect(formatLiveSpeakerLabel(null), 'Speaker 1');
     expect(formatLiveSpeakerLabel(''), 'Speaker 1');

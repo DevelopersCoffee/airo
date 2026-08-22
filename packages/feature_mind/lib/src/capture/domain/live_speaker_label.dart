@@ -1,3 +1,11 @@
+/// Parses `sp0` / `sp1` wire labels into a zero-based speaker index.
+int? parseLiveSpeakerIndex(String? speakerLabel) {
+  if (speakerLabel == null || !speakerLabel.startsWith('sp')) {
+    return null;
+  }
+  return int.tryParse(speakerLabel.substring(2));
+}
+
 /// Display label for a live transcript speaker (`P0`: no invented names).
 String formatLiveSpeakerLabel(String? speakerLabel) {
   if (speakerLabel == null || speakerLabel.isEmpty) {

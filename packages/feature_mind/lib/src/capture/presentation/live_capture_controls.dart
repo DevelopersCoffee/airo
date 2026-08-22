@@ -2,6 +2,10 @@ import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 
+import '../domain/speaker_activity_span.dart';
+import 'audio_amplitude_meter.dart';
+import 'speaker_activity_timeline.dart';
+
 /// Bottom capture controls — timer, listening state, pause/stop (`P0`).
 class LiveCaptureControls extends StatelessWidget {
   const LiveCaptureControls({
@@ -12,6 +16,10 @@ class LiveCaptureControls extends StatelessWidget {
     required this.onPause,
     required this.onResume,
     required this.onStop,
+    required this.amplitudeSamples,
+    this.speakerActivitySpans = const [],
+    this.speakerTimelineEndMs = 0,
+    this.activeSpeakerIndex,
     super.key,
   });
 
@@ -22,6 +30,10 @@ class LiveCaptureControls extends StatelessWidget {
   final VoidCallback onPause;
   final VoidCallback onResume;
   final VoidCallback onStop;
+  final List<double> amplitudeSamples;
+  final List<SpeakerActivitySpan> speakerActivitySpans;
+  final int speakerTimelineEndMs;
+  final int? activeSpeakerIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +67,18 @@ class LiveCaptureControls extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            _AudioActivityBar(isPaused: isPaused),
+            AudioAmplitudeMeter(
+              samples: amplitudeSamples,
+              isPaused: isPaused,
+            ),
+            if (speakerActivitySpans.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SpeakerActivityTimeline(
+                spans: speakerActivitySpans,
+                timelineEndMs: speakerTimelineEndMs,
+                activeSpeakerIndex: activeSpeakerIndex,
+              ),
+            ],
             const SizedBox(height: 12),
             Text(
               elapsedLabel,
@@ -93,40 +116,6 @@ class LiveCaptureControls extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AudioActivityBar extends StatelessWidget {
-  const _AudioActivityBar({required this.isPaused});
-
-  final bool isPaused;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary.withValues(
-      alpha: isPaused ? 0.25 : 0.7,
-    );
-    return SizedBox(
-      height: 24,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(12, (index) {
-          final height = isPaused ? 4.0 : 6.0 + (index % 4) * 4.0;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 4,
-              height: height,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          );
-        }),
       ),
     );
   }

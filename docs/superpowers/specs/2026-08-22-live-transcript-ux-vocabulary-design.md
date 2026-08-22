@@ -20,7 +20,7 @@ post-hoc normalize pass, not part of the live understanding pipeline.
 | LIVE + timer in app bar | `meeting_capture_live_badge` |
 | Speaker labels | `Speaker 1` / `spN` → `Speaker N+1` (no invented names) |
 | Follow live + jump to live | `LiveTranscriptView` + `Follow live` chip |
-| Secondary waveform | `_AudioActivityBar` (decorative, not hero) |
+| Secondary waveform | `AudioAmplitudeMeter` (live RMS, not hero) |
 | Focused capture mode | Pre-start vs active body split; nav de-emphasized via full-screen transcript |
 | Pause / stop / timer | `LiveCaptureControls` |
 
@@ -28,11 +28,35 @@ post-hoc normalize pass, not part of the live understanding pipeline.
 
 | Requirement | Status |
 |---|---|
+| **Live speaker activity** (provisional lanes, reconciled after recording) | ✓ `SpeakerActivityTracker` + `SpeakerActivityTimeline` |
+| Live amplitude meter (not speaker-colored bars) | ✓ `AudioAmplitudeMeter` from PCM shim RMS |
 | Collapsible live insights rail | `LiveInsightsRail` stub |
 | Live entity / decision / action detection | Not in this PR |
 | Search during recording | Not in this PR |
-| Speaker name resolution | Not in this PR |
+| Speaker name resolution (persona mapping) | P2 — not in this PR |
+| Voice enrollment / recognition | P2 — not in this PR |
 | More menu (mic, language, …) | Not in this PR |
+
+### P1 — Live speaker activity
+
+During recording, Airo Mind provides **provisional** speaker activity on short
+rolling windows and exposes the active speaker to the live visualization and
+transcript. Live speaker assignments are **not** persona recognition — they are
+`Speaker 0` / `Speaker 1` turn-taking heuristics on VAD utterance boundaries.
+Post-recording diarization may reconcile live labels with the final speaker model.
+
+Architecture:
+
+```text
+Mic → Audio stream
+        ├──────────────→ Amplitude → AudioAmplitudeMeter
+        └──────────────→ Streaming VAD → Speaker activity → Speaker timeline
+```
+
+- Rust: `airo_mind_audio::SpeakerActivityTracker` (long-gap turn toggle)
+- Rust: `meetings.rs` assigns `sp{N}` on STABLE; PARTIAL uses active lane
+- Dart: `SpeakerActivityTimeline` — per-speaker lanes, not colored amplitude bars
+- Dart: `MeetingLiveSessionCoordinator.speakerActivitySpans` from stable segments
 
 ## Vocabulary Intelligence — P0
 
@@ -64,7 +88,7 @@ User spec items:
 2. Compact privacy banner — ✓ P0
 3. Live transcript states — ✓ P0
 4. Live indicator — ✓ P0
-5. Speaker identification — ✓ P0 (generic labels)
+5. Speaker identification — ✓ P0 (generic labels); P1 live activity lanes
 6. Intelligence rail — stub P1
 7. Bottom controls — ✓ P0
 8. Transcript navigation / jump to live — ✓ P0
@@ -81,5 +105,7 @@ User spec items:
 ## Tests
 
 - `airo_mind_transcript` vocabulary unit tests
+- `airo_mind_audio` `SpeakerActivityTracker` unit tests
 - `live_speaker_label` / coordinator line mapping (Dart)
+- `speaker_activity_timeline` / `audio_amplitude_meter` widget tests (Dart)
 - Capture screen pre-start tests updated for compact trust bar

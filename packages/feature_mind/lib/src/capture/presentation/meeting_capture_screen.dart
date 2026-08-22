@@ -341,6 +341,17 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                       ),
                     ),
                   ),
+                if (showLive && _liveCoordinator!.degradedMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: Text(
+                      _liveCoordinator!.degradedMessage!,
+                      key: const Key('meeting_capture_live_degraded'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -58,7 +58,7 @@ impl EnergyVad {
     }
 }
 
-fn rms_energy(samples: &[i16]) -> f32 {
+pub fn rms_energy(samples: &[i16]) -> f32 {
     if samples.is_empty() {
         return 0.0;
     }
