@@ -55,6 +55,12 @@ export 'src/workflow/offer_decision.dart';
 export 'src/workflow/workflow_projection.dart';
 export 'src/workflow/pending_assessment.dart';
 
+// Idempotent destination effects
+export 'src/effects/idempotent_effect.dart';
+
+// Errors
+export 'src/errors/secure_destination_error.dart';
+
 // Plugin System
 export 'src/plugins/plugin_manifest.dart';
 export 'src/plugins/manifest_validator.dart';

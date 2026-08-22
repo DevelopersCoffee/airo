@@ -1,96 +1,61 @@
 import 'dart:async';
 
 import 'package:core_domain/core_domain.dart';
-import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
-class LifeTrackLocalDataSource {
-  LifeTrackLocalDataSource({
-    DatabaseFactory? databaseFactory,
-    this._databasePath,
-    this._databaseName = 'life_track.db',
-  }) : _databaseFactory = databaseFactory ?? databaseFactorySqflitePlugin;
+import 'life_track_sql_schema.dart';
 
-  static const schemaVersion = 1;
+/// Shared LifeTrack graph persistence over sqflite [DatabaseExecutor].
+class LifeTrackGraphSqlStore {
+  LifeTrackGraphSqlStore(this._executor);
 
-  static const lifeTracksTable = 'life_tracks';
-  static const milestonesTable = 'milestones';
-  static const actionItemsTable = 'action_items';
-  static const inputRequirementsTable = 'input_requirements';
-
-  final DatabaseFactory _databaseFactory;
-  final String? _databasePath;
-  final String _databaseName;
+  final DatabaseExecutor _executor;
   final StreamController<void> _changes = StreamController<void>.broadcast();
 
-  Database? _database;
+  Stream<void> get changes => _changes.stream;
 
-  Future<void> initialize() async {
-    if (_database != null && _database!.isOpen) return;
-
-    final resolvedPath =
-        _databasePath ?? path.join(await getDatabasesPath(), _databaseName);
-    _database = await _databaseFactory.openDatabase(
-      resolvedPath,
-      options: OpenDatabaseOptions(
-        version: schemaVersion,
-        onConfigure: (db) async {
-          await db.execute('PRAGMA foreign_keys = ON');
-        },
-        onCreate: (db, version) async {
-          await _createSchema(db);
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 1) {
-            await _createSchema(db);
-          }
-        },
-      ),
-    );
+  Future<void> ensureSchema({bool includeIdempotency = true}) async {
+    for (final statement in LifeTrackSqlSchema.createStatements(
+      includeIdempotency: includeIdempotency,
+    )) {
+      await _executor.execute(statement);
+    }
   }
 
-  Future<LifeTrack> createTrack(LifeTrack track) async {
-    final db = await _requireDatabase();
-    await db.transaction((txn) async {
+  Future<void> createTrack(LifeTrack track) async {
+    await _runInTransaction((txn) async {
       await _insertTrackGraph(txn, track);
     });
-    await _notifyChanged();
-    return track;
+    _notifyChanged();
   }
 
   Future<LifeTrack?> getTrack(String id) async {
-    final db = await _requireDatabase();
-    final rows = await db.query(
-      lifeTracksTable,
+    final rows = await _executor.query(
+      LifeTrackSqlSchema.lifeTracksTable,
       where: 'id = ?',
       whereArgs: [id],
       limit: 1,
     );
     if (rows.isEmpty) return null;
-    return _hydrateTrack(db, rows.single);
+    return _hydrateTrack(_executor, rows.single);
   }
 
   Future<List<LifeTrack>> listTracks({TrackStatus? status}) async {
-    final db = await _requireDatabase();
-    final rows = await db.query(
-      lifeTracksTable,
+    final rows = await _executor.query(
+      LifeTrackSqlSchema.lifeTracksTable,
       where: status == null ? null : 'status = ?',
       whereArgs: status == null ? null : [status.name],
       orderBy: 'updated_at DESC',
     );
-    return Future.wait(rows.map((row) => _hydrateTrack(db, row)));
-  }
-
-  Stream<List<LifeTrack>> watchTracks({TrackStatus? status}) async* {
-    yield await listTracks(status: status);
-    yield* _changes.stream.asyncMap((_) => listTracks(status: status));
+    return [
+      for (final row in rows) await _hydrateTrack(_executor, row),
+    ];
   }
 
   Future<void> updateTrack(LifeTrack track) async {
-    final db = await _requireDatabase();
-    await db.transaction((txn) async {
+    await _runInTransaction((txn) async {
       await txn.update(
-        lifeTracksTable,
+        LifeTrackSqlSchema.lifeTracksTable,
         {
           'title': track.title,
           'category': track.category.name,
@@ -104,19 +69,21 @@ class LifeTrackLocalDataSource {
       );
       await _replaceMilestones(txn, track.id, track.milestones);
     });
-    await _notifyChanged();
+    _notifyChanged();
   }
 
   Future<void> deleteTrack(String id) async {
-    final db = await _requireDatabase();
-    await db.delete(lifeTracksTable, where: 'id = ?', whereArgs: [id]);
-    await _notifyChanged();
+    await _executor.delete(
+      LifeTrackSqlSchema.lifeTracksTable,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _notifyChanged();
   }
 
   Future<void> updateMilestone(Milestone milestone) async {
-    final db = await _requireDatabase();
-    await db.update(
-      milestonesTable,
+    await _executor.update(
+      LifeTrackSqlSchema.milestonesTable,
       {
         'track_id': milestone.trackId,
         'name': milestone.name,
@@ -127,14 +94,13 @@ class LifeTrackLocalDataSource {
       where: 'id = ?',
       whereArgs: [milestone.id],
     );
-    await _replaceActionItems(db, milestone.id, milestone.actionItems);
-    await _notifyChanged();
+    await _replaceActionItems(_executor, milestone.id, milestone.actionItems);
+    _notifyChanged();
   }
 
   Future<void> updateActionItem(ActionItem item) async {
-    final db = await _requireDatabase();
-    await db.update(
-      actionItemsTable,
+    await _executor.update(
+      LifeTrackSqlSchema.actionItemsTable,
       {
         'milestone_id': item.milestoneId,
         'summary': item.summary,
@@ -148,14 +114,13 @@ class LifeTrackLocalDataSource {
       where: 'id = ?',
       whereArgs: [item.id],
     );
-    await _replaceRequirements(db, item.id, item.requirements);
-    await _notifyChanged();
+    await _replaceRequirements(_executor, item.id, item.requirements);
+    _notifyChanged();
   }
 
   Future<void> updateItemStatus(String itemId, ItemStatus status) async {
-    final db = await _requireDatabase();
-    await db.update(
-      actionItemsTable,
+    await _executor.update(
+      LifeTrackSqlSchema.actionItemsTable,
       {
         'status': status.name,
         'updated_at': DateTime.now().millisecondsSinceEpoch,
@@ -163,126 +128,49 @@ class LifeTrackLocalDataSource {
       where: 'id = ?',
       whereArgs: [itemId],
     );
-    await _notifyChanged();
+    _notifyChanged();
   }
 
   Future<void> saveInputValue(String requirementId, String value) async {
-    final db = await _requireDatabase();
-    await db.update(
-      inputRequirementsTable,
+    await _executor.update(
+      LifeTrackSqlSchema.inputRequirementsTable,
       {'value': value},
       where: 'id = ?',
       whereArgs: [requirementId],
     );
-    await _notifyChanged();
+    _notifyChanged();
   }
 
-  Future<LifeTrack> hydrateTemplate(LifeTrack track) async {
-    final db = await _requireDatabase();
-    await db.transaction((txn) async {
+  Future<void> hydrateTemplate(LifeTrack track) async {
+    await _runInTransaction((txn) async {
       await _insertTrackGraph(txn, track);
     });
-    await _notifyChanged();
-    return track;
+    _notifyChanged();
   }
 
-  Future<void> close() async {
-    await _database?.close();
-    _database = null;
+  Future<void> _runInTransaction(
+    Future<void> Function(DatabaseExecutor txn) action,
+  ) async {
+    final executor = _executor;
+    if (executor is Database) {
+      await executor.transaction(action);
+    } else {
+      await action(_executor);
+    }
   }
 
-  /// Row counts for migration verification.
-  Future<Map<String, int>> rowCounts() async {
-    final db = await _requireDatabase();
-    return {
-      'tracks': Sqflite.firstIntValue(
-        await db.rawQuery(
-          'SELECT COUNT(*) AS count FROM $lifeTracksTable',
-        ),
-      )!,
-      'milestones': Sqflite.firstIntValue(
-        await db.rawQuery(
-          'SELECT COUNT(*) AS count FROM $milestonesTable',
-        ),
-      )!,
-      'action_items': Sqflite.firstIntValue(
-        await db.rawQuery(
-          'SELECT COUNT(*) AS count FROM $actionItemsTable',
-        ),
-      )!,
-      'requirements': Sqflite.firstIntValue(
-        await db.rawQuery(
-          'SELECT COUNT(*) AS count FROM $inputRequirementsTable',
-        ),
-      )!,
-    };
+  Future<int> countRows(String table) async {
+    final result = await _executor.rawQuery('SELECT COUNT(*) AS count FROM $table');
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  Future<Database> _requireDatabase() async {
-    await initialize();
-    return _database!;
-  }
-
-  Future<void> _createSchema(DatabaseExecutor db) async {
-    await db.execute('''
-      CREATE TABLE $lifeTracksTable (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        category TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'draft',
-        template_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE $milestonesTable (
-        id TEXT PRIMARY KEY,
-        track_id TEXT NOT NULL REFERENCES $lifeTracksTable(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        objective TEXT NOT NULL DEFAULT '',
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'todo'
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE $actionItemsTable (
-        id TEXT PRIMARY KEY,
-        milestone_id TEXT NOT NULL REFERENCES $milestonesTable(id) ON DELETE CASCADE,
-        summary TEXT NOT NULL,
-        description TEXT,
-        status TEXT NOT NULL DEFAULT 'todo',
-        due_date INTEGER,
-        notes TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE $inputRequirementsTable (
-        id TEXT PRIMARY KEY,
-        action_item_id TEXT NOT NULL REFERENCES $actionItemsTable(id) ON DELETE CASCADE,
-        label TEXT NOT NULL,
-        field_type TEXT NOT NULL,
-        value TEXT,
-        is_required INTEGER NOT NULL DEFAULT 0,
-        hint TEXT
-      )
-    ''');
-    await db.execute(
-      'CREATE INDEX idx_milestones_track_id ON $milestonesTable(track_id)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_action_items_milestone_id ON $actionItemsTable(milestone_id)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_input_requirements_action_item_id ON $inputRequirementsTable(action_item_id)',
-    );
+  Future<void> closeChanges() async {
+    await _changes.close();
   }
 
   Future<void> _insertTrackGraph(DatabaseExecutor db, LifeTrack track) async {
     final batch = db.batch();
-    batch.insert(lifeTracksTable, {
+    batch.insert(LifeTrackSqlSchema.lifeTracksTable, {
       'id': track.id,
       'title': track.title,
       'category': track.category.name,
@@ -301,7 +189,7 @@ class LifeTrackLocalDataSource {
     List<Milestone> milestones,
   ) async {
     await db.delete(
-      milestonesTable,
+      LifeTrackSqlSchema.milestonesTable,
       where: 'track_id = ?',
       whereArgs: [trackId],
     );
@@ -316,7 +204,7 @@ class LifeTrackLocalDataSource {
     List<ActionItem> items,
   ) async {
     await db.delete(
-      actionItemsTable,
+      LifeTrackSqlSchema.actionItemsTable,
       where: 'milestone_id = ?',
       whereArgs: [milestoneId],
     );
@@ -331,7 +219,7 @@ class LifeTrackLocalDataSource {
     List<InputRequirement> requirements,
   ) async {
     await db.delete(
-      inputRequirementsTable,
+      LifeTrackSqlSchema.inputRequirementsTable,
       where: 'action_item_id = ?',
       whereArgs: [actionItemId],
     );
@@ -342,7 +230,7 @@ class LifeTrackLocalDataSource {
 
   void _queueMilestones(Batch batch, List<Milestone> milestones) {
     for (final milestone in milestones) {
-      batch.insert(milestonesTable, {
+      batch.insert(LifeTrackSqlSchema.milestonesTable, {
         'id': milestone.id,
         'track_id': milestone.trackId,
         'name': milestone.name,
@@ -356,7 +244,7 @@ class LifeTrackLocalDataSource {
 
   void _queueActionItems(Batch batch, List<ActionItem> items) {
     for (final item in items) {
-      batch.insert(actionItemsTable, {
+      batch.insert(LifeTrackSqlSchema.actionItemsTable, {
         'id': item.id,
         'milestone_id': item.milestoneId,
         'summary': item.summary,
@@ -373,7 +261,7 @@ class LifeTrackLocalDataSource {
 
   void _queueRequirements(Batch batch, List<InputRequirement> requirements) {
     for (final requirement in requirements) {
-      batch.insert(inputRequirementsTable, {
+      batch.insert(LifeTrackSqlSchema.inputRequirementsTable, {
         'id': requirement.id,
         'action_item_id': requirement.actionItemId,
         'label': requirement.label,
@@ -390,7 +278,7 @@ class LifeTrackLocalDataSource {
     Map<String, Object?> row,
   ) async {
     final milestonesRows = await db.query(
-      milestonesTable,
+      LifeTrackSqlSchema.milestonesTable,
       where: 'track_id = ?',
       whereArgs: [row['id']],
       orderBy: 'sort_order ASC',
@@ -399,7 +287,7 @@ class LifeTrackLocalDataSource {
     final milestones = <Milestone>[];
     for (final milestoneRow in milestonesRows) {
       final actionItemRows = await db.query(
-        actionItemsTable,
+        LifeTrackSqlSchema.actionItemsTable,
         where: 'milestone_id = ?',
         whereArgs: [milestoneRow['id']],
         orderBy: 'created_at ASC',
@@ -407,7 +295,7 @@ class LifeTrackLocalDataSource {
       final actionItems = <ActionItem>[];
       for (final actionItemRow in actionItemRows) {
         final requirementRows = await db.query(
-          inputRequirementsTable,
+          LifeTrackSqlSchema.inputRequirementsTable,
           where: 'action_item_id = ?',
           whereArgs: [actionItemRow['id']],
           orderBy: 'label ASC',
@@ -495,7 +383,7 @@ class LifeTrackLocalDataSource {
         hint: row['hint'] as String?,
       );
 
-  Future<void> _notifyChanged() async {
+  void _notifyChanged() {
     if (!_changes.isClosed) {
       _changes.add(null);
     }
