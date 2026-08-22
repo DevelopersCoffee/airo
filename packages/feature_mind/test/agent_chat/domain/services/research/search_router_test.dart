@@ -18,6 +18,7 @@ void main() {
   test('balanced policy can use scholar without implying google', () {
     final ids = SearchRouter.engineIds(SearchPolicy.balanced);
     expect(ids, contains('semantic_scholar'));
+    expect(ids, contains('github'));
     expect(ids, isNot(contains('google')));
     expect(ids, isNot(contains('bing')));
   });

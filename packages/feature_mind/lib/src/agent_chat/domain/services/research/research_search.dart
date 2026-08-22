@@ -36,7 +36,7 @@ class SearchRouter {
         return const ['wikipedia', 'searxng'];
       case SearchPolicy.balanced:
       case SearchPolicy.maximumQuality:
-        return const ['wikipedia', 'arxiv', 'semantic_scholar'];
+        return const ['wikipedia', 'arxiv', 'semantic_scholar', 'github'];
       case SearchPolicy.academic:
         return const ['arxiv', 'semantic_scholar', 'pubmed'];
     }
