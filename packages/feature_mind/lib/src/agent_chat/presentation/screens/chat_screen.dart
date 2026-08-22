@@ -129,6 +129,7 @@ class AgentChatMessage {
   final MindReasoningLevel? reasoningLevel;
   final bool reasoningInProgress;
   final List<ChatHistoryToolCall> reasoningToolCalls;
+  final List<String> clarificationCandidates;
 
   AgentChatMessage({
     required this.text,
@@ -146,6 +147,7 @@ class AgentChatMessage {
     this.reasoningLevel,
     this.reasoningInProgress = false,
     this.reasoningToolCalls = const [],
+    this.clarificationCandidates = const [],
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
@@ -181,6 +183,7 @@ class AgentChatMessage {
     MindReasoningLevel? reasoningLevel,
     bool? reasoningInProgress,
     List<ChatHistoryToolCall>? reasoningToolCalls,
+    List<String>? clarificationCandidates,
   }) {
     return AgentChatMessage(
       text: text ?? this.text,
@@ -198,6 +201,8 @@ class AgentChatMessage {
       reasoningLevel: reasoningLevel ?? this.reasoningLevel,
       reasoningInProgress: reasoningInProgress ?? this.reasoningInProgress,
       reasoningToolCalls: reasoningToolCalls ?? this.reasoningToolCalls,
+      clarificationCandidates:
+          clarificationCandidates ?? this.clarificationCandidates,
     );
   }
 }
@@ -1571,6 +1576,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
+            if (!message.isUser && message.clarificationCandidates.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final id in message.clarificationCandidates)
+                      ActionChip(
+                        key: Key('reasoning_clarify_$id'),
+                        label: Text(labelForClarificationCapability(id)),
+                        onPressed: _isGenerating
+                            ? null
+                            : () {
+                                _messageController.text =
+                                    followUpForClarificationCapability(id);
+                                _sendMessage();
+                              },
+                      ),
+                  ],
+                ),
+              ),
             if (!message.isUser &&
                 (message.metadata != null || message.turnTrace != null))
               Padding(
@@ -2754,6 +2781,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               argumentsJson: call.argumentsJson,
             ),
         ],
+        clarificationCandidates: List<String>.from(
+          fold.clarificationCandidates,
+        ),
         turnTrace: current.turnTrace,
       );
     });

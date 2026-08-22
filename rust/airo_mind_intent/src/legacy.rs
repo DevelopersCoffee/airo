@@ -132,6 +132,66 @@ pub fn from_legacy(kind: &str, complexity: f32, user_query: &str) -> ClassifiedI
     intent
 }
 
+/// Analyzer hydrate. Registry only — invented ids return `None`.
+pub fn from_capability(id: &str, user_query: &str, confidence: f32) -> Option<ClassifiedIntent> {
+    let registry = CapabilityRegistry::builtin();
+    let cap = registry.get(id)?;
+    let kind = kind_for_capability(id);
+    let complexity = default_complexity(cap.id, cap.direct_lookup);
+    let conf = confidence.clamp(0.0, 1.0);
+    let mut intent = ClassifiedIntent {
+        schema_version: SCHEMA_VERSION.into(),
+        status: IntentStatus::Classified,
+        domain: cap.domain.into(),
+        intent: cap.intent.into(),
+        action: cap.action.into(),
+        capability: cap.id.into(),
+        entities: BTreeMap::new(),
+        constraints: BTreeMap::new(),
+        context: IntentContext::default(),
+        requirements: Requirements {
+            reasoning: cap.reasoning,
+            tools: cap.tools,
+            retrieval: cap.direct_lookup,
+            ..Requirements::default()
+        },
+        confidence: Confidence {
+            overall: conf,
+            intent: 0.92,
+            entities: 0.45,
+            routing: conf,
+            requirement: 0.80,
+        },
+        action_readiness: ActionReadiness::execute(),
+        ambiguity: Ambiguity::default(),
+        model_profile: cap.model_profile.into(),
+        kind: kind.into(),
+        complexity,
+        source: IntentSource::Analyzer,
+    };
+    crate::ambiguity::apply_legacy_gate(&mut intent, user_query);
+    Some(intent)
+}
+
+fn kind_for_capability(id: &str) -> &'static str {
+    LEGACY
+        .iter()
+        .find(|row| row.capability == id && row.kind != "diet" && row.kind != "date_query")
+        .map(|row| row.kind)
+        .unwrap_or("conversation")
+}
+
+fn default_complexity(capability_id: &str, direct_lookup: bool) -> f32 {
+    if direct_lookup {
+        return 0.1;
+    }
+    match capability_id {
+        "planning.create" | "research.deep" | "skill.execute" => 0.85,
+        "document.summarize" => 0.55,
+        _ => 0.25,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,5 +225,29 @@ mod tests {
             intent.entities.get("skill_id").map(String::as_str),
             Some("diet_plan")
         );
+    }
+
+    #[test]
+    fn analyzer_capability_hydrates_from_the_registry() {
+        let intent = from_capability("planning.create", "Plan the week.", 0.88).unwrap();
+        assert_eq!(intent.capability, "planning.create");
+        assert_eq!(intent.domain, "planning");
+        assert_eq!(intent.kind, "planning");
+        assert_eq!(intent.source, IntentSource::Analyzer);
+        assert_eq!(intent.status, IntentStatus::Classified);
+        assert!(intent.action_readiness.ready);
+    }
+
+    #[test]
+    fn analyzer_cannot_invent_a_diet_capability() {
+        assert!(from_capability("diet.plan", "veg plan", 0.99).is_none());
+    }
+
+    #[test]
+    fn analyzer_chat_on_underspecified_action_still_asks() {
+        let intent =
+            from_capability("general.chat", "I need to prepare for tomorrow.", 0.80).unwrap();
+        assert_eq!(intent.status, IntentStatus::NeedsClarification);
+        assert!(!intent.action_readiness.ready);
     }
 }

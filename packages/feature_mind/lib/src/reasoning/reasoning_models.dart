@@ -206,6 +206,8 @@ class ReasoningStreamFold {
   double? confidence;
   String? error;
   var cancelled = false;
+  String? clarificationQuestion;
+  final List<String> clarificationCandidates = [];
   final List<ReasoningProgressStep> steps = [];
   final List<MindReasoningToolCall> toolCalls = [];
 
@@ -218,6 +220,17 @@ class ReasoningStreamFold {
         steps.add(ReasoningProgressStep(label: labelForReasoningStage(stage)));
       case MindReasoningProgress(:final message):
         if (message.startsWith('level=')) return;
+        if (message.startsWith(clarifyProgressPrefix)) {
+          clarificationCandidates
+            ..clear()
+            ..addAll(
+              message
+                  .substring(clarifyProgressPrefix.length)
+                  .split('|')
+                  .where((id) => id.isNotEmpty),
+            );
+          return;
+        }
         steps.add(ReasoningProgressStep(label: message));
       case MindReasoningToolStarted(:final tool):
         steps.add(ReasoningProgressStep(label: 'Using $tool'));
@@ -243,6 +256,9 @@ class ReasoningStreamFold {
         }
       case MindReasoningError(:final message):
         error = message;
+        if (clarificationCandidates.isNotEmpty) {
+          clarificationQuestion = message;
+        }
       case MindReasoningCancelled():
         cancelled = true;
     }
@@ -258,5 +274,30 @@ String labelForReasoningStage(MindReasoningStage stage) {
     MindReasoningStage.validating => 'Checking the answer',
     MindReasoningStage.composingAnswer => 'Writing an answer',
     MindReasoningStage.complete => 'Done',
+  };
+}
+
+/// Progress payload from Rust when classify() asks instead of generating.
+const clarifyProgressPrefix = 'clarify:';
+
+String labelForClarificationCapability(String id) {
+  return switch (id) {
+    'planning.create' => 'Plan my day',
+    'calendar.retrieve' => 'Check my calendar',
+    'skill.execute' => 'Run a skill',
+    'document.summarize' => 'Summarize',
+    'research.deep' => 'Research',
+    _ => id,
+  };
+}
+
+String followUpForClarificationCapability(String id) {
+  return switch (id) {
+    'planning.create' => 'Help me plan my day for tomorrow.',
+    'calendar.retrieve' => "What's on my calendar tomorrow?",
+    'skill.execute' => 'Create a meal plan.',
+    'document.summarize' => 'Summarize the attached note.',
+    'research.deep' => 'Research this for me.',
+    _ => id,
   };
 }

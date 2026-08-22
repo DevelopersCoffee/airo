@@ -236,6 +236,53 @@ void main() {
     );
     expect(find.textContaining('You are free at 4 PM'), findsNothing);
   });
+
+  testWidgets('underspecified reason() asks with chips instead of acting', (
+    tester,
+  ) async {
+    const question =
+        'Do you mean planning your day, scheduling something on your calendar, or running a skill such as a meal plan?';
+    final bridge = FakeMindGenerationBridge()
+      ..reasoningEvents = const [
+        MindReasoningStageChanged(MindReasoningStage.understanding),
+        MindReasoningProgress(
+          'clarify:planning.create|calendar.retrieve|skill.execute',
+        ),
+        MindReasoningError(question),
+      ];
+    await bridge.ensureLoaded(modelsDir: '/tmp', memoryBudgetMb: 1024);
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+      generationBridge: bridge,
+      useOnDeviceReasoning: () => true,
+      deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+        LlmDeviceSignals(totalRamMb: 8192, availableStorageMb: 8192),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'I need to prepare for tomorrow.',
+    );
+    await tester.ensureVisible(find.byKey(const Key('agent_chat_send_button')));
+    await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(question), findsOneWidget);
+    expect(
+      find.byKey(const Key('reasoning_clarify_planning.create')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('reasoning_clarify_skill.execute')),
+      findsOneWidget,
+    );
+    expect(find.text('Plan my day'), findsOneWidget);
+    expect(find.text('Run a skill'), findsOneWidget);
+    expect(find.text('Check my calendar'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpChatScreen(
