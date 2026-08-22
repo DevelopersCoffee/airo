@@ -1,0 +1,75 @@
+{
+  "nodes": [
+    {
+      "id": "identifier:9001001",
+      "type": "identifier",
+      "name": "Claim 9001001",
+      "attributes": {
+        "kind": "claim",
+        "value": "9001001",
+        "follow_up": "Broker confirmed documents received."
+      }
+    },
+    {
+      "id": "organization:niva-bupa",
+      "type": "organization",
+      "name": "Niva Bupa",
+      "attributes": {
+        "role": "insurer"
+      }
+    },
+    {
+      "id": "organization:policybazaar",
+      "type": "organization",
+      "name": "Policybazaar",
+      "attributes": {
+        "role": "broker"
+      }
+    },
+    {
+      "id": "document:claim-documents",
+      "type": "document",
+      "name": "Claim documents",
+      "attributes": {
+        "status": "received"
+      }
+    },
+    {
+      "id": "term:claim",
+      "type": "term",
+      "name": "Claim",
+      "attributes": {}
+    },
+    {
+      "id": "term:all",
+      "type": "term",
+      "name": "All",
+      "attributes": {}
+    }
+  ],
+  "edges": [
+    {
+      "from_id": "identifier:9001001",
+      "to_id": "organization:niva-bupa",
+      "predicate": "insured_by"
+    },
+    {
+      "from_id": "identifier:9001001",
+      "to_id": "organization:policybazaar",
+      "predicate": "filed_via"
+    },
+    {
+      "from_id": "identifier:9001001",
+      "to_id": "document:claim-documents",
+      "predicate": "has_document"
+    }
+  ],
+  "recent_node_ids": [
+    "identifier:9001001",
+    "organization:niva-bupa",
+    "organization:policybazaar",
+    "document:claim-documents",
+    "term:claim",
+    "term:all"
+  ]
+}

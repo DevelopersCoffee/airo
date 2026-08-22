@@ -99,6 +99,17 @@ export 'src/skills/skill_permission_engine.dart';
 export 'src/skills/skill_schema.dart';
 export 'src/skills/skill_trigger_eval.dart';
 
+// Add-on framework (manifest validation, registry, adapter contracts)
+export 'src/addons/addon_manifest_validator.dart';
+export 'src/addons/addon_registry.dart';
+export 'src/addons/addon_eligibility.dart';
+export 'src/addons/addon_conversation.dart';
+export 'src/addons/addon_prompt.dart';
+export 'src/addons/addon_evaluation.dart';
+export 'src/addons/graph_ingest_context.dart';
+export 'src/addons/generative_addon_adapter.dart';
+export 'src/addons/graph_workflow_addon_adapter.dart';
+
 // Prompt Management
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
