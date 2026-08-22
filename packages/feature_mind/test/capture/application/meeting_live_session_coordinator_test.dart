@@ -189,7 +189,10 @@ class _LiveSessionBridge implements MindSpeechBridge {
   void resumeLiveSession({required String sessionId}) {}
 
   @override
-  Future<void> stopLiveSession({required String sessionId}) async {}
+  Future<void> stopLiveSession({
+    required String sessionId,
+    String? audioPath,
+  }) async {}
 
   @override
   void cancelLiveSession({required String sessionId}) {}
