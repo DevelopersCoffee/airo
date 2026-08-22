@@ -15,6 +15,7 @@
 //! filesystem except the model file itself.
 
 use std::path::Path;
+use std::sync::OnceLock;
 
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
@@ -49,6 +50,7 @@ impl WhisperSpeechEngine {
     /// (`ADR-0018`). A missing model is `ModelUnavailable` — a normal result on
     /// a normal path, not an error to log and swallow.
     pub fn load(model_path: &Path, memory_mb: u32) -> Result<Self, EngineError> {
+        Self::apply_whisper_log_policy();
         if !model_path.exists() {
             return Err(EngineError::ModelUnavailable);
         }
@@ -56,6 +58,19 @@ impl WhisperSpeechEngine {
             WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
                 .map_err(|e| EngineError::Backend(format!("whisper model load failed: {e}")))?;
         Ok(Self { context, memory_mb })
+    }
+
+    /// whisper.cpp / ggml also dump INFO Metal init to stderr. Same policy as
+    /// llama: quiet by default, full dump only with `AIRO_MIND_ENGINE_LOGS=1`.
+    /// `install_logging_hooks` is a no-op sink when neither the `log` nor
+    /// `tracing` crate features are on — which is this crate's default.
+    fn apply_whisper_log_policy() {
+        static ONCE: OnceLock<()> = OnceLock::new();
+        ONCE.get_or_init(|| {
+            if !airo_mind_core::engine_native_logs_verbose() {
+                whisper_rs::install_logging_hooks();
+            }
+        });
     }
 
     fn configure_params<'a>(

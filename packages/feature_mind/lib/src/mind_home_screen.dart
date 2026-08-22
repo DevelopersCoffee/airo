@@ -1,7 +1,15 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'whisper/api/meetings.dart' as rust;
+import 'meeting_audio/meeting_audio_playback.dart';
+import 'meeting_list_metadata.dart';
+import 'agent_chat/data/repositories/chat_workspace_store.dart';
+import 'agent_chat/data/repositories/chat_workspace_store_factory.dart';
+import 'agent_chat/domain/models/chat_transcript_turn.dart';
 import 'capture/application/speech_language_preference.dart';
 import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
@@ -34,8 +42,12 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
 
   MindStatus? _status;
   List<rust.MeetingRecord> _meetings = const [];
+  Map<String, int> _audioBytes = const {};
+  List<MindChatFolder> _folders = const [];
+  ChatWorkspaceStore? _workspace;
   List<rust.SearchHit>? _hits;
   bool _recording = false;
+  bool _paused = false;
   String? _error;
 
   /// The file currently being fetched, and how far. First run is now a
@@ -78,6 +90,17 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       _downloadingFile = null;
     });
     if (status.isReady) await _refresh();
+    await _loadFolders();
+  }
+
+  Future<void> _loadFolders() async {
+    try {
+      _workspace ??= await openChatWorkspaceStore();
+      final folders = await _workspace!.listFolders();
+      if (mounted) setState(() => _folders = folders);
+    } on Object {
+      // Chat workspace is optional for the scribe library.
+    }
   }
 
   /// Re-runs startup from scratch, back through the loading state. Used after
@@ -91,7 +114,24 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   Future<void> _refresh() async {
     try {
       final meetings = await widget.service.meetings();
-      if (mounted) setState(() => _meetings = meetings);
+      final audioBytes = <String, int>{};
+      for (final meeting in meetings) {
+        try {
+          final doc = await widget.service.transcriptDocument(meeting.id);
+          final path = doc?.audioPath;
+          if (MeetingAudioPlayback.fileExists(path)) {
+            audioBytes[meeting.id] = File(path!).lengthSync();
+          }
+        } on Object {
+          // Metadata is best-effort — a missing document must not hide the row.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _meetings = meetings;
+          _audioBytes = audioBytes;
+        });
+      }
     } on Object catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
@@ -110,7 +150,10 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     if (_recording) {
       final path = await widget.service.stopRecording();
       if (!mounted) return;
-      setState(() => _recording = false);
+      setState(() {
+        _recording = false;
+        _paused = false;
+      });
       if (path == null) return;
 
       final title = 'Meeting ${_meetings.length + 1}';
@@ -144,7 +187,35 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       return;
     }
     await widget.service.startRecording();
-    if (mounted) setState(() => _recording = true);
+    if (mounted) {
+      setState(() {
+        _recording = true;
+        _paused = false;
+      });
+    }
+  }
+
+  Future<void> _togglePause() async {
+    if (!_recording) return;
+    if (_paused) {
+      await widget.service.resumeRecording();
+      if (mounted) setState(() => _paused = false);
+      return;
+    }
+    await widget.service.pauseRecording();
+    if (mounted) setState(() => _paused = true);
+  }
+
+  void _openCapture() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      unawaited(() async {
+        await router.push('/record');
+        if (mounted) await _refresh();
+      }());
+      return;
+    }
+    unawaited(_toggleRecording());
   }
 
   /// Exports every meeting in [_meetings] as markdown in one action (#1663
@@ -185,6 +256,92 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     }
   }
 
+  Future<void> _renameMeeting(rust.MeetingRecord meeting) async {
+    final next = await showDialog<String>(
+      context: context,
+      builder: (context) => _NamePromptDialog(
+        title: 'Rename meeting',
+        fieldKey: Key('mind_home_rename_field_${meeting.id}'),
+        confirmKey: Key('mind_home_rename_confirm_${meeting.id}'),
+        initial: meeting.title,
+        label: 'Title',
+        confirmLabel: 'Save',
+      ),
+    );
+    if (next == null || next.isEmpty || next == meeting.title) return;
+    await widget.service.renameMeeting(meeting: meeting, title: next);
+    await _refresh();
+  }
+
+  Future<void> _removeMeeting(rust.MeetingRecord meeting) async {
+    final shouldRemove = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this meeting?'),
+        content: const Text(
+          'This removes the recording from this device. Chat folders stay.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: Key('mind_home_delete_confirm_${meeting.id}'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldRemove != true) return;
+    await widget.service.deleteMeeting(meeting.id);
+    await _refresh();
+  }
+
+  Future<void> _moveMeetingToNewFolder(rust.MeetingRecord meeting) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => _NamePromptDialog(
+        title: 'New chat folder',
+        fieldKey: Key('mind_home_new_folder_field_${meeting.id}'),
+        confirmKey: Key('mind_home_new_folder_create_${meeting.id}'),
+        hint: 'Folder name',
+        confirmLabel: 'Create',
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    final store = _workspace ?? await openChatWorkspaceStore();
+    _workspace = store;
+    final folder = await store.createFolder(name);
+    if (mounted) {
+      setState(() => _folders = [..._folders, folder]);
+    }
+    await _moveMeetingToChat(meeting, folder.id);
+  }
+
+  Future<void> _moveMeetingToChat(
+    rust.MeetingRecord meeting,
+    String folderId,
+  ) async {
+    final store = _workspace ?? await openChatWorkspaceStore();
+    _workspace = store;
+    final chatId = await store.createChat(folderId: folderId);
+    await store.replaceTranscript(chatId, [
+      ChatTranscriptTurn(
+        role: 'assistant',
+        text:
+            'Moved from Scribe: ${meeting.title}\n\n'
+            '${meeting.minutes.trim().isNotEmpty ? meeting.minutes : meeting.transcript}',
+        createdAt: DateTime.now(),
+      ),
+    ]);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Copied this meeting into a chat folder.')),
+    );
+  }
+
   Future<void> _open(String id) async {
     final meeting = await widget.service.meeting(id);
     if (!mounted || meeting == null) return;
@@ -215,7 +372,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
               key: const Key('mind_home_record_meeting_button'),
               tooltip: 'Record a meeting',
               icon: const Icon(Icons.mic_none),
-              onPressed: () => context.push('/record'),
+              onPressed: _openCapture,
             ),
           if (status != null && status.isReady && _meetings.isNotEmpty)
             PopupMenuButton<bool>(
@@ -262,7 +419,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       },
       floatingActionButton: status != null && status.isReady
           ? FloatingActionButton.extended(
-              onPressed: _toggleRecording,
+              onPressed: _recording ? _toggleRecording : _openCapture,
               icon: Icon(_recording ? Icons.stop : Icons.mic),
               label: Text(_recording ? 'Stop' : 'Record'),
             )
@@ -308,13 +465,31 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
             ),
           ),
         if (_recording)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
-                SizedBox(width: 8),
-                Text('Recording'),
+                Icon(
+                  _paused ? Icons.pause_circle : Icons.fiber_manual_record,
+                  color: Colors.red,
+                  size: 14,
+                ),
+                const SizedBox(width: 8),
+                Text(_paused ? 'Paused' : 'Recording'),
+                const Spacer(),
+                OutlinedButton.icon(
+                  key: const Key('mind_home_pause_button'),
+                  onPressed: _togglePause,
+                  icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
+                  label: Text(_paused ? 'Resume' : 'Pause'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  key: const Key('mind_home_stop_button'),
+                  onPressed: _toggleRecording,
+                  icon: const Icon(Icons.stop),
+                  label: const Text('Stop'),
+                ),
               ],
             ),
           ),
@@ -357,36 +532,58 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       itemCount: meetings.length,
       itemBuilder: (_, i) {
         final m = meetings[i];
+        final meta = meetingListMetadata(m, audioBytes: _audioBytes[m.id]);
         return ListTile(
-          title: Text(m.title),
-          subtitle: Text(
-            meetingListPreview(m),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          isThreeLine: true,
+          title: Text(meta.title),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(meta.preview, maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Text(
+                meta.metaLine,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
           onTap: () => _open(m.id),
+          trailing: PopupMenuButton<String>(
+            key: Key('mind_home_meeting_menu_${m.id}'),
+            tooltip: 'Meeting actions',
+            onSelected: (value) {
+              if (value == 'rename') {
+                unawaited(_renameMeeting(m));
+              } else if (value == 'remove') {
+                unawaited(_removeMeeting(m));
+              } else if (value == 'move_new') {
+                unawaited(_moveMeetingToNewFolder(m));
+              } else if (value.startsWith('move:')) {
+                unawaited(_moveMeetingToChat(m, value.substring(5)));
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'rename', child: Text('Rename')),
+              for (final folder in _folders)
+                PopupMenuItem(
+                  value: 'move:${folder.id}',
+                  child: Text('Move to ${folder.name}'),
+                ),
+              const PopupMenuItem(
+                value: 'move_new',
+                child: Text('Move to new folder'),
+              ),
+              const PopupMenuItem(value: 'remove', child: Text('Delete')),
+            ],
+          ),
         );
       },
     );
   }
-}
-
-/// Cheap list subtitle: minutes first, else first action/decision text, else
-/// transcript. Keeps IR discoverable without an extra store round-trip.
-@visibleForTesting
-String meetingListPreview(rust.MeetingRecord meeting) {
-  final minutes = meeting.minutes.trim();
-  if (minutes.isNotEmpty) return minutes;
-
-  if (meeting.actionItems.isNotEmpty) {
-    final item = meeting.actionItems.first;
-    final owner = item.owner?.trim();
-    return owner == null || owner.isEmpty ? item.task : '${item.task} — $owner';
-  }
-  if (meeting.decisions.isNotEmpty) {
-    return meeting.decisions.first.statement;
-  }
-  return meeting.transcript;
 }
 
 /// Shown while [MindService.initialize] is in flight. Nothing to show yet
@@ -707,6 +904,77 @@ class _Unavailable extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Owns the text controller for the dialog's lifetime so pop animations
+/// cannot use it after dispose (the previous inline-controller pattern).
+class _NamePromptDialog extends StatefulWidget {
+  const _NamePromptDialog({
+    required this.title,
+    required this.fieldKey,
+    required this.confirmKey,
+    required this.confirmLabel,
+    this.initial,
+    this.label,
+    this.hint,
+  });
+
+  final String title;
+  final Key fieldKey;
+  final Key confirmKey;
+  final String confirmLabel;
+  final String? initial;
+  final String? label;
+  final String? hint;
+
+  @override
+  State<_NamePromptDialog> createState() => _NamePromptDialogState();
+}
+
+class _NamePromptDialogState extends State<_NamePromptDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        key: widget.fieldKey,
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: widget.hint,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: widget.confirmKey,
+          onPressed: _submit,
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }

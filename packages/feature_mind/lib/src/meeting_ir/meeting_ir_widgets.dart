@@ -13,10 +13,11 @@ import 'meeting_ir_user_edits.dart';
 /// minutes text.
 ///
 /// Decisions, action items, and metrics each carry evidence segment ids.
-/// Empty lists still render a section title + empty hint so the product
-/// surface is discoverable. Tapping evidence notifies [onEvidence] so the
-/// transcript can highlight / optionally seek; action rows also show a
-/// copyable/tappable clock when a segment resolves.
+/// Empty lists omit their section entirely — a short recording that extracted
+/// nothing should show the transcript, not a wall of "No … recorded".
+/// Tapping evidence notifies [onEvidence] so the transcript can highlight /
+/// optionally seek; action rows also show a copyable/tappable clock when a
+/// segment resolves.
 class MeetingIrMomSections extends StatelessWidget {
   const MeetingIrMomSections({
     super.key,
@@ -61,23 +62,23 @@ class MeetingIrMomSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (decisions.isEmpty && actionItems.isEmpty && metrics.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _IrSectionTitle('Decisions'),
-        if (decisions.isEmpty)
-          const _IrEmptyHint('No decisions recorded.')
-        else
+        if (decisions.isNotEmpty) ...[
+          const _IrSectionTitle('Decisions'),
           for (final d in decisions)
             _DecisionTile(
               decision: d,
               onTap: () => onEvidence(d.evidenceSegmentIds),
             ),
-        const SizedBox(height: 16),
-        const _IrSectionTitle('Action items'),
-        if (actionItems.isEmpty)
-          const _IrEmptyHint('No action items recorded.')
-        else
+          const SizedBox(height: 16),
+        ],
+        if (actionItems.isNotEmpty) ...[
+          const _IrSectionTitle('Action items'),
           for (final item in actionItems)
             _ActionTile(
               item: item,
@@ -89,33 +90,20 @@ class MeetingIrMomSections extends StatelessWidget {
               onEvidence: () => onEvidence(item.evidenceSegmentIds),
               onEdit: () => onEditAction(item),
             ),
-        const SizedBox(height: 16),
-        const _IrSectionTitle('Metrics'),
-        if (metrics.isEmpty)
-          const _IrEmptyHint('No metrics recorded.')
-        else
+          const SizedBox(height: 16),
+        ],
+        if (metrics.isNotEmpty) ...[
+          const _IrSectionTitle('Metrics'),
           for (final m in metrics)
             _MetricTile(
               metric: m,
               onTap: () => onEvidence(m.evidenceSegmentIds),
             ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
       ],
     );
   }
-}
-
-class _IrEmptyHint extends StatelessWidget {
-  const _IrEmptyHint(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
-  );
 }
 
 class _IrSectionTitle extends StatelessWidget {
@@ -323,6 +311,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
     this.onRenameSpeaker,
     this.onMergeSpeaker,
     this.onRememberSpeaker,
+    this.onSegmentTap,
     this.globalEnrolledNames = const {},
   });
 
@@ -334,6 +323,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
   final void Function(String speakerLabel)? onRenameSpeaker;
   final void Function(String fromLabel)? onMergeSpeaker;
   final void Function(String speakerLabel)? onRememberSpeaker;
+  final void Function(TranscriptSegmentView segment)? onSegmentTap;
   final Map<String, String> globalEnrolledNames;
 
   @override
@@ -350,114 +340,127 @@ class MeetingIrTranscriptList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final segment in segments)
-          Container(
+          InkWell(
             key: segmentKeys[segment.id],
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: highlightedIds.contains(segment.id)
-                  ? scheme.tertiaryContainer
-                  : null,
-              borderRadius: BorderRadius.circular(8),
-              border: highlightedIds.contains(segment.id)
-                  ? Border.all(color: scheme.tertiary)
-                  : null,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  formatTimestamp(segment.startMs),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                if (segment.speakerLabel != null) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onLongPress: onRenameSpeaker == null
-                        ? null
-                        : () async {
-                            final label = speakerRegistry.canonicalLabel(
-                              segment.speakerLabel!,
-                            );
-                            if (onMergeSpeaker == null) {
-                              onRenameSpeaker!(label);
-                              return;
-                            }
-                            await showModalBottomSheet<void>(
-                              context: context,
-                              builder: (context) => SafeArea(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ListTile(
-                                      leading: const Icon(Icons.edit_outlined),
-                                      title: const Text('Rename speaker'),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        onRenameSpeaker!(label);
-                                      },
-                                    ),
-                                    ListTile(
-                                      leading: const Icon(Icons.merge_type),
-                                      title: const Text('Merge into another'),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        onMergeSpeaker!(label);
-                                      },
-                                    ),
-                                    if (onRememberSpeaker != null)
+            onTap: onSegmentTap == null ? null : () => onSegmentTap!(segment),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: highlightedIds.contains(segment.id)
+                    ? scheme.tertiaryContainer
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                border: highlightedIds.contains(segment.id)
+                    ? Border.all(color: scheme.tertiary)
+                    : null,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formatTimestamp(segment.startMs),
+                    key: Key('meeting_ir_seek_${segment.id}'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      decoration: onSegmentTap == null
+                          ? null
+                          : TextDecoration.underline,
+                    ),
+                  ),
+                  if (segment.speakerLabel != null) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onLongPress: onRenameSpeaker == null
+                          ? null
+                          : () async {
+                              final label = speakerRegistry.canonicalLabel(
+                                segment.speakerLabel!,
+                              );
+                              if (onMergeSpeaker == null) {
+                                onRenameSpeaker!(label);
+                                return;
+                              }
+                              await showModalBottomSheet<void>(
+                                context: context,
+                                builder: (context) => SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
                                       ListTile(
                                         leading: const Icon(
-                                          Icons.badge_outlined,
+                                          Icons.edit_outlined,
                                         ),
-                                        title: const Text(
-                                          'Remember for future meetings',
-                                        ),
+                                        title: const Text('Rename speaker'),
                                         onTap: () {
                                           Navigator.pop(context);
-                                          onRememberSpeaker!(label);
+                                          onRenameSpeaker!(label);
                                         },
                                       ),
-                                  ],
+                                      ListTile(
+                                        leading: const Icon(Icons.merge_type),
+                                        title: const Text('Merge into another'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          onMergeSpeaker!(label);
+                                        },
+                                      ),
+                                      if (onRememberSpeaker != null)
+                                        ListTile(
+                                          leading: const Icon(
+                                            Icons.badge_outlined,
+                                          ),
+                                          title: const Text(
+                                            'Remember for future meetings',
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            onRememberSpeaker!(label);
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                      child: Chip(
+                        key: Key('meeting_ir_speaker_${segment.id}'),
+                        label: Text(
+                          mindSpeakerDisplayLabel(
+                            segment.speakerLabel!,
+                            registry: speakerRegistry,
+                            globalEnrolledNames: globalEnrolledNames,
+                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: mindSpeakerChipForeground(
+                                  mindSpeakerChipColor(
+                                    speakerRegistry.canonicalLabel(
+                                      segment.speakerLabel!,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                    child: Chip(
-                      key: Key('meeting_ir_speaker_${segment.id}'),
-                      label: Text(
-                        mindSpeakerDisplayLabel(
-                          segment.speakerLabel!,
-                          registry: speakerRegistry,
-                          globalEnrolledNames: globalEnrolledNames,
                         ),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: mindSpeakerChipForeground(
-                            mindSpeakerChipColor(
-                              speakerRegistry.canonicalLabel(
-                                segment.speakerLabel!,
-                              ),
-                            ),
-                          ),
+                        backgroundColor: mindSpeakerChipColor(
+                          speakerRegistry.canonicalLabel(segment.speakerLabel!),
                         ),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
-                      backgroundColor: mindSpeakerChipColor(
-                        speakerRegistry.canonicalLabel(segment.speakerLabel!),
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SelectableText(
+                      segment.text.trim(),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                 ],
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SelectableText(
-                    segment.text.trim(),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
       ],

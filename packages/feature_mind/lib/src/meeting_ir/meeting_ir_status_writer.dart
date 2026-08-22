@@ -72,4 +72,38 @@ class MeetingIrStatusWriter {
       metrics: meeting.metrics,
     );
   }
+
+  Future<rust.MeetingRecord> updateTitle({
+    required rust.MeetingRecord meeting,
+    required String title,
+  }) async {
+    final doc = await _speech.getTranscript(meeting.id);
+    final segments = doc == null
+        ? const <TranscriptSegment>[]
+        : doc.segments.map(toTranscriptSegment).toList(growable: false);
+    final wavPath = doc?.audioPath ?? '';
+    await _speech.save(
+      title: title,
+      recordedAtMs: recordedAtMsFor(meeting),
+      transcript: meeting.transcript,
+      minutes: meeting.minutes,
+      model: meeting.model,
+      segments: segments,
+      wavPath: wavPath,
+      decisions: meeting.decisions,
+      actionItems: meeting.actionItems,
+      metrics: meeting.metrics,
+    );
+    return rust.MeetingRecord(
+      id: meeting.id,
+      title: title,
+      recordedAt: meeting.recordedAt,
+      transcript: meeting.transcript,
+      minutes: meeting.minutes,
+      model: meeting.model,
+      decisions: meeting.decisions,
+      actionItems: meeting.actionItems,
+      metrics: meeting.metrics,
+    );
+  }
 }

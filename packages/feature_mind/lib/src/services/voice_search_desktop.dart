@@ -49,6 +49,8 @@ Future<String> _transcribeWithWhisper(String path) async {
       case whisper.TranscriptEvent_Delta():
       case whisper.TranscriptEvent_Degraded():
       case whisper.TranscriptEvent_Cancelled():
+      case whisper.TranscriptEvent_Delta():
+      case whisper.TranscriptEvent_Degraded():
         break;
     }
   }

@@ -1251,6 +1251,36 @@ pub fn get_meeting(id: String) -> Result<Option<MeetingRecord>, String> {
         .map(MeetingRecord::from))
 }
 
+/// Drops a meeting from the append-only store and search index.
+pub fn delete_meeting(id: String) -> Result<bool, String> {
+    let mut library = lock(&LIBRARY);
+    let library = library.as_mut().ok_or("Airo Mind is not initialised")?;
+    let deleted = library.store.delete(&id).map_err(|e| e.to_string())?;
+    if deleted {
+        library.index.remove(&id);
+    }
+    Ok(deleted)
+}
+
+/// Dart reaches this without regenerating the FRB bridge.
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn airo_mind_whisper_delete_meeting(id: *const std::ffi::c_char) -> i32 {
+    if id.is_null() {
+        return -1;
+    }
+    // SAFETY: caller passes a NUL-terminated UTF-8 C string.
+    let c_str = unsafe { std::ffi::CStr::from_ptr(id) };
+    let Ok(id) = c_str.to_str() else {
+        return -1;
+    };
+    match delete_meeting(id.to_string()) {
+        Ok(true) => 0,
+        Ok(false) => 1,
+        Err(_) => -1,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -19,9 +19,17 @@ import '../domain/meeting_processing_job.dart';
 import 'meeting_capture_controller.dart';
 import 'meeting_processing_queue.dart';
 
-/// Real microphone encoder. Overridden with a fake in widget tests.
-final audioRecorderPortProvider = Provider<AudioRecorderPort>(
-  (ref) => PlatformAudioRecorderPort(),
+/// Factory for one microphone encoder per capture session. Widget tests
+/// return the same fake every call so Start can be asserted.
+final audioRecorderPortProvider = Provider<AudioRecorderPort Function()>(
+  (ref) =>
+      () => PlatformAudioRecorderPort(),
+);
+
+/// Resolves the next session's `.m4a` path. Widget tests override this so
+/// capture does not need a platform `path_provider` channel.
+final meetingRecordingPathProvider = Provider<Future<String> Function()>(
+  (ref) => nextMeetingRecordingPath,
 );
 
 /// Android foreground-service notification gateway. `NoopMeetingRecordingServiceGateway`
@@ -37,7 +45,7 @@ final meetingRecordingServiceGatewayProvider =
 final meetingCaptureControllerProvider =
     Provider.autoDispose<MeetingCaptureController>((ref) {
       final controller = MeetingCaptureController(
-        recorder: ref.watch(audioRecorderPortProvider),
+        recorder: ref.watch(audioRecorderPortProvider)(),
         serviceGateway: ref.watch(meetingRecordingServiceGatewayProvider),
       );
       ref.onDispose(controller.dispose);
@@ -66,45 +74,50 @@ Future<String> _processingQueuePath() async {
 /// exactly the "survives an app restart" behaviour the design note on
 /// `MeetingProcessingQueue` describes.
 ///
+/// Not `autoDispose`: Stop pops the capture screen, and that was the only
+/// watcher. Disposing the queue there cancelled the job before
+/// `MindService.process` could write the meeting, so the library looked empty.
+///
 /// [processJob] is supplied by the app shell (it wires the real
 /// `transcribeRecording` + `saveMeeting` pipeline from `meetings.dart`, plus
 /// the retention-policy cleanup) rather than being hardcoded here, so this
 /// package stays free of a compile-time dependency on any one processing
 /// strategy — the same reasoning `MindConfig` keeps model/store paths
 /// injected rather than assumed.
-final meetingProcessingQueueProvider =
-    FutureProvider.autoDispose<MeetingProcessingQueue>((ref) async {
-      final path = await _processingQueuePath();
-      final queue = MeetingProcessingQueue(
-        store: FileMeetingProcessingQueueStore(path),
-        deviceSignalsProbe: RealLlmDeviceSignalsProbe(
-          // No platform channel in this codebase exposes free filesystem
-          // bytes yet (see `RealLlmDeviceSignalsProbe`'s own doc on
-          // `availableStorageMb` -- this is the first real caller and hits
-          // that documented gap directly). A fixed generous headroom rather
-          // than a fabricated precise reading: this queue's thermal gate
-          // (`LlmThermalPolicy`) only ever reads `thermalPressure`, so
-          // storage headroom being approximate here does not affect AC4's
-          // pause/resume behaviour -- it only matters once a caller adds a
-          // storage-pressure policy, which does not exist today.
-          availableStorageMb: () async => 4096,
-        ),
-        processJob: (MeetingProcessingJob job) async {
-          // Overridden by the app shell's own provider override once a real
-          // processing pipeline is wired in. Left as a no-op-that-throws
-          // here rather than silently "succeeding" a job it never processed,
-          // so a missing override fails loudly instead of marking every
-          // meeting completed without a transcript.
-          throw UnimplementedError(
-            'meetingProcessingQueueProvider needs a processJob override — '
-            'see meetingProcessingQueueProvider doc comment.',
-          );
-        },
+final meetingProcessingQueueProvider = FutureProvider<MeetingProcessingQueue>((
+  ref,
+) async {
+  final path = await _processingQueuePath();
+  final queue = MeetingProcessingQueue(
+    store: FileMeetingProcessingQueueStore(path),
+    deviceSignalsProbe: RealLlmDeviceSignalsProbe(
+      // No platform channel in this codebase exposes free filesystem
+      // bytes yet (see `RealLlmDeviceSignalsProbe`'s own doc on
+      // `availableStorageMb` -- this is the first real caller and hits
+      // that documented gap directly). A fixed generous headroom rather
+      // than a fabricated precise reading: this queue's thermal gate
+      // (`LlmThermalPolicy`) only ever reads `thermalPressure`, so
+      // storage headroom being approximate here does not affect AC4's
+      // pause/resume behaviour -- it only matters once a caller adds a
+      // storage-pressure policy, which does not exist today.
+      availableStorageMb: () async => 4096,
+    ),
+    processJob: (MeetingProcessingJob job) async {
+      // Overridden by the app shell's own provider override once a real
+      // processing pipeline is wired in. Left as a no-op-that-throws
+      // here rather than silently "succeeding" a job it never processed,
+      // so a missing override fails loudly instead of marking every
+      // meeting completed without a transcript.
+      throw UnimplementedError(
+        'meetingProcessingQueueProvider needs a processJob override — '
+        'see meetingProcessingQueueProvider doc comment.',
       );
-      ref.onDispose(() {
-        // ignore: discarded_futures
-        queue.dispose();
-      });
-      await queue.restore();
-      return queue;
-    });
+    },
+  );
+  ref.onDispose(() {
+    // ignore: discarded_futures
+    queue.dispose();
+  });
+  await queue.restore();
+  return queue;
+});

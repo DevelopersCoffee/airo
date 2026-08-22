@@ -73,6 +73,17 @@ fn peak_rss_bytes() -> u64 {
     0
 }
 
+/// llama.cpp / ggml default to a CLI habit: INFO Metal, KV-cache, and
+/// scheduler chatter on stderr. A macOS app keeps that out of the terminal
+/// unless the user opts in (`AIRO_MIND_ENGINE_LOGS=1`). Must run before
+/// [`LlamaBackend::init`] — that call is itself a large INFO dump.
+fn apply_llama_log_policy() {
+    if airo_mind_core::engine_native_logs_verbose() {
+        return;
+    }
+    llama_cpp_2::send_logs_to_tracing(llama_cpp_2::LogOptions::default().with_logs_enabled(false));
+}
+
 /// llama.cpp's backend is **process-global** — `init` returns
 /// `BackendAlreadyInitialized` on a second call, and it is not per-model state.
 ///
@@ -83,6 +94,7 @@ fn backend() -> Result<&'static LlamaBackend, EngineError> {
     static BACKEND: OnceLock<Result<ManuallyDrop<LlamaBackend>, String>> = OnceLock::new();
     BACKEND
         .get_or_init(|| {
+            apply_llama_log_policy();
             LlamaBackend::init()
                 // llama_backend_free at process exit races ggml's Metal
                 // device unique_ptr destructor (`ggml_metal_device_free` →
@@ -353,7 +365,9 @@ fn decode_tokens(
     start_pos: i32,
 ) -> Result<i32, EngineError> {
     if tokens.is_empty() {
-        return Ok(start_pos);
+        return Err(EngineError::InvalidInput(
+            "cannot decode an empty token suffix".into(),
+        ));
     }
     let mut batch = LlamaBatch::new(batch_cap, 1);
     let last = tokens.len() - 1;
@@ -406,6 +420,22 @@ fn decode_prompt_with_prefix_cache(
             };
             if trimmed {
                 let suffix = &tokens[common..];
+                if suffix.is_empty() {
+                    // Restored KV has no output logits. Re-decode the last
+                    // prompt token so `sample(-1)` is valid. llama.cpp aborts
+                    // the OS process (`GGML_ASSERT(logits != nullptr)`) if we
+                    // sample after a restore with `n_outputs=0`.
+                    if tokens.is_empty() {
+                        return Err(EngineError::InvalidInput(
+                            "prompt decode produced no tokens".into(),
+                        ));
+                    }
+                    let last = tokens.len() - 1;
+                    let last_pos = u32::try_from(last).unwrap_or(u32::MAX);
+                    let _ = ctx.clear_kv_cache_seq(Some(0), Some(last_pos), None);
+                    let position = decode_tokens(ctx, batch_cap, &tokens[last..], last as i32)?;
+                    return Ok((position, 0));
+                }
                 let position = decode_tokens(ctx, batch_cap, suffix, common as i32)?;
                 let decoded = u32::try_from(suffix.len()).unwrap_or(u32::MAX);
                 return Ok((position, decoded));

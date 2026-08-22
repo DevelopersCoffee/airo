@@ -2367,8 +2367,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           text:
               result.message ??
               (result.isError
-                  ? 'I could not save that claim journey locally.'
-                  : 'Saved the claim journey on this device.'),
+                  ? 'I could not save that journey locally.'
+                  : 'Saved the journey on this device.'),
           isUser: false,
           traces: [
             AgentActionTrace(

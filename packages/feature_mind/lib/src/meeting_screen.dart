@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'bridges/mind_speech_bridge.dart' show TranscriptSegment;
 import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
+import 'meeting_audio/meeting_audio_bar.dart';
+import 'meeting_audio/meeting_audio_playback.dart';
 import 'meeting_ir/evidence_resolver.dart';
 import 'meeting_ir/meeting_ir_user_edits.dart';
 import 'meeting_ir/meeting_ir_user_edits_store.dart';
 import 'meeting_ir/meeting_ir_widgets.dart';
+import 'meeting_ir/meeting_minutes_content.dart';
 import 'speaker/meeting_speaker_registry.dart';
 import 'speaker/meeting_speaker_registry_store.dart';
 import 'speaker/global_speaker_enrollment_store.dart';
@@ -40,6 +45,7 @@ class MeetingScreen extends StatefulWidget {
     this.onSeekAudio,
     this.userEditsStore,
     this.speakerRegistryStore,
+    this.audioPlayback,
     super.key,
   }) : _meeting = null;
 
@@ -53,6 +59,7 @@ class MeetingScreen extends StatefulWidget {
     this.onSeekAudio,
     this.userEditsStore,
     this.speakerRegistryStore,
+    this.audioPlayback,
     super.key,
   }) : _progress = null,
        title = '',
@@ -77,9 +84,13 @@ class MeetingScreen extends StatefulWidget {
   /// Invoked when the user picks cloud fallback from the low-tier banner.
   final VoidCallback? onCloudFallback;
 
-  /// Optional audio seek when evidence is tapped (`startMs`). No player is
-  /// wired in feature_mind yet — shells may supply one.
+  /// Optional extra seek hook when evidence or a transcript line is tapped.
+  /// The screen also plays the kept recording itself when the file is still
+  /// on disk.
   final void Function(int startMs)? onSeekAudio;
+
+  /// Injected player for tests. Production constructs one in state.
+  final MeetingAudioPlayback? audioPlayback;
 
   /// Override for tests. Defaults to a SharedPreferences-backed store.
   final MeetingIrUserEditsStore? userEditsStore;
@@ -124,10 +135,13 @@ class _MeetingScreenState extends State<MeetingScreen> {
   String? _busyActionId;
   bool _dismissedLowTier = false;
   int? _pendingSeekMs;
+  bool _regenerating = false;
+  late final MeetingAudioPlayback _playback;
 
   @override
   void initState() {
     super.initState();
+    _playback = widget.audioPlayback ?? MeetingAudioPlayback();
     final stored = widget._meeting;
     _meeting = stored;
     _progress = stored == null
@@ -171,6 +185,16 @@ class _MeetingScreenState extends State<MeetingScreen> {
     }
     _loadGlobalEnrollment();
   }
+
+  @override
+  void dispose() {
+    if (widget.audioPlayback == null) {
+      _playback.dispose();
+    }
+    super.dispose();
+  }
+
+  bool get _hasAudio => MeetingAudioPlayback.fileExists(_audioPath);
 
   Future<void> _loadGlobalEnrollment() async {
     final profiles = await _globalEnrollmentStore.loadProfiles();
@@ -316,6 +340,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
     });
     if (seekMs != null) {
       widget.onSeekAudio?.call(seekMs);
+      final path = _audioPath;
+      if (MeetingAudioPlayback.fileExists(path)) {
+        unawaited(_playback.seekAndPlay(path!, seekMs));
+      }
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || ids.isEmpty) return;
@@ -418,6 +446,42 @@ class _MeetingScreenState extends State<MeetingScreen> {
     setState(() => _edits = next);
   }
 
+  void _onTranscriptTap(TranscriptSegmentView segment) {
+    _onEvidence([segment.id]);
+  }
+
+  Future<void> _regenerate() async {
+    final meeting = _meeting;
+    final path = _audioPath;
+    if (meeting == null || !MeetingAudioPlayback.fileExists(path)) {
+      _notify('Recording is not on this device.');
+      return;
+    }
+    if (_regenerating || _isRunning) return;
+    setState(() => _regenerating = true);
+    final recordedAtMs =
+        int.tryParse(
+          meeting.id.startsWith('m') ? meeting.id.substring(1) : '',
+        ) ??
+        meeting.recordedAt.toInt() * 1000;
+    try {
+      await for (final progress in widget.service.process(
+        wavPath: path!,
+        title: meeting.title,
+        recordedAtMs: recordedAtMs,
+      )) {
+        if (!mounted) return;
+        setState(() => _progress = progress);
+      }
+      if (!mounted) return;
+      await _reloadMeeting(meeting.id);
+    } on Object catch (e) {
+      if (mounted) _notify('Could not regenerate: $e');
+    } finally {
+      if (mounted) setState(() => _regenerating = false);
+    }
+  }
+
   Future<void> _renameSpeaker(String speakerLabel) async {
     final meetingId = _meeting?.id ?? _progress.meetingId;
     if (meetingId == null) return;
@@ -503,6 +567,15 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _notify('Could not compute a voice profile for this segment.');
       return;
     }
+    final meetingId = _meeting?.id ?? _progress.meetingId;
+    if (meetingId != null) {
+      final next = _speakerRegistry.renameSpeaker(
+        label: speakerLabel,
+        displayName: profile.displayName,
+      );
+      await _speakerStore.save(meetingId, next);
+      if (mounted) setState(() => _speakerRegistry = next);
+    }
     await _loadGlobalEnrollment();
     if (!mounted) return;
     _notify('Remembered ${profile.displayName} for future meetings.');
@@ -516,8 +589,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
         (stored.decisions.isNotEmpty ||
             stored.actionItems.isNotEmpty ||
             stored.metrics.isNotEmpty);
+    final minutes = _progress.minutes.trim();
     final showMinutesFallback =
-        _progress.minutes.isNotEmpty &&
+        minutes.isNotEmpty &&
+        !isEmptyMeetingMinutes(minutes) &&
         (!hasIr || !widget.meetingIntelligenceEnabled);
 
     return Scaffold(
@@ -535,19 +610,36 @@ class _MeetingScreenState extends State<MeetingScreen> {
           // Export needs a saved meeting id -- available once processing
           // reaches `done`, or always for a reopened meeting.
           else if (stored != null || _progress.meetingId != null)
-            PopupMenuButton<bool>(
-              icon: _exporting
+            PopupMenuButton<String>(
+              icon: _exporting || _regenerating
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.ios_share),
-              tooltip: 'Export as markdown',
-              onSelected: (share) => _export(share: share),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: false, child: Text('Save to folder')),
-                PopupMenuItem(value: true, child: Text('Share')),
+                  : const Icon(Icons.more_vert),
+              tooltip: 'Meeting actions',
+              onSelected: (value) {
+                switch (value) {
+                  case 'save':
+                    unawaited(_export(share: false));
+                  case 'share':
+                    unawaited(_export(share: true));
+                  case 'regenerate':
+                    unawaited(_regenerate());
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'save',
+                  child: Text('Save to folder'),
+                ),
+                const PopupMenuItem(value: 'share', child: Text('Share')),
+                if (_hasAudio)
+                  const PopupMenuItem(
+                    value: 'regenerate',
+                    child: Text('Regenerate minutes'),
+                  ),
               ],
             ),
         ],
@@ -570,6 +662,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                 ),
+              if (_hasAudio) ...[
+                MeetingAudioBar(playback: _playback, audioPath: _audioPath!),
+                const SizedBox(height: 12),
+              ],
               if (widget.showLowTierCloudChoice && !_dismissedLowTier) ...[
                 MeetingIrLowTierBanner(
                   onUseCloud: () {
@@ -640,6 +736,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   onRememberSpeaker: _audioPath != null
                       ? _rememberSpeaker
                       : null,
+                  onSegmentTap: _onTranscriptTap,
                   globalEnrolledNames: globalEnrolledSpeakerNames(
                     _globalProfiles,
                   ),

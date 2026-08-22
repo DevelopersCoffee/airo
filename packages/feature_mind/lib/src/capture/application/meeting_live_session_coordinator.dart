@@ -137,6 +137,9 @@ class MeetingLiveSessionCoordinator {
       case TranscriptEventTranscribing():
       case TranscriptEventCancelled():
         break;
+      case TranscriptEventDegraded(:final message):
+        _partialText = message;
+        break;
     }
     onTranscriptChanged?.call();
   }

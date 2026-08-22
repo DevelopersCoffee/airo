@@ -65,6 +65,12 @@ class _FakeMind extends MindService {
 
   @override
   Future<void> dispose() async {}
+
+  @override
+  Future<void> pauseRecording() async {}
+
+  @override
+  Future<void> resumeRecording() async {}
 }
 
 rust.MeetingRecord _irMeeting() => rust.MeetingRecord(
@@ -160,7 +166,7 @@ void main() {
     expect(find.text('Minutes'), findsNothing);
   });
 
-  testWidgets('empty IR still shows Decisions / Action items / Metrics', (
+  testWidgets('empty IR hides empty sections and empty minutes template', (
     tester,
   ) async {
     final meeting = rust.MeetingRecord(
@@ -168,7 +174,14 @@ void main() {
       title: 'Empty IR',
       recordedAt: BigInt.from(1700000000),
       transcript: 'hello',
-      minutes: 'notes',
+      minutes:
+          '# Minutes of Meeting\n\n**Meeting:** Empty IR\n\n'
+          '## Meeting Objective\n\n'
+          'No objective was recorded for this meeting.\n\n'
+          '## Key Discussion Points\n\n'
+          'No discussion points were recorded for this meeting.\n\n'
+          '## Decisions & Direction\n\n'
+          '_No decisions recorded._\n',
       model: 'qwen',
       decisions: const [],
       actionItems: const [],
@@ -185,9 +198,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No decisions recorded.'), findsOneWidget);
-    expect(find.text('No action items recorded.'), findsOneWidget);
-    expect(find.text('No metrics recorded.'), findsOneWidget);
+    expect(find.text('Decisions'), findsNothing);
+    expect(find.text('Action items'), findsNothing);
+    expect(find.text('Metrics'), findsNothing);
+    expect(find.text('No decisions recorded.'), findsNothing);
+    expect(find.text('Minutes'), findsNothing);
+    expect(find.text('Transcript'), findsOneWidget);
+    expect(find.text('hello'), findsOneWidget);
   });
 
   testWidgets('checking an action writes status through the service', (
@@ -238,6 +255,34 @@ void main() {
     expect(find.byKey(const Key('meeting_ir_evidence_clock')), findsOneWidget);
     expect(find.textContaining('Evidence at 01:05'), findsOneWidget);
     expect(seekMs, 65000);
+  });
+
+  testWidgets('tapping a transcript timestamp seeks to that moment', (
+    tester,
+  ) async {
+    final meeting = _irMeeting();
+    int? seekMs;
+    await tester.pumpWidget(
+      _app(
+        MeetingScreen.stored(
+          service: _FakeMind(library: [meeting], doc: _doc()),
+          meeting: meeting,
+          userEditsStore: MeetingIrUserEditsStore(),
+          onSeekAudio: (ms) => seekMs = ms,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('meeting_ir_seek_s0')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('meeting_ir_seek_s0')));
+    await tester.pumpAndSettle();
+
+    expect(seekMs, 65000);
+    expect(find.textContaining('Evidence at 01:05'), findsOneWidget);
   });
 
   testWidgets('user edit overlay wins over IR task text', (tester) async {

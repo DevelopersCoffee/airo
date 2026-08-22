@@ -66,6 +66,26 @@ void main() {
       expect(controller.current.lifecycle, MeetingRecordingLifecycle.recording);
     });
 
+    test('mic levels land on the snapshot while recording', () async {
+      await controller.start('/tmp/meeting.m4a');
+      recorder.emitLevel(0.7);
+      await pumpEventQueue();
+      expect(controller.current.amplitude, closeTo(0.7, 0.001));
+    });
+
+    test(
+      'elapsed follows wall clock instead of compounding each tick',
+      () async {
+        await controller.start('/tmp/meeting.m4a');
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        final elapsed = controller.current.elapsedMs;
+        // The old ticker wrote live elapsed back into the base it added to, so
+        // ~8 ticks in 40ms compounded to ~180ms and ran ahead of a real clock.
+        expect(elapsed, lessThan(90));
+        expect(elapsed, greaterThanOrEqualTo(20));
+      },
+    );
+
     test('elapsed time accumulates across a pause/resume cycle', () async {
       await controller.start('/tmp/meeting.m4a');
       await Future<void>.delayed(const Duration(milliseconds: 20));

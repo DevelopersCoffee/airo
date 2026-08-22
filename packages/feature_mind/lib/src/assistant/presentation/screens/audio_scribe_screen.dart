@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../../trust/scribe_trust_state.dart';
 import '../../consent/audio_scribe_consent_gate.dart';
 import '../../consent/jurisdiction_consent_rules.dart';
 import '../../consent/mind_runtime_provider.dart';
+import '../../consent/recording_consent_prompt.dart';
 
 /// Audio Scribe entry point for capturing a transcript and handing it to the
 /// normal Airo runtime for optional translation or summarisation.
@@ -39,11 +42,37 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
   bool _consentBusy = false;
   String? _consentError;
   bool _partialTranscript = false;
+  bool _implicitConsentFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!ref.read(recordingConsentPromptProvider)) {
+      unawaited(_grantImplicitConsent());
+    }
+  }
 
   @override
   void dispose() {
     _transcriptController.dispose();
     super.dispose();
+  }
+
+  Future<void> _grantImplicitConsent() async {
+    try {
+      await _consentGate.grant(
+        log: ref.read(mindRuntimeProvider).log,
+        contextId: _contextId,
+        jurisdiction: implicitConsentJurisdiction,
+        allPartiesNotified: false,
+        nowMs: DateTime.now().millisecondsSinceEpoch,
+      );
+    } on Object {
+      if (!mounted) return;
+      setState(() => _implicitConsentFailed = true);
+      return;
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _confirmConsent() async {
@@ -153,6 +182,8 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
     final available = ref.watch(voiceSearchAvailableProvider);
     final hasTranscript = _transcriptController.text.trim().isNotEmpty;
     final speechReady = available.value == true;
+    final showConsentUi =
+        ref.watch(recordingConsentPromptProvider) || _implicitConsentFailed;
     final consentGranted = _consentGate.isGranted;
     final canCapture = (speechReady && consentGranted) || _capturing;
     return Scaffold(
@@ -160,25 +191,27 @@ class _AudioScribeScreenState extends ConsumerState<AudioScribeScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
-          _ConsentGateBanner(
-            consent: _consentGate.consent,
-            isGranted: consentGranted,
-            jurisdiction: _jurisdiction,
-            allPartiesAck: _allPartiesAck,
-            busy: _consentBusy,
-            error: _consentError,
-            onJurisdictionChanged: (jurisdiction) => setState(() {
-              _jurisdiction = jurisdiction;
-              if (!jurisdiction.requiresAllPartyNotification) {
-                _allPartiesAck = false;
-              }
-            }),
-            onAllPartiesAckChanged: (value) =>
-                setState(() => _allPartiesAck = value),
-            onConfirm: _confirmConsent,
-            onRevoke: _revokeConsent,
-          ),
-          const SizedBox(height: 12),
+          if (showConsentUi) ...[
+            _ConsentGateBanner(
+              consent: _consentGate.consent,
+              isGranted: consentGranted,
+              jurisdiction: _jurisdiction,
+              allPartiesAck: _allPartiesAck,
+              busy: _consentBusy,
+              error: _consentError,
+              onJurisdictionChanged: (jurisdiction) => setState(() {
+                _jurisdiction = jurisdiction;
+                if (!jurisdiction.requiresAllPartyNotification) {
+                  _allPartiesAck = false;
+                }
+              }),
+              onAllPartiesAckChanged: (value) =>
+                  setState(() => _allPartiesAck = value),
+              onConfirm: _confirmConsent,
+              onRevoke: _revokeConsent,
+            ),
+            const SizedBox(height: 12),
+          ],
           const Text(
             'Capture speech, review the transcript, then send it to an installed model for translation or summarisation.',
           ),

@@ -1,5 +1,6 @@
 import 'package:feature_mind/src/export/domain/meeting_export_models.dart';
 import 'package:feature_mind/src/export/domain/meeting_markdown_renderer.dart';
+import 'package:feature_mind/src/speaker/meeting_speaker_registry.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -98,8 +99,33 @@ void main() {
       );
       expect(
         md,
-        contains('[00:01:05] sp0: Priya said the lag is the bottleneck.'),
+        contains('[00:01:05] Speaker 1: Priya said the lag is the bottleneck.'),
       );
+    });
+
+    test('uses enrolled and renamed speaker display names', () {
+      final md = renderTranscriptMarkdown(
+        title: 'Standup',
+        recordedAt: DateTime.utc(2026, 8, 14),
+        lines: const [
+          TranscriptExportLine(
+            startMs: 0,
+            text: 'Hello from Alice.',
+            speakerLabel: 'enrolled_0',
+          ),
+          TranscriptExportLine(
+            startMs: 1000,
+            text: 'Bob here.',
+            speakerLabel: 'sp1',
+          ),
+        ],
+        speakerRegistry: const MeetingSpeakerRegistry(displayNames: {
+          'sp1': 'Bob',
+        }),
+        globalEnrolledNames: {'enrolled_0': 'Alice'},
+      );
+      expect(md, contains('[00:00:00] Alice: Hello from Alice.'));
+      expect(md, contains('[00:00:01] Bob: Bob here.'));
     });
 
     test('skips blank lines', () {

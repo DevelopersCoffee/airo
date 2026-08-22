@@ -43,7 +43,10 @@ pub use pcm_slice::slice_segment_pcm;
 pub use result::DiarizationResult;
 pub use segment::{DiarizedSegment, SpeakerId};
 pub use single_speaker::SingleSpeakerDiarizer;
-pub use strategy::{diarize_segments, product_diarization_strategy, DiarizationStrategy};
+pub use strategy::{
+    diarize_segments, product_diarization_strategy, DiarizationStrategy,
+    DEFAULT_EMBEDDING_SIMILARITY,
+};
 pub use stub_embedder::StubSpeakerEmbedder;
 
 /// Runs the default v0 diarizer (`SingleSpeakerDiarizer`) on transcript segments.

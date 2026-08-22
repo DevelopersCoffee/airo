@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
+import 'package:feature_mind/src/assistant/consent/recording_consent_prompt.dart';
+import 'package:feature_mind/src/capture/application/meeting_capture_providers.dart';
+import 'package:feature_mind/src/capture/data/meeting_recording_service_gateway.dart';
 import 'package:feature_mind/src/capture/presentation/meeting_capture_screen.dart';
 import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
@@ -6,10 +11,17 @@ import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_audio_recorder_port.dart';
+
 void main() {
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    bool showConsentPrompt = true,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     // Tall surface so consent + trust strip + controls fit without scrolling
     // (the trust strip (#1774) pushed the start button off a default phone
@@ -22,12 +34,33 @@ void main() {
           mindRuntimeProvider.overrideWith(
             (ref) => ScribeMindRuntime(log: _MemoryLog()),
           ),
+          recordingConsentPromptProvider.overrideWithValue(showConsentPrompt),
         ],
         child: const MaterialApp(home: MeetingCaptureScreen()),
       ),
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'hides the consent picker and enables Start when the prompt is off',
+    (tester) async {
+      await pumpScreen(tester, showConsentPrompt: false);
+
+      expect(
+        find.byKey(const Key('meeting_capture_consent_reminder_copy')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('meeting_capture_jurisdiction_dropdown')),
+        findsNothing,
+      );
+      final startButton = tester.widget<FilledButton>(
+        find.byKey(const Key('meeting_capture_start_button')),
+      );
+      expect(startButton.onPressed, isNotNull);
+    },
+  );
 
   testWidgets(
     'shows the explicit consent-reminder copy before anything else (AC6)',
@@ -74,6 +107,10 @@ void main() {
       find.byKey(const Key('meeting_capture_start_button')),
     );
     expect(startButton.onPressed, isNull);
+    final confirmButton = tester.widget<FilledButton>(
+      find.byKey(const Key('meeting_capture_confirm_consent_button')),
+    );
+    expect(confirmButton.onPressed, isNull);
   });
 
   testWidgets(
@@ -167,6 +204,87 @@ void main() {
       expect(confirmButton.onPressed, isNotNull);
     },
   );
+
+  testWidgets('confirming consent then start talks to the encoder', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final tempDir = Directory.systemTemp.createTempSync('meeting_capture_');
+    addTearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+    PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
+    final recorder = FakeAudioRecorderPort();
+    await tester.binding.setSurfaceSize(const Size(400, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          mindRuntimeProvider.overrideWith(
+            (ref) => ScribeMindRuntime(log: _MemoryLog()),
+          ),
+          recordingConsentPromptProvider.overrideWithValue(true),
+          audioRecorderPortProvider.overrideWith(
+            (ref) =>
+                () => recorder,
+          ),
+          meetingRecordingPathProvider.overrideWith(
+            (ref) =>
+                () async => '${tempDir.path}/meeting.m4a',
+          ),
+          meetingRecordingServiceGatewayProvider.overrideWith(
+            (ref) => const NoopMeetingRecordingServiceGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: MeetingCaptureScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('meeting_capture_jurisdiction_dropdown')),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('United Kingdom'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('United Kingdom'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('meeting_capture_confirm_consent_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('meeting_capture_start_button')));
+    // The capture ticker is periodic — pumpAndSettle never completes.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(
+      recorder.calls.where((call) => call.startsWith('start:')),
+      isNotEmpty,
+    );
+    expect(find.byKey(const Key('meeting_capture_visualizer')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meeting_capture_pause_button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('meeting_capture_stop_button')),
+      findsOneWidget,
+    );
+  });
+}
+
+class _FakePathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  _FakePathProvider(this.supportPath);
+
+  final String supportPath;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => supportPath;
 }
 
 class _MemoryLog implements OperationLogPort {

@@ -41,6 +41,7 @@ class MeetingRecordingSnapshot {
     required this.filePath,
     required this.elapsedMs,
     this.pausedByOs = false,
+    this.amplitude = 0,
     this.error,
   });
 
@@ -61,6 +62,10 @@ class MeetingRecordingSnapshot {
   /// "Paused — call in progress" instead of the ordinary pause affordance.
   final bool pausedByOs;
 
+  /// Normalized 0–1 mic level for the live visualizer. Silence is 0; a
+  /// close, loud talker sits near 1. Zero while paused or idle.
+  final double amplitude;
+
   final String? error;
 
   MeetingRecordingSnapshot copyWith({
@@ -68,6 +73,7 @@ class MeetingRecordingSnapshot {
     String? filePath,
     int? elapsedMs,
     bool? pausedByOs,
+    double? amplitude,
     String? error,
   }) {
     return MeetingRecordingSnapshot(
@@ -75,6 +81,7 @@ class MeetingRecordingSnapshot {
       filePath: filePath ?? this.filePath,
       elapsedMs: elapsedMs ?? this.elapsedMs,
       pausedByOs: pausedByOs ?? this.pausedByOs,
+      amplitude: amplitude ?? this.amplitude,
       error: error ?? this.error,
     );
   }

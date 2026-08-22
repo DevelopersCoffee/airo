@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../assistant/consent/audio_scribe_consent_gate.dart';
 import '../../assistant/consent/jurisdiction_consent_rules.dart';
 import '../../assistant/consent/mind_runtime_provider.dart';
+import '../../assistant/consent/recording_consent_prompt.dart';
 import '../../trust/scribe_trust_signals.dart';
 import '../../trust/scribe_trust_state.dart';
 import '../application/meeting_capture_controller.dart';
@@ -14,6 +17,7 @@ import '../application/transcription_mode_preference.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
 import '../domain/transcription_mode.dart';
+import 'meeting_recording_visualizer.dart';
 
 /// In-app meeting capture (#1656 AC1, AC6).
 ///
@@ -32,6 +36,10 @@ import '../domain/transcription_mode.dart';
 /// two-party jurisdictions) blocks on an "I notified everyone" acknowledgment
 /// before starting, but it is not a legal gate; nothing here verifies the
 /// acknowledgment is true.
+///
+/// That picker is behind [recordingConsentPromptProvider], off by default. With
+/// it off the gate is still the only door to the encoder; consent is granted up
+/// front under [implicitConsentJurisdiction] so Start works on arrival.
 class MeetingCaptureScreen extends ConsumerStatefulWidget {
   const MeetingCaptureScreen({super.key});
 
@@ -49,6 +57,13 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   bool _consentBusy = false;
   String? _consentError;
 
+  /// Set when the up-front grant (prompt disabled) could not write its op.
+  /// Falls back to showing the picker rather than leaving Start dead with no
+  /// explanation.
+  bool _implicitConsentFailed = false;
+
+  StreamSubscription<MeetingRecordingSnapshot>? _snapshotSub;
+  StreamSubscription<List<MeetingProcessingJob>>? _jobsSub;
   MeetingCaptureController? _controller;
   MeetingLiveSessionCoordinator? _liveCoordinator;
   String? _meetingId;
@@ -56,11 +71,51 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   String? _startError;
   String? _liveWarning;
 
+  /// The job this session enqueued, while it is still in the queue. Non-null
+  /// means "transcribing" — the screen stays put and reports progress instead
+  /// of dropping the person back into a library that will not list the meeting
+  /// for another few minutes.
+  MeetingProcessingJob? _processing;
+  bool _processed = false;
+  String? _processingError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!ref.read(recordingConsentPromptProvider)) {
+      unawaited(_grantImplicitConsent());
+    }
+  }
+
   @override
   void dispose() {
     _liveCoordinator?.dispose();
-    _controller?.dispose();
+    _snapshotSub?.cancel();
+    _jobsSub?.cancel();
     super.dispose();
+  }
+
+  /// Records consent without asking, for when [recordingConsentPromptProvider]
+  /// is off. Still goes through [AudioScribeConsentGate.grant], so the op log
+  /// carries a consent entry for every recording exactly as before.
+  Future<void> _grantImplicitConsent() async {
+    try {
+      await _consentGate.grant(
+        log: ref.read(mindRuntimeProvider).log,
+        contextId: _contextId,
+        jurisdiction: implicitConsentJurisdiction,
+        allPartiesNotified: false,
+        nowMs: DateTime.now().millisecondsSinceEpoch,
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _implicitConsentFailed = true;
+        _consentError = '$error';
+      });
+      return;
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _confirmConsent() async {
@@ -94,9 +149,11 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     });
     final controller = ref.read(meetingCaptureControllerProvider);
     _controller = controller;
-    controller.snapshots.listen((snapshot) {
+    await _snapshotSub?.cancel();
+    _snapshotSub = controller.snapshots.listen((snapshot) {
       if (mounted) setState(() => _snapshot = snapshot);
     });
+
     final meetingId = 'meeting-${DateTime.now().millisecondsSinceEpoch}';
     _meetingId = meetingId;
     final transcriptionMode = ref.read(transcriptionModeProvider);
@@ -123,12 +180,17 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         _liveCoordinator = null;
       }
     }
-    final path = await nextMeetingRecordingPath();
+
     try {
+      final path = await ref.read(meetingRecordingPathProvider)();
       await _consentGate.startRecording(() => controller.start(path));
     } on ConsentRequiredException catch (error) {
       if (!mounted) return;
       setState(() => _startError = error.reason);
+      return;
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _startError = '$error');
       return;
     }
     if (!mounted) return;
@@ -170,27 +232,62 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     }
 
     final transcriptionMode = ref.read(transcriptionModeProvider);
-    final queue = await ref.read(meetingProcessingQueueProvider.future);
-    final meetingId = _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
-    final title = 'Meeting ${DateTime.now().toLocal()}';
+    final meetingId =
+        _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
+    final now = DateTime.now();
+    final title = 'Meeting ${now.toLocal()}';
     final isLiveOnly = transcriptionMode == TranscriptionMode.live;
     final isLiveRefine = transcriptionMode == TranscriptionMode.liveRefine;
-    await queue.enqueue(
-      MeetingProcessingJob(
-        id: meetingId,
-        audioPath: path,
-        title: title,
-        enqueuedAtMs: DateTime.now().millisecondsSinceEpoch,
-        source: MeetingProcessingSource.live,
-        completedTranscript: isLiveOnly ? liveResult?.text : null,
-        completedSegments: isLiveOnly ? liveResult?.segments : null,
-        refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
-      ),
+    final job = MeetingProcessingJob(
+      id: meetingId,
+      audioPath: path,
+      title: title,
+      enqueuedAtMs: now.millisecondsSinceEpoch,
+      source: MeetingProcessingSource.live,
+      completedTranscript: isLiveOnly ? liveResult?.text : null,
+      completedSegments: isLiveOnly ? liveResult?.segments : null,
+      refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
     );
+    if (!mounted) return;
+    setState(() {
+      _processing = job;
+      _processed = false;
+      _processingError = null;
+    });
+    final queue = await ref.read(meetingProcessingQueueProvider.future);
+    await _jobsSub?.cancel();
+    _jobsSub = queue.jobs.listen((jobs) => _onJobsChanged(job.id, jobs));
+    await queue.enqueue(job);
+  }
+
+  void _onJobsChanged(String jobId, List<MeetingProcessingJob> jobs) {
+    if (!mounted) return;
+    MeetingProcessingJob? mine;
+    for (final candidate in jobs) {
+      if (candidate.id == jobId) mine = candidate;
+    }
+    if (mine == null) {
+      setState(() {
+        _processing = null;
+        _processed = true;
+      });
+      return;
+    }
+    if (mine.status == MeetingProcessingStatus.failed) {
+      setState(() {
+        _processing = null;
+        _processingError = mine?.lastError ?? 'Transcription failed.';
+      });
+      return;
+    }
+    setState(() => _processing = mine);
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(meetingCaptureControllerProvider);
+    final showConsentUi =
+        ref.watch(recordingConsentPromptProvider) || _implicitConsentFailed;
     final consentGranted = _consentGate.isGranted;
     final lifecycle = _snapshot.lifecycle;
     final recording = lifecycle == MeetingRecordingLifecycle.recording;
@@ -203,101 +300,153 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record meeting')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      body: Column(
         children: [
-          const _ConsentReminder(),
-          const SizedBox(height: 12),
-          // #1774: settings-driven multilingual / English badge + offline copy.
-          ScribeTrustSignals(
-            state: ScribeTrustState.fromSpeechLanguageMode(languageMode),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                if (showConsentUi) ...[
+                  const _ConsentReminder(),
+                  const SizedBox(height: 12),
+                ],
+                ScribeTrustSignals(
+                  state: ScribeTrustState.fromSpeechLanguageMode(languageMode),
+                ),
+                const SizedBox(height: 12),
+                if (showConsentUi)
+                  _ConsentJurisdictionPicker(
+                    jurisdiction: _jurisdiction,
+                    allPartiesAck: _allPartiesAck,
+                    granted: consentGranted,
+                    busy: _consentBusy,
+                    error: _consentError,
+                    onJurisdictionChanged: (jurisdiction) => setState(() {
+                      _jurisdiction = jurisdiction;
+                      if (!jurisdiction.requiresAllPartyNotification) {
+                        _allPartiesAck = false;
+                      }
+                    }),
+                    onAllPartiesAckChanged: (value) =>
+                        setState(() => _allPartiesAck = value),
+                    onConfirm: _confirmConsent,
+                  ),
+                _ProcessingStatus(
+                  job: _processing,
+                  processed: _processed,
+                  error: _processingError,
+                  onOpenLibrary: () => Navigator.of(context).maybePop(),
+                ),
+                if (showLiveTranscript) ...[
+                  const SizedBox(height: 16),
+                  _LiveTranscriptPanel(coordinator: _liveCoordinator!),
+                ],
+                if (paused && _snapshot.pausedByOs)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 20),
+                    child: Text(
+                      key: Key('meeting_capture_os_pause_notice'),
+                      'Paused automatically — a call or Siri interrupted the '
+                      'microphone. Recording will resume when it ends.',
+                    ),
+                  ),
+                if (_liveWarning != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _liveWarning!,
+                    key: const Key('meeting_capture_live_warning'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          _ConsentJurisdictionPicker(
-            jurisdiction: _jurisdiction,
-            allPartiesAck: _allPartiesAck,
-            granted: consentGranted,
-            busy: _consentBusy,
-            error: _consentError,
-            onJurisdictionChanged: (jurisdiction) => setState(() {
-              _jurisdiction = jurisdiction;
-              if (!jurisdiction.requiresAllPartyNotification) {
-                _allPartiesAck = false;
-              }
-            }),
-            onAllPartiesAckChanged: (value) =>
-                setState(() => _allPartiesAck = value),
-            onConfirm: _confirmConsent,
-          ),
-          const SizedBox(height: 20),
-          if (paused && _snapshot.pausedByOs)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                key: Key('meeting_capture_os_pause_notice'),
-                'Paused automatically — a call or Siri interrupted the '
-                'microphone. Recording will resume when it ends.',
+          Material(
+            elevation: 8,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  MeetingRecordingVisualizer(
+                    recording: recording,
+                    amplitude: _snapshot.amplitude,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      if (active)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: Icon(
+                            paused
+                                ? Icons.pause_circle_filled
+                                : Icons.fiber_manual_record,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 18,
+                          ),
+                        ),
+                      Text(
+                        _formatElapsed(_snapshot.elapsedMs),
+                        key: const Key('meeting_capture_elapsed'),
+                        style: Theme.of(context).textTheme.displaySmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (!active)
+                        FilledButton.icon(
+                          key: const Key('meeting_capture_start_button'),
+                          onPressed: consentGranted ? _start : null,
+                          icon: const Icon(Icons.mic),
+                          label: const Text('Start recording'),
+                        ),
+                      if (recording)
+                        OutlinedButton.icon(
+                          key: const Key('meeting_capture_pause_button'),
+                          onPressed: _pause,
+                          icon: const Icon(Icons.pause),
+                          label: const Text('Pause'),
+                        ),
+                      if (paused && !_snapshot.pausedByOs)
+                        OutlinedButton.icon(
+                          key: const Key('meeting_capture_resume_button'),
+                          onPressed: _resume,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Resume'),
+                        ),
+                      if (active)
+                        FilledButton.icon(
+                          key: const Key('meeting_capture_stop_button'),
+                          onPressed: _stop,
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Stop'),
+                        ),
+                    ],
+                  ),
+                  if (_startError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _startError!,
+                      key: const Key('meeting_capture_error'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          Text(
-            _formatElapsed(_snapshot.elapsedMs),
-            key: const Key('meeting_capture_elapsed'),
-            style: Theme.of(context).textTheme.displaySmall,
           ),
-          if (showLiveTranscript) ...[
-            const SizedBox(height: 16),
-            _LiveTranscriptPanel(coordinator: _liveCoordinator!),
-          ],
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            children: [
-              if (!active)
-                FilledButton.icon(
-                  key: const Key('meeting_capture_start_button'),
-                  onPressed: consentGranted ? _start : null,
-                  icon: const Icon(Icons.mic),
-                  label: const Text('Start recording'),
-                ),
-              if (recording)
-                OutlinedButton.icon(
-                  key: const Key('meeting_capture_pause_button'),
-                  onPressed: _pause,
-                  icon: const Icon(Icons.pause),
-                  label: const Text('Pause'),
-                ),
-              if (paused && !_snapshot.pausedByOs)
-                OutlinedButton.icon(
-                  key: const Key('meeting_capture_resume_button'),
-                  onPressed: _resume,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Resume'),
-                ),
-              if (active)
-                FilledButton.icon(
-                  key: const Key('meeting_capture_stop_button'),
-                  onPressed: _stop,
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Stop'),
-                ),
-            ],
-          ),
-          if (_liveWarning != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _liveWarning!,
-              key: const Key('meeting_capture_live_warning'),
-              style: TextStyle(color: Theme.of(context).colorScheme.tertiary),
-            ),
-          ],
-          if (_startError != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _startError!,
-              key: const Key('meeting_capture_error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
         ],
       ),
     );
@@ -347,6 +496,78 @@ class _LiveTranscriptPanel extends StatelessWidget {
                 ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What happened to the recording after Stop.
+class _ProcessingStatus extends StatelessWidget {
+  const _ProcessingStatus({
+    required this.job,
+    required this.processed,
+    required this.error,
+    required this.onOpenLibrary,
+  });
+
+  final MeetingProcessingJob? job;
+  final bool processed;
+  final String? error;
+  final VoidCallback onOpenLibrary;
+
+  @override
+  Widget build(BuildContext context) {
+    final job = this.job;
+    final error = this.error;
+    if (job == null && !processed && error == null) {
+      return const SizedBox.shrink();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Card(
+        color: scheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              if (job != null)
+                const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(
+                  processed ? Icons.check_circle : Icons.error_outline,
+                  color: processed ? null : scheme.error,
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  job != null
+                      ? 'Processing your sound on this device. Airo is '
+                            'turning it into a named meeting you can search '
+                            'and replay — leave whenever you want.'
+                      : processed
+                      ? 'Your meeting is ready in Scribe. Airo named it '
+                            'from what was said — open it to listen and read.'
+                      : 'Could not process this recording: '
+                            '${error ?? 'unknown error'}',
+                  key: const Key('meeting_capture_processing_status'),
+                ),
+              ),
+              if (processed) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  key: const Key('meeting_capture_open_library_button'),
+                  onPressed: onOpenLibrary,
+                  child: const Text('Open'),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -417,7 +638,10 @@ class _ConsentJurisdictionPicker extends StatelessWidget {
       );
     }
     final requiresAck = jurisdiction.requiresAllPartyNotification;
-    final canConfirm = !busy && (!requiresAck || allPartiesAck);
+    final canConfirm =
+        !busy &&
+        jurisdiction.code != unselectedJurisdiction.code &&
+        (!requiresAck || allPartiesAck);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
