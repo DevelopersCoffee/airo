@@ -1,0 +1,74 @@
+[
+  {
+    "id": "discharge",
+    "text": "Dr. Rao prescribed Ibuprofen for the Knee Brace. Follow-up scheduled for 14 Aug.",
+    "entities": [
+      {"text": "Dr. Rao", "type": "person"},
+      {"text": "Ibuprofen", "type": "term"},
+      {"text": "Knee Brace", "type": "term"},
+      {"text": "14 Aug", "type": "date"}
+    ]
+  },
+  {
+    "id": "announcement",
+    "text": "On Aug 29th, 2024, Optimist Corp. announced in Chicago that its CEO, Brad Doe, would be stepping down after a successful $5 million funding round.",
+    "entities": [
+      {"text": "Aug 29th, 2024", "type": "date"},
+      {"text": "Optimist Corp.", "type": "organization"},
+      {"text": "Chicago", "type": "location"},
+      {"text": "CEO", "type": "title"},
+      {"text": "Brad Doe", "type": "person"},
+      {"text": "$5 million", "type": "money"}
+    ]
+  },
+  {
+    "id": "sundar-title-case",
+    "text": "Sundar Pichai said Google Cloud ships before the Olympic Games.",
+    "entities": [
+      {"text": "Sundar Pichai", "type": "person"},
+      {"text": "Google Cloud", "type": "product"},
+      {"text": "Olympic Games", "type": "event"}
+    ]
+  },
+  {
+    "id": "sundar-lowercase",
+    "text": "sundar pichai said google cloud ships before the olympic games.",
+    "entities": [
+      {"text": "sundar pichai", "type": "person"},
+      {"text": "google cloud", "type": "product"},
+      {"text": "olympic games", "type": "event"}
+    ]
+  },
+  {
+    "id": "indic-hindi",
+    "text": "सुंदर पिचाई ने गूगल क्लाउड की घोषणा की।",
+    "entities": [
+      {"text": "सुंदर पिचाई", "type": "person"},
+      {"text": "गूगल क्लाउड", "type": "product"}
+    ]
+  },
+  {
+    "id": "washington-place",
+    "text": "The flight landed in Washington after midnight.",
+    "entities": [
+      {"text": "Washington", "type": "location"}
+    ]
+  },
+  {
+    "id": "washington-person",
+    "text": "Washington signed the bill on 14 Aug.",
+    "entities": [
+      {"text": "Washington", "type": "person"},
+      {"text": "14 Aug", "type": "date"}
+    ]
+  },
+  {
+    "id": "apple-org",
+    "text": "Apple announced a $5 million round in Chicago.",
+    "entities": [
+      {"text": "Apple", "type": "organization"},
+      {"text": "$5 million", "type": "money"},
+      {"text": "Chicago", "type": "location"}
+    ]
+  }
+]
