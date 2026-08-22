@@ -47,8 +47,10 @@ class LifeTrackTemplateFallbackResolver {
     required this._registry,
     required this._connectivityService,
     Map<String, List<String>>? templateKeywords,
-  }) : _templateKeywords =
-           templateKeywords ?? _defaultTemplateKeywordsByTemplateId;
+  }) : _templateKeywords = {
+         ..._defaultTemplateKeywordsByTemplateId,
+         ...?templateKeywords,
+       };
 
   final TemplateRegistry _registry;
   final ConnectivityService _connectivityService;
@@ -150,16 +152,6 @@ class _ScoredTemplateMatch {
 }
 
 const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
-  'real_estate_under_construction_v1': <String>[
-    'flat',
-    'apartment',
-    'home',
-    'house',
-    'builder',
-    'property',
-    'real estate',
-    'rera',
-  ],
   'university_admission_v1': <String>[
     'admission',
     'college',
@@ -178,28 +170,6 @@ const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
     'study progress',
     'study',
     'syllabus',
-  ],
-  'medical_surgery_v1': <String>[
-    'doctor',
-    'hospital',
-    'medical',
-    'operation',
-    'procedure',
-    'recovery',
-    'surgery',
-    'treatment',
-  ],
-  'insurance_claim_v1': <String>[
-    'claim',
-    'coverage',
-    'incident',
-    'insurance',
-    'insurer',
-    'niva',
-    'policybazaar',
-    'reimbursement',
-    'settlement',
-    'star insurance',
   ],
   'car_purchase_v1': <String>[
     'auto',

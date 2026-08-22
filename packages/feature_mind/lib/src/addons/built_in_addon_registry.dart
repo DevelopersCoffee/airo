@@ -62,7 +62,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -74,7 +74,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -86,7 +86,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
 
     final graphCoordinator = GraphWorkflowCoordinator(registry);

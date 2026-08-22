@@ -4,11 +4,34 @@
   "version": "1.0.0",
   "behaviors": ["graph_workflow"],
   "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
-  "tools": ["query_entity_graph"],
+  "tools": ["query_entity_graph", "record_lifetrack_facts"],
   "adapter": {
     "kind": "required_built_in",
     "contract": "graph_workflow_v1"
   },
-  "workflow": { "subject_kind": "claim" },
+  "workflow": {
+    "subject_kind": "claim",
+    "template_id": "insurance_claim_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "claim",
+      "coverage",
+      "incident",
+      "insurance",
+      "insurer",
+      "niva",
+      "policybazaar",
+      "reimbursement",
+      "settlement",
+      "star insurance"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this claim whenever you want a status check.",
+    "dedupe_field_labels": [
+      "Claim ID",
+      "Policy Number",
+      "Intermediary Reference",
+      "Subject"
+    ]
+  },
   "built_in_priority": 20
 }

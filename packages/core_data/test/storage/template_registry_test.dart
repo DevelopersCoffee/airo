@@ -10,31 +10,26 @@ void main() {
       final registry = await TemplateRegistry.loadBundled();
 
       final templates = registry.getAll();
-      expect(templates, hasLength(6));
+      expect(templates, hasLength(3));
       expect(
         templates.map((template) => template.templateId),
-        contains('real_estate_under_construction_v1'),
-      );
-      expect(
-        templates.map((template) => template.templateId),
-        contains('car_purchase_v1'),
+        containsAll([
+          'university_admission_v1',
+          'study_progress_v1',
+          'car_purchase_v1',
+        ]),
       );
     });
 
     test(
-      'returns the real estate template by id with expected milestone/task counts',
+      'returns the car purchase template by id with expected milestone count',
       () async {
         final registry = await TemplateRegistry.loadBundled();
 
-        final template = registry.getById('real_estate_under_construction_v1');
+        final template = registry.getById('car_purchase_v1');
 
         expect(template, isNotNull);
-        expect(template!.milestones, hasLength(4));
-        final taskCount = template.milestones.fold<int>(
-          0,
-          (count, milestone) => count + milestone.tasks.length,
-        );
-        expect(taskCount, 7);
+        expect(template!.milestones, isNotEmpty);
       },
     );
 

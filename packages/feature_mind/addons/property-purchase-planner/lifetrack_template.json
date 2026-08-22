@@ -1,0 +1,189 @@
+{
+  "template_id": "real_estate_under_construction_v1",
+  "title": "Under-Construction Flat Purchase Checklist",
+  "description": "7 critical verification steps before buying an under-construction flat",
+  "category": "realEstate",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: RERA & Legal Verification",
+      "objective": "Verify builder legitimacy and project approvals",
+      "tasks": [
+        {
+          "summary": "Check Builder's RERA Registration",
+          "description": "Look into the builder's past delivery history and track record on the RERA website.",
+          "requirements": [
+            {
+              "label": "RERA Registration Number",
+              "type": "text",
+              "is_required": true,
+              "hint": "Found on the official RERA portal"
+            },
+            {
+              "label": "Builder Track Record Notes",
+              "type": "text",
+              "is_required": false,
+              "hint": "Delayed projects count, pending projects count"
+            },
+            {
+              "label": "RERA Verification Screenshot",
+              "type": "document",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "summary": "Verify Commencement Certificate Stage",
+          "description": "Check up to which floor the builder has approval and compare it with your target floor.",
+          "requirements": [
+            {
+              "label": "CC Approved Up To Floor",
+              "type": "number",
+              "is_required": true
+            },
+            {
+              "label": "Your Target Floor",
+              "type": "number",
+              "is_required": true
+            },
+            {
+              "label": "Commencement Certificate Copy",
+              "type": "document",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Financial Health Check",
+      "objective": "Assess the builder's and project's financial backing",
+      "tasks": [
+        {
+          "summary": "Review List of Approved Lenders",
+          "description": "Check which banks offer home loans for the project and treat an NBFC-only list as a warning sign.",
+          "requirements": [
+            {
+              "label": "Associated Banks List",
+              "type": "text",
+              "is_required": true,
+              "hint": "List all banks offering loans for this project"
+            },
+            {
+              "label": "Any NBFCs Only?",
+              "type": "boolean",
+              "is_required": true,
+              "hint": "Red flag if only NBFCs, no major banks"
+            }
+          ]
+        },
+        {
+          "summary": "Check Land Encumbrance Certificate",
+          "description": "Verify whether the builder has taken a loan against the plot itself.",
+          "requirements": [
+            {
+              "label": "Encumbrance Certificate Document",
+              "type": "document",
+              "is_required": true
+            },
+            {
+              "label": "Land Loan Status",
+              "type": "text",
+              "is_required": true,
+              "hint": "Clear or outstanding, with amount if outstanding"
+            },
+            {
+              "label": "Land Loan Clearance Date",
+              "type": "date",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Layout & Space Verification",
+      "objective": "Verify actual usable space matches what is promised",
+      "tasks": [
+        {
+          "summary": "Examine Carpet Area Layout",
+          "description": "Ask for structural layout drawings and note losses to ducts, lobbies, lifts, and columns.",
+          "requirements": [
+            {
+              "label": "Advertised Carpet Area (sq ft)",
+              "type": "number",
+              "is_required": true
+            },
+            {
+              "label": "Structural Layout Drawing",
+              "type": "document",
+              "is_required": true,
+              "hint": "Ask the builder explicitly for this"
+            },
+            {
+              "label": "Actual Usable Area Notes",
+              "type": "text",
+              "is_required": false,
+              "hint": "Space lost to lifts, ducts, columns, or lobbies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Legal Agreement Verification",
+      "objective": "Ensure all protections are in the buyer agreement",
+      "tasks": [
+        {
+          "summary": "Look for Escrow Account Clause",
+          "description": "Confirm the agreement explicitly references the mandated project escrow account.",
+          "requirements": [
+            {
+              "label": "Escrow Clause Present in Agreement?",
+              "type": "boolean",
+              "is_required": true
+            },
+            {
+              "label": "Escrow Account Details",
+              "type": "text",
+              "is_required": false,
+              "hint": "Bank name or account reference if available"
+            },
+            {
+              "label": "Buyer Agreement Document",
+              "type": "document",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "summary": "Confirm Timeline for Promised Amenities",
+          "description": "Check the legal agreement for definitive delivery dates on every amenity shown in brochures.",
+          "requirements": [
+            {
+              "label": "Amenities Delivery Date in Contract?",
+              "type": "boolean",
+              "is_required": true
+            },
+            {
+              "label": "Promised Amenities List",
+              "type": "text",
+              "is_required": true,
+              "hint": "Clubhouse, gym, garden, pool, and similar amenities"
+            },
+            {
+              "label": "Contract Delivery Date",
+              "type": "date",
+              "is_required": false
+            },
+            {
+              "label": "Brochure vs Agreement Comparison Notes",
+              "type": "text",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
