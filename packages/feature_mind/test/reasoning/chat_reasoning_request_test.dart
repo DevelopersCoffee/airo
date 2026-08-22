@@ -44,8 +44,14 @@ void main() {
       type: IntentType.createDietPlan,
       originalText: 'Write a plan for the week',
     );
-    expect(reasoningIntentKind(planning.type), 'planning');
+    expect(reasoningIntentKind(planning.type), 'diet');
     expect(reasoningIntentComplexity(planning), 0.85);
+
+    const routine = Intent(
+      type: IntentType.createRoutine,
+      originalText: 'create a study routine for tomorrow',
+    );
+    expect(reasoningIntentKind(routine.type), 'planning');
 
     const lookup = Intent(
       type: IntentType.openBudget,
