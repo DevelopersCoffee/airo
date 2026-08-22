@@ -19,11 +19,13 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
 use llama_cpp_2::context::params::LlamaContextParams;
+use llama_cpp_2::context::LlamaContext;
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
+use llama_cpp_2::token::LlamaToken;
 
 use crate::budget::ResourceRequest;
 use crate::cancel::CancelToken;
@@ -107,7 +109,19 @@ pub struct LlamaGenerationEngine {
     /// splitting it into five atomics would let a reader observe a torn
     /// mix of two different generations' numbers.
     stats: Mutex<RuntimeStats>,
+    /// In-process prefix KV (adapter capability, not a Mind primitive).
+    /// Snapshot is prompt-prefill only — never a session file, never raw text.
+    prefix_kv: Mutex<Option<PrefixKv>>,
 }
+
+/// Prompt-token KV snapshot. Bytes are llama.cpp state, not the prompt string.
+struct PrefixKv {
+    tokens: Vec<LlamaToken>,
+    state: Vec<u8>,
+}
+
+/// Skip restore when the shared prefix is too short to beat a full prefill.
+const MIN_PREFIX_REUSE: usize = 32;
 
 impl LlamaGenerationEngine {
     /// Loads a GGUF model.
@@ -130,6 +144,7 @@ impl LlamaGenerationEngine {
             memory_mb,
             context_tokens,
             stats: Mutex::new(RuntimeStats::default()),
+            prefix_kv: Mutex::new(None),
         })
     }
 
@@ -189,23 +204,24 @@ impl GenerationEngine for LlamaGenerationEngine {
             )));
         }
 
-        let mut batch = LlamaBatch::new(self.context_tokens as usize, 1);
-        let last = tokens.len() - 1;
-        for (i, token) in tokens.iter().enumerate() {
-            batch
-                .add(*token, i as i32, &[0], i == last)
-                .map_err(|e| EngineError::Backend(format!("batch add: {e}")))?;
-        }
-
-        // Prefill: decoding the whole prompt before the first output token.
-        // Timed separately from generation because the two have very
-        // different cost profiles -- prefill is one batched decode over the
-        // full prompt, generation is one decode per output token -- and a
-        // combined number would hide which half a regression came from.
         let prefill_started = Instant::now();
-        ctx.decode(&mut batch)
-            .map_err(|e| EngineError::Backend(format!("decode: {e}")))?;
+        let (mut position, decoded_prompt_tokens) = decode_prompt_with_prefix_cache(
+            &mut ctx,
+            self.context_tokens as usize,
+            &tokens,
+            &self.prefix_kv,
+        )?;
         let prefill_ms = elapsed_ms(prefill_started);
+
+        if let Ok(state) = copy_kv_state(&ctx) {
+            *self
+                .prefix_kv
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(PrefixKv {
+                tokens: tokens.clone(),
+                state,
+            });
+        }
 
         // The decoder carries UTF-8 continuation state across tokens: a
         // multi-byte character can straddle a token boundary, and decoding each
@@ -223,7 +239,7 @@ impl GenerationEngine for LlamaGenerationEngine {
             ]),
             None => LlamaSampler::greedy(),
         };
-        let mut position = batch.n_tokens();
+        let mut batch = LlamaBatch::new(self.context_tokens as usize, 1);
         let mut produced = 0u32;
 
         let generation_started = Instant::now();
@@ -305,7 +321,7 @@ impl GenerationEngine for LlamaGenerationEngine {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = RuntimeStats {
             prefill_ms,
-            prefill_tokens: u32::try_from(tokens.len()).unwrap_or(u32::MAX),
+            prefill_tokens: decoded_prompt_tokens,
             generation_ms,
             generated_tokens: produced,
             tokens_per_second,
@@ -323,6 +339,116 @@ impl GenerationEngine for LlamaGenerationEngine {
     }
 }
 
+fn common_prefix_len(left: &[LlamaToken], right: &[LlamaToken]) -> usize {
+    left.iter()
+        .zip(right.iter())
+        .take_while(|(a, b)| a == b)
+        .count()
+}
+
+fn decode_tokens(
+    ctx: &mut LlamaContext<'_>,
+    batch_cap: usize,
+    tokens: &[LlamaToken],
+    start_pos: i32,
+) -> Result<i32, EngineError> {
+    if tokens.is_empty() {
+        return Ok(start_pos);
+    }
+    let mut batch = LlamaBatch::new(batch_cap, 1);
+    let last = tokens.len() - 1;
+    for (i, token) in tokens.iter().enumerate() {
+        batch
+            .add(*token, start_pos + i as i32, &[0], i == last)
+            .map_err(|e| EngineError::Backend(format!("batch add: {e}")))?;
+    }
+    ctx.decode(&mut batch)
+        .map_err(|e| EngineError::Backend(format!("decode: {e}")))?;
+    Ok(start_pos + i32::try_from(tokens.len()).unwrap_or(i32::MAX))
+}
+
+/// Prefill with in-process KV reuse when this prompt shares a token prefix
+/// with the previous one. `prefill_tokens` in stats is tokens actually
+/// decoded this call, not the whole prompt.
+fn decode_prompt_with_prefix_cache(
+    ctx: &mut LlamaContext<'_>,
+    batch_cap: usize,
+    tokens: &[LlamaToken],
+    cache: &Mutex<Option<PrefixKv>>,
+) -> Result<(i32, u32), EngineError> {
+    let reuse = {
+        let guard = cache
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.as_ref().and_then(|cached| {
+            let common = common_prefix_len(&cached.tokens, tokens);
+            if common >= MIN_PREFIX_REUSE {
+                Some((common, cached.tokens.len(), cached.state.clone()))
+            } else {
+                None
+            }
+        })
+    };
+
+    if let Some((common, cached_len, state)) = reuse {
+        if restore_kv_state(ctx, &state).is_ok() {
+            let trimmed = if common < cached_len {
+                matches!(
+                    ctx.clear_kv_cache_seq(
+                        Some(0),
+                        Some(u32::try_from(common).unwrap_or(u32::MAX)),
+                        None,
+                    ),
+                    Ok(true)
+                )
+            } else {
+                true
+            };
+            if trimmed {
+                let suffix = &tokens[common..];
+                let position = decode_tokens(ctx, batch_cap, suffix, common as i32)?;
+                let decoded = u32::try_from(suffix.len()).unwrap_or(u32::MAX);
+                return Ok((position, decoded));
+            }
+        }
+        ctx.clear_kv_cache();
+    }
+
+    let position = decode_tokens(ctx, batch_cap, tokens, 0)?;
+    Ok((position, u32::try_from(tokens.len()).unwrap_or(u32::MAX)))
+}
+
+#[allow(unsafe_code)]
+fn copy_kv_state(ctx: &LlamaContext<'_>) -> Result<Vec<u8>, EngineError> {
+    let size = ctx.get_state_size();
+    if size == 0 {
+        return Err(EngineError::Backend("empty llama kv state".into()));
+    }
+    let mut buf = vec![0u8; size];
+    // SAFETY: `dest` is `size` bytes, matching `get_state_size`.
+    let copied = unsafe { ctx.copy_state_data(buf.as_mut_ptr()) };
+    buf.truncate(copied);
+    if buf.is_empty() {
+        return Err(EngineError::Backend(
+            "llama kv snapshot copied 0 bytes".into(),
+        ));
+    }
+    Ok(buf)
+}
+
+#[allow(unsafe_code)]
+fn restore_kv_state(ctx: &mut LlamaContext<'_>, state: &[u8]) -> Result<(), EngineError> {
+    if state.is_empty() {
+        return Err(EngineError::Backend("empty llama kv restore".into()));
+    }
+    // SAFETY: `state` was produced by `copy_kv_state` on this model.
+    let read = unsafe { ctx.set_state_data(state) };
+    if read == 0 {
+        return Err(EngineError::Backend("llama kv restore read 0 bytes".into()));
+    }
+    Ok(())
+}
+
 fn elapsed_ms(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
@@ -335,5 +461,14 @@ mod tests {
     fn a_missing_model_is_unavailable_not_a_panic() {
         let r = LlamaGenerationEngine::load(Path::new("/nonexistent/model.gguf"), 512, 2048);
         assert_eq!(r.err(), Some(EngineError::ModelUnavailable));
+    }
+
+    #[test]
+    fn common_prefix_len_counts_shared_head() {
+        let a = [LlamaToken(1), LlamaToken(2), LlamaToken(3)];
+        let b = [LlamaToken(1), LlamaToken(2), LlamaToken(9)];
+        assert_eq!(common_prefix_len(&a, &b), 2);
+        assert_eq!(common_prefix_len(&a, &[]), 0);
+        assert_eq!(common_prefix_len(&a, &a), 3);
     }
 }

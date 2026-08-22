@@ -92,18 +92,70 @@ class ChatTranscriptTurn {
   }
 }
 
+class MindChatFolder {
+  const MindChatFolder({
+    required this.id,
+    required this.name,
+    this.pluginIds = const [],
+  });
+
+  final String id;
+  final String name;
+
+  /// Skill / plugin ids that assist every chat in this folder.
+  final List<String> pluginIds;
+
+  MindChatFolder copyWith({String? name, List<String>? pluginIds}) {
+    return MindChatFolder(
+      id: id,
+      name: name ?? this.name,
+      pluginIds: pluginIds ?? this.pluginIds,
+    );
+  }
+
+  factory MindChatFolder.fromJson(Map<String, dynamic> json) => MindChatFolder(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    pluginIds: [
+      for (final item in (json['pluginIds'] as List?) ?? const [])
+        if (item is String && item.isNotEmpty) item,
+    ],
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
+  };
+}
+
+/// A plugin the user can attach to a chat folder for assisted replies.
+class MindFolderPluginOption {
+  const MindFolderPluginOption({
+    required this.id,
+    required this.name,
+    this.description = '',
+  });
+
+  final String id;
+  final String name;
+  final String description;
+}
+
 class MindChatRecord {
   const MindChatRecord({
     required this.id,
     required this.title,
     required this.updatedAt,
     this.preview = '',
+    this.folderId,
   });
 
   final String id;
   final String title;
   final DateTime updatedAt;
   final String preview;
+  final String? folderId;
 
   static String titleFromTurns(Iterable<ChatTranscriptTurn> turns) {
     for (final turn in turns) {

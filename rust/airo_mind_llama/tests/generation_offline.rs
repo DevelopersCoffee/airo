@@ -12,6 +12,13 @@ use airo_mind_llama::{
 };
 
 fn model() -> PathBuf {
+    for key in ["AIRO_LLAMA_MODEL", "AIRO_MIND_LLAMA_MODEL"] {
+        if let Ok(value) = std::env::var(key) {
+            if !value.trim().is_empty() {
+                return PathBuf::from(value);
+            }
+        }
+    }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("models/qwen2.5-0.5b-instruct-q4_k_m.gguf")
 }
 
@@ -387,6 +394,118 @@ fn unload_is_callable_and_does_not_panic() {
     }
     let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
     engine.unload();
+}
+
+/// Host-only: empty completion is a classifier failure; a real answer is not.
+#[test]
+fn chat_completion_is_unverified_when_empty_and_ok_when_grounded() {
+    use airo_mind_reliability::{record_chat_completion, DiagnosticLevel};
+
+    let empty = record_chat_completion("chat.assistant.v1", "  ", true, DiagnosticLevel::Standard);
+    assert_eq!(empty.len(), 1);
+    assert_eq!(empty[0].failure_mode, Some("PM-06"));
+
+    let model = model();
+    if !model.exists() {
+        eprintln!("skipping live generate: no model at {}", model.display());
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    let mut answer = String::new();
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: chat_prompt("What is 2+2?"),
+                max_output_tokens: 32,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |chunk| {
+                answer.push_str(&chunk.text);
+                Ok(())
+            },
+        )
+        .expect("generation succeeds");
+
+    assert!(!answer.trim().is_empty(), "model returned no text");
+    assert!(
+        record_chat_completion(
+            "chat.assistant.v1",
+            &answer,
+            true,
+            DiagnosticLevel::Standard,
+        )
+        .is_empty(),
+        "non-empty chat must not classify as PM-06: {answer}"
+    );
+}
+
+/// Host-only: a shared system prefix must not re-prefill the whole prompt.
+#[test]
+fn shared_system_prefix_decodes_fewer_prefill_tokens() {
+    let model = model();
+    if !model.exists() {
+        eprintln!("skipping prefix cache: no model at {}", model.display());
+        return;
+    }
+
+    let engine = LlamaGenerationEngine::load(&model, 1024, 2048).expect("model loads");
+    let mut supervisor = Supervisor::new(ResourceBudget::new(4096));
+    supervisor.register_generation(Box::new(engine));
+
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: chat_prompt("What is 2+2?"),
+                max_output_tokens: 8,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |_| Ok(()),
+        )
+        .expect("first generate");
+    let first = supervisor
+        .generation_stats()
+        .expect("stats after first generate");
+
+    supervisor
+        .run_generation(
+            &GenerationRequest {
+                prompt: chat_prompt("Name a primary color."),
+                max_output_tokens: 8,
+                grammar: None,
+            },
+            &CancelToken::new(),
+            &mut |_| Ok(()),
+        )
+        .expect("second generate");
+    let second = supervisor
+        .generation_stats()
+        .expect("stats after second generate");
+
+    assert!(
+        first.prefill_tokens > 32,
+        "system prefix should be long enough to reuse: {first:?}"
+    );
+    assert!(
+        second.prefill_tokens < first.prefill_tokens,
+        "second prefill should skip the shared system prefix: first={first:?} second={second:?}"
+    );
+}
+
+fn chat_prompt(user: &str) -> String {
+    format!(
+        "<|im_start|>system\nYou are Airo, a local on-device assistant. \
+         Answer the last user message directly. Stay grounded. Do not invent \
+         tools you did not run. Do not continue a transcript or repeat a \
+         previous reply.<|im_end|>\n\
+         <|im_start|>user\n{user}<|im_end|>\n\
+         <|im_start|>assistant\n"
+    )
 }
 
 // The end-to-end join (audio -> transcript -> minutes) used to live here as

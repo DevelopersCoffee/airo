@@ -108,6 +108,7 @@ export 'src/agent_chat/application/assistant_model_preferences.dart';
 export 'src/agent_chat/application/assistant_runtime_readiness.dart';
 export 'src/agent_chat/data/services/agent_notification_scheduler.dart';
 export 'src/agent_chat/data/services/assistant_runtime_service.dart';
+export 'src/agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 export 'src/agent_chat/data/services/chat_history_store.dart';
 export 'src/agent_chat/data/services/notification_navigation_service.dart';
 export 'src/agent_chat/domain/models/agent_skill.dart';
@@ -289,7 +290,9 @@ export 'src/trust/scribe_trust_signals.dart';
 // Provenance — on-device entity extraction and the Inspector (surfaces 09
 // and 11, issue #1463).
 export 'src/provenance/domain/models/extracted_entity.dart';
+export 'src/provenance/domain/models/entity_relation.dart';
 export 'src/provenance/domain/services/entity_extractor.dart';
+export 'src/provenance/domain/services/entity_relation_extractor.dart';
 export 'src/provenance/presentation/widgets/entity_chip.dart';
 export 'src/provenance/presentation/widgets/provenance_inspector.dart';
 
@@ -319,6 +322,29 @@ export 'src/notes/domain/notes_operation_log.dart';
 export 'src/notes/domain/notes_projection.dart';
 export 'src/notes/notes_capability.dart';
 export 'src/notes/presentation/notes_screen.dart';
+
+// Notebook product layer on top of the Notes capability: multilingual
+// capture, file/podcast import, summary + key points, Super Summary, tags,
+// search, and export/copy/share. Payload lives in Note.body so the runtime
+// skeleton encoding does not change.
+export 'src/notebook/domain/notebook_source.dart';
+export 'src/notebook/domain/notebook_document.dart';
+export 'src/notebook/domain/notebook_note.dart';
+export 'src/notebook/domain/key_points_extractor.dart';
+export 'src/notebook/domain/notebook_summary.dart';
+export 'src/notebook/domain/super_summary.dart';
+export 'src/notebook/domain/super_summary_prompt.dart';
+export 'src/notebook/domain/notebook_search.dart';
+export 'src/notebook/domain/notebook_export.dart';
+export 'src/notebook/domain/notebook_l10n.dart';
+export 'src/notebook/application/notebook_repository.dart';
+export 'src/notebook/application/audio_import_service.dart';
+export 'src/notebook/application/notebook_share_port.dart';
+export 'src/notebook/application/notebook_locale_preference.dart';
+export 'src/notebook/application/notebook_store.dart';
+export 'src/notebook/application/super_summary_recap_port.dart';
+export 'src/notebook/presentation/notebook_locale_settings_tile.dart';
+export 'src/notebook/presentation/notebook_host_screen.dart';
 
 // In-app meeting audio capture + resumable background processing (#1656).
 // Feeds `meetings.dart`'s `transcribeRecording`/`saveMeeting` (the ".m4a in"

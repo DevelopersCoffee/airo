@@ -324,14 +324,25 @@ mod tests {
     #[test]
     fn a_single_wrong_word_fails_the_checksum() {
         // A typo must fail here, not silently derive a valid-looking seed for
-        // a vault that does not exist.
+        // a vault that does not exist. One substitution still has a 1/256
+        // chance of matching the 8-bit checksum, so try until one is rejected.
         let phrase = generate_mnemonic().unwrap();
-        let mut words: Vec<&str> = phrase.split_whitespace().collect();
-        words[5] = if words[5] == "zoo" { "abandon" } else { "zoo" };
-        assert!(matches!(
-            seed_from_mnemonic(&words.join(" ")),
-            Err(VaultError::InvalidMnemonic)
-        ));
+        let original: Vec<&str> = phrase.split_whitespace().collect();
+        let rejected = WORDS.iter().copied().any(|candidate| {
+            if candidate == original[5] {
+                return false;
+            }
+            let mut words = original.clone();
+            words[5] = candidate;
+            matches!(
+                seed_from_mnemonic(&words.join(" ")),
+                Err(VaultError::InvalidMnemonic)
+            )
+        });
+        assert!(
+            rejected,
+            "a one-word substitution must be able to fail the checksum"
+        );
     }
 
     #[test]

@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 /// `feature_mind`'s assistant hub navigates to absolute super-app paths that
 /// only the super app mounts — `/games` and `/quest/new` from the hub and the
 /// chat screen, `/money*`, `/live/*`, `/offers`, `/reader` from the tool
-/// registry, `/settings` from the profile screen's Settings tile. The package
+/// registry, `/settings` until Mind grew its own Settings tab. The package
 /// must not learn which shell it is running in (that is a shell concern, and
 /// an `if (shell == mind)` inside a package widget is exactly the branching
 /// the modular-shell plan forbids), so the *shell* absorbs the gap: the Mind

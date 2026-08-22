@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'minutes.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `minutes_prompt`
+// These functions are ignored because they are not marked as `pub`: `chosen_weight_path`, `install_generation`, `minutes_prompt`, `register_generation_exit_guard`, `release_generation_on_process_exit`, `release_generation_resources`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
 /// Loads the generation model. Called on first use, not at startup: this
@@ -18,7 +18,7 @@ part 'minutes.freezed.dart';
 Future<void> initialize({required GenerationConfig config}) =>
     RustLib.instance.api.crateApiMinutesInitialize(config: config);
 
-/// True once `initialize` has succeeded.
+/// True once `initialize` has loaded a generation engine.
 bool isReady() => RustLib.instance.api.crateApiMinutesIsReady();
 
 /// What produced the minutes, for the meeting library to record.
@@ -47,12 +47,17 @@ Stream<GenerationEvent> generateMinutes({
 /// General text completion for assistant chat — prompt is used as-is (no
 /// meeting-secretary wrapper). Shares the same generation engine as
 /// [`generate_minutes`].
+///
+/// `grammar` is a GBNF grammar (start symbol `root`) constraining the token
+/// stream, or `null` for unconstrained sampling.
 Stream<GenerationEvent> generateCompletion({
   required String prompt,
   required int maxOutputTokens,
+  String? grammar,
 }) => RustLib.instance.api.crateApiMinutesGenerateCompletion(
   prompt: prompt,
   maxOutputTokens: maxOutputTokens,
+  grammar: grammar,
 );
 
 /// Stops the in-flight generation at the next token.
@@ -70,12 +75,20 @@ GenerationStats generationStats() =>
 /// only clears the Supervisor's generation slot, not the speech one (there
 /// is none here) or the recorded `MODEL_ID`, so `generation_model_id`
 /// continues to describe whatever was last generated until something new is.
+///
+/// Also the Metal-exit guard: Rust statics are never dropped, so without an
+/// explicit unload the llama.cpp `ggml_metal_device` unique_ptr vector
+/// destructor runs at `NSApplication terminate` while residency sets still
+/// hold model buffers and `GGML_ASSERT([rsets->data count] == 0)` aborts.
 void unloadGeneration() =>
     RustLib.instance.api.crateApiMinutesUnloadGeneration();
 
 /// Where the models live and what the engine may spend.
 class GenerationConfig {
-  /// Where the Model Manager looks. **Not** a model path — `ADR-0018 §4`.
+  /// Directory for capability resolve, or a weight file the Dart Model
+  /// Manager already chose. Minutes still pass a directory (`ADR-0018 §4`).
+  /// Chat selection is a file, so the engine must load that file rather than
+  /// asking resolve for Draft quality in the same folder.
   final String modelsDir;
 
   /// Admission ceiling for the Supervisor (`C6`).

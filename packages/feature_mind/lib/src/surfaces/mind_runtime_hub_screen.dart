@@ -3,13 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../assistant/consent/mind_runtime_provider.dart';
-import '../notes/domain/notes_operation_log.dart';
-import '../notes/notes_capability.dart';
-import '../notes/presentation/notes_screen.dart';
+import '../notebook/application/super_summary_recap_port.dart';
+import '../notebook/presentation/notebook_host_screen.dart';
 import '../runtime_console/runtime_console_controller.dart';
 import '../runtime_console/runtime_console_table.dart';
 import 'devices_surface.dart';
@@ -36,7 +33,9 @@ class MindRuntimeHubScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.edit_note),
             title: const Text('Notes'),
-            subtitle: const Text('Rust notes log + restart persistence'),
+            subtitle: const Text(
+              'Record, import, summarise, tag, search, and share',
+            ),
             onTap: () => context.push('/runtime/notes'),
           ),
           ListTile(
@@ -66,62 +65,16 @@ class MindRuntimeDevicesScreen extends ConsumerWidget {
   }
 }
 
-/// Notes with Rust preferred path when Mind has booted.
-class MindRuntimeNotesScreen extends StatefulWidget {
-  const MindRuntimeNotesScreen({super.key});
+/// Notes host used by the runtime hub and the scribe `/notes` route.
+class MindRuntimeNotesScreen extends StatelessWidget {
+  const MindRuntimeNotesScreen({super.key, this.onRecordLive, this.recapPort});
 
-  @override
-  State<MindRuntimeNotesScreen> createState() => _MindRuntimeNotesScreenState();
-}
-
-class _MindRuntimeNotesScreenState extends State<MindRuntimeNotesScreen> {
-  NotesCapability? _capability;
-  Object? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_open());
-  }
-
-  Future<void> _open() async {
-    try {
-      final base = await getApplicationSupportDirectory();
-      final path = p.join(base.path, 'airo_mind', 'notes.log');
-      final log = await NotesOperationLog.open(path);
-      if (!mounted) return;
-      setState(
-        () => _capability = NotesCapability.rustPreferred(log),
-      );
-    } on Object catch (error) {
-      if (!mounted) return;
-      setState(() => _error = error);
-    }
-  }
+  final Future<void> Function()? onRecordLive;
+  final SuperSummaryRecapPort? recapPort;
 
   @override
   Widget build(BuildContext context) {
-    if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Notes')),
-        body: Center(child: Text('Could not open notes log: $_error')),
-      );
-    }
-    if (_capability == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notes'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-      ),
-      body: NotesScreen(capability: _capability!),
-    );
+    return NotebookHostScreen(onRecordLive: onRecordLive, recapPort: recapPort);
   }
 }
 
@@ -159,9 +112,7 @@ class _MindRuntimeConsoleScreenState
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       appBar: AppBar(

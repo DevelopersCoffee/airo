@@ -9,7 +9,7 @@ import '../../domain/models/chat_transcript_turn.dart';
 import '../../domain/models/chat_workspace_layout.dart';
 import 'chat_workspace_store.dart';
 
-/// File-backed workspace. Cursor's shape: `directory/graph.json` plus
+/// File-backed workspace. Cursor's shape: shared folder KV plus
 /// `chats/<id>/<id>.jsonl`.
 class IoChatWorkspaceStore implements ChatWorkspaceStore {
   IoChatWorkspaceStore(this.root);
@@ -23,6 +23,8 @@ class IoChatWorkspaceStore implements ChatWorkspaceStore {
 
   File _file(String relative) => File('${root.path}/$relative');
 
+  File get _foldersIndex => _file(ChatWorkspaceLayout.foldersIndexFile);
+
   @override
   Future<ChatEntityGraph> loadDirectory() async {
     return _readGraph(_file(ChatWorkspaceLayout.directoryPath));
@@ -31,6 +33,58 @@ class IoChatWorkspaceStore implements ChatWorkspaceStore {
   @override
   Future<void> saveDirectory(ChatEntityGraph graph) async {
     await _writeGraph(_file(ChatWorkspaceLayout.directoryPath), graph);
+  }
+
+  @override
+  Future<ChatEntityGraph> loadSharedGraph(String? folderId) async {
+    if (folderId == null) return loadDirectory();
+    return _readGraph(_file(ChatWorkspaceLayout.folderGraphPath(folderId)));
+  }
+
+  @override
+  Future<void> saveSharedGraph(String? folderId, ChatEntityGraph graph) async {
+    if (folderId == null) {
+      await saveDirectory(graph);
+      return;
+    }
+    await _writeGraph(
+      _file(ChatWorkspaceLayout.folderGraphPath(folderId)),
+      graph,
+    );
+  }
+
+  @override
+  Future<List<MindChatFolder>> listFolders() async => _readFolders();
+
+  @override
+  Future<MindChatFolder> createFolder(String name) async {
+    final folder = MindChatFolder(id: newChatId(), name: name.trim());
+    final folders = await _readFolders();
+    folders.add(folder);
+    await _writeFolders(folders);
+    await _writeGraph(
+      _file(ChatWorkspaceLayout.folderGraphPath(folder.id)),
+      ChatEntityGraph.empty,
+    );
+    return folder;
+  }
+
+  @override
+  Future<void> updateFolder(MindChatFolder folder) async {
+    final folders = await _readFolders();
+    final index = folders.indexWhere((item) => item.id == folder.id);
+    if (index < 0) return;
+    folders[index] = folder;
+    await _writeFolders(folders);
+  }
+
+  @override
+  Future<void> moveChatToFolder(String chatId, String? folderId) async {
+    await _writeMeta(chatId, folderId);
+    if (folderId == null) return;
+    final chatGraph = await loadChatGraph(chatId);
+    final shared = await loadSharedGraph(folderId);
+    await saveSharedGraph(folderId, shared.merge(chatGraph));
   }
 
   @override
@@ -50,6 +104,7 @@ class IoChatWorkspaceStore implements ChatWorkspaceStore {
           title: MindChatRecord.titleFromTurns(turns),
           updatedAt: updated,
           preview: turns.isEmpty ? '' : turns.last.text.trim(),
+          folderId: await _readFolderId(id),
         ),
       );
     }
@@ -95,14 +150,25 @@ class IoChatWorkspaceStore implements ChatWorkspaceStore {
   }
 
   @override
-  Future<String> createChat() async {
+  Future<String> createChat({String? folderId}) async {
     final id = newChatId();
     final folder = Directory(
       '${root.path}/${ChatWorkspaceLayout.chatFolder(id)}',
     );
     await folder.create(recursive: true);
     await _file(ChatWorkspaceLayout.transcriptPath(id)).create();
+    if (folderId != null) await _writeMeta(id, folderId);
     return id;
+  }
+
+  @override
+  Future<void> deleteChat(String id) async {
+    final folder = Directory(
+      '${root.path}/${ChatWorkspaceLayout.chatFolder(id)}',
+    );
+    if (await folder.exists()) {
+      await folder.delete(recursive: true);
+    }
   }
 
   Future<ChatEntityGraph> _readGraph(File file) async {
@@ -121,5 +187,51 @@ class IoChatWorkspaceStore implements ChatWorkspaceStore {
     await file.parent.create(recursive: true);
     final encoded = jsonEncode(graph.toJson());
     await file.writeAsString(encoded);
+  }
+
+  Future<List<MindChatFolder>> _readFolders() async {
+    if (!await _foldersIndex.exists()) return [];
+    final raw = await _foldersIndex.readAsString();
+    if (raw.trim().isEmpty) return [];
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return [];
+    final items = decoded['folders'];
+    if (items is! List) return [];
+    return [
+      for (final item in items)
+        if (item is Map)
+          MindChatFolder.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
+
+  Future<void> _writeFolders(List<MindChatFolder> folders) async {
+    await _foldersIndex.parent.create(recursive: true);
+    await _foldersIndex.writeAsString(
+      jsonEncode({
+        'folders': [for (final folder in folders) folder.toJson()],
+      }),
+    );
+  }
+
+  Future<String?> _readFolderId(String chatId) async {
+    final file = _file(ChatWorkspaceLayout.chatMetaPath(chatId));
+    if (!await file.exists()) return null;
+    final raw = await file.readAsString();
+    if (raw.trim().isEmpty) return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+    final folderId = decoded['folderId'];
+    if (folderId is! String || folderId.isEmpty) return null;
+    return folderId;
+  }
+
+  Future<void> _writeMeta(String chatId, String? folderId) async {
+    final file = _file(ChatWorkspaceLayout.chatMetaPath(chatId));
+    await file.parent.create(recursive: true);
+    if (folderId == null || folderId.isEmpty) {
+      if (await file.exists()) await file.delete();
+      return;
+    }
+    await file.writeAsString(jsonEncode({'folderId': folderId}));
   }
 }

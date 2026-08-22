@@ -2,6 +2,7 @@ import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/services/agent_connector.dart';
+import 'life_track_record_connector.dart';
 import 'life_track_status_connector.dart';
 
 final LifeTrackLocalDataSource _lifeTrackDataSource =
@@ -13,6 +14,18 @@ final LifeTrackRepositoryImpl _lifeTrackRepository = LifeTrackRepositoryImpl(
 AgentConnector createLifeTrackStatusConnector() {
   return LifeTrackStatusConnector(
     repository: _lifeTrackRepository,
+    ensureInitialized: initializeLifeTrackStatusConnector,
+  );
+}
+
+AgentConnector createLifeTrackRecordConnector() {
+  TemplateRegistry? registry;
+  return LifeTrackRecordConnector(
+    repository: _lifeTrackRepository,
+    resolveTemplate: (templateId) async {
+      registry ??= await TemplateRegistry.loadBundled();
+      return registry!.getById(templateId);
+    },
     ensureInitialized: initializeLifeTrackStatusConnector,
   );
 }

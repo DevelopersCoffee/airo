@@ -600,6 +600,15 @@ class MindService {
     if (_generation.isLoaded) _generation.cancel();
   }
 
+  /// True when Super Summary (and similar recaps) can call [complete].
+  bool get isGenerationReady => _generation.isEngineReady;
+
+  /// Prompt-as-is completion. Does not wrap a meeting-secretary prompt.
+  Stream<GenerationEvent> complete({
+    required String prompt,
+    int maxOutputTokens = 1024,
+  }) => _generation.complete(prompt: prompt, maxOutputTokens: maxOutputTokens);
+
   Future<List<rust.MeetingRecord>> meetings() => _speech.meetings();
 
   /// Step 7 of the journey, now ranked by keyword **and** meaning
@@ -607,6 +616,11 @@ class MindService {
   /// Signature is unchanged from the keyword-only version this replaced —
   /// [MindHomeScreen]'s search box needed no changes for this.
   Future<List<rust.SearchHit>> search(String query) async {
+    return (await searchWithAlignment(query)).hits;
+  }
+
+  /// Keyword+semantic union plus PM-05 provenance. Cosine is not proof.
+  Future<SemanticRankResult> searchWithAlignment(String query) async {
     final keywordHits = await _speech.search(query);
     _ranker ??= _rankerBuilder(await modelsDirectory());
     final allMeetings = await _speech.meetings();
@@ -618,7 +632,7 @@ class MindService {
         for (final segment in doc.segments) segment.text,
       ];
     }
-    return _ranker!.rank(
+    return _ranker!.rankWithAlignment(
       query: query,
       keywordHits: keywordHits,
       meetings: allMeetings,

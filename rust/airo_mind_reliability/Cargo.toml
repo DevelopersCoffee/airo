@@ -1,0 +1,17 @@
+[package]
+name = "airo_mind_reliability"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind Reasoning Reliability Engine — prompt-defect gate (PD-*), reasoning taxonomy (PM-*), checkpoints, and recovery. Domain-free; no WFGY runtime dependency."
+license = "MIT"
+
+[lib]
+name = "airo_mind_reliability"
+# rlib only, no FFI. Same reasoning as airo_mind_meeting: the llama/whisper
+# cdylibs link this in. A second bridge would be a parallel architecture.
+crate-type = ["rlib"]
+
+[dependencies]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

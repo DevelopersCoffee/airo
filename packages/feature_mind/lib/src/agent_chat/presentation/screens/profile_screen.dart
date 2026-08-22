@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../capture/presentation/audio_retention_settings_tile.dart';
 import '../../../capture/presentation/speech_language_settings_tile.dart';
+import '../../../notebook/presentation/notebook_locale_settings_tile.dart';
 import '../../../settings/indic_generation_settings_tile.dart';
 import '../../../settings/indic_speech_backend_settings_tile.dart';
 import '../../../host/assistant_host_adapter.dart';
@@ -63,9 +64,7 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: const Text('Settings'),
-              subtitle: const Text(
-                'Appearance, audio, playback, and playlist source',
-              ),
+              subtitle: const Text('Appearance, on-device AI, and capture'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => host.openHostSettings(context),
             ),
@@ -82,6 +81,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const AudioRetentionSettingsTile(),
             const SpeechLanguageSettingsTile(),
+            const NotebookLocaleSettingsTile(),
             const IndicGenerationSettingsTile(),
             const IndicSpeechBackendSettingsTile(),
 

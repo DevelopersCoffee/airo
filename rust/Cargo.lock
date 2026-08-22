@@ -134,12 +134,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "airo_mind_intent"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "airo_mind_llama"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
  "airo_mind_diarize",
  "airo_mind_meeting",
+ "airo_mind_reasoning",
+ "airo_mind_reliability",
  "airo_mind_transcript",
  "encoding_rs",
  "flutter_rust_bridge",
@@ -152,10 +162,26 @@ name = "airo_mind_meeting"
 version = "0.1.0"
 dependencies = [
  "airo_mind_core",
+ "airo_mind_reliability",
  "airo_mind_transcript",
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "airo_mind_reasoning"
+version = "0.1.0"
+dependencies = [
+ "airo_mind_core",
+ "airo_mind_intent",
+ "airo_mind_reliability",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "airo_mind_reliability"
+version = "0.1.0"
 
 [[package]]
 name = "airo_mind_transcript"

@@ -1,4 +1,5 @@
 import '../mind_service.dart';
+import '../search/semantic_search_ranker.dart';
 import '../whisper/api/meetings.dart' as rust;
 
 /// Shell-provided seam for chat/tools to query the meeting archive (#1770).
@@ -7,6 +8,9 @@ import '../whisper/api/meetings.dart' as rust;
 /// absent). Tools degrade to navigation rather than inventing transcript text.
 abstract class MeetingArchivePort {
   Future<List<rust.SearchHit>> search(String query);
+
+  /// Keyword+semantic union plus PM-05 provenance. Cosine is not proof.
+  Future<SemanticRankResult> searchAligned(String query);
 
   Future<rust.MeetingRecord?> meeting(String id);
 
@@ -31,6 +35,10 @@ class MindServiceMeetingArchivePort implements MeetingArchivePort {
 
   @override
   Future<List<rust.SearchHit>> search(String query) => _service.search(query);
+
+  @override
+  Future<SemanticRankResult> searchAligned(String query) =>
+      _service.searchWithAlignment(query);
 
   @override
   Future<rust.MeetingRecord?> meeting(String id) => _service.meeting(id);

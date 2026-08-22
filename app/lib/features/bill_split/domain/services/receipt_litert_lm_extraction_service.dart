@@ -36,7 +36,7 @@ class ReceiptLiteRtLmExtractionService {
 Extract the line-item receipt data from this OCR text.
 
 Receipt OCR:
-$rawText
+${ContextCompiler.wrapAsData(rawText)}
 ''';
   }
 

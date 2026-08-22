@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:core_data/core_data.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_calendar/platform_calendar.dart';
@@ -32,6 +33,7 @@ import '../../../widgets/mind_desktop_chrome.dart';
 import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
@@ -69,6 +71,11 @@ import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/mind_safety_banner.dart';
 import '../../../agent_chat/presentation/widgets/pick_assistant_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
+import '../../../reasoning/chat_reasoning_request.dart';
+import '../../../reasoning/reasoning_models.dart';
+import '../../../reasoning/reasoning_progress_panel.dart';
+import '../../../reasoning/reasoning_tool_loop.dart';
+import '../../../bridges/mind_generation_bridge.dart';
 import '../../../runtime/fixture/fixture_mind_runtime.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
@@ -116,6 +123,13 @@ class AgentChatMessage {
   /// Local inspector run for this assistant bubble, if one was recorded.
   final ChatTurnTrace? turnTrace;
 
+  /// Stage labels from a reasoning pass. Never raw model thoughts.
+  final List<ReasoningProgressStep> reasoningSteps;
+  final String? reasoningSummary;
+  final MindReasoningLevel? reasoningLevel;
+  final bool reasoningInProgress;
+  final List<ChatHistoryToolCall> reasoningToolCalls;
+
   AgentChatMessage({
     required this.text,
     required this.isUser,
@@ -127,6 +141,11 @@ class AgentChatMessage {
     this.safetyClass,
     this.pendingCalendarPermission = false,
     this.turnTrace,
+    this.reasoningSteps = const [],
+    this.reasoningSummary,
+    this.reasoningLevel,
+    this.reasoningInProgress = false,
+    this.reasoningToolCalls = const [],
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
@@ -134,6 +153,9 @@ class AgentChatMessage {
     isUser: isUser,
     timestamp: timestamp,
     runId: turnTrace?.runId,
+    reasoningSummary: isUser ? null : reasoningSummary,
+    reasoningLevel: isUser ? null : reasoningLevelStableId(reasoningLevel),
+    toolCalls: isUser ? const [] : reasoningToolCalls,
   );
 
   static AgentChatMessage fromHistoryEntry(
@@ -144,6 +166,9 @@ class AgentChatMessage {
     isUser: entry.isUser,
     timestamp: entry.timestamp,
     turnTrace: turnTrace,
+    reasoningSummary: entry.reasoningSummary,
+    reasoningLevel: reasoningLevelFromStableId(entry.reasoningLevel),
+    reasoningToolCalls: entry.toolCalls,
   );
 
   AgentChatMessage copyWith({
@@ -151,6 +176,11 @@ class AgentChatMessage {
     List<AgentActionTrace>? traces,
     ChatResponseMetadata? metadata,
     ChatTurnTrace? turnTrace,
+    List<ReasoningProgressStep>? reasoningSteps,
+    String? reasoningSummary,
+    MindReasoningLevel? reasoningLevel,
+    bool? reasoningInProgress,
+    List<ChatHistoryToolCall>? reasoningToolCalls,
   }) {
     return AgentChatMessage(
       text: text ?? this.text,
@@ -163,6 +193,11 @@ class AgentChatMessage {
       safetyClass: safetyClass,
       pendingCalendarPermission: pendingCalendarPermission,
       turnTrace: turnTrace ?? this.turnTrace,
+      reasoningSteps: reasoningSteps ?? this.reasoningSteps,
+      reasoningSummary: reasoningSummary ?? this.reasoningSummary,
+      reasoningLevel: reasoningLevel ?? this.reasoningLevel,
+      reasoningInProgress: reasoningInProgress ?? this.reasoningInProgress,
+      reasoningToolCalls: reasoningToolCalls ?? this.reasoningToolCalls,
     );
   }
 }
@@ -199,6 +234,10 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.pluginInstaller,
     this.workspace,
     this.deepResearchEngine,
+    this.generationBridge,
+    this.useOnDeviceReasoning,
+    this.reasoningDeviceTier,
+    this.deviceSignalsProbe,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -218,6 +257,12 @@ class ChatScreen extends ConsumerStatefulWidget {
   final RemoteAgentSkillInstaller? pluginInstaller;
   final ChatWorkspaceStore? workspace;
   final DeepResearchEngine? deepResearchEngine;
+  final MindGenerationBridge? generationBridge;
+
+  /// Test seam. Production uses [shouldUseOnDeviceReasoning].
+  final bool Function()? useOnDeviceReasoning;
+  final LlmDeviceTier? reasoningDeviceTier;
+  final LlmDeviceSignalsProbe? deviceSignalsProbe;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -231,6 +276,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late ChatWorkspaceStore _workspace;
   String? _conversationId;
   List<MindChatRecord> _chats = const [];
+  List<MindChatFolder> _folders = const [];
   static const _desktopBreakpoint = 1024.0;
   static const _activeChatPref = 'airo_mind.active_chat_id';
   final ChatTurnTraceStore _chatTurnTraceStore = ChatTurnTraceStore();
@@ -246,6 +292,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
+  late final MindGenerationBridge _generationBridge;
+  LlmDeviceTier _reasoningTier = LlmDeviceTier.large;
+  LlmDeviceSignals? _reasoningSignals;
   late AgentSkillOrchestrator _skillOrchestrator;
   late final DeepResearchEngine _deepResearchEngine;
   late final OperationLogPort _operationLogPort;
@@ -288,6 +337,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           loadAssistantModelLibrary: () =>
               ref.read(assistantModelLibraryProvider.future),
         );
+    _generationBridge = widget.generationBridge ?? RustMindGenerationBridge();
     _localRuntimePreloader =
         widget.localRuntimePreloader ??
         LocalRuntimePreloaderService(
@@ -323,6 +373,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         unawaited(_restoreChatHistory());
       }
     }
+    unawaited(_attachReliabilityCheckpoints());
     unawaited(_restorePausedResearch());
     unawaited(initializeLifeTrackStatusConnector());
     unawaited(_loadEntityGraph());
@@ -336,6 +387,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       exportChat: () => unawaited(_copyTranscript()),
       clearChat: () => unawaited(_confirmClearConversation()),
     );
+  }
+
+  Future<void> _attachReliabilityCheckpoints() async {
+    try {
+      final prefs = await PreferencesStore.create();
+      if (!mounted) return;
+      _assistantRuntime.attachCheckpointStore(
+        PreferencesReliabilityCheckpointStore(prefs),
+      );
+    } on Object {
+      // Prefs I/O must not fail chat (ADR-0024).
+    }
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
@@ -582,8 +645,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _restoreFromWorkspace() async {
     final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
     if (!mounted || chats.isEmpty) {
-      if (mounted) setState(() => _chats = chats);
+      if (mounted) {
+        setState(() {
+          _chats = chats;
+          _folders = folders;
+        });
+      }
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -592,10 +661,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       id = chats.first.id;
     }
     final turns = await _workspace.loadTranscript(id);
+    final folderId = _folderIdFor(id, chats);
+    final graph = await _workspace.loadSharedGraph(folderId);
+    await chatEntityGraphSession.replaceGraph(graph);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
       _chats = chats;
+      _folders = folders;
+      _entityGraph = graph;
       _historyRestored = true;
       if (turns.isNotEmpty) {
         _messages
@@ -603,6 +677,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ..addAll(turns.map(_messageFromTurn));
       }
     });
+  }
+
+  Future<void> _refreshChatList() async {
+    final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
+    _chats = chats;
+    _folders = folders;
+    if (mounted) setState(() {});
+  }
+
+  String? _folderIdFor(String? chatId, [List<MindChatRecord>? chats]) {
+    if (chatId == null) return null;
+    for (final chat in chats ?? _chats) {
+      if (chat.id == chatId) return chat.folderId;
+    }
+    return null;
+  }
+
+  Future<void> _applySharedGraph(String? folderId) async {
+    final graph = await _workspace.loadSharedGraph(folderId);
+    await chatEntityGraphSession.replaceGraph(graph);
+    if (mounted) setState(() => _entityGraph = graph);
   }
 
   Future<void> _persistWorkspace() async {
@@ -616,7 +712,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _conversationId ??= await _workspace.createChat();
     final id = _conversationId!;
     await _workspace.replaceTranscript(id, turns);
-    await _workspace.saveDirectory(_entityGraph);
+    await _workspace.saveSharedGraph(_folderIdFor(id), _entityGraph);
     await _workspace.saveChatGraph(id, _entityGraph);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -625,12 +721,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Tests without a mock still persist the transcript in-memory.
     }
     final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
     _chats = chats;
+    _folders = folders;
   }
 
-  Future<void> _startNewChat() async {
+  Future<void> _startNewChat({String? folderId}) async {
     await _persistWorkspace();
-    final id = await _workspace.createChat();
+    final previousFolder = _folderIdFor(_conversationId);
+    final targetFolder = folderId ?? previousFolder;
+    final id = await _workspace.createChat(folderId: targetFolder);
     _conversationId = id;
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -642,8 +742,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _messages.clear();
     });
-    _chats = await _workspace.listChats();
-    if (mounted) setState(() {});
+    await _refreshChatList();
+    if (targetFolder != previousFolder) {
+      await _applySharedGraph(targetFolder);
+    }
+  }
+
+  Future<void> _createFolder(String name) async {
+    await _workspace.createFolder(name);
+    await _refreshChatList();
+  }
+
+  Future<void> _setFolderPlugins(
+    String folderId,
+    List<String> pluginIds,
+  ) async {
+    MindChatFolder? current;
+    for (final folder in _folders) {
+      if (folder.id == folderId) current = folder;
+    }
+    if (current == null) return;
+    await _workspace.updateFolder(current.copyWith(pluginIds: pluginIds));
+    await _refreshChatList();
   }
 
   Future<void> _openChat(String id) async {
@@ -664,6 +784,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ..clear()
         ..addAll(turns.map(_messageFromTurn));
     });
+    await _applySharedGraph(_folderIdFor(id));
+  }
+
+  Future<void> _moveChat(String chatId, String? folderId) async {
+    await _persistWorkspace();
+    await _workspace.moveChatToFolder(chatId, folderId);
+    await _refreshChatList();
+    if (chatId == _conversationId) {
+      await _applySharedGraph(folderId);
+    }
+  }
+
+  Future<void> _removeChat(String id) async {
+    final wasActive = id == _conversationId;
+    final folderId = _folderIdFor(id);
+    if (wasActive) {
+      _conversationId = null;
+    } else {
+      await _persistWorkspace();
+    }
+    await _workspace.deleteChat(id);
+    await _refreshChatList();
+    if (!wasActive || !mounted) return;
+    if (_chats.isNotEmpty) {
+      await _openChat(_chats.first.id);
+      return;
+    }
+    final nextId = await _workspace.createChat(folderId: folderId);
+    _conversationId = nextId;
+    _resetResearchUi();
+    setState(() => _messages.clear());
+    await _refreshChatList();
+    await _applySharedGraph(folderId);
   }
 
   void _openMemoryGraph() {
@@ -674,6 +827,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           contextId: 'kneesurgery2026',
           directory: _entityGraph,
           chats: _chats,
+          folders: _folders,
           activeChatId: _conversationId,
           onBack: () => Navigator.of(context).pop(),
           onOpenChat: (id) {
@@ -684,6 +838,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Navigator.of(context).pop();
             unawaited(_startNewChat());
           },
+          onCreateFolder: (name) => unawaited(_createFolder(name)),
+          onMoveChat: (chatId, folderId) =>
+              unawaited(_moveChat(chatId, folderId)),
+          onRemoveChat: (id) => unawaited(_removeChat(id)),
+          onNewChatInFolder: (folderId) =>
+              unawaited(_startNewChat(folderId: folderId)),
+          onSetFolderPlugins: (folderId, pluginIds) =>
+              unawaited(_setFolderPlugins(folderId, pluginIds)),
+          pluginOptions: _folderPluginOptions,
         ),
       ),
     );
@@ -945,10 +1108,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: MindDirectoryChatsPane(
                         directory: _entityGraph,
                         chats: _chats,
+                        folders: _folders,
                         activeChatId: _conversationId,
+                        activeFolderId: _folderIdFor(_conversationId),
                         onOpenChat: (id) => unawaited(_openChat(id)),
                         onNewChat: () => unawaited(_startNewChat()),
                         onOpenMemory: _openMemoryGraph,
+                        onCreateFolder: (name) =>
+                            unawaited(_createFolder(name)),
+                        onMoveChat: (chatId, folderId) =>
+                            unawaited(_moveChat(chatId, folderId)),
+                        onRemoveChat: (id) => unawaited(_removeChat(id)),
+                        onNewChatInFolder: (folderId) =>
+                            unawaited(_startNewChat(folderId: folderId)),
+                        onSetFolderPlugins: (folderId, pluginIds) =>
+                            unawaited(_setFolderPlugins(folderId, pluginIds)),
+                        pluginOptions: _folderPluginOptions,
                       ),
                     ),
                     const VerticalDivider(width: 1),
@@ -961,10 +1136,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  MindChatFolder? get _activeFolder {
+    final id = _folderIdFor(_conversationId);
+    if (id == null) return null;
+    for (final folder in _folders) {
+      if (folder.id == id) return folder;
+    }
+    return null;
+  }
+
+  String? get _effectivePersonaId {
+    final folder = _activeFolder;
+    if (folder != null) {
+      for (final pluginId in folder.pluginIds) {
+        final skill = _skillRegistry.getById(pluginId);
+        if (skill != null && skill.isPersona) return pluginId;
+      }
+    }
+    return _pinnedPersonaId;
+  }
+
+  List<MindFolderPluginOption> get _folderPluginOptions => [
+    for (final skill in _skillRegistry.getAllSkills())
+      if (skill.isPersona || skill.isGenerativePlugin)
+        MindFolderPluginOption(
+          id: skill.id,
+          name: skill.name,
+          description: skill.description,
+        ),
+  ];
+
   PersonaSession get _personaSession => PersonaSession(
-    pinned: _pinnedPersonaId == null
+    pinned: _effectivePersonaId == null
         ? null
-        : _skillRegistry.getById(_pinnedPersonaId!),
+        : _skillRegistry.getById(_effectivePersonaId!),
   );
 
   Widget _buildPinnedAssistantBar(PersonaSession session) {
@@ -1312,6 +1517,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               MindSafetyBanner(safetyClass: message.safetyClass),
             if (message.traces.isNotEmpty)
               SkillActionTraceCard(traces: message.traces),
+            if (!message.isUser)
+              ReasoningProgressPanel(
+                steps: message.reasoningSteps,
+                inProgress: message.reasoningInProgress,
+                summary: message.reasoningSummary,
+              ),
             Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1635,6 +1846,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final promptGate = PromptQualityGate.inspectUserTurn(
+      userText: message,
+      historyEmpty: _messages.where((m) => m.isUser).length <= 1,
+    );
+    if (promptGate.blocksInference) {
+      setState(() {
+        _messages.add(
+          AgentChatMessage(text: promptGate.userMessage, isUser: false),
+        );
+      });
+      _scrollMessagesToLatest();
+      return;
+    }
+
     final dietApplies = DietPlanPluginPrompt.applies(
       currentPrompt: message,
       history: _chatHistoryMessages(),
@@ -1643,7 +1868,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final skillStopwatch = Stopwatch()..start();
       final skillResult = await _skillOrchestrator.run(
         message,
-        pinnedPersonaId: _pinnedPersonaId,
+        pinnedPersonaId: _effectivePersonaId,
       );
       skillStopwatch.stop();
       if (skillResult.handled) {
@@ -2148,9 +2373,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         history: history,
       );
     }
-    final systemPrompt = _buildChatSystemPrompt(message);
     var recordedFirstToken = false;
+    var contextBuilder = _chatContextBuilder;
+    var compact = _useCompactLocalChat();
+    var systemPrompt = _buildChatSystemPrompt(
+      message,
+      builder: contextBuilder,
+      compact: compact,
+    );
+    final contextLimit = _selectedContextLimit();
+    final estimated = TokenCounter.estimate('$systemPrompt\n$modelPrompt');
+    final turn = ChatTurnReliability.plan(
+      userText: message,
+      systemPrompt: systemPrompt,
+      historyEmpty: false,
+      estimatedTokens: estimated,
+      modelContextLimit: contextLimit,
+      definition: dietApplies
+          ? AiroPromptRegistry.dietPlan
+          : _shouldUseReasoning(selectedModelId)
+          ? AiroPromptRegistry.reasoningEngine
+          : _personaSession.isPinned
+          ? AiroPromptRegistry.skillPersona
+          : AiroPromptRegistry.chatAssistant,
+      prefixCache: assistantRuntimeSupportsPrefixCache(selectedModelId)
+          ? PrefixCacheCapability.supported
+          : PrefixCacheCapability.unsupported,
+      cacheablePrefixTokens: TokenCounter.estimate(systemPrompt),
+    );
+    if (turn.rebuildContext) {
+      contextBuilder = contextBuilder.rebuildForBudget();
+      compact = true;
+      systemPrompt = _buildChatSystemPrompt(
+        message,
+        builder: contextBuilder,
+        compact: compact,
+      );
+    }
     try {
+      if (_shouldUseReasoning(selectedModelId)) {
+        return _generateReasonedResponse(
+          selectedModelId: selectedModelId,
+          message: message,
+          modelPrompt: modelPrompt,
+          dietApplies: dietApplies,
+          dietRetry: dietRetry,
+          attemptedRuntimeIds: attemptedRuntimeIds,
+          stopwatch: stopwatch,
+        );
+      }
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
@@ -2172,6 +2443,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       stopwatch.stop();
       if (latestChunk.trim().isEmpty) {
+        _replaceStreamingMessage(
+          ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+        );
         return null;
       }
       if (dietApplies) {
@@ -2207,6 +2481,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           outputResult.getErrorOrNull()?.toString() ??
               'The response was blocked by the selected safety profile.',
         );
+        return null;
+      }
+      final denied = ToolAuthorityGuard.denyUngroundedClaim(
+        message: latestChunk,
+        executedTools: const [],
+      );
+      if (!_completeVerifiedTurn(
+        goal: message,
+        output: latestChunk,
+        executedTools: const [],
+        denied: denied,
+      )) {
         return null;
       }
       return _buildRuntimeMetadata(
@@ -2251,6 +2537,249 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<({LlmDeviceTier tier, LlmDeviceSignals? signals})>
+  _resolveReasoningDevice() async {
+    if (widget.reasoningDeviceTier != null && _reasoningSignals != null) {
+      return (tier: widget.reasoningDeviceTier!, signals: _reasoningSignals);
+    }
+    if (_reasoningSignals != null && widget.reasoningDeviceTier == null) {
+      return (tier: _reasoningTier, signals: _reasoningSignals);
+    }
+    try {
+      final probe =
+          widget.deviceSignalsProbe ??
+          RealLlmDeviceSignalsProbe(availableStorageMb: () async => 4096);
+      final signals = await probe.probe();
+      _reasoningSignals = signals;
+      _reasoningTier = const LlmDeviceTierPolicy().evaluate(signals).tier;
+    } on Object {
+      // Keep the last known tier. Hosts that cannot probe stay at large.
+    }
+    return (
+      tier: widget.reasoningDeviceTier ?? _reasoningTier,
+      signals: _reasoningSignals,
+    );
+  }
+
+  bool _shouldUseReasoning(String selectedModelId) {
+    if (widget.useOnDeviceReasoning != null) {
+      return widget.useOnDeviceReasoning!();
+    }
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    AssistantModelCandidate? candidate;
+    if (library != null) {
+      for (final item in library.candidates) {
+        if (item.id == selectedModelId) {
+          candidate = item;
+          break;
+        }
+      }
+    }
+    final package = candidate?.package;
+    return shouldUseOnDeviceReasoning(
+      engineReady: _generationBridge.isEngineReady,
+      selectedModelId: selectedModelId,
+      isLiteRt:
+          selectedModelId == litertGemmaAssistantModelId ||
+          (package != null &&
+              AssistantModelLibraryState.isLiteRtPackage(package)),
+    );
+  }
+
+  Future<ChatResponseMetadata?> _generateReasonedResponse({
+    required String selectedModelId,
+    required String message,
+    required String modelPrompt,
+    required bool dietApplies,
+    required bool dietRetry,
+    required Set<String> attemptedRuntimeIds,
+    required Stopwatch stopwatch,
+  }) async {
+    final history = _chatHistoryMessages();
+    final intent = IntentParser.parse(message);
+    final documents = dietApplies
+        ? [
+            MindReasoningContextItem(
+              source: 'diet_constraints',
+              text: DietPlanPluginPrompt.userConstraintLines(
+                currentPrompt: message,
+                history: history,
+              ).join('\n'),
+            ),
+          ]
+        : const <MindReasoningContextItem>[];
+    final device = await _resolveReasoningDevice();
+    final request = buildMindReasoningRequest(
+      userQuery: modelPrompt,
+      intent: intent,
+      history: history,
+      tier: device.tier,
+      signals: device.signals,
+      documents: documents,
+      toolNames: reasoningLookupToolNames(_connectorRegistry),
+    );
+    final fold = ReasoningStreamFold();
+    int? timeToFirstTokenMs;
+    await for (final event in runReasoningToolLoop(
+      request: request,
+      reason: _generationBridge.reason,
+      executeTool: (name, argumentsJson) => executeReasoningTool(
+        registry: _connectorRegistry,
+        name: name,
+        argumentsJson: argumentsJson,
+      ),
+    )) {
+      fold.add(event);
+      timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
+      _applyReasoningFold(fold);
+    }
+    stopwatch.stop();
+    var latest = fold.answer;
+    if (fold.cancelled && latest.trim().isEmpty) {
+      _applyReasoningFold(fold);
+      return null;
+    }
+    if (fold.error != null && latest.trim().isEmpty) {
+      _assistantRuntime.lastReliabilityDiagnostic =
+          FailureClassifier.recordChatCompletion(
+            executionId: selectedModelId,
+            text: '',
+            engineOk: false,
+          );
+      _applyReasoningFold(fold);
+      return null;
+    }
+    if (latest.trim().isEmpty) {
+      _assistantRuntime.lastReliabilityDiagnostic =
+          FailureClassifier.recordChatCompletion(
+            executionId: selectedModelId,
+            text: '',
+            engineOk: true,
+          );
+      _replaceStreamingMessage(
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+      );
+      return null;
+    }
+    _assistantRuntime.lastReliabilityDiagnostic =
+        FailureClassifier.recordChatCompletion(
+          executionId: selectedModelId,
+          text: latest,
+          engineOk: true,
+        );
+    if (dietApplies) {
+      final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
+        currentPrompt: message,
+        history: history,
+      );
+      latest = DietPlanPluginPrompt.trimExtraDays(
+        latest,
+        DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
+      );
+      fold.answer = latest;
+      _applyReasoningFold(fold);
+      if (!dietRetry &&
+          DietPlanPluginPrompt.shouldRetryPlan(
+            output: latest,
+            constraints: dietConstraints,
+          )) {
+        return _generateSelectedModelResponse(
+          selectedModelId,
+          message,
+          attemptedRuntimeIds: attemptedRuntimeIds,
+          dietRetry: true,
+        );
+      }
+    }
+    final outputResult = SafetyGuardrails.withDefaults(
+      profile: ref.read(assistantHostAdapterProvider).safetyProfile,
+    ).checkOutput(latest);
+    if (outputResult.isErr) {
+      _replaceStreamingMessage(
+        outputResult.getErrorOrNull()?.toString() ??
+            'The response was blocked by the selected safety profile.',
+      );
+      return null;
+    }
+    final executedTools = [for (final call in fold.toolCalls) call.name];
+    final denied = ToolAuthorityGuard.denyUngroundedClaim(
+      message: latest,
+      executedTools: executedTools,
+    );
+    if (!_completeVerifiedTurn(
+      goal: message,
+      output: latest,
+      executedTools: executedTools,
+      denied: denied,
+    )) {
+      return null;
+    }
+    return _buildRuntimeMetadata(
+      selectedModelId: selectedModelId,
+      prompt: message,
+      response: latest,
+      systemPrompt: AiroPromptRegistry.reasoningEngine.qualifiedId,
+      totalDuration: stopwatch.elapsed,
+      timeToFirstTokenMs: timeToFirstTokenMs,
+    );
+  }
+
+  void _applyReasoningFold(ReasoningStreamFold fold) {
+    if (!mounted || _messages.isEmpty) return;
+    final complete = fold.level != null || fold.error != null || fold.cancelled;
+    final text = fold.error != null && fold.answer.trim().isEmpty
+        ? fold.error!
+        : fold.cancelled && fold.answer.trim().isEmpty
+        ? 'Stopped.'
+        : fold.answer;
+    setState(() {
+      final current = _messages.last;
+      _messages[_messages.length - 1] = AgentChatMessage(
+        text: text,
+        isUser: false,
+        timestamp: current.timestamp,
+        traces: current.traces,
+        metadata: current.metadata,
+        citations: current.citations,
+        groundingState: current.groundingState,
+        safetyClass: current.safetyClass,
+        reasoningSteps: List<ReasoningProgressStep>.from(fold.steps),
+        reasoningSummary: fold.reasoningSummary,
+        reasoningLevel: fold.level,
+        reasoningInProgress: !complete,
+        reasoningToolCalls: [
+          for (final call in fold.toolCalls)
+            ChatHistoryToolCall(
+              name: call.name,
+              argumentsJson: call.argumentsJson,
+            ),
+        ],
+        turnTrace: current.turnTrace,
+      );
+    });
+    _scrollMessagesToLatest(animated: false);
+  }
+
+  bool _completeVerifiedTurn({
+    required String goal,
+    required String output,
+    required Iterable<String> executedTools,
+    String? denied,
+  }) {
+    final verification = ChatOutputVerifier.verify(
+      output: output,
+      executedTools: executedTools,
+    );
+    final turn = ChatTurnGoal(goal: goal).start().verify(verification);
+    if (!turn.succeeded) {
+      _replaceStreamingMessage(
+        denied ?? ChatOutputVerifier.userMessageFor(verification)!,
+      );
+      return false;
+    }
+    return true;
+  }
+
   void _replaceStreamingMessage(String text, {ChatTurnTrace? turnTrace}) {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
@@ -2276,6 +2805,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _messageScrollController.jumpTo(target);
       }
     });
+  }
+
+  int _selectedContextLimit() {
+    final selectedId = ref.read(selectedAssistantModelIdProvider);
+    final library = ref.read(assistantModelLibraryProvider).asData?.value;
+    return library?.candidateById(selectedId)?.package?.contextLength ?? 0;
   }
 
   bool _useCompactLocalChat() {
@@ -2369,7 +2904,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .toList(growable: false);
   }
 
-  String _buildChatSystemPrompt(String currentPrompt) {
+  String _buildChatSystemPrompt(
+    String currentPrompt, {
+    AssistantChatContextBuilder? builder,
+    bool? compact,
+  }) {
+    final contextBuilder = builder ?? _chatContextBuilder;
+    final useCompact = compact ?? _useCompactLocalChat();
     final history = _chatHistoryMessages();
     final session = _personaSession;
     if (session.isPinned) {
@@ -2380,14 +2921,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             currentPrompt: currentPrompt,
             history: history,
           );
-      return _chatContextBuilder.buildSystemPrompt(
+      return contextBuilder.buildSystemPrompt(
         currentUserPrompt: dietApplies
             ? DietPlanPluginPrompt.modelUserPrompt(
                 currentPrompt: currentPrompt,
                 history: history,
               )
             : currentPrompt,
-        compact: _useCompactLocalChat(),
+        compact: useCompact,
         pluginPlaybooks: session.playbooks(),
         pinnedPersonaIdentity: session.identityPreamble(),
         history: dietApplies
@@ -2402,14 +2943,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentPrompt: currentPrompt,
       history: history,
     );
-    return _chatContextBuilder.buildSystemPrompt(
+    return contextBuilder.buildSystemPrompt(
       currentUserPrompt: dietApplies
           ? DietPlanPluginPrompt.modelUserPrompt(
               currentPrompt: currentPrompt,
               history: history,
             )
           : currentPrompt,
-      compact: _useCompactLocalChat(),
+      compact: useCompact,
       pluginPlaybooks: _enabledGenerativePluginPlaybooks(
         currentPrompt: currentPrompt,
         history: history,
@@ -2431,16 +2972,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentPrompt: currentPrompt,
       history: history,
     );
-    return _skillRegistry
-        .getEnabledSkills()
-        .where(
-          (skill) =>
-              skill.isGenerativePlugin &&
-              (!skill.isPersona || skill.id == 'draft-diet-plan'),
-        )
-        .where((skill) => skill.id != 'draft-diet-plan' || dietApplies)
-        .map((skill) => '${skill.name}: ${skill.instructions}')
-        .toList(growable: false);
+    final seen = <String>{};
+    final playbooks = <String>[];
+    final folder = _activeFolder;
+    if (folder != null) {
+      for (final pluginId in folder.pluginIds) {
+        final skill = _skillRegistry.getById(pluginId);
+        if (skill == null) continue;
+        final line = '${skill.name}: ${skill.instructions}';
+        if (seen.add(line)) playbooks.add(line);
+      }
+    }
+    for (final skill in _skillRegistry.getEnabledSkills()) {
+      if (!skill.isGenerativePlugin) continue;
+      if (skill.isPersona && skill.id != 'draft-diet-plan') continue;
+      if (skill.id == 'draft-diet-plan' && !dietApplies) continue;
+      final line = '${skill.name}: ${skill.instructions}';
+      if (seen.add(line)) playbooks.add(line);
+    }
+    return playbooks;
   }
 
   String _previewForMetadata(String? value) {

@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/host/assistant_host_adapter.dart';
+import 'package:feature_mind/src/agent_chat/data/repositories/pinned_persona_store.dart';
+import 'package:feature_mind/src/agent_chat/data/repositories/remote_agent_skill_store.dart';
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -256,6 +262,40 @@ void main() {
       expect(find.byKey(const Key('agent_chat_metadata_button')), findsNothing);
     },
   );
+
+  testWidgets('aborted generate still shows a turn inspector chip', (
+    tester,
+  ) async {
+    final started = DateTime.utc(2026, 8, 21, 14, 46);
+    final trace = ChatTurnTraceBuilder(runId: 'run-diet-1', startedAt: started)
+        .runtime(id: 'offline-gemma-2b-it-q4', routing: ChatTurnRouting.local)
+        .plugin('draft-diet-plan')
+        .prompt(summary: 'Make me a 7 day diet plan')
+        .markFirstToken()
+        .abort(
+          reason: ChatTurnStopReason.processKilled,
+          endedAt: started.add(const Duration(seconds: 2)),
+        )
+        .build();
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        AgentChatMessage(text: 'Here', isUser: false, turnTrace: trace),
+      ],
+    );
+
+    expect(find.text('Here'), findsOneWidget);
+    expect(find.byKey(const Key('agent_chat_metadata_button')), findsOneWidget);
+    expect(find.textContaining('Aborted'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('agent_chat_metadata_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Turn inspector'), findsOneWidget);
+    expect(find.text('process_killed'), findsOneWidget);
+    expect(find.text('stop'), findsNothing);
+  });
 
   testWidgets('chat screen prefills the composer draft when provided', (
     tester,
@@ -561,6 +601,48 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('restores pinned assistant from SharedPreferences', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'selected_assistant_model_id': geminiNanoAssistantModelId,
+      ..._installedPluginPrefs('contract-review-assistant', pin: true),
+    });
+
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1000);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+    stubGeminiNanoChannel();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantHostAdapterProvider.overrideWithValue(
+            FakeAssistantHostAdapter(),
+          ),
+          assistantModelLibraryProvider.overrideWith(
+            (ref) async => _chatLibraryState,
+          ),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ChatScreen(
+            enableAiInitialization: false,
+            initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Assistant: Contract Review'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpChatScreen(
@@ -581,6 +663,8 @@ Future<void> _pumpChatScreen(
 
   SharedPreferences.setMockInitialValues({
     'selected_assistant_model_id': geminiNanoAssistantModelId,
+    if (initialPinnedPersonaId != null)
+      ..._installedPluginPrefs(initialPinnedPersonaId),
   });
 
   await tester.pumpWidget(
@@ -607,6 +691,21 @@ Future<void> _pumpChatScreen(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Map<String, Object> _installedPluginPrefs(
+  String id, {
+  bool enabled = true,
+  bool pin = false,
+}) {
+  final document = File('skills/$id/SKILL.md').readAsStringSync();
+  return {
+    RemoteAgentSkillStore.key: jsonEncode([
+      {'id': id, 'version': '1.0.0', 'document': document, 'origin': 'catalog'},
+    ]),
+    'agent_skills.enabled_state.v1': jsonEncode({id: enabled}),
+    if (pin) PinnedPersonaStore.key: id,
+  };
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {

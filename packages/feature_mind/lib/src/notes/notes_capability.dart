@@ -108,10 +108,7 @@ class NotesCapability {
   }) async {
     if (_rustReady) {
       try {
-        mindRuntimeDeleteNote(
-          id: id,
-          recordedAtMs: BigInt.from(recordedAtMs),
-        );
+        mindRuntimeDeleteNote(id: id, recordedAtMs: BigInt.from(recordedAtMs));
         return NotesOperation(
           seq: 0,
           kind: NoteOpKind.delete,
@@ -124,7 +121,11 @@ class NotesCapability {
         // Fall through to Dart log.
       }
     }
-    return _log.append(kind: NoteOpKind.delete, id: id, recordedAtMs: recordedAtMs);
+    return _log.append(
+      kind: NoteOpKind.delete,
+      id: id,
+      recordedAtMs: recordedAtMs,
+    );
   }
 
   /// Reads the current projection. Always a fresh fold of the log -- never a
@@ -156,4 +157,3 @@ class NotesCapability {
     return NotesProjection.rebuild(await _log.replay());
   }
 }
-

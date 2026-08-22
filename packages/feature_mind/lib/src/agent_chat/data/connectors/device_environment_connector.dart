@@ -4,9 +4,8 @@ import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_connector.dart';
 
 class DeviceEnvironmentConnector implements AgentConnector {
-  DeviceEnvironmentConnector({
-    Future<MemoryInfo> Function()? loadMemory,
-  }) : _loadMemory = loadMemory ?? _defaultLoadMemory;
+  DeviceEnvironmentConnector({Future<MemoryInfo> Function()? loadMemory})
+    : _loadMemory = loadMemory ?? _defaultLoadMemory;
 
   final Future<MemoryInfo> Function() _loadMemory;
 
@@ -29,7 +28,9 @@ class DeviceEnvironmentConnector implements AgentConnector {
       data: {
         'available_memory_mb': memory.availableMB.round(),
         'total_memory_mb': memory.totalMB.round(),
-        'available_memory_gb': double.parse(memory.availableGB.toStringAsFixed(2)),
+        'available_memory_gb': double.parse(
+          memory.availableGB.toStringAsFixed(2),
+        ),
         'total_memory_gb': double.parse(memory.totalGB.toStringAsFixed(2)),
       },
     );

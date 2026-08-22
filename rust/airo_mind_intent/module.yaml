@@ -1,0 +1,8 @@
+owner: Rust Architect
+reviewers:
+  - Chief Architect
+  - Platform Architect
+description: >
+  Airo Mind ClassifiedIntent contract — versioned schema, capability
+  registry, validation, action-readiness, and intent routing. Keyword
+  IntentParser is a legacy adapter that may only emit this contract.

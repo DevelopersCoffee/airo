@@ -20,15 +20,11 @@ void main() {
 
   Widget wrap(Widget child) => MaterialApp(home: child);
 
-  testWidgets('shows what it does and which port it touches', (
-    tester,
-  ) async {
+  testWidgets('shows what it does and which port it touches', (tester) async {
     final port = FakeCapabilityPort(installedResult: [audioScribe]);
 
     await tester.pumpWidget(
-      wrap(
-        CapabilityDetailScreen(capability: audioScribe, port: port),
-      ),
+      wrap(CapabilityDetailScreen(capability: audioScribe, port: port)),
     );
     await tester.pumpAndSettle();
 
@@ -44,9 +40,7 @@ void main() {
     final port = FakeCapabilityPort(installedResult: [audioScribe]);
 
     await tester.pumpWidget(
-      wrap(
-        CapabilityDetailScreen(capability: audioScribe, port: port),
-      ),
+      wrap(CapabilityDetailScreen(capability: audioScribe, port: port)),
     );
     await tester.pumpAndSettle();
 
@@ -59,9 +53,7 @@ void main() {
     final port = FakeCapabilityPort(installedResult: [audioScribe]);
 
     await tester.pumpWidget(
-      wrap(
-        CapabilityDetailScreen(capability: audioScribe, port: port),
-      ),
+      wrap(CapabilityDetailScreen(capability: audioScribe, port: port)),
     );
     await tester.pumpAndSettle();
 
@@ -112,9 +104,7 @@ void main() {
     final port = FakeCapabilityPort(installedResult: [audioScribe]);
 
     await tester.pumpWidget(
-      wrap(
-        CapabilityDetailScreen(capability: audioScribe, port: port),
-      ),
+      wrap(CapabilityDetailScreen(capability: audioScribe, port: port)),
     );
     await tester.pumpAndSettle();
 

@@ -260,9 +260,7 @@ class _MindHomeDashboardState extends State<MindHomeDashboard> {
     }
     final capabilities = _capabilities;
     if (capabilities == null) {
-      return const SizedBox.shrink(
-        key: Key('mind.home.capabilities.pending'),
-      );
+      return const SizedBox.shrink(key: Key('mind.home.capabilities.pending'));
     }
     final active = capabilities.where((c) => c.isActive).length;
     return Text(

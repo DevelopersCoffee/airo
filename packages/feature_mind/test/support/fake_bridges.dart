@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_mind/src/bridges/mind_generation_bridge.dart';
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
+import 'package:feature_mind/src/reasoning/reasoning_models.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 
 /// Scripts a [TranscriptEvent] sequence for [MindSpeechBridge.transcribe] and
@@ -109,6 +110,10 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   List<MeetingIntelligenceEvent> meetingIntelligenceEvents = const [];
   List<GenerationEvent> generationEvents = const [];
   List<GenerationEvent>? completeEvents;
+  Stream<MindReasoningEvent> Function(MindReasoningRequest)? reasonHandler;
+  final reasonRequests = <MindReasoningRequest>[];
+  List<MindReasoningEvent> reasoningEvents = const [];
+  MindReasoningRequest? lastReasonRequest;
   String modelIdValue = 'test-model@1';
   GenerationStats statsValue = const GenerationStats(
     prefillMs: 0,
@@ -123,6 +128,7 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   var unloadCalls = 0;
   String? lastGrammar;
   String? lastCompletePrompt;
+  String? lastCompleteGrammar;
   int? lastCompleteMaxOutputTokens;
   var _loaded = false;
 
@@ -163,10 +169,22 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   Stream<GenerationEvent> complete({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   }) {
     lastCompletePrompt = prompt;
     lastCompleteMaxOutputTokens = maxOutputTokens;
+    lastCompleteGrammar = grammar;
     return Stream.fromIterable(completeEvents ?? generationEvents);
+  }
+
+  @override
+  Stream<MindReasoningEvent> reason(MindReasoningRequest request) {
+    lastReasonRequest = request;
+    reasonRequests.add(request);
+    if (reasonHandler != null) {
+      return reasonHandler!(request);
+    }
+    return Stream.fromIterable(reasoningEvents);
   }
 
   @override

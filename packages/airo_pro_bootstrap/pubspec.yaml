@@ -13,7 +13,7 @@ dependencies:
     path: ../core_entitlements
   flutter:
     sdk: flutter
-  flutter_riverpod: 3.3.2
+  flutter_riverpod: 3.4.2
 
 dev_dependencies:
   flutter_test:

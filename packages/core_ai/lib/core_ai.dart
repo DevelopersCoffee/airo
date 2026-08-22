@@ -42,6 +42,15 @@ export 'src/embeddings/embedding_service.dart';
 export 'src/litert/litert_lm_execution_adapter.dart';
 export 'src/litert/mediapipe_web_runtime_adapter.dart';
 
+// Generation constraints (prompt inertia + GBNF)
+export 'src/generation/gbnf_grammar.dart';
+export 'src/generation/generation_constraint.dart';
+export 'src/generation/prompt_inertia_guard.dart';
+export 'src/generation/scalar_constraint_kind.dart';
+
+// Chat turn inspector (#386 wrapper)
+export 'src/observability/chat_turn_trace.dart';
+
 // LLM Client
 export 'src/llm/llm_client.dart';
 export 'src/llm/llm_response.dart';
@@ -93,6 +102,16 @@ export 'src/skills/skill_trigger_eval.dart';
 // Prompt Management
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
+
+// Reasoning reliability (Dart mirrors of airo_mind_reliability IDs)
+export 'src/reliability/reasoning_reliability.dart';
+export 'src/reliability/prompt_reliability.dart';
+export 'src/reliability/instruction_set.dart';
+export 'src/reliability/prompt_registry.dart';
+export 'src/reliability/recovery_engine.dart';
+export 'src/reliability/context_compiler.dart';
+export 'src/reliability/failure_classifier.dart';
+export 'src/reliability/goal_state.dart';
 
 // Parsing
 export 'src/parsing/json_parser.dart';

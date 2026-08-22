@@ -1,10 +1,13 @@
-import 'package:feature_mind/src/services/gguf_load_outcome.dart';
-import 'package:feature_mind/src/services/llama_gguf_service.dart';
+import 'package:core_ai/core_ai.dart';
+import 'package:core_data/core_data.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_runtime_service.dart';
+import 'package:feature_mind/src/agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/model_library_screen.dart';
-import 'package:core_ai/core_ai.dart';
+import 'package:feature_mind/src/services/gguf_load_outcome.dart';
+import 'package:feature_mind/src/services/llama_gguf_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -529,6 +532,154 @@ void main() {
         expect(service.lastGenerationStats?.tokensPerSecond, 30);
       },
     );
+
+    test(
+      'prefills the assistant turn instead of relying on prefix GBNF',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'qwen2-1.5b-q4',
+          name: 'Qwen2 1.5B',
+          family: ModelFamily.qwen,
+          fileSizeBytes: 1_100_000_000,
+          filePath: '/models/qwen2-1.5b-q4.gguf',
+          provider: AIProvider.gguf,
+        );
+        final runtimeId = assistantModelIdForOfflineModel(package.id);
+        final llama = _FakeLlamaGgufService(
+          isAvailableResult: true,
+          loadModelResult: true,
+          generatedChunks: ['Day 1: oats'],
+        );
+        final service = AssistantRuntimeService(
+          llamaGguf: llama,
+          loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+            task: AssistantTask.chat,
+            deviceLabel: 'Mac',
+            platformLabel: 'MACOS',
+            candidates: [
+              AssistantModelCandidate(
+                id: runtimeId,
+                name: package.name,
+                runtime: 'GGUF',
+                description: 'Installed package',
+                bestFor: const [AssistantTask.chat],
+                tags: const ['Local'],
+                privacyLabel: 'Private',
+                sizeLabel: package.fileSizeDisplay,
+                available: true,
+                actionLabel: 'Start',
+                local: true,
+                package: package,
+              ),
+            ],
+            recommended: AssistantModelCandidate(
+              id: runtimeId,
+              name: package.name,
+              runtime: 'GGUF',
+              description: 'Installed package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Private',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+            defaultPackages: const {},
+          ),
+        );
+        const prefix = "Here's a 3-day diet plan:\n\n";
+        final constraint = GenerationConstraint.forcedPrefix(prefix);
+
+        final chunks = await service
+            .generateTextStream(
+              selectedModelId: runtimeId,
+              prompt: 'write the plan',
+              constraint: constraint,
+            )
+            .toList();
+
+        expect(llama.lastGrammar, isNull);
+        expect(llama.lastPrompt, contains('<|im_start|>assistant\n$prefix'));
+        expect(
+          llama.lastPrompt,
+          isNot(contains('Start your reply with exactly:')),
+        );
+        expect(chunks.last, startsWith(prefix.trim()));
+        expect(chunks.last, contains('Day 1: oats'));
+      },
+    );
+
+    test('keeps the prefill when Gemma stops after Here', () async {
+      final package = OfflineModelInfo(
+        id: 'gemma-2b-it-q4',
+        name: 'Gemma 2 2B Instruct',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1_600_000_000,
+        filePath: '/models/gemma-2-2b-it.gguf',
+        provider: AIProvider.gguf,
+      );
+      final runtimeId = assistantModelIdForOfflineModel(package.id);
+      final llama = _FakeLlamaGgufService(
+        isAvailableResult: true,
+        loadModelResult: true,
+        generatedChunks: ['Here'],
+      );
+      final service = AssistantRuntimeService(
+        llamaGguf: llama,
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Mac',
+          platformLabel: 'MACOS',
+          candidates: [
+            AssistantModelCandidate(
+              id: runtimeId,
+              name: package.name,
+              runtime: 'GGUF',
+              description: 'Installed package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Private',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: AssistantModelCandidate(
+            id: runtimeId,
+            name: package.name,
+            runtime: 'GGUF',
+            description: 'Installed package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Private',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+          defaultPackages: const {},
+        ),
+      );
+
+      final chunks = await service
+          .generateTextStream(
+            selectedModelId: runtimeId,
+            prompt: 'write the plan',
+            constraint: GenerationConstraint.forcedPrefix(
+              "Here's a 3-day diet plan:\n\n",
+            ),
+          )
+          .toList();
+
+      expect(llama.lastPrompt, contains('<start_of_turn>model\n'));
+      expect(llama.lastPrompt, contains("Here's a 3-day diet plan:"));
+      expect(chunks.last, contains("Here's a 3-day diet plan:"));
+    });
 
     test(
       'wraps Gemma GGUF with turn markers and stops on role bleed',
@@ -1109,7 +1260,17 @@ void main() {
               prompt: 'hello',
             )
             .drain<void>(),
-        throwsA(isA<AssistantRuntimeUnavailableException>()),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
+          ),
+        ),
+      );
+      expect(
+        service.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
       );
     });
 
@@ -1170,6 +1331,7 @@ void main() {
         prompt: 'hello',
       );
       expect(text, 'trimmed cloud');
+      expect(service.lastReliabilityDiagnostic, isNull);
 
       final emptyService = AssistantRuntimeService(
         initializeCloud: () async {},
@@ -1185,11 +1347,88 @@ void main() {
           isA<AssistantRuntimeUnavailableException>().having(
             (error) => error.message,
             'message',
-            geminiCloudEmptyResponseMessage,
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
           ),
         ),
       );
+      expect(
+        emptyService.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
+      );
+      expect(emptyService.reliabilityLog.checkpoints, hasLength(1));
+      expect(
+        emptyService.reliabilityLog.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(
+        emptyService.reliabilityLog.checkpoints.toString(),
+        isNot(contains('hello')),
+      );
     });
+
+    test('empty cloud failure survives a second service hydrate', () async {
+      final store = MemoryReliabilityCheckpointStore();
+      final emptyService = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => '   ',
+        checkpointStore: store,
+      );
+      await expectLater(
+        () => emptyService.generateText(
+          selectedModelId: geminiCloudAssistantModelId,
+          prompt: 'hello',
+        ),
+        throwsA(isA<AssistantRuntimeUnavailableException>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(store.encoded, isNotNull);
+      expect(store.encoded, isNot(contains('hello')));
+      expect(store.encoded, contains('PM-06'));
+      expect(store.encoded, contains('AIRO-R06'));
+
+      final second = AssistantRuntimeService(
+        initializeCloud: () async {},
+        isCloudAvailable: () => true,
+        generateCloudText: (_) async => 'ok',
+        checkpointStore: MemoryReliabilityCheckpointStore(store.encoded),
+      );
+      final text = await second.generateText(
+        selectedModelId: geminiCloudAssistantModelId,
+        prompt: 'hello',
+      );
+      expect(text, 'ok');
+      expect(second.reliabilityLog.checkpoints, hasLength(1));
+      expect(
+        second.reliabilityLog.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(second.reliabilityLog.encode(), isNot(contains('hello')));
+    });
+
+    test(
+      'prefs checkpoint store round-trips metadata without prompt text',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await PreferencesStore.create();
+        final store = PreferencesReliabilityCheckpointStore(prefs);
+        const secret = 'SECRET_PROMPT_BODY ignore previous instructions';
+        final log = ExecutionLog();
+        log.record(
+          FailureClassifier.recordChatCompletion(
+            executionId: 'chat-1',
+            text: secret,
+            engineOk: false,
+          ),
+        );
+        await store.save(log.encode());
+        final raw = await store.load();
+        expect(raw, isNotNull);
+        expect(raw, isNot(contains(secret)));
+        expect(raw, contains('PM-08'));
+        expect(raw, contains('AIRO-R07'));
+      },
+    );
 
     test('cancels preparation before runtime work starts', () async {
       final service = AssistantRuntimeService(
@@ -1600,9 +1839,11 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     double temperature = 0.7,
     double topP = 0.9,
     int topK = 40,
+    String? grammar,
   }) {
     lastPrompt = prompt;
     lastMaxTokens = maxTokens;
+    lastGrammar = grammar;
     return Stream<String>.fromIterable(generatedChunks);
   }
 
@@ -1613,6 +1854,7 @@ class _FakeLlamaGgufService extends LlamaGgufService {
 
   String? lastPrompt;
   int? lastMaxTokens;
+  String? lastGrammar;
 }
 
 class _UrlOnlyLiteRtClient implements LiteRtLmClient {

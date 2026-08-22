@@ -1,7 +1,9 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/assistant/assistant_surface_policy.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
 import 'package:feature_mind/src/meeting_archive/meeting_archive_port.dart';
+import 'package:feature_mind/src/search/semantic_search_ranker.dart';
 import 'package:feature_mind/src/services/device_actions_service.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter/services.dart';
@@ -13,12 +15,14 @@ class _FakeMeetingArchivePort implements MeetingArchivePort {
     this.items = const [],
     this.latestMeeting,
     this.minutesById = const {},
+    this.aligned,
   });
 
   final List<rust.SearchHit> hits;
   final List<rust.MeetingActionItemRecord> items;
   final rust.MeetingRecord? latestMeeting;
   final Map<String, String> minutesById;
+  final SemanticRankResult? aligned;
 
   @override
   Future<List<rust.MeetingActionItemRecord>> actionItemsForOwner(
@@ -44,6 +48,10 @@ class _FakeMeetingArchivePort implements MeetingArchivePort {
 
   @override
   Future<List<rust.SearchHit>> search(String query) async => hits;
+
+  @override
+  Future<SemanticRankResult> searchAligned(String query) async =>
+      aligned ?? SemanticRankResult(hits: hits, alignments: const []);
 
   @override
   Future<rust.MeetingRecord?> latestWithMinutes() async => latestMeeting;
@@ -165,6 +173,49 @@ void main() {
       expect(result.message, contains('Temporal signalling'));
     });
 
+    test(
+      'warns when keyword and embedding scores diverge without PM codes',
+      () async {
+        registry.configureMeetingArchive(
+          _FakeMeetingArchivePort(
+            hits: [
+              rust.SearchHit(
+                meetingId: 'm1',
+                title: 'Pricing review',
+                recordedAt: BigInt.zero,
+                snippet: 'Q3 seats',
+              ),
+            ],
+            aligned: SemanticRankResult(
+              hits: [
+                rust.SearchHit(
+                  meetingId: 'm1',
+                  title: 'Pricing review',
+                  recordedAt: BigInt.zero,
+                  snippet: 'Q3 seats',
+                ),
+              ],
+              alignments: const [
+                RetrievalAlignment(
+                  meetingId: 'm1',
+                  keywordMatched: true,
+                  semanticScore: 0.1,
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final result = await registry.executeIntent(
+          IntentParser.parse('what did we decide about pricing'),
+        );
+
+        expect(result.message, contains('Pricing review'));
+        expect(result.message, contains(RetrievalAlignment.userNote));
+        expect(result.message, isNot(contains('PM-05')));
+      },
+    );
+
     test('returns saved minutes when user asks for mom', () async {
       const mom = '# Minutes of Meeting\n\n**Meeting:** Infra standup';
       registry.configureMeetingArchive(
@@ -212,8 +263,8 @@ void main() {
       expect(game.route, '/games');
       expect(game.message, contains('Arena'));
       expect(game.parameters['game'], 'chess');
-      expect(models.route, '/agent/profile');
-      expect(models.message, contains('Profile model settings'));
+      expect(models.route, '/agent/models');
+      expect(models.message, contains('model manager'));
     });
 
     test(

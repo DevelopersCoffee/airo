@@ -164,5 +164,89 @@ You are a hospital recovery assistant.
       expect(skill.lifeTrackTemplateId, 'medical_surgery_v1');
       expect(skill.tools, ['query_lifetrack_status']);
     });
+
+    test('parses a Google AI Edge Gallery text-only skill as a persona', () {
+      const source = '''
+---
+name: kitchen-adventure
+description: Act as a dungeon master for a text-based adventure set in a world where everyone is a sentient kitchen appliance. Trigger when user says "start kitchen adventure".
+---
+
+# Kitchen Adventure
+
+When the user initiates a session, you must transform into the Head Chef (DM).
+''';
+
+      final skill = SkillManifestParser.parse(source);
+
+      expect(skill.id, 'kitchen-adventure');
+      expect(skill.name, 'Kitchen Adventure');
+      expect(skill.isPersona, isTrue);
+      expect(skill.tools, isEmpty);
+      expect(skill.manifest.version, '1.0.0');
+      expect(skill.manifest.author, 'Community');
+      expect(skill.instructions, contains('Head Chef'));
+    });
+
+    test('parses Gallery metadata maps without treating them as lists', () {
+      const source = '''
+---
+name: fitness-coach
+description: A cheerful fitness coach.
+metadata:
+  homepage: https://github.com/example/fitness-coach
+---
+
+# Cheerful Fitness Coach
+
+You are an enthusiastic fitness coach.
+''';
+
+      final skill = SkillManifestParser.parse(source);
+      expect(skill.id, 'fitness-coach');
+      expect(skill.isPersona, isTrue);
+    });
+
+    test('rejects Gallery JavaScript and native-intent skills', () {
+      const js = '''
+---
+name: query-wikipedia
+description: Query summary from Wikipedia for a given topic.
+---
+
+Call the `run_js` tool using `index.html`.
+''';
+      const intent = '''
+---
+name: send-email
+description: Send an email.
+---
+
+Call the `run_intent` tool with intent: send_email.
+''';
+      const secret = '''
+---
+name: mood-music
+description: Play music.
+metadata:
+  require-secret: true
+---
+
+Suggest music for the user's mood.
+''';
+
+      expect(
+        () => SkillManifestParser.parse(js),
+        throwsA(isA<SkillManifestFormatException>()),
+      );
+      expect(
+        () => SkillManifestParser.parse(intent),
+        throwsA(isA<SkillManifestFormatException>()),
+      );
+      expect(
+        () => SkillManifestParser.parse(secret),
+        throwsA(isA<SkillManifestFormatException>()),
+      );
+    });
   });
 }

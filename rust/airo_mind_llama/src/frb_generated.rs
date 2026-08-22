@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 576920894;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 68556957;
 
 // Section: executor
 
@@ -107,6 +107,37 @@ fn wire__crate__api__meeting_intelligence__cancel_meeting_intelligence_impl(
         },
     )
 }
+fn wire__crate__api__reasoning__cancel_reasoning_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cancel_reasoning",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    crate::api::reasoning::cancel_reasoning();
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__minutes__generate_completion_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -131,6 +162,7 @@ fn wire__crate__api__minutes__generate_completion_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_prompt = <String>::sse_decode(&mut deserializer);
             let api_max_output_tokens = <u32>::sse_decode(&mut deserializer);
+            let api_grammar = <Option<String>>::sse_decode(&mut deserializer);
             let api_sink = <StreamSink<
                 crate::api::minutes::GenerationEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -141,6 +173,7 @@ fn wire__crate__api__minutes__generate_completion_impl(
                     let output_ok = crate::api::minutes::generate_completion(
                         api_prompt,
                         api_max_output_tokens,
+                        api_grammar,
                         api_sink,
                     )?;
                     Ok(output_ok)
@@ -358,6 +391,44 @@ fn wire__crate__api__meeting_intelligence__process_meeting_intelligence_impl(
         },
     )
 }
+fn wire__crate__api__reasoning__reason_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "reason",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request =
+                <crate::api::reasoning::ReasoningRequest>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::reasoning::ReasoningEvent,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::reasoning::reason(api_request, api_sink)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__minutes__unload_generation_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -426,6 +497,19 @@ impl SseDecode
     }
 }
 
+impl SseDecode
+    for StreamSink<
+        crate::api::reasoning::ReasoningEvent,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <String>::sse_decode(deserializer);
+        return StreamSink::deserialize(inner);
+    }
+}
+
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -438,6 +522,13 @@ impl SseDecode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u8().unwrap() != 0
+    }
+}
+
+impl SseDecode for f32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f32::<NativeEndian>().unwrap()
     }
 }
 
@@ -593,6 +684,34 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::reasoning::ReasoningContextItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::reasoning::ReasoningContextItem>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::reasoning::ReasoningToolCall> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::reasoning::ReasoningToolCall>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -754,6 +873,192 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::reasoning::ReasoningLevel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::reasoning::ReasoningLevel>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningContextItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_source = <String>::sse_decode(deserializer);
+        let mut var_text = <String>::sse_decode(deserializer);
+        return crate::api::reasoning::ReasoningContextItem {
+            source: var_source,
+            text: var_text,
+        };
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                return crate::api::reasoning::ReasoningEvent::Started;
+            }
+            1 => {
+                let mut var_stage =
+                    <crate::api::reasoning::ReasoningStage>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::StageChanged { stage: var_stage };
+            }
+            2 => {
+                let mut var_message = <String>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::Progress {
+                    message: var_message,
+                };
+            }
+            3 => {
+                let mut var_tool = <String>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::ToolStarted { tool: var_tool };
+            }
+            4 => {
+                let mut var_tool = <String>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::ToolCompleted { tool: var_tool };
+            }
+            5 => {
+                let mut var_text = <String>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::AnswerDelta { text: var_text };
+            }
+            6 => {
+                let mut var_answer = <String>::sse_decode(deserializer);
+                let mut var_reasoningSummary = <Option<String>>::sse_decode(deserializer);
+                let mut var_level =
+                    <crate::api::reasoning::ReasoningLevel>::sse_decode(deserializer);
+                let mut var_confidence = <Option<f32>>::sse_decode(deserializer);
+                let mut var_toolCalls =
+                    <Vec<crate::api::reasoning::ReasoningToolCall>>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::Completed {
+                    answer: var_answer,
+                    reasoning_summary: var_reasoningSummary,
+                    level: var_level,
+                    confidence: var_confidence,
+                    tool_calls: var_toolCalls,
+                };
+            }
+            7 => {
+                let mut var_message = <String>::sse_decode(deserializer);
+                return crate::api::reasoning::ReasoningEvent::Error {
+                    message: var_message,
+                };
+            }
+            8 => {
+                return crate::api::reasoning::ReasoningEvent::Cancelled;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningLevel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::reasoning::ReasoningLevel::None,
+            1 => crate::api::reasoning::ReasoningLevel::Light,
+            2 => crate::api::reasoning::ReasoningLevel::Standard,
+            3 => crate::api::reasoning::ReasoningLevel::Deep,
+            _ => unreachable!("Invalid variant for ReasoningLevel: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_userQuery = <String>::sse_decode(deserializer);
+        let mut var_intentKind = <String>::sse_decode(deserializer);
+        let mut var_intentComplexity = <f32>::sse_decode(deserializer);
+        let mut var_requestedLevel =
+            <Option<crate::api::reasoning::ReasoningLevel>>::sse_decode(deserializer);
+        let mut var_maxReasoningLevel =
+            <crate::api::reasoning::ReasoningLevel>::sse_decode(deserializer);
+        let mut var_availableMemoryMb = <u32>::sse_decode(deserializer);
+        let mut var_gpuAvailable = <bool>::sse_decode(deserializer);
+        let mut var_npuAvailable = <bool>::sse_decode(deserializer);
+        let mut var_thermalConstrained = <bool>::sse_decode(deserializer);
+        let mut var_batteryConstrained = <bool>::sse_decode(deserializer);
+        let mut var_memories =
+            <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_decode(deserializer);
+        let mut var_documents =
+            <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_decode(deserializer);
+        let mut var_toolResults =
+            <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_decode(deserializer);
+        let mut var_history =
+            <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_decode(deserializer);
+        let mut var_toolNames = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::reasoning::ReasoningRequest {
+            user_query: var_userQuery,
+            intent_kind: var_intentKind,
+            intent_complexity: var_intentComplexity,
+            requested_level: var_requestedLevel,
+            max_reasoning_level: var_maxReasoningLevel,
+            available_memory_mb: var_availableMemoryMb,
+            gpu_available: var_gpuAvailable,
+            npu_available: var_npuAvailable,
+            thermal_constrained: var_thermalConstrained,
+            battery_constrained: var_batteryConstrained,
+            memories: var_memories,
+            documents: var_documents,
+            tool_results: var_toolResults,
+            history: var_history,
+            tool_names: var_toolNames,
+        };
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningStage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::reasoning::ReasoningStage::Understanding,
+            1 => crate::api::reasoning::ReasoningStage::RetrievingContext,
+            2 => crate::api::reasoning::ReasoningStage::UsingTool,
+            3 => crate::api::reasoning::ReasoningStage::Analyzing,
+            4 => crate::api::reasoning::ReasoningStage::Validating,
+            5 => crate::api::reasoning::ReasoningStage::ComposingAnswer,
+            6 => crate::api::reasoning::ReasoningStage::Complete,
+            _ => unreachable!("Invalid variant for ReasoningStage: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::reasoning::ReasoningToolCall {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_argumentsJson = <String>::sse_decode(deserializer);
+        return crate::api::reasoning::ReasoningToolCall {
+            name: var_name,
+            arguments_json: var_argumentsJson,
+        };
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -789,15 +1094,16 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        3 => wire__crate__api__minutes__generate_completion_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__minutes__generate_minutes_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__minutes__initialize_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__meeting_intelligence__process_meeting_intelligence_impl(
+        4 => wire__crate__api__minutes__generate_completion_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__minutes__generate_minutes_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__minutes__initialize_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__meeting_intelligence__process_meeting_intelligence_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
+        11 => wire__crate__api__reasoning__reason_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -816,10 +1122,11 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__minutes__generation_model_id_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__minutes__generation_stats_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__minutes__is_ready_impl(ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__minutes__unload_generation_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__reasoning__cancel_reasoning_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__minutes__generation_model_id_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__minutes__generation_stats_impl(ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__minutes__is_ready_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__minutes__unload_generation_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1088,6 +1395,187 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meeting_intelligence::Meeting
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningContextItem {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.source.into_into_dart().into_dart(),
+            self.text.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningContextItem
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningContextItem>
+    for crate::api::reasoning::ReasoningContextItem
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningContextItem {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::reasoning::ReasoningEvent::Started => [0.into_dart()].into_dart(),
+            crate::api::reasoning::ReasoningEvent::StageChanged { stage } => {
+                [1.into_dart(), stage.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::Progress { message } => {
+                [2.into_dart(), message.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::ToolStarted { tool } => {
+                [3.into_dart(), tool.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::ToolCompleted { tool } => {
+                [4.into_dart(), tool.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::AnswerDelta { text } => {
+                [5.into_dart(), text.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::Completed {
+                answer,
+                reasoning_summary,
+                level,
+                confidence,
+                tool_calls,
+            } => [
+                6.into_dart(),
+                answer.into_into_dart().into_dart(),
+                reasoning_summary.into_into_dart().into_dart(),
+                level.into_into_dart().into_dart(),
+                confidence.into_into_dart().into_dart(),
+                tool_calls.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::reasoning::ReasoningEvent::Error { message } => {
+                [7.into_dart(), message.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::reasoning::ReasoningEvent::Cancelled => [8.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningEvent
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningEvent>
+    for crate::api::reasoning::ReasoningEvent
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningLevel {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::None => 0.into_dart(),
+            Self::Light => 1.into_dart(),
+            Self::Standard => 2.into_dart(),
+            Self::Deep => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningLevel
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningLevel>
+    for crate::api::reasoning::ReasoningLevel
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningLevel {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.user_query.into_into_dart().into_dart(),
+            self.intent_kind.into_into_dart().into_dart(),
+            self.intent_complexity.into_into_dart().into_dart(),
+            self.requested_level.into_into_dart().into_dart(),
+            self.max_reasoning_level.into_into_dart().into_dart(),
+            self.available_memory_mb.into_into_dart().into_dart(),
+            self.gpu_available.into_into_dart().into_dart(),
+            self.npu_available.into_into_dart().into_dart(),
+            self.thermal_constrained.into_into_dart().into_dart(),
+            self.battery_constrained.into_into_dart().into_dart(),
+            self.memories.into_into_dart().into_dart(),
+            self.documents.into_into_dart().into_dart(),
+            self.tool_results.into_into_dart().into_dart(),
+            self.history.into_into_dart().into_dart(),
+            self.tool_names.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningRequest>
+    for crate::api::reasoning::ReasoningRequest
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningRequest {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningStage {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Understanding => 0.into_dart(),
+            Self::RetrievingContext => 1.into_dart(),
+            Self::UsingTool => 2.into_dart(),
+            Self::Analyzing => 3.into_dart(),
+            Self::Validating => 4.into_dart(),
+            Self::ComposingAnswer => 5.into_dart(),
+            Self::Complete => 6.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningStage
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningStage>
+    for crate::api::reasoning::ReasoningStage
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningStage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::reasoning::ReasoningToolCall {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.arguments_json.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::reasoning::ReasoningToolCall
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::reasoning::ReasoningToolCall>
+    for crate::api::reasoning::ReasoningToolCall
+{
+    fn into_into_dart(self) -> crate::api::reasoning::ReasoningToolCall {
+        self
+    }
+}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1120,6 +1608,18 @@ impl SseEncode
     }
 }
 
+impl SseEncode
+    for StreamSink<
+        crate::api::reasoning::ReasoningEvent,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        unimplemented!("")
+    }
+}
+
 impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1131,6 +1631,13 @@ impl SseEncode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for f32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f32::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -1252,6 +1759,26 @@ impl SseEncode for Vec<u8> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::reasoning::ReasoningContextItem> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::reasoning::ReasoningContextItem>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::reasoning::ReasoningToolCall> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::reasoning::ReasoningToolCall>::sse_encode(item, serializer);
         }
     }
 }
@@ -1389,6 +1916,163 @@ impl SseEncode for Option<String> {
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for Option<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f32>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::reasoning::ReasoningLevel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::reasoning::ReasoningLevel>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningContextItem {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.source, serializer);
+        <String>::sse_encode(self.text, serializer);
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::reasoning::ReasoningEvent::Started => {
+                <i32>::sse_encode(0, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::StageChanged { stage } => {
+                <i32>::sse_encode(1, serializer);
+                <crate::api::reasoning::ReasoningStage>::sse_encode(stage, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::Progress { message } => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(message, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::ToolStarted { tool } => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(tool, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::ToolCompleted { tool } => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(tool, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::AnswerDelta { text } => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(text, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::Completed {
+                answer,
+                reasoning_summary,
+                level,
+                confidence,
+                tool_calls,
+            } => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(answer, serializer);
+                <Option<String>>::sse_encode(reasoning_summary, serializer);
+                <crate::api::reasoning::ReasoningLevel>::sse_encode(level, serializer);
+                <Option<f32>>::sse_encode(confidence, serializer);
+                <Vec<crate::api::reasoning::ReasoningToolCall>>::sse_encode(tool_calls, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::Error { message } => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(message, serializer);
+            }
+            crate::api::reasoning::ReasoningEvent::Cancelled => {
+                <i32>::sse_encode(8, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningLevel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::reasoning::ReasoningLevel::None => 0,
+                crate::api::reasoning::ReasoningLevel::Light => 1,
+                crate::api::reasoning::ReasoningLevel::Standard => 2,
+                crate::api::reasoning::ReasoningLevel::Deep => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.user_query, serializer);
+        <String>::sse_encode(self.intent_kind, serializer);
+        <f32>::sse_encode(self.intent_complexity, serializer);
+        <Option<crate::api::reasoning::ReasoningLevel>>::sse_encode(
+            self.requested_level,
+            serializer,
+        );
+        <crate::api::reasoning::ReasoningLevel>::sse_encode(self.max_reasoning_level, serializer);
+        <u32>::sse_encode(self.available_memory_mb, serializer);
+        <bool>::sse_encode(self.gpu_available, serializer);
+        <bool>::sse_encode(self.npu_available, serializer);
+        <bool>::sse_encode(self.thermal_constrained, serializer);
+        <bool>::sse_encode(self.battery_constrained, serializer);
+        <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_encode(self.memories, serializer);
+        <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_encode(self.documents, serializer);
+        <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_encode(
+            self.tool_results,
+            serializer,
+        );
+        <Vec<crate::api::reasoning::ReasoningContextItem>>::sse_encode(self.history, serializer);
+        <Vec<String>>::sse_encode(self.tool_names, serializer);
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningStage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::reasoning::ReasoningStage::Understanding => 0,
+                crate::api::reasoning::ReasoningStage::RetrievingContext => 1,
+                crate::api::reasoning::ReasoningStage::UsingTool => 2,
+                crate::api::reasoning::ReasoningStage::Analyzing => 3,
+                crate::api::reasoning::ReasoningStage::Validating => 4,
+                crate::api::reasoning::ReasoningStage::ComposingAnswer => 5,
+                crate::api::reasoning::ReasoningStage::Complete => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::reasoning::ReasoningToolCall {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.arguments_json, serializer);
     }
 }
 

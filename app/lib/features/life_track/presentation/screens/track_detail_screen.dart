@@ -175,7 +175,7 @@ class _TrackDetailScreenState extends State<TrackDetailScreen> {
   }
 
   Future<String?> _defaultPickDocument() async {
-    final result = await FilePicker.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const [
         'pdf',
@@ -187,8 +187,8 @@ class _TrackDetailScreenState extends State<TrackDetailScreen> {
         'docx',
       ],
     );
-    if (result == null || result.files.isEmpty) return null;
-    return result.files.first.path;
+    if (files.isEmpty) return null;
+    return files.first.path;
   }
 
   Future<DateTime?> _defaultPickDate(

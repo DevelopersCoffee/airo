@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../services/gguf_load_diagnostics.dart';
 import '../../../services/llama_gguf_service.dart';
 import 'package:flutter/foundation.dart';
@@ -205,6 +207,7 @@ class AssistantRuntimeService {
     ModelCompatibilityCheck? checkModelCompatibility,
     Future<AssistantModelLibraryState> Function()? loadAssistantModelLibrary,
     this._debugTraceEmitter,
+    ReliabilityCheckpointStore? checkpointStore,
   }) : _geminiNano = geminiNano ?? GeminiNanoService(),
        _liteRtLm = liteRtLm ?? LiteRtLmService(),
        _llamaGguf = llamaGguf ?? LlamaGgufService(),
@@ -224,7 +227,12 @@ class AssistantRuntimeService {
        _warmupLiteRtModelOverride = warmupLiteRtModel,
        _loadDeviceInfoOverride = loadDeviceInfo,
        _checkModelCompatibilityOverride = checkModelCompatibility,
-       _loadAssistantModelLibraryOverride = loadAssistantModelLibrary;
+       _loadAssistantModelLibraryOverride = loadAssistantModelLibrary,
+       _checkpointStore = checkpointStore {
+    if (_checkpointStore != null) {
+      _checkpointHydrate = _hydrateCheckpoints();
+    }
+  }
 
   final GeminiNanoService _geminiNano;
   final LiteRtLmService _liteRtLm;
@@ -251,6 +259,16 @@ class AssistantRuntimeService {
 
   /// Native llama.cpp stats from the most recent GGUF completion, if any.
   GgufRuntimeStats? lastGenerationStats;
+
+  /// In-process PM/AIRO diagnostic from the last generateText / stream.
+  PersistableDiagnostic? lastReliabilityDiagnostic;
+
+  /// Bounded checkpoint ring for this runtime. Metadata only (ADR-0023).
+  /// Disk durability is Prefs-tier ids only (ADR-0024).
+  final ExecutionLog reliabilityLog = ExecutionLog();
+
+  ReliabilityCheckpointStore? _checkpointStore;
+  Future<void>? _checkpointHydrate;
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
@@ -674,7 +692,9 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
   }) async {
+    await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
+    lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
     final fullPrompt = _withSystemPrompt(prompt, systemPrompt);
     _emitDebugTrace(
@@ -802,9 +822,14 @@ class AssistantRuntimeService {
     required String? selectedModelId,
     required String prompt,
     String? systemPrompt,
+    int? maxOutputTokens,
+    GenerationConstraint? constraint,
   }) async* {
+    await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
+    lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
+    final constrainedPrompt = _applyForcedPrefix(prompt, constraint);
 
     if (runtimeId != geminiNanoAssistantModelId) {
       final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
@@ -816,13 +841,15 @@ class AssistantRuntimeService {
             package: package,
             prompt: prompt,
             systemPrompt: systemPrompt,
+            maxOutputTokens: maxOutputTokens,
+            assistantPrefill: constraint?.forcedPrefix,
           );
           return;
         }
       }
       yield await generateText(
         selectedModelId: runtimeId,
-        prompt: prompt,
+        prompt: constrainedPrompt,
         systemPrompt: systemPrompt,
       );
       return;
@@ -834,7 +861,7 @@ class AssistantRuntimeService {
         stage: 'request',
         recordedAt: DateTime.now(),
         systemPromptPreview: _previewText(systemPrompt),
-        promptPreview: _previewText(prompt),
+        promptPreview: _previewText(constrainedPrompt),
         detail: 'generateTextStream',
       ),
     );
@@ -843,10 +870,10 @@ class AssistantRuntimeService {
     var yielded = false;
     final stream =
         _generateGeminiNanoStreamOverride?.call(
-          _withSystemPrompt(prompt, systemPrompt),
+          _withSystemPrompt(constrainedPrompt, systemPrompt),
         ) ??
         _geminiNano.generateContentStreamStrict(
-          _withSystemPrompt(prompt, systemPrompt),
+          _withSystemPrompt(constrainedPrompt, systemPrompt),
         );
     await for (final chunk in stream) {
       if (chunk.trim().isEmpty) continue;
@@ -855,9 +882,16 @@ class AssistantRuntimeService {
       yield chunk;
     }
     if (!yielded) {
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: '',
+          engineOk: true,
+        ),
+      );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
-        geminiNanoInitializationFailedMessage,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
   }
@@ -867,7 +901,10 @@ class AssistantRuntimeService {
     required OfflineModelInfo package,
     required String prompt,
     String? systemPrompt,
+    int? maxOutputTokens,
     bool emitRequestTrace = true,
+    String? grammar,
+    String? assistantPrefill,
   }) async* {
     if (emitRequestTrace) {
       _emitDebugTrace(
@@ -886,16 +923,28 @@ class AssistantRuntimeService {
       prompt: prompt,
       systemPrompt: systemPrompt,
       family: package.family,
+      assistantPrefill: assistantPrefill,
     );
     var accumulated = '';
     var lastYielded = '';
     var firstChunk = true;
+    final locked = assistantPrefill ?? '';
+    if (locked.isNotEmpty) {
+      lastYielded = locked;
+      yield locked;
+      firstChunk = false;
+      _emitResponseTrace(runtimeId, locked, detail: 'stream-chunk');
+    }
     await for (final token in _llamaGguf.generate(
       prompt: instructPrompt,
-      maxTokens: ggufMaxOutputTokens(package),
+      maxTokens: maxOutputTokens ?? ggufMaxOutputTokens(package),
+      grammar: grammar,
     )) {
       accumulated += token;
-      final trimmed = trimGgufRoleBleed(accumulated);
+      final trimmed = applyAssistantPrefill(
+        trimGgufRoleBleed(accumulated),
+        assistantPrefill,
+      );
       if (trimmed.isNotEmpty && trimmed != lastYielded) {
         lastYielded = trimmed;
         if (firstChunk) {
@@ -912,11 +961,25 @@ class AssistantRuntimeService {
     lastGenerationStats = _llamaGguf.lastStats;
     final response = lastYielded.trim();
     if (response.isEmpty) {
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: '',
+          engineOk: true,
+        ),
+      );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
-        offlinePackageUnavailableMessage,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
+    _noteReliability(
+      FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: response,
+        engineOk: true,
+      ),
+    );
     _emitResponseTrace(runtimeId, response, detail: package.id);
   }
 
@@ -980,6 +1043,12 @@ class AssistantRuntimeService {
     return runtimeId;
   }
 
+  String _applyForcedPrefix(String prompt, GenerationConstraint? constraint) {
+    final prefix = constraint?.forcedPrefix?.trim();
+    if (prefix == null || prefix.isEmpty) return prompt;
+    return 'Start your reply with exactly:\n$prefix\n\n$prompt';
+  }
+
   String _withSystemPrompt(String prompt, String? systemPrompt) {
     final trimmedSystemPrompt = systemPrompt?.trim();
     if (trimmedSystemPrompt == null || trimmedSystemPrompt.isEmpty) {
@@ -1013,14 +1082,77 @@ class AssistantRuntimeService {
     }
   }
 
+  /// Production attaches [PreferencesReliabilityCheckpointStore] from chat.
+  /// Tests inject [MemoryReliabilityCheckpointStore]. Never constructs prefs
+  /// here — many unit tests do not mock SharedPreferences.
+  void attachCheckpointStore(ReliabilityCheckpointStore store) {
+    _checkpointStore = store;
+    _checkpointHydrate ??= _hydrateCheckpoints();
+  }
+
+  Future<void> _ensureCheckpointsHydrated() async {
+    final pending = _checkpointHydrate;
+    if (pending != null) await pending;
+  }
+
+  Future<void> _hydrateCheckpoints() async {
+    final store = _checkpointStore;
+    if (store == null) return;
+    final hadMemory = !reliabilityLog.isEmpty;
+    try {
+      final raw = await store.load();
+      reliabilityLog.restoreFromDisk(ExecutionLog.decode(raw ?? ''));
+      if (hadMemory) {
+        await store.save(reliabilityLog.encode());
+      }
+    } on Object {
+      // Prefs I/O must not fail a chat turn (ADR-0024).
+    }
+  }
+
+  void _persistCheckpoints() {
+    final store = _checkpointStore;
+    if (store == null) return;
+    unawaited(_saveCheckpoints(store));
+  }
+
+  Future<void> _saveCheckpoints(ReliabilityCheckpointStore store) async {
+    try {
+      await store.save(reliabilityLog.encode());
+    } on Object {
+      // Best-effort. The in-process ring remains the live source.
+    }
+  }
+
+  void _noteReliability(PersistableDiagnostic? diagnostic) {
+    lastReliabilityDiagnostic = diagnostic;
+    reliabilityLog.record(diagnostic);
+    if (diagnostic != null) {
+      _persistCheckpoints();
+    }
+  }
+
   String _nonEmptyOrUnavailable(
     String runtimeId,
     String? text,
     String message,
   ) {
-    final trimmed = text?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
+    _noteReliability(
+      FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: text ?? '',
+        engineOk: text != null,
+      ),
+    );
+    if (text == null) {
       throw AssistantRuntimeUnavailableException(runtimeId, message);
+    }
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+      );
     }
     return trimmed;
   }

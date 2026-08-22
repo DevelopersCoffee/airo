@@ -22,6 +22,12 @@ class ChatEntityGraphSession {
     return graph;
   }
 
+  Future<void> replaceGraph(ChatEntityGraph next) async {
+    graph = next;
+    _loaded = true;
+    await _store.save(graph);
+  }
+
   Future<ChatEntityGraph> ingest(String text) async {
     await ensureLoaded();
     graph = _linker.ingest(graph, text);

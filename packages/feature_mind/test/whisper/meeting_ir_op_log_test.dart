@@ -1,4 +1,5 @@
-import 'package:feature_mind/src/runtime/mind_runtime.dart' show MindPortUnavailable;
+import 'package:feature_mind/src/runtime/mind_runtime.dart'
+    show MindPortUnavailable;
 import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:feature_mind/src/whisper/meeting_ir_op_log.dart';
@@ -58,10 +59,7 @@ void main() {
       expect(op.kind, MindOpKind.meetingIrExtracted);
       expect(op.title, 'Platform standup minutes extracted');
       expect(op.contextId, 'ctx-1');
-      expect(
-        op.detail,
-        'm1700000000;decisions=2;action_items=3;metrics=1',
-      );
+      expect(op.detail, 'm1700000000;decisions=2;action_items=3;metrics=1');
     });
 
     test(

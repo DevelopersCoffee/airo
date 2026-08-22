@@ -1,0 +1,68 @@
+{
+  "template_id": "study_progress_v1",
+  "title": "Study Progress Template",
+  "description": "A bundled skeleton for recording what you are studying, last topic, and the next session — stored locally as a LifeTrack.",
+  "category": "education",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: Subject",
+      "objective": "Name the course or subject this journey tracks",
+      "tasks": [
+        {
+          "summary": "Record the subject",
+          "requirements": [
+            {
+              "label": "Subject",
+              "type": "text",
+              "is_required": true,
+              "hint": "For example Java, DSA, or Physics"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Current work",
+      "objective": "Keep the latest topic and a short progress note",
+      "tasks": [
+        {
+          "summary": "Log the current topic",
+          "requirements": [
+            {
+              "label": "Current Topic",
+              "type": "text",
+              "is_required": false
+            },
+            {
+              "label": "Progress Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Next session",
+      "objective": "Capture the exam or goal date and what comes next",
+      "tasks": [
+        {
+          "summary": "Plan the next study block",
+          "requirements": [
+            {
+              "label": "Exam or Goal Date",
+              "type": "date",
+              "is_required": false
+            },
+            {
+              "label": "Next Session Plan",
+              "type": "text",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

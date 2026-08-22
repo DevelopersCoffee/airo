@@ -29,9 +29,16 @@ class MemorySurface extends StatefulWidget {
     this.onDestroyRequested,
     this.directory = ChatEntityGraph.empty,
     this.chats = const [],
+    this.folders = const [],
     this.activeChatId,
     this.onOpenChat,
     this.onNewChat,
+    this.onCreateFolder,
+    this.onMoveChat,
+    this.onRemoveChat,
+    this.onNewChatInFolder,
+    this.onSetFolderPlugins,
+    this.pluginOptions = const [],
   });
 
   final MindRuntime runtime;
@@ -44,9 +51,17 @@ class MemorySurface extends StatefulWidget {
   /// that only assert the fixture context graph.
   final ChatEntityGraph directory;
   final List<MindChatRecord> chats;
+  final List<MindChatFolder> folders;
   final String? activeChatId;
   final ValueChanged<String>? onOpenChat;
   final VoidCallback? onNewChat;
+  final ValueChanged<String>? onCreateFolder;
+  final void Function(String chatId, String? folderId)? onMoveChat;
+  final ValueChanged<String>? onRemoveChat;
+  final ValueChanged<String>? onNewChatInFolder;
+  final void Function(String folderId, List<String> pluginIds)?
+  onSetFolderPlugins;
+  final List<MindFolderPluginOption> pluginOptions;
 
   /// Called with the labels of contexts that would survive destroying this
   /// one. There is no `ContextPort.destroy()` yet — only the preview
@@ -185,9 +200,16 @@ class _MemorySurfaceState extends State<MemorySurface> {
         onOpen: widget.onOpenContext,
         directory: widget.directory,
         chats: widget.chats,
+        folders: widget.folders,
         activeChatId: widget.activeChatId,
         onOpenChat: widget.onOpenChat,
         onNewChat: widget.onNewChat,
+        onCreateFolder: widget.onCreateFolder,
+        onMoveChat: widget.onMoveChat,
+        onRemoveChat: widget.onRemoveChat,
+        onNewChatInFolder: widget.onNewChatInFolder,
+        onSetFolderPlugins: widget.onSetFolderPlugins,
+        pluginOptions: widget.pluginOptions,
       ),
       ProjectionKind.timeline => _TimelineView(
         ops: data.ops,
@@ -221,9 +243,16 @@ class _GraphView extends StatelessWidget {
     this.onOpen,
     this.directory = ChatEntityGraph.empty,
     this.chats = const [],
+    this.folders = const [],
     this.activeChatId,
     this.onOpenChat,
     this.onNewChat,
+    this.onCreateFolder,
+    this.onMoveChat,
+    this.onRemoveChat,
+    this.onNewChatInFolder,
+    this.onSetFolderPlugins,
+    this.pluginOptions = const [],
   });
 
   final MindContext center;
@@ -231,9 +260,17 @@ class _GraphView extends StatelessWidget {
   final void Function(String contextId)? onOpen;
   final ChatEntityGraph directory;
   final List<MindChatRecord> chats;
+  final List<MindChatFolder> folders;
   final String? activeChatId;
   final ValueChanged<String>? onOpenChat;
   final VoidCallback? onNewChat;
+  final ValueChanged<String>? onCreateFolder;
+  final void Function(String chatId, String? folderId)? onMoveChat;
+  final ValueChanged<String>? onRemoveChat;
+  final ValueChanged<String>? onNewChatInFolder;
+  final void Function(String folderId, List<String> pluginIds)?
+  onSetFolderPlugins;
+  final List<MindFolderPluginOption> pluginOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -248,9 +285,16 @@ class _GraphView extends StatelessWidget {
           child: MindDirectoryChatsPane(
             directory: directory,
             chats: chats,
+            folders: folders,
             activeChatId: activeChatId,
             onOpenChat: onOpenChat,
             onNewChat: onNewChat,
+            onCreateFolder: onCreateFolder,
+            onMoveChat: onMoveChat,
+            onRemoveChat: onRemoveChat,
+            onNewChatInFolder: onNewChatInFolder,
+            onSetFolderPlugins: onSetFolderPlugins,
+            pluginOptions: pluginOptions,
           ),
         ),
         const Divider(height: 1),

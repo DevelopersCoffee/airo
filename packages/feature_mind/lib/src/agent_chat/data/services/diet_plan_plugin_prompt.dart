@@ -1,3 +1,5 @@
+import 'package:core_ai/core_ai.dart';
+
 import 'assistant_chat_context_builder.dart';
 import 'diet_plan_output_eval.dart';
 import '../../domain/services/intent_parser.dart';
@@ -32,7 +34,9 @@ class DietPlanPluginPrompt {
     if (_looksLikeDietRequest(currentPrompt)) return true;
     if (!_inDietThread(history)) return false;
     return _looksLikeDietRefinement(currentPrompt) ||
-        _looksLikeDietContinuation(currentPrompt);
+        _looksLikeDietContinuation(currentPrompt) ||
+        _looksLikeDietDeliveryAsk(currentPrompt) ||
+        _looksLikeFullWeekAsk(currentPrompt);
   }
 
   static List<String> userConstraintLines({
@@ -48,7 +52,9 @@ class DietPlanPluginPrompt {
       if (_looksLikeDietRequest(text)) dietThreadStarted = true;
       if (!dietThreadStarted) continue;
       if (_isSmallTalk(text) || _isUnrelatedStructuredIntent(text)) continue;
-      if (!_looksLikeDietRequest(text) && !_looksLikeDietRefinement(text)) {
+      if (!_looksLikeDietRequest(text) &&
+          !_looksLikeDietRefinement(text) &&
+          !_looksLikeFullWeekAsk(text)) {
         continue;
       }
       lines.add(text);
@@ -58,7 +64,9 @@ class DietPlanPluginPrompt {
         !_isSmallTalk(current) &&
         !_isUnrelatedStructuredIntent(current) &&
         (dietThreadStarted || _looksLikeDietRequest(current)) &&
-        (_looksLikeDietRequest(current) || _looksLikeDietRefinement(current))) {
+        (_looksLikeDietRequest(current) ||
+            _looksLikeDietRefinement(current) ||
+            _looksLikeFullWeekAsk(current))) {
       final alreadyIncluded = lines.any(
         (line) => _normalize(line) == _normalize(current),
       );
@@ -95,9 +103,21 @@ class DietPlanPluginPrompt {
           'dietitian. Be calm and non-judgmental.';
     }
     if (constraints.isEmpty) return currentPrompt.trim();
-    final days = parseDayCount(constraints.join(' '));
+    final days =
+        parseDayCount(constraints.join(' ')) ??
+        (_looksLikeFullWeekAsk(currentPrompt) ? 7 : null);
     final lastPlan = lastAssistantDietPlan(history);
-    if (_looksLikeDietContinuation(currentPrompt) && lastPlan != null) {
+    final promptConstraints = _promptConstraints(
+      constraints,
+      currentPrompt,
+      days,
+    );
+    final continuePartial =
+        _looksLikeDietContinuation(currentPrompt) &&
+        !_looksLikeFullWeekAsk(currentPrompt) &&
+        !_looksLikeDietDeliveryAsk(currentPrompt) &&
+        lastPlan != null;
+    if (continuePartial) {
       final lastDay = DietPlanOutputEval.dayNumbers(
         lastPlan,
       ).fold<int>(0, (max, day) => day > max ? day : max);
@@ -107,23 +127,39 @@ class DietPlanPluginPrompt {
         return [
           'Continue the existing diet plan. Do not rewrite days already written.',
           'Constraints:',
-          ...constraints.map((line) => '- $line'),
+          ContextCompiler.wrapAsData(
+            promptConstraints.map((line) => '- $line').join('\n'),
+          ),
           'Already written:',
-          lastPlan,
+          ContextCompiler.wrapAsData(lastPlan),
           'Write Day $nextDay through Day $targetDays. Stop after Day $targetDays.',
           'Use different dishes from the days already written.',
-          'For each day list breakfast, lunch, dinner, and snack.',
+          'For each day list exactly four meals, one dish each: Breakfast, Lunch, Dinner, Snack.',
           'Everyday meal ideas for healthy adults are allowed. This is not medical advice. Do not refuse.',
         ].join('\n');
       }
     }
+    final cancelledCounts = <int>{
+      for (final line in constraints)
+        ..._dayCountPattern
+            .allMatches(line)
+            .map((match) => int.tryParse(match.group(1)!))
+            .whereType<int>(),
+    }..remove(days);
     final dayRule = days == null
         ? 'Stop after the number of days the user asked for. Later day counts override earlier ones.'
-        : 'The latest day count is $days. Write Day 1 through Day $days. Stop after Day $days. Do not add Day ${days + 1}.';
+        : [
+            'The latest day count is $days. Title it a $days-day plan.',
+            'Write Day 1 through Day $days. Stop after Day $days. Do not add Day ${days + 1}.',
+            if (cancelledCounts.isNotEmpty)
+              'The user replaced the ${cancelledCounts.map((count) => '$count-day').join(' / ')} request. Do not use that length in the title.',
+          ].join(' ');
     return [
       'Write a new diet plan that satisfies every user constraint below.',
       'Constraints:',
-      ...constraints.map((line) => '- $line'),
+      ContextCompiler.wrapAsData(
+        promptConstraints.map((line) => '- $line').join('\n'),
+      ),
       'Rules:',
       '- Rewrite the whole plan when constraints change. Do not copy a previous draft.',
       '- If they named a cuisine, every meal must be from that cuisine — do not keep old meals and add bread.',
@@ -131,7 +167,9 @@ class DietPlanPluginPrompt {
       '- If they asked vegan, include no meat, fish, eggs, or dairy.',
       '- Each day must use different dishes.',
       '- $dayRule',
-      '- For each day list breakfast, lunch, dinner, and snack. Do not copy these rules as the meals.',
+      '- Write every requested day in this reply. Do not stop after Day 1.',
+      '- For each day list exactly four meals, one dish each: Breakfast, Lunch, Dinner, Snack.',
+      '- Do not list several breakfasts or copy these rules as the meals.',
       '- Everyday meal ideas for healthy adults are allowed. This is not medical advice. Do not refuse.',
     ].join('\n');
   }
@@ -155,8 +193,11 @@ class DietPlanPluginPrompt {
 
   static int? parseDayCount(String text) {
     final matches = _dayCountPattern.allMatches(text).toList();
-    if (matches.isEmpty) return null;
-    return int.tryParse(matches.last.group(1)!);
+    if (matches.isNotEmpty) {
+      return int.tryParse(matches.last.group(1)!);
+    }
+    if (_looksLikeFullWeekAsk(text)) return 7;
+    return null;
   }
 
   static bool isUnsafeDietRequest(String text) {
@@ -243,6 +284,81 @@ class DietPlanPluginPrompt {
     return output.substring(0, match.start).trim();
   }
 
+  /// Compact models copy an earlier "N-day" title after the user shortens
+  /// the plan. Fix the preamble; leave Day headers alone.
+  static String alignPlanTitle(String output, int? days) {
+    final trimmed = trimExtraDays(output, days);
+    if (days == null || days < 1) return trimmed;
+    final header = RegExp(
+      r'(?:^|\n)\s*\**\s*Day\s*\d+\b',
+      caseSensitive: false,
+    );
+    final match = header.firstMatch(trimmed);
+    if (match == null) return _replaceWrongDuration(trimmed, days);
+    final preamble = trimmed.substring(0, match.start);
+    final body = trimmed.substring(match.start);
+    return '${_replaceWrongDuration(preamble, days)}$body'.trim();
+  }
+
+  static List<String> _promptConstraints(
+    List<String> constraints,
+    String currentPrompt,
+    int? days,
+  ) {
+    final lines = <String>[
+      if (days != null)
+        'Duration: $days days. Use this length; ignore earlier day counts.',
+    ];
+    for (final line in constraints) {
+      if (_normalize(line) == _normalize(currentPrompt)) {
+        if (!_looksLikeDietDeliveryAsk(line)) {
+          lines.add(line);
+        }
+        continue;
+      }
+      final scrubbed = _stripWeekPhrases(
+        PromptInertiaGuard.defaults.maskText(line, currentPrompt),
+      );
+      if (scrubbed.isEmpty) continue;
+      lines.add(scrubbed);
+    }
+    return lines;
+  }
+
+  static String _stripWeekPhrases(String line) {
+    var text = line.replaceAll(
+      RegExp(
+        r'\b((the\s+)?(whole|full|entire|complete)\s+week|all\s+(7|seven)\s+days|all days)\b',
+        caseSensitive: false,
+      ),
+      ' ',
+    );
+    if (text == line) return line;
+    text = text.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    text = text
+        .replaceAll(RegExp(r'\b(for|only|just)\b$', caseSensitive: false), '')
+        .trim();
+    if (text.toLowerCase() == 'make me a' ||
+        text.toLowerCase() == 'make me a diet plan' ||
+        text.toLowerCase() == 'diet plan') {
+      return 'diet plan';
+    }
+    return text;
+  }
+
+  static String _replaceWrongDuration(String preamble, int days) {
+    return preamble.replaceAllMapped(_dayCountPattern, (match) {
+      final n = int.tryParse(match.group(1)!);
+      if (n == days) return match.group(0)!;
+      final token = match.group(0)!;
+      if (token.contains('-')) return '$days-day';
+      if (RegExp(r'days$', caseSensitive: false).hasMatch(token)) {
+        return '$days days';
+      }
+      return '$days-day';
+    });
+  }
+
   static bool _inDietThread(List<AssistantChatContextMessage> history) {
     return history.any(
       (message) => message.isUser
@@ -280,6 +396,39 @@ class DietPlanPluginPrompt {
     ).hasMatch(lower);
   }
 
+  static bool _looksLikeFullWeekAsk(String text) {
+    final lower = text.trim().toLowerCase();
+    return RegExp(
+      r'\b((the\s+)?(whole|full|entire|complete)\s+week|'
+      r'all\s+(7|seven)\s+days|all days|full plan|complete plan)\b',
+    ).hasMatch(lower);
+  }
+
+  static bool _looksLikeDietDeliveryAsk(String text) {
+    final lower = text.trim().toLowerCase().replaceAll(RegExp(r'[!.?]+$'), '');
+    const exact = {
+      'give me',
+      'give it',
+      'show me',
+      'show it',
+      'send it',
+      'write it',
+      'write them',
+      'the plan',
+      'please',
+    };
+    if (exact.contains(lower)) return true;
+    if (lower.contains('full response') ||
+        lower.contains("can't see") ||
+        lower.contains('cant see') ||
+        lower.contains('incomplete')) {
+      return true;
+    }
+    return RegExp(
+      r'^(give|show|send|write)\s+(me\s+)?(it|that|them|the plan)?$',
+    ).hasMatch(lower);
+  }
+
   static bool _looksLikeDietRequest(String text) {
     if (IntentParser.parse(text).type == IntentType.createDietPlan) {
       return true;
@@ -288,6 +437,8 @@ class DietPlanPluginPrompt {
     return lower.contains('meal plan') ||
         lower.contains('food plan') ||
         lower.contains('diet plan') ||
+        lower.contains('diet chart') ||
+        lower.contains('meal chart') ||
         (lower.contains('menu') &&
             (lower.contains('indian') || lower.contains('veg')));
   }
@@ -306,6 +457,7 @@ class DietPlanPluginPrompt {
         lower.contains('vegan') ||
         lower.contains('vegetarian') ||
         RegExp(r'\bveg\b').hasMatch(lower) ||
+        _looksLikeFullWeekAsk(lower) ||
         _dayCountPattern.hasMatch(lower);
   }
 

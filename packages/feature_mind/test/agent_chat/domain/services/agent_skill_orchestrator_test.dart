@@ -1,12 +1,16 @@
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/insurance_planner.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/teacher_personas.dart';
+import 'package:core_ai/core_ai.dart';
+import 'package:core_domain/core_domain.dart';
+import 'package:feature_mind/src/agent_chat/data/built_in_skills/record_study_progress.dart';
 import 'package:feature_mind/src/agent_chat/data/built_in_skills/wellbeing.dart';
+import 'package:feature_mind/src/agent_chat/data/connectors/chat_entity_graph_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/date_time_connector.dart';
+import 'package:feature_mind/src/agent_chat/data/connectors/life_track_record_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/life_track_status_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/notification_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/route_connector.dart';
+import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_session.dart';
+import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/grounded_citation.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_connector_registry.dart';
@@ -15,8 +19,16 @@ import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_registry
 import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
 import 'package:feature_mind/src/runtime/models/capability_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
-import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/plugin_skill_fixture.dart';
+
+final draftDietPlanSkill = loadPluginSkillFixture('draft-diet-plan');
+final lessonPlanningAssistant = loadPluginSkillFixture(
+  'lesson-planning-assistant',
+);
+final insurancePlannerPersona = loadPluginSkillFixture('insurance-planner');
 
 void main() {
   group('AgentSkillOrchestrator', () {
@@ -68,6 +80,54 @@ void main() {
 
       expect(result.handled, false);
     });
+
+    test(
+      'does not ask for calendar access when the user wants a diet plan',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          permission: InMemoryCalendarPermissionConnector(
+            status: 'notDetermined',
+            granted: false,
+          ),
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: const [
+              SkillModelAction.finalAnswerWithCalendarPermission(
+                message: 'Airo needs calendar access to read your events.',
+              ),
+            ],
+          ),
+          preferDeterministicSkills: true,
+        );
+
+        final result = await orchestrator.run('Make me a 7 day diet plan');
+
+        expect(result.handled, false);
+        expect(result.pendingCalendarPermission, isFalse);
+        expect(result.message.toLowerCase(), isNot(contains('calendar')));
+      },
+    );
+
+    test(
+      'ignores a calendar skill pick when the prompt is not about calendar',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: const [
+              SkillModelAction.finalAnswer(
+                'Airo needs calendar access to read your events.',
+              ),
+            ],
+          ),
+          preferDeterministicSkills: true,
+        );
+
+        final result = await orchestrator.run('hi');
+
+        expect(result.handled, false);
+      },
+    );
 
     test(
       'pinned generative assistant falls through to the chat model',
@@ -128,6 +188,103 @@ void main() {
       },
     );
 
+    test(
+      'pinned insurance planner answers claim pending from the entity graph',
+      () async {
+        final session = ChatEntityGraphSession(
+          store: ChatEntityGraphStore.memory(),
+        );
+        await session.ingest(
+          'Niva Bupa reimbursement Claim ID 9001001 via Policybazaar. '
+          'All documents received after surgery at City Hospital.',
+        );
+        final orchestrator = _buildOrchestrator(
+          skills: [insurancePlannerPersona],
+          lifeTrackRepository: _FakeLifeTrackRepository([]),
+          entityGraphSession: session,
+        );
+
+        final result = await orchestrator.run(
+          "What's pending on my claim?",
+          pinnedPersonaId: 'insurance-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.isError, isFalse);
+        expect(result.message, contains('Niva Bupa'));
+        expect(result.message, contains('9001001'));
+        expect(result.message, contains('Documents: received'));
+        expect(result.message, contains('Settlement outcome'));
+        expect(result.message, contains('City Hospital'));
+        expect(result.message, isNot(contains('I could not find a LifeTrack')));
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('query_entity_graph'),
+        );
+      },
+    );
+
+    test(
+      'pinned insurance planner asks to confirm before storing a claim',
+      () async {
+        final repository = _FakeLifeTrackRepository([]);
+        final orchestrator = _buildOrchestrator(
+          skills: [insurancePlannerPersona],
+          lifeTrackRepository: repository,
+        );
+
+        final result = await orchestrator.run(
+          'Track this claim: Niva Bupa Claim ID 9001001 PB Ref ID 8002002. All documents received.',
+          pinnedPersonaId: 'insurance-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.isError, isFalse);
+        expect(result.message, contains('9001001'));
+        expect(result.message, contains('Reply yes to save'));
+        expect(result.pendingLifeTrackWrite, isNotNull);
+        expect(
+          (result.pendingLifeTrackWrite!['facts'] as Map)['Claim ID'],
+          '9001001',
+        );
+        expect(repository.tracks, isEmpty);
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('record_lifetrack_facts'),
+        );
+      },
+    );
+
+    test(
+      'pinned insurance planner answers relations from the chat entity graph',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final session = ChatEntityGraphSession();
+        await session.ingest(
+          'Niva Bupa reimbursement Claim ID 9001001 via Policybazaar. '
+          'All documents received.',
+        );
+        final orchestrator = _buildOrchestrator(
+          skills: [insurancePlannerPersona],
+          lifeTrackRepository: _FakeLifeTrackRepository([]),
+          entityGraphSession: session,
+        );
+
+        final result = await orchestrator.run(
+          'Who is the insurer related to claim 9001001?',
+          pinnedPersonaId: 'insurance-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.message, contains('Niva Bupa'));
+        expect(result.message, contains('insured_by'));
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('query_entity_graph'),
+        );
+      },
+    );
+
     test('runs wellbeing as a skill with tools, not a screen', () async {
       final orchestrator = _buildOrchestrator(skills: [wellbeingSkill]);
 
@@ -142,6 +299,83 @@ void main() {
         containsAll(['wellbeing-check-in', 'guide_breathing']),
       );
     });
+
+    test(
+      'stores study progress through LifeTrack instead of inventing notes',
+      () async {
+        final repository = _FakeLifeTrackRepository([]);
+        final orchestrator = _buildOrchestrator(
+          skills: [recordStudyProgressSkill],
+          lifeTrackRepository: repository,
+          preferDeterministicSkills: true,
+        );
+
+        final result = await orchestrator.run(
+          'how can i store my study progress with airo mind',
+        );
+
+        expect(result.handled, true);
+        expect(result.message.toLowerCase(), isNot(contains('note-taking')));
+        expect(result.message, contains('Reply yes to save'));
+        expect(result.pendingLifeTrackWrite, isNotNull);
+        expect(
+          result.pendingLifeTrackWrite!['template_id'],
+          'study_progress_v1',
+        );
+        expect(repository.tracks, isEmpty);
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('record_lifetrack_facts'),
+        );
+      },
+    );
+
+    test('refuses a calendar claim when no calendar tool ran', () async {
+      final orchestrator = _buildOrchestrator(
+        useFallbackModelClient: false,
+        modelClient: _FixedActionModelClient(
+          selectedSkillId: 'read-calendar-events',
+          actions: const [
+            SkillModelAction.finalAnswer(
+              'I checked your calendar. The meeting is at 4 PM.',
+            ),
+          ],
+        ),
+      );
+
+      final result = await orchestrator.run('Where is my meeting?');
+
+      expect(result.handled, true);
+      expect(result.isError, true);
+      expect(result.message, 'I can only report tools I actually ran.');
+      expect(result.traces.last.detail, 'AIRO-R03');
+    });
+
+    test(
+      'invalid skill JSON is refused as AIRO-R04 without codes in copy',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          useFallbackModelClient: false,
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: [
+              SkillModelAction.finalAnswer(
+                OutputSchemaGuard.userMessage(),
+                schemaInvalid: true,
+              ),
+            ],
+          ),
+        );
+
+        final result = await orchestrator.run('Where is my meeting?');
+
+        expect(result.handled, true);
+        expect(result.isError, true);
+        expect(result.message, isNot(contains('AIRO-R04')));
+        expect(result.message, isNot(contains('PM-11')));
+        expect(result.traces.last.detail, 'AIRO-R04');
+      },
+    );
 
     test('runs calendar skill with date and calendar connectors', () async {
       final orchestrator = _buildOrchestrator();
@@ -206,13 +440,16 @@ void main() {
       expect(result.message, isNot(contains('too many steps')));
     });
 
-    test('does not open a feature when the user asks what Airo can do', () async {
-      final orchestrator = _buildOrchestrator();
+    test(
+      'does not open a feature when the user asks what Airo can do',
+      () async {
+        final orchestrator = _buildOrchestrator();
 
-      final result = await orchestrator.run('what can u do');
+        final result = await orchestrator.run('what can u do');
 
-      expect(result.handled, false);
-    });
+        expect(result.handled, false);
+      },
+    );
 
     test('does not treat a greeting as a calendar request', () async {
       final result = await _buildOrchestrator().run('hi');
@@ -812,6 +1049,7 @@ AgentSkillOrchestrator _buildOrchestrator({
   AgentSkillModelClient? modelClient,
   List<AgentSkill>? skills,
   LifeTrackRepository? lifeTrackRepository,
+  ChatEntityGraphSession? entityGraphSession,
   bool useFallbackModelClient = true,
   bool preferDeterministicSkills = false,
   int maxSteps = 4,
@@ -829,8 +1067,23 @@ AgentSkillOrchestrator _buildOrchestrator({
         ScheduleNotificationConnector(
           scheduler: notificationScheduler ?? InMemoryNotificationScheduler(),
         ),
-        if (lifeTrackRepository != null)
+        if (lifeTrackRepository != null) ...[
           LifeTrackStatusConnector(repository: lifeTrackRepository),
+          LifeTrackRecordConnector(
+            repository: lifeTrackRepository,
+            resolveTemplate: (templateId) async =>
+                templateId == 'study_progress_v1'
+                ? _studyProgressTemplate()
+                : _insuranceClaimTemplate(),
+            newTrackId: () => 'lt-claim-1',
+            now: () => DateTime.utc(2026, 8, 21),
+          ),
+        ],
+        ChatEntityGraphConnector(
+          session:
+              entityGraphSession ??
+              ChatEntityGraphSession(store: ChatEntityGraphStore.memory()),
+        ),
         RouteConnector(),
         GuideBreathingConnector(),
         LogReflectionConnector(),
@@ -897,6 +1150,83 @@ ActionItem _item({
   );
 }
 
+LifeTrackTemplate _insuranceClaimTemplate() {
+  return const LifeTrackTemplate(
+    templateId: 'insurance_claim_v1',
+    title: 'Insurance Claim Tracking Template',
+    description: 'Test claim template',
+    category: LifeTrackCategory.insurance,
+    version: '1.1',
+    milestones: [
+      MilestoneTemplate(
+        name: 'Phase 2: Claim Filing',
+        objective: 'Store claim identifiers',
+        tasks: [
+          ActionItemTemplate(
+            summary: 'Record claim references',
+            requirements: [
+              InputRequirementTemplate(
+                label: 'Claim ID',
+                type: FieldType.text,
+                isRequired: true,
+              ),
+              InputRequirementTemplate(
+                label: 'Intermediary Reference',
+                type: FieldType.text,
+                isRequired: false,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+LifeTrackTemplate _studyProgressTemplate() {
+  return const LifeTrackTemplate(
+    templateId: 'study_progress_v1',
+    title: 'Study Progress Template',
+    description: 'Test study template',
+    category: LifeTrackCategory.education,
+    version: '1.0',
+    milestones: [
+      MilestoneTemplate(
+        name: 'Phase 1: Subject',
+        objective: 'Name the subject',
+        tasks: [
+          ActionItemTemplate(
+            summary: 'Record the subject',
+            requirements: [
+              InputRequirementTemplate(
+                label: 'Subject',
+                type: FieldType.text,
+                isRequired: true,
+              ),
+            ],
+          ),
+        ],
+      ),
+      MilestoneTemplate(
+        name: 'Phase 2: Current work',
+        objective: 'Log progress',
+        tasks: [
+          ActionItemTemplate(
+            summary: 'Log the current topic',
+            requirements: [
+              InputRequirementTemplate(
+                label: 'Progress Notes',
+                type: FieldType.text,
+                isRequired: true,
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 class _FakeLifeTrackRepository implements LifeTrackRepository {
   _FakeLifeTrackRepository(this.tracks);
 
@@ -908,7 +1238,10 @@ class _FakeLifeTrackRepository implements LifeTrackRepository {
   );
 
   @override
-  Future<Result<LifeTrack>> createTrack(LifeTrack track) async => Ok(track);
+  Future<Result<LifeTrack>> createTrack(LifeTrack track) async {
+    tracks.add(track);
+    return Ok(track);
+  }
 
   @override
   Future<Result<void>> deleteTrack(String id) async => const Ok(null);
@@ -937,7 +1270,13 @@ class _FakeLifeTrackRepository implements LifeTrackRepository {
       const Ok(null);
 
   @override
-  Future<Result<void>> updateTrack(LifeTrack track) async => const Ok(null);
+  Future<Result<void>> updateTrack(LifeTrack track) async {
+    final index = tracks.indexWhere((item) => item.id == track.id);
+    if (index >= 0) {
+      tracks[index] = track;
+    }
+    return const Ok(null);
+  }
 
   @override
   Stream<List<LifeTrack>> watchTracks({TrackStatus? status}) =>

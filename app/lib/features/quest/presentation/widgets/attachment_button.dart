@@ -17,7 +17,7 @@ class _AttachmentButtonState extends State<AttachmentButton> {
   Future<void> _pickFile() async {
     setState(() => _isLoading = true);
     try {
-      final result = await FilePicker.pickFiles(
+      final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
           'pdf',
@@ -35,8 +35,8 @@ class _AttachmentButtonState extends State<AttachmentButton> {
         ],
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
+      if (files.isNotEmpty) {
+        final file = files.first;
         widget.onFileSelected(file.name, file.path ?? '');
       }
     } catch (e) {

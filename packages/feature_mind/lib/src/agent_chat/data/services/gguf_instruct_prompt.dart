@@ -9,16 +9,18 @@ String formatGgufInstructPrompt({
   required String prompt,
   String? systemPrompt,
   required ModelFamily family,
+  String? assistantPrefill,
 }) {
   final user = prompt.trim();
   final system = systemPrompt?.trim() ?? '';
+  final prefill = assistantPrefill ?? '';
   if (family == ModelFamily.qwen || family == ModelFamily.phi) {
     final sys = system.isEmpty
         ? 'You are a helpful assistant. Answer the last user message directly.'
         : system;
     return '<|im_start|>system\n$sys<|im_end|>\n'
         '<|im_start|>user\n$user<|im_end|>\n'
-        '<|im_start|>assistant\n';
+        '<|im_start|>assistant\n$prefill';
   }
   if (family == ModelFamily.gemma) {
     final sys = system.isEmpty
@@ -27,10 +29,41 @@ String formatGgufInstructPrompt({
         : '$system\nAnswer the last user message directly. '
               'Do not continue a transcript, invent follow-up turns, or repeat a previous reply.';
     return '<start_of_turn>user\n$sys\n\n$user<end_of_turn>\n'
-        '<start_of_turn>model\n';
+        '<start_of_turn>model\n$prefill';
   }
-  if (system.isEmpty) return user;
-  return '$system\n\n$user';
+  if (family == ModelFamily.llama) {
+    final sys = system.isEmpty
+        ? 'You are a helpful assistant. Answer the last user message directly.'
+        : system;
+    return '<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n'
+        '$sys<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n'
+        '$user<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n$prefill';
+  }
+  if (family == ModelFamily.mistral) {
+    final sys = system.isEmpty
+        ? 'You are a helpful assistant. Answer the last user message directly.'
+        : system;
+    return '<s>[INST] $sys\n\n$user [/INST]$prefill';
+  }
+  final sys = system.isEmpty
+      ? 'You are a helpful assistant. Answer the last user message directly.'
+      : system;
+  return '<|im_start|>system\n$sys<|im_end|>\n'
+      '<|im_start|>user\n$user<|im_end|>\n'
+      '<|im_start|>assistant\n$prefill';
+}
+
+/// Locks a header the engine already prefills so the UI shows it even when
+/// the first generated token is `Here` and then EOS.
+String applyAssistantPrefill(String generated, String? prefix) {
+  final locked = prefix ?? '';
+  if (locked.isEmpty) return generated;
+  final trimmedGenerated = generated.trimLeft();
+  if (trimmedGenerated.startsWith(locked) ||
+      trimmedGenerated.startsWith(locked.trim())) {
+    return generated;
+  }
+  return '$locked$generated';
 }
 
 const _ggufStopMarkers = [
@@ -39,8 +72,10 @@ const _ggufStopMarkers = [
   '</model>',
   '</user>',
   '<eos>',
-  '<|im_end|>',
-  '<|im_start|>',
+  '<|eot_id|>',
+  '<|end_of_text|>',
+  '<|start_header_id|>',
+  '[/INST]',
   '\nUser:',
   '\nAiro:',
   ' Airo:',
@@ -77,6 +112,9 @@ int ggufMaxOutputTokens(OfflineModelInfo package) {
   if (count != null && count < 1000000000) return 512;
   return 2048;
 }
+
+/// A 7-day meal plan does not fit in the compact 512-token cap.
+const int ggufDietPlanMaxOutputTokens = 2048;
 
 bool isCompactLocalPackage(OfflineModelInfo? package) {
   final count = package?.parameterCount;

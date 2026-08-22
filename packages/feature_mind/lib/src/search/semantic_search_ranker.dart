@@ -7,6 +7,21 @@ import '../whisper/api/meetings.dart' as rust;
 import 'meeting_embedding_store.dart';
 import 'meeting_text_chunker.dart';
 
+/// Union of keyword + semantic hits, plus lexical/embedding provenance.
+///
+/// [hits] keep the product contract: keyword matches always survive.
+/// [alignments] say when cosine disagrees with keyword (PM-05). Cosine is
+/// not proof of relevance.
+class SemanticRankResult {
+  const SemanticRankResult({required this.hits, required this.alignments});
+
+  final List<rust.SearchHit> hits;
+  final List<RetrievalAlignment> alignments;
+
+  bool get hasEmbeddingMismatch =>
+      alignments.any((alignment) => alignment.isMismatch);
+}
+
 /// Adds semantic ranking on top of `searchMeetings`'s keyword hits.
 ///
 /// **Union, never replacement**: every keyword hit is returned, regardless
@@ -66,11 +81,29 @@ class SemanticSearchRanker {
     required List<rust.MeetingRecord> meetings,
     Map<String, List<String>> segmentTextsByMeetingId = const {},
   }) async {
+    final result = await rankWithAlignment(
+      query: query,
+      keywordHits: keywordHits,
+      meetings: meetings,
+      segmentTextsByMeetingId: segmentTextsByMeetingId,
+    );
+    return result.hits;
+  }
+
+  /// Same ranking as [rank], with retrieval vs embedding scores attached.
+  Future<SemanticRankResult> rankWithAlignment({
+    required String query,
+    required List<rust.SearchHit> keywordHits,
+    required List<rust.MeetingRecord> meetings,
+    Map<String, List<String>> segmentTextsByMeetingId = const {},
+  }) async {
     final queryResult = await _embeddingService.embed(
       query,
       taskType: EmbeddingTaskType.retrievalQuery,
     );
-    if (!queryResult.isReady) return keywordHits;
+    if (!queryResult.isReady) {
+      return SemanticRankResult(hits: keywordHits, alignments: const []);
+    }
     final queryVector = queryResult.vector!;
     final activeModelId = queryResult.modelId!;
 
@@ -92,6 +125,7 @@ class SemanticSearchRanker {
           meetingId: hit.meetingId,
           chunkVectors: vectors ?? const [],
           hit: hit,
+          keywordMatched: true,
         ),
       );
     }
@@ -110,11 +144,12 @@ class SemanticSearchRanker {
           meetingId: meeting.id,
           chunkVectors: vectors,
           hit: _hitFor(meeting),
+          keywordMatched: false,
         ),
       );
     }
 
-    final keywordScored = List<(double, rust.SearchHit)>.of(
+    final keywordScored = List<(double, _ScoredCandidate)>.of(
       await _scoreCandidates(
         queryVector,
         keywordCandidates,
@@ -123,7 +158,7 @@ class SemanticSearchRanker {
     );
     keywordScored.sort((a, b) => b.$1.compareTo(a.$1));
 
-    final semanticScored = List<(double, rust.SearchHit)>.of(
+    final semanticScored = List<(double, _ScoredCandidate)>.of(
       await _scoreCandidates(
         queryVector,
         semanticCandidates,
@@ -132,10 +167,18 @@ class SemanticSearchRanker {
     );
     semanticScored.sort((a, b) => b.$1.compareTo(a.$1));
 
-    return [
-      for (final entry in keywordScored) entry.$2,
-      for (final entry in semanticScored) entry.$2,
-    ];
+    final ordered = [...keywordScored, ...semanticScored];
+    return SemanticRankResult(
+      hits: [for (final entry in ordered) entry.$2.hit],
+      alignments: [
+        for (final entry in ordered)
+          RetrievalAlignment(
+            meetingId: entry.$2.meetingId,
+            keywordMatched: entry.$2.keywordMatched,
+            semanticScore: entry.$1,
+          ),
+      ],
+    );
   }
 
   /// Eagerly embeds [meeting] so a later [rank] call does not pay for it.
@@ -151,21 +194,21 @@ class SemanticSearchRanker {
     return vectors != null;
   }
 
-  Future<List<(double, rust.SearchHit)>> _scoreCandidates(
+  Future<List<(double, _ScoredCandidate)>> _scoreCandidates(
     List<double> queryVector,
     List<_ScoredCandidate> candidates, {
     required bool applyThreshold,
   }) async {
-    if (candidates.isEmpty) return <(double, rust.SearchHit)>[];
+    if (candidates.isEmpty) return <(double, _ScoredCandidate)>[];
 
     if (candidates.length < offMainCorpusSize) {
-      final scored = <(double, rust.SearchHit)>[];
+      final scored = <(double, _ScoredCandidate)>[];
       for (final candidate in candidates) {
         final similarity = candidate.chunkVectors.isEmpty
             ? 0.0
             : _maxCosineSimilarity(queryVector, candidate.chunkVectors);
         if (applyThreshold && similarity < similarityThreshold) continue;
-        scored.add((similarity, candidate.hit));
+        scored.add((similarity, candidate));
       }
       return scored;
     }
@@ -198,7 +241,7 @@ class SemanticSearchRanker {
       return scored;
     });
 
-    final byId = {for (final c in candidates) c.meetingId: c.hit};
+    final byId = {for (final c in candidates) c.meetingId: c};
     return [
       for (final entry in ranked)
         if (byId.containsKey(entry.$2)) (entry.$1, byId[entry.$2]!),
@@ -300,11 +343,13 @@ class _ScoredCandidate {
     required this.meetingId,
     required this.chunkVectors,
     required this.hit,
+    required this.keywordMatched,
   });
 
   final String meetingId;
   final List<List<double>> chunkVectors;
   final rust.SearchHit hit;
+  final bool keywordMatched;
 }
 
 /// Max cosine similarity of [query] against any vector in [chunks].
