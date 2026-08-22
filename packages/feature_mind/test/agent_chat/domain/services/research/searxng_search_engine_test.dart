@@ -21,6 +21,16 @@ void main() {
       "url": "http://insecure.example/result",
       "title": "Insecure result",
       "content": "Must not become a candidate."
+    },
+    {
+      "url": "https:///hostless",
+      "title": "Hostless result",
+      "content": "Must not become a candidate."
+    },
+    {
+      "url": "https://user:secret@example.com/result",
+      "title": "Credential result",
+      "content": "Must not become a candidate."
     }
   ]
 }
@@ -40,7 +50,7 @@ void main() {
   test(
     'large SearXNG JSON remains parseable across the worker boundary',
     () async {
-      final padding = List.filled(55 * 1024, 'x').join();
+      final padding = List.filled(18 * 1024, '界').join();
       final largeBody = body.replaceFirst('\n}', ',\n"padding":"$padding"\n}');
       final baseUri = Uri.parse('https://search.home.example/');
       final http = _FakeHttp(baseUri: baseUri, body: largeBody);
@@ -57,7 +67,8 @@ void main() {
     final baseUri = Uri.parse('https://search.home.example/searx/');
     final engine = SearxngSearchEngine(baseUri: baseUri);
 
-    expect(engine.http.allowedHosts, contains('search.home.example'));
+    expect(engine.http.allowedHosts, {'search.home.example'});
+    expect(engine.http.allowedOrigins, {baseUri.origin});
     expect(
       ResearchHttpClient.defaultAllowedHosts,
       isNot(contains('search.home.example')),
@@ -83,8 +94,27 @@ void main() {
       'search.home.example',
     );
     expect(
+      () => engine.http.resolveRedirect(
+        baseUri,
+        'https://search.home.example:8443/redirected',
+      ),
+      throwsA(isA<ResearchHttpException>()),
+    );
+    expect(
       () => LocalResearchService(searxngBaseUri: baseUri),
       returnsNormally,
+    );
+    expect(LocalResearchService().hasConfiguredSearxng, isFalse);
+    expect(
+      LocalResearchService(searxngBaseUri: baseUri).hasConfiguredSearxng,
+      isTrue,
+    );
+    expect(
+      () => LocalResearchService(
+        orchestrator: const ResearchOrchestrator(engines: []),
+        searxngBaseUri: baseUri,
+      ),
+      throwsArgumentError,
     );
     expect(
       () => LocalResearchService(
@@ -94,16 +124,30 @@ void main() {
     );
   });
 
+  test('arbitrary SearXNG candidates do not expand acquisition hosts', () {
+    const arbitraryBody = '''
+{"results":[{"url":"https://unknown.example/page","title":"Unknown","content":"Candidate"}]}
+''';
+    final hit = SearxngSearchEngine.parseSearchJson(arbitraryBody).single;
+
+    expect(
+      () => const ResearchHttpClient().get(Uri.parse(hit.url)),
+      throwsA(isA<ResearchHttpException>()),
+    );
+  });
+
   test(
-    'Private profile uses SearXNG when the configured engine is injected',
+    'Private uses injected SearXNG while source policy owns acquisition',
     () async {
       final baseUri = Uri.parse('https://search.home.example/searx/');
       final http = _FakeHttp(baseUri: baseUri, body: body);
       final orchestrator = ResearchOrchestrator(
         engines: [SearxngSearchEngine(baseUri: baseUri, http: http)],
         sourceManager: SourceManager(
-          fetcher: (_) async =>
-              '<article><h1>Qwen</h1><p>Qwen is a family of language models.</p></article>',
+          fetcher: (uri) async {
+            expect(uri.host, 'en.wikipedia.org');
+            return '<article><h1>Qwen</h1><p>Qwen is a family of language models.</p></article>';
+          },
         ),
       );
 
@@ -133,9 +177,7 @@ void main() {
 
 class _FakeHttp extends ResearchHttpClient {
   _FakeHttp({required this.baseUri, required this.body})
-    : super(
-        allowedHosts: {...ResearchHttpClient.defaultAllowedHosts, baseUri.host},
-      );
+    : super(allowedHosts: {baseUri.host}, allowedOrigins: {baseUri.origin});
 
   final Uri baseUri;
   final String body;
