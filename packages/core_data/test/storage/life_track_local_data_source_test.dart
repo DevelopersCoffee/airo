@@ -25,7 +25,7 @@ void main() {
   });
 
   test('creates and hydrates a full LifeTrack graph', () async {
-    final track = _sampleTrack();
+    final track = sampleTrack();
 
     await dataSource.createTrack(track);
     final stored = await dataSource.getTrack(track.id);
@@ -36,9 +36,9 @@ void main() {
   });
 
   test('filters tracks by status', () async {
-    await dataSource.createTrack(_sampleTrack());
+    await dataSource.createTrack(sampleTrack());
     await dataSource.createTrack(
-      _sampleTrack(id: 'track-2').copyWith(status: TrackStatus.completed),
+      sampleTrack(id: 'track-2').copyWith(status: TrackStatus.completed),
     );
 
     final active = await dataSource.listTracks(status: TrackStatus.active);
@@ -54,14 +54,14 @@ void main() {
     final stream = dataSource.watchTracks();
     final nextNonEmpty = stream.firstWhere((tracks) => tracks.isNotEmpty);
 
-    await dataSource.createTrack(_sampleTrack());
+    await dataSource.createTrack(sampleTrack());
     final emitted = await nextNonEmpty;
 
     expect(emitted.single.id, 'track-1');
   });
 
   test('cascade delete removes nested rows', () async {
-    final track = _sampleTrack();
+    final track = sampleTrack();
     await dataSource.createTrack(track);
 
     await dataSource.deleteTrack(track.id);
@@ -109,7 +109,7 @@ void main() {
   });
 }
 
-LifeTrack _sampleTrack({String id = 'track-1'}) {
+LifeTrack sampleTrack({String id = 'track-1'}) {
   final suffix = id.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
   final requirement = InputRequirement(
     id: 'req_$suffix',
