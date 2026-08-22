@@ -48,18 +48,13 @@ class MeetingLiveSessionCoordinator {
   List<SpeakerActivitySpan> get speakerActivitySpans {
     return [
       for (final segment in _stableSegments)
-        if (parseLiveSpeakerIndex(segment.speakerLabel) != null)
+        if (parseLiveSpeakerIndex(segment.speakerLabel) case final index?)
           SpeakerActivitySpan(
-            speakerIndex: parseLiveSpeakerIndex(segment.speakerLabel)!,
+            speakerIndex: index,
             startMs: segment.startMs,
             endMs: segment.endMs,
           ),
     ];
-  }
-
-  int get speakerTimelineEndMs {
-    if (_stableSegments.isEmpty) return 0;
-    return _stableSegments.last.endMs;
   }
 
   int? get activeSpeakerIndex => _activeSpeakerIndex;

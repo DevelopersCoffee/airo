@@ -58,11 +58,13 @@ class LiveCaptureControls extends StatelessWidget {
                   style: theme.textTheme.labelLarge,
                 ),
                 const Spacer(),
-                FilterChip(
-                  key: const Key('meeting_capture_follow_live'),
-                  label: Text(followLive ? 'Follow live ✓' : 'Follow live'),
-                  selected: followLive,
-                  onSelected: onFollowLiveChanged,
+                Flexible(
+                  child: FilterChip(
+                    key: const Key('meeting_capture_follow_live'),
+                    label: Text(followLive ? 'Follow live ✓' : 'Follow live'),
+                    selected: followLive,
+                    onSelected: onFollowLiveChanged,
+                  ),
                 ),
               ],
             ),

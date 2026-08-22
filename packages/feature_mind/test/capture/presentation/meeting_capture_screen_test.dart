@@ -256,7 +256,10 @@ void main() {
       recorder.calls.where((call) => call.startsWith('start:')),
       isNotEmpty,
     );
-    expect(find.byKey(const Key('meeting_capture_visualizer')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meeting_capture_amplitude_meter')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('meeting_capture_pause_button')),
       findsOneWidget,
