@@ -324,6 +324,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   ResearchControl? _researchControl;
   ResearchCheckpoint? _resumableCheckpoint;
 
+  bool get _canChangeResearchPrivacy =>
+      !_isGenerating && !(_resumableCheckpoint?.isTerminal == false);
+
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
   final FocusNode _messageInputFocusNode = FocusNode();
@@ -1064,14 +1067,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                               ),
                                               selected:
                                                   _researchPrivacy == profile,
-                                              onSelected: _isGenerating
-                                                  ? null
-                                                  : (_) {
+                                              onSelected:
+                                                  _canChangeResearchPrivacy
+                                                  ? (_) {
                                                       setState(() {
                                                         _researchPrivacy =
                                                             profile;
                                                       });
-                                                    },
+                                                    }
+                                                  : null,
                                             ),
                                           ),
                                         ),

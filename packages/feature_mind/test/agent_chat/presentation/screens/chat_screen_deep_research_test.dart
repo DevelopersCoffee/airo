@@ -255,6 +255,14 @@ void main() {
     expect(
       tester
           .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_private')),
+          )
+          .onSelected,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
             find.byKey(const Key('agent_chat_research_privacy_balanced')),
           )
           .selected,
@@ -274,6 +282,35 @@ void main() {
 
     expect(engine.request?.privacy, PrivacyProfile.private);
     expect(engine.request?.policy, SearchPolicy.privacyFirst);
+  });
+
+  testWidgets('resumed local-only checkpoint performs no policy widening', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchCheckpointOp(
+      log: log,
+      checkpoint: const ResearchCheckpoint(
+        jobId: 'job-local-only',
+        question: 'Use only local research',
+        state: ResearchPhase.paused,
+        pausedFrom: ResearchPhase.searching,
+        searchesUsed: 0,
+        iterationsUsed: 0,
+        policy: SearchPolicy.localOnly,
+      ),
+    );
+    final engine = _RecordingLibraryEngine();
+
+    await _pumpChatScreen(
+      tester,
+      operationLogPort: log,
+      deepResearchEngine: engine,
+    );
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
+    await tester.pumpAndSettle();
+
+    expect(engine.request?.policy, SearchPolicy.localOnly);
   });
 
   testWidgets('privacy controls leave a usable input at 320px', (tester) async {
