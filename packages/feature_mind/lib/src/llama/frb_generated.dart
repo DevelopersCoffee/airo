@@ -6,6 +6,7 @@
 import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
 import 'api/reasoning.dart';
+import 'api/research.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -66,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 68556957;
+  int get rustContentHash => -1730392733;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,6 +83,13 @@ abstract class RustLibApi extends BaseApi {
   void crateApiMeetingIntelligenceCancelMeetingIntelligence();
 
   void crateApiReasoningCancelReasoning();
+
+  Future<ResearchServiceHandle> crateApiResearchCreateResearchService({
+    required List<String> engineIds,
+    required FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest)
+    search,
+    required FutureOr<String> Function(String) fetch,
+  });
 
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
@@ -113,7 +121,51 @@ abstract class RustLibApi extends BaseApi {
     required ReasoningRequest request,
   });
 
+  void crateApiResearchResearchCancel({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
+  void crateApiResearchResearchPause({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
+  String? crateApiResearchResearchReport({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
+  void crateApiResearchResearchResume({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
+  Stream<FrbResearchEvent> crateApiResearchResearchRun({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
+  String crateApiResearchResearchStart({
+    required ResearchServiceHandle handle,
+    required FrbResearchRequest request,
+  });
+
+  FrbResearchJobState? crateApiResearchResearchStatus({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
   void crateApiMinutesUnloadGeneration();
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ResearchServiceHandle;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ResearchServiceHandle;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ResearchServiceHandlePtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -196,6 +248,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "cancel_reasoning", argNames: []);
 
   @override
+  Future<ResearchServiceHandle> crateApiResearchCreateResearchService({
+    required List<String> engineIds,
+    required FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest)
+    search,
+    required FutureOr<String> Function(String) fetch,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_String(engineIds, serializer);
+          sse_encode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+            search,
+            serializer,
+          );
+          sse_encode_DartFn_Inputs_String_Output_String_AnyhowException(
+            fetch,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiResearchCreateResearchServiceConstMeta,
+        argValues: [engineIds, search, fetch],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchCreateResearchServiceConstMeta =>
+      const TaskConstMeta(
+        debugName: "create_research_service",
+        argNames: ["engineIds", "search", "fetch"],
+      );
+
+  @override
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
     required int maxOutputTokens,
@@ -214,7 +311,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 4,
+              funcId: 5,
               port: port_,
             );
           },
@@ -254,7 +351,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 5,
+              funcId: 6,
               port: port_,
             );
           },
@@ -283,7 +380,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -305,7 +402,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_generation_stats,
@@ -331,7 +428,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -355,7 +452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -394,7 +491,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 10,
+              funcId: 11,
               port: port_,
             );
           },
@@ -434,7 +531,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 11,
+              funcId: 12,
               port: port_,
             );
           },
@@ -455,12 +552,253 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "reason", argNames: ["request", "sink"]);
 
   @override
+  void crateApiResearchResearchCancel({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiResearchResearchCancelConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchCancelConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_cancel",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
+  void crateApiResearchResearchPause({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiResearchResearchPauseConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchPauseConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_pause",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
+  String? crateApiResearchResearchReport({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiResearchResearchReportConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchReportConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_report",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
+  void crateApiResearchResearchResume({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiResearchResearchResumeConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchResumeConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_resume",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
+  Stream<FrbResearchEvent> crateApiResearchResearchRun({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    final sink = RustStreamSink<FrbResearchEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+              handle,
+              serializer,
+            );
+            sse_encode_String(jobId, serializer);
+            sse_encode_StreamSink_frb_research_event_Sse(sink, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 17,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_String,
+          ),
+          constMeta: kCrateApiResearchResearchRunConstMeta,
+          argValues: [handle, jobId, sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchRunConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_run",
+        argNames: ["handle", "jobId", "sink"],
+      );
+
+  @override
+  String crateApiResearchResearchStart({
+    required ResearchServiceHandle handle,
+    required FrbResearchRequest request,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_box_autoadd_frb_research_request(request, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiResearchResearchStartConstMeta,
+        argValues: [handle, request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchStartConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_start",
+        argNames: ["handle", "request"],
+      );
+
+  @override
+  FrbResearchJobState? crateApiResearchResearchStatus({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_frb_research_job_state,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiResearchResearchStatusConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchStatusConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_status",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
   void crateApiMinutesUnloadGeneration() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -476,10 +814,146 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMinutesUnloadGenerationConstMeta =>
       const TaskConstMeta(debugName: "unload_generation", argNames: []);
 
+  Future<void> Function(int, dynamic)
+  encode_DartFn_Inputs_String_Output_String_AnyhowException(
+    FutureOr<String> Function(String) raw,
+  ) {
+    return (callId, rawArg0) async {
+      final arg0 = dco_decode_String(rawArg0);
+
+      Box<String>? rawOutput;
+      Box<AnyhowException>? rawError;
+      try {
+        rawOutput = Box(await raw(arg0));
+      } catch (e, s) {
+        rawError = Box(AnyhowException("$e\n\n$s"));
+      }
+
+      final serializer = SseSerializer(generalizedFrbRustBinding);
+      assert((rawOutput != null) ^ (rawError != null));
+      if (rawOutput != null) {
+        serializer.buffer.putUint8(0);
+        sse_encode_String(rawOutput.value, serializer);
+      } else {
+        serializer.buffer.putUint8(1);
+        sse_encode_AnyhowException(rawError!.value, serializer);
+      }
+      final output = serializer.intoRaw();
+
+      generalizedFrbRustBinding.dartFnDeliverOutput(
+        callId: callId,
+        ptr: output.ptr,
+        rustVecLen: output.rustVecLen,
+        dataLen: output.dataLen,
+      );
+    };
+  }
+
+  Future<void> Function(int, dynamic, dynamic)
+  encode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+    FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest) raw,
+  ) {
+    return (callId, rawArg0, rawArg1) async {
+      final arg0 = dco_decode_String(rawArg0);
+      final arg1 = dco_decode_frb_search_request(rawArg1);
+
+      Box<FrbSearchResponse>? rawOutput;
+      Box<AnyhowException>? rawError;
+      try {
+        rawOutput = Box(await raw(arg0, arg1));
+      } catch (e, s) {
+        rawError = Box(AnyhowException("$e\n\n$s"));
+      }
+
+      final serializer = SseSerializer(generalizedFrbRustBinding);
+      assert((rawOutput != null) ^ (rawError != null));
+      if (rawOutput != null) {
+        serializer.buffer.putUint8(0);
+        sse_encode_frb_search_response(rawOutput.value, serializer);
+      } else {
+        serializer.buffer.putUint8(1);
+        sse_encode_AnyhowException(rawError!.value, serializer);
+      }
+      final output = serializer.intoRaw();
+
+      generalizedFrbRustBinding.dartFnDeliverOutput(
+        callId: callId,
+        ptr: output.ptr,
+        rustVecLen: output.rustVecLen,
+        dataLen: output.dataLen,
+      );
+    };
+  }
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ResearchServiceHandle => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ResearchServiceHandle => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return AnyhowException(raw as String);
+  }
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FutureOr<String> Function(String)
+  dco_decode_DartFn_Inputs_String_Output_String_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError('');
+  }
+
+  @protected
+  FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest)
+  dco_decode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError('');
+  }
+
+  @protected
+  Object dco_decode_DartOpaque(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return decodeDartOpaque(raw, generalizedFrbRustBinding);
+  }
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  RustStreamSink<FrbResearchEvent> dco_decode_StreamSink_frb_research_event_Sse(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
   }
 
   @protected
@@ -524,6 +998,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchJobState dco_decode_box_autoadd_frb_research_job_state(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_frb_research_job_state(raw);
+  }
+
+  @protected
+  FrbResearchRequest dco_decode_box_autoadd_frb_research_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_frb_research_request(raw);
+  }
+
+  @protected
   GenerationConfig dco_decode_box_autoadd_generation_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_generation_config(raw);
@@ -551,6 +1039,95 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
+  }
+
+  @protected
+  FrbResearchEvent dco_decode_frb_research_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FrbResearchEvent(
+      kind: dco_decode_frb_research_event_kind(arr[0]),
+      jobId: dco_decode_String(arr[1]),
+      label: dco_decode_String(arr[2]),
+      detail: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  FrbResearchEventKind dco_decode_frb_research_event_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbResearchEventKind.values[raw as int];
+  }
+
+  @protected
+  FrbResearchJobState dco_decode_frb_research_job_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbResearchJobState.values[raw as int];
+  }
+
+  @protected
+  FrbResearchMode dco_decode_frb_research_mode(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbResearchMode.values[raw as int];
+  }
+
+  @protected
+  FrbResearchRequest dco_decode_frb_research_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FrbResearchRequest(
+      question: dco_decode_String(arr[0]),
+      mode: dco_decode_frb_research_mode(arr[1]),
+      policy: dco_decode_frb_search_policy(arr[2]),
+      outputFormat: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  FrbSearchHit dco_decode_frb_search_hit(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FrbSearchHit(
+      url: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      snippet: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  FrbSearchPolicy dco_decode_frb_search_policy(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbSearchPolicy.values[raw as int];
+  }
+
+  @protected
+  FrbSearchRequest dco_decode_frb_search_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FrbSearchRequest(
+      query: dco_decode_String(arr[0]),
+      maxResults: dco_decode_u_32(arr[1]),
+    );
+  }
+
+  @protected
+  FrbSearchResponse dco_decode_frb_search_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FrbSearchResponse(
+      engineId: dco_decode_String(arr[0]),
+      hits: dco_decode_list_frb_search_hit(arr[1]),
+    );
   }
 
   @protected
@@ -605,9 +1182,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 dco_decode_isize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<FrbSearchHit> dco_decode_list_frb_search_hit(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_frb_search_hit).toList();
   }
 
   @protected
@@ -782,6 +1371,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchJobState? dco_decode_opt_box_autoadd_frb_research_job_state(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_frb_research_job_state(raw);
+  }
+
+  @protected
   ReasoningLevel? dco_decode_opt_box_autoadd_reasoning_level(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_reasoning_level(raw);
@@ -908,10 +1507,67 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_String(deserializer);
     return AnyhowException(inner);
+  }
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  Object sse_decode_DartOpaque(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_isize(deserializer);
+    return decodeDartOpaque(inner, generalizedFrbRustBinding);
+  }
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ResearchServiceHandleImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  RustStreamSink<FrbResearchEvent> sse_decode_StreamSink_frb_research_event_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
   }
 
   @protected
@@ -959,6 +1615,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchJobState sse_decode_box_autoadd_frb_research_job_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_frb_research_job_state(deserializer));
+  }
+
+  @protected
+  FrbResearchRequest sse_decode_box_autoadd_frb_research_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_frb_research_request(deserializer));
+  }
+
+  @protected
   GenerationConfig sse_decode_box_autoadd_generation_config(
     SseDeserializer deserializer,
   ) {
@@ -992,6 +1664,97 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FrbResearchEvent sse_decode_frb_research_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_frb_research_event_kind(deserializer);
+    var var_jobId = sse_decode_String(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_detail = sse_decode_String(deserializer);
+    return FrbResearchEvent(
+      kind: var_kind,
+      jobId: var_jobId,
+      label: var_label,
+      detail: var_detail,
+    );
+  }
+
+  @protected
+  FrbResearchEventKind sse_decode_frb_research_event_kind(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FrbResearchEventKind.values[inner];
+  }
+
+  @protected
+  FrbResearchJobState sse_decode_frb_research_job_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FrbResearchJobState.values[inner];
+  }
+
+  @protected
+  FrbResearchMode sse_decode_frb_research_mode(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FrbResearchMode.values[inner];
+  }
+
+  @protected
+  FrbResearchRequest sse_decode_frb_research_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_question = sse_decode_String(deserializer);
+    var var_mode = sse_decode_frb_research_mode(deserializer);
+    var var_policy = sse_decode_frb_search_policy(deserializer);
+    var var_outputFormat = sse_decode_String(deserializer);
+    return FrbResearchRequest(
+      question: var_question,
+      mode: var_mode,
+      policy: var_policy,
+      outputFormat: var_outputFormat,
+    );
+  }
+
+  @protected
+  FrbSearchHit sse_decode_frb_search_hit(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_url = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_snippet = sse_decode_String(deserializer);
+    return FrbSearchHit(url: var_url, title: var_title, snippet: var_snippet);
+  }
+
+  @protected
+  FrbSearchPolicy sse_decode_frb_search_policy(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FrbSearchPolicy.values[inner];
+  }
+
+  @protected
+  FrbSearchRequest sse_decode_frb_search_request(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_query = sse_decode_String(deserializer);
+    var var_maxResults = sse_decode_u_32(deserializer);
+    return FrbSearchRequest(query: var_query, maxResults: var_maxResults);
+  }
+
+  @protected
+  FrbSearchResponse sse_decode_frb_search_response(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_engineId = sse_decode_String(deserializer);
+    var var_hits = sse_decode_list_frb_search_hit(deserializer);
+    return FrbSearchResponse(engineId: var_engineId, hits: var_hits);
   }
 
   @protected
@@ -1054,6 +1817,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 sse_decode_isize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1061,6 +1830,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FrbSearchHit> sse_decode_list_frb_search_hit(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FrbSearchHit>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_frb_search_hit(deserializer));
     }
     return ans_;
   }
@@ -1305,6 +2088,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchJobState? sse_decode_opt_box_autoadd_frb_research_job_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_frb_research_job_state(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   ReasoningLevel? sse_decode_opt_box_autoadd_reasoning_level(
     SseDeserializer deserializer,
   ) {
@@ -1460,12 +2256,116 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.message, serializer);
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ResearchServiceHandleImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ResearchServiceHandleImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_DartFn_Inputs_String_Output_String_AnyhowException(
+    FutureOr<String> Function(String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_DartOpaque(
+      encode_DartFn_Inputs_String_Output_String_AnyhowException(self),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+    FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_DartOpaque(
+      encode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+        self,
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_DartOpaque(Object self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_isize(
+      PlatformPointerUtil.ptrToPlatformInt64(
+        encodeDartOpaque(
+          self,
+          portManager.dartHandlerPort,
+          generalizedFrbRustBinding,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ResearchServiceHandleImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_frb_research_event_Sse(
+    RustStreamSink<FrbResearchEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_frb_research_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
   }
 
   @protected
@@ -1538,6 +2438,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_frb_research_job_state(
+    FrbResearchJobState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_frb_research_job_state(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_frb_research_request(
+    FrbResearchRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_frb_research_request(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_generation_config(
     GenerationConfig self,
     SseSerializer serializer,
@@ -1574,6 +2492,94 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_frb_research_event(
+    FrbResearchEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_frb_research_event_kind(self.kind, serializer);
+    sse_encode_String(self.jobId, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_String(self.detail, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_research_event_kind(
+    FrbResearchEventKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_research_job_state(
+    FrbResearchJobState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_research_mode(
+    FrbResearchMode self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_research_request(
+    FrbResearchRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.question, serializer);
+    sse_encode_frb_research_mode(self.mode, serializer);
+    sse_encode_frb_search_policy(self.policy, serializer);
+    sse_encode_String(self.outputFormat, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_search_hit(FrbSearchHit self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.url, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.snippet, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_search_policy(
+    FrbSearchPolicy self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_search_request(
+    FrbSearchRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.query, serializer);
+    sse_encode_u_32(self.maxResults, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_search_response(
+    FrbSearchResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.engineId, serializer);
+    sse_encode_list_frb_search_hit(self.hits, serializer);
   }
 
   @protected
@@ -1627,11 +2633,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_isize(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_frb_search_hit(
+    List<FrbSearchHit> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_frb_search_hit(item, serializer);
     }
   }
 
@@ -1835,6 +2859,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_frb_research_job_state(
+    FrbResearchJobState? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_frb_research_job_state(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_reasoning_level(
     ReasoningLevel? self,
     SseSerializer serializer,
@@ -1975,4 +3012,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
   }
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+}
+
+@sealed
+class ResearchServiceHandleImpl extends RustOpaque
+    implements ResearchServiceHandle {
+  // Not to be used by end users
+  ResearchServiceHandleImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ResearchServiceHandleImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_increment_strong_count_ResearchServiceHandle,
+    rustArcDecrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ResearchServiceHandle,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ResearchServiceHandlePtr,
+  );
 }
