@@ -20,8 +20,11 @@ bool shouldUseOnDeviceReasoning({
   return isOfflineAssistantModelId(selectedModelId);
 }
 
-/// Stopgap classifier → Rust [ClassifiedIntent.kind]. Policy still runs
-/// in Rust; this must not substring-match the user query.
+/// Legacy [IntentParser] → `ClassifiedIntent.kind` compatibility wire.
+///
+/// Dart must not grow new routing rules here. The registry in
+/// `airo_mind_intent` owns capabilities; this map may only emit kinds the
+/// Rust legacy adapter already understands. Diet is `diet`, not `planning`.
 String reasoningIntentKind(IntentType type) {
   return switch (type) {
     IntentType.playMusic ||
@@ -42,7 +45,8 @@ String reasoningIntentKind(IntentType type) {
     IntentType.openMeetingScribe ||
     IntentType.modelManagement ||
     IntentType.mobileActions => 'navigation',
-    IntentType.createDietPlan || IntentType.createRoutine => 'planning',
+    IntentType.createDietPlan => 'diet',
+    IntentType.createRoutine => 'planning',
     IntentType.searchMeetings ||
     IntentType.getMeetingMom ||
     IntentType.audioScribe ||
