@@ -120,8 +120,112 @@ class ChatEntityLinker {
       link(claim.id, ChatEntityRelation.relatedTo, policy.id);
     }
 
+    final hospitalFacts = facts.extractHospitalStay(text);
+    ChatGraphNode? surgery;
+    ChatGraphNode? hospital;
+    final hospitalName = hospitalFacts.facts['Hospital'];
+    if (hospitalName != null) {
+      hospital = _organization(hospitalName, role: 'hospital');
+      addNode(hospital);
+      surgery = _identifier(
+        'Surgery at $hospitalName',
+        'surgery-$hospitalName',
+        kind: 'surgery',
+      );
+      addNode(surgery);
+      link(surgery.id, ChatEntityRelation.relatedTo, hospital.id);
+    }
+    final tests = hospitalFacts.facts['Required Tests List'];
+    if (tests != null && surgery != null) {
+      for (final test in tests.split(RegExp(r'\s*,\s*'))) {
+        if (test.isEmpty) continue;
+        final term = _term(test);
+        addNode(term);
+        link(surgery.id, ChatEntityRelation.relatedTo, term.id);
+      }
+    }
+    final auth = hospitalFacts.facts['Insurance Authorization Reference'];
+    if (auth != null) {
+      final authNode = _identifier(auth, auth, kind: 'auth_ref');
+      addNode(authNode);
+      if (surgery != null) {
+        link(surgery.id, ChatEntityRelation.relatedTo, authNode.id);
+      }
+    }
+    final surgeryDate = hospitalFacts.facts['Surgery Date'];
+    if (surgeryDate != null && surgery != null) {
+      surgery = surgery.merge(
+        ChatGraphNode(
+          id: surgery.id,
+          type: surgery.type,
+          name: surgery.name,
+          attributes: {'date': surgeryDate},
+        ),
+      );
+      addNode(surgery);
+    }
+    if (claim != null && hospital != null) {
+      link(claim.id, ChatEntityRelation.relatedTo, hospital.id);
+    }
+    if (claim != null && surgery != null) {
+      link(claim.id, ChatEntityRelation.relatedTo, surgery.id);
+    }
+
+    final propertyFacts = facts.extractPropertyPurchase(text);
+    ChatGraphNode? property;
+    final rera = propertyFacts.facts['RERA Registration Number'];
+    final builderName = propertyFacts.facts['Builder Track Record Notes'];
+    final project = propertyFacts.facts['Project'];
+    final floor = propertyFacts.facts['Your Target Floor'];
+    if (rera != null || builderName != null || project != null) {
+      final subjectValue = rera ?? project ?? builderName ?? 'property';
+      property = _identifier(
+        [
+          if (builderName != null) builderName,
+          if (project != null) project,
+          if (builderName == null && project == null) 'Property purchase',
+        ].join(' '),
+        'property-$subjectValue',
+        kind: 'property',
+      );
+      if (floor != null) {
+        property = property.merge(
+          ChatGraphNode(
+            id: property.id,
+            type: property.type,
+            name: property.name,
+            attributes: {'floor': floor},
+          ),
+        );
+      }
+      addNode(property);
+    }
+    if (rera != null && property != null) {
+      final reraNode = _identifier('RERA $rera', rera, kind: 'rera');
+      addNode(reraNode);
+      link(property.id, ChatEntityRelation.relatedTo, reraNode.id);
+    }
+    if (builderName != null) {
+      final builder = _organization(builderName, role: 'builder');
+      addNode(builder);
+      if (property != null) {
+        link(property.id, ChatEntityRelation.relatedTo, builder.id);
+      }
+    }
+    if (project != null) {
+      final projectNode = _term(project);
+      addNode(projectNode);
+      if (property != null) {
+        link(property.id, ChatEntityRelation.relatedTo, projectNode.id);
+      }
+    }
+
     for (final entity in extractor.extract(text)) {
-      if (_coveredByFacts(entity, extractedFacts.facts)) continue;
+      if (_coveredByFacts(entity, extractedFacts.facts) ||
+          _coveredByFacts(entity, hospitalFacts.facts) ||
+          _coveredByFacts(entity, propertyFacts.facts)) {
+        continue;
+      }
       final node = ChatGraphNode(
         id: _id(entity.type, entity.text),
         type: entity.type,
@@ -134,10 +238,17 @@ class ChatEntityLinker {
               _looksMedical(entity.text))) {
         link(claim.id, ChatEntityRelation.relatedTo, node.id);
       }
+      if (surgery != null &&
+          (entity.type == EntityType.date || _looksMedical(entity.text))) {
+        link(surgery.id, ChatEntityRelation.relatedTo, node.id);
+      }
     }
 
     final uniqueNodes = {for (final node in nodes) node.id: node};
-    if (uniqueNodes.length >= 2 && claim == null) {
+    if (uniqueNodes.length >= 2 &&
+        claim == null &&
+        surgery == null &&
+        property == null) {
       final ids = uniqueNodes.keys.toList(growable: false);
       for (var i = 0; i < ids.length; i++) {
         for (var j = i + 1; j < ids.length; j++) {

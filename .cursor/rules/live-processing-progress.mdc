@@ -1,0 +1,40 @@
+---
+description: Show live status during any long-running processing work
+globs: packages/feature_mind/**/*
+alwaysApply: false
+---
+
+# Live processing progress
+
+Any work that blocks the user for more than ~1 second must show **what is happening now**, not a blank screen or a generic spinner.
+
+## Required
+
+- **Stream progress** from the service layer (`Stream<MindProgress>`, job queue updates, download callbacks). Do not fire-and-forget long work from UI without a subscription.
+- **Surface stage + copy** on screen: e.g. “Transcribing…”, “Identifying speakers…”, “Writing minutes…”. Use `MindStage` / job `status` — not invented one-off strings per screen unless there is no shared type yet.
+- **Keep the screen alive** while work runs. Do not navigate away or dispose the queue (`autoDispose` providers) until processing finishes or the user explicitly cancels.
+- **Show partial output when available**: transcript segments, minutes text, or a determinate bar beat an indeterminate spinner alone.
+- **End states are explicit**: success (“Your meeting is ready…”) or failure (actionable error + retry). Never return to idle with no message.
+
+## Avoid
+
+- Silent `await` on transcription, generation, model download, or export with no UI feedback.
+- Console-only progress (build logs, `print`, native stderr) as the user-facing status.
+- Fake progress with no stage change — if percent is unknown, say what step is running.
+
+## Pattern (Mind)
+
+```dart
+// Service yields folded progress
+Stream<MindProgress> process(...) async* {
+  yield const MindProgress(stage: MindStage.transcribing);
+  // ... emit again when stage or partial text changes
+}
+
+// UI subscribes and renders stage + optional partial content
+ref.listen(meetingProcessingQueueProvider, (_, jobs) { ... });
+```
+
+## New pipelines
+
+When adding a pipeline (Rust or Dart), define stages up front and wire them through to Flutter before landing the feature. If there is no stream yet, add one — do not ship a “Processing…” placeholder with no updates.

@@ -26,7 +26,7 @@ class MeetingCaptureController {
   MeetingCaptureController({
     required AudioRecorderPort recorder,
     MeetingRecordingServiceGateway? serviceGateway,
-    Duration tickInterval = const Duration(seconds: 1),
+    Duration tickInterval = const Duration(milliseconds: 100),
   }) : _recorder = recorder,
        _serviceGateway =
            serviceGateway ?? const NoopMeetingRecordingServiceGateway(),
@@ -50,6 +50,8 @@ class MeetingCaptureController {
 
   MeetingRecordingSnapshot _snapshot = MeetingRecordingSnapshot.idle;
   DateTime? _segmentStartedAt;
+  int _frozenElapsedMs = 0;
+  StreamSubscription<double>? _levelSub;
 
   Stream<MeetingRecordingSnapshot> get snapshots => _controller.stream;
 
@@ -85,6 +87,7 @@ class MeetingCaptureController {
       notificationText: 'Airo Mind is recording. Tap to return to the app.',
     );
     await _recorder.start(path);
+    _frozenElapsedMs = 0;
     _segmentStartedAt = DateTime.now();
     _emit(
       MeetingRecordingSnapshot(
@@ -93,6 +96,7 @@ class MeetingCaptureController {
         elapsedMs: 0,
       ),
     );
+    _listenLevels();
     _startTicker();
   }
 
@@ -104,6 +108,7 @@ class MeetingCaptureController {
       _snapshot.copyWith(
         lifecycle: MeetingRecordingLifecycle.paused,
         pausedByOs: false,
+        amplitude: 0,
       ),
     );
     _stopTicker();
@@ -131,6 +136,8 @@ class MeetingCaptureController {
     }
     _freezeElapsed();
     _stopTicker();
+    await _levelSub?.cancel();
+    _levelSub = null;
     final path = await _recorder.stop();
     await _serviceGateway.stop();
     _emit(_snapshot.copyWith(lifecycle: MeetingRecordingLifecycle.stopped));
@@ -147,6 +154,7 @@ class MeetingCaptureController {
             _snapshot.copyWith(
               lifecycle: MeetingRecordingLifecycle.paused,
               pausedByOs: true,
+              amplitude: 0,
             ),
           );
         }
@@ -191,16 +199,30 @@ class MeetingCaptureController {
     _ticker = null;
   }
 
+  void _listenLevels() {
+    unawaited(_levelSub?.cancel());
+    _levelSub = _recorder.levels.listen((level) {
+      if (_snapshot.lifecycle != MeetingRecordingLifecycle.recording) return;
+      _emit(_snapshot.copyWith(amplitude: level, elapsedMs: _liveElapsedMs()));
+    });
+  }
+
+  /// Recorded duration so far. Frozen segments stay in [_frozenElapsedMs];
+  /// the open segment is always `now - _segmentStartedAt`. Writing the live
+  /// total back into [_snapshot.elapsedMs] must not also change that frozen
+  /// base — the old ticker did, so each tick added wall time on top of an
+  /// already-updated total and the display ran ahead of a real clock.
   int _liveElapsedMs() {
     final startedAt = _segmentStartedAt;
-    if (startedAt == null) return _snapshot.elapsedMs;
-    return _snapshot.elapsedMs +
+    if (startedAt == null) return _frozenElapsedMs;
+    return _frozenElapsedMs +
         DateTime.now().difference(startedAt).inMilliseconds;
   }
 
   void _freezeElapsed() {
-    _snapshot = _snapshot.copyWith(elapsedMs: _liveElapsedMs());
+    _frozenElapsedMs = _liveElapsedMs();
     _segmentStartedAt = null;
+    _snapshot = _snapshot.copyWith(elapsedMs: _frozenElapsedMs);
   }
 
   void _emit(MeetingRecordingSnapshot snapshot) {
@@ -210,6 +232,7 @@ class MeetingCaptureController {
 
   Future<void> dispose() async {
     _stopTicker();
+    await _levelSub?.cancel();
     await _osSub?.cancel();
     await _controller.close();
     await _recorder.dispose();

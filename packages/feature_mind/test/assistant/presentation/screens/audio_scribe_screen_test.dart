@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
+import 'package:feature_mind/src/assistant/consent/recording_consent_prompt.dart';
 import 'package:feature_mind/src/runtime/fixture/fixture_mind_runtime.dart';
 import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
 import 'package:feature_mind/src/services/voice_search_service.dart';
@@ -64,6 +65,7 @@ class _FakeVoiceService implements VoiceSearchService {
 Widget _scribeScope({
   required VoiceSearchService voice,
   required Widget child,
+  bool showConsentPrompt = true,
 }) {
   return ProviderScope(
     overrides: [
@@ -71,6 +73,7 @@ Widget _scribeScope({
       mindRuntimeProvider.overrideWithValue(
         ScribeMindRuntime(log: FixtureMindRuntime().log),
       ),
+      recordingConsentPromptProvider.overrideWithValue(showConsentPrompt),
     ],
     child: child,
   );

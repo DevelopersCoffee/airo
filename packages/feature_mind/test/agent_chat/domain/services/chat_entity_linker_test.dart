@@ -79,5 +79,71 @@ void main() {
       graph.nodeById('organization:niva-bupa')?.type,
       EntityType.organization,
     );
+    expect(
+      graph.nodes.where(
+        (node) =>
+            node.type == EntityType.identifier &&
+            node.attributes['kind'] == 'claim',
+      ),
+      hasLength(1),
+    );
+  });
+
+  test('surgery-only message creates a hospital journey subject', () {
+    final graph = linker.ingest(
+      ChatEntityGraph.empty,
+      'surgery at City Hospital on 12 Sep, pre-op tests CBC and ECG, '
+      'auth ref PREAUTH-44',
+    );
+
+    final surgery = graph.nodes.singleWhere(
+      (node) =>
+          node.type == EntityType.identifier &&
+          node.attributes['kind'] == 'surgery',
+    );
+    expect(surgery.name.toLowerCase(), contains('city hospital'));
+    expect(
+      graph.nodes.map((node) => node.name),
+      containsAll(['City Hospital', 'PREAUTH-44']),
+    );
+    expect(
+      graph.edges.any(
+        (edge) =>
+            edge.fromId == surgery.id &&
+            edge.toId.contains('city-hospital') &&
+            edge.predicate == ChatEntityRelation.relatedTo,
+      ),
+      isTrue,
+    );
+    expect(
+      graph.nodes.where(
+        (node) =>
+            node.type == EntityType.identifier &&
+            node.attributes['kind'] == 'claim',
+      ),
+      isEmpty,
+    );
+  });
+
+  test('property purchase extracts RERA and builder nodes', () {
+    final graph = linker.ingest(
+      ChatEntityGraph.empty,
+      'buying Tower B floor 14 from Prestige, RERA P52100012345',
+    );
+
+    expect(
+      graph.nodes.any(
+        (node) =>
+            node.type == EntityType.identifier &&
+            node.attributes['kind'] == 'rera' &&
+            (node.attributes['value'] == 'P52100012345' ||
+                node.name.contains('P52100012345')),
+      ),
+      isTrue,
+    );
+    expect(
+      graph.nodes.map((node) => node.name),
+      containsAll(['Prestige', 'Tower B']),
+    );
   });
 }

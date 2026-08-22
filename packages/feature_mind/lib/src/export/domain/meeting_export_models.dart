@@ -85,6 +85,7 @@ class MeetingExportInput {
     this.momMarkdown,
     this.actionItems = const [],
     this.speakerRegistry = MeetingSpeakerRegistry.empty,
+    this.globalEnrolledNames = const {},
   });
 
   final String meetingId;
@@ -116,6 +117,9 @@ class MeetingExportInput {
 
   /// User-assigned speaker names and merge aliases for export rendering.
   final MeetingSpeakerRegistry speakerRegistry;
+
+  /// Cross-meeting enrolled speaker ids (`enrolled_0`, …) → display names.
+  final Map<String, String> globalEnrolledNames;
 }
 
 /// A folder-per-meeting export: a stable folder name and the markdown files

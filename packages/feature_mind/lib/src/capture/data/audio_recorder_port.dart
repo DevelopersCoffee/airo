@@ -37,6 +37,10 @@ abstract interface class AudioRecorderPort {
   /// keep [MeetingRecordingSnapshot.pausedByOs] accurate.
   Stream<RecorderOsEvent> get osEvents;
 
+  /// Normalized 0–1 microphone level while encoding. Fakes and platforms
+  /// without a meter may never emit — the visualizer idles from that.
+  Stream<double> get levels;
+
   Future<void> dispose();
 }
 
@@ -118,6 +122,18 @@ class PlatformAudioRecorderPort implements AudioRecorderPort {
             return RecorderOsEvent.osStopped;
         }
       });
+
+  @override
+  Stream<double> get levels => _recorder
+      .onAmplitudeChanged(const Duration(milliseconds: 80))
+      .map(_normalizeDb);
+
+  /// Speech sits roughly −50..−8 dBFS; room silence is far below that.
+  static double _normalizeDb(Amplitude amp) {
+    const floor = -50.0;
+    const ceil = -8.0;
+    return ((amp.current - floor) / (ceil - floor)).clamp(0.0, 1.0);
+  }
 
   @override
   Future<void> dispose() => _recorder.dispose();

@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
+import 'meeting_title.dart';
 import 'mind_diarization.dart';
 import 'mind_indic_intelligence.dart';
 import 'model_installer.dart';
@@ -25,6 +26,7 @@ import 'speaker/global_speaker_enrollment_store.dart';
 import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'whisper/meeting_ir_op_log.dart';
+import 'library_loader.dart';
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -376,6 +378,10 @@ class MindService {
     _recordingPath = path;
   }
 
+  Future<void> pauseRecording() => _recorder.pause();
+
+  Future<void> resumeRecording() => _recorder.resume();
+
   Future<bool> get isRecording => _recorder.isRecording();
 
   /// Stops capture and returns the file. Null if nothing was recording.
@@ -411,15 +417,17 @@ class MindService {
     required String wavPath,
     required String title,
     String? language,
+    int? recordedAtMs,
   }) async* {
     var progress = const MindProgress(stage: MindStage.transcribing);
     yield progress;
 
     // Dart owns the clock. `C2` forbids reading a wall clock on a path replay
     // must reproduce, so the timestamp is taken once, here, and carried through
-    // to `saveMeeting` as the meeting's identity.
-    final recordedAtMs = DateTime.now().millisecondsSinceEpoch;
-    final meetingId = 'm$recordedAtMs';
+    // to `saveMeeting` as the meeting's identity. A regenerate pass supplies
+    // the original [recordedAtMs] so `save_meeting` overwrites the same id.
+    final recordedAt = recordedAtMs ?? DateTime.now().millisecondsSinceEpoch;
+    final meetingId = 'm$recordedAt';
 
     var decisions = const <rust.MeetingDecisionRecord>[];
     var actionItems = const <rust.MeetingActionItemRecord>[];
@@ -529,9 +537,13 @@ class MindService {
       // `model` comes from the generation library: only it knows which model
       // produced these minutes, and `ADR-0018 §5` records that with the content
       // rather than inferring it later.
+      final savedTitle = resolveMeetingTitle(
+        requested: title,
+        transcript: progress.transcript,
+      );
       final savedMeetingId = await _speech.save(
-        title: title,
-        recordedAtMs: recordedAtMs,
+        title: savedTitle,
+        recordedAtMs: recordedAt,
         transcript: progress.transcript,
         minutes: progress.minutes,
         model: _generation.modelId(),
@@ -675,6 +687,17 @@ class MindService {
     actionItemId: actionItemId,
     status: status,
   );
+
+  Future<rust.MeetingRecord> renameMeeting({
+    required rust.MeetingRecord meeting,
+    required String title,
+  }) => MeetingIrStatusWriter(
+    _speech,
+  ).updateTitle(meeting: meeting, title: title);
+
+  Future<bool> deleteMeeting(String id) async {
+    return deleteWhisperMeeting(id);
+  }
 
   /// Releases the microphone and the model provider. The provider matters
   /// because the download-backed one holds a subscription to the platform

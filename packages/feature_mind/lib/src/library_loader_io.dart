@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Finds an Airo Mind engine library, whatever shape the platform's native
@@ -74,4 +75,22 @@ void unloadWhisperSpeech() {
       )
       .asFunction<void Function()>();
   fn();
+}
+
+/// Drops one meeting from the on-device store. `true` when a record was
+/// removed. Hidden ggml / FRB symbols stay unexported; this matches
+/// [unloadWhisperSpeech].
+bool deleteWhisperMeeting(String id) {
+  final native = DynamicLibrary.process();
+  final fn = native
+      .lookup<NativeFunction<Int32 Function(Pointer<Utf8>)>>(
+        'airo_mind_whisper_delete_meeting',
+      )
+      .asFunction<int Function(Pointer<Utf8>)>();
+  final encoded = id.toNativeUtf8();
+  try {
+    return fn(encoded) == 0;
+  } finally {
+    malloc.free(encoded);
+  }
 }

@@ -21,7 +21,11 @@ export 'src/mind_availability.dart';
 export 'src/whisper/api/meetings.dart'
     show MeetingRecord, SearchHit, SpeechLanguage;
 export 'src/meeting_screen.dart' show MeetingScreen;
-export 'src/mind_home_screen.dart' show MindHomeScreen, meetingListPreview;
+export 'src/mind_home_screen.dart' show MindHomeScreen;
+export 'src/meeting_list_metadata.dart'
+    show meetingListPreview, meetingListMetadata, MeetingListMetadata;
+export 'src/meeting_title.dart'
+    show displayMeetingTitle, meetingTitleFromTranscript, resolveMeetingTitle;
 export 'src/export/application/meeting_export_service.dart'
     show MeetingExportService;
 export 'src/export/domain/meeting_export_models.dart' show MeetingExportBundle;
@@ -361,6 +365,7 @@ export 'src/capture/data/meeting_processing_queue_store.dart';
 export 'src/capture/application/meeting_capture_controller.dart';
 export 'src/capture/application/meeting_processing_queue.dart';
 export 'src/capture/application/meeting_processing_job_runner.dart';
+export 'src/assistant/consent/recording_consent_prompt.dart';
 export 'src/capture/application/meeting_capture_providers.dart';
 export 'src/capture/application/audio_retention_preference.dart';
 export 'src/capture/application/speech_language_preference.dart';

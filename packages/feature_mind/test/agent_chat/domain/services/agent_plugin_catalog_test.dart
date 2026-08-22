@@ -75,7 +75,11 @@ void main() {
       final v1 = File(
         'skills/hospital-recovery-planner/SKILL.md',
       ).readAsStringSync();
-      final v2 = v1.replaceFirst('version: 1.0.0', 'version: 1.1.0');
+      final installedVersion = SkillManifestParser.parse(v1).version;
+      final v2 = v1.replaceFirst(
+        'version: $installedVersion',
+        'version: 9.9.9',
+      );
       final installer = RemoteAgentSkillInstaller(
         store: store,
         fetcher: (_) async => v1,
@@ -93,16 +97,16 @@ void main() {
 
       final installed = await installer.installFromCatalog(entry);
       expect(installed.isEnabled, isTrue);
-      expect(installed.version, '1.0.0');
-      expect(store.loadRecords().single.version, '1.0.0');
+      expect(installed.version, installedVersion);
+      expect(store.loadRecords().single.version, installedVersion);
 
       final updated = await RemoteAgentSkillInstaller(
         store: store,
         fetcher: (_) async => v2,
       ).installFromCatalog(entry);
-      expect(updated.version, '1.1.0');
+      expect(updated.version, '9.9.9');
       expect(store.loadRecords(), hasLength(1));
-      expect(store.loadRecords().single.version, '1.1.0');
+      expect(store.loadRecords().single.version, '9.9.9');
     },
   );
 }

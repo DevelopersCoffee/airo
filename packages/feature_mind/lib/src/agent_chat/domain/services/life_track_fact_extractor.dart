@@ -128,6 +128,53 @@ class LifeTrackFactExtractor {
     );
   }
 
+  ExtractedLifeTrackFacts extractHospitalStay(String prompt) {
+    final facts = <String, String>{};
+    final hospital = _hospital(prompt);
+    if (hospital != null) facts['Hospital'] = hospital;
+
+    final date = _surgeryDate(prompt);
+    if (date != null) facts['Surgery Date'] = date;
+
+    final tests = _preOpTests(prompt);
+    if (tests != null) facts['Required Tests List'] = tests;
+
+    final auth = _authRef(prompt);
+    if (auth != null) facts['Insurance Authorization Reference'] = auth;
+
+    return ExtractedLifeTrackFacts(
+      title: hospital == null ? 'Hospital stay' : 'Surgery at $hospital',
+      templateId: 'medical_surgery_v1',
+      facts: facts,
+    );
+  }
+
+  ExtractedLifeTrackFacts extractPropertyPurchase(String prompt) {
+    final facts = <String, String>{};
+    final rera = _rera(prompt);
+    if (rera != null) facts['RERA Registration Number'] = rera;
+
+    final builder = _builderName(prompt);
+    if (builder != null) facts['Builder Track Record Notes'] = builder;
+
+    final floor = _targetFloor(prompt);
+    if (floor != null) facts['Your Target Floor'] = floor;
+
+    final project = _propertyProject(prompt);
+    if (project != null) facts['Project'] = project;
+
+    final title = [
+      if (builder != null) builder,
+      if (project != null) project,
+      if (builder == null && project == null) 'Property purchase',
+    ].join(' ');
+    return ExtractedLifeTrackFacts(
+      title: title,
+      templateId: 'real_estate_under_construction_v1',
+      facts: facts,
+    );
+  }
+
   String? _studySubject(String prompt) {
     final labeled = _labeledValue(prompt, const [
       'subject',
@@ -236,6 +283,86 @@ class LifeTrackFactExtractor {
     }
     if (parts.isEmpty) return null;
     return parts.join(' ');
+  }
+
+  String? _hospital(String prompt) {
+    final match = RegExp(
+      r'(?:surgery|stay|admitted)?\s*(?:at|in)\s+'
+      r'([A-Z][A-Za-z0-9& ]{1,40}Hospital)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    final value = match?.group(1)?.trim();
+    if (value == null || value.isEmpty) return null;
+    return value.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String? _surgeryDate(String prompt) {
+    final match = RegExp(
+      r'\b(\d{1,2}(?:st|nd|rd|th)?\s+'
+      r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*)\b',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _preOpTests(String prompt) {
+    final match = RegExp(
+      r'pre-?op(?:erative)?\s+tests?\s+(.+?)(?:,\s*auth|\.|$)',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    final value = match?.group(1)?.trim();
+    if (value == null || value.isEmpty) return null;
+    return value.replaceAll(RegExp(r'\s+and\s+', caseSensitive: false), ', ');
+  }
+
+  String? _authRef(String prompt) {
+    return _firstMatch(
+      prompt,
+      RegExp(
+        r'auth(?:orization)?\s*ref(?:erence)?\s*[:\-–]?\s*([A-Z0-9][A-Z0-9\-]{3,})',
+        caseSensitive: false,
+      ),
+    );
+  }
+
+  String? _rera(String prompt) {
+    return _firstMatch(
+      prompt,
+      RegExp(r'\bRERA\s+([A-Z0-9]{8,})\b', caseSensitive: false),
+    );
+  }
+
+  String? _builderName(String prompt) {
+    final match = RegExp(
+      r'\bfrom\s+([A-Z][A-Za-z0-9&]+(?:\s+[A-Z][A-Za-z0-9&]+)?)\b',
+    ).firstMatch(prompt);
+    return match?.group(1)?.trim();
+  }
+
+  String? _targetFloor(String prompt) {
+    return _firstMatch(
+      prompt,
+      RegExp(r'\bfloor\s+(\d{1,3})\b', caseSensitive: false),
+    );
+  }
+
+  String? _propertyProject(String prompt) {
+    final tower = RegExp(
+      r'\b(Tower\s+[A-Z0-9]+)\b',
+      caseSensitive: false,
+    ).firstMatch(prompt);
+    if (tower != null) {
+      final value = tower.group(1)!.trim();
+      return value
+          .split(' ')
+          .map(
+            (part) => part.isEmpty
+                ? part
+                : '${part[0].toUpperCase()}${part.substring(1)}',
+          )
+          .join(' ');
+    }
+    return _labeledValue(prompt, const ['project', 'tower']);
   }
 
   String? _firstMatch(String prompt, RegExp pattern) {

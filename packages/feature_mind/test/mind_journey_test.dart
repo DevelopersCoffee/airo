@@ -14,10 +14,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeMind extends MindService {
   _FakeMind({
     this.status = const MindStatus.ready(),
-    this.library = const [],
+    List<rust.MeetingRecord>? library,
     this.hits = const [],
     Stream<MindProgress>? progress,
-  }) : _stream = progress;
+  }) : library = library ?? <rust.MeetingRecord>[],
+       _stream = progress;
 
   final MindStatus status;
   final List<rust.MeetingRecord> library;
@@ -57,10 +58,45 @@ class _FakeMind extends MindService {
     required String wavPath,
     required String title,
     String? language,
+    int? recordedAtMs,
   }) => _stream ?? const Stream.empty();
 
   @override
   Future<void> dispose() async {}
+
+  @override
+  Future<void> pauseRecording() async {}
+
+  @override
+  Future<void> resumeRecording() async {}
+
+  @override
+  Future<rust.MeetingRecord> renameMeeting({
+    required rust.MeetingRecord meeting,
+    required String title,
+  }) async {
+    final updated = rust.MeetingRecord(
+      id: meeting.id,
+      title: title,
+      recordedAt: meeting.recordedAt,
+      transcript: meeting.transcript,
+      minutes: meeting.minutes,
+      model: meeting.model,
+      decisions: meeting.decisions,
+      actionItems: meeting.actionItems,
+      metrics: meeting.metrics,
+    );
+    final index = library.indexWhere((item) => item.id == meeting.id);
+    if (index >= 0) library[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<bool> deleteMeeting(String id) async {
+    final before = library.length;
+    library.removeWhere((item) => item.id == id);
+    return library.length < before;
+  }
 }
 
 rust.MeetingRecord _meeting({
@@ -111,6 +147,45 @@ void main() {
 
       expect(find.text('Platform standup'), findsOneWidget);
       expect(find.text('- Add three pods before Friday'), findsOneWidget);
+      expect(
+        find.byKey(const Key('mind_home_meeting_menu_m1')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('mind_home_meeting_menu_m1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Rename'), findsOneWidget);
+      expect(find.text('Move to new folder'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+    });
+
+    testWidgets('meeting row can rename and delete', (tester) async {
+      final service = _FakeMind(library: [_meeting()]);
+      await tester.pumpWidget(_app(MindHomeScreen(service: service)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('mind_home_meeting_menu_m1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('mind_home_rename_field_m1')),
+        'Weekly sync',
+      );
+      await tester.tap(find.byKey(const Key('mind_home_rename_confirm_m1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Weekly sync'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('mind_home_meeting_menu_m1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('mind_home_delete_confirm_m1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Weekly sync'), findsNothing);
+      expect(
+        find.text('No meetings yet. Press Record to start one.'),
+        findsOneWidget,
+      );
     });
 
     /// The first-run state. It must be distinguishable from a broken build,

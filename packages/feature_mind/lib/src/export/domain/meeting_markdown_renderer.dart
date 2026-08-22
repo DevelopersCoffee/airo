@@ -72,6 +72,7 @@ String renderTranscriptMarkdown({
   List<TranscriptExportLine> lines = const [],
   String fallbackTranscript = '',
   MeetingSpeakerRegistry speakerRegistry = MeetingSpeakerRegistry.empty,
+  Map<String, String> globalEnrolledNames = const {},
 }) {
   final buf = StringBuffer()
     ..write(
@@ -89,7 +90,7 @@ String renderTranscriptMarkdown({
       if (text.isEmpty) continue;
       final speakerPrefix = line.speakerLabel == null
           ? ''
-          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry)}: ';
+          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry, globalEnrolledNames)}: ';
       buf
         ..writeln('${formatTimestamp(line.startMs)} $speakerPrefix$text')
         ..writeln();
@@ -159,6 +160,7 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
       lines: input.transcriptLines,
       fallbackTranscript: input.fallbackTranscript,
       speakerRegistry: input.speakerRegistry,
+      globalEnrolledNames: input.globalEnrolledNames,
     ),
   };
 
@@ -208,11 +210,14 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
 List<MeetingExportBundle> composeBatchExport(List<MeetingExportInput> inputs) =>
     inputs.map(composeMeetingExportBundle).toList(growable: false);
 
-String _exportSpeakerPrefix(String label, MeetingSpeakerRegistry registry) {
-  final canonical = registry.canonicalLabel(label);
-  final display = mindSpeakerDisplayLabel(canonical, registry: registry);
-  if (display != formatMindSpeakerLabel(canonical)) {
-    return '$canonical ($display)';
-  }
-  return canonical;
+String _exportSpeakerPrefix(
+  String label,
+  MeetingSpeakerRegistry registry,
+  Map<String, String> globalEnrolledNames,
+) {
+  return mindSpeakerDisplayLabel(
+    label,
+    registry: registry,
+    globalEnrolledNames: globalEnrolledNames,
+  );
 }

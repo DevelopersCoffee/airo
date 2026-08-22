@@ -3,6 +3,7 @@ import 'package:feature_mind/src/mind_service.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// `MindService` isn't an interface — it's mocked directly, same as
 /// `mind_service_test.dart` mocks its own collaborators (`fake_bridges.dart`)
@@ -12,7 +13,7 @@ class MockMindService extends Mock implements MindService {}
 rust.MeetingRecord _meeting({
   required String id,
   String title = 'Standup',
-  int recordedAtMs = 1755000000000,
+  int recordedAtSeconds = 1755000000,
   String transcript = 'the flat transcript',
   String minutes = '',
   List<rust.MeetingDecisionRecord> decisions = const [],
@@ -21,7 +22,7 @@ rust.MeetingRecord _meeting({
 }) => rust.MeetingRecord(
   id: id,
   title: title,
-  recordedAt: BigInt.from(recordedAtMs),
+  recordedAt: BigInt.from(recordedAtSeconds),
   transcript: transcript,
   minutes: minutes,
   model: 'qwen',
@@ -41,10 +42,13 @@ rust.TranscriptDocumentRecord _doc({
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late MockMindService mind;
   late MeetingExportService service;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     mind = MockMindService();
     service = MeetingExportService(mind);
   });
@@ -54,6 +58,45 @@ void main() {
       when(() => mind.meeting('gone')).thenAnswer((_) async => null);
       final result = await service.exportMeeting('gone');
       expect(result, isNull);
+    });
+
+    test('uses seconds recordedAt and m{id} ms for frontmatter date', () async {
+      when(() => mind.meeting('m1755000000123')).thenAnswer(
+        (_) async => _meeting(
+          id: 'm1755000000123',
+          recordedAtSeconds: 1755000000,
+        ),
+      );
+      when(
+        () => mind.transcriptDocument('m1755000000123'),
+      ).thenAnswer((_) async => null);
+
+      final bundle = await service.exportMeeting('m1755000000123');
+
+      expect(bundle, isNotNull);
+      final transcript = bundle!.files['transcript.md']!;
+      expect(transcript, contains('date: 2025-08-'));
+      expect(transcript, isNot(contains('1970-01-')));
+    });
+
+    test('replaces generic title from transcript on export', () async {
+      when(() => mind.meeting('m1')).thenAnswer(
+        (_) async => _meeting(
+          id: 'm1',
+          title: 'Meeting 2026-08-23 03:29:45.987999',
+          transcript:
+              'Electric or any kind of energy I would say. There are kinetic batteries.',
+        ),
+      );
+      when(() => mind.transcriptDocument('m1')).thenAnswer((_) async => null);
+
+      final bundle = await service.exportMeeting('m1');
+
+      expect(bundle!.files['transcript.md'], contains('Electric or any kind'));
+      expect(
+        bundle.files['transcript.md'],
+        isNot(contains('Meeting 2026-08-23 03:29')),
+      );
     });
 
     test(

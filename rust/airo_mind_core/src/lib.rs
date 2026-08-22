@@ -69,6 +69,7 @@ pub mod content;
 /// and why Graph gets the deepest treatment.
 pub mod dsl;
 pub mod engine;
+pub mod engine_log;
 
 /// The in-process, non-durable event bus behind
 /// [`capability_api::CapabilityApi::emit_event`]. See the module doc for
@@ -162,6 +163,7 @@ pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
     SpeechEngine, TranscriptSegment, TranscriptionOptions,
 };
+pub use engine_log::engine_native_logs_verbose;
 pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{
     EngineMetrics, EngineName, EngineState, GroupCommitBuffer, LifecycleError, ManagedEngine,

@@ -14,6 +14,13 @@ use crate::result::DiarizationResult;
 use crate::single_speaker::SingleSpeakerDiarizer;
 use crate::stub_embedder::StubSpeakerEmbedder;
 
+/// Cosine threshold for joining an existing speaker cluster.
+///
+/// `0.85` merged distinct talkers in short mixed recordings (ECAPA same-speaker
+/// scores often sit 0.6–0.9). `0.72` still merges a voice with itself and
+/// splits two people in the same room.
+pub const DEFAULT_EMBEDDING_SIMILARITY: f32 = 0.72;
+
 /// Which diarizer runs for a recording.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DiarizationStrategy {
@@ -26,15 +33,26 @@ pub enum DiarizationStrategy {
     Embedding { similarity_threshold: f32 },
 }
 
-/// Strategy for transcribe: embedding when ECAPA weights are on disk, else solo.
+/// Strategy for transcribe: embedding when ECAPA weights **and** the ORT
+/// runtime are available, else solo (`sp0` on every segment).
+///
+/// File-on-disk alone is not enough: without `ecapa-ort` the embedder is a
+/// hash stub that collapses mixed speech into one speaker.
 pub fn product_diarization_strategy(models_dir: &Path) -> DiarizationStrategy {
-    if ecapa_model_path(models_dir).is_some() {
+    if ecapa_runtime_ready(models_dir) {
         DiarizationStrategy::Embedding {
-            similarity_threshold: 0.85,
+            similarity_threshold: DEFAULT_EMBEDDING_SIMILARITY,
         }
     } else {
         DiarizationStrategy::Solo
     }
+}
+
+fn ecapa_runtime_ready(models_dir: &Path) -> bool {
+    if ecapa_model_path(models_dir).is_none() {
+        return false;
+    }
+    cfg!(feature = "ecapa-ort")
 }
 
 /// Runs the selected strategy on ASR segments and optional 16 kHz mono PCM.
@@ -166,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn product_strategy_picks_embedding_when_ecapa_file_present() {
+    fn product_strategy_needs_ecapa_runtime_not_just_the_file() {
         let dir =
             std::env::temp_dir().join(format!("airo_diarize_strategy_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -174,12 +192,17 @@ mod tests {
         std::fs::write(dir.join(crate::model_files::ECAPA_TINY_ONNX_FILE), [0u8; 8])
             .expect("write ecapa stub file");
 
-        assert_eq!(
-            product_diarization_strategy(&dir),
-            DiarizationStrategy::Embedding {
-                similarity_threshold: 0.85,
-            }
-        );
+        let strategy = product_diarization_strategy(&dir);
+        if cfg!(feature = "ecapa-ort") {
+            assert_eq!(
+                strategy,
+                DiarizationStrategy::Embedding {
+                    similarity_threshold: DEFAULT_EMBEDDING_SIMILARITY,
+                }
+            );
+        } else {
+            assert_eq!(strategy, DiarizationStrategy::Solo);
+        }
 
         let _ = std::fs::remove_dir_all(&dir);
     }

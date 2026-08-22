@@ -62,6 +62,13 @@ if command -v rustup >/dev/null 2>&1; then
   export RUSTC="$(rustup which rustc)"
 fi
 unset CARGO_TARGET_DIR
+# ECAPA speaker labels need ONNX Runtime static libs. Install into
+# ~/.airo/onnxruntime/... so cargokit can add `--features ecapa`. Then unset
+# ORT_LIB_LOCATION: cargokit resolves the per-target path itself (universal
+# macOS builds must not inherit a host-arch-only env var).
+if [[ -x "$ROOT/scripts/install-onnxruntime.sh" ]]; then
+  "$ROOT/scripts/install-onnxruntime.sh" || echo "==> ORT install skipped; speakers stay solo"
+fi
 unset ORT_LIB_LOCATION
 if [[ "$(uname -m)" == "arm64" ]]; then
   export ARCHS=arm64
@@ -72,6 +79,8 @@ cp app/pubspec_mind.yaml app/pubspec.yaml
 trap 'git -C "$ROOT" checkout app/pubspec.yaml app/pubspec.lock; restore_app_info; restore_overrides' EXIT
 cd app
 flutter pub get
+# llama.cpp / whisper.cpp INFO (Metal buffers, KV cache) stays off stderr.
+# Full engine dump: AIRO_MIND_ENGINE_LOGS=1 app/tool/run_mind_macos.sh
 flutter run -d macos -t lib/main_mind.dart \
   --dart-define=APP_VARIANT=mind \
   --dart-define=AIRO_MIND_DESKTOP=true

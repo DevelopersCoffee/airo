@@ -423,19 +423,32 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       );
     }
 
-    final extracted = templateId == 'study_progress_v1'
-        ? _lifeTrackFacts.extractStudyProgress(prompt)
-        : _lifeTrackFacts.extractInsuranceClaim(prompt);
+    final extracted = switch (templateId) {
+      'study_progress_v1' => _lifeTrackFacts.extractStudyProgress(prompt),
+      'medical_surgery_v1' => _lifeTrackFacts.extractHospitalStay(prompt),
+      'real_estate_under_construction_v1' =>
+        _lifeTrackFacts.extractPropertyPurchase(prompt),
+      _ => _lifeTrackFacts.extractInsuranceClaim(prompt),
+    };
     if (extracted.isEmpty) {
-      return SkillModelAction.finalAnswer(
-        templateId == 'study_progress_v1'
-            ? 'I store study progress as a local LifeTrack — not a notes app. '
-                  'Tell me the subject, last topic, and exam date if you have one.'
-            : 'I can store this claim on this device. Paste the insurer, claim '
-                  'ID or broker reference, policy number if you have it, and '
-                  'whether documents were received. I will not file the claim '
-                  'or read your email.',
-      );
+      return SkillModelAction.finalAnswer(switch (templateId) {
+        'study_progress_v1' =>
+          'I store study progress as a local LifeTrack — not a notes app. '
+              'Tell me the subject, last topic, and exam date if you have one.',
+        'medical_surgery_v1' =>
+          'I can store this hospital stay on this device. Paste the hospital, '
+              'date, pre-op tests, and authorization reference if you have them. '
+              'I will not diagnose or change a care plan.',
+        'real_estate_under_construction_v1' =>
+          'I can store this purchase on this device. Paste the builder, '
+              'project, floor, and RERA number if you have them. I will not '
+              'give legal advice.',
+        _ =>
+          'I can store this claim on this device. Paste the insurer, claim '
+              'ID or broker reference, policy number if you have it, and '
+              'whether documents were received. I will not file the claim '
+              'or read your email.',
+      });
     }
 
     return SkillModelAction.toolCall(

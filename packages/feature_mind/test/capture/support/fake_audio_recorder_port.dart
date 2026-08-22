@@ -12,6 +12,7 @@ class FakeAudioRecorderPort implements AudioRecorderPort {
   String? startedPath;
 
   final _osEvents = StreamController<RecorderOsEvent>.broadcast();
+  final _levels = StreamController<double>.broadcast();
 
   @override
   Future<bool> hasPermission() async {
@@ -44,11 +45,17 @@ class FakeAudioRecorderPort implements AudioRecorderPort {
   @override
   Stream<RecorderOsEvent> get osEvents => _osEvents.stream;
 
+  @override
+  Stream<double> get levels => _levels.stream;
+
   void emitOsEvent(RecorderOsEvent event) => _osEvents.add(event);
+
+  void emitLevel(double level) => _levels.add(level);
 
   @override
   Future<void> dispose() async {
     calls.add('dispose');
     await _osEvents.close();
+    await _levels.close();
   }
 }

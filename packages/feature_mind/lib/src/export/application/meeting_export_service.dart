@@ -1,9 +1,14 @@
 import 'package:core_workers/core_workers.dart';
 
+import '../../meeting_ir/meeting_ir_status_writer.dart';
+import '../../meeting_title.dart';
+import '../../mind_diarization.dart';
 import '../../mind_service.dart';
 import '../../whisper/api/meetings.dart' as rust;
+import '../../speaker/global_speaker_enrollment_store.dart';
 import '../../speaker/meeting_speaker_registry.dart';
 import '../../speaker/meeting_speaker_registry_store.dart';
+import '../../meeting_ir/meeting_minutes_content.dart';
 import '../domain/meeting_export_models.dart';
 import '../domain/meeting_markdown_renderer.dart';
 
@@ -14,10 +19,17 @@ import '../domain/meeting_markdown_renderer.dart';
 /// `MeetingRecord.actionItems` (#1657 Stage 2), and timestamped transcript
 /// lines from `transcriptDocument` (#1629). The renderer stays pure Dart.
 class MeetingExportService {
-  const MeetingExportService(this._mindService, {this.speakerRegistryStore});
+  MeetingExportService(
+    this._mindService, {
+    MeetingSpeakerRegistryStore? speakerRegistryStore,
+    GlobalSpeakerEnrollmentStore? enrollmentStore,
+  }) : _speakerRegistryStore =
+           speakerRegistryStore ?? MeetingSpeakerRegistryStore(),
+       _enrollmentStore = enrollmentStore ?? GlobalSpeakerEnrollmentStore();
 
   final MindService _mindService;
-  final MeetingSpeakerRegistryStore? speakerRegistryStore;
+  final MeetingSpeakerRegistryStore _speakerRegistryStore;
+  final GlobalSpeakerEnrollmentStore _enrollmentStore;
 
   /// Same policy as everywhere else in the repo: parsing/serialization past
   /// ~50 KB moves off the main isolate via `runOffMain`
@@ -62,23 +74,35 @@ class MeetingExportService {
     final doc = await _mindService.transcriptDocument(meetingId);
     final lines = _linesFrom(doc);
     final duration = _durationFrom(doc);
-    final speakerRegistry = speakerRegistryStore == null
-        ? MeetingSpeakerRegistry.empty
-        : await speakerRegistryStore!.load(meetingId);
+    final speakerRegistry = await _speakerRegistryStore.load(meetingId);
+    final globalEnrolledNames = globalEnrolledSpeakerNames(
+      await _enrollmentStore.loadProfiles(),
+    );
 
     final minutes = meeting.minutes.trim();
+    final mom = minutes.isEmpty || isEmptyMeetingMinutes(minutes)
+        ? null
+        : minutes;
+
+    final transcriptForTitle = lines.isEmpty
+        ? meeting.transcript
+        : lines.map((l) => l.text).join(' ');
 
     return MeetingExportInput(
       meetingId: meeting.id,
-      title: meeting.title,
+      title: displayMeetingTitle(
+        title: meeting.title,
+        transcript: transcriptForTitle,
+      ),
       recordedAt: DateTime.fromMillisecondsSinceEpoch(
-        meeting.recordedAt.toInt(),
+        MeetingIrStatusWriter.recordedAtMsFor(meeting),
       ),
       duration: duration,
       transcriptLines: lines,
       fallbackTranscript: meeting.transcript,
-      momMarkdown: minutes.isEmpty ? null : minutes,
+      momMarkdown: mom,
       speakerRegistry: speakerRegistry,
+      globalEnrolledNames: globalEnrolledNames,
       actionItems: [
         for (final item in meeting.actionItems)
           ExportActionItem(

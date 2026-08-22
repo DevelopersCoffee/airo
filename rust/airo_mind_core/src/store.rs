@@ -486,6 +486,27 @@ impl MeetingStore {
     pub fn get(&self, id: &str) -> Result<Option<Meeting>, StoreError> {
         Ok(self.all()?.into_iter().find(|m| m.id == id))
     }
+
+    /// Drops [id] by rewriting the log with the remaining latest records.
+    /// Returns whether a meeting with that id was present.
+    pub fn delete(&self, id: &str) -> Result<bool, StoreError> {
+        let all = self.all()?;
+        let existed = all.iter().any(|meeting| meeting.id == id);
+        if !existed {
+            return Ok(false);
+        }
+        let remaining: Vec<Meeting> = all.into_iter().filter(|meeting| meeting.id != id).collect();
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&self.path)
+            .map_err(|e| StoreError::Io(e.to_string()))?;
+        for meeting in remaining {
+            self.save(&meeting)?;
+        }
+        Ok(true)
+    }
 }
 
 #[cfg(test)]
@@ -549,6 +570,22 @@ mod tests {
         let reopened = MeetingStore::open(&path).get("m1").unwrap().unwrap();
         assert_eq!(reopened, m);
         assert!(reopened.minutes.contains("Raj owns rollout"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn delete_drops_one_meeting_and_keeps_the_others() {
+        let path = temp("delete");
+        let _ = std::fs::remove_file(&path);
+        let store = MeetingStore::open(&path);
+        store.save(&meeting("m1", 1)).unwrap();
+        store.save(&meeting("m2", 2)).unwrap();
+
+        assert!(store.delete("m1").unwrap());
+        assert!(!store.delete("m1").unwrap());
+        let remaining = store.all().unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].id, "m2");
         let _ = std::fs::remove_file(&path);
     }
 
