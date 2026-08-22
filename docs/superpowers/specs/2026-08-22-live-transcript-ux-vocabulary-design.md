@@ -57,6 +57,8 @@ Mic → Audio stream
 - Rust: `meetings.rs` assigns `sp{N}` on STABLE; PARTIAL uses active lane
 - Dart: `SpeakerActivityTimeline` — per-speaker lanes, not colored amplitude bars
 - Dart: `MeetingLiveSessionCoordinator.speakerActivitySpans` from stable segments
+- Pause/resume stops interim PCM shim ingestion and skips ring push while paused (`push_live_pcm`)
+- `TranscriptEvent::Degraded` surfaced in capture UI (`meeting_capture_live_degraded`)
 
 ## Vocabulary Intelligence — P0
 

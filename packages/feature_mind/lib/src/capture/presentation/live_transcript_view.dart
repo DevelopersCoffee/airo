@@ -153,6 +153,18 @@ class _TranscriptLineTile extends StatelessWidget {
         children: [
           Row(
             children: [
+              Icon(
+                Icons.circle,
+                size: 10,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                line.speakerLabel,
+                key: Key('live_speaker_${line.segmentId}'),
+                style: speakerStyle,
+              ),
+              const Spacer(),
               Text(
                 formatLiveSegmentClock(line.startMs),
                 key: Key('live_time_${line.segmentId}'),
@@ -160,29 +172,26 @@ class _TranscriptLineTile extends StatelessWidget {
                   color: theme.colorScheme.outline,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                line.speakerLabel,
-                key: Key('live_speaker_${line.segmentId}'),
-                style: speakerStyle,
-              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: line.text, style: bodyStyle),
-                if (line.isPartial)
-                  TextSpan(
-                    text: ' ▌',
-                    style: bodyStyle?.copyWith(
-                      color: theme.colorScheme.primary,
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: line.text, style: bodyStyle),
+                  if (line.isPartial)
+                    TextSpan(
+                      text: ' ▌',
+                      style: bodyStyle?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
+              key: Key('live_text_${line.segmentId}'),
             ),
-            key: Key('live_text_${line.segmentId}'),
           ),
         ],
       ),

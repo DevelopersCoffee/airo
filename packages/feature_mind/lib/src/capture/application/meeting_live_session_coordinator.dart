@@ -5,6 +5,7 @@ import '../../whisper/api/meetings.dart' as rust;
 import '../domain/live_speaker_label.dart';
 import '../domain/live_transcript_line.dart';
 import '../domain/speaker_activity_span.dart';
+import 'live_pcm_shim_port.dart';
 import 'meeting_live_pcm_shim.dart';
 
 /// Result of a completed live STT session.
@@ -22,13 +23,13 @@ class MeetingLiveSessionResult {
 class MeetingLiveSessionCoordinator {
   MeetingLiveSessionCoordinator({
     MindSpeechBridge? speechBridge,
-    MeetingLivePcmShim? pcmShim,
+    LivePcmShimPort? pcmShim,
     this.onTranscriptChanged,
   }) : _speech = speechBridge ?? const RustMindSpeechBridge(),
        _pcmShim = pcmShim ?? MeetingLivePcmShim();
 
   final MindSpeechBridge _speech;
-  final MeetingLivePcmShim _pcmShim;
+  final LivePcmShimPort _pcmShim;
   final void Function()? onTranscriptChanged;
 
   StreamSubscription<TranscriptEvent>? _eventsSub;
@@ -62,6 +63,9 @@ class MeetingLiveSessionCoordinator {
   }
 
   int? get activeSpeakerIndex => _activeSpeakerIndex;
+
+  /// Recoverable degradation notice from the native live session (ring overflow, etc.).
+  String? get degradedMessage => _degradedMessage;
 
   /// Rows for the live transcript UI (stable + optional partial tail).
   List<LiveTranscriptLine> get transcriptLines {
@@ -100,6 +104,7 @@ class MeetingLiveSessionCoordinator {
   String? _partialText;
   String? _activeSpeakerLabel;
   int? _activeSpeakerIndex;
+  String? _degradedMessage;
   final List<TranscriptSegment> _stableSegments = [];
   final List<double> _amplitudeSamples = [];
 
@@ -112,6 +117,7 @@ class MeetingLiveSessionCoordinator {
     _partialText = null;
     _activeSpeakerLabel = null;
     _activeSpeakerIndex = null;
+    _degradedMessage = null;
     _stableSegments.clear();
     _amplitudeSamples.clear();
 
@@ -130,16 +136,18 @@ class MeetingLiveSessionCoordinator {
     await _pcmShim.start(sessionId: meetingId);
   }
 
-  void pause() {
+  Future<void> pause() async {
     final id = _sessionId;
     if (id == null) return;
+    await _pcmShim.pause();
     _speech.pauseLiveSession(sessionId: id);
   }
 
-  void resume() {
+  Future<void> resume() async {
     final id = _sessionId;
     if (id == null) return;
     _speech.resumeLiveSession(sessionId: id);
+    await _pcmShim.resume(sessionId: id);
   }
 
   Future<MeetingLiveSessionResult> finish() async {
@@ -223,7 +231,9 @@ class MeetingLiveSessionCoordinator {
         }
       case TranscriptEventTranscribing():
       case TranscriptEventCancelled():
-      case TranscriptEventDegraded():
+        break;
+      case TranscriptEventDegraded(:final message):
+        _degradedMessage = message;
         break;
       case TranscriptEventDegraded(:final message):
         _partialText = message;

@@ -990,6 +990,9 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
     let session = sessions
         .get_mut(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    if session.paused {
+        return Ok(());
+    }
     let push_report = session.pipeline.push_pcm(&samples);
     session.last_window_energy = rms_energy(&samples);
     if push_report.dropped > 0 {
@@ -997,9 +1000,6 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
             session,
             "Live transcript quality reduced — audio ring overflow.",
         )?;
-    }
-    if session.paused {
-        return Ok(());
     }
     let session_id = session_id.clone();
     drop(sessions);
