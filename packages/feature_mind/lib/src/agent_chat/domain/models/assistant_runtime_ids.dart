@@ -23,6 +23,8 @@ const String offlinePackageUnavailableMessage =
     'This offline package is not installed on this device yet. Open Profile > AI Models to download it or choose another runtime.';
 const String offlinePackageCatalogMissingMessage =
     'The selected offline package is no longer in the catalog. Open Project setup and choose another model.';
+const String constrainedGenerationRequiresLocalGgufMessage =
+    'Constrained generation (GBNF) only runs on a locally loaded GGUF.';
 
 String assistantModelIdForOfflineModel(String modelId) {
   return '$assistantOfflineModelPrefix$modelId';

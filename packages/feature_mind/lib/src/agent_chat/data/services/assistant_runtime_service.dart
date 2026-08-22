@@ -691,11 +691,16 @@ class AssistantRuntimeService {
     required String? selectedModelId,
     required String prompt,
     String? systemPrompt,
+    String? grammar,
   }) async {
     await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
     lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
+    final constrained = _isConstrainedGrammar(grammar);
+    if (constrained) {
+      _requireLocalGgufForGrammar(runtimeId);
+    }
     final fullPrompt = _withSystemPrompt(prompt, systemPrompt);
     _emitDebugTrace(
       AssistantRuntimeDebugTrace(
@@ -790,6 +795,7 @@ class AssistantRuntimeService {
             prompt: prompt,
             systemPrompt: systemPrompt,
             emitRequestTrace: false,
+            grammar: constrained ? grammar : null,
           )) {
             response = chunk;
           }
@@ -797,6 +803,12 @@ class AssistantRuntimeService {
             runtimeId,
             response ?? '',
             offlinePackageUnavailableMessage,
+          );
+        }
+        if (constrained) {
+          throw AssistantRuntimeUnavailableException(
+            runtimeId,
+            constrainedGenerationRequiresLocalGgufMessage,
           );
         }
         final response = _nonEmptyOrUnavailable(
@@ -1041,6 +1053,27 @@ class AssistantRuntimeService {
       );
     }
     return runtimeId;
+  }
+
+  bool _isConstrainedGrammar(String? grammar) =>
+      grammar != null && grammar.trim().isNotEmpty;
+
+  void _requireLocalGgufForGrammar(String runtimeId) {
+    switch (runtimeId) {
+      case geminiNanoAssistantModelId:
+      case litertGemmaAssistantModelId:
+      case geminiCloudAssistantModelId:
+        throw AssistantRuntimeUnavailableException(
+          runtimeId,
+          constrainedGenerationRequiresLocalGgufMessage,
+        );
+    }
+    if (offlineModelIdFromAssistantModelId(runtimeId) == null) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        constrainedGenerationRequiresLocalGgufMessage,
+      );
+    }
   }
 
   String _applyForcedPrefix(String prompt, GenerationConstraint? constraint) {
