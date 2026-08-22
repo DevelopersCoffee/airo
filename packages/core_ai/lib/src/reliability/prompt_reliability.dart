@@ -197,6 +197,7 @@ abstract final class PromptQualityGate {
     bool requiresStructuredOutput = false,
     PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
     int cacheablePrefixTokens = 0,
+    int fewShotCount = 0,
   }) {
     final userReport = inspectUserTurn(
       userText: userText,
@@ -208,6 +209,7 @@ abstract final class PromptQualityGate {
       outputContract: outputContract,
       prefixCache: prefixCache,
       cacheablePrefixTokens: cacheablePrefixTokens,
+      fewShotCount: fewShotCount,
     );
     final warnings = InstructionSet.fromLayers(
       system: systemPrompt,
