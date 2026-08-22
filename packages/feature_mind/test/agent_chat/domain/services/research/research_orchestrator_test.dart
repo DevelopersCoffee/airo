@@ -45,6 +45,9 @@ void main() {
     expect(events.last.detail, contains('Qwen is a family'));
     expect(events.last.detail, isNot(contains('SEARCH SNIPPET ONLY')));
     expect(events.last.detail, isNot(contains('no citations')));
+    expect(events.last.detail, contains('## Observability'));
+    expect(events.last.detail, contains('Sources used:'));
+    expect(events.last.detail, contains('Cost:'));
     expect(
       events.map((event) => event.kind),
       contains(ResearchEventKind.documentParsed),
@@ -233,6 +236,76 @@ void main() {
       expect(events.last.detail, contains('wiki/Large_language_model'));
     },
   );
+
+  test(
+    'local-only policy stays authoritative for a restored Private UI',
+    () async {
+      var searches = 0;
+      final engine = ResearchOrchestrator(
+        engines: [
+          _CountingEngine(
+            id: 'wikipedia',
+            onSearch: () => searches++,
+            hitsFor: (_) => const [],
+          ),
+        ],
+      );
+
+      final events = await engine
+          .run(
+            const ResearchRequest(
+              question: 'Use only local research',
+              mode: ResearchMode.quick,
+              policy: SearchPolicy.localOnly,
+              privacy: PrivacyProfile.private,
+            ),
+          )
+          .toList();
+
+      expect(events.last.kind, ResearchEventKind.researchCompleted);
+      expect(searches, 0);
+    },
+  );
+
+  test(
+    'one search provider failure does not discard successful providers',
+    () async {
+      final orchestrator = ResearchOrchestrator(
+        engines: [
+          const _FakeSearchEngine(
+            id: 'wikipedia',
+            hits: [
+              ResearchHit(
+                engineId: 'wikipedia',
+                url: 'https://en.wikipedia.org/wiki/Qwen',
+                title: 'Qwen',
+                snippet: 'Candidate',
+              ),
+            ],
+          ),
+          const _ThrowingSearchEngine('searxng'),
+        ],
+        sourceManager: SourceManager(
+          fetcher: (_) async =>
+              '<article><h1>Qwen</h1><p>Qwen is a family of language models.</p></article>',
+        ),
+      );
+
+      final events = await orchestrator
+          .run(
+            const ResearchRequest(
+              question: 'What is Qwen?',
+              mode: ResearchMode.quick,
+              policy: SearchPolicy.privacyFirst,
+              privacy: PrivacyProfile.private,
+            ),
+          )
+          .toList();
+
+      expect(events.last.kind, ResearchEventKind.researchCompleted);
+      expect(events.last.detail, contains('Qwen is a family'));
+    },
+  );
 }
 
 String _article({required String title, required String paragraph}) {
@@ -269,5 +342,17 @@ class _CountingEngine implements ResearchSearchEngine {
   Future<List<ResearchHit>> search(String query, {int maxResults = 5}) async {
     onSearch();
     return hitsFor(query);
+  }
+}
+
+class _ThrowingSearchEngine implements ResearchSearchEngine {
+  const _ThrowingSearchEngine(this.id);
+
+  @override
+  final String id;
+
+  @override
+  Future<List<ResearchHit>> search(String query, {int maxResults = 5}) {
+    throw StateError('$id unavailable');
   }
 }

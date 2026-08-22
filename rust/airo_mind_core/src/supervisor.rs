@@ -176,6 +176,28 @@ impl Supervisor {
         Ok(())
     }
 
+    /// Refuses before a live session opens the microphone when the speech model
+    /// cannot be admitted under the current budget (`ADR-0025` §6.6).
+    pub fn check_speech_admission(&self) -> Result<(), RuntimeError> {
+        let engine = self
+            .speech
+            .as_ref()
+            .ok_or(RuntimeError::NoEngine("speech"))?;
+        self.admit(engine.resource_request().memory_mb)?;
+        Ok(())
+    }
+
+    /// Borrow the registered speech engine for windowed live inference.
+    ///
+    /// Callers must still route work through [`Self::run_speech`] when they need
+    /// admission and concurrency enforcement per window.
+    pub fn speech_engine(&self) -> Result<&dyn SpeechEngine, RuntimeError> {
+        Ok(self
+            .speech
+            .as_deref()
+            .ok_or(RuntimeError::NoEngine("speech"))?)
+    }
+
     /// Runs one generation job.
     pub fn run_generation(
         &self,
@@ -341,11 +363,11 @@ mod tests {
                 if cancel.is_cancelled() {
                     return Err(EngineError::Cancelled);
                 }
-                sink(TranscriptSegment {
-                    start_ms: (i as u64) * 1000,
-                    end_ms: (i as u64 + 1) * 1000,
-                    text: format!("segment {i}"),
-                })?;
+                sink(TranscriptSegment::final_text(
+                    (i as u64) * 1000,
+                    (i as u64 + 1) * 1000,
+                    format!("segment {i}"),
+                ))?;
             }
             Ok(())
         }
@@ -447,11 +469,7 @@ mod tests {
                 sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
             ) -> Result<(), EngineError> {
                 *self.observed.lock().unwrap() = Some(options.clone());
-                sink(TranscriptSegment {
-                    start_ms: 0,
-                    end_ms: 100,
-                    text: "hi".into(),
-                })
+                sink(TranscriptSegment::final_text(0, 100, "hi".into()))
             }
         }
         s.register_speech(Box::new(ObservingSpeech {

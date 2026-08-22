@@ -231,7 +231,7 @@ void main() {
     );
 
     test(
-      'pinned hospital recovery answers pending from the entity graph',
+      'pinned hospital-recovery-planner answers pending from the graph without the word track',
       () async {
         final session = ChatEntityGraphSession(
           store: ChatEntityGraphStore.memory(),
@@ -255,7 +255,8 @@ void main() {
         expect(result.isError, isFalse);
         expect(result.message, contains('City Hospital'));
         expect(result.message, contains('PREAUTH-44'));
-        expect(result.message.toLowerCase(), isNot(contains('track')));
+        expect(result.message, contains('CBC and ECG'));
+        expect(result.message.toLowerCase(), isNot(contains('diagnose')));
         expect(result.message, isNot(contains('I could not find a LifeTrack')));
         expect(
           result.traces.map((trace) => trace.detail),
@@ -265,7 +266,7 @@ void main() {
     );
 
     test(
-      'pinned property purchase answers pending from the entity graph',
+      'pinned property-purchase-planner answers pending from the graph without the word track',
       () async {
         final session = ChatEntityGraphSession(
           store: ChatEntityGraphStore.memory(),
@@ -286,8 +287,10 @@ void main() {
 
         expect(result.handled, true);
         expect(result.isError, isFalse);
-        expect(result.message, contains('Prestige'));
         expect(result.message, contains('P52100012345'));
+        expect(result.message, contains('Prestige'));
+        expect(result.message, contains('Promised Amenities List'));
+        expect(result.message.toLowerCase(), isNot(contains('legal advice')));
         expect(result.message, isNot(contains('I could not find a LifeTrack')));
         expect(
           result.traces.map((trace) => trace.detail),

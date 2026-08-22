@@ -48,8 +48,9 @@ Stream<GenerationEvent> generateMinutes({
 /// meeting-secretary wrapper). Shares the same generation engine as
 /// [`generate_minutes`].
 ///
-/// `grammar` is a GBNF grammar (start symbol `root`) constraining the token
-/// stream, or `null` for unconstrained sampling.
+/// `grammar` is the same GBNF plumbing as [`generate_minutes`]: start symbol
+/// `root`, or `None` for unconstrained sampling. Chat uses this to lock
+/// headers when a later user turn supersedes an earlier constraint.
 Stream<GenerationEvent> generateCompletion({
   required String prompt,
   required int maxOutputTokens,

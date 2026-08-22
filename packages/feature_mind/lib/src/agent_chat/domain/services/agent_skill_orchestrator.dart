@@ -425,7 +425,7 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
 
     final extracted = switch (templateId) {
       'study_progress_v1' => _lifeTrackFacts.extractStudyProgress(prompt),
-      'medical_surgery_v1' => _lifeTrackFacts.extractHospitalStay(prompt),
+      'medical_surgery_v1' => _lifeTrackFacts.extractMedicalSurgery(prompt),
       'real_estate_under_construction_v1' =>
         _lifeTrackFacts.extractPropertyPurchase(prompt),
       _ => _lifeTrackFacts.extractInsuranceClaim(prompt),
@@ -562,7 +562,9 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     final graphUseful =
         graph.isNotEmpty &&
         !graph.contains('no stored claim entities') &&
-        !graph.contains('no stored chat entities');
+        !graph.contains('no stored chat entities') &&
+        !graph.contains('no stored hospital') &&
+        !graph.contains('no stored property');
     final lifeTrackUseful =
         lifeTrack.isNotEmpty &&
         !lifeTrack.contains('I could not find a LifeTrack matching');

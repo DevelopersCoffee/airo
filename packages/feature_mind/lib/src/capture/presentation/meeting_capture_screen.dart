@@ -11,9 +11,12 @@ import '../../trust/scribe_trust_signals.dart';
 import '../../trust/scribe_trust_state.dart';
 import '../application/meeting_capture_controller.dart';
 import '../application/meeting_capture_providers.dart';
+import '../application/meeting_live_session_coordinator.dart';
 import '../application/speech_language_preference.dart';
+import '../application/transcription_mode_preference.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
+import '../domain/transcription_mode.dart';
 import 'meeting_recording_visualizer.dart';
 
 /// In-app meeting capture (#1656 AC1, AC6).
@@ -62,8 +65,11 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   StreamSubscription<MeetingRecordingSnapshot>? _snapshotSub;
   StreamSubscription<List<MeetingProcessingJob>>? _jobsSub;
   MeetingCaptureController? _controller;
+  MeetingLiveSessionCoordinator? _liveCoordinator;
+  String? _meetingId;
   MeetingRecordingSnapshot _snapshot = MeetingRecordingSnapshot.idle;
   String? _startError;
+  String? _liveWarning;
 
   /// The job this session enqueued, while it is still in the queue. Non-null
   /// means "transcribing" — the screen stays put and reports progress instead
@@ -83,8 +89,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   @override
   void dispose() {
-    // The provider owns the controller. Disposing it here also disposed the
-    // encoder, so returning to this screen after consent left Start dead.
+    _liveCoordinator?.dispose();
     _snapshotSub?.cancel();
     _jobsSub?.cancel();
     super.dispose();
@@ -138,13 +143,44 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   Future<void> _start() async {
     if (!_consentGate.isGranted) return;
-    setState(() => _startError = null);
+    setState(() {
+      _startError = null;
+      _liveWarning = null;
+    });
     final controller = ref.read(meetingCaptureControllerProvider);
     _controller = controller;
     await _snapshotSub?.cancel();
     _snapshotSub = controller.snapshots.listen((snapshot) {
       if (mounted) setState(() => _snapshot = snapshot);
     });
+
+    final meetingId = 'meeting-${DateTime.now().millisecondsSinceEpoch}';
+    _meetingId = meetingId;
+    final transcriptionMode = ref.read(transcriptionModeProvider);
+    final languageMode = ref.read(speechLanguageModeProvider);
+    if (transcriptionMode.usesLivePipeline) {
+      _liveCoordinator = MeetingLiveSessionCoordinator(
+        onTranscriptChanged: () {
+          if (mounted) setState(() {});
+        },
+      );
+      try {
+        await _liveCoordinator!.start(
+          meetingId: meetingId,
+          language: languageMode.processLanguageCode,
+        );
+      } on Object catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _liveWarning =
+              'Live transcription could not start ($error). '
+              'Recording will continue — the file will be transcribed after you stop.';
+        });
+        await _liveCoordinator?.dispose();
+        _liveCoordinator = null;
+      }
+    }
+
     try {
       final path = await ref.read(meetingRecordingPathProvider)();
       await _consentGate.startRecording(() => controller.start(path));
@@ -166,22 +202,51 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     }
   }
 
-  Future<void> _pause() async => _controller?.pause();
+  Future<void> _pause() async {
+    await _controller?.pause();
+    _liveCoordinator?.pause();
+  }
 
-  Future<void> _resume() async => _controller?.resume();
+  Future<void> _resume() async {
+    await _controller?.resume();
+    _liveCoordinator?.resume();
+  }
 
   Future<void> _stop() async {
     final controller = _controller;
     if (controller == null) return;
     final path = await controller.stop();
     if (path == null) return;
+
+    MeetingLiveSessionResult? liveResult;
+    if (_liveCoordinator != null) {
+      try {
+        liveResult = await _liveCoordinator!.finish();
+      } on Object catch (error) {
+        if (mounted) {
+          setState(() => _startError = '$error');
+        }
+      }
+      await _liveCoordinator!.dispose();
+      _liveCoordinator = null;
+    }
+
+    final transcriptionMode = ref.read(transcriptionModeProvider);
+    final meetingId =
+        _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
     final now = DateTime.now();
+    final title = 'Meeting ${now.toLocal()}';
+    final isLiveOnly = transcriptionMode == TranscriptionMode.live;
+    final isLiveRefine = transcriptionMode == TranscriptionMode.liveRefine;
     final job = MeetingProcessingJob(
-      id: 'meeting-${now.millisecondsSinceEpoch}',
+      id: meetingId,
       audioPath: path,
-      title: 'Meeting ${now.toLocal()}',
+      title: title,
       enqueuedAtMs: now.millisecondsSinceEpoch,
       source: MeetingProcessingSource.live,
+      completedTranscript: isLiveOnly ? liveResult?.text : null,
+      completedSegments: isLiveOnly ? liveResult?.segments : null,
+      refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
     );
     if (!mounted) return;
     setState(() {
@@ -190,10 +255,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
       _processingError = null;
     });
     final queue = await ref.read(meetingProcessingQueueProvider.future);
-    // Subscribed before `enqueue` so the first persisted state is not missed:
-    // a short recording can finish transcribing before a later listen lands,
-    // and the queue prunes completed jobs, which would look like a job that
-    // never existed.
     await _jobsSub?.cancel();
     _jobsSub = queue.jobs.listen((jobs) => _onJobsChanged(job.id, jobs));
     await queue.enqueue(job);
@@ -206,9 +267,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
       if (candidate.id == jobId) mine = candidate;
     }
     if (mine == null) {
-      // Gone from the queue means processed: `MeetingProcessingQueue` prunes a
-      // job the moment it succeeds, because the meeting lives in the store
-      // from then on (see that class's "Retention discipline" note).
       setState(() {
         _processing = null;
         _processed = true;
@@ -227,8 +285,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // autoDispose: `ref.read` does not keep the controller alive. Watching
-    // here is what stops Start from disposing the encoder on the same frame.
     ref.watch(meetingCaptureControllerProvider);
     final showConsentUi =
         ref.watch(recordingConsentPromptProvider) || _implicitConsentFailed;
@@ -238,6 +294,9 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final paused = lifecycle == MeetingRecordingLifecycle.paused;
     final active = recording || paused;
     final languageMode = ref.watch(speechLanguageModeProvider);
+    final transcriptionMode = ref.watch(transcriptionModeProvider);
+    final showLiveTranscript =
+        active && transcriptionMode.usesLivePipeline && _liveCoordinator != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record meeting')),
@@ -278,6 +337,10 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                   error: _processingError,
                   onOpenLibrary: () => Navigator.of(context).maybePop(),
                 ),
+                if (showLiveTranscript) ...[
+                  const SizedBox(height: 16),
+                  _LiveTranscriptPanel(coordinator: _liveCoordinator!),
+                ],
                 if (paused && _snapshot.pausedByOs)
                   const Padding(
                     padding: EdgeInsets.only(top: 20),
@@ -287,6 +350,16 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                       'microphone. Recording will resume when it ends.',
                     ),
                   ),
+                if (_liveWarning != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _liveWarning!,
+                    key: const Key('meeting_capture_live_warning'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -387,11 +460,49 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   }
 }
 
+class _LiveTranscriptPanel extends StatelessWidget {
+  const _LiveTranscriptPanel({required this.coordinator});
+
+  final MeetingLiveSessionCoordinator coordinator;
+
+  @override
+  Widget build(BuildContext context) {
+    final stable = coordinator.stableSegments;
+    final partial = coordinator.partialText;
+    return Card(
+      key: const Key('meeting_capture_live_transcript'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Live transcript',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            if (stable.isEmpty && partial == null)
+              const Text('Listening…')
+            else ...[
+              for (final segment in stable)
+                Text(segment.text, key: Key('live_stable_${segment.id}')),
+              if (partial != null)
+                Text(
+                  partial,
+                  key: const Key('meeting_capture_live_partial'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// What happened to the recording after Stop.
-///
-/// Transcription runs on a background queue that can take minutes, so without
-/// this the person saw Stop do nothing at all and concluded the meeting was
-/// lost — the library genuinely has nothing to show until the job finishes.
 class _ProcessingStatus extends StatelessWidget {
   const _ProcessingStatus({
     required this.job,

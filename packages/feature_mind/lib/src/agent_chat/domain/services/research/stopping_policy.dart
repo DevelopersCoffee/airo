@@ -6,6 +6,8 @@ class ResearchProgress {
     required this.uncoveredNodes,
     required this.iterationsUsed,
     required this.maxIterations,
+    this.costUsed = 0,
+    this.maxCost = 0,
   });
 
   final int searchesUsed;
@@ -14,6 +16,8 @@ class ResearchProgress {
   final int uncoveredNodes;
   final int iterationsUsed;
   final int maxIterations;
+  final int costUsed;
+  final int maxCost;
 }
 
 enum StopDecision { continueWork, stopCoverage, stopBudget, stopIterations }
@@ -32,6 +36,9 @@ class EvidenceSufficiencyPolicy implements StoppingPolicy {
       return StopDecision.stopCoverage;
     }
     if (progress.searchesUsed >= progress.maxSearches) {
+      return StopDecision.stopBudget;
+    }
+    if (progress.maxCost > 0 && progress.costUsed >= progress.maxCost) {
       return StopDecision.stopBudget;
     }
     if (progress.iterationsUsed >= progress.maxIterations &&

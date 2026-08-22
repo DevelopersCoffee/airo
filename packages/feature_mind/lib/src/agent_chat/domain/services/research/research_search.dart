@@ -31,14 +31,16 @@ class SearchRouter {
   static List<String> engineIds(SearchPolicy policy) {
     switch (policy) {
       case SearchPolicy.localOnly:
-        return const [];
+        return const ['local_memory'];
       case SearchPolicy.privacyFirst:
-        return const ['wikipedia'];
+        return const ['wikipedia', 'searxng'];
       case SearchPolicy.balanced:
       case SearchPolicy.maximumQuality:
-        return const ['wikipedia', 'arxiv', 'semantic_scholar'];
+        return const ['wikipedia', 'arxiv', 'semantic_scholar', 'github'];
       case SearchPolicy.academic:
-        return const ['arxiv', 'semantic_scholar'];
+        return const ['arxiv', 'semantic_scholar', 'pubmed', 'crossref'];
     }
   }
+
+  static List<String> engineIdsFor(PrivacyProfile profile) => profile.engineIds;
 }

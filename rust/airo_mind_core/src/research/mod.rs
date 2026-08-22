@@ -12,7 +12,9 @@ mod engine;
 mod evidence;
 mod interpreter;
 mod library;
+mod metrics;
 mod planner;
+mod privacy;
 mod query;
 mod request;
 mod search;
@@ -33,7 +35,9 @@ pub use evidence::{
 };
 pub use interpreter::{interpret, InterpretedGoal, ResearchIntent};
 pub use library::{delta_urls, topic_key, InMemoryResearchLibrary, ResearchLibraryEntry};
+pub use metrics::{ResearchCostModel, ResearchMetrics};
 pub use planner::{PlanNodeKind, ResearchPlan, ResearchPlanNode};
+pub use privacy::PrivacyProfile;
 pub use query::{queries_for, QuerySet};
 pub use request::{ResearchBudget, ResearchMode, ResearchRequest, SearchPolicy};
 pub use search::{

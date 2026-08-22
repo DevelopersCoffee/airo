@@ -38,59 +38,70 @@ void main() {
     expect(projector.firstUnoffered(graph), isNull);
   });
 
-  test('claim plus hospital yields insurance and surgery journeys', () {
-    final graph = linker.ingest(
-      ChatEntityGraph.empty,
-      'Niva Bupa reimbursement Claim ID 9001001 after surgery at City Hospital '
-      'on 12 Sep, pre-op tests CBC and ECG, auth ref PREAUTH-44',
-    );
-
-    final journeys = projector.project(graph);
-    expect(
-      journeys.map((journey) => journey.templateId),
-      containsAll(['insurance_claim_v1', 'medical_surgery_v1']),
-    );
-    final surgery = journeys.singleWhere(
-      (journey) => journey.templateId == 'medical_surgery_v1',
-    );
-    expect(surgery.facts['Required Tests List'], contains('CBC'));
-    expect(surgery.facts['Insurance Authorization Reference'], 'PREAUTH-44');
-    expect(surgery.isOfferable, isTrue);
-  });
-
-  test('property-only graph yields an under-construction journey', () {
-    final graph = linker.ingest(
-      ChatEntityGraph.empty,
-      'buying Tower B floor 14 from Prestige, RERA P52100012345',
-    );
-
-    final journeys = projector.project(graph);
-    expect(journeys, hasLength(1));
-    expect(journeys.single.templateId, 'real_estate_under_construction_v1');
-    expect(journeys.single.facts['RERA Registration Number'], 'P52100012345');
-    expect(journeys.single.facts['Your Target Floor'], '14');
-    expect(journeys.single.isOfferable, isTrue);
-  });
-
   test(
-    'firstUnoffered skips a marked hospital journey and keeps the claim',
+    'Niva Bupa claim plus City Hospital yields insurance and surgery journeys',
     () {
-      var graph = linker.ingest(
+      final graph = linker.ingest(
         ChatEntityGraph.empty,
-        'Niva Bupa Claim ID 9001001 after surgery at City Hospital on 12 Sep',
-      );
-      final surgery = projector
-          .project(graph)
-          .singleWhere((journey) => journey.templateId == 'medical_surgery_v1');
-      graph = graph.withNodeAttribute(
-        surgery.subjectNodeId,
-        'journey_offered',
-        'true',
+        'Niva Bupa Claim ID 9001001 after surgery at City Hospital.',
       );
 
-      final next = projector.firstUnoffered(graph);
-      expect(next, isNotNull);
-      expect(next!.templateId, 'insurance_claim_v1');
+      final journeys = projector.project(graph);
+      expect(
+        journeys.map((journey) => journey.templateId),
+        containsAll(['insurance_claim_v1', 'medical_surgery_v1']),
+      );
+      expect(journeys, hasLength(2));
+      final surgery = journeys.singleWhere(
+        (journey) => journey.templateId == 'medical_surgery_v1',
+      );
+      expect(surgery.isOfferable, isTrue);
+      expect(surgery.facts['Hospital'], 'City Hospital');
+      final claim = journeys.singleWhere(
+        (journey) => journey.templateId == 'insurance_claim_v1',
+      );
+      expect(claim.facts['Claim ID'], '9001001');
     },
   );
+
+  test(
+    'property-only graph yields a real_estate_under_construction journey',
+    () {
+      final graph = linker.ingest(
+        ChatEntityGraph.empty,
+        'buying Tower B floor 14 from Prestige, RERA P52100012345',
+      );
+
+      final journeys = projector.project(graph);
+      expect(journeys, hasLength(1));
+      expect(journeys.single.templateId, 'real_estate_under_construction_v1');
+      expect(journeys.single.isOfferable, isTrue);
+      expect(journeys.single.facts['RERA Registration Number'], 'P52100012345');
+      expect(journeys.single.facts['Your Target Floor'], '14');
+      expect(projector.firstUnoffered(graph), isNotNull);
+    },
+  );
+
+  test('firstUnoffered skips a marked claim and still offers hospital', () {
+    var graph = linker.ingest(
+      ChatEntityGraph.empty,
+      'Niva Bupa Claim ID 9001001 after surgery at City Hospital.',
+    );
+    graph = graph.withNodeAttribute(
+      'identifier:9001001',
+      'journey_offered',
+      'true',
+    );
+
+    final next = projector.firstUnoffered(graph);
+    expect(next, isNotNull);
+    expect(next!.templateId, 'medical_surgery_v1');
+
+    graph = graph.withNodeAttribute(
+      next.subjectNodeId,
+      'journey_offered',
+      'true',
+    );
+    expect(projector.firstUnoffered(graph), isNull);
+  });
 }

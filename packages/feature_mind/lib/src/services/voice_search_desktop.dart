@@ -47,6 +47,8 @@ Future<String> _transcribeWithWhisper(String path) async {
         return text.trim();
       case whisper.TranscriptEvent_Transcribing():
       case whisper.TranscriptEvent_Cancelled():
+      case whisper.TranscriptEvent_Delta():
+      case whisper.TranscriptEvent_Degraded():
         break;
     }
   }

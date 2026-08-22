@@ -1,0 +1,11 @@
+{
+  "template_id": "real_estate_under_construction_v1",
+  "facts": {
+    "RERA Registration Number": "P52100012345",
+    "Builder": "Prestige",
+    "Builder Track Record Notes": "Prestige",
+    "Project": "Tower B",
+    "Your Target Floor": "14"
+  },
+  "is_offerable": true
+}

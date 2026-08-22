@@ -285,6 +285,51 @@ void main() {
   );
 
   test(
+    'runs live + refine through processWithRefine when baseline is set',
+    () async {
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('refined transcript', [
+          TranscriptSegment(
+            id: 'r0',
+            startMs: 0,
+            endMs: 1200,
+            text: 'refined hello',
+          ),
+        ]),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
+      final audioFile = File('${tempDir.path}/meeting.wav')
+        ..writeAsStringSync('audio');
+      final runner = MeetingProcessingJobRunner(
+        mindService: mindService,
+        retentionPolicy: () => AudioRetentionPolicy.keepAfterTranscript,
+      );
+
+      await runner.call(
+        MeetingProcessingJob(
+          id: 'm1',
+          audioPath: audioFile.path,
+          title: 'Standup',
+          enqueuedAtMs: 0,
+          refineBaselineSegments: const [
+            TranscriptSegment(
+              id: 's0',
+              startMs: 0,
+              endMs: 1000,
+              text: 'live hello',
+            ),
+          ],
+        ),
+      );
+
+      expect(speech.savedSegments?.single.id, 's0');
+      expect(speech.savedSegments?.single.text, 'refined hello');
+    },
+  );
+
+  test(
     'onProcessed runs after a successful pipeline and before retention delete',
     () async {
       speech.transcriptEvents = const [

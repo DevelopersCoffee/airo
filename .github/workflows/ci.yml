@@ -65,9 +65,7 @@ jobs:
         run: |
           # feature_mind's *.freezed.dart is gitignored; the app depends on
           # feature_mind since SSOT Phase 3, so its codegen must run first.
-          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
-          cd app
-          dart run build_runner build
+          scripts/run-ci-codegen.sh
 
       - name: Configure firebase_options.dart
         env:
@@ -402,9 +400,7 @@ jobs:
           # feature_mind's *.freezed.dart is gitignored; the app depends on
           # feature_mind since SSOT Phase 3, so its codegen must run before
           # app tests compile.
-          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
-          cd app
-          dart run build_runner build
+          scripts/run-ci-codegen.sh
 
       - name: Configure firebase_options.dart
         env:
@@ -695,9 +691,7 @@ jobs:
         run: |
           # feature_mind's *.freezed.dart is gitignored; the app depends on
           # feature_mind since SSOT Phase 3, so its codegen must run first.
-          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
-          cd app
-          dart run build_runner build
+          scripts/run-ci-codegen.sh
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
         if: steps.android_scope.outputs.should_build == 'true'
@@ -1028,9 +1022,7 @@ jobs:
         run: |
           # feature_mind's *.freezed.dart is gitignored; the app depends on
           # feature_mind since SSOT Phase 3, so its codegen must run first.
-          (cd packages/feature_mind && flutter pub get && dart run build_runner build)
-          cd app
-          dart run build_runner build
+          scripts/run-ci-codegen.sh
 
       - name: Configure firebase_options.dart
         env:

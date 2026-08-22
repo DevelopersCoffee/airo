@@ -9,6 +9,27 @@ pub enum ResearchMode {
     Exhaustive,
 }
 
+impl ResearchMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Quick => "quick",
+            Self::Standard => "standard",
+            Self::Deep => "deep",
+            Self::Exhaustive => "exhaustive",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "quick" => Some(Self::Quick),
+            "standard" => Some(Self::Standard),
+            "deep" => Some(Self::Deep),
+            "exhaustive" => Some(Self::Exhaustive),
+            _ => None,
+        }
+    }
+}
+
 /// Which search providers a job may use. The model does not pick this.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SearchPolicy {
@@ -17,6 +38,29 @@ pub enum SearchPolicy {
     Balanced,
     MaximumQuality,
     Academic,
+}
+
+impl SearchPolicy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalOnly => "local_only",
+            Self::PrivacyFirst => "privacy_first",
+            Self::Balanced => "balanced",
+            Self::MaximumQuality => "maximum_quality",
+            Self::Academic => "academic",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "local_only" => Some(Self::LocalOnly),
+            "privacy_first" => Some(Self::PrivacyFirst),
+            "balanced" => Some(Self::Balanced),
+            "maximum_quality" => Some(Self::MaximumQuality),
+            "academic" => Some(Self::Academic),
+            _ => None,
+        }
+    }
 }
 
 /// Hard caps for one research job. Sufficiency can stop the job earlier.
@@ -28,6 +72,7 @@ pub struct ResearchBudget {
     pub max_parallel_tasks: u32,
     pub max_tokens: u64,
     pub max_duration_secs: u64,
+    pub max_cost_micros: u64,
 }
 
 impl ResearchBudget {
@@ -40,6 +85,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 2,
                 max_tokens: 4096,
                 max_duration_secs: 30,
+                max_cost_micros: 8_000,
             },
             ResearchMode::Standard => Self {
                 max_searches: 15,
@@ -48,6 +94,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 4,
                 max_tokens: 12_288,
                 max_duration_secs: 120,
+                max_cost_micros: 40_000,
             },
             ResearchMode::Deep => Self {
                 max_searches: 40,
@@ -56,6 +103,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 6,
                 max_tokens: 32_768,
                 max_duration_secs: 480,
+                max_cost_micros: 150_000,
             },
             ResearchMode::Exhaustive => Self {
                 max_searches: 100,
@@ -64,6 +112,7 @@ impl ResearchBudget {
                 max_parallel_tasks: 8,
                 max_tokens: 65_536,
                 max_duration_secs: 1_200,
+                max_cost_micros: 500_000,
             },
         }
     }

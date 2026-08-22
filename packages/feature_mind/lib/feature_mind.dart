@@ -120,7 +120,17 @@ export 'src/agent_chat/domain/models/assistant_model_selection.dart';
 export 'src/agent_chat/domain/models/assistant_runtime_ids.dart';
 export 'src/agent_chat/domain/models/chat_models.dart';
 export 'src/agent_chat/domain/models/chat_response_metadata.dart';
+export 'src/agent_chat/domain/models/research_event.dart';
+export 'src/agent_chat/domain/models/research_request.dart';
 export 'src/agent_chat/domain/services/agent_skill_registry.dart';
+export 'src/agent_chat/domain/services/deep_research_engine.dart'
+    show
+        createLocalDeepResearchEngine,
+        DeepResearchEngine,
+        DeepResearchEngineFactory;
+export 'src/agent_chat/domain/services/research/research_checkpoint.dart';
+export 'src/agent_chat/domain/services/research/research_control.dart';
+export 'src/agent_chat/domain/services/research/research_library.dart';
 export 'src/agent_chat/presentation/screens/agent_skills_screen.dart';
 export 'src/agent_chat/presentation/screens/chat_screen.dart';
 export 'src/agent_chat/presentation/screens/device_capability_report_screen.dart';
@@ -298,6 +308,7 @@ export 'src/provenance/domain/models/entity_relation.dart';
 export 'src/provenance/domain/services/entity_extractor.dart';
 export 'src/provenance/domain/services/entity_relation_extractor.dart';
 export 'src/provenance/domain/services/model_entity_extractor.dart';
+export 'src/provenance/data/local_gguf_ner_complete.dart';
 export 'src/provenance/presentation/widgets/entity_chip.dart';
 export 'src/provenance/presentation/widgets/provenance_inspector.dart';
 

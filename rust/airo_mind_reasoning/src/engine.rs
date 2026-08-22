@@ -18,7 +18,7 @@ use crate::request::ReasoningRequest;
 use crate::result::ReasoningResult;
 use crate::tools::{ToolExecutor, MAX_TOOL_ITERATIONS};
 use crate::validator::validate_result;
-use airo_mind_intent::{classify, ClassifyRequest, IntentStatus};
+use airo_mind_intent::{classify, compare_shadow, ClassifyRequest, IntentStatus};
 
 pub struct ReasoningTimings {
     pub policy_ms: u128,
@@ -89,6 +89,9 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
             legacy_complexity: Some(request.intent.complexity),
             proposal,
         });
+        emit(ReasoningEvent::Progress {
+            message: compare_shadow(&request.intent.kind, &decision.intent).encode_progress(),
+        })?;
         if decision.status == IntentStatus::NeedsClarification {
             let message = decision
                 .intent

@@ -80,12 +80,8 @@ void main() {
       EntityType.organization,
     );
     expect(
-      graph.nodes.where(
-        (node) =>
-            node.type == EntityType.identifier &&
-            node.attributes['kind'] == 'claim',
-      ),
-      hasLength(1),
+      graph.nodes.any((node) => node.attributes['kind'] == 'claim'),
+      isTrue,
     );
   });
 
@@ -96,54 +92,91 @@ void main() {
       'auth ref PREAUTH-44',
     );
 
-    final surgery = graph.nodes.singleWhere(
-      (node) =>
-          node.type == EntityType.identifier &&
-          node.attributes['kind'] == 'surgery',
-    );
-    expect(surgery.name.toLowerCase(), contains('city hospital'));
     expect(
-      graph.nodes.map((node) => node.name),
-      containsAll(['City Hospital', 'PREAUTH-44']),
+      graph.nodes.any((node) => node.attributes['kind'] == 'hospital_stay'),
+      isTrue,
+    );
+    expect(
+      graph.nodes.any((node) => node.attributes['kind'] == 'claim'),
+      isFalse,
+    );
+    expect(graph.nodes.map((node) => node.name), contains('City Hospital'));
+    expect(
+      graph.nodes.any(
+        (node) =>
+            node.attributes['kind'] == 'auth_ref' &&
+            (node.attributes['value'] == 'PREAUTH-44' ||
+                node.name.contains('PREAUTH-44')),
+      ),
+      isTrue,
+    );
+    final stay = graph.nodes.firstWhere(
+      (node) => node.attributes['kind'] == 'hospital_stay',
     );
     expect(
       graph.edges.any(
         (edge) =>
-            edge.fromId == surgery.id &&
-            edge.toId.contains('city-hospital') &&
+            (edge.fromId == stay.id && edge.toId.contains('city-hospital') ||
+                edge.toId == stay.id &&
+                    edge.fromId.contains('city-hospital')) &&
             edge.predicate == ChatEntityRelation.relatedTo,
       ),
       isTrue,
     );
-    expect(
-      graph.nodes.where(
-        (node) =>
-            node.type == EntityType.identifier &&
-            node.attributes['kind'] == 'claim',
-      ),
-      isEmpty,
-    );
   });
 
-  test('property purchase extracts RERA and builder nodes', () {
+  test('City Hospital can link to a claim and a surgery node at once', () {
+    final graph = linker.ingest(
+      ChatEntityGraph.empty,
+      'Claim ID 9001001 with Niva Bupa after surgery at City Hospital. '
+      'pre-op tests CBC and ECG, auth ref PREAUTH-44',
+    );
+
+    final hospitalId = graph.nodes
+        .firstWhere((node) => node.name == 'City Hospital')
+        .id;
+    final claimLinked = graph.edges.any(
+      (edge) =>
+          edge.predicate == ChatEntityRelation.relatedTo &&
+          ((edge.fromId == 'identifier:9001001' && edge.toId == hospitalId) ||
+              (edge.toId == 'identifier:9001001' && edge.fromId == hospitalId)),
+    );
+    final stay = graph.nodes.firstWhere(
+      (node) => node.attributes['kind'] == 'hospital_stay',
+    );
+    final stayLinked = graph.edges.any(
+      (edge) =>
+          edge.predicate == ChatEntityRelation.relatedTo &&
+          ((edge.fromId == stay.id && edge.toId == hospitalId) ||
+              (edge.toId == stay.id && edge.fromId == hospitalId)),
+    );
+    expect(claimLinked, isTrue);
+    expect(stayLinked, isTrue);
+    expect(graph.nodeById('identifier:9001001'), isNotNull);
+  });
+
+  test('property RERA and builder nodes become a purchase subject', () {
     final graph = linker.ingest(
       ChatEntityGraph.empty,
       'buying Tower B floor 14 from Prestige, RERA P52100012345',
     );
 
     expect(
+      graph.nodes.any((node) => node.attributes['kind'] == 'property'),
+      isTrue,
+    );
+    expect(
       graph.nodes.any(
         (node) =>
-            node.type == EntityType.identifier &&
             node.attributes['kind'] == 'rera' &&
             (node.attributes['value'] == 'P52100012345' ||
                 node.name.contains('P52100012345')),
       ),
       isTrue,
     );
-    expect(
-      graph.nodes.map((node) => node.name),
-      containsAll(['Prestige', 'Tower B']),
-    );
+    expect(graph.nodes.map((node) => node.name), contains('Prestige'));
+    final builder = graph.nodes.firstWhere((node) => node.name == 'Prestige');
+    expect(builder.type, EntityType.organization);
+    expect(builder.attributes['role'], 'builder');
   });
 }

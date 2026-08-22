@@ -27,12 +27,15 @@ class ProjectedChatJourney {
             facts.containsKey('Surgery Date');
       case 'real_estate_under_construction_v1':
         return facts.containsKey('RERA Registration Number') ||
-            (facts.containsKey('Builder Track Record Notes') &&
-                facts.containsKey('Project'));
+            (_hasBuilder(facts) && facts.containsKey('Project'));
       default:
-        return false;
+        return facts.isNotEmpty;
     }
   }
+
+  static bool _hasBuilder(Map<String, String> facts) =>
+      facts.containsKey('Builder') ||
+      facts.containsKey('Builder Track Record Notes');
 
   Map<String, dynamic> toPendingWrite() => {
     'title': title,
@@ -50,12 +53,13 @@ class ChatEntityGraphProjector {
 
   List<ProjectedChatJourney> project(ChatEntityGraph graph) {
     return [
-      for (final claim in graph.nodes.where(_isClaim))
-        _projectClaim(graph, claim),
-      for (final surgery in graph.nodes.where(_isSurgery))
-        _projectSurgery(graph, surgery),
-      for (final property in graph.nodes.where(_isProperty))
-        _projectProperty(graph, property),
+      ...graph.nodes.where(_isClaim).map((node) => _projectClaim(graph, node)),
+      ...graph.nodes
+          .where(_isHospitalStay)
+          .map((node) => _projectHospital(graph, node)),
+      ...graph.nodes
+          .where(_isProperty)
+          .map((node) => _projectProperty(graph, node)),
     ];
   }
 
@@ -127,41 +131,47 @@ class ChatEntityGraphProjector {
     );
   }
 
-  ProjectedChatJourney _projectSurgery(
+  ProjectedChatJourney _projectHospital(
     ChatEntityGraph graph,
-    ChatGraphNode surgery,
+    ChatGraphNode stay,
   ) {
     final facts = <String, String>{};
-    final date = surgery.attributes['date'];
-    if (date != null && date.isNotEmpty) facts['Surgery Date'] = date;
+    _copyIfPresent(facts, 'Hospital', stay.attributes['hospital']);
+    _copyIfPresent(facts, 'Surgery Date', stay.attributes['date']);
+    _copyIfPresent(facts, 'Required Tests List', stay.attributes['tests']);
+    _copyIfPresent(
+      facts,
+      'Insurance Authorization Reference',
+      stay.attributes['auth_ref'],
+    );
 
-    final tests = <String>[];
-    for (final edge in graph.edgesFor(surgery.id)) {
+    for (final edge in graph.edgesFor(stay.id)) {
       if (edge.predicate != ChatEntityRelation.relatedTo) continue;
-      final otherId = edge.fromId == surgery.id ? edge.toId : edge.fromId;
+      final otherId = edge.fromId == stay.id ? edge.toId : edge.fromId;
       final other = graph.nodeById(otherId);
       if (other == null) continue;
-      if (other.type == EntityType.organization) {
-        facts['Hospital'] = other.name;
-      } else if (other.type == EntityType.identifier &&
-          other.attributes['kind'] == 'auth_ref') {
-        facts['Insurance Authorization Reference'] =
-            other.attributes['value'] ?? other.name.replaceFirst('Auth ', '');
-      } else if (other.type == EntityType.term) {
-        tests.add(other.name);
+      if (other.type == EntityType.organization ||
+          other.name.toLowerCase().contains('hospital')) {
+        facts.putIfAbsent('Hospital', () => other.name);
       } else if (other.type == EntityType.date) {
         facts.putIfAbsent('Surgery Date', () => other.name);
+      } else if (other.type == EntityType.identifier &&
+          other.attributes['kind'] == 'auth_ref') {
+        facts.putIfAbsent(
+          'Insurance Authorization Reference',
+          () =>
+              other.attributes['value'] ?? other.name.replaceFirst('Auth ', ''),
+        );
+      } else if (other.type == EntityType.term) {
+        facts.putIfAbsent('Required Tests List', () => other.name);
       }
-    }
-    if (tests.isNotEmpty) {
-      facts['Required Tests List'] = tests.join(', ');
     }
 
     final hospital = facts['Hospital'];
     return ProjectedChatJourney(
-      subjectNodeId: surgery.id,
+      subjectNodeId: stay.id,
       templateId: 'medical_surgery_v1',
-      title: hospital == null ? 'Hospital stay' : 'Surgery at $hospital',
+      title: hospital == null ? 'Hospital stay' : '$hospital surgery',
       facts: facts,
     );
   }
@@ -171,10 +181,19 @@ class ChatEntityGraphProjector {
     ChatGraphNode property,
   ) {
     final facts = <String, String>{};
-    final floor = property.attributes['floor'];
-    if (floor != null && floor.isNotEmpty) {
-      facts['Your Target Floor'] = floor;
-    }
+    _copyIfPresent(
+      facts,
+      'RERA Registration Number',
+      property.attributes['rera'],
+    );
+    _copyIfPresent(facts, 'Builder', property.attributes['builder']);
+    _copyIfPresent(
+      facts,
+      'Builder Track Record Notes',
+      property.attributes['builder'],
+    );
+    _copyIfPresent(facts, 'Project', property.attributes['project']);
+    _copyIfPresent(facts, 'Your Target Floor', property.attributes['floor']);
 
     for (final edge in graph.edgesFor(property.id)) {
       if (edge.predicate != ChatEntityRelation.relatedTo) continue;
@@ -183,33 +202,44 @@ class ChatEntityGraphProjector {
       if (other == null) continue;
       if (other.type == EntityType.identifier &&
           other.attributes['kind'] == 'rera') {
-        facts['RERA Registration Number'] =
-            other.attributes['value'] ?? other.name.replaceFirst('RERA ', '');
-      } else if (other.type == EntityType.organization) {
-        facts['Builder Track Record Notes'] = other.name;
+        facts.putIfAbsent(
+          'RERA Registration Number',
+          () =>
+              other.attributes['value'] ?? other.name.replaceFirst('RERA ', ''),
+        );
+      } else if (other.type == EntityType.organization ||
+          other.attributes['role'] == 'builder') {
+        facts.putIfAbsent('Builder', () => other.name);
+        facts.putIfAbsent('Builder Track Record Notes', () => other.name);
       } else if (other.type == EntityType.term) {
-        facts['Project'] = other.name;
+        facts.putIfAbsent('Project', () => other.name);
       }
     }
 
+    final titleParts = [
+      if (facts['Builder'] != null) facts['Builder'],
+      if (facts['Project'] != null) facts['Project'],
+    ];
     return ProjectedChatJourney(
       subjectNodeId: property.id,
       templateId: 'real_estate_under_construction_v1',
-      title: property.name,
+      title: titleParts.isEmpty ? 'Property purchase' : titleParts.join(' '),
       facts: facts,
     );
+  }
+
+  void _copyIfPresent(Map<String, String> facts, String key, String? value) {
+    if (value == null || value.isEmpty) return;
+    facts[key] = value;
   }
 
   bool _isClaim(ChatGraphNode node) =>
       node.type == EntityType.identifier && node.attributes['kind'] == 'claim';
 
-  bool _isSurgery(ChatGraphNode node) =>
-      node.type == EntityType.identifier &&
-      node.attributes['kind'] == 'surgery';
+  bool _isHospitalStay(ChatGraphNode node) =>
+      node.attributes['kind'] == 'hospital_stay';
 
-  bool _isProperty(ChatGraphNode node) =>
-      node.type == EntityType.identifier &&
-      node.attributes['kind'] == 'property';
+  bool _isProperty(ChatGraphNode node) => node.attributes['kind'] == 'property';
 
   String _digits(String name) =>
       RegExp(r'[A-Z0-9]{5,20}').firstMatch(name)?.group(0) ?? name;

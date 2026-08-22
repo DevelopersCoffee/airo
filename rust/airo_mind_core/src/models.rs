@@ -103,6 +103,35 @@ pub struct ModelRequirement {
     pub language: ModelLanguage,
 }
 
+/// File/batch transcription: highest quality tier that fits the memory budget.
+pub fn speech_file_requirement(
+    memory_budget_mb: u32,
+    language: ModelLanguage,
+) -> ModelRequirement {
+    ModelRequirement {
+        task: ModelTask::Speech,
+        memory_budget_mb,
+        minimum_quality: ModelQuality::Draft,
+        maximum_quality: None,
+        language,
+    }
+}
+
+/// Live sessions: interim cap at Draft until real-time-factor resolution lands
+/// (design spec §6.7 option 1).
+pub fn speech_live_requirement(
+    memory_budget_mb: u32,
+    language: ModelLanguage,
+) -> ModelRequirement {
+    ModelRequirement {
+        task: ModelTask::Speech,
+        memory_budget_mb,
+        minimum_quality: ModelQuality::Draft,
+        maximum_quality: Some(ModelQuality::Draft),
+        language,
+    }
+}
+
 /// Why no model could be resolved. Every variant names something actionable —
 /// `ADR-0018 §1` requires the caller to be able to degrade, prompt or decline.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -466,6 +495,54 @@ mod tests {
             language,
             ..speech(budget)
         }
+    }
+
+    #[test]
+    fn speech_live_requirement_caps_at_draft() {
+        let d = dir("live-cap");
+        let compact = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.compact")
+            .expect("compact speech row");
+        let standard = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard.en")
+            .expect("standard speech row");
+        install(&d, compact, compact.size_bytes);
+        install(&d, standard, standard.size_bytes);
+
+        let resolved = resolve(
+            &speech_live_requirement(4096, ModelLanguage::EnglishOnly),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.compact");
+    }
+
+    #[test]
+    fn speech_file_requirement_prefers_higher_tier_when_installed() {
+        let d = dir("file-tier");
+        let compact = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.compact")
+            .expect("compact speech row");
+        let standard = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard.en")
+            .expect("standard speech row");
+        install(&d, compact, compact.size_bytes);
+        install(&d, standard, standard.size_bytes);
+
+        let resolved = resolve(
+            &speech_file_requirement(4096, ModelLanguage::EnglishOnly),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.standard.en");
     }
 
     /// The first-run state, and the one `ADR-0018 §7` says the product must be

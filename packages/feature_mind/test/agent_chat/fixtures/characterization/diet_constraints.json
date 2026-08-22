@@ -1,0 +1,12 @@
+{
+  "constraints": [
+    "Make me a 7 day diet plan",
+    "i want some indian menu only",
+    "veg only"
+  ],
+  "prompt_checks": {
+    "duration_7_days": true,
+    "indian_menu": true,
+    "veg_only": true
+  }
+}

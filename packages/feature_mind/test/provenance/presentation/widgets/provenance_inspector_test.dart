@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:feature_mind/src/provenance/domain/models/extracted_entity.dart';
 import 'package:feature_mind/src/provenance/domain/services/entity_extractor.dart';
+import 'package:feature_mind/src/provenance/domain/services/model_entity_extractor.dart';
 import 'package:feature_mind/src/provenance/presentation/widgets/provenance_inspector.dart';
 import 'package:feature_mind/src/runtime/models/capability_models.dart';
 import 'package:feature_mind/src/runtime/models/context_models.dart';
 import 'package:feature_mind/src/runtime/models/log_models.dart';
+import 'package:feature_mind/src/runtime/models/model_models.dart';
 import 'package:feature_mind/src/runtime/models/projection_models.dart';
 import 'package:feature_mind/src/runtime/ports/context_port.dart';
+import 'package:feature_mind/src/runtime/ports/model_port.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:feature_mind/src/runtime/ports/projection_port.dart';
 import 'package:flutter/material.dart';
@@ -187,11 +192,62 @@ class _EmptyExtractor implements EntityExtractor {
   List<ExtractedEntity> extract(String text) => const [];
 }
 
+class _CatalogPort implements ModelPort {
+  _CatalogPort(this._models);
+
+  final List<MindModel> _models;
+
+  @override
+  Future<List<MindModel>> all() async => _models;
+
+  @override
+  Future<ModelBench> benchmark(String modelId) async =>
+      throw UnimplementedError();
+
+  @override
+  Stream<({int received, int total})> download(String modelId) =>
+      const Stream.empty();
+
+  @override
+  Future<void> load(String modelId) async {}
+
+  @override
+  Future<({int budgetBytes, int usedBytes})> storage() async =>
+      (usedBytes: 0, budgetBytes: 1);
+
+  @override
+  Stream<ThermalState> thermal() => const Stream.empty();
+
+  @override
+  Future<void> unload(String modelId) async {}
+}
+
+const _loadedGguf = MindModel(
+  id: 'local-gguf',
+  name: 'Local GGUF',
+  sizeBytes: 1,
+  residency: ModelResidency.loaded,
+);
+
+const _dischargeOp = MindOp(
+  sequence: 12482,
+  kind: MindOpKind.automation,
+  title: 'Discharge note',
+  contextId: 'kneesurgery2026',
+  deviceName: 'Pixel 9 Pro',
+  signature: SignatureState.unverified,
+  recordedAtMs: 0,
+  detail:
+      'Dr. Rao prescribed Ibuprofen for the Knee Brace. '
+      'Follow-up scheduled for 14 Aug.',
+);
+
 Widget _harness({
   required OperationLogPort log,
   required ContextPort contexts,
   required ProjectionPort projections,
   EntityExtractor extractor = const RuleBasedEntityExtractor(),
+  ModelBackedEntityExtractor? model,
   int opSequence = 12481,
   void Function(int)? onCitationTap,
 }) {
@@ -203,6 +259,7 @@ Widget _harness({
         contexts: contexts,
         projections: projections,
         extractor: extractor,
+        model: model,
         onCitationTap: onCitationTap,
       ),
     ),
@@ -423,5 +480,237 @@ void main() {
 
     expect(find.byKey(const Key('provenance.replay.done')), findsOneWidget);
     expect(find.textContaining('Rebuilt in'), findsOneWidget);
+  });
+
+  testWidgets(
+    'discharge note chips Dr. Rao, Ibuprofen, Knee Brace, 14 Aug without a model',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          log: _FakeLog(ops: const [_dischargeOp]),
+          contexts: _FakeContexts(),
+          projections: _FakeProjections(),
+          model: ModelBackedEntityExtractor(
+            models: _CatalogPort(const []),
+            complete: ({required prompt, required grammar}) async => '[]',
+          ),
+          opSequence: 12482,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dr. Rao'), findsOneWidget);
+      expect(find.text('Ibuprofen'), findsOneWidget);
+      expect(find.text('Knee Brace'), findsOneWidget);
+      expect(find.text('14 Aug'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provenance.entities.unavailable')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'shows rule chips on first paint then enriches from a loaded GGUF',
+    (tester) async {
+      final completer = Completer<String>();
+      const meeting = MindOp(
+        sequence: 3001,
+        kind: MindOpKind.automation,
+        title: 'Clinic visit',
+        contextId: 'kneesurgery2026',
+        deviceName: 'Pixel 9 Pro',
+        signature: SignatureState.unverified,
+        recordedAtMs: 0,
+        detail: 'Dr. Rao met sundar pichai on 14 Aug.',
+      );
+
+      await tester.pumpWidget(
+        _harness(
+          log: _FakeLog(ops: const [meeting]),
+          contexts: _FakeContexts(),
+          projections: _FakeProjections(),
+          model: ModelBackedEntityExtractor(
+            models: _CatalogPort(const [_loadedGguf]),
+            complete: ({required prompt, required grammar}) => completer.future,
+          ),
+          opSequence: 3001,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Dr. Rao'), findsOneWidget);
+      expect(find.text('14 Aug'), findsOneWidget);
+      expect(find.text('sundar pichai'), findsNothing);
+
+      completer.complete('[{"text":"sundar pichai","type":"person"}]');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('sundar pichai'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provenance.entities.unavailable')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('types sundar pichai as a person when a GGUF is loaded', (
+    tester,
+  ) async {
+    const note = MindOp(
+      sequence: 3002,
+      kind: MindOpKind.automation,
+      title: 'sundar pichai said hello.',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [note]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        model: ModelBackedEntityExtractor(
+          models: _CatalogPort(const [_loadedGguf]),
+          complete: ({required prompt, required grammar}) async =>
+              '[{"text":"sundar pichai","type":"person"}]',
+        ),
+        opSequence: 3002,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('sundar pichai'), findsOneWidget);
+    expect(find.text('person'), findsWidgets);
+  });
+
+  testWidgets('types Hindi सुंदर पिचाई as a person when a GGUF is loaded', (
+    tester,
+  ) async {
+    const note = MindOp(
+      sequence: 3003,
+      kind: MindOpKind.automation,
+      title: 'सुंदर पिचाई ने गूगल क्लाउड की घोषणा की।',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [note]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        model: ModelBackedEntityExtractor(
+          models: _CatalogPort(const [_loadedGguf]),
+          complete: ({required prompt, required grammar}) async =>
+              '[{"text":"सुंदर पिचाई","type":"person"}]',
+        ),
+        opSequence: 3003,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('सुंदर पिचाई'), findsOneWidget);
+    expect(find.text('person'), findsWidgets);
+  });
+
+  testWidgets('disambiguates Washington as a place vs a person', (
+    tester,
+  ) async {
+    const place = MindOp(
+      sequence: 3004,
+      kind: MindOpKind.automation,
+      title: 'The flight landed in Washington after midnight.',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [place]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        model: ModelBackedEntityExtractor(
+          models: _CatalogPort(const [_loadedGguf]),
+          complete: ({required prompt, required grammar}) async =>
+              '[{"text":"Washington","type":"location"}]',
+        ),
+        opSequence: 3004,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Washington'), findsOneWidget);
+    expect(find.text('location'), findsOneWidget);
+
+    const person = MindOp(
+      sequence: 3005,
+      kind: MindOpKind.automation,
+      title: 'Washington signed the bill on 14 Aug.',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [person]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        model: ModelBackedEntityExtractor(
+          models: _CatalogPort(const [_loadedGguf]),
+          complete: ({required prompt, required grammar}) async =>
+              '[{"text":"Washington","type":"person"}]',
+        ),
+        opSequence: 3005,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Washington'), findsOneWidget);
+    expect(find.text('person'), findsWidgets);
+    expect(find.text('14 Aug'), findsOneWidget);
+  });
+
+  testWidgets('types Apple as an organization when a GGUF is loaded', (
+    tester,
+  ) async {
+    const note = MindOp(
+      sequence: 3006,
+      kind: MindOpKind.automation,
+      title: 'Apple announced a \$5 million round in Chicago.',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [note]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        model: ModelBackedEntityExtractor(
+          models: _CatalogPort(const [_loadedGguf]),
+          complete: ({required prompt, required grammar}) async =>
+              '[{"text":"Apple","type":"organization"}]',
+        ),
+        opSequence: 3006,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apple'), findsOneWidget);
+    expect(find.text('organization'), findsOneWidget);
+    expect(find.text('\$5 million'), findsOneWidget);
   });
 }

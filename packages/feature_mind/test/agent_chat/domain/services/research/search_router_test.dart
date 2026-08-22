@@ -11,25 +11,30 @@ void main() {
 
   test('academic policy prefers papers', () {
     final ids = SearchRouter.engineIds(SearchPolicy.academic);
-    expect(ids, containsAll(['arxiv', 'semantic_scholar']));
+    expect(ids, containsAll(['arxiv', 'semantic_scholar', 'pubmed', 'crossref']));
     expect(ids, isNot(contains('google')));
   });
 
   test('balanced policy can use scholar without implying google', () {
     final ids = SearchRouter.engineIds(SearchPolicy.balanced);
     expect(ids, contains('semantic_scholar'));
+    expect(ids, contains('github'));
     expect(ids, isNot(contains('google')));
     expect(ids, isNot(contains('bing')));
   });
 
   test('privacy-first does not include commercial web search', () {
     final ids = SearchRouter.engineIds(SearchPolicy.privacyFirst);
-    expect(ids, ['wikipedia']);
+    expect(ids, containsAll(['wikipedia', 'searxng']));
     expect(ids, isNot(contains('google')));
     expect(ids, isNot(contains('bing')));
+    expect(ids, isNot(contains('semantic_scholar')));
   });
 
-  test('local-only uses no remote engines', () {
-    expect(SearchRouter.engineIds(SearchPolicy.localOnly), isEmpty);
+  test('local-only uses the research library engine', () {
+    expect(
+      SearchRouter.engineIds(SearchPolicy.localOnly),
+      ['local_memory'],
+    );
   });
 }

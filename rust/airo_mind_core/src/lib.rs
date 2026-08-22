@@ -161,7 +161,7 @@ pub use dsl::{
 };
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-    SpeechEngine, TranscriptSegment, TranscriptionOptions,
+    SpeechEngine, TranscriptSegment, TranscriptSegmentState, TranscriptionOptions,
 };
 pub use engine_log::engine_native_logs_verbose;
 pub use event::{CapabilityEvent, EventBus};
@@ -184,13 +184,13 @@ pub use research::{
     interpret, matrix_markdown, queries_for, strategy_for, topic_key, Claim, ClaimId, ClaimStatus,
     DecisionRow, Evidence, EvidenceGraph, EvidenceId, EvidenceSufficiencyPolicy, ExtractedDocument,
     InMemoryResearchLibrary, InMemoryResearchService, InterpretedGoal, MatrixCell, PlanNodeKind,
-    QuerySet, ResearchBudget, ResearchCheckpoint, ResearchCommand, ResearchCompleteness,
-    ResearchEngine, ResearchEvent, ResearchEventKind, ResearchIntent, ResearchJob,
-    ResearchJobState, ResearchLibraryEntry, ResearchMode, ResearchPlan, ResearchPlanNode,
-    ResearchProgress, ResearchRequest, ResearchStateError, ResearchStrategy, SearchEngine,
-    SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse, Source, SourceClass,
-    SourceClassification, SourceContent, SourceFetcher, SourceId, SourceKind, SourceType,
-    StopDecision, StoppingPolicy, TrustLevel,
+    PrivacyProfile, QuerySet, ResearchBudget, ResearchCheckpoint, ResearchCommand,
+    ResearchCompleteness, ResearchCostModel, ResearchEngine, ResearchEvent, ResearchEventKind,
+    ResearchIntent, ResearchJob, ResearchJobState, ResearchLibraryEntry, ResearchMetrics,
+    ResearchMode, ResearchPlan, ResearchPlanNode, ResearchProgress, ResearchRequest,
+    ResearchStateError, ResearchStrategy, SearchEngine, SearchError, SearchHit, SearchPolicy,
+    SearchRequest, SearchResponse, Source, SourceClass, SourceClassification, SourceContent,
+    SourceFetcher, SourceId, SourceKind, SourceType, StopDecision, StoppingPolicy, TrustLevel,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,

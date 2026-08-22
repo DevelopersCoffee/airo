@@ -52,6 +52,31 @@ void main() {
     },
   );
 
+  test('latest library lookup scans at most 200 newest ops', () async {
+    final log = RecordingOperationLog();
+    final match = ResearchLibraryEntry.fromQuestion(
+      question: 'What is Qwen?',
+      retrievedAt: '2026-08-22T00:00:00Z',
+      sourceUrls: const ['https://en.wikipedia.org/wiki/Qwen'],
+      findings: const ['Qwen is a family of large language models.'],
+    );
+    await appendResearchLibraryOp(log: log, entry: match);
+    for (var i = 0; i < 200; i++) {
+      await log.append(
+        kind: MindOpKind.note,
+        title: 'note $i',
+        contextId: 'note-$i',
+      );
+    }
+
+    expect(await latestLibraryEntryFor(log, 'What is Qwen?'), isNull);
+
+    await appendResearchLibraryOp(log: log, entry: match);
+    expect((await latestLibraryEntryFor(log, 'What is Qwen?'))?.sourceUrls, [
+      'https://en.wikipedia.org/wiki/Qwen',
+    ]);
+  });
+
   test(
     'comparison cells stay cited and contested rows are not silent winners',
     () {

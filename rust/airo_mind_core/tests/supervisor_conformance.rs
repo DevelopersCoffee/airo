@@ -92,11 +92,7 @@ impl airo_mind_core::SpeechEngine for BlockingSpeech {
         if let Some(barrier) = &self.barrier {
             barrier.wait();
         }
-        sink(TranscriptSegment {
-            start_ms: 0,
-            end_ms: 1000,
-            text: "one segment".into(),
-        })
+        sink(TranscriptSegment::final_text(0, 1000, "one segment".into()))
     }
 }
 

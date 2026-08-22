@@ -3,6 +3,8 @@ import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart'
 import 'package:feature_mind/src/agent_chat/domain/services/deep_research_engine.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_control.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_http.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_library.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_orchestrator.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,16 +37,61 @@ void main() {
     expect(events.single.kind, ResearchEventKind.jobAdmitted);
     expect(events.single.jobId, 'job-test');
   });
+
+  test('the engine forwards known library urls and onLibrary', () async {
+    final service = _RecordingService();
+    void onLibrary(ResearchLibraryEntry entry) {}
+    final DeepResearchEngine engine = LocalDeepResearchEngine(service: service);
+    await engine
+        .run(
+          const ResearchRequest(question: 'What is Qwen?'),
+          knownSourceUrls: const ['https://en.wikipedia.org/wiki/Qwen'],
+          onLibrary: onLibrary,
+        )
+        .toList();
+
+    expect(service.knownSourceUrls, ['https://en.wikipedia.org/wiki/Qwen']);
+    expect(service.onLibrary, same(onLibrary));
+  });
+
+  test('the public engine seam forwards explicit SearXNG configuration', () {
+    expect(
+      () => LocalDeepResearchEngine(
+        searxngBaseUri: Uri.parse('https://search.home.example/'),
+      ),
+      returnsNormally,
+    );
+    expect(
+      () => LocalDeepResearchEngine(
+        searxngBaseUri: Uri.parse('http://search.home.example/'),
+      ),
+      throwsA(isA<ResearchHttpException>()),
+    );
+    expect(
+      () => LocalDeepResearchEngine(
+        service: _RecordingService(),
+        searxngBaseUri: Uri.parse('https://search.home.example/'),
+      ),
+      throwsArgumentError,
+    );
+  });
 }
 
 class _RecordingService implements ResearchService {
+  List<String> knownSourceUrls = const [];
+  void Function(ResearchLibraryEntry entry)? onLibrary;
+
   @override
   Stream<ResearchEvent> start(
     ResearchRequest request, {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
+    this.knownSourceUrls = knownSourceUrls;
+    this.onLibrary = onLibrary;
     yield ResearchEvent(
       kind: ResearchEventKind.jobAdmitted,
       jobId: 'job-test',

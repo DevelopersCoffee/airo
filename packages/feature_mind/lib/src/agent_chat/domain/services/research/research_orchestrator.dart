@@ -8,6 +8,7 @@ import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_interpreter.dart';
 import 'research_library.dart';
+import 'research_metrics.dart';
 import 'research_planner.dart';
 import 'research_search.dart';
 import 'source_manager.dart';
@@ -52,6 +53,7 @@ class ResearchOrchestrator {
     }
 
     final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
+    final started = DateTime.now();
     yield ResearchEvent(
       kind: ResearchEventKind.jobAdmitted,
       jobId: jobId,
@@ -85,11 +87,9 @@ class ResearchOrchestrator {
     var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
     final completed = {...?resumeFrom?.completedNodeIds};
     final collected = <ResearchHit>[];
+    final allowedIds = SearchRouter.engineIds(request.policy);
     final routed = engines
-        .where(
-          (engine) =>
-              SearchRouter.engineIds(request.policy).contains(engine.id),
-        )
+        .where((engine) => allowedIds.contains(engine.id))
         .toList(growable: false);
     final skip = knownSourceUrls.map(canonicalizeUrl).toSet();
 
@@ -103,6 +103,8 @@ class ResearchOrchestrator {
           searchesUsed: searchesUsed,
           iterationsUsed: iterationsUsed,
           completedNodeIds: completed.toList(growable: false),
+          mode: request.mode,
+          policy: request.policy,
         ),
       );
     }
@@ -138,10 +140,16 @@ class ResearchOrchestrator {
         final batch = routed.take(remaining).toList(growable: false);
         final query = queries.queriesFor(node.question).primary;
         final results = await Future.wait(
-          batch.map(
-            (engine) =>
-                engine.search(query, maxResults: budget.maxSources.clamp(1, 8)),
-          ),
+          batch.map((engine) async {
+            try {
+              return await engine.search(
+                query,
+                maxResults: budget.maxSources.clamp(1, 8),
+              );
+            } catch (_) {
+              return const <ResearchHit>[];
+            }
+          }),
         );
         searchesUsed += batch.length;
         completed.add(node.id);
@@ -198,6 +206,12 @@ class ResearchOrchestrator {
       uncoveredNodes: depth.length,
       iterationsUsed: iterationsUsed,
       maxIterations: budget.maxIterations,
+      costUsed: const ResearchCostModel().estimate(
+        searches: searchesUsed,
+        fetches: unique.length,
+        tokens: 0,
+      ),
+      maxCost: budget.maxCostMicros,
     );
 
     if (depth.isNotEmpty &&
@@ -233,6 +247,12 @@ class ResearchOrchestrator {
       uncoveredNodes: 0,
       iterationsUsed: iterationsUsed,
       maxIterations: budget.maxIterations,
+      costUsed: const ResearchCostModel().estimate(
+        searches: searchesUsed,
+        fetches: unique.length,
+        tokens: 0,
+      ),
+      maxCost: budget.maxCostMicros,
     );
     if (goal.decisionRequired &&
         searchesUsed < budget.maxSearches &&
@@ -266,6 +286,7 @@ class ResearchOrchestrator {
     );
 
     final documents = <SourceDocument>[];
+    var sourcesRejected = 0;
     final manager = sourceManager;
     if (manager != null && unique.isNotEmpty) {
       final acquired = await manager.acquireAll(
@@ -275,6 +296,7 @@ class ResearchOrchestrator {
       for (final result in acquired) {
         final document = result.document;
         if (document == null) {
+          sourcesRejected += 1;
           yield ResearchEvent(
             kind: ResearchEventKind.sourceRejected,
             label: 'Reading documents',
@@ -352,6 +374,15 @@ class ResearchOrchestrator {
       conflicts: conflicts,
       waves: iterationsUsed,
       searchesUsed: searchesUsed,
+      metrics: ResearchMetrics(
+        duration: DateTime.now().difference(started),
+        searches: searchesUsed,
+        sourcesUsed: documents.length,
+        sourcesRejected: sourcesRejected,
+        claims: claims.length,
+        contradictions: conflicts.length,
+        tokens: 0,
+      ).withCost(const ResearchCostModel()),
     );
     onLibrary?.call(
       ResearchLibraryEntry.fromQuestion(
@@ -381,6 +412,7 @@ class ResearchOrchestrator {
     required List<ClaimConflict> conflicts,
     required int waves,
     required int searchesUsed,
+    required ResearchMetrics metrics,
   }) {
     final intent = goal.intent.name;
     final lines = <String>[
@@ -501,6 +533,7 @@ class ResearchOrchestrator {
         '${doc.trustLevel.name}, retrieved ${doc.retrievedAt})',
       );
     }
+    lines.addAll(['', metrics.markdown()]);
     return lines.join('\n');
   }
 }

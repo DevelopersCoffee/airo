@@ -14,6 +14,20 @@ class ChatEntityGraphPending {
 
   static const _projector = ChatEntityGraphProjector();
 
+  static const _hospitalUsual = [
+    'Required Tests List',
+    'Insurance Authorization Reference',
+    'Hospital Checklist',
+    'Recovery Notes',
+  ];
+
+  static const _propertyUsual = [
+    'RERA Registration Number',
+    'Builder Track Record Notes',
+    'Your Target Floor',
+    'Promised Amenities List',
+  ];
+
   bool wantsPending(String query) {
     final lower = query.toLowerCase();
     final asks =
@@ -24,24 +38,14 @@ class ChatEntityGraphPending {
         lower.contains("what's next") ||
         lower.contains('whats next');
     if (!asks) return false;
-    return lower.contains('claim') ||
-        lower.contains('insurance') ||
-        lower.contains('insurer') ||
-        lower.contains('document') ||
-        lower.contains('reimbursement') ||
-        lower.contains('policy') ||
-        lower.contains('hospital') ||
-        lower.contains('surgery') ||
-        lower.contains('recovery') ||
-        lower.contains('flat') ||
-        lower.contains('rera') ||
-        lower.contains('property');
+    return _looksInsurance(lower) ||
+        _looksHospital(lower) ||
+        _looksProperty(lower);
   }
 
   String format({required ChatEntityGraph graph, required String query}) {
     if (graph.nodes.isEmpty) {
-      return 'I have no stored chat entities yet. Paste the details you have '
-          '— I will extract them from this chat.';
+      return _emptyMessage(query);
     }
 
     final journeys = _projector.project(graph);
@@ -55,7 +59,12 @@ class ChatEntityGraphPending {
       return buffer.toString().trimRight();
     }
 
-    final selected = _select(journeys, query);
+    final needle = query.toLowerCase();
+    final matched = journeys
+        .where((journey) => _matchesQuery(journey, needle))
+        .toList(growable: false);
+    final selected = matched.isEmpty ? journeys : matched;
+
     final buffer = StringBuffer();
     for (final journey in selected) {
       buffer.writeln('Stored for ${journey.title}');
@@ -73,8 +82,7 @@ class ChatEntityGraphPending {
       buffer.writeln();
       if (missing.isEmpty) {
         buffer.writeln(
-          'No usual ${_usualLabel(journey.templateId)} fields are missing '
-          'from the graph.',
+          'No usual ${_usualName(journey.templateId)} fields are missing from the graph.',
         );
       } else {
         buffer.writeln('Not on the graph yet');
@@ -96,52 +104,70 @@ class ChatEntityGraphPending {
     return buffer.toString().trimRight();
   }
 
-  List<ProjectedChatJourney> _select(
-    List<ProjectedChatJourney> journeys,
-    String query,
-  ) {
-    final needle = query.toLowerCase();
-    final templateId = _templateForQuery(needle);
-    final matched = journeys
-        .where((journey) {
-          if (templateId != null) return journey.templateId == templateId;
-          return needle.contains(
-                (journey.facts['Claim ID'] ?? '').toLowerCase(),
-              ) ||
-              needle.contains((journey.facts['Insurer'] ?? '').toLowerCase()) ||
-              needle.contains(
-                (journey.facts['Hospital'] ?? '').toLowerCase(),
-              ) ||
-              needle.contains(
-                (journey.facts['RERA Registration Number'] ?? '').toLowerCase(),
-              );
-        })
-        .toList(growable: false);
-    return matched.isEmpty ? journeys : matched;
+  bool _matchesQuery(ProjectedChatJourney journey, String needle) {
+    if (needle.trim().isEmpty) return true;
+    switch (journey.templateId) {
+      case 'insurance_claim_v1':
+        return _looksInsurance(needle) ||
+            _containsFact(needle, journey, 'Claim ID') ||
+            _containsFact(needle, journey, 'Insurer');
+      case 'medical_surgery_v1':
+        return _looksHospital(needle) ||
+            _containsFact(needle, journey, 'Hospital');
+      case 'real_estate_under_construction_v1':
+        return _looksProperty(needle) ||
+            _containsFact(needle, journey, 'RERA Registration Number') ||
+            _containsFact(needle, journey, 'Project');
+      default:
+        return true;
+    }
   }
 
-  String? _templateForQuery(String needle) {
-    if (needle.contains('hospital') ||
-        needle.contains('surgery') ||
-        needle.contains('recovery')) {
-      return 'medical_surgery_v1';
-    }
-    if (needle.contains('flat') ||
-        needle.contains('rera') ||
-        needle.contains('property')) {
-      return 'real_estate_under_construction_v1';
-    }
-    if (needle.contains('claim') ||
-        needle.contains('insurance') ||
-        needle.contains('insurer') ||
-        needle.contains('reimbursement') ||
-        needle.contains('policy')) {
-      return 'insurance_claim_v1';
-    }
-    return null;
+  bool _containsFact(String needle, ProjectedChatJourney journey, String key) {
+    final value = (journey.facts[key] ?? '').toLowerCase();
+    return value.isNotEmpty && needle.contains(value);
   }
 
-  String _usualLabel(String templateId) {
+  bool _looksInsurance(String lower) =>
+      lower.contains('claim') ||
+      lower.contains('insurance') ||
+      lower.contains('insurer') ||
+      lower.contains('document') ||
+      lower.contains('reimbursement') ||
+      lower.contains('policy');
+
+  bool _looksHospital(String lower) =>
+      lower.contains('hospital') ||
+      lower.contains('surgery') ||
+      lower.contains('recovery') ||
+      lower.contains('pre-op') ||
+      lower.contains('operation') ||
+      lower.contains('medical');
+
+  bool _looksProperty(String lower) =>
+      lower.contains('flat') ||
+      lower.contains('rera') ||
+      lower.contains('property') ||
+      lower.contains('builder') ||
+      lower.contains('tower') ||
+      lower.contains('apartment');
+
+  String _emptyMessage(String query) {
+    final lower = query.toLowerCase();
+    if (_looksHospital(lower)) {
+      return 'I have no stored hospital or surgery entities yet. Paste the '
+          'hospital, surgery date, required tests, and authorization reference '
+          '— I will extract them from this chat.';
+    }
+    if (_looksProperty(lower)) {
+      return 'I have no stored property entities yet. Paste the RERA number, '
+          'builder, project, and floor — I will extract them from this chat.';
+    }
+    return 'I have no stored claim entities yet. Paste the insurer, claim ID, '
+        'and whether documents were received — I will extract them from this chat.';
+  }
+
+  String _usualName(String templateId) {
     switch (templateId) {
       case 'medical_surgery_v1':
         return 'hospital';
@@ -156,53 +182,46 @@ class ChatEntityGraphPending {
     switch (journey.templateId) {
       case 'medical_surgery_v1':
         return [
-          if (!journey.facts.containsKey('Required Tests List'))
-            'Required Tests List',
-          if (!journey.facts.containsKey('Insurance Authorization Reference'))
-            'Insurance Authorization Reference',
-          if (!journey.facts.containsKey('Hospital Checklist'))
-            'Hospital Checklist',
-          if (!journey.facts.containsKey('Recovery Notes')) 'Recovery Notes',
+          for (final label in _hospitalUsual)
+            if (!journey.facts.containsKey(label)) label,
         ];
       case 'real_estate_under_construction_v1':
         return [
-          if (!journey.facts.containsKey('RERA Registration Number'))
-            'RERA Registration Number',
-          if (!journey.facts.containsKey('Builder Track Record Notes'))
-            'Builder Track Record Notes',
-          if (!journey.facts.containsKey('Your Target Floor'))
-            'Your Target Floor',
-          if (!journey.facts.containsKey('Promised Amenities List'))
-            'Promised Amenities List',
+          for (final label in _propertyUsual)
+            if (!journey.facts.containsKey(label)) label,
         ];
       default:
-        final missing = <String>[];
-        if (!journey.facts.containsKey('Insurer')) missing.add('Insurer');
-        if (!journey.facts.containsKey('Broker / Intermediary')) {
-          missing.add('Broker / intermediary');
-        }
-        if (!journey.facts.containsKey('Policy Number')) {
-          missing.add('Policy number');
-        }
-        if (!journey.facts.containsKey('Follow-up Log')) {
-          missing.add('Follow-up log');
-        }
-        final docs = journey.facts[LifeTrackFactPatch.documentsReceivedKey];
-        if (docs == null || docs.trim().isEmpty) {
-          missing.add('Claim documents (not marked received)');
-        }
-        if (!journey.facts.containsKey('Settlement Notes')) {
-          missing.add('Settlement outcome');
-        }
-        return missing;
+        return _missingClaim(journey);
     }
   }
 
-  List<String> _crossLinks(ChatEntityGraph graph, String subjectId) {
+  List<String> _missingClaim(ProjectedChatJourney journey) {
+    final missing = <String>[];
+    if (!journey.facts.containsKey('Insurer')) missing.add('Insurer');
+    if (!journey.facts.containsKey('Broker / Intermediary')) {
+      missing.add('Broker / intermediary');
+    }
+    if (!journey.facts.containsKey('Policy Number')) {
+      missing.add('Policy number');
+    }
+    if (!journey.facts.containsKey('Follow-up Log')) {
+      missing.add('Follow-up log');
+    }
+    final docs = journey.facts[LifeTrackFactPatch.documentsReceivedKey];
+    if (docs == null || docs.trim().isEmpty) {
+      missing.add('Claim documents (not marked received)');
+    }
+    if (!journey.facts.containsKey('Settlement Notes')) {
+      missing.add('Settlement outcome');
+    }
+    return missing;
+  }
+
+  List<String> _crossLinks(ChatEntityGraph graph, String claimId) {
     final lines = <String>[];
-    for (final edge in graph.edgesFor(subjectId)) {
+    for (final edge in graph.edgesFor(claimId)) {
       if (edge.predicate != ChatEntityRelation.relatedTo) continue;
-      final otherId = edge.fromId == subjectId ? edge.toId : edge.fromId;
+      final otherId = edge.fromId == claimId ? edge.toId : edge.fromId;
       final other = graph.nodeById(otherId);
       if (other == null) continue;
       if (other.type == EntityType.identifier) continue;

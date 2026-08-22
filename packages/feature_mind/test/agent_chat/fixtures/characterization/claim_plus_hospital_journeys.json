@@ -1,0 +1,20 @@
+[
+  {
+    "template_id": "insurance_claim_v1",
+    "facts": {
+      "Claim ID": "9001001",
+      "Claim Submission Reference": "9001001",
+      "Insurer": "Niva Bupa"
+    },
+    "is_offerable": true,
+    "title": "Niva Bupa claim 9001001"
+  },
+  {
+    "template_id": "medical_surgery_v1",
+    "facts": {
+      "Hospital": "City Hospital"
+    },
+    "is_offerable": true,
+    "title": "City Hospital surgery"
+  }
+]

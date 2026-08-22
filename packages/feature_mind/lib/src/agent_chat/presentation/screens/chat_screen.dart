@@ -56,6 +56,7 @@ import '../../../agent_chat/domain/services/deep_research_engine.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint_log.dart';
 import '../../../agent_chat/domain/services/research/research_control.dart';
+import '../../../agent_chat/domain/services/research/research_library_log.dart';
 import '../../../agent_chat/domain/services/remote_agent_skill_installer.dart';
 import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
@@ -317,10 +318,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isGenerating = false;
   bool _isCapturingVoice = false;
   bool _deepResearchEnabled = false;
+  PrivacyProfile _researchPrivacy = PrivacyProfile.balanced;
   ResearchSession? _researchSession;
   int _researchEpoch = 0;
   ResearchControl? _researchControl;
   ResearchCheckpoint? _resumableCheckpoint;
+
+  bool get _canChangeResearchPrivacy =>
+      !_isGenerating && !(_resumableCheckpoint?.isTerminal == false);
+
+  String get _selectedResearchPrivacyDescription =>
+      _resumableCheckpoint?.policy == SearchPolicy.localOnly
+      ? 'Restored local-only job: no remote sources.'
+      : _privacyDescription(_researchPrivacy);
+
+  String _privacySemanticsDescription(PrivacyProfile profile) {
+    if (profile == _researchPrivacy &&
+        _resumableCheckpoint?.policy == SearchPolicy.localOnly) {
+      return _selectedResearchPrivacyDescription;
+    }
+    return _privacyDescription(profile);
+  }
 
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
@@ -1016,92 +1034,82 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         onCancel: _researchControl?.cancel,
                       ),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: AiroSpacing.paddingMd,
                       decoration: BoxDecoration(
                         color: colorScheme.surface.withValues(alpha: 0.34),
                         border: Border(
                           top: BorderSide(color: colorScheme.outlineVariant),
                         ),
                       ),
-                      child: Row(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          OutlinedButton.icon(
-                            key: const Key('agent_chat_skills_button'),
-                            focusNode: _skillsButtonFocusNode,
-                            onPressed: _showManageSkills,
-                            icon: const Icon(Icons.auto_fix_high, size: 18),
-                            label: const Text('Skills'),
-                          ),
-                          IconButton(
-                            key: const Key('agent_chat_deep_research_button'),
-                            tooltip: _deepResearchEnabled
-                                ? 'Deep Research on'
-                                : 'Deep Research',
-                            isSelected: _deepResearchEnabled,
-                            selectedIcon: const Icon(
-                              Icons.travel_explore,
-                              color: MindPalette.local,
-                            ),
-                            onPressed: _isGenerating
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _deepResearchEnabled =
-                                          !_deepResearchEnabled;
-                                    });
-                                  },
-                            icon: const Icon(Icons.travel_explore_outlined),
-                          ),
-                          Semantics(
-                            button: true,
-                            label: _isCapturingVoice
-                                ? 'Stop voice input'
-                                : 'Speak message',
-                            child: IconButton(
-                              key: const Key('agent_chat_voice_button'),
-                              tooltip: _isCapturingVoice
-                                  ? 'Stop voice input'
-                                  : 'Speak message',
-                              onPressed: _captureVoice,
-                              icon: Icon(
-                                _isCapturingVoice ? Icons.stop : Icons.mic_none,
+                          if (_deepResearchEnabled) ...[
+                            Semantics(
+                              container: true,
+                              label: 'Research privacy profile',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Research privacy',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelMedium,
+                                  ),
+                                  const SizedBox(height: AiroSpacing.xs),
+                                  Wrap(
+                                    spacing: AiroSpacing.sm,
+                                    runSpacing: AiroSpacing.xs,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      for (final profile
+                                          in PrivacyProfile.values)
+                                        MergeSemantics(
+                                          child: Semantics(
+                                            hint: _privacySemanticsDescription(
+                                              profile,
+                                            ),
+                                            child: ChoiceChip(
+                                              key: Key(
+                                                'agent_chat_research_privacy_'
+                                                '${profile.name}',
+                                              ),
+                                              label: Text(
+                                                _privacyLabel(profile),
+                                              ),
+                                              selected:
+                                                  _researchPrivacy == profile,
+                                              onSelected:
+                                                  _canChangeResearchPrivacy
+                                                  ? (_) {
+                                                      setState(() {
+                                                        _researchPrivacy =
+                                                            profile;
+                                                      });
+                                                    }
+                                                  : null,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AiroSpacing.xs),
+                                  Text(
+                                    _selectedResearchPrivacyDescription,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              key: const Key('agent_chat_input'),
-                              focusNode: _messageInputFocusNode,
-                              controller: _messageController,
-                              autofocus: true,
-                              decoration: InputDecoration(
-                                hintText: _deepResearchEnabled
-                                    ? 'Ask a research question...'
-                                    : 'Type a message...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(0),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              maxLines: null,
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: (_) {
-                                _sendMessage();
-                                _restoreComposerFocus();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                            key: const Key('agent_chat_send_button'),
-                            focusNode: _sendButtonFocusNode,
-                            onPressed: canSend ? _sendMessage : null,
-                            icon: const Icon(Icons.send),
-                          ),
+                            const SizedBox(height: AiroSpacing.sm),
+                          ],
+                          _buildComposerControls(canSend),
                         ],
                       ),
                     ),
@@ -1268,94 +1276,92 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  MindPresencePip(isLocal: isLocal),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final identity = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('AUTOMATIC', style: IntelligenceTypography.status()),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: MindPalette.ink,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        statusLine,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: MindPalette.local,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  );
+                  final actions = Wrap(
+                    alignment: WrapAlignment.end,
+                    children: [
+                      IconButton(
+                        key: const Key('agent_chat_assistants_button'),
+                        tooltip: _personaSession.pinned?.name ?? 'Assistants',
+                        onPressed: _showPickAssistant,
+                        icon: Icon(
+                          _personaSession.isPinned
+                              ? Icons.badge
+                              : Icons.badge_outlined,
+                          size: 20,
+                        ),
+                      ),
+                      IconButton(
+                        focusNode: _selectedModelBarFocusNode,
+                        tooltip: 'Customize',
+                        onPressed: _openChatCustomize,
+                        icon: const Icon(Icons.tune, size: 20),
+                      ),
+                      IconButton(
+                        key: const Key('agent_chat_copy_transcript_button'),
+                        tooltip: 'Copy transcript',
+                        onPressed: _messages.isEmpty ? null : _copyTranscript,
+                        icon: const Icon(Icons.ios_share_outlined, size: 20),
+                      ),
+                      IconButton(
+                        key: const Key('agent_chat_clear_conversation_button'),
+                        tooltip: 'Clear chat',
+                        onPressed: _messages.isEmpty || _isGenerating
+                            ? null
+                            : _confirmClearConversation,
+                        icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                      ),
+                    ],
+                  );
+                  final identityRow = Row(
+                    children: [
+                      MindPresencePip(isLocal: isLocal),
+                      const SizedBox(width: AiroSpacing.sm),
+                      Expanded(child: identity),
+                    ],
+                  );
+                  if (constraints.maxWidth < 600) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'AUTOMATIC',
-                          style: IntelligenceTypography.status(),
-                        ),
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge
-                              ?.copyWith(
-                                color: MindPalette.ink,
-                                letterSpacing: 0.8,
-                              ),
-                        ),
-                        Text(
-                          statusLine,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: MindPalette.local,
-                                letterSpacing: 1.2,
-                              ),
-                        ),
+                        identityRow,
+                        Align(alignment: Alignment.centerRight, child: actions),
                       ],
-                    ),
-                  ),
-                  IconButton(
-                    key: const Key('agent_chat_assistants_button'),
-                    tooltip: _personaSession.pinned?.name ?? 'Assistants',
-                    onPressed: _showPickAssistant,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      _personaSession.isPinned
-                          ? Icons.badge
-                          : Icons.badge_outlined,
-                      size: 20,
-                    ),
-                  ),
-                  IconButton(
-                    focusNode: _selectedModelBarFocusNode,
-                    tooltip: 'Customize',
-                    onPressed: _openChatCustomize,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.tune, size: 20),
-                  ),
-                  IconButton(
-                    key: const Key('agent_chat_copy_transcript_button'),
-                    tooltip: 'Copy transcript',
-                    onPressed: _messages.isEmpty ? null : _copyTranscript,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.ios_share_outlined, size: 20),
-                  ),
-                  IconButton(
-                    key: const Key('agent_chat_clear_conversation_button'),
-                    tooltip: 'Clear chat',
-                    onPressed: _messages.isEmpty || _isGenerating
-                        ? null
-                        : _confirmClearConversation,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 20),
-                  ),
-                ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: identityRow),
+                      actions,
+                    ],
+                  );
+                },
               ),
               if (!readiness.canSend && readiness.progress > 0) ...[
                 const SizedBox(height: 6),
@@ -1880,24 +1886,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
-    final promptGate = PromptQualityGate.inspectUserTurn(
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: message,
+      history: _chatHistoryMessages(),
+    );
+    final selectedModelIdForGate = ref.read(selectedAssistantModelIdProvider);
+    final systemPrompt = _buildChatSystemPrompt(message);
+    final promptGate = ChatTurnReliability.plan(
       userText: message,
+      systemPrompt: systemPrompt,
       historyEmpty: _messages.where((m) => m.isUser).length <= 1,
+      estimatedTokens: TokenCounter.estimate('$systemPrompt\n$message'),
+      modelContextLimit: _selectedContextLimit(),
+      definition: dietApplies
+          ? AiroPromptRegistry.dietPlan
+          : selectedModelIdForGate != null &&
+                _shouldUseReasoning(selectedModelIdForGate)
+          ? AiroPromptRegistry.reasoningEngine
+          : _personaSession.isPinned
+          ? AiroPromptRegistry.skillPersona
+          : AiroPromptRegistry.chatAssistant,
+      prefixCache:
+          selectedModelIdForGate != null &&
+              assistantRuntimeSupportsPrefixCache(selectedModelIdForGate)
+          ? PrefixCacheCapability.supported
+          : PrefixCacheCapability.unsupported,
+      cacheablePrefixTokens: TokenCounter.estimate(systemPrompt),
     );
     if (promptGate.blocksInference) {
       setState(() {
         _messages.add(
-          AgentChatMessage(text: promptGate.userMessage, isUser: false),
+          AgentChatMessage(text: promptGate.gate.userMessage, isUser: false),
         );
       });
       _scrollMessagesToLatest();
       return;
     }
-
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: message,
-      history: _chatHistoryMessages(),
-    );
     if (!dietApplies) {
       final skillStopwatch = Stopwatch()..start();
       final skillResult = await _skillOrchestrator.run(
@@ -2031,11 +2055,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted || checkpoint == null) {
       return;
     }
+    final privacy = checkpoint.privacy;
     setState(() {
       _resumableCheckpoint = checkpoint;
       _deepResearchEnabled = true;
+      _researchPrivacy = privacy;
       _researchSession = ResearchSession(
-        request: ResearchRequest(question: checkpoint.question),
+        request: ResearchRequest(
+          question: checkpoint.question,
+          mode: checkpoint.mode,
+          policy: checkpoint.policy,
+          privacy: privacy,
+        ),
         events: [
           const ResearchEvent(
             kind: ResearchEventKind.planningStarted,
@@ -2063,14 +2094,154 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     unawaited(_runDeepResearch(checkpoint.question, resumeFrom: checkpoint));
   }
 
+  Widget _buildComposerControls(bool canSend) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final actions = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              key: const Key('agent_chat_skills_button'),
+              focusNode: _skillsButtonFocusNode,
+              onPressed: _showManageSkills,
+              icon: const Icon(Icons.auto_fix_high, size: 18),
+              label: const Text('Skills'),
+            ),
+            IconButton(
+              key: const Key('agent_chat_deep_research_button'),
+              tooltip: _deepResearchEnabled
+                  ? 'Deep Research on'
+                  : 'Deep Research',
+              isSelected: _deepResearchEnabled,
+              selectedIcon: const Icon(
+                Icons.travel_explore,
+                color: MindPalette.local,
+              ),
+              onPressed: _isGenerating
+                  ? null
+                  : () {
+                      setState(() {
+                        _deepResearchEnabled = !_deepResearchEnabled;
+                      });
+                    },
+              icon: const Icon(Icons.travel_explore_outlined),
+            ),
+            Semantics(
+              button: true,
+              label: _isCapturingVoice ? 'Stop voice input' : 'Speak message',
+              child: IconButton(
+                key: const Key('agent_chat_voice_button'),
+                tooltip: _isCapturingVoice
+                    ? 'Stop voice input'
+                    : 'Speak message',
+                onPressed: _captureVoice,
+                icon: Icon(_isCapturingVoice ? Icons.stop : Icons.mic_none),
+              ),
+            ),
+          ],
+        );
+        final input = Expanded(
+          child: TextField(
+            key: const Key('agent_chat_input'),
+            focusNode: _messageInputFocusNode,
+            controller: _messageController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: _deepResearchEnabled
+                  ? 'Ask a research question...'
+                  : 'Type a message...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(0),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AiroSpacing.md,
+                vertical: 12,
+              ),
+            ),
+            maxLines: null,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) {
+              _sendMessage();
+              _restoreComposerFocus();
+            },
+          ),
+        );
+        final send = IconButton.filled(
+          key: const Key('agent_chat_send_button'),
+          focusNode: _sendButtonFocusNode,
+          onPressed: canSend ? _sendMessage : null,
+          icon: const Icon(Icons.send),
+        );
+
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              actions,
+              const SizedBox(height: AiroSpacing.sm),
+              Row(
+                children: [
+                  input,
+                  const SizedBox(width: AiroSpacing.sm),
+                  send,
+                ],
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            actions,
+            const SizedBox(width: AiroSpacing.sm),
+            input,
+            const SizedBox(width: AiroSpacing.sm),
+            send,
+          ],
+        );
+      },
+    );
+  }
+
+  String _privacyLabel(PrivacyProfile profile) => switch (profile) {
+    PrivacyProfile.private => 'Private',
+    PrivacyProfile.balanced => 'Balanced',
+    PrivacyProfile.cloud => 'Cloud',
+  };
+
+  String _privacyDescription(PrivacyProfile profile) => switch (profile) {
+    PrivacyProfile.private =>
+      'Private routing currently uses Wikipedia only. '
+          'Self-hosted SearXNG support is not configured yet.',
+    PrivacyProfile.balanced =>
+      'Wikipedia, arXiv, and Semantic Scholar with local orchestration.',
+    PrivacyProfile.cloud =>
+      'Remote sources: Wikipedia, arXiv, and Semantic Scholar.',
+  };
+
   Future<void> _runDeepResearch(
     String question, {
     ResearchCheckpoint? resumeFrom,
   }) async {
-    final request = ResearchRequest(question: question);
+    final privacy = resumeFrom?.privacy ?? _researchPrivacy;
+    final request = ResearchRequest(
+      question: question,
+      mode: resumeFrom?.mode ?? ResearchMode.deep,
+      policy: resumeFrom?.policy ?? privacy.searchPolicy,
+      privacy: privacy,
+    );
+    final known =
+        (await latestLibraryEntryFor(
+          _operationLogPort,
+          question,
+        ))?.sourceUrls ??
+        const <String>[];
+    if (!mounted) {
+      return;
+    }
     final epoch = ++_researchEpoch;
     final control = ResearchControl();
     setState(() {
+      _researchPrivacy = privacy;
       _researchControl = control;
       _researchSession = ResearchSession(request: request);
       _isGenerating = true;
@@ -2080,6 +2251,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         request,
         control: control,
         resumeFrom: resumeFrom,
+        knownSourceUrls: known,
+        onLibrary: (entry) {
+          unawaited(
+            appendResearchLibraryOp(log: _operationLogPort, entry: entry),
+          );
+        },
         onCheckpoint: (checkpoint) {
           _resumableCheckpoint = checkpoint;
           unawaited(
@@ -2443,6 +2620,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         builder: contextBuilder,
         compact: compact,
       );
+    }
+    if (turn.blocksInference) {
+      _replaceStreamingMessage(turn.gate.userMessage);
+      return null;
     }
     try {
       if (_shouldUseReasoning(selectedModelId)) {

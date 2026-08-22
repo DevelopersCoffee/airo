@@ -15,6 +15,32 @@ enum SearchPolicy {
   academic,
 }
 
+/// User-facing privacy control. Selects a [SearchPolicy]; Google is never implied.
+enum PrivacyProfile { private, balanced, cloud }
+
+extension PrivacyProfileRouting on PrivacyProfile {
+  SearchPolicy get searchPolicy {
+    switch (this) {
+      case PrivacyProfile.private:
+        return SearchPolicy.privacyFirst;
+      case PrivacyProfile.balanced:
+        return SearchPolicy.balanced;
+      case PrivacyProfile.cloud:
+        return SearchPolicy.maximumQuality;
+    }
+  }
+
+  List<String> get engineIds {
+    switch (this) {
+      case PrivacyProfile.private:
+        return const ['wikipedia', 'searxng'];
+      case PrivacyProfile.balanced:
+      case PrivacyProfile.cloud:
+        return const ['wikipedia', 'arxiv', 'semantic_scholar', 'github'];
+    }
+  }
+}
+
 @immutable
 class ResearchBudget {
   const ResearchBudget({
@@ -24,6 +50,7 @@ class ResearchBudget {
     required this.maxParallelTasks,
     required this.maxTokens,
     required this.maxDuration,
+    required this.maxCostMicros,
   });
 
   factory ResearchBudget.forMode(ResearchMode mode) {
@@ -36,6 +63,7 @@ class ResearchBudget {
           maxParallelTasks: 2,
           maxTokens: 4096,
           maxDuration: Duration(seconds: 30),
+          maxCostMicros: 8000,
         );
       case ResearchMode.standard:
         return const ResearchBudget(
@@ -45,6 +73,7 @@ class ResearchBudget {
           maxParallelTasks: 4,
           maxTokens: 12288,
           maxDuration: Duration(minutes: 2),
+          maxCostMicros: 40000,
         );
       case ResearchMode.deep:
         return const ResearchBudget(
@@ -54,6 +83,7 @@ class ResearchBudget {
           maxParallelTasks: 6,
           maxTokens: 32768,
           maxDuration: Duration(minutes: 8),
+          maxCostMicros: 150000,
         );
       case ResearchMode.exhaustive:
         return const ResearchBudget(
@@ -63,6 +93,7 @@ class ResearchBudget {
           maxParallelTasks: 8,
           maxTokens: 65536,
           maxDuration: Duration(minutes: 20),
+          maxCostMicros: 500000,
         );
     }
   }
@@ -73,6 +104,7 @@ class ResearchBudget {
   final int maxParallelTasks;
   final int maxTokens;
   final Duration maxDuration;
+  final int maxCostMicros;
 }
 
 /// Typed research goal. Flutter and Rust share this shape; the model does
@@ -83,6 +115,7 @@ class ResearchRequest {
     required this.question,
     this.mode = ResearchMode.deep,
     this.policy = SearchPolicy.balanced,
+    this.privacy = PrivacyProfile.balanced,
     this.freshness,
     this.outputFormat = 'technical_report',
   });
@@ -90,6 +123,7 @@ class ResearchRequest {
   final String question;
   final ResearchMode mode;
   final SearchPolicy policy;
+  final PrivacyProfile privacy;
   final Duration? freshness;
   final String outputFormat;
 
