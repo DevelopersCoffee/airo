@@ -177,13 +177,16 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.15.2
   drift_dev: 2.32.1
+  # 4.0.8 is the first generator that solves with riverpod 3.4.2 + riverpod_lint
+  # 3.1.8. It cannot compile against the analyzer 12 pin, so CI codegen skips
+  # the app graph and only generates feature_mind (see scripts/run-ci-codegen.sh).
   riverpod_generator: 4.0.8
   mocktail: ^1.0.5
   alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
   shared_preferences_platform_interface: ^2.4.1
   flutter_lints: 6.0.0
   custom_lint: ^0.8.1
-  # 3.1.6+ is the first riverpod_lint that accepts riverpod 3.4.x
+  # 3.1.8 is the first riverpod_lint that accepts riverpod 3.4.2
   riverpod_lint: 3.1.8
 
 dependency_overrides:
