@@ -89,13 +89,14 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 12. Orchestrator: interpret → plan → breadth → gaps → depth → optional counter-research → citation report.
 13. Source manager: fetch → HTML extract (nav/script stripped) → freshness/credibility → cache. Hits are not evidence. One fetch failure does not kill the job.
 14. Claims from acquired paragraphs; citations are unverified unless the excerpt appears in the acquired source.
+15. `ResearchService` FFI in `airo_mind_llama`: `start` / `status` / `pause` / `resume` / `cancel` / `report` / `run` with Dart-injected search/fetch. Web and pre-init builds keep the Dart orchestrator.
 
 Not shipped (locked below, do not pretend they exist):
 
 - Google / Bing / Brave / DuckDuckGo / SearXNG / Tavily / PubMed / Semantic Scholar / GitHub / news APIs
 - HTML/PDF tables-from-scanned-pages, PDF binary extraction
 - Claim-level citation validation, contradiction explanations, confidence scores
-- HTTP cache, job resumability across process death, `ResearchService` FFI
+- HTTP cache, automatic checkpoint restore through FRB, richer event stream parity with the Dart orchestrator
 - Research library / incremental delta research / comparison matrices / decision weights
 - Privacy modes as a user-facing control (policy enum exists; PRIVATE/CLOUD profiles do not)
 

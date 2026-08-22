@@ -1,10 +1,13 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
+import '../../../../library_loader.dart' show isLlamaLoaded;
 import 'arxiv_search_engine.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_http.dart';
 import 'research_orchestrator.dart';
+import 'research_service.dart';
+import 'rust_research_service.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
 import 'wikipedia_search_engine.dart';
@@ -21,6 +24,25 @@ abstract class ResearchService {
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
   });
+}
+
+/// Host-owned research service. Uses the Rust engine when the llama bridge is
+/// loaded; otherwise the Dart orchestrator.
+ResearchService createProductionResearchService({
+  ResearchOrchestrator? orchestrator,
+}) {
+  final local = LocalResearchService(orchestrator: orchestrator);
+  if (!isLlamaLoaded) {
+    return local;
+  }
+  return RustResearchService(
+    engines: [
+      WikipediaSearchEngine(),
+      ArxivSearchEngine(),
+      SemanticScholarSearchEngine(),
+    ],
+    fetch: const ResearchHttpClient().get,
+  );
 }
 
 /// I/O adapter: allowlisted HTTPS search + fetch, then the in-process

@@ -9,6 +9,7 @@
 import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
 import 'api/reasoning.dart';
+import 'api/research.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -22,8 +23,48 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ResearchServiceHandlePtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  );
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  );
+
+  @protected
+  FutureOr<String> Function(String)
+  dco_decode_DartFn_Inputs_String_Output_String_AnyhowException(dynamic raw);
+
+  @protected
+  FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest)
+  dco_decode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+    dynamic raw,
+  );
+
+  @protected
+  Object dco_decode_DartOpaque(dynamic raw);
+
+  @protected
+  ResearchServiceHandle
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    dynamic raw,
+  );
+
+  @protected
+  RustStreamSink<FrbResearchEvent> dco_decode_StreamSink_frb_research_event_Sse(
+    dynamic raw,
+  );
 
   @protected
   RustStreamSink<GenerationEvent> dco_decode_StreamSink_generation_event_Sse(
@@ -49,6 +90,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_box_autoadd_f_32(dynamic raw);
 
   @protected
+  FrbResearchJobState dco_decode_box_autoadd_frb_research_job_state(
+    dynamic raw,
+  );
+
+  @protected
+  FrbResearchRequest dco_decode_box_autoadd_frb_research_request(dynamic raw);
+
+  @protected
   GenerationConfig dco_decode_box_autoadd_generation_config(dynamic raw);
 
   @protected
@@ -64,6 +113,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FrbResearchEvent dco_decode_frb_research_event(dynamic raw);
+
+  @protected
+  FrbResearchEventKind dco_decode_frb_research_event_kind(dynamic raw);
+
+  @protected
+  FrbResearchJobState dco_decode_frb_research_job_state(dynamic raw);
+
+  @protected
+  FrbResearchMode dco_decode_frb_research_mode(dynamic raw);
+
+  @protected
+  FrbResearchRequest dco_decode_frb_research_request(dynamic raw);
+
+  @protected
+  FrbSearchHit dco_decode_frb_search_hit(dynamic raw);
+
+  @protected
+  FrbSearchPolicy dco_decode_frb_search_policy(dynamic raw);
+
+  @protected
+  FrbSearchRequest dco_decode_frb_search_request(dynamic raw);
+
+  @protected
+  FrbSearchResponse dco_decode_frb_search_response(dynamic raw);
+
+  @protected
   GenerationConfig dco_decode_generation_config(dynamic raw);
 
   @protected
@@ -76,7 +152,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_isize(dynamic raw);
+
+  @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<FrbSearchHit> dco_decode_list_frb_search_hit(dynamic raw);
 
   @protected
   List<MeetingActionItemRecord> dco_decode_list_meeting_action_item_record(
@@ -137,6 +219,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
 
   @protected
+  FrbResearchJobState? dco_decode_opt_box_autoadd_frb_research_job_state(
+    dynamic raw,
+  );
+
+  @protected
   ReasoningLevel? dco_decode_opt_box_autoadd_reasoning_level(dynamic raw);
 
   @protected
@@ -170,7 +257,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Object sse_decode_DartOpaque(SseDeserializer deserializer);
+
+  @protected
+  ResearchServiceHandle
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RustStreamSink<FrbResearchEvent> sse_decode_StreamSink_frb_research_event_Sse(
+    SseDeserializer deserializer,
+  );
 
   @protected
   RustStreamSink<GenerationEvent> sse_decode_StreamSink_generation_event_Sse(
@@ -198,6 +314,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
 
   @protected
+  FrbResearchJobState sse_decode_box_autoadd_frb_research_job_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbResearchRequest sse_decode_box_autoadd_frb_research_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   GenerationConfig sse_decode_box_autoadd_generation_config(
     SseDeserializer deserializer,
   );
@@ -219,6 +345,41 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  FrbResearchEvent sse_decode_frb_research_event(SseDeserializer deserializer);
+
+  @protected
+  FrbResearchEventKind sse_decode_frb_research_event_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbResearchJobState sse_decode_frb_research_job_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbResearchMode sse_decode_frb_research_mode(SseDeserializer deserializer);
+
+  @protected
+  FrbResearchRequest sse_decode_frb_research_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbSearchHit sse_decode_frb_search_hit(SseDeserializer deserializer);
+
+  @protected
+  FrbSearchPolicy sse_decode_frb_search_policy(SseDeserializer deserializer);
+
+  @protected
+  FrbSearchRequest sse_decode_frb_search_request(SseDeserializer deserializer);
+
+  @protected
+  FrbSearchResponse sse_decode_frb_search_response(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   GenerationConfig sse_decode_generation_config(SseDeserializer deserializer);
 
   @protected
@@ -231,7 +392,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_isize(SseDeserializer deserializer);
+
+  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<FrbSearchHit> sse_decode_list_frb_search_hit(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<MeetingActionItemRecord> sse_decode_list_meeting_action_item_record(
@@ -308,6 +477,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
 
   @protected
+  FrbResearchJobState? sse_decode_opt_box_autoadd_frb_research_job_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ReasoningLevel? sse_decode_opt_box_autoadd_reasoning_level(
     SseDeserializer deserializer,
   );
@@ -347,8 +521,54 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_DartFn_Inputs_String_Output_String_AnyhowException(
+    FutureOr<String> Function(String) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_DartFn_Inputs_String_frb_search_request_Output_frb_search_response_AnyhowException(
+    FutureOr<FrbSearchResponse> Function(String, FrbSearchRequest) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_DartOpaque(Object self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    ResearchServiceHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_frb_research_event_Sse(
+    RustStreamSink<FrbResearchEvent> self,
     SseSerializer serializer,
   );
 
@@ -380,6 +600,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_frb_research_job_state(
+    FrbResearchJobState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_frb_research_request(
+    FrbResearchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_generation_config(
     GenerationConfig self,
     SseSerializer serializer,
@@ -404,6 +636,57 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_frb_research_event(
+    FrbResearchEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_research_event_kind(
+    FrbResearchEventKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_research_job_state(
+    FrbResearchJobState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_research_mode(
+    FrbResearchMode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_research_request(
+    FrbResearchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_search_hit(FrbSearchHit self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_frb_search_policy(
+    FrbSearchPolicy self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_search_request(
+    FrbSearchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_frb_search_response(
+    FrbSearchResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_generation_config(
     GenerationConfig self,
     SseSerializer serializer,
@@ -425,7 +708,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_isize(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_frb_search_hit(
+    List<FrbSearchHit> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_meeting_action_item_record(
@@ -518,6 +810,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_frb_research_job_state(
+    FrbResearchJobState? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_reasoning_level(
     ReasoningLevel? self,
     SseSerializer serializer,
@@ -570,12 +868,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+        ptr,
+      );
 }
 
 @JS('wasm_bindgen')
@@ -583,4 +900,14 @@ external RustLibWasmModule get wasmModule;
 
 @JS()
 @anonymous
-extension type RustLibWasmModule._(JSObject _) implements JSObject {}
+extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+    int ptr,
+  );
+}

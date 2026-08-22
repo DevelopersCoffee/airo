@@ -23,7 +23,7 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
   LocalDeepResearchEngine({
     ResearchService? service,
     ResearchOrchestrator? orchestrator,
-  }) : _service = service ?? LocalResearchService(orchestrator: orchestrator);
+  }) : _service = service ?? createProductionResearchService(orchestrator: orchestrator);
 
   final ResearchService _service;
 
