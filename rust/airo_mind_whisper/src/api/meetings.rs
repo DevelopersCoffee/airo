@@ -59,6 +59,7 @@ use airo_mind_diarize::{
     SpeakerEmbedder, SpeakerEnrollmentStore,
 };
 use airo_mind_transcript::Segment;
+use airo_mind_transcript::VocabularyIntelligence;
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -505,6 +506,9 @@ struct LiveSessionState {
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+static LIVE_VOCABULARY: LazyLock<VocabularyIntelligence> =
+    LazyLock::new(VocabularyIntelligence::with_defaults);
+
 /// Cross-meeting speaker enrollment profiles synced from Dart (#504).
 static SPEAKER_ENROLLMENT: LazyLock<Mutex<SpeakerEnrollmentStore>> =
     LazyLock::new(|| Mutex::new(SpeakerEnrollmentStore::new()));
@@ -783,16 +787,34 @@ pub fn transcribe_recording(
     })
 }
 
+fn vocabulary_correct_stable(text: &str) -> String {
+    LIVE_VOCABULARY.correct(text).corrected_text
+}
+
 fn emit_live_delta(
     session: &mut LiveSessionState,
     session_id: &str,
     segment: TranscriptSegment,
 ) -> Result<(), String> {
+    let raw_text = segment.text.trim().to_string();
+    let display_text = match segment.state {
+        TranscriptSegmentState::Partial => raw_text.clone(),
+        TranscriptSegmentState::Stable | TranscriptSegmentState::Final => {
+            vocabulary_correct_stable(&raw_text)
+        }
+    };
+
     let segment_id = match segment.state {
         TranscriptSegmentState::Partial => format!("s{}", session.segment_index),
         TranscriptSegmentState::Stable => {
             let id = format!("s{}", session.segment_index);
-            let record = transcript_segment_record(session.segments.len(), &segment);
+            let mut corrected_segment = TranscriptSegment::new(
+                segment.start_ms,
+                segment.end_ms,
+                display_text.clone(),
+                segment.state,
+            );
+            let record = transcript_segment_record(session.segments.len(), &corrected_segment);
             let record = TranscriptSegmentRecord {
                 id: id.clone(),
                 start_ms: record.start_ms,
@@ -810,13 +832,18 @@ fn emit_live_delta(
         }
         TranscriptSegmentState::Final => {
             if let Some(record) = session.segments.last_mut() {
-                let trimmed = segment.text.trim();
-                record.text = trimmed.to_string();
+                record.text = display_text.clone();
                 record.end_ms = segment.end_ms;
                 record.start_ms = segment.start_ms;
                 record.id.clone()
             } else {
-                let record = transcript_segment_record(session.segments.len(), &segment);
+                let mut corrected_segment = TranscriptSegment::new(
+                    segment.start_ms,
+                    segment.end_ms,
+                    display_text.clone(),
+                    segment.state,
+                );
+                let record = transcript_segment_record(session.segments.len(), &corrected_segment);
                 session.segments.push(record.clone());
                 record.id
             }
@@ -827,7 +854,7 @@ fn emit_live_delta(
         session_id: session_id.to_string(),
         segment_id,
         speaker_label: None,
-        text: segment.text.trim().to_string(),
+        text: display_text,
         start_ms: segment.start_ms,
         end_ms: segment.end_ms,
         state: TranscriptSegmentStateWire::from(segment.state),

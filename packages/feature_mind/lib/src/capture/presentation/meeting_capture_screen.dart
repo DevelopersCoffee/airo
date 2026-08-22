@@ -7,7 +7,6 @@ import '../../assistant/consent/audio_scribe_consent_gate.dart';
 import '../../assistant/consent/jurisdiction_consent_rules.dart';
 import '../../assistant/consent/mind_runtime_provider.dart';
 import '../../assistant/consent/recording_consent_prompt.dart';
-import '../../trust/scribe_trust_signals.dart';
 import '../../trust/scribe_trust_state.dart';
 import '../application/meeting_capture_controller.dart';
 import '../application/meeting_capture_providers.dart';
@@ -17,29 +16,17 @@ import '../application/transcription_mode_preference.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
 import '../domain/transcription_mode.dart';
+import 'compact_trust_status_bar.dart';
+import 'live_capture_controls.dart';
+import 'live_insights_rail.dart';
+import 'live_transcript_view.dart';
 import 'meeting_recording_visualizer.dart';
 
-/// In-app meeting capture (#1656 AC1, AC6).
+/// In-app meeting capture (#1656 AC1, AC6) with live-transcript-first layout
+/// while recording.
 ///
 /// Reuses `AudioScribeConsentGate` — the same gate `AudioScribeScreen` uses
-/// for live dictation — as the one door to the encoder, per that gate's own
-/// doc: "a screen that wants to record audio has no other route to the
-/// encoder available to it". This screen's [MeetingCaptureController] is
-/// only ever started from inside [AudioScribeConsentGate.startRecording], the
-/// same shape `AudioScribeScreen._capture` already uses for the streaming
-/// path.
-///
-/// AC6's "explicit recording-consent UX copy" lives in [_ConsentReminder]
-/// below: a plain-language reminder that recording consent law varies by
-/// where the meeting happens, and that checking it is the person's
-/// responsibility — this screen shows a jurisdiction picker and (for
-/// two-party jurisdictions) blocks on an "I notified everyone" acknowledgment
-/// before starting, but it is not a legal gate; nothing here verifies the
-/// acknowledgment is true.
-///
-/// That picker is behind [recordingConsentPromptProvider], off by default. With
-/// it off the gate is still the only door to the encoder; consent is granted up
-/// front under [implicitConsentJurisdiction] so Start works on arrival.
+/// for live dictation — as the one door to the encoder.
 class MeetingCaptureScreen extends ConsumerStatefulWidget {
   const MeetingCaptureScreen({super.key});
 
@@ -57,9 +44,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   bool _consentBusy = false;
   String? _consentError;
 
-  /// Set when the up-front grant (prompt disabled) could not write its op.
-  /// Falls back to showing the picker rather than leaving Start dead with no
-  /// explanation.
   bool _implicitConsentFailed = false;
 
   StreamSubscription<MeetingRecordingSnapshot>? _snapshotSub;
@@ -70,11 +54,9 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   MeetingRecordingSnapshot _snapshot = MeetingRecordingSnapshot.idle;
   String? _startError;
   String? _liveWarning;
+  bool _followLive = true;
+  bool _insightsExpanded = false;
 
-  /// The job this session enqueued, while it is still in the queue. Non-null
-  /// means "transcribing" — the screen stays put and reports progress instead
-  /// of dropping the person back into a library that will not list the meeting
-  /// for another few minutes.
   MeetingProcessingJob? _processing;
   bool _processed = false;
   String? _processingError;
@@ -95,9 +77,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     super.dispose();
   }
 
-  /// Records consent without asking, for when [recordingConsentPromptProvider]
-  /// is off. Still goes through [AudioScribeConsentGate.grant], so the op log
-  /// carries a consent entry for every recording exactly as before.
   Future<void> _grantImplicitConsent() async {
     try {
       await _consentGate.grant(
@@ -146,6 +125,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     setState(() {
       _startError = null;
       _liveWarning = null;
+      _followLive = true;
     });
     final controller = ref.read(meetingCaptureControllerProvider);
     _controller = controller;
@@ -204,12 +184,12 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   Future<void> _pause() async {
     await _controller?.pause();
-    _liveCoordinator?.pause();
+    await _liveCoordinator?.pause();
   }
 
   Future<void> _resume() async {
     await _controller?.resume();
-    _liveCoordinator?.resume();
+    await _liveCoordinator?.resume();
   }
 
   Future<void> _stop() async {
@@ -295,160 +275,200 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final active = recording || paused;
     final languageMode = ref.watch(speechLanguageModeProvider);
     final transcriptionMode = ref.watch(transcriptionModeProvider);
-    final showLiveTranscript =
-        active && transcriptionMode.usesLivePipeline && _liveCoordinator != null;
+    final trustState = ScribeTrustState.fromSpeechLanguageMode(languageMode);
+    final showLive =
+        active &&
+        transcriptionMode.usesLivePipeline &&
+        _liveCoordinator != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Record meeting')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              children: [
-                if (showConsentUi) ...[
-                  const _ConsentReminder(),
-                  const SizedBox(height: 12),
-                ],
-                ScribeTrustSignals(
-                  state: ScribeTrustState.fromSpeechLanguageMode(languageMode),
-                ),
-                const SizedBox(height: 12),
-                if (showConsentUi)
-                  _ConsentJurisdictionPicker(
-                    jurisdiction: _jurisdiction,
-                    allPartiesAck: _allPartiesAck,
-                    granted: consentGranted,
-                    busy: _consentBusy,
-                    error: _consentError,
-                    onJurisdictionChanged: (jurisdiction) => setState(() {
-                      _jurisdiction = jurisdiction;
-                      if (!jurisdiction.requiresAllPartyNotification) {
-                        _allPartiesAck = false;
-                      }
-                    }),
-                    onAllPartiesAckChanged: (value) =>
-                        setState(() => _allPartiesAck = value),
-                    onConfirm: _confirmConsent,
+      appBar: AppBar(
+        title: const Text('Record meeting'),
+        actions: active
+            ? [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        size: 10,
+                        color: paused
+                            ? Theme.of(context).colorScheme.outline
+                            : Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        paused ? 'PAUSED' : 'LIVE',
+                        key: const Key('meeting_capture_live_badge'),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatElapsed(_snapshot.elapsedMs),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
                   ),
-                _ProcessingStatus(
-                  job: _processing,
-                  processed: _processed,
-                  error: _processingError,
-                  onOpenLibrary: () => Navigator.of(context).maybePop(),
                 ),
-                if (showLiveTranscript) ...[
-                  const SizedBox(height: 16),
-                  _LiveTranscriptPanel(coordinator: _liveCoordinator!),
-                ],
+              ]
+            : null,
+      ),
+      body: active
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 if (paused && _snapshot.pausedByOs)
                   const Padding(
-                    padding: EdgeInsets.only(top: 20),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Text(
                       key: Key('meeting_capture_os_pause_notice'),
                       'Paused automatically — a call or Siri interrupted the '
                       'microphone. Recording will resume when it ends.',
                     ),
                   ),
-                if (_liveWarning != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _liveWarning!,
-                    key: const Key('meeting_capture_live_warning'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.tertiary,
+                CompactTrustStatusBar(state: trustState),
+                if (_liveWarning != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      _liveWarning!,
+                      key: const Key('meeting_capture_live_warning'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
                     ),
                   ),
-                ],
-              ],
-            ),
-          ),
-          Material(
-            elevation: 8,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  MeetingRecordingVisualizer(
-                    recording: recording,
-                    amplitude: _snapshot.amplitude,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (active)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: Icon(
-                            paused
-                                ? Icons.pause_circle_filled
-                                : Icons.fiber_manual_record,
-                            color: Theme.of(context).colorScheme.error,
-                            size: 18,
+                      Expanded(
+                        flex: showLive ? 7 : 1,
+                        child: showLive
+                            ? LiveTranscriptView(
+                                lines: _liveCoordinator!.transcriptLines,
+                                followLive: _followLive,
+                                onFollowLiveChanged: (value) =>
+                                    setState(() => _followLive = value),
+                              )
+                            : const Center(
+                                child: Text('Recording — transcript after stop'),
+                              ),
+                      ),
+                      if (showLive)
+                        LiveInsightsRail(
+                          expanded: _insightsExpanded,
+                          onToggle: () => setState(
+                            () => _insightsExpanded = !_insightsExpanded,
                           ),
                         ),
-                      Text(
-                        _formatElapsed(_snapshot.elapsedMs),
-                        key: const Key('meeting_capture_elapsed'),
-                        style: Theme.of(context).textTheme.displaySmall,
+                    ],
+                  ),
+                ),
+                LiveCaptureControls(
+                  elapsedLabel: _formatElapsed(_snapshot.elapsedMs),
+                  isPaused: paused,
+                  followLive: _followLive,
+                  onFollowLiveChanged: (value) =>
+                      setState(() => _followLive = value),
+                  onPause: _pause,
+                  onResume: _resume,
+                  onStop: _stop,
+                  amplitudeSamples: showLive
+                      ? _liveCoordinator!.amplitudeSamples
+                      : const [],
+                  speakerActivitySpans: showLive
+                      ? _liveCoordinator!.speakerActivitySpans
+                      : const [],
+                  speakerTimelineEndMs: _snapshot.elapsedMs,
+                  activeSpeakerIndex: showLive
+                      ? _liveCoordinator!.activeSpeakerIndex
+                      : null,
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                    children: [
+                      if (showConsentUi) ...[
+                        const _ConsentReminder(),
+                        const SizedBox(height: 12),
+                      ],
+                      CompactTrustStatusBar(state: trustState),
+                      const SizedBox(height: 12),
+                      if (showConsentUi)
+                        _ConsentJurisdictionPicker(
+                          jurisdiction: _jurisdiction,
+                          allPartiesAck: _allPartiesAck,
+                          granted: consentGranted,
+                          busy: _consentBusy,
+                          error: _consentError,
+                          onJurisdictionChanged: (jurisdiction) => setState(() {
+                            _jurisdiction = jurisdiction;
+                            if (!jurisdiction.requiresAllPartyNotification) {
+                              _allPartiesAck = false;
+                            }
+                          }),
+                          onAllPartiesAckChanged: (value) =>
+                              setState(() => _allPartiesAck = value),
+                          onConfirm: _confirmConsent,
+                        ),
+                      _ProcessingStatus(
+                        job: _processing,
+                        processed: _processed,
+                        error: _processingError,
+                        onOpenLibrary: () => Navigator.of(context).maybePop(),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      if (!active)
+                ),
+                Material(
+                  elevation: 8,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MeetingRecordingVisualizer(
+                          recording: recording,
+                          amplitude: _snapshot.amplitude,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _formatElapsed(_snapshot.elapsedMs),
+                          key: const Key('meeting_capture_elapsed'),
+                          style: Theme.of(context).textTheme.displaySmall,
+                        ),
+                        const SizedBox(height: 12),
                         FilledButton.icon(
                           key: const Key('meeting_capture_start_button'),
                           onPressed: consentGranted ? _start : null,
                           icon: const Icon(Icons.mic),
                           label: const Text('Start recording'),
                         ),
-                      if (recording)
-                        OutlinedButton.icon(
-                          key: const Key('meeting_capture_pause_button'),
-                          onPressed: _pause,
-                          icon: const Icon(Icons.pause),
-                          label: const Text('Pause'),
-                        ),
-                      if (paused && !_snapshot.pausedByOs)
-                        OutlinedButton.icon(
-                          key: const Key('meeting_capture_resume_button'),
-                          onPressed: _resume,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Resume'),
-                        ),
-                      if (active)
-                        FilledButton.icon(
-                          key: const Key('meeting_capture_stop_button'),
-                          onPressed: _stop,
-                          icon: const Icon(Icons.stop),
-                          label: const Text('Stop'),
-                        ),
-                    ],
-                  ),
-                  if (_startError != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _startError!,
-                      key: const Key('meeting_capture_error'),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                        if (_startError != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _startError!,
+                            key: const Key('meeting_capture_error'),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -457,48 +477,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final minutes = seconds ~/ 60;
     final remSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remSeconds.toString().padLeft(2, '0')}';
-  }
-}
-
-class _LiveTranscriptPanel extends StatelessWidget {
-  const _LiveTranscriptPanel({required this.coordinator});
-
-  final MeetingLiveSessionCoordinator coordinator;
-
-  @override
-  Widget build(BuildContext context) {
-    final stable = coordinator.stableSegments;
-    final partial = coordinator.partialText;
-    return Card(
-      key: const Key('meeting_capture_live_transcript'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Live transcript',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            if (stable.isEmpty && partial == null)
-              const Text('Listening…')
-            else ...[
-              for (final segment in stable)
-                Text(segment.text, key: Key('live_stable_${segment.id}')),
-              if (partial != null)
-                Text(
-                  partial,
-                  key: const Key('meeting_capture_live_partial'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 }
 

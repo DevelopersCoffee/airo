@@ -2,6 +2,8 @@ import 'dart:async';
 
 import '../../bridges/mind_speech_bridge.dart';
 import '../../whisper/api/meetings.dart' as rust;
+import '../domain/live_speaker_label.dart';
+import '../domain/live_transcript_line.dart';
 import 'meeting_live_pcm_shim.dart';
 
 /// Result of a completed live STT session.
@@ -35,6 +37,38 @@ class MeetingLiveSessionCoordinator {
   String? get partialText => _partialText;
   List<TranscriptSegment> get stableSegments =>
       List<TranscriptSegment>.unmodifiable(_stableSegments);
+
+  /// Rows for the live transcript UI (stable + optional partial tail).
+  List<LiveTranscriptLine> get transcriptLines {
+    final lines = <LiveTranscriptLine>[
+      for (final segment in _stableSegments)
+        LiveTranscriptLine(
+          segmentId: segment.id,
+          speakerLabel: formatLiveSpeakerLabel(segment.speakerLabel),
+          text: segment.text,
+          startMs: segment.startMs,
+          isPartial: false,
+        ),
+    ];
+    if (_partialText != null && _partialText!.isNotEmpty) {
+      final tailSpeaker = _stableSegments.isNotEmpty
+          ? formatLiveSpeakerLabel(_stableSegments.last.speakerLabel)
+          : formatLiveSpeakerLabel(null);
+      final tailStart = _stableSegments.isNotEmpty
+          ? _stableSegments.last.endMs
+          : 0;
+      lines.add(
+        LiveTranscriptLine(
+          segmentId: 'partial',
+          speakerLabel: tailSpeaker,
+          text: _partialText!,
+          startMs: tailStart,
+          isPartial: true,
+        ),
+      );
+    }
+    return lines;
+  }
 
   String? _partialText;
   final List<TranscriptSegment> _stableSegments = [];
@@ -136,6 +170,7 @@ class MeetingLiveSessionCoordinator {
         }
       case TranscriptEventTranscribing():
       case TranscriptEventCancelled():
+      case TranscriptEventDegraded():
         break;
       case TranscriptEventDegraded(:final message):
         _partialText = message;
