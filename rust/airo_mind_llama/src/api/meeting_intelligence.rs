@@ -13,7 +13,7 @@ use airo_mind_core::{
 };
 use airo_mind_diarize::diarize_single_speaker;
 use airo_mind_meeting::{
-    extract, generate_mom, validate, ExtractionConfig, MeetingInput, MomError,
+    extract, generate_mom, record_validation, validate, ExtractionConfig, MeetingInput, MomError,
 };
 use airo_mind_transcript::{process, ChunkConfig, Segment};
 use flutter_rust_bridge::frb;
@@ -267,7 +267,7 @@ pub fn process_meeting_intelligence(
             &engine,
             &processed,
             &MeetingInput {
-                id: meeting_id,
+                id: meeting_id.clone(),
                 title: Some(title),
                 model_id,
             },
@@ -286,7 +286,12 @@ pub fn process_meeting_intelligence(
         return Ok(());
     }
 
-    let (validated_ir, _report) = validate(&extraction.ir, &validate_segments);
+    let (validated_ir, report) = validate(&extraction.ir, &validate_segments);
+    // Classification is in-process only: no new MindOpKind, no raw IR in the
+    // diagnostic, and the FFI surface stays IrReady + MoM. Repair already
+    // happened in `validate`; the classifier names the failure family and the
+    // execution log keeps persistable metadata only.
+    let _diagnostics = record_validation(&meeting_id, &report);
 
     emit(MeetingIntelligenceEvent::IrReady {
         decisions: decisions_from_ir(&validated_ir),

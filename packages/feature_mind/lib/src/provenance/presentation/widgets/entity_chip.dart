@@ -18,17 +18,11 @@ class EntityChip extends StatelessWidget {
   /// The phone surface's stated floor. A 24 px chip is one a person misses.
   static const double minimumTarget = 48;
 
-  static const Map<EntityType, String> _typeLabels = {
-    EntityType.person: 'person',
-    EntityType.date: 'date',
-    EntityType.term: 'term',
-  };
-
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '${entity.text}, ${_typeLabels[entity.type]}',
+      label: '${entity.text}, ${entity.type.name}',
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
@@ -49,7 +43,7 @@ class EntityChip extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: MindPalette.ink),
                 ),
                 Text(
-                  _typeLabels[entity.type]!,
+                  entity.type.name,
                   style: TextStyle(
                     fontSize: 10,
                     color: MindPalette.ink.withValues(alpha: 0.55),

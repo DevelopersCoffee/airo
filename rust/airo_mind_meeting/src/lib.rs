@@ -53,6 +53,7 @@ mod mom_prompt;
 pub mod pass1;
 pub mod pass2;
 pub mod prompt;
+pub mod reliability_map;
 pub mod validate;
 
 use std::collections::BTreeMap;
@@ -73,6 +74,7 @@ pub use mom_prompt::{MOM_DISCUSSION_POINTS_PROMPT_VERSION, MOM_OBJECTIVE_PROMPT_
 pub use pass1::{extract_chunk, ExtractionConfig};
 pub use pass2::consolidate;
 pub use prompt::{CHUNK_FACTS_GRAMMAR, PROMPT_VERSION};
+pub use reliability_map::{classify_validation_report, record_validation};
 pub use validate::{validate, Severity, ValidationReport, Violation};
 
 /// Why extraction could not finish at all.

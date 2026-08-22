@@ -1,6 +1,11 @@
 import 'dart:io';
 
-import 'package:feature_mind/feature_mind.dart';
+import 'package:feature_mind/src/notebook/application/notebook_share_port.dart';
+import 'package:feature_mind/src/notebook/application/super_summary_recap_port.dart';
+import 'package:feature_mind/src/notebook/domain/notebook_document.dart';
+import 'package:feature_mind/src/notes/domain/notes_operation_log.dart';
+import 'package:feature_mind/src/notes/notes_capability.dart';
+import 'package:feature_mind/src/notes/presentation/notes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -161,5 +166,185 @@ void main() {
 
     final projection = await directly(tester, capability.notes);
     expect(projection.isEmpty, isTrue);
+  });
+
+  testWidgets('search and tag chips filter the library', (tester) async {
+    await directly(tester, () async {
+      await capability.createNote(
+        id: 'n1',
+        title: 'Standup',
+        body: const NotebookDocument(
+          body: 'pods',
+          tags: ['work'],
+          summary: 'Adopt Kubernetes',
+        ).encode(),
+        recordedAtMs: 1,
+      );
+      await capability.createNote(
+        id: 'n2',
+        title: 'Lecture',
+        body: const NotebookDocument(
+          transcript: 'backpropagation',
+          tags: ['study'],
+        ).encode(),
+        recordedAtMs: 2,
+      );
+    });
+
+    await tester.pumpWidget(wrap(NotesScreen(capability: capability)));
+    await settle(tester);
+
+    expect(find.text('Standup'), findsOneWidget);
+    expect(find.text('Lecture'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('notes_screen_search_field')),
+      'kubernetes',
+    );
+    await tester.pump();
+    expect(find.text('Standup'), findsOneWidget);
+    expect(find.text('Lecture'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('notes_screen_search_field')),
+      '',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('notes_screen_tag_chip_study')));
+    await tester.pump();
+    expect(find.text('Lecture'), findsOneWidget);
+    expect(find.text('Standup'), findsNothing);
+  });
+
+  testWidgets('Super Summary combines two selected notes', (tester) async {
+    await directly(tester, () async {
+      await capability.createNote(
+        id: 'a',
+        title: 'One',
+        body: const NotebookDocument(
+          summary: 'First',
+          keyPoints: ['Do A'],
+        ).encode(),
+        recordedAtMs: 1,
+      );
+      await capability.createNote(
+        id: 'b',
+        title: 'Two',
+        body: const NotebookDocument(
+          summary: 'Second',
+          keyPoints: ['Do B'],
+        ).encode(),
+        recordedAtMs: 2,
+      );
+    });
+
+    await tester.pumpWidget(wrap(NotesScreen(capability: capability)));
+    await settle(tester);
+
+    await tester.tap(
+      find.byKey(const Key('notes_screen_super_summary_button')),
+    );
+    await tester.pump();
+    await tester.tap(find.text('One'));
+    await tester.tap(find.text('Two'));
+    await tester.tap(find.byKey(const Key('notes_screen_combine_button')));
+    await settle(tester);
+
+    expect(find.text('Super summary · 2 notes'), findsOneWidget);
+    final projection = await directly(tester, capability.notes);
+    expect(projection.length, 3);
+  });
+
+  testWidgets(
+    'Super Summary uses the generated recap when the port returns one',
+    (tester) async {
+      await directly(tester, () async {
+        await capability.createNote(
+          id: 'a',
+          title: 'One',
+          body: const NotebookDocument(summary: 'First').encode(),
+          recordedAtMs: 1,
+        );
+        await capability.createNote(
+          id: 'b',
+          title: 'Two',
+          body: const NotebookDocument(summary: 'Second').encode(),
+          recordedAtMs: 2,
+        );
+      });
+
+      var asked = false;
+      final recapPort = SuperSummaryRecapPort((notes) async {
+        asked = true;
+        expect(notes.map((n) => n.title), ['One', 'Two']);
+        return '''
+# Summary
+LLM recap of both threads.
+
+# Key points
+- Call the customer
+''';
+      });
+
+      await tester.pumpWidget(
+        wrap(NotesScreen(capability: capability, recapPort: recapPort)),
+      );
+      await settle(tester);
+
+      await tester.tap(
+        find.byKey(const Key('notes_screen_super_summary_button')),
+      );
+      await tester.pump();
+      await tester.tap(find.text('One'));
+      await tester.tap(find.text('Two'));
+      await tester.tap(find.byKey(const Key('notes_screen_combine_button')));
+      await settle(tester);
+
+      expect(asked, isTrue);
+      expect(find.text('Super summary · 2 notes'), findsOneWidget);
+      final projection = await directly(tester, capability.notes);
+      final recap = projection.all.singleWhere(
+        (note) => note.title.startsWith('Super summary'),
+      );
+      expect(recap.body, contains('LLM recap of both threads'));
+    },
+  );
+
+  testWidgets('copy writes markdown through the share port', (tester) async {
+    final share = MemoryNotebookSharePort();
+    await directly(
+      tester,
+      () => capability.createNote(
+        id: 'n1',
+        title: 'Standup',
+        body: const NotebookDocument(
+          summary: 'Ship Friday.',
+          keyPoints: ['Ship Friday'],
+        ).encode(),
+        recordedAtMs: 1,
+      ),
+    );
+
+    await tester.pumpWidget(
+      wrap(NotesScreen(capability: capability, sharePort: share)),
+    );
+    await settle(tester);
+    await tester.tap(find.text('Standup'));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('notes_screen_copy_button')));
+    await tester.pump();
+
+    expect(share.lastCopied, contains('# Standup'));
+    expect(share.lastCopied, contains('Ship Friday'));
+  });
+
+  testWidgets('Hindi locale localizes the empty state', (tester) async {
+    await tester.pumpWidget(
+      wrap(NotesScreen(capability: capability, localeCode: 'hi')),
+    );
+    await settle(tester);
+
+    expect(find.text('नोट्स'), findsOneWidget);
+    expect(find.text('अभी कोई नोट नहीं'), findsOneWidget);
   });
 }

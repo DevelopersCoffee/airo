@@ -2,6 +2,7 @@ import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan
 import 'package:feature_mind/src/agent_chat/data/services/assistant_chat_context_builder.dart';
 import 'package:feature_mind/src/agent_chat/data/services/diet_plan_plugin_prompt.dart';
 import 'package:feature_mind/src/agent_chat/data/services/gguf_instruct_prompt.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_orchestrator.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
 import 'package:core_ai/core_ai.dart';
@@ -29,6 +30,20 @@ void main() {
   test('every Assistant chip prompt parses without throwing', () {
     for (final prompt in chipPrompts) {
       expect(() => IntentParser.parse(prompt), returnsNormally, reason: prompt);
+      final gate = ChatTurnReliability.plan(
+        userText: prompt,
+        definition: AiroPromptRegistry.chatAssistant,
+      );
+      expect(gate.definition.qualifiedId, 'chat.assistant.v1');
+      expect(gate.blocksInference, isFalse, reason: prompt);
+      final live = ChatTurnReliability.plan(
+        userText: prompt,
+        systemPrompt:
+            'You are Airo. Be brief. Stay on the last user question.',
+        definition: AiroPromptRegistry.chatAssistant,
+      );
+      expect(live.blocksInference, isFalse, reason: prompt);
+      expect(live.gate.userMessage, isNot(contains('PD-')));
     }
   });
 
@@ -149,6 +164,50 @@ void main() {
       expect(wrapped, isNot(contains('<|im_start|>')));
       expect(wrapped, isNot(contains('Everyday meal ideas')));
       expect(wrapped, contains('or repeat a previous reply'));
+    },
+  );
+
+  test('Llama uses Llama-3 headers; Qwen stays on ChatML', () {
+    for (final family in [ModelFamily.llama, ModelFamily.qwen]) {
+      final wrapped = formatGgufInstructPrompt(
+        prompt: '2+2',
+        systemPrompt: 'You are Airo.',
+        family: family,
+      );
+      if (family == ModelFamily.qwen) {
+        expect(wrapped, contains('<|im_start|>assistant'));
+      } else {
+        expect(wrapped, contains('<|start_header_id|>system'));
+        expect(wrapped, contains('You are Airo.'));
+        expect(wrapped, contains('2+2'));
+        expect(wrapped, isNot(contains('<|im_start|>')));
+      }
+      expect(wrapped, isNot(contains('<start_of_turn>')));
+    }
+  });
+
+  test(
+    'skill.select and skill.next_action schemas parse registry fixtures',
+    () {
+      expect(AiroPromptRegistry.skillSelect.hasEvalSuite, isTrue);
+      expect(AiroPromptRegistry.skillNextAction.hasEvalSuite, isTrue);
+      expect(
+        parseSelectedSkillId('{"skill_id":"read-calendar-events"}'),
+        'read-calendar-events',
+      );
+      expect(parseSelectedSkillId('not json'), isNull);
+      expect(
+        parseSkillModelAction(
+          '{"type":"tool_call","tool":"read_calendar_events","arguments":{}}',
+        )?.tool,
+        'read_calendar_events',
+      );
+      expect(
+        parseSkillModelAction(
+          '{"type":"final","message":"No events today."}',
+        )?.message,
+        'No events today.',
+      );
     },
   );
 

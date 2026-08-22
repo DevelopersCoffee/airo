@@ -9,17 +9,46 @@ class ChatHistoryEntry {
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.reasoningSummary,
+    this.reasoningLevel,
+    this.toolCalls = const [],
   });
 
   final String text;
   final bool isUser;
   final DateTime timestamp;
 
-  Map<String, Object?> toJson() => {
-    'text': text,
-    'isUser': isUser,
-    'timestamp': timestamp.toUtc().toIso8601String(),
-  };
+  /// Short user-facing basis. Never a private scratchpad.
+  final String? reasoningSummary;
+
+  /// Stable id: `none` / `light` / `standard` / `deep`.
+  final String? reasoningLevel;
+
+  final List<ChatHistoryToolCall> toolCalls;
+
+  Map<String, Object?> toJson() {
+    final json = <String, Object?>{
+      'text': text,
+      'isUser': isUser,
+      'timestamp': timestamp.toUtc().toIso8601String(),
+      if (reasoningSummary != null && reasoningSummary!.isNotEmpty)
+        'reasoningSummary': reasoningSummary,
+      if (reasoningLevel != null && reasoningLevel!.isNotEmpty)
+        'reasoningLevel': reasoningLevel,
+      if (toolCalls.isNotEmpty)
+        'toolCalls': [for (final call in toolCalls) call.toJson()],
+    };
+    json.removeWhere(
+      (key, _) => const {
+        'thoughts',
+        'thought',
+        'scratchpad',
+        'raw_thoughts',
+        'partialThinkingResult',
+      }.contains(key),
+    );
+    return json;
+  }
 
   static ChatHistoryEntry? fromJson(Object? value) {
     if (value is! Map) return null;
@@ -31,11 +60,45 @@ class ChatHistoryEntry {
     }
     final parsedTimestamp = DateTime.tryParse(timestamp);
     if (parsedTimestamp == null) return null;
+    final summary = value['reasoningSummary'];
+    final level = value['reasoningLevel'];
+    final toolCallsRaw = value['toolCalls'];
     return ChatHistoryEntry(
       text: text,
       isUser: isUser,
       timestamp: parsedTimestamp.toLocal(),
+      reasoningSummary: summary is String && summary.isNotEmpty
+          ? summary
+          : null,
+      reasoningLevel: level is String && level.isNotEmpty ? level : null,
+      toolCalls: toolCallsRaw is List
+          ? toolCallsRaw
+                .map(ChatHistoryToolCall.fromJson)
+                .whereType<ChatHistoryToolCall>()
+                .toList(growable: false)
+          : const [],
     );
+  }
+}
+
+class ChatHistoryToolCall {
+  const ChatHistoryToolCall({required this.name, required this.argumentsJson});
+
+  final String name;
+  final String argumentsJson;
+
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'argumentsJson': argumentsJson,
+  };
+
+  static ChatHistoryToolCall? fromJson(Object? value) {
+    if (value is! Map) return null;
+    final name = value['name'];
+    final argumentsJson = value['argumentsJson'];
+    if (name is! String || argumentsJson is! String) return null;
+    if (name.isEmpty) return null;
+    return ChatHistoryToolCall(name: name, argumentsJson: argumentsJson);
   }
 }
 
