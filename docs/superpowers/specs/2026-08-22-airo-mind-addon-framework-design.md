@@ -1,8 +1,8 @@
 # Airo Mind Add-on Framework
 
 **Date:** 2026-08-22  
-**Status:** Approved; Increment 1 contracts and characterization landed on
-`cursor/mind-addon-framework-design-45dd`; implementation continues increment-by-increment  
+**Status:** Approved; Increment 1 contracts landed; Increment 2 secure LifeTrack
+destination landed on `cursor/mind-addon-increment-2-secure-lifetrack-45dd`  
 **Owners:** Framework Agent + Product Manager (Airo Mind)  
 **Required reviewers:** Product Manager, Framework Agent, AI/Brain Agent,
 Memory Agent, Chief Architect, Platform Architect, Flutter Architect, Edge
