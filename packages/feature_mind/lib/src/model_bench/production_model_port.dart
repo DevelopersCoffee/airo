@@ -19,7 +19,7 @@ ModelPort createProductionModelPort({
   GenerationEngineController? engine,
   GenerationBenchMetadata? benchMetadata,
 }) {
-  late final service = gguf ?? LlamaGgufService();
+  late final service = gguf ?? sharedLlamaGgufService();
   return RustMindRuntime(
     benchRunner: benchRunner ?? LlamaGgufBenchRunner(service),
     engine: engine ?? LlamaGgufEngineController(service),
