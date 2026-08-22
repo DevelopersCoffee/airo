@@ -45,6 +45,9 @@ void main() {
     expect(events.last.detail, contains('Qwen is a family'));
     expect(events.last.detail, isNot(contains('SEARCH SNIPPET ONLY')));
     expect(events.last.detail, isNot(contains('no citations')));
+    expect(events.last.detail, contains('## Observability'));
+    expect(events.last.detail, contains('Sources used:'));
+    expect(events.last.detail, contains('Cost:'));
     expect(
       events.map((event) => event.kind),
       contains(ResearchEventKind.documentParsed),

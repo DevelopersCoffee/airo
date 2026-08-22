@@ -33,7 +33,7 @@ class SearchRouter {
       case SearchPolicy.localOnly:
         return const [];
       case SearchPolicy.privacyFirst:
-        return const ['wikipedia'];
+        return const ['wikipedia', 'searxng'];
       case SearchPolicy.balanced:
       case SearchPolicy.maximumQuality:
         return const ['wikipedia', 'arxiv', 'semantic_scholar'];
@@ -41,4 +41,6 @@ class SearchRouter {
         return const ['arxiv', 'semantic_scholar'];
     }
   }
+
+  static List<String> engineIdsFor(PrivacyProfile profile) => profile.engineIds;
 }
