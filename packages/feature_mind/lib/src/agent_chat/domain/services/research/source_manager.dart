@@ -101,5 +101,8 @@ class SourceManager {
 }
 
 bool _shouldOffload(String raw) {
-  return raw.length > 50 * 1024 || raw.trimLeft().startsWith('%PDF');
+  final trimmed = raw.trimLeft();
+  return trimmed.startsWith('%PDF') ||
+      raw.contains('<table') ||
+      raw.length > 50 * 1024;
 }

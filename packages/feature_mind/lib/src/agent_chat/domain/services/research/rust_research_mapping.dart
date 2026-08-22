@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import '../../../../llama/api/research.dart' as frb;
+import 'research_checkpoint.dart';
 
 ResearchEvent mapFrbResearchEvent(frb.FrbResearchEvent event) {
   return ResearchEvent(
@@ -37,6 +38,12 @@ ResearchEventKind mapFrbResearchEventKind(frb.FrbResearchEventKind kind) {
       return ResearchEventKind.analyzingStarted;
     case frb.FrbResearchEventKind.claimCreated:
       return ResearchEventKind.claimCreated;
+    case frb.FrbResearchEventKind.gapDetected:
+      return ResearchEventKind.gapDetected;
+    case frb.FrbResearchEventKind.counterResearchStarted:
+      return ResearchEventKind.counterResearchStarted;
+    case frb.FrbResearchEventKind.conflictDetected:
+      return ResearchEventKind.conflictDetected;
     case frb.FrbResearchEventKind.synthesisStarted:
       return ResearchEventKind.synthesisStarted;
     case frb.FrbResearchEventKind.completed:
@@ -48,6 +55,10 @@ ResearchEventKind mapFrbResearchEventKind(frb.FrbResearchEventKind kind) {
     case frb.FrbResearchEventKind.cancelled:
       return ResearchEventKind.researchCancelled;
   }
+}
+
+frb.FrbResearchCheckpoint mapResearchCheckpoint(ResearchCheckpoint checkpoint) {
+  return frb.FrbResearchCheckpoint(record: checkpoint.toRecord());
 }
 
 frb.FrbResearchRequest mapResearchRequest(ResearchRequest request) {

@@ -373,7 +373,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isGenerationActive: () => _isGenerating,
         );
     _deepResearchEngine =
-        widget.deepResearchEngine ?? LocalDeepResearchEngine();
+        widget.deepResearchEngine ??
+        LocalDeepResearchEngine(operationLogPort: _operationLogPort);
     _skillOrchestrator =
         widget.skillOrchestrator ?? _buildSkillOrchestrator(_skillRegistry);
     if (widget.skillOrchestrator == null) {
@@ -2080,6 +2081,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       );
     });
+    if (checkpoint.state != ResearchPhase.paused) {
+      unawaited(
+        _runDeepResearch(checkpoint.question, resumeFrom: checkpoint),
+      );
+    }
   }
 
   void _resumePersistedResearch() {

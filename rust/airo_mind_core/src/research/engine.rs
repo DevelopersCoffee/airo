@@ -7,13 +7,14 @@
 use std::collections::BTreeMap;
 
 use super::document::{classify_url, extract_document};
-use super::interpreter::interpret;
+use super::interpreter::{interpret, InterpretedGoal, ResearchIntent};
 use super::planner::{PlanNodeKind, ResearchPlan};
 use super::query::queries_for;
 use super::request::{ResearchRequest, SearchPolicy};
 use super::search::{SearchEngine, SearchHit, SearchRequest};
 use super::state::{
-    InMemoryResearchService, ResearchCommand, ResearchJobState, ResearchStateError,
+    InMemoryResearchService, ResearchCheckpoint, ResearchCommand, ResearchJobState,
+    ResearchStateError,
 };
 use super::stopping::{EvidenceSufficiencyPolicy, ResearchProgress, StopDecision, StoppingPolicy};
 
@@ -31,6 +32,9 @@ pub enum ResearchEventKind {
     DocumentParsed,
     AnalyzingStarted,
     ClaimCreated,
+    GapDetected,
+    CounterResearchStarted,
+    ConflictDetected,
     SynthesisStarted,
     Completed,
     Failed,
@@ -97,7 +101,19 @@ impl ResearchEngine {
         self.reports.get(job_id).map(String::as_str)
     }
 
-    pub fn run(&mut self, job_id: &str) -> Result<Vec<ResearchEvent>, ResearchStateError> {
+    pub fn checkpoint(&self, job_id: &str) -> Option<ResearchCheckpoint> {
+        self.service.checkpoint(job_id)
+    }
+
+    pub fn restore(&mut self, checkpoint: ResearchCheckpoint) -> Result<(), ResearchStateError> {
+        self.service.restore(checkpoint)
+    }
+
+    pub fn run(
+        &mut self,
+        job_id: &str,
+        known_source_urls: &[String],
+    ) -> Result<Vec<ResearchEvent>, ResearchStateError> {
         let checkpoint = self
             .service
             .checkpoint(job_id)
@@ -214,7 +230,10 @@ impl ResearchEngine {
             &mut searches_used,
             &mut hits,
         );
-        let mut unique = super::search::dedupe_hits(hits.clone());
+        let mut unique = filter_known_hits(
+            super::search::dedupe_hits(hits.clone()),
+            known_source_urls,
+        );
         let progress = ResearchProgress {
             searches_used,
             max_searches: budget.max_searches,
@@ -232,6 +251,12 @@ impl ResearchEngine {
         if !depth.is_empty()
             && EvidenceSufficiencyPolicy.should_stop(&progress) == StopDecision::Continue
         {
+            events.push(event(
+                ResearchEventKind::GapDetected,
+                job_id,
+                "Finding missing evidence",
+                "Depth facets were not covered by the first search wave.",
+            ));
             search_nodes(
                 &routed,
                 &depth,
@@ -239,7 +264,15 @@ impl ResearchEngine {
                 &mut searches_used,
                 &mut hits,
             );
-            unique = super::search::dedupe_hits(hits);
+            unique = filter_known_hits(super::search::dedupe_hits(hits), known_source_urls);
+        }
+        if goal.decision_required && searches_used < budget.max_searches {
+            events.push(event(
+                ResearchEventKind::CounterResearchStarted,
+                job_id,
+                "Finding missing evidence",
+                queries_for(&goal.topic).counterargument,
+            ));
         }
         self.service
             .apply(job_id, ResearchCommand::SearchFinished)?;
@@ -336,6 +369,28 @@ impl ResearchEngine {
         }
         self.service
             .apply(job_id, ResearchCommand::AnalysisFinished)?;
+        let mut conflicts = 0u32;
+        for i in 0..claims.len() {
+            for j in (i + 1)..claims.len() {
+                let reasons =
+                    super::evidence::contradiction_reasons(&claims[i].0, &claims[j].0);
+                if reasons.is_empty() {
+                    continue;
+                }
+                conflicts += 1;
+                events.push(event(
+                    ResearchEventKind::ConflictDetected,
+                    job_id,
+                    "Comparing evidence",
+                    format!(
+                        "{} vs {} ({})",
+                        claims[i].0,
+                        claims[j].0,
+                        reasons.join(", ")
+                    ),
+                ));
+            }
+        }
         self.service
             .apply(job_id, ResearchCommand::VerificationFinished)?;
         self.service.apply(job_id, ResearchCommand::GapsResolved)?;
@@ -351,7 +406,7 @@ impl ResearchEngine {
             sources_used: documents.len() as u32,
             sources_rejected: rejected,
             claims: claims.len() as u32,
-            contradictions: 0,
+            contradictions: conflicts,
             tokens: 0,
             cost_micros: 0,
         }
@@ -359,9 +414,10 @@ impl ResearchEngine {
         let report = compose_report(
             &request,
             &plan,
-            goal.intent.as_str(),
+            &goal,
             &documents,
             &claims,
+            conflicts as usize,
             metrics,
         );
         self.service
@@ -385,6 +441,18 @@ struct Acquired {
     paragraphs: Vec<String>,
     tables: Vec<String>,
     class: super::document::SourceClassification,
+}
+
+fn filter_known_hits(mut hits: Vec<SearchHit>, known_source_urls: &[String]) -> Vec<SearchHit> {
+    if known_source_urls.is_empty() {
+        return hits;
+    }
+    let skip: std::collections::BTreeSet<String> = known_source_urls
+        .iter()
+        .map(|url| super::search::canonicalize_url(url))
+        .collect();
+    hits.retain(|hit| !skip.contains(&super::search::canonicalize_url(&hit.url)));
+    hits
 }
 
 fn event(
@@ -444,11 +512,13 @@ fn search_nodes(
 fn compose_report(
     request: &ResearchRequest,
     plan: &ResearchPlan,
-    intent: &str,
+    goal: &InterpretedGoal,
     documents: &[Acquired],
     claims: &[(String, String)],
+    conflicts: usize,
     metrics: super::metrics::ResearchMetrics,
 ) -> String {
+    let intent = goal.intent.as_str();
     let mut lines = vec![
         "# Research Report".into(),
         String::new(),
@@ -482,6 +552,33 @@ fn compose_report(
                 text,
                 citation.map(|n| format!(" ([{n}])")).unwrap_or_default()
             ));
+        }
+    }
+    if matches!(goal.intent, ResearchIntent::Comparison) {
+        let subjects = super::interpreter::split_subjects(&goal.topic);
+        let criteria = &goal.dimensions;
+        let weights = super::compare::criterion_weights(criteria);
+        let cells = super::compare::comparison_matrix(&subjects, criteria, claims);
+        let matrix = super::compare::matrix_markdown(&cells);
+        if !matrix.is_empty() {
+            lines.push(String::new());
+            lines.push(matrix);
+        }
+        let rows = super::compare::decide(&subjects, &cells, criteria, &weights, conflicts);
+        if rows.iter().any(|row| row.contested) {
+            lines.push(String::new());
+            lines.push("## Decision".into());
+            lines.push(String::new());
+            lines.push("Contested criteria stay visible. No silent winner.".into());
+            for row in rows {
+                lines.push(format!(
+                    "- {}: {:.1} weighted score ({} cited cell(s)){}",
+                    row.subject,
+                    row.weighted_score,
+                    row.covered_criteria,
+                    if row.contested { " (contested)" } else { "" }
+                ));
+            }
         }
     }
     lines.push(String::new());
@@ -565,7 +662,7 @@ mod tests {
         let mut engine =
             ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("   "));
-        let events = engine.run(&job_id).expect("empty questions still admit");
+        let events = engine.run(&job_id, &[]).expect("empty questions still admit");
         assert_eq!(
             events.last().map(|e| e.kind),
             Some(ResearchEventKind::Failed)
@@ -585,7 +682,7 @@ mod tests {
             ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         assert_eq!(engine.status(&job_id), Some(ResearchJobState::Created));
-        let events = engine.run(&job_id).expect("run");
+        let events = engine.run(&job_id, &[]).expect("run");
         assert_eq!(
             events.last().map(|e| e.kind),
             Some(ResearchEventKind::Completed)
@@ -620,7 +717,7 @@ mod tests {
         let job_id = engine.start(quick("What is Qwen?"));
         engine.cancel(&job_id).unwrap();
         let events = engine
-            .run(&job_id)
+            .run(&job_id, &[])
             .expect("cancelled jobs still run to a terminal event");
         assert!(events
             .iter()
@@ -644,13 +741,13 @@ mod tests {
             ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         engine.pause(&job_id).unwrap();
-        let paused = engine.run(&job_id).unwrap();
+        let paused = engine.run(&job_id, &[]).unwrap();
         assert!(paused.iter().any(|e| e.kind == ResearchEventKind::Paused));
         assert!(!paused
             .iter()
             .any(|e| e.kind == ResearchEventKind::Completed));
         engine.resume(&job_id).unwrap();
-        let events = engine.run(&job_id).unwrap();
+        let events = engine.run(&job_id, &[]).unwrap();
         assert_eq!(
             events.last().map(|e| e.kind),
             Some(ResearchEventKind::Completed)
@@ -662,6 +759,28 @@ mod tests {
     fn local_only_allows_research_library_memory() {
         assert!(engine_allowed(SearchPolicy::LocalOnly, "local_memory"));
         assert!(!engine_allowed(SearchPolicy::LocalOnly, "wikipedia"));
+    }
+
+    #[test]
+    fn known_library_urls_skip_re_fetch() {
+        let search = FakeSearch {
+            id: "wikipedia",
+            url: "https://en.wikipedia.org/wiki/Qwen",
+            snippet: "SEARCH SNIPPET ONLY",
+        };
+        let fetch = FakeFetch { body: PAGE };
+        let mut engine =
+            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let job_id = engine.start(quick("What is Qwen?"));
+        let events = engine
+            .run(
+                &job_id,
+                &["https://en.wikipedia.org/wiki/Qwen".to_string()],
+            )
+            .expect("run");
+        assert!(!events
+            .iter()
+            .any(|event| event.kind == ResearchEventKind::SourceFetched));
     }
 
     #[test]
