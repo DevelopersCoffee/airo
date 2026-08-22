@@ -132,6 +132,12 @@ void main() {
     expect(AiroPromptRegistry.byId('skill.next_action')?.version, '1');
     expect(AiroPromptRegistry.skillNextAction.outputSchema, contains('type'));
     expect(AiroPromptRegistry.chatAssistant.hasEvalSuite, isTrue);
+    expect(
+      AiroPromptRegistry.reasoningEngine.qualifiedId,
+      'reasoning.engine.v1',
+    );
+    expect(AiroPromptRegistry.reasoningEngine.outputSchema, contains('answer'));
+    expect(AiroPromptRegistry.byId('reasoning.engine')?.hasEvalSuite, isTrue);
     expect(AiroPromptRegistry.byId('missing'), isNull);
   });
 
@@ -173,6 +179,22 @@ void main() {
       cacheablePrefixTokens: 400,
     );
     expect(cached.defects, isNot(contains(PromptDefect.perf003NoPrefixCache)));
+  });
+
+  test('more than two few-shots is PD-PERF-002 and still allowed', () {
+    final report = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: 5,
+    );
+    expect(report.defects, contains(PromptDefect.perf002InefficientFewShot));
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+
+    final ok = PromptQualityGate.inspectUserTurn(
+      userText: 'Summarize the last meeting decision on pricing.',
+      fewShotCount: PromptQualityGate.maxFewShots,
+    );
+    expect(ok.defects, isNot(contains(PromptDefect.perf002InefficientFewShot)));
   });
 
   test('recovery engine aborts after the skill JSON retry budget', () {
@@ -243,6 +265,98 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('same-layer brief vs detailed is unsatisfiable', () {
+    final issues = const InstructionSet(
+      items: [
+        Instruction(layer: InstructionLayer.task, text: 'Be brief.'),
+        Instruction(
+          layer: InstructionLayer.task,
+          text: 'Provide extensive detail.',
+        ),
+      ],
+    ).analyze(hasAcceptanceCriteria: true);
+    expect(
+      issues.any((i) => i.kind == InstructionIssueKind.unsatisfiable),
+      isTrue,
+    );
+  });
+
+  test('system JSON vs user markdown is a warning, not a blocked turn', () {
+    final report = PromptQualityGate.inspectLivePrompt(
+      userText: 'Output markdown only.',
+      systemPrompt: 'Respond in JSON only.',
+    );
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+    expect(report.userMessage, isEmpty);
+    expect(report.userMessage, isNot(contains('PD-')));
+    expect(
+      report.warnings,
+      contains(PromptDefect.spec003ConflictingInstructions),
+    );
+    expect(
+      report.defects,
+      isNot(contains(PromptDefect.spec003ConflictingInstructions)),
+    );
+  });
+
+  test('compiled-system unsatisfiable polarity still allows inference', () {
+    final report = PromptQualityGate.inspectLivePrompt(
+      userText: 'What is 2+2?',
+      systemPrompt: 'Be brief. Provide extensive detail.',
+    );
+    expect(report.decision, PromptGateDecision.allow);
+    expect(report.blocksInference, isFalse);
+    expect(
+      report.warnings,
+      contains(PromptDefect.spec003ConflictingInstructions),
+    );
+  });
+
+  test('user-only format conflict still asks before inference', () {
+    final report = PromptQualityGate.inspectLivePrompt(
+      userText: 'Always return JSON. Explain this normally.',
+      systemPrompt: 'You are Airo.',
+    );
+    expect(report.decision, PromptGateDecision.askUser);
+    expect(
+      report.defects,
+      contains(PromptDefect.spec003ConflictingInstructions),
+    );
+    expect(report.warnings, isEmpty);
+  });
+
+  test('execution log keeps metadata and never stores prompt text', () {
+    final log = ExecutionLog(capacity: 2);
+    const secret = 'SECRET_PROMPT_BODY ignore previous instructions';
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-1',
+        text: secret,
+        engineOk: false,
+      ),
+    );
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-2',
+        text: '   ',
+        engineOk: true,
+      ),
+    );
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-3',
+        text: secret,
+        engineOk: false,
+      ),
+    );
+    expect(log.checkpoints, hasLength(2));
+    expect(log.lastFailure?.executionId, 'chat-3');
+    expect(log.lastFailure?.runtimeError, RuntimeFailure.r07ModelAdapter);
+    expect(log.checkpoints.toString(), isNot(contains(secret)));
+    expect(log.checkpoints.toString(), isNot(contains('PM-17')));
   });
 
   test('chat goal cannot complete without verification', () {

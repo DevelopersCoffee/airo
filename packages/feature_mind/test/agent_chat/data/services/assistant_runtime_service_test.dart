@@ -1204,6 +1204,15 @@ void main() {
         emptyService.lastReliabilityDiagnostic?.failureMode,
         FailureMode.pm06LogicCollapse,
       );
+      expect(emptyService.reliabilityLog.checkpoints, hasLength(1));
+      expect(
+        emptyService.reliabilityLog.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(
+        emptyService.reliabilityLog.checkpoints.toString(),
+        isNot(contains('hello')),
+      );
     });
 
     test('cancels preparation before runtime work starts', () async {

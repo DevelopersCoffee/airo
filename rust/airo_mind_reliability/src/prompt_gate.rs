@@ -99,6 +99,8 @@ pub struct PromptInspection<'a> {
     pub prefix_cache: PrefixCacheCapability,
     pub history_empty: bool,
     pub requires_structured_output: bool,
+    /// Envelope / I-O exemplars already in the compiled prompt. PD-PERF-002.
+    pub few_shot_count: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -223,6 +225,14 @@ impl PromptQualityGate {
             push_unique(
                 &mut findings,
                 PromptDefect::Perf003NoPrefixCache,
+                PromptFindingSeverity::Warning,
+            );
+        }
+
+        if input.few_shot_count > 2 {
+            push_unique(
+                &mut findings,
+                PromptDefect::Perf002InefficientFewShot,
                 PromptFindingSeverity::Warning,
             );
         }

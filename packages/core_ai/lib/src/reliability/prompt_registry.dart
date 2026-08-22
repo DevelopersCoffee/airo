@@ -124,6 +124,14 @@ abstract final class AiroPromptRegistry {
     hasEvalSuite: true,
   );
 
+  static const reasoningEngine = RegisteredPrompt(
+    id: 'reasoning.engine',
+    version: '1',
+    taskType: 'reasoning',
+    outputSchema: '{"answer":"","reasoning_summary":"","confidence":0}',
+    hasEvalSuite: true,
+  );
+
   static const all = <RegisteredPrompt>[
     chatAssistant,
     skillSelect,
@@ -137,6 +145,7 @@ abstract final class AiroPromptRegistry {
     skillPersona,
     questGemini,
     coinsReceipt,
+    reasoningEngine,
   ];
 
   static RegisteredPrompt? byId(String id) {
@@ -176,6 +185,8 @@ abstract final class ChatTurnReliability {
 
   static ChatTurnPlan plan({
     required String userText,
+    String systemPrompt = '',
+    String taskInstructions = '',
     bool historyEmpty = true,
     int estimatedTokens = 0,
     int modelContextLimit = 0,
@@ -183,15 +194,21 @@ abstract final class ChatTurnReliability {
     RegisteredPrompt definition = AiroPromptRegistry.chatAssistant,
     PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
     int cacheablePrefixTokens = 0,
+    int fewShotCount = 0,
   }) {
-    final gate = PromptQualityGate.inspectUserTurn(
+    final gate = PromptQualityGate.inspectLivePrompt(
       userText: userText,
+      systemPrompt: systemPrompt,
+      taskInstructions: taskInstructions,
+      outputContract: definition.outputSchema,
+      requiresStructuredOutput: definition.outputSchema.isNotEmpty,
       historyEmpty: historyEmpty,
       estimatedTokens: estimatedTokens,
       modelContextLimit: modelContextLimit,
       outputBudget: outputBudget,
       prefixCache: prefixCache,
       cacheablePrefixTokens: cacheablePrefixTokens,
+      fewShotCount: fewShotCount,
     );
     final rebuild = gate.decision == PromptGateDecision.rebuildContext;
     return ChatTurnPlan(

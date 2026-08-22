@@ -79,6 +79,17 @@ impl GenerationEngine for ScriptedEngine {
             grammar.contains("root") && grammar.contains("tool_calls"),
             "reasoning must attach the result grammar"
         );
+        let lookup = grammar.contains("lookup-tail");
+        let none_or_light = request
+            .prompt
+            .contains("Do not perform unnecessary analysis")
+            || request
+                .prompt
+                .contains("Return a concise answer and a one-sentence basis");
+        assert_eq!(
+            lookup, none_or_light,
+            "none/light attach lookup grammar; standard/deep keep the full envelope"
+        );
         assert!(
             !grammar.contains(r#"root ::= "{""#),
             "opening brace is teacher-forced; grammar must start at \"answer\""
@@ -216,6 +227,17 @@ fn direct_question_streams_answer_deltas_and_summary() {
         .collect();
     assert_eq!(deltas, "It is Tuesday.");
     assert_eq!(completed(&events).answer, "It is Tuesday.");
+}
+
+#[test]
+fn none_accepts_an_answer_only_envelope() {
+    let gen = ScriptedEngine::once(r#""answer":"It is Tuesday."}"#);
+    let req = ReasoningRequest::fixture("time_query", 0.05);
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    let result = completed(&events);
+    assert_eq!(result.level, ReasoningLevel::None);
+    assert_eq!(result.answer, "It is Tuesday.");
+    assert!(result.reasoning_summary.is_none());
 }
 
 #[test]

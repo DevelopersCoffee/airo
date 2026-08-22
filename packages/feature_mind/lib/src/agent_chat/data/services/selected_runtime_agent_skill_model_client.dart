@@ -99,8 +99,9 @@ or:
 {"type":"final","message":"final answer"}
 ''';
     final definition = AiroPromptRegistry.skillNextAction;
-    final contract = PromptQualityGate.inspectUserTurn(
+    final contract = PromptQualityGate.inspectLivePrompt(
       userText: prompt,
+      taskInstructions: skill.instructions,
       requiresStructuredOutput: true,
       outputContract: definition.outputSchema,
     );
