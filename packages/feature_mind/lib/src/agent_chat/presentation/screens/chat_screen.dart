@@ -21,7 +21,8 @@ import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/built_in_skills/wellbeing.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
 import '../../../agent_chat/data/services/assistant_grounded_reply.dart';
-import '../../../agent_chat/data/services/diet_plan_plugin_prompt.dart';
+import '../../../addons/built_in_addon_registry.dart';
+import '../../../addons/generative_addon_coordinator.dart';
 import '../../../agent_chat/data/repositories/chat_entity_graph_session.dart';
 import '../../../agent_chat/data/repositories/chat_workspace_store.dart';
 import '../../../agent_chat/data/repositories/chat_workspace_store_factory.dart';
@@ -1886,10 +1887,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: message,
-      history: _chatHistoryMessages(),
-    );
+    final history = _chatHistoryMessages();
+    final addonPlan = _generativePlan(message, history);
     final selectedModelIdForGate = ref.read(selectedAssistantModelIdProvider);
     final systemPrompt = _buildChatSystemPrompt(message);
     final promptGate = ChatTurnReliability.plan(
@@ -1898,14 +1897,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       historyEmpty: _messages.where((m) => m.isUser).length <= 1,
       estimatedTokens: TokenCounter.estimate('$systemPrompt\n$message'),
       modelContextLimit: _selectedContextLimit(),
-      definition: dietApplies
-          ? AiroPromptRegistry.dietPlan
-          : selectedModelIdForGate != null &&
-                _shouldUseReasoning(selectedModelIdForGate)
-          ? AiroPromptRegistry.reasoningEngine
-          : _personaSession.isPinned
-          ? AiroPromptRegistry.skillPersona
-          : AiroPromptRegistry.chatAssistant,
+      definition: addonPlan?.reliabilityDefinition() ??
+          (selectedModelIdForGate != null &&
+                  _shouldUseReasoning(selectedModelIdForGate)
+              ? AiroPromptRegistry.reasoningEngine
+              : _personaSession.isPinned
+              ? AiroPromptRegistry.skillPersona
+              : AiroPromptRegistry.chatAssistant),
       prefixCache:
           selectedModelIdForGate != null &&
               assistantRuntimeSupportsPrefixCache(selectedModelIdForGate)
@@ -1922,7 +1920,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollMessagesToLatest();
       return;
     }
-    if (!dietApplies) {
+    if (addonPlan == null) {
       final skillStopwatch = Stopwatch()..start();
       final skillResult = await _skillOrchestrator.run(
         message,
@@ -2538,48 +2536,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     String selectedModelId,
     String message, {
     Set<String> attemptedRuntimeIds = const {},
-    bool dietRetry = false,
+    bool addonRetry = false,
   }) async {
     final stopwatch = Stopwatch()..start();
     int? timeToFirstTokenMs;
     String latestChunk = '';
     final attempted = {...attemptedRuntimeIds, selectedModelId};
     final history = _chatHistoryMessages();
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: message,
-      history: history,
-    );
-    var modelPrompt = dietApplies
-        ? DietPlanPluginPrompt.modelUserPrompt(
-            currentPrompt: message,
-            history: history,
-          )
-        : message;
-    if (dietRetry) {
-      modelPrompt =
-          '$modelPrompt\n\nDo not refuse. Write the meal plan now. Honor veg '
-          'and allergy constraints, write every requested day, and use '
-          'different dishes each day.';
+    final coordinator = ref.read(generativeAddonCoordinatorProvider);
+    final addonPlan = _generativePlan(message, history);
+    var modelPrompt = addonPlan?.prompt.userPrompt ?? message;
+    if (addonRetry && addonPlan != null) {
+      modelPrompt = coordinator.retryModelPrompt(addonPlan, modelPrompt);
     }
-    GenerationConstraint? generationConstraint;
-    if (dietApplies) {
-      final days = DietPlanPluginPrompt.parseDayCount(
-        DietPlanPluginPrompt.userConstraintLines(
-          currentPrompt: message,
-          history: history,
-        ).join(' '),
-      );
-      if (days != null) {
-        generationConstraint = GenerationConstraint.forcedPrefix(
-          "Here's a $days-day diet plan:\n\n",
-        );
-      }
-    }
-    if (!dietRetry) {
+    final generationConstraint = addonPlan?.constraint;
+    if (!addonRetry) {
       _beginGenerateTurn(
         selectedModelId: selectedModelId,
         userPrompt: message,
-        dietApplies: dietApplies,
+        addonPlan: addonPlan,
         constraint: generationConstraint,
         history: history,
       );
@@ -2600,13 +2575,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       historyEmpty: false,
       estimatedTokens: estimated,
       modelContextLimit: contextLimit,
-      definition: dietApplies
-          ? AiroPromptRegistry.dietPlan
-          : _shouldUseReasoning(selectedModelId)
-          ? AiroPromptRegistry.reasoningEngine
-          : _personaSession.isPinned
-          ? AiroPromptRegistry.skillPersona
-          : AiroPromptRegistry.chatAssistant,
+      definition: addonPlan?.reliabilityDefinition() ??
+          (_shouldUseReasoning(selectedModelId)
+              ? AiroPromptRegistry.reasoningEngine
+              : _personaSession.isPinned
+              ? AiroPromptRegistry.skillPersona
+              : AiroPromptRegistry.chatAssistant),
       prefixCache: assistantRuntimeSupportsPrefixCache(selectedModelId)
           ? PrefixCacheCapability.supported
           : PrefixCacheCapability.unsupported,
@@ -2631,8 +2605,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           selectedModelId: selectedModelId,
           message: message,
           modelPrompt: modelPrompt,
-          dietApplies: dietApplies,
-          dietRetry: dietRetry,
+          addonPlan: addonPlan,
+          addonRetry: addonRetry,
           attemptedRuntimeIds: attemptedRuntimeIds,
           stopwatch: stopwatch,
         );
@@ -2641,7 +2615,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
         systemPrompt: systemPrompt,
-        maxOutputTokens: dietApplies ? ggufDietPlanMaxOutputTokens : null,
+        maxOutputTokens: addonPlan?.maxOutputTokens,
         constraint: generationConstraint,
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
@@ -2663,28 +2637,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
         return null;
       }
-      if (dietApplies) {
-        final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
-          currentPrompt: message,
-          history: history,
+      if (addonPlan != null) {
+        final review = coordinator.reviewOutput(
+          plan: addonPlan,
+          output: latestChunk,
+          alreadyRetried: addonRetry,
         );
-        latestChunk = DietPlanPluginPrompt.alignPlanTitle(
-          latestChunk,
-          DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
-        );
+        latestChunk = review.output;
         if (latestChunk != _messages.last.text) {
           _replaceStreamingMessage(latestChunk);
         }
-        if (!dietRetry &&
-            DietPlanPluginPrompt.shouldRetryPlan(
-              output: latestChunk,
-              constraints: dietConstraints,
-            )) {
+        if (review.shouldRetry) {
           return _generateSelectedModelResponse(
             selectedModelId,
             message,
             attemptedRuntimeIds: attemptedRuntimeIds,
-            dietRetry: true,
+            addonRetry: true,
           );
         }
       }
@@ -2805,24 +2773,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     required String selectedModelId,
     required String message,
     required String modelPrompt,
-    required bool dietApplies,
-    required bool dietRetry,
+    required GenerativeAddonRunPlan? addonPlan,
+    required bool addonRetry,
     required Set<String> attemptedRuntimeIds,
     required Stopwatch stopwatch,
   }) async {
     final history = _chatHistoryMessages();
+    final coordinator = ref.read(generativeAddonCoordinatorProvider);
     final intent = IntentParser.parse(message);
-    final documents = dietApplies
-        ? [
-            MindReasoningContextItem(
-              source: 'diet_constraints',
-              text: DietPlanPluginPrompt.userConstraintLines(
-                currentPrompt: message,
-                history: history,
-              ).join('\n'),
-            ),
-          ]
-        : const <MindReasoningContextItem>[];
+    final documents = addonPlan == null
+        ? const <MindReasoningContextItem>[]
+        : [
+            for (final doc in addonPlan.reasoningDocuments())
+              MindReasoningContextItem(source: doc.source, text: doc.text),
+          ];
     final device = await _resolveReasoningDevice();
     final request = buildMindReasoningRequest(
       userQuery: modelPrompt,
@@ -2882,27 +2846,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           text: latest,
           engineOk: true,
         );
-    if (dietApplies) {
-      final dietConstraints = DietPlanPluginPrompt.userConstraintLines(
-        currentPrompt: message,
-        history: history,
+    if (addonPlan != null) {
+      final review = coordinator.reviewOutput(
+        plan: addonPlan,
+        output: latest,
+        alreadyRetried: addonRetry,
       );
-      latest = DietPlanPluginPrompt.trimExtraDays(
-        latest,
-        DietPlanPluginPrompt.parseDayCount(dietConstraints.join(' ')),
-      );
+      latest = review.output;
       fold.answer = latest;
       _applyReasoningFold(fold);
-      if (!dietRetry &&
-          DietPlanPluginPrompt.shouldRetryPlan(
-            output: latest,
-            constraints: dietConstraints,
-          )) {
+      if (review.shouldRetry) {
         return _generateSelectedModelResponse(
           selectedModelId,
           message,
           attemptedRuntimeIds: attemptedRuntimeIds,
-          dietRetry: true,
+          addonRetry: true,
         );
       }
     }
@@ -3122,6 +3080,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .toList(growable: false);
   }
 
+  GenerativeAddonRunPlan? _generativePlan(
+    String currentPrompt,
+    List<AssistantChatContextMessage> history,
+  ) {
+    return ref
+        .read(generativeAddonCoordinatorProvider)
+        .planFor(currentPrompt: currentPrompt, history: history);
+  }
+
   String _buildChatSystemPrompt(
     String currentPrompt, {
     AssistantChatContextBuilder? builder,
@@ -3130,66 +3097,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final contextBuilder = builder ?? _chatContextBuilder;
     final useCompact = compact ?? _useCompactLocalChat();
     final history = _chatHistoryMessages();
+    final addonPlan = _generativePlan(currentPrompt, history);
     final session = _personaSession;
     if (session.isPinned) {
-      final dietPinned = session.pinnedId == 'draft-diet-plan';
-      final dietApplies =
-          dietPinned &&
-          DietPlanPluginPrompt.applies(
-            currentPrompt: currentPrompt,
-            history: history,
-          );
+      final pinnedAddonApplies =
+          addonPlan != null && session.pinnedId == addonPlan.identity.id.value;
       return contextBuilder.buildSystemPrompt(
-        currentUserPrompt: dietApplies
-            ? DietPlanPluginPrompt.modelUserPrompt(
-                currentPrompt: currentPrompt,
-                history: history,
-              )
+        currentUserPrompt: pinnedAddonApplies
+            ? addonPlan.prompt.userPrompt
             : currentPrompt,
         compact: useCompact,
         pluginPlaybooks: session.playbooks(),
         pinnedPersonaIdentity: session.identityPreamble(),
-        history: dietApplies
-            ? DietPlanPluginPrompt.contextHistory(
-                currentPrompt: currentPrompt,
-                history: history,
-              )
+        history: pinnedAddonApplies
+            ? addonPlan.contextHistory(history)
             : history,
       );
     }
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: currentPrompt,
-      history: history,
-    );
     return contextBuilder.buildSystemPrompt(
-      currentUserPrompt: dietApplies
-          ? DietPlanPluginPrompt.modelUserPrompt(
-              currentPrompt: currentPrompt,
-              history: history,
-            )
-          : currentPrompt,
+      currentUserPrompt: addonPlan?.prompt.userPrompt ?? currentPrompt,
       compact: useCompact,
       pluginPlaybooks: _enabledGenerativePluginPlaybooks(
         currentPrompt: currentPrompt,
         history: history,
+        activeAddonId: addonPlan?.identity.id.value,
       ),
-      history: dietApplies
-          ? DietPlanPluginPrompt.contextHistory(
-              currentPrompt: currentPrompt,
-              history: history,
-            )
-          : DietPlanPluginPrompt.collapseAssistantDietDrafts(history),
+      history: addonPlan != null
+          ? addonPlan.contextHistory(history)
+          : ref
+              .read(generativeAddonCoordinatorProvider)
+              .collapseThreadHistory(history),
     );
   }
 
   List<String> _enabledGenerativePluginPlaybooks({
     required String currentPrompt,
     required List<AssistantChatContextMessage> history,
+    String? activeAddonId,
   }) {
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: currentPrompt,
-      history: history,
-    );
+    final addonRegistry = ref.read(addonRegistryProvider);
     final seen = <String>{};
     final playbooks = <String>[];
     final folder = _activeFolder;
@@ -3203,8 +3149,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     for (final skill in _skillRegistry.getEnabledSkills()) {
       if (!skill.isGenerativePlugin) continue;
-      if (skill.isPersona && skill.id != 'draft-diet-plan') continue;
-      if (skill.id == 'draft-diet-plan' && !dietApplies) continue;
+      final hasAddonAdapter =
+          addonRegistry.generativeAdapterFor(skill.id) != null;
+      if (skill.isPersona) {
+        if (!hasAddonAdapter || activeAddonId != skill.id) continue;
+      } else if (hasAddonAdapter && activeAddonId != skill.id) {
+        continue;
+      }
       final line = '${skill.name}: ${skill.instructions}';
       if (seen.add(line)) playbooks.add(line);
     }
@@ -3396,7 +3347,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _beginGenerateTurn({
     required String selectedModelId,
     required String userPrompt,
-    required bool dietApplies,
+    required GenerativeAddonRunPlan? addonPlan,
     required GenerationConstraint? constraint,
     required List<AssistantChatContextMessage> history,
   }) {
@@ -3425,7 +3376,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ? ChatTurnRouting.cloud
           : ChatTurnRouting.local,
       userPrompt: userPrompt,
-      pluginId: dietApplies ? draftDietPlanPluginId : null,
+      pluginId: addonPlan?.identity.id.value,
       gbnfAttached: _gbnfAttached(selectedModelId, constraint),
       prefixHash: constraint?.forcedPrefix == null
           ? null

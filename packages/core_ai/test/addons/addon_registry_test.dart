@@ -31,7 +31,7 @@ AddonManifest _sampleGraphManifest({int priority = 0}) =>
       if (priority != 0) 'built_in_priority': priority,
     });
 
-class _SpyGenerativeAdapter implements GenerativeAddonAdapter {
+final class _SpyGenerativeAdapter extends GenerativeAddonAdapterStub {
   _SpyGenerativeAdapter(this.id, {this.onAccepts, this.onBuild});
 
   final AddonId id;
@@ -57,7 +57,7 @@ class _SpyGenerativeAdapter implements GenerativeAddonAdapter {
   }
 
   @override
-  AddonEvaluation evaluate(String output) =>
+  AddonEvaluation evaluate(AddonConversation input, String output) =>
       const AddonEvaluation(kind: AddonEvaluationKind.valid);
 }
 
