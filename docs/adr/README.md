@@ -20,6 +20,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0018](0018-airo-arena-game-intelligence-packs.md) | Airo Arena as game intelligence packs on the existing edge runtime | Proposed | 2026-08-01 |
 | [0023](0023-mind-reliability-checkpoints-in-process.md) | Mind reliability checkpoints stay in-process | Accepted | 2026-08-22 |
 | [0024](0024-reliability-checkpoints-prefs-tier.md) | Reliability checkpoint metadata uses the Prefs tier | Accepted | 2026-08-22 |
+| [0025](0025-streaming-speech-engine-boundary.md) | `SpeechEngine` gains a streaming session, and stays PCM-pure | Proposed | 2026-08-22 |
 
 ## Creating a New ADR
 
