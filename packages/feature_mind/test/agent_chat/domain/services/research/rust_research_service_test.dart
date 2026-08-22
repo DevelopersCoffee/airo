@@ -2,6 +2,7 @@ import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_control.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_library.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_search.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_service.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/rust_research_service.dart';
@@ -30,6 +31,8 @@ class _RecordingService implements ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
     yield const ResearchEvent(
       kind: ResearchEventKind.researchCompleted,

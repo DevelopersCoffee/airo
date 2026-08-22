@@ -549,7 +549,9 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     final graphUseful =
         graph.isNotEmpty &&
         !graph.contains('no stored claim entities') &&
-        !graph.contains('no stored chat entities');
+        !graph.contains('no stored chat entities') &&
+        !graph.contains('no stored hospital') &&
+        !graph.contains('no stored property');
     final lifeTrackUseful =
         lifeTrack.isNotEmpty &&
         !lifeTrack.contains('I could not find a LifeTrack matching');

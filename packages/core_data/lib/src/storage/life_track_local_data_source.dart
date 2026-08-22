@@ -191,6 +191,33 @@ class LifeTrackLocalDataSource {
     _database = null;
   }
 
+  /// Row counts for migration verification.
+  Future<Map<String, int>> rowCounts() async {
+    final db = await _requireDatabase();
+    return {
+      'tracks': Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) AS count FROM $lifeTracksTable',
+        ),
+      )!,
+      'milestones': Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) AS count FROM $milestonesTable',
+        ),
+      )!,
+      'action_items': Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) AS count FROM $actionItemsTable',
+        ),
+      )!,
+      'requirements': Sqflite.firstIntValue(
+        await db.rawQuery(
+          'SELECT COUNT(*) AS count FROM $inputRequirementsTable',
+        ),
+      )!,
+    };
+  }
+
   Future<Database> _requireDatabase() async {
     await initialize();
     return _database!;

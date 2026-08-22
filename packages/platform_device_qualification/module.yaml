@@ -10,3 +10,4 @@ allowed_dependencies:
 forbidden_dependencies:
   - app
 quality_gates: {}
+status: tool-only  # iPad/device QA harness (`lib/main_qualification.dart`), not reachable from a shipping flavor pubspec (#1681)

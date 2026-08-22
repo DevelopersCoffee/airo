@@ -403,9 +403,11 @@ fn event(
 
 fn engine_allowed(policy: SearchPolicy, id: &str) -> bool {
     match policy {
-        SearchPolicy::LocalOnly => false,
+        SearchPolicy::LocalOnly => id == "local_memory",
         SearchPolicy::PrivacyFirst => id == "wikipedia" || id == "searxng",
-        SearchPolicy::Academic => id == "arxiv" || id == "semantic_scholar",
+        SearchPolicy::Academic => {
+            id == "arxiv" || id == "semantic_scholar" || id == "pubmed" || id == "crossref"
+        }
         SearchPolicy::Balanced | SearchPolicy::MaximumQuality => {
             id != "google" && id != "bing" && id != "tavily" && id != "duckduckgo"
         }
@@ -654,6 +656,12 @@ mod tests {
             Some(ResearchEventKind::Completed)
         );
         assert!(engine.report(&job_id).unwrap().contains("[1]"));
+    }
+
+    #[test]
+    fn local_only_allows_research_library_memory() {
+        assert!(engine_allowed(SearchPolicy::LocalOnly, "local_memory"));
+        assert!(!engine_allowed(SearchPolicy::LocalOnly, "wikipedia"));
     }
 
     #[test]

@@ -2,15 +2,22 @@ import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import '../../../../library_loader.dart' show isLlamaLoaded;
 import 'arxiv_search_engine.dart';
+import 'crossref_search_engine.dart';
+import 'github_search_engine.dart';
+import 'local_memory_search_engine.dart';
+import 'pubmed_search_engine.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_http.dart';
+import 'research_library.dart';
 import 'research_orchestrator.dart';
-import 'research_service.dart';
+import 'research_search.dart';
 import 'rust_research_service.dart';
+import 'searxng_search_engine.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
 import 'wikipedia_search_engine.dart';
+import '../../../../runtime/ports/operation_log_port.dart';
 
 /// Flutter-facing Deep Research API. The model does not own this workflow.
 ///
@@ -23,25 +30,50 @@ abstract class ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   });
+}
+
+List<ResearchSearchEngine> defaultResearchEngines({
+  Uri? searxngBaseUri,
+  OperationLogPort? operationLogPort,
+}) {
+  return [
+    WikipediaSearchEngine(),
+    ArxivSearchEngine(),
+    SemanticScholarSearchEngine(),
+    PubMedSearchEngine(),
+    GitHubSearchEngine(),
+    CrossrefSearchEngine(),
+    if (operationLogPort != null)
+      LocalMemorySearchEngine(operationLog: operationLogPort),
+    if (searxngBaseUri != null) SearxngSearchEngine(baseUri: searxngBaseUri),
+  ];
 }
 
 /// Host-owned research service. Uses the Rust engine when the llama bridge is
 /// loaded; otherwise the Dart orchestrator.
 ResearchService createProductionResearchService({
   ResearchOrchestrator? orchestrator,
+  Uri? searxngBaseUri,
+  OperationLogPort? operationLogPort,
 }) {
-  final local = LocalResearchService(orchestrator: orchestrator);
+  final local = LocalResearchService(
+    orchestrator: orchestrator,
+    searxngBaseUri: searxngBaseUri,
+    operationLogPort: operationLogPort,
+  );
   if (!isLlamaLoaded) {
     return local;
   }
   return RustResearchService(
-    engines: [
-      WikipediaSearchEngine(),
-      ArxivSearchEngine(),
-      SemanticScholarSearchEngine(),
-    ],
+    engines: defaultResearchEngines(
+      searxngBaseUri: searxngBaseUri,
+      operationLogPort: operationLogPort,
+    ),
     fetch: const ResearchHttpClient().get,
+    fallback: local,
   );
 }
 
@@ -49,21 +81,47 @@ ResearchService createProductionResearchService({
 /// orchestrator. Replaced by FFI once the llama `api` surface exposes
 /// `ResearchEngine`.
 class LocalResearchService implements ResearchService {
-  LocalResearchService({ResearchOrchestrator? orchestrator})
-    : _orchestrator =
-          orchestrator ??
-          ResearchOrchestrator(
-            engines: [
-              WikipediaSearchEngine(),
-              ArxivSearchEngine(),
-              SemanticScholarSearchEngine(),
-            ],
-            sourceManager: SourceManager(
-              fetcher: const ResearchHttpClient().get,
-            ),
-          );
+  factory LocalResearchService({
+    ResearchOrchestrator? orchestrator,
+    Uri? searxngBaseUri,
+    OperationLogPort? operationLogPort,
+  }) {
+    if (orchestrator != null &&
+        (searxngBaseUri != null || operationLogPort != null)) {
+      throw ArgumentError(
+        'Inject either an orchestrator or engine configuration, not both.',
+      );
+    }
+    return LocalResearchService._(
+      orchestrator ??
+          _defaultOrchestrator(
+            searxngBaseUri: searxngBaseUri,
+            operationLogPort: operationLogPort,
+          ),
+      hasConfiguredSearxng: searxngBaseUri != null,
+    );
+  }
+
+  const LocalResearchService._(
+    this._orchestrator, {
+    required this.hasConfiguredSearxng,
+  });
 
   final ResearchOrchestrator _orchestrator;
+  final bool hasConfiguredSearxng;
+
+  static ResearchOrchestrator _defaultOrchestrator({
+    Uri? searxngBaseUri,
+    OperationLogPort? operationLogPort,
+  }) {
+    return ResearchOrchestrator(
+      engines: defaultResearchEngines(
+        searxngBaseUri: searxngBaseUri,
+        operationLogPort: operationLogPort,
+      ),
+      sourceManager: SourceManager(fetcher: const ResearchHttpClient().get),
+    );
+  }
 
   @override
   Stream<ResearchEvent> start(
@@ -71,10 +129,14 @@ class LocalResearchService implements ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) => _orchestrator.run(
     request,
     control: control,
     resumeFrom: resumeFrom,
     onCheckpoint: onCheckpoint,
+    knownSourceUrls: knownSourceUrls,
+    onLibrary: onLibrary,
   );
 }

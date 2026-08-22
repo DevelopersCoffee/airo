@@ -309,14 +309,12 @@ impl PromptQualityGate {
                     PromptFindingSeverity::Blocking,
                 );
             }
-            ContextHealthStatus::Degraded => {
-                if health.relevance < 0.4 {
-                    push_unique(
-                        &mut findings,
-                        PromptDefect::Context003NoisyContext,
-                        PromptFindingSeverity::Warning,
-                    );
-                }
+            ContextHealthStatus::Degraded if health.relevance < 0.4 => {
+                push_unique(
+                    &mut findings,
+                    PromptDefect::Context003NoisyContext,
+                    PromptFindingSeverity::Warning,
+                );
             }
             _ => {}
         }

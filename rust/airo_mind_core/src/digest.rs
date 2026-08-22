@@ -77,6 +77,9 @@ impl Sha256 {
             self.buffered = 0;
         }
 
+        // Clippy 1.98 prefers `as_chunks::<64>()`; that API is still
+        // unstable on the 1.83 toolchain some host checks use.
+        #[allow(clippy::chunks_exact_to_as_chunks)]
         let mut chunks = data.chunks_exact(64);
         for chunk in &mut chunks {
             let mut block = [0u8; 64];

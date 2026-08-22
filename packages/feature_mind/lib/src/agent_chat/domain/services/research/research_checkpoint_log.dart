@@ -31,12 +31,16 @@ Future<ResearchCheckpoint?> latestResumableResearchCheckpoint(
     }
     final limit = count < 200 ? count : 200;
     final ops = await log.range(offset: 0, limit: limit);
+    final seenJobIds = <String>{};
     for (final op in ops) {
       if (op.kind != MindOpKind.researchCheckpoint || op.detail.isEmpty) {
         continue;
       }
       try {
         final checkpoint = ResearchCheckpoint.fromRecord(op.detail);
+        if (!seenJobIds.add(checkpoint.jobId)) {
+          continue;
+        }
         if (!checkpoint.isTerminal) {
           return checkpoint;
         }

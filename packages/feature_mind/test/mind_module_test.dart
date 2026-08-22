@@ -84,6 +84,25 @@ void main() {
     expect(mind.path, mobile.path);
   });
 
+  test('both chat routes share the host-owned Deep Research engine', () {
+    var creates = 0;
+    final engine = _NoopDeepResearchEngine();
+    final module = MindModule(
+      hostAdapterBuilder: (ref) => FakeAssistantHostAdapter(),
+      deepResearchEngineFactory: () {
+        creates += 1;
+        return engine;
+      },
+    );
+
+    final rootChat = module.buildChatScreen(initialDraft: 'root');
+    final nestedChat = module.buildChatScreen(initialDraft: 'nested');
+
+    expect(rootChat.deepResearchEngine, same(engine));
+    expect(nestedChat.deepResearchEngine, same(engine));
+    expect(creates, 1);
+  });
+
   test('declared mount points match the paths the package navigates to', () {
     // The hub tiles, tool registry, and notification payloads all push
     // absolute `/assistant/...` locations, so the declared routes have to
@@ -190,4 +209,16 @@ void main() {
       await module.dispose();
     });
   });
+}
+
+class _NoopDeepResearchEngine implements DeepResearchEngine {
+  @override
+  Stream<ResearchEvent> run(
+    ResearchRequest request, {
+    ResearchControl? control,
+    ResearchCheckpoint? resumeFrom,
+    void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
+  }) => const Stream.empty();
 }

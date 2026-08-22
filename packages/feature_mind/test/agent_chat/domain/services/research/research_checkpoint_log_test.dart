@@ -75,4 +75,34 @@ void main() {
     expect(latest?.question, 'What is Qwen?');
     expect(latest?.completedNodeIds, ['root']);
   });
+
+  test(
+    'newest terminal checkpoint hides older paused state for that job',
+    () async {
+      final log = RecordingOperationLog();
+      await appendResearchCheckpointOp(
+        log: log,
+        checkpoint: const ResearchCheckpoint(
+          jobId: 'job-finished',
+          question: 'Finished question',
+          state: ResearchPhase.paused,
+          pausedFrom: ResearchPhase.searching,
+          searchesUsed: 1,
+          iterationsUsed: 1,
+        ),
+      );
+      await appendResearchCheckpointOp(
+        log: log,
+        checkpoint: const ResearchCheckpoint(
+          jobId: 'job-finished',
+          question: 'Finished question',
+          state: ResearchPhase.completed,
+          searchesUsed: 2,
+          iterationsUsed: 1,
+        ),
+      );
+
+      expect(await latestResumableResearchCheckpoint(log), isNull);
+    },
+  );
 }

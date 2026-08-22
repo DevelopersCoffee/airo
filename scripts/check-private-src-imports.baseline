@@ -166,7 +166,7 @@ app/test/features/coins/presentation/screens/group_detail_screen_test.dart	7	app
 app/test/features/coins/presentation/screens/group_detail_screen_test.dart	8	app	feature_coins_core
 app/test/features/coins/presentation/screens/group_detail_screen_test.dart	9	app	feature_coins_core
 app/test/features/coins/presentation/screens/group_detail_screen_test.dart	10	app	feature_coins_core
-packages/feature_mind/test/services/llama_gguf_service_test.dart	6	feature_mind	llama_flutter_android
+packages/feature_mind/test/services/llama_gguf_service_test.dart	8	feature_mind	llama_flutter_android
 packages/platform_player/third_party/video_player_avfoundation/test/avfoundation_video_player_test.dart	10	platform_player	video_player_avfoundation
 packages/platform_player/third_party/video_player_avfoundation/test/avfoundation_video_player_test.dart	11	platform_player	video_player_avfoundation
 packages/platform_player/third_party/video_player_avfoundation/test/avfoundation_video_player_test.mocks.dart	9	platform_player	mockito

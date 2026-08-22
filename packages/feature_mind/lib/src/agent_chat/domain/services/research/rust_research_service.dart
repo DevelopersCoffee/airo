@@ -5,6 +5,7 @@ import '../../models/research_request.dart';
 import '../../../../llama/api/research.dart' as frb;
 import 'research_checkpoint.dart';
 import 'research_control.dart';
+import 'research_library.dart';
 import 'research_search.dart';
 import 'research_service.dart';
 import 'rust_research_mapping.dart';
@@ -33,6 +34,8 @@ class RustResearchService implements ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
     final fallback = _fallback;
     if (fallback != null) {
@@ -41,6 +44,8 @@ class RustResearchService implements ResearchService {
         control: control,
         resumeFrom: resumeFrom,
         onCheckpoint: onCheckpoint,
+        knownSourceUrls: knownSourceUrls,
+        onLibrary: onLibrary,
       );
       return;
     }

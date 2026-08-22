@@ -9,6 +9,27 @@ pub enum ResearchMode {
     Exhaustive,
 }
 
+impl ResearchMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Quick => "quick",
+            Self::Standard => "standard",
+            Self::Deep => "deep",
+            Self::Exhaustive => "exhaustive",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "quick" => Some(Self::Quick),
+            "standard" => Some(Self::Standard),
+            "deep" => Some(Self::Deep),
+            "exhaustive" => Some(Self::Exhaustive),
+            _ => None,
+        }
+    }
+}
+
 /// Which search providers a job may use. The model does not pick this.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SearchPolicy {
@@ -17,6 +38,29 @@ pub enum SearchPolicy {
     Balanced,
     MaximumQuality,
     Academic,
+}
+
+impl SearchPolicy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalOnly => "local_only",
+            Self::PrivacyFirst => "privacy_first",
+            Self::Balanced => "balanced",
+            Self::MaximumQuality => "maximum_quality",
+            Self::Academic => "academic",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "local_only" => Some(Self::LocalOnly),
+            "privacy_first" => Some(Self::PrivacyFirst),
+            "balanced" => Some(Self::Balanced),
+            "maximum_quality" => Some(Self::MaximumQuality),
+            "academic" => Some(Self::Academic),
+            _ => None,
+        }
+    }
 }
 
 /// Hard caps for one research job. Sufficiency can stop the job earlier.

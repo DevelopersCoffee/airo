@@ -104,11 +104,7 @@ impl WhisperSpeechEngine {
             // whisper reports centiseconds.
             let start_ms = offset_ms + segment.start_timestamp().max(0) as u64 * 10;
             let end_ms = offset_ms + segment.end_timestamp().max(0) as u64 * 10;
-            out.push(TranscriptSegment {
-                start_ms,
-                end_ms,
-                text,
-            });
+            out.push(TranscriptSegment::final_text(start_ms, end_ms, text));
         }
         Ok(out)
     }
@@ -303,21 +299,9 @@ mod tests {
     #[test]
     fn consecutive_duplicate_segments_collapse_to_one_span() {
         let input = vec![
-            TranscriptSegment {
-                start_ms: 0,
-                end_ms: 1000,
-                text: "hello".into(),
-            },
-            TranscriptSegment {
-                start_ms: 1000,
-                end_ms: 2000,
-                text: "hello".into(),
-            },
-            TranscriptSegment {
-                start_ms: 2000,
-                end_ms: 3000,
-                text: "other".into(),
-            },
+            TranscriptSegment::final_text(0, 1000, "hello".into()),
+            TranscriptSegment::final_text(1000, 2000, "hello".into()),
+            TranscriptSegment::final_text(2000, 3000, "other".into()),
         ];
         let out = collapse_consecutive_duplicate_text(input);
         assert_eq!(out.len(), 2);
@@ -330,17 +314,17 @@ mod tests {
     fn repetition_loop_stops_after_five_repeats_in_sixty_seconds() {
         let mut input = Vec::new();
         for i in 0..7 {
-            input.push(TranscriptSegment {
-                start_ms: i * 10_000,
-                end_ms: (i + 1) * 10_000,
-                text: "I have to go under the insert.".into(),
-            });
+            input.push(TranscriptSegment::final_text(
+                i * 10_000,
+                (i + 1) * 10_000,
+                "I have to go under the insert.".into(),
+            ));
         }
-        input.push(TranscriptSegment {
-            start_ms: 70_000,
-            end_ms: 71_000,
-            text: "different phrase after the loop".into(),
-        });
+        input.push(TranscriptSegment::final_text(
+            70_000,
+            71_000,
+            "different phrase after the loop".into(),
+        ));
         let out = suppress_repetition_loops(input);
         assert_eq!(
             out.len(),
@@ -354,31 +338,11 @@ mod tests {
     #[test]
     fn short_repeated_phrases_do_not_trigger_the_loop_guard() {
         let input = vec![
-            TranscriptSegment {
-                start_ms: 0,
-                end_ms: 1000,
-                text: "sounds good to me".into(),
-            },
-            TranscriptSegment {
-                start_ms: 1000,
-                end_ms: 2000,
-                text: "sounds good to me".into(),
-            },
-            TranscriptSegment {
-                start_ms: 2000,
-                end_ms: 3000,
-                text: "sounds good to me".into(),
-            },
-            TranscriptSegment {
-                start_ms: 3000,
-                end_ms: 4000,
-                text: "sounds good to me".into(),
-            },
-            TranscriptSegment {
-                start_ms: 4000,
-                end_ms: 5000,
-                text: "different follow-up point".into(),
-            },
+            TranscriptSegment::final_text(0, 1000, "sounds good to me".into()),
+            TranscriptSegment::final_text(1000, 2000, "sounds good to me".into()),
+            TranscriptSegment::final_text(2000, 3000, "sounds good to me".into()),
+            TranscriptSegment::final_text(3000, 4000, "sounds good to me".into()),
+            TranscriptSegment::final_text(4000, 5000, "different follow-up point".into()),
         ];
         let out = suppress_repetition_loops(input);
         assert_eq!(out.len(), 2, "four repeats then a different phrase stays");

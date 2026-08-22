@@ -36,11 +36,16 @@ class ChatEntityLinker {
     }
 
     final extractedFacts = facts.extractInsuranceClaim(text);
+    final medicalFacts = facts.extractMedicalSurgery(text);
+    final propertyFacts = facts.extractPropertyPurchase(text);
     ChatGraphNode? claim;
     ChatGraphNode? insurer;
     ChatGraphNode? broker;
     ChatGraphNode? policy;
     ChatGraphNode? documents;
+    ChatGraphNode? stay;
+    ChatGraphNode? hospitalOrg;
+    ChatGraphNode? property;
 
     final claimId = extractedFacts.facts['Claim ID'];
     if (claimId != null) {
@@ -120,13 +125,112 @@ class ChatEntityLinker {
       link(claim.id, ChatEntityRelation.relatedTo, policy.id);
     }
 
+    final hospitalName = medicalFacts.facts['Hospital'];
+    if (hospitalName != null) {
+      hospitalOrg = _organization(hospitalName, role: 'hospital');
+      addNode(hospitalOrg);
+    }
+    if (_hasHospitalAnchor(medicalFacts.facts)) {
+      stay = _hospitalStay(
+        hospitalName: hospitalName,
+        facts: medicalFacts.facts,
+      );
+      addNode(stay);
+    } else {
+      stay = _recentSubject(
+        graph,
+        kind: 'hospital_stay',
+        referBack: facts.looksHospitalStay(text),
+      );
+    }
+    if (stay != null && hospitalOrg != null) {
+      link(stay.id, ChatEntityRelation.relatedTo, hospitalOrg.id);
+    }
+    if (claim != null && hospitalOrg != null) {
+      link(claim.id, ChatEntityRelation.relatedTo, hospitalOrg.id);
+    }
+    final auth = medicalFacts.facts['Insurance Authorization Reference'];
+    if (auth != null) {
+      final authNode = _identifier('Auth $auth', auth, kind: 'auth_ref');
+      addNode(authNode);
+      if (stay != null) {
+        link(stay.id, ChatEntityRelation.relatedTo, authNode.id);
+      }
+    }
+    final tests = medicalFacts.facts['Required Tests List'];
+    if (tests != null) {
+      final testsNode = _term(tests);
+      addNode(testsNode);
+      if (stay != null) {
+        link(stay.id, ChatEntityRelation.relatedTo, testsNode.id);
+      }
+    }
+    final surgeryDate = medicalFacts.facts['Surgery Date'];
+    if (surgeryDate != null) {
+      final dateNode = ChatGraphNode(
+        id: _id(EntityType.date, surgeryDate),
+        type: EntityType.date,
+        name: surgeryDate,
+      );
+      addNode(dateNode);
+      if (stay != null) {
+        link(stay.id, ChatEntityRelation.relatedTo, dateNode.id);
+      }
+    }
+
+    if (_hasPropertyAnchor(propertyFacts.facts)) {
+      property = _propertySubject(propertyFacts.facts);
+      addNode(property);
+    } else {
+      property = _recentSubject(
+        graph,
+        kind: 'property',
+        referBack: facts.looksPropertyPurchase(text),
+      );
+    }
+    final rera = propertyFacts.facts['RERA Registration Number'];
+    if (rera != null) {
+      final reraNode = _identifier('RERA $rera', rera, kind: 'rera');
+      addNode(reraNode);
+      if (property != null) {
+        link(property.id, ChatEntityRelation.relatedTo, reraNode.id);
+      }
+    }
+    final builderName = propertyFacts.facts['Builder'];
+    if (builderName != null) {
+      final builder = _organization(builderName, role: 'builder');
+      addNode(builder);
+      if (property != null) {
+        link(property.id, ChatEntityRelation.relatedTo, builder.id);
+      }
+    }
+    final projectName = propertyFacts.facts['Project'];
+    if (projectName != null) {
+      final projectNode = _term(projectName);
+      addNode(projectNode);
+      if (property != null) {
+        link(property.id, ChatEntityRelation.relatedTo, projectNode.id);
+      }
+    }
+
+    final combinedFacts = {
+      ...extractedFacts.facts,
+      ...medicalFacts.facts,
+      ...propertyFacts.facts,
+    };
+
     for (final entity in extractor.extract(text)) {
-      if (_coveredByFacts(entity, extractedFacts.facts)) continue;
-      final node = ChatGraphNode(
+      if (_coveredByFacts(entity, combinedFacts)) continue;
+      var node = ChatGraphNode(
         id: _id(entity.type, entity.text),
         type: entity.type,
         name: entity.text,
       );
+      if (entity.type == EntityType.organization &&
+          _looksMedical(entity.text)) {
+        node = _organization(entity.text, role: 'hospital');
+        hospitalOrg ??= node;
+      }
       addNode(node);
       if (claim != null &&
           (entity.type == EntityType.person ||
@@ -134,10 +238,35 @@ class ChatEntityLinker {
               _looksMedical(entity.text))) {
         link(claim.id, ChatEntityRelation.relatedTo, node.id);
       }
+      if (stay != null &&
+          (entity.type == EntityType.person ||
+              entity.type == EntityType.date ||
+              _looksMedical(entity.text))) {
+        link(stay.id, ChatEntityRelation.relatedTo, node.id);
+      }
     }
 
-    final uniqueNodes = {for (final node in nodes) node.id: node};
-    if (uniqueNodes.length >= 2 && claim == null) {
+    if (stay == null && hospitalOrg != null && facts.looksHospitalStay(text)) {
+      stay = _hospitalStay(
+        hospitalName: hospitalOrg.name,
+        facts: medicalFacts.facts,
+      );
+      addNode(stay);
+      link(stay.id, ChatEntityRelation.relatedTo, hospitalOrg.id);
+      if (claim != null) {
+        link(claim.id, ChatEntityRelation.relatedTo, hospitalOrg.id);
+      }
+    }
+
+    final uniqueNodes = <String, ChatGraphNode>{};
+    for (final node in nodes) {
+      final existing = uniqueNodes[node.id];
+      uniqueNodes[node.id] = existing == null ? node : existing.merge(node);
+    }
+    if (uniqueNodes.length >= 2 &&
+        claim == null &&
+        stay == null &&
+        property == null) {
       final ids = uniqueNodes.keys.toList(growable: false);
       for (var i = 0; i < ids.length; i++) {
         for (var j = i + 1; j < ids.length; j++) {
@@ -150,6 +279,58 @@ class ChatEntityLinker {
       incomingNodes: uniqueNodes.values.toList(growable: false),
       incomingEdges: edges.toSet().toList(growable: false),
       mentionedIds: mentioned,
+    );
+  }
+
+  bool _hasHospitalAnchor(Map<String, String> medical) =>
+      medical.containsKey('Hospital') ||
+      medical.containsKey('Surgery Date') ||
+      medical.containsKey('Required Tests List') ||
+      medical.containsKey('Insurance Authorization Reference');
+
+  bool _hasPropertyAnchor(Map<String, String> property) =>
+      property.containsKey('RERA Registration Number') ||
+      property.containsKey('Builder') ||
+      property.containsKey('Project') ||
+      property.containsKey('Your Target Floor');
+
+  ChatGraphNode _hospitalStay({
+    required String? hospitalName,
+    required Map<String, String> facts,
+  }) {
+    final key = hospitalName ?? facts['Surgery Date'] ?? 'hospital-stay';
+    return ChatGraphNode(
+      id: _id(EntityType.identifier, 'hospital-stay-$key'),
+      type: EntityType.identifier,
+      name: hospitalName == null ? 'Hospital stay' : '$hospitalName surgery',
+      attributes: {
+        'kind': 'hospital_stay',
+        'hospital': ?hospitalName,
+        'date': ?facts['Surgery Date'],
+        'tests': ?facts['Required Tests List'],
+        'auth_ref': ?facts['Insurance Authorization Reference'],
+      },
+    );
+  }
+
+  ChatGraphNode _propertySubject(Map<String, String> facts) {
+    final key =
+        facts['RERA Registration Number'] ??
+        facts['Project'] ??
+        facts['Builder'] ??
+        'property';
+    final titleParts = [?facts['Builder'], ?facts['Project']];
+    return ChatGraphNode(
+      id: _id(EntityType.identifier, 'property-$key'),
+      type: EntityType.identifier,
+      name: titleParts.isEmpty ? 'Property purchase' : titleParts.join(' '),
+      attributes: {
+        'kind': 'property',
+        'rera': ?facts['RERA Registration Number'],
+        'builder': ?facts['Builder'],
+        'project': ?facts['Project'],
+        'floor': ?facts['Your Target Floor'],
+      },
     );
   }
 
@@ -170,6 +351,19 @@ class ChatEntityLinker {
               id.startsWith('identifier:'))) {
         return node;
       }
+    }
+    return null;
+  }
+
+  ChatGraphNode? _recentSubject(
+    ChatEntityGraph graph, {
+    required String kind,
+    required bool referBack,
+  }) {
+    if (!referBack) return null;
+    for (final id in graph.recentNodeIds) {
+      final node = graph.nodeById(id);
+      if (node != null && node.attributes['kind'] == kind) return node;
     }
     return null;
   }

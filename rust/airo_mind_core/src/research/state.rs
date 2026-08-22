@@ -1,6 +1,6 @@
 //! Explicit job state. Flutter reconnects to this, not to a model scratchpad.
 
-use super::request::ResearchRequest;
+use super::request::{ResearchMode, ResearchRequest, SearchPolicy};
 
 /// Where a research job is. Long-running: the UI must be able to reattach.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -216,6 +216,8 @@ pub struct ResearchCheckpoint {
     pub searches_used: u32,
     pub iterations_used: u32,
     pub completed_node_ids: Vec<String>,
+    pub mode: ResearchMode,
+    pub policy: SearchPolicy,
 }
 
 impl ResearchCheckpoint {
@@ -232,12 +234,14 @@ impl ResearchCheckpoint {
             searches_used: job.searches_used,
             iterations_used: job.iterations_used,
             completed_node_ids,
+            mode: job.request.mode,
+            policy: job.request.policy,
         }
     }
 
     pub fn to_record(&self) -> String {
         format!(
-            "v1\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}",
+            "v2\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}",
             self.job_id,
             self.question.replace('\u{1f}', " "),
             self.state.as_str(),
@@ -245,12 +249,16 @@ impl ResearchCheckpoint {
             self.searches_used,
             self.iterations_used,
             self.completed_node_ids.join(","),
+            self.mode.as_str(),
+            self.policy.as_str(),
         )
     }
 
     pub fn from_record(record: &str) -> Result<Self, ResearchStateError> {
         let parts: Vec<&str> = record.split('\u{1f}').collect();
-        if parts.len() != 8 || parts[0] != "v1" {
+        let legacy = parts.len() == 8 && parts[0] == "v1";
+        let current = parts.len() == 10 && parts[0] == "v2";
+        if !legacy && !current {
             return Err(ResearchStateError::InvalidCheckpoint);
         }
         let state =
@@ -276,12 +284,25 @@ impl ResearchCheckpoint {
             } else {
                 parts[7].split(',').map(str::to_string).collect()
             },
+            mode: if legacy {
+                ResearchMode::Quick
+            } else {
+                ResearchMode::parse(parts[8]).ok_or(ResearchStateError::InvalidCheckpoint)?
+            },
+            policy: if legacy {
+                SearchPolicy::LocalOnly
+            } else {
+                SearchPolicy::parse(parts[9]).ok_or(ResearchStateError::InvalidCheckpoint)?
+            },
         })
     }
 
     pub fn into_job(self) -> ResearchJob {
+        let mut request = ResearchRequest::new(self.question);
+        request.mode = self.mode;
+        request.policy = self.policy;
         ResearchJob {
-            request: ResearchRequest::new(self.question),
+            request,
             state: self.state,
             paused_from: self.paused_from,
             searches_used: self.searches_used,
@@ -303,8 +324,13 @@ impl InMemoryResearchService {
     }
 
     pub fn start(&mut self, request: ResearchRequest) -> String {
-        self.next_id = self.next_id.saturating_add(1);
-        let id = format!("job-{}", self.next_id);
+        let id = loop {
+            self.next_id = self.next_id.saturating_add(1);
+            let candidate = format!("job-{}", self.next_id);
+            if !self.jobs.contains_key(&candidate) {
+                break candidate;
+            }
+        };
         self.jobs
             .insert(id.clone(), (ResearchJob::new(request), Vec::new()));
         id
@@ -349,6 +375,12 @@ impl InMemoryResearchService {
 
     pub fn restore(&mut self, checkpoint: ResearchCheckpoint) -> Result<(), ResearchStateError> {
         let id = checkpoint.job_id.clone();
+        if let Some(sequence) = id
+            .strip_prefix("job-")
+            .and_then(|value| value.parse::<u64>().ok())
+        {
+            self.next_id = self.next_id.max(sequence);
+        }
         let nodes = checkpoint.completed_node_ids.clone();
         self.jobs.insert(id, (checkpoint.into_job(), nodes));
         Ok(())
@@ -358,7 +390,6 @@ impl InMemoryResearchService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::research::request::ResearchRequest;
 
     #[test]
     fn the_quality_loop_can_return_to_search_from_gaps() {
@@ -428,6 +459,8 @@ mod tests {
             searches_used: 2,
             iterations_used: 1,
             completed_node_ids: vec!["n1".into(), "n2".into()],
+            mode: ResearchMode::Quick,
+            policy: SearchPolicy::PrivacyFirst,
         };
         let restored = ResearchCheckpoint::from_record(&checkpoint.to_record())
             .expect("checkpoint record must roundtrip");
@@ -435,9 +468,42 @@ mod tests {
     }
 
     #[test]
+    fn legacy_v1_checkpoint_fails_closed_to_quick_local_only() {
+        let restored = ResearchCheckpoint::from_record(
+            "v1\u{1f}job-1\u{1f}Legacy\u{1f}paused\u{1f}searching\u{1f}2\u{1f}1\u{1f}n1",
+        )
+        .unwrap();
+        assert_eq!(restored.mode, ResearchMode::Quick);
+        assert_eq!(restored.policy, SearchPolicy::LocalOnly);
+    }
+
+    #[test]
+    fn rust_decoder_matches_shared_valid_and_corrupt_fixtures() {
+        let fixtures = include_str!("../../../../test_fixtures/research_checkpoint_records.txt");
+        for line in fixtures
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        {
+            let mut parts = line.splitn(3, '|');
+            let kind = parts.next().unwrap();
+            let name = parts.next().unwrap();
+            let record = parts.next().unwrap().replace("\\x1f", "\u{1f}");
+            let parsed = ResearchCheckpoint::from_record(&record);
+            match kind {
+                "valid" => assert!(parsed.is_ok(), "{name} must be accepted"),
+                "invalid" => assert!(parsed.is_err(), "{name} must be rejected"),
+                other => panic!("unknown fixture kind {other}"),
+            }
+        }
+    }
+
+    #[test]
     fn restore_rebuilds_the_job_after_process_death() {
         let mut live = InMemoryResearchService::new();
-        let id = live.start(ResearchRequest::new("Pixel 9 offline LLM"));
+        let mut request = ResearchRequest::new("Pixel 9 offline LLM");
+        request.mode = ResearchMode::Quick;
+        request.policy = SearchPolicy::PrivacyFirst;
+        let id = live.start(request);
         live.apply(&id, ResearchCommand::StartPlanning).unwrap();
         live.pause(&id).unwrap();
         let record = live.checkpoint(&id).unwrap().to_record();
@@ -447,7 +513,35 @@ mod tests {
             .restore(ResearchCheckpoint::from_record(&record).unwrap())
             .unwrap();
         assert_eq!(revived.status(&id), Some(ResearchJobState::Paused));
+        assert_eq!(
+            revived.job(&id).unwrap().request.policy,
+            SearchPolicy::PrivacyFirst
+        );
+        assert_eq!(revived.job(&id).unwrap().request.mode, ResearchMode::Quick);
         revived.resume(&id).unwrap();
         assert_eq!(revived.status(&id), Some(ResearchJobState::Planning));
+    }
+
+    #[test]
+    fn restored_job_id_is_not_reused_by_the_next_start() {
+        let restored = ResearchCheckpoint {
+            job_id: "job-1".into(),
+            question: "Restored".into(),
+            state: ResearchJobState::Paused,
+            paused_from: Some(ResearchJobState::Searching),
+            searches_used: 0,
+            iterations_used: 0,
+            completed_node_ids: Vec::new(),
+            mode: ResearchMode::Quick,
+            policy: SearchPolicy::LocalOnly,
+        };
+        let mut service = InMemoryResearchService::new();
+        service.restore(restored).unwrap();
+
+        let next = service.start(ResearchRequest::new("New"));
+
+        assert_eq!(next, "job-2");
+        assert!(service.job("job-1").is_some());
+        assert!(service.job("job-2").is_some());
     }
 }

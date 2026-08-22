@@ -48,6 +48,22 @@ pub struct AudioInput<'a> {
     pub channels: u16,
 }
 
+/// How far a transcript segment has progressed toward persistence.
+///
+/// File-path `transcribe` yields only [`Final`] segments. Live paths may emit
+/// [`Partial`] and [`Stable`] before promotion — ADR-0025.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TranscriptSegmentState {
+    /// Revisable hypothesis for the current utterance tail.
+    Partial,
+    /// Committed to the on-screen log; must not flicker without a later
+    /// [`Final`] correction naming the same segment id.
+    Stable,
+    /// Persisted and evidence-eligible.
+    #[default]
+    Final,
+}
+
 /// One piece of transcript. `I7`: engines yield these, never a whole
 /// transcript, because a two-hour meeting does not fit that assumption.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -55,6 +71,28 @@ pub struct TranscriptSegment {
     pub start_ms: u64,
     pub end_ms: u64,
     pub text: String,
+    pub state: TranscriptSegmentState,
+}
+
+impl TranscriptSegment {
+    pub fn new(
+        start_ms: u64,
+        end_ms: u64,
+        text: String,
+        state: TranscriptSegmentState,
+    ) -> Self {
+        Self {
+            start_ms,
+            end_ms,
+            text,
+            state,
+        }
+    }
+
+    /// A completed segment from batch/file transcription.
+    pub fn final_text(start_ms: u64, end_ms: u64, text: String) -> Self {
+        Self::new(start_ms, end_ms, text, TranscriptSegmentState::Final)
+    }
 }
 
 /// A prompt the **capability** built. The runtime knows no domains, so there is

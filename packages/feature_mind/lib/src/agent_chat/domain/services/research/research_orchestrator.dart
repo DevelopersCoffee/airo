@@ -87,9 +87,7 @@ class ResearchOrchestrator {
     var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
     final completed = {...?resumeFrom?.completedNodeIds};
     final collected = <ResearchHit>[];
-    final allowedIds = request.privacy == PrivacyProfile.balanced
-        ? SearchRouter.engineIds(request.policy)
-        : SearchRouter.engineIdsFor(request.privacy);
+    final allowedIds = SearchRouter.engineIds(request.policy);
     final routed = engines
         .where((engine) => allowedIds.contains(engine.id))
         .toList(growable: false);
@@ -105,6 +103,8 @@ class ResearchOrchestrator {
           searchesUsed: searchesUsed,
           iterationsUsed: iterationsUsed,
           completedNodeIds: completed.toList(growable: false),
+          mode: request.mode,
+          policy: request.policy,
         ),
       );
     }
@@ -140,10 +140,16 @@ class ResearchOrchestrator {
         final batch = routed.take(remaining).toList(growable: false);
         final query = queries.queriesFor(node.question).primary;
         final results = await Future.wait(
-          batch.map(
-            (engine) =>
-                engine.search(query, maxResults: budget.maxSources.clamp(1, 8)),
-          ),
+          batch.map((engine) async {
+            try {
+              return await engine.search(
+                query,
+                maxResults: budget.maxSources.clamp(1, 8),
+              );
+            } catch (_) {
+              return const <ResearchHit>[];
+            }
+          }),
         );
         searchesUsed += batch.length;
         completed.add(node.id);
