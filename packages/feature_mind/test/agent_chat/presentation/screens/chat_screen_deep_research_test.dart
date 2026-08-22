@@ -311,6 +311,13 @@ void main() {
       find.text('Restored local-only job: no remote sources.'),
       findsOneWidget,
     );
+    final privateSemantics = tester
+        .getSemantics(
+          find.byKey(const Key('agent_chat_research_privacy_private')),
+        )
+        .getSemanticsData();
+    expect(privateSemantics.hint, contains('no remote sources'));
+    expect(privateSemantics.hint, isNot(contains('Wikipedia')));
     await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
     await tester.pumpAndSettle();
 

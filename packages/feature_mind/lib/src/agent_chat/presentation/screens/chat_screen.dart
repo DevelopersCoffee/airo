@@ -332,6 +332,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ? 'Restored local-only job: no remote sources.'
       : _privacyDescription(_researchPrivacy);
 
+  String _privacySemanticsDescription(PrivacyProfile profile) {
+    if (profile == _researchPrivacy &&
+        _resumableCheckpoint?.policy == SearchPolicy.localOnly) {
+      return _selectedResearchPrivacyDescription;
+    }
+    return _privacyDescription(profile);
+  }
+
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
   final FocusNode _messageInputFocusNode = FocusNode();
@@ -1061,7 +1069,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                           in PrivacyProfile.values)
                                         MergeSemantics(
                                           child: Semantics(
-                                            hint: _privacyDescription(profile),
+                                            hint: _privacySemanticsDescription(
+                                              profile,
+                                            ),
                                             child: ChoiceChip(
                                               key: Key(
                                                 'agent_chat_research_privacy_'
