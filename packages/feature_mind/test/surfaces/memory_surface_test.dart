@@ -1,4 +1,7 @@
 import 'package:feature_mind/feature_mind.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/chat_transcript_turn.dart';
+import 'package:feature_mind/src/provenance/domain/models/extracted_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,6 +39,41 @@ void main() {
     // selected context; the link is the graph's whole reason to exist.
     expect(find.text('YOU'), findsOneWidget);
     expect(find.textContaining('Q3TaxFiling'), findsOneWidget);
+  });
+
+  testWidgets('graph shows chat directory and chats when provided', (
+    tester,
+  ) async {
+    await pumpSurface(
+      tester,
+      MemorySurface(
+        runtime: FixtureMindRuntime(),
+        contextId: 'kneesurgery2026',
+        directory: const ChatEntityGraph(
+          nodes: [
+            ChatGraphNode(
+              id: 'organization:niva-bupa',
+              type: EntityType.organization,
+              name: 'Niva Bupa',
+            ),
+          ],
+        ),
+        chats: [
+          MindChatRecord(
+            id: 'chat-1',
+            title: 'Niva Bupa claim',
+            updatedAt: DateTime.utc(2026, 8, 21),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('DIRECTORY'), findsOneWidget);
+    expect(find.text('Niva Bupa'), findsOneWidget);
+    expect(find.text('CHATS'), findsOneWidget);
+    expect(find.text('Niva Bupa claim'), findsOneWidget);
+    expect(find.text('YOU'), findsOneWidget);
   });
 
   testWidgets('switching to timeline shows this context\'s ops', (

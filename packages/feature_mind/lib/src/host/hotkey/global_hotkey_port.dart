@@ -53,8 +53,7 @@ abstract class GlobalHotkeyPort {
 class UnsupportedGlobalHotkeyPort implements GlobalHotkeyPort {
   const UnsupportedGlobalHotkeyPort();
 
-  static const _reason =
-      'Global hotkeys are not wired up on this build yet.';
+  static const _reason = 'Global hotkeys are not wired up on this build yet.';
 
   @override
   Future<HotkeyPermissionState> permissionState() async =>

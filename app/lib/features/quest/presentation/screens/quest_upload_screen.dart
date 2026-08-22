@@ -35,7 +35,7 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      final result = await FilePicker.pickFiles(
+      final files = await FilePicker.pickFiles(
         // ignore: deprecated_member_use
         allowMultiple: true,
         type: FileType.custom,
@@ -54,9 +54,9 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
         ],
       );
 
-      if (result != null) {
+      if (files.isNotEmpty) {
         setState(() {
-          _selectedFiles = result.files;
+          _selectedFiles = files;
         });
       }
     } catch (e) {
@@ -225,13 +225,6 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
                                           style: Theme.of(
                                             context,
                                           ).textTheme.bodySmall,
-                                        ),
-                                        Text(
-                                          '${(file.size / 1024).toStringAsFixed(2)} KB',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(color: Colors.grey),
                                         ),
                                       ],
                                     ),

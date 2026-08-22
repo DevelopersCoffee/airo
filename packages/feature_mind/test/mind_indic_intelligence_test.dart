@@ -33,7 +33,9 @@ void main() {
       );
 
       expect(
-        capability.shouldPreferIndicGeneration(MindIndicGenerationMode.standard),
+        capability.shouldPreferIndicGeneration(
+          MindIndicGenerationMode.standard,
+        ),
         isFalse,
       );
     });
@@ -52,9 +54,7 @@ void main() {
     });
 
     test('denied when pro feature disabled', () {
-      const capability = MindIndicCapability(
-        entitlements: NoEntitlements(),
-      );
+      const capability = MindIndicCapability(entitlements: NoEntitlements());
 
       expect(
         capability.shouldPreferIndicGeneration(MindIndicGenerationMode.auto),

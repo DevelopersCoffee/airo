@@ -6,50 +6,38 @@ import 'dart:typed_data';
 /// File type
 enum FileType { any, media, image, video, audio, custom }
 
-/// Platform file
+/// Platform file matching file_picker 12's [PlatformFile] surface.
 class PlatformFile {
   PlatformFile({
     required this.name,
-    required this.size,
+    required int size,
     this.path,
-    this.bytes,
-    this.extension,
-    this.identifier,
-  });
-  final String? path;
+    Uint8List? bytes,
+  }) : _size = size,
+       _bytes = bytes;
+
   final String name;
-  final int size;
-  final Uint8List? bytes;
-  final String? extension;
-  final String? identifier;
+  final String? path;
+  final int _size;
+  final Uint8List? _bytes;
+
+  Uri get uri =>
+      path != null ? Uri.file(path!) : Uri.dataFromBytes(_bytes ?? const []);
+
+  Future<int> length() async => _size;
 
   /// Read in-memory bytes; TV never opens an interactive picker.
   Future<Uint8List> readAsBytes() async {
-    final data = bytes;
+    final data = _bytes;
     if (data != null) return data;
     throw StateError('PlatformFile.readAsBytes(): file data is not available.');
   }
 }
 
-/// File picker result
-class FilePickerResult {
-  FilePickerResult(this.files);
-  final List<PlatformFile> files;
-
-  /// Get single file
-  PlatformFile? get single => files.isEmpty ? null : files.first;
-
-  /// Get paths
-  List<String?> get paths => files.map((f) => f.path).toList();
-
-  /// Get names
-  List<String> get names => files.map((f) => f.name).toList();
-}
-
 /// File picker status
 enum FilePickerStatus { picking, done }
 
-/// Stub FilePicker - returns null on TV
+/// Stub FilePicker - returns null / empty on TV
 abstract final class FilePicker {
   /// Pick one file - returns null on TV
   static Future<PlatformFile?> pickFile({
@@ -60,8 +48,8 @@ abstract final class FilePicker {
     bool lockParentWindow = false,
   }) async => null;
 
-  /// Pick files - returns null on TV
-  static Future<FilePickerResult?> pickFiles({
+  /// Pick files - empty list on TV (matches file_picker 12 cancel).
+  static Future<List<PlatformFile>> pickFiles({
     String? dialogTitle,
     String? initialDirectory,
     FileType type = FileType.any,
@@ -70,12 +58,13 @@ abstract final class FilePicker {
     bool withData = false,
     bool withReadStream = false,
     bool lockParentWindow = false,
-  }) async => null;
+  }) async => const <PlatformFile>[];
 
   /// Save file - returns null on TV
-  static Future<String?> saveFile({
+  static Future<Uri?> saveFile({
     required String fileName,
     required Uint8List bytes,
+    String mimeType = 'application/octet-stream',
     String? dialogTitle,
     String? initialDirectory,
     FileType type = FileType.any,

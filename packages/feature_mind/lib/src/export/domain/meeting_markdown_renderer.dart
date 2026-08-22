@@ -208,10 +208,7 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
 List<MeetingExportBundle> composeBatchExport(List<MeetingExportInput> inputs) =>
     inputs.map(composeMeetingExportBundle).toList(growable: false);
 
-String _exportSpeakerPrefix(
-  String label,
-  MeetingSpeakerRegistry registry,
-) {
+String _exportSpeakerPrefix(String label, MeetingSpeakerRegistry registry) {
   final canonical = registry.canonicalLabel(label);
   final display = mindSpeakerDisplayLabel(canonical, registry: registry);
   if (display != formatMindSpeakerLabel(canonical)) {

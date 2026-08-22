@@ -11,7 +11,9 @@ import '../models/grounded_citation.dart';
 import 'agent_connector_registry.dart';
 import 'agent_skill_registry.dart';
 import 'capability_safety_resolver.dart';
+import 'chat_entity_graph_pending.dart';
 import 'intent_parser.dart';
+import 'life_track_fact_extractor.dart';
 import 'tool_registry.dart';
 import 'reminder_request_parser.dart';
 
@@ -25,6 +27,7 @@ class SkillModelAction {
        message = null,
        pendingCalendarEvent = null,
        pendingCalendarPermission = false,
+       pendingLifeTrackWrite = null,
        schemaInvalid = false;
 
   const SkillModelAction.finalAnswer(this.message, {this.schemaInvalid = false})
@@ -32,7 +35,8 @@ class SkillModelAction {
       tool = null,
       arguments = const {},
       pendingCalendarEvent = null,
-      pendingCalendarPermission = false;
+      pendingCalendarPermission = false,
+      pendingLifeTrackWrite = null;
 
   const SkillModelAction.finalAnswerWithCalendarPrompt({
     required this.message,
@@ -41,6 +45,7 @@ class SkillModelAction {
        tool = null,
        arguments = const {},
        pendingCalendarPermission = false,
+       pendingLifeTrackWrite = null,
        schemaInvalid = false;
 
   const SkillModelAction.finalAnswerWithCalendarPermission({
@@ -50,6 +55,17 @@ class SkillModelAction {
        arguments = const {},
        pendingCalendarEvent = null,
        pendingCalendarPermission = true,
+       pendingLifeTrackWrite = null,
+       schemaInvalid = false;
+
+  const SkillModelAction.finalAnswerWithLifeTrackWrite({
+    required this.message,
+    required this.pendingLifeTrackWrite,
+  }) : type = SkillModelActionType.finalAnswer,
+       tool = null,
+       arguments = const {},
+       pendingCalendarEvent = null,
+       pendingCalendarPermission = false,
        schemaInvalid = false;
 
   final SkillModelActionType type;
@@ -58,6 +74,7 @@ class SkillModelAction {
   final String? message;
   final Map<String, dynamic>? pendingCalendarEvent;
   final bool pendingCalendarPermission;
+  final Map<String, dynamic>? pendingLifeTrackWrite;
   final bool schemaInvalid;
 }
 
@@ -76,6 +93,8 @@ abstract interface class AgentSkillModelClient {
 
 class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
   static const _reminderParser = ReminderRequestParser();
+  static const _lifeTrackFacts = LifeTrackFactExtractor();
+  static const _graphPending = ChatEntityGraphPending();
 
   @override
   Future<String?> selectSkill({
@@ -91,6 +110,10 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     if (_wantsWellbeing(lower) &&
         enabledSkills.any((skill) => skill.id == 'wellbeing-check-in')) {
       return 'wellbeing-check-in';
+    }
+    if (_lifeTrackFacts.wantsStudyRecord(prompt) &&
+        enabledSkills.any((skill) => skill.id == 'record-study-progress')) {
+      return 'record-study-progress';
     }
     if (_wantsLifeTrackStatus(lower) &&
         enabledSkills.any((skill) => skill.id == 'query-lifetrack-status')) {
@@ -129,6 +152,28 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
 
     final lower = prompt.toLowerCase();
+    if (skill.tools.contains('record_lifetrack_facts') &&
+        (_lifeTrackFacts.wantsRecord(prompt) ||
+            _lifeTrackFacts.wantsStudyRecord(prompt) ||
+            skill.id == 'record-study-progress')) {
+      return _nextRecordLifeTrackAction(
+        prompt: prompt,
+        toolResults: toolResults,
+        templateId: skill.lifeTrackTemplateId ?? 'insurance_claim_v1',
+      );
+    }
+    if (skill.tools.contains('query_entity_graph') &&
+        _graphPending.wantsPending(prompt)) {
+      return _nextClaimPendingAction(
+        prompt: prompt,
+        skill: skill,
+        toolResults: toolResults,
+      );
+    }
+    if (skill.tools.contains('query_entity_graph') &&
+        _wantsEntityGraph(lower)) {
+      return _nextEntityGraphAction(prompt: prompt, toolResults: toolResults);
+    }
     if (skill.tools.contains('query_lifetrack_status') &&
         (skill.id == 'query-lifetrack-status' ||
             _wantsLifeTrackStatus(lower))) {
@@ -360,6 +405,49 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     );
   }
 
+  SkillModelAction _nextRecordLifeTrackAction({
+    required String prompt,
+    required List<Map<String, dynamic>> toolResults,
+    required String templateId,
+  }) {
+    final recordResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+      (result) => result?['tool'] == 'record_lifetrack_facts',
+      orElse: () => null,
+    );
+    if (recordResult != null) {
+      final result =
+          recordResult['result'] as Map<String, dynamic>? ?? const {};
+      return SkillModelAction.finalAnswer(
+        result['markdown'] as String? ??
+            'I stored that journey in local LifeTrack.',
+      );
+    }
+
+    final extracted = templateId == 'study_progress_v1'
+        ? _lifeTrackFacts.extractStudyProgress(prompt)
+        : _lifeTrackFacts.extractInsuranceClaim(prompt);
+    if (extracted.isEmpty) {
+      return SkillModelAction.finalAnswer(
+        templateId == 'study_progress_v1'
+            ? 'I store study progress as a local LifeTrack — not a notes app. '
+                  'Tell me the subject, last topic, and exam date if you have one.'
+            : 'I can store this claim on this device. Paste the insurer, claim '
+                  'ID or broker reference, policy number if you have it, and '
+                  'whether documents were received. I will not file the claim '
+                  'or read your email.',
+      );
+    }
+
+    return SkillModelAction.toolCall(
+      tool: 'record_lifetrack_facts',
+      arguments: {
+        'title': extracted.title,
+        'template_id': templateId,
+        'facts': extracted.facts,
+      },
+    );
+  }
+
   bool _wantsLifeTrackStatus(String lowerPrompt) {
     final mentionsLifeTrack =
         lowerPrompt.contains('lifetrack') ||
@@ -374,6 +462,105 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         lowerPrompt.contains('documents') ||
         lowerPrompt.contains('need');
     return mentionsLifeTrack && asksStatus;
+  }
+
+  bool _wantsEntityGraph(String lowerPrompt) {
+    return lowerPrompt.contains('related') ||
+        lowerPrompt.contains('linked') ||
+        lowerPrompt.contains('entity') ||
+        lowerPrompt.contains('who is') ||
+        lowerPrompt.contains('which insurer') ||
+        lowerPrompt.contains('which broker') ||
+        lowerPrompt.contains('what do you know') ||
+        lowerPrompt.contains('remember about');
+  }
+
+  SkillModelAction _nextEntityGraphAction({
+    required String prompt,
+    required List<Map<String, dynamic>> toolResults,
+  }) {
+    final graphResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+      (result) => result?['tool'] == 'query_entity_graph',
+      orElse: () => null,
+    );
+    if (graphResult == null) {
+      return SkillModelAction.toolCall(
+        tool: 'query_entity_graph',
+        arguments: {'query': prompt},
+      );
+    }
+    final result = graphResult['result'] as Map<String, dynamic>? ?? const {};
+    return SkillModelAction.finalAnswer(
+      result['markdown'] as String? ?? 'I could not read stored chat entities.',
+    );
+  }
+
+  SkillModelAction _nextClaimPendingAction({
+    required String prompt,
+    required AgentSkill skill,
+    required List<Map<String, dynamic>> toolResults,
+  }) {
+    final graphResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+      (result) => result?['tool'] == 'query_entity_graph',
+      orElse: () => null,
+    );
+    if (graphResult == null) {
+      return SkillModelAction.toolCall(
+        tool: 'query_entity_graph',
+        arguments: {'query': prompt, 'intent': 'pending'},
+      );
+    }
+
+    if (skill.tools.contains('query_lifetrack_status')) {
+      final statusResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+        (result) => result?['tool'] == 'query_lifetrack_status',
+        orElse: () => null,
+      );
+      if (statusResult == null) {
+        return SkillModelAction.toolCall(
+          tool: 'query_lifetrack_status',
+          arguments: {'query': prompt},
+        );
+      }
+      return SkillModelAction.finalAnswer(
+        _combinePendingAnswers(
+          graphMarkdown:
+              (graphResult['result'] as Map<String, dynamic>?)?['markdown']
+                  as String?,
+          lifeTrackMarkdown:
+              (statusResult['result'] as Map<String, dynamic>?)?['markdown']
+                  as String?,
+        ),
+      );
+    }
+
+    final result = graphResult['result'] as Map<String, dynamic>? ?? const {};
+    return SkillModelAction.finalAnswer(
+      result['markdown'] as String? ?? 'I could not read stored chat entities.',
+    );
+  }
+
+  String _combinePendingAnswers({
+    required String? graphMarkdown,
+    required String? lifeTrackMarkdown,
+  }) {
+    final graph = graphMarkdown?.trim() ?? '';
+    final lifeTrack = lifeTrackMarkdown?.trim() ?? '';
+    final graphUseful =
+        graph.isNotEmpty &&
+        !graph.contains('no stored claim entities') &&
+        !graph.contains('no stored chat entities');
+    final lifeTrackUseful =
+        lifeTrack.isNotEmpty &&
+        !lifeTrack.contains('I could not find a LifeTrack matching');
+    if (graphUseful && lifeTrackUseful) {
+      return '$graph\n\nLifeTrack\n\n$lifeTrack';
+    }
+    if (lifeTrackUseful) return lifeTrack;
+    if (graphUseful) return graph;
+    if (lifeTrack.isNotEmpty) return lifeTrack;
+    if (graph.isNotEmpty) return graph;
+    return 'I have no stored claim data yet.';
   }
 
   SkillModelAction _nextWellbeingAction({
@@ -518,11 +705,18 @@ class AgentSkillOrchestrator {
       return _runSelectedSkill(prompt, pinned);
     }
 
+    // Diet/meal plans are a generative plugin. Compact local routers often
+    // mis-select `read-calendar-events` for "7 day plan" and then ask for
+    // calendar permission instead of writing meals.
+    if (IntentParser.parse(prompt).type == IntentType.createDietPlan) {
+      return const AgentRunResult.notHandled();
+    }
+
     final enabledSkills = _skillRegistry
         .getEnabledSkills()
         .where((skill) => !skill.isPersona)
         .toList(growable: false);
-    final selectedSkillId = _preferDeterministicSkills
+    var selectedSkillId = _preferDeterministicSkills
         ? await _fallbackModelClient?.selectSkill(
                 prompt: prompt,
                 enabledSkills: enabledSkills,
@@ -543,6 +737,11 @@ class AgentSkillOrchestrator {
                 prompt: prompt,
                 enabledSkills: enabledSkills,
               );
+
+    if (selectedSkillId == 'read-calendar-events' &&
+        !promptWantsCalendarRead(prompt)) {
+      selectedSkillId = null;
+    }
 
     if (selectedSkillId == null) {
       return _fallbackToRouteIntent(prompt);
@@ -661,6 +860,7 @@ class AgentSkillOrchestrator {
           traces: traces,
           pendingCalendarEvent: action.pendingCalendarEvent,
           pendingCalendarPermission: action.pendingCalendarPermission,
+          pendingLifeTrackWrite: action.pendingLifeTrackWrite,
           citations: latestCitation == null ? const [] : [latestCitation],
           groundingState: latestCitation == null
               ? GroundingState.ungrounded
@@ -758,6 +958,16 @@ class AgentSkillOrchestrator {
       });
 
       if (result.isError) {
+        if (result.errorCode == 'confirmation_required') {
+          return AgentRunResult(
+            handled: true,
+            message: result.message ?? 'Confirm to save this locally.',
+            traces: traces,
+            pendingLifeTrackWrite: _pendingMap(result.data['pending']),
+            groundingState: GroundingState.ungrounded,
+            safetyClass: safetyClass,
+          );
+        }
         return AgentRunResult(
           handled: true,
           message: result.message ?? 'The action failed.',
@@ -789,6 +999,11 @@ class AgentSkillOrchestrator {
       isError: true,
       safetyClass: safetyClass,
     );
+  }
+
+  Map<String, dynamic>? _pendingMap(Object? raw) {
+    if (raw is! Map) return null;
+    return raw.map((key, value) => MapEntry(key.toString(), value));
   }
 
   /// Measures how much data a connector call actually moved.

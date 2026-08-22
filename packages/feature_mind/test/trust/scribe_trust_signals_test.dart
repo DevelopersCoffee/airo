@@ -64,7 +64,9 @@ void main() {
       );
     }
 
-    testWidgets('renders multilingual badge and on-device copy', (tester) async {
+    testWidgets('renders multilingual badge and on-device copy', (
+      tester,
+    ) async {
       await pump(tester, const ScribeTrustState.meetingMultilingual());
 
       expect(find.byKey(const Key('scribe_trust_signals')), findsOneWidget);

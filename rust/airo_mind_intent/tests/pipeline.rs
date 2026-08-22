@@ -6,19 +6,20 @@ use airo_mind_intent::{
 };
 
 #[test]
-fn diet_plan_routes_to_diet_not_planning() {
+fn skill_plugin_routes_to_skill_execute_not_a_diet_domain() {
     let decision = classify(ClassifyRequest {
         user_query: "Create a 7-day vegetarian meal plan.".into(),
-        legacy_kind: Some("diet".into()),
+        legacy_kind: Some("skill".into()),
         legacy_complexity: Some(0.85),
         proposal: None,
     });
     assert_eq!(decision.status, IntentStatus::Classified);
-    let route = decision.route.expect("ready diet plan");
-    assert_eq!(route.capability, "diet.plan");
-    assert_eq!(route.orchestrator, "diet");
+    let route = decision.route.expect("ready skill");
+    assert_eq!(route.capability, "skill.execute");
+    assert_eq!(route.orchestrator, "skill");
     assert_eq!(decision.intent.schema_version, SCHEMA_VERSION);
     assert_eq!(decision.intent.source, IntentSource::LegacyFallback);
+    assert!(!CapabilityRegistry::builtin().contains("diet.plan"));
 }
 
 #[test]
@@ -35,7 +36,7 @@ fn prepare_for_tomorrow_asks_instead_of_acting() {
         .intent
         .ambiguity
         .candidates
-        .contains(&"diet.plan".to_string()));
+        .contains(&"skill.execute".to_string()));
     assert!(decision
         .intent
         .ambiguity
@@ -107,7 +108,8 @@ fn sky_blue_is_chat_and_ready() {
 }
 
 #[test]
-fn validate_accepts_legacy_diet() {
-    let intent = from_legacy("diet", 0.85, "veg plan");
+fn validate_accepts_legacy_skill() {
+    let intent = from_legacy("skill", 0.85, "veg plan");
     assert!(validate_intent(&intent).is_ok());
+    assert_eq!(intent.capability, "skill.execute");
 }

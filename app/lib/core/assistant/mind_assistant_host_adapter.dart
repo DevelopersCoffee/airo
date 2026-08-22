@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/settings/application/ai_model_management.dart';
 import 'app_assistant_host_adapter.dart';
 
-/// Mind-shell host adapter: model management lives on `/models`, not Settings.
+/// Mind-shell host adapter: models live on `/models`, settings on `/settings`.
 class MindAssistantHostAdapter extends AppAssistantHostAdapter {
   MindAssistantHostAdapter(this.ref) : super(ref);
 
@@ -16,10 +16,7 @@ class MindAssistantHostAdapter extends AppAssistantHostAdapter {
   void openModelManager(BuildContext context) => context.push('/models');
 
   @override
-  void openHostSettings(BuildContext context) {
-    // IPTV settings hub is not shipped in Mind; send people to model prefs.
-    openModelManager(context);
-  }
+  void openHostSettings(BuildContext context) => context.go('/settings');
 
   @override
   Future<List<OfflineModelInfo>> loadAssistantDownloadedModels() async {

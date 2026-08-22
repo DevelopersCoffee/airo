@@ -268,7 +268,9 @@ void main() {
     await _usePhoneSurface(tester);
     await tester.pumpWidget(
       _scribeScope(
-        voice: _FakeVoiceService(availabilityError: StateError('no recognizer')),
+        voice: _FakeVoiceService(
+          availabilityError: StateError('no recognizer'),
+        ),
         child: const MaterialApp(home: AudioScribeScreen()),
       ),
     );

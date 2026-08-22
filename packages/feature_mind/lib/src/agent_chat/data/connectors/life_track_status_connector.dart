@@ -170,16 +170,37 @@ class LifeTrackStatusFormatter {
               track.title,
               track.category.name,
               track.templateId ?? '',
+              ..._searchableValues(track),
             ].join(' '),
           );
           if (haystack.split(' ').any(normalizedQuery.split(' ').contains)) {
             return true;
           }
-          return _categoryAliases(track.category).any(normalizedQuery.contains);
+          if (_categoryAliases(track.category).any(normalizedQuery.contains)) {
+            return true;
+          }
+          return _searchableValues(track).any(
+            (value) =>
+                value.isNotEmpty && normalizedQuery.contains(_normalize(value)),
+          );
         })
         .toList(growable: false);
 
     return matches;
+  }
+
+  Iterable<String> _searchableValues(LifeTrack track) sync* {
+    for (final milestone in track.milestones) {
+      yield milestone.name;
+      for (final item in milestone.actionItems) {
+        yield item.summary;
+        yield item.notes ?? '';
+        for (final requirement in item.requirements) {
+          yield requirement.label;
+          yield requirement.value ?? '';
+        }
+      }
+    }
   }
 
   String? _querySubject(String query) {
@@ -270,7 +291,12 @@ class LifeTrackStatusFormatter {
       ],
       LifeTrackCategory.medical => const ['medical', 'health', 'doctor'],
       LifeTrackCategory.education => const ['education', 'study', 'college'],
-      LifeTrackCategory.insurance => const ['insurance'],
+      LifeTrackCategory.insurance => const [
+        'insurance',
+        'claim',
+        'reimbursement',
+        'policybazaar',
+      ],
       LifeTrackCategory.finance => const ['finance', 'money', 'loan'],
       LifeTrackCategory.travel => const ['travel', 'trip', 'passport', 'visa'],
       LifeTrackCategory.legal => const ['legal', 'law'],

@@ -100,47 +100,41 @@ void main() {
   });
 
   group('staleness — thermal change', () {
-    test(
-      'a thermal transition away from the measured state marks it stale '
-      'and triggers an automatic re-benchmark',
-      () async {
-        final port = _FakeModelPort()
-          ..nextBench[modelId] = _bench(under: ThermalState.nominal);
-        final controller = ModelBenchController(
-          modelPort: port,
-          currentDeviceId: () => 'device-a',
-        );
-        await controller.runBenchmark(modelId);
-        controller.startWatchingThermal();
+    test('a thermal transition away from the measured state marks it stale '
+        'and triggers an automatic re-benchmark', () async {
+      final port = _FakeModelPort()
+        ..nextBench[modelId] = _bench(under: ThermalState.nominal);
+      final controller = ModelBenchController(
+        modelPort: port,
+        currentDeviceId: () => 'device-a',
+      );
+      await controller.runBenchmark(modelId);
+      controller.startWatchingThermal();
 
-        final events = <ModelBenchDisplay>[];
-        final sub = controller.displayFor(modelId).listen(events.add);
+      final events = <ModelBenchDisplay>[];
+      final sub = controller.displayFor(modelId).listen(events.add);
 
-        // The re-run measures under the new thermal state.
-        port.nextBench[modelId] = _bench(
-          under: ThermalState.serious,
-          measuredAtMs: 2000,
-        );
-        port.emitThermal(ThermalState.serious);
-        await pumpEventQueue();
+      // The re-run measures under the new thermal state.
+      port.nextBench[modelId] = _bench(
+        under: ThermalState.serious,
+        measuredAtMs: 2000,
+      );
+      port.emitThermal(ThermalState.serious);
+      await pumpEventQueue();
 
-        expect(events.first.status, ModelBenchStatus.stale);
-        expect(
-          events.first.staleReason,
-          ModelBenchStaleReason.thermalChanged,
-        );
-        // The old reading is still visible while the re-run is in flight --
-        // a surface can caption "last measured under nominal" rather than
-        // going blank.
-        expect(events.first.bench!.measuredUnder, ThermalState.nominal);
+      expect(events.first.status, ModelBenchStatus.stale);
+      expect(events.first.staleReason, ModelBenchStaleReason.thermalChanged);
+      // The old reading is still visible while the re-run is in flight --
+      // a surface can caption "last measured under nominal" rather than
+      // going blank.
+      expect(events.first.bench!.measuredUnder, ThermalState.nominal);
 
-        expect(events.last.status, ModelBenchStatus.measured);
-        expect(events.last.bench!.measuredUnder, ThermalState.serious);
-        expect(port.benchmarkCallCount, 2);
+      expect(events.last.status, ModelBenchStatus.measured);
+      expect(events.last.bench!.measuredUnder, ThermalState.serious);
+      expect(port.benchmarkCallCount, 2);
 
-        await sub.cancel();
-      },
-    );
+      await sub.cancel();
+    });
 
     test('a thermal event matching the measured state is a no-op', () async {
       final port = _FakeModelPort()

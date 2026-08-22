@@ -24,20 +24,15 @@ class DesktopMindModelProvider extends ModelInstaller {
   final String? Function(RequiredModel model)? downloadUrlFor;
 
   @override
-  Future<List<RequiredModel>> requiredModels() =>
-      descriptors.mindScribeRequiredModels(
-        includeMultilingual: includeMultilingual,
-      );
+  Future<List<RequiredModel>> requiredModels() => descriptors
+      .mindScribeRequiredModels(includeMultilingual: includeMultilingual);
 
   @override
   Future<List<String>> install(
     Directory modelsDir, {
     void Function(String fileName, int copied, int total)? onProgress,
   }) async {
-    final failed = await super.install(
-      modelsDir,
-      onProgress: onProgress,
-    );
+    final failed = await super.install(modelsDir, onProgress: onProgress);
     if (failed.isEmpty || downloadUrlFor == null) return failed;
 
     final requiredByName = {

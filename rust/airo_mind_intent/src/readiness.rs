@@ -52,8 +52,8 @@ mod tests {
     use crate::legacy::from_legacy;
 
     #[test]
-    fn clear_diet_plan_is_ready() {
-        let mut intent = from_legacy("diet", 0.85, "Create a 7-day vegetarian meal plan.");
+    fn clear_skill_plugin_is_ready() {
+        let mut intent = from_legacy("skill", 0.85, "Create a 7-day vegetarian meal plan.");
         apply_readiness(&mut intent);
         assert_eq!(intent.status, IntentStatus::Classified);
         assert!(intent.action_readiness.ready);

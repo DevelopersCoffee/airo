@@ -48,49 +48,59 @@ void main() {
   });
 
   group('SpeechTaskAvailabilityChecker.speechToText', () {
-    test('is available when the bridge loads and the model is installed', () async {
-      final checker = SpeechTaskAvailabilityChecker(
-        speechBridge: FakeMindSpeechBridge(),
-        modelProvider: _FakeModelProvider(installed: true),
-      );
+    test(
+      'is available when the bridge loads and the model is installed',
+      () async {
+        final checker = SpeechTaskAvailabilityChecker(
+          speechBridge: FakeMindSpeechBridge(),
+          modelProvider: _FakeModelProvider(installed: true),
+        );
 
-      final result = await checker.speechToText(tempDir);
+        final result = await checker.speechToText(tempDir);
 
-      expect(result.available, isTrue);
-      expect(result.unavailableReason, isNull);
-    });
+        expect(result.available, isTrue);
+        expect(result.unavailableReason, isNull);
+      },
+    );
 
-    test('reports bridgeMissing when the native library fails to load', () async {
-      final speech = FakeMindSpeechBridge()..loadLibraryError = StateError('no library');
-      final checker = SpeechTaskAvailabilityChecker(
-        speechBridge: speech,
-        modelProvider: _FakeModelProvider(installed: true),
-      );
+    test(
+      'reports bridgeMissing when the native library fails to load',
+      () async {
+        final speech = FakeMindSpeechBridge()
+          ..loadLibraryError = StateError('no library');
+        final checker = SpeechTaskAvailabilityChecker(
+          speechBridge: speech,
+          modelProvider: _FakeModelProvider(installed: true),
+        );
 
-      final result = await checker.speechToText(tempDir);
+        final result = await checker.speechToText(tempDir);
 
-      expect(result.available, isFalse);
-      expect(result.unavailableReason, MindUnavailable.bridgeMissing);
-      expect(result.detail, contains('no library'));
-    });
+        expect(result.available, isFalse);
+        expect(result.unavailableReason, MindUnavailable.bridgeMissing);
+        expect(result.detail, contains('no library'));
+      },
+    );
 
-    test('reports modelsMissing without attempting to acquire anything', () async {
-      var acquireCalls = 0;
-      final provider = _AcquireTrackingModelProvider(
-        installed: false,
-        onAcquire: () => acquireCalls++,
-      );
-      final checker = SpeechTaskAvailabilityChecker(
-        speechBridge: FakeMindSpeechBridge(),
-        modelProvider: provider,
-      );
+    test(
+      'reports modelsMissing without attempting to acquire anything',
+      () async {
+        var acquireCalls = 0;
+        final provider = _AcquireTrackingModelProvider(
+          installed: false,
+          onAcquire: () => acquireCalls++,
+        );
+        final checker = SpeechTaskAvailabilityChecker(
+          speechBridge: FakeMindSpeechBridge(),
+          modelProvider: provider,
+        );
 
-      final result = await checker.speechToText(tempDir);
+        final result = await checker.speechToText(tempDir);
 
-      expect(result.available, isFalse);
-      expect(result.unavailableReason, MindUnavailable.modelsMissing);
-      expect(acquireCalls, 0);
-    });
+        expect(result.available, isFalse);
+        expect(result.unavailableReason, MindUnavailable.modelsMissing);
+        expect(acquireCalls, 0);
+      },
+    );
   });
 
   group('SpeechTaskAvailabilityChecker.textToSpeech', () {
@@ -110,7 +120,10 @@ void main() {
 }
 
 class _AcquireTrackingModelProvider implements ModelProvider {
-  _AcquireTrackingModelProvider({required this.installed, required this.onAcquire});
+  _AcquireTrackingModelProvider({
+    required this.installed,
+    required this.onAcquire,
+  });
 
   final bool installed;
   final void Function() onAcquire;

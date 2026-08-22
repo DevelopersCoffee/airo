@@ -107,20 +107,24 @@ class _AgentSkillsScreenState extends State<AgentSkillsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Import a community SKILL.md',
+                        'Import a Google AI Edge Gallery or Airo SKILL.md',
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Only HTTPS documents are accepted. Imported skills stay disabled until you review and enable them.',
+                        'Paste a skill folder URL or SKILL.md over HTTPS. '
+                        'Text-only Gallery skills import as Assistants. '
+                        'JavaScript and send-email intents are not executed. '
+                        'Imported skills stay disabled until you review and enable them.',
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _remoteUrlController,
                         keyboardType: TextInputType.url,
                         decoration: const InputDecoration(
-                          labelText: 'SKILL.md URL',
-                          hintText: 'https://example.com/SKILL.md',
+                          labelText: 'Skill URL',
+                          hintText:
+                              'https://github.com/google-ai-edge/gallery/tree/main/skills/built-in/kitchen-adventure',
                           border: OutlineInputBorder(),
                         ),
                         onSubmitted: (_) => _installRemoteSkill(registry),
@@ -208,6 +212,14 @@ class _AgentSkillCard extends StatelessWidget {
               ],
             ),
             Text(skill.description),
+            if (skill.manifest.source != SkillSource.builtIn)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Plugin v${skill.version}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             if (skill.tools.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(

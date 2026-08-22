@@ -13,6 +13,7 @@ enum EntityType {
   location,
   money,
   identifier,
+  document,
 }
 
 /// One entity pulled out of an op's title and detail text.

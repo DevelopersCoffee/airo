@@ -86,6 +86,7 @@ abstract class RustLibApi extends BaseApi {
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   });
 
   Stream<GenerationEvent> crateApiMinutesGenerateMinutes({
@@ -198,6 +199,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   }) {
     final sink = RustStreamSink<GenerationEvent>();
     unawaited(
@@ -207,6 +209,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             final serializer = SseSerializer(generalizedFrbRustBinding);
             sse_encode_String(prompt, serializer);
             sse_encode_u_32(maxOutputTokens, serializer);
+            sse_encode_opt_String(grammar, serializer);
             sse_encode_StreamSink_generation_event_Sse(sink, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
@@ -220,7 +223,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: sse_decode_String,
           ),
           constMeta: kCrateApiMinutesGenerateCompletionConstMeta,
-          argValues: [prompt, maxOutputTokens, sink],
+          argValues: [prompt, maxOutputTokens, grammar, sink],
           apiImpl: this,
         ),
       ),
@@ -231,7 +234,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMinutesGenerateCompletionConstMeta =>
       const TaskConstMeta(
         debugName: "generate_completion",
-        argNames: ["prompt", "maxOutputTokens", "sink"],
+        argNames: ["prompt", "maxOutputTokens", "grammar", "sink"],
       );
 
   @override

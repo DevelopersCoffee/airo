@@ -26,19 +26,20 @@ Future<PhoneLocalMediaItem?> pickPhoneLocalMediaForTv() async {
   if (file == null) return null;
   final path = file.path;
   if (path == null) return null;
+  final fileSize = await file.length();
   final analysis = await DefaultLocalMediaAssetAnalyzer().analyze(
     MediaAssetAnalysisRequest(
-      assetId: file.identifier ?? file.name,
+      assetId: file.name,
       filePath: path,
       fileName: file.name,
-      fileSizeBytesHint: file.size > 0 ? file.size : null,
+      fileSizeBytesHint: fileSize > 0 ? fileSize : null,
     ),
   );
 
   return _phoneLocalMediaItem(
     filePath: path,
     title: file.name,
-    fallbackContainer: (file.extension ?? '').toLowerCase(),
+    fallbackContainer: _extensionOf(file.name),
     analysis: analysis,
   );
 }

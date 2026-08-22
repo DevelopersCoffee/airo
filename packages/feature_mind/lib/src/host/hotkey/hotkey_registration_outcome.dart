@@ -53,6 +53,5 @@ class HotkeyRegistrationOutcome {
 
   /// Whether the caller should offer a rebind affordance rather than an
   /// error toast (the Windows-conflict case from #1455's "Done when").
-  bool get isRecoverableByRebind =>
-      status == HotkeyRegistrationStatus.conflict;
+  bool get isRecoverableByRebind => status == HotkeyRegistrationStatus.conflict;
 }

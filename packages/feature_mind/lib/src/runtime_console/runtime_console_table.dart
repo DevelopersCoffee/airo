@@ -99,7 +99,10 @@ class _RuntimeConsoleTableState extends State<RuntimeConsoleTable> {
                           );
                         }
                         final op = controller.rows[index];
-                        return _RuntimeConsoleRow(controller: controller, op: op);
+                        return _RuntimeConsoleRow(
+                          controller: controller,
+                          op: op,
+                        );
                       },
                     ),
             ),
@@ -241,6 +244,7 @@ class _RuntimeConsoleRow extends StatelessWidget {
     MindOpKind.consentRevoked: 'consent revoked',
     MindOpKind.meetingIrExtracted: 'meeting IR extracted',
     MindOpKind.speakerEnrolled: 'speaker enrolled',
+    MindOpKind.researchCheckpoint: 'research checkpoint',
   };
 
   static const Map<SignatureState, String> _signatureLabels = {
@@ -360,9 +364,7 @@ class _RuntimeConsoleRow extends StatelessWidget {
                 child: Row(
                   key: Key('mind.console.replay.${op.sequence}'),
                   children: [
-                    Expanded(
-                      child: LinearProgressIndicator(value: progress),
-                    ),
+                    Expanded(child: LinearProgressIndicator(value: progress)),
                     const SizedBox(width: 8),
                     Text(
                       '${(progress * 100).round()}%',

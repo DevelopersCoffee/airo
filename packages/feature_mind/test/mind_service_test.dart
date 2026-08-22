@@ -285,28 +285,28 @@ void main() {
   // "reproducible" would be a Rust-only property that Dart quietly drops on
   // its way to the store, the same failure mode `#1629` found in the ASR
   // segment IDs themselves.
-  test('T7b: save receives the transcript segments and the wav path unchanged', () async {
-    const segments = [
-      TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
-      TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
-    ];
-    speech.transcriptEvents = const [
-      TranscriptEventTranscriptReady('hello world', segments),
-    ];
-    generation.meetingIntelligenceEvents = const [
-      MeetingIntelligenceEventMinutesReady('Minutes.'),
-    ];
+  test(
+    'T7b: save receives the transcript segments and the wav path unchanged',
+    () async {
+      const segments = [
+        TranscriptSegment(id: 's0', startMs: 0, endMs: 500, text: 'hello'),
+        TranscriptSegment(id: 's1', startMs: 500, endMs: 900, text: 'world'),
+      ];
+      speech.transcriptEvents = const [
+        TranscriptEventTranscriptReady('hello world', segments),
+      ];
+      generation.meetingIntelligenceEvents = const [
+        MeetingIntelligenceEventMinutesReady('Minutes.'),
+      ];
 
-    await service
-        .process(wavPath: 'recording-1.wav', title: 't')
-        .drain<void>();
+      await service
+          .process(wavPath: 'recording-1.wav', title: 't')
+          .drain<void>();
 
-    expect(
-      speech.savedSegments,
-      applySoloSpeakerDiarization(segments),
-    );
-    expect(speech.savedWavPath, 'recording-1.wav');
-  });
+      expect(speech.savedSegments, applySoloSpeakerDiarization(segments));
+      expect(speech.savedWavPath, 'recording-1.wav');
+    },
+  );
 
   test('T7c: save receives IR fields from the intelligence pipeline', () async {
     speech.transcriptEvents = const [

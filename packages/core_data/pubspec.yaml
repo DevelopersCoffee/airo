@@ -32,6 +32,7 @@ flutter:
   assets:
     - lib/src/storage/templates/real_estate_under_construction.json
     - lib/src/storage/templates/university_admission.json
+    - lib/src/storage/templates/study_progress.json
     - lib/src/storage/templates/medical_surgery.json
     - lib/src/storage/templates/insurance_claim.json
     - lib/src/storage/templates/car_purchase.json

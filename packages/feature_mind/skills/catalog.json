@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "plugins": [
+    {
+      "id": "lesson-planning-assistant",
+      "name": "Lesson Planning",
+      "description": "Draft practical lesson outlines with objectives, activities, and questions.",
+      "version": "1.0.0",
+      "family": "teacher",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/lesson-planning-assistant/SKILL.md"
+    },
+    {
+      "id": "grading-support-assistant",
+      "name": "Grading Support",
+      "description": "Highlight strengths and suggest reusable feedback. Does not assign grades.",
+      "version": "1.0.0",
+      "family": "teacher",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/grading-support-assistant/SKILL.md"
+    },
+    {
+      "id": "parent-communication-assistant",
+      "name": "Parent Communication",
+      "description": "Draft polite parent emails from notes the teacher provides.",
+      "version": "1.0.0",
+      "family": "teacher",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/parent-communication-assistant/SKILL.md"
+    },
+    {
+      "id": "classroom-resources-assistant",
+      "name": "Classroom Resources",
+      "description": "Generate quizzes, worksheets, and answer keys for a grade level.",
+      "version": "1.0.0",
+      "family": "teacher",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/classroom-resources-assistant/SKILL.md"
+    },
+    {
+      "id": "contract-review-assistant",
+      "name": "Contract Review",
+      "description": "Flag risky clauses and summarize agreements. Does not give legal advice.",
+      "version": "1.0.0",
+      "family": "law",
+      "safety_class": "legal",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/contract-review-assistant/SKILL.md"
+    },
+    {
+      "id": "legal-drafting-assistant",
+      "name": "Legal Drafting",
+      "description": "First drafts of letters and agreements with placeholders.",
+      "version": "1.0.0",
+      "family": "law",
+      "safety_class": "legal",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/legal-drafting-assistant/SKILL.md"
+    },
+    {
+      "id": "case-preparation-assistant",
+      "name": "Case Preparation",
+      "description": "Extract facts, issues, and arguments from case materials.",
+      "version": "1.0.0",
+      "family": "law",
+      "safety_class": "legal",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/case-preparation-assistant/SKILL.md"
+    },
+    {
+      "id": "knowledge-management-assistant",
+      "name": "Knowledge Management",
+      "description": "Summarize and cite provided memos. Never invent sources.",
+      "version": "1.0.0",
+      "family": "law",
+      "safety_class": "legal",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/knowledge-management-assistant/SKILL.md"
+    },
+    {
+      "id": "draft-diet-plan",
+      "name": "Diet Plan",
+      "description": "Draft or refine a meal plan from the user's stated constraints.",
+      "version": "1.0.0",
+      "family": "health",
+      "safety_class": "health",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/draft-diet-plan/SKILL.md"
+    },
+    {
+      "id": "hospital-recovery-planner",
+      "name": "Hospital Recovery",
+      "description": "Stage a surgery or hospital stay: tests, insurance approval, recovery to-dos.",
+      "version": "1.0.0",
+      "family": "health",
+      "safety_class": "health",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/hospital-recovery-planner/SKILL.md"
+    },
+    {
+      "id": "insurance-planner",
+      "name": "Insurance Planner",
+      "description": "Plan cover, track claims, follow up with the insurer, and surface pending documents.",
+      "version": "1.2.1",
+      "family": "insurance",
+      "safety_class": "financial",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/insurance-planner/SKILL.md"
+    },
+    {
+      "id": "property-purchase-planner",
+      "name": "Property Purchase",
+      "description": "Walk an under-construction flat purchase: legal checks, documents, loan, next to-dos.",
+      "version": "1.0.0",
+      "family": "property",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/property-purchase-planner/SKILL.md"
+    },
+    {
+      "id": "university-admission-planner",
+      "name": "University Admission",
+      "description": "Shortlist programs, track documents, deadlines, and enrollment steps.",
+      "version": "1.0.0",
+      "family": "education",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/university-admission-planner/SKILL.md"
+    },
+    {
+      "id": "car-purchase-planner",
+      "name": "Car Purchase",
+      "description": "Compare options, documents, financing, and the next purchase checklist item.",
+      "version": "1.0.0",
+      "family": "vehicle",
+      "safety_class": "financial",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/car-purchase-planner/SKILL.md"
+    },
+    {
+      "id": "project-planner",
+      "name": "Project Planner",
+      "description": "Break a project or startup into the next action, pending items, and follow-ups.",
+      "version": "1.0.0",
+      "family": "project",
+      "safety_class": "general",
+      "author": "Airo",
+      "url": "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/packages/feature_mind/skills/project-planner/SKILL.md"
+    }
+  ]
+}

@@ -169,6 +169,16 @@ const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
     'university',
     'visa',
   ],
+  'study_progress_v1': <String>[
+    'chapter',
+    'coursework',
+    'exam',
+    'homework',
+    'revision',
+    'study progress',
+    'study',
+    'syllabus',
+  ],
   'medical_surgery_v1': <String>[
     'doctor',
     'hospital',
@@ -185,8 +195,11 @@ const Map<String, List<String>> _defaultTemplateKeywordsByTemplateId = {
     'incident',
     'insurance',
     'insurer',
+    'niva',
+    'policybazaar',
     'reimbursement',
     'settlement',
+    'star insurance',
   ],
   'car_purchase_v1': <String>[
     'auto',

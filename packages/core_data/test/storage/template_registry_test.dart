@@ -10,7 +10,7 @@ void main() {
       final registry = await TemplateRegistry.loadBundled();
 
       final templates = registry.getAll();
-      expect(templates, hasLength(5));
+      expect(templates, hasLength(6));
       expect(
         templates.map((template) => template.templateId),
         contains('real_estate_under_construction_v1'),
@@ -45,8 +45,11 @@ void main() {
         LifeTrackCategory.education,
       );
 
-      expect(educationTemplates, hasLength(1));
-      expect(educationTemplates.single.templateId, 'university_admission_v1');
+      expect(educationTemplates, hasLength(2));
+      expect(
+        educationTemplates.map((template) => template.templateId),
+        containsAll(['university_admission_v1', 'study_progress_v1']),
+      );
     });
 
     test('validate returns field errors for invalid payloads', () {

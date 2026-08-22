@@ -51,8 +51,14 @@ const LEGACY: &[LegacyMap] = &[
         complexity: 0.85,
     },
     LegacyMap {
+        kind: "skill",
+        capability: "skill.execute",
+        complexity: 0.85,
+    },
+    // Temporary kind alias from ADR-0003 Phase 1. Not a framework capability.
+    LegacyMap {
         kind: "diet",
-        capability: "diet.plan",
+        capability: "skill.execute",
         complexity: 0.85,
     },
     LegacyMap {
@@ -107,7 +113,9 @@ pub fn from_legacy(kind: &str, complexity: f32, user_query: &str) -> ClassifiedI
         action_readiness: ActionReadiness::execute(),
         ambiguity: Ambiguity::default(),
         model_profile: cap.model_profile.into(),
-        kind: if mapped.is_some() {
+        kind: if kind == "diet" {
+            "skill".into()
+        } else if mapped.is_some() {
             kind.into()
         } else {
             "conversation".into()
@@ -116,6 +124,11 @@ pub fn from_legacy(kind: &str, complexity: f32, user_query: &str) -> ClassifiedI
         source: IntentSource::LegacyFallback,
     };
     crate::ambiguity::apply_legacy_gate(&mut intent, user_query);
+    if kind == "diet" {
+        intent
+            .entities
+            .insert("skill_id".into(), "diet_plan".into());
+    }
     intent
 }
 
@@ -133,11 +146,24 @@ mod tests {
     }
 
     #[test]
-    fn diet_is_not_planning() {
-        let intent = from_legacy("diet", 0.85, "Create a 7-day vegetarian meal plan.");
-        assert_eq!(intent.capability, "diet.plan");
-        assert_eq!(intent.domain, "diet");
+    fn product_plugin_uses_generic_skill_not_a_diet_capability() {
+        let intent = from_legacy("skill", 0.85, "Create a 7-day vegetarian meal plan.");
+        assert_eq!(intent.capability, "skill.execute");
+        assert_eq!(intent.domain, "skill");
+        assert_eq!(intent.kind, "skill");
         assert_eq!(intent.status, IntentStatus::Classified);
         assert!(intent.action_readiness.ready);
+        assert!(!CapabilityRegistry::builtin().contains("diet.plan"));
+    }
+
+    #[test]
+    fn leftover_diet_kind_aliases_to_skill_execute() {
+        let intent = from_legacy("diet", 0.85, "veg plan");
+        assert_eq!(intent.capability, "skill.execute");
+        assert_eq!(intent.kind, "skill");
+        assert_eq!(
+            intent.entities.get("skill_id").map(String::as_str),
+            Some("diet_plan")
+        );
     }
 }
