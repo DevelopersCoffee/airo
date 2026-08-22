@@ -179,6 +179,7 @@ impl ReasoningRequest {
                 battery_constrained: self.battery_constrained,
                 max_reasoning_level: self.max_reasoning_level.into(),
             },
+            run_analyzer: true,
         }
     }
 }

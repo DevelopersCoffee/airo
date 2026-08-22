@@ -207,6 +207,9 @@ class MindDirectoryChatsPane extends StatelessWidget {
     EntityType.term => 'terms',
     EntityType.location => 'locations',
     EntityType.money => 'amounts',
+    EntityType.product => 'products',
+    EntityType.event => 'events',
+    EntityType.title => 'titles',
   };
 }
 

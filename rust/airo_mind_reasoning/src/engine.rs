@@ -74,11 +74,20 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         emit(ReasoningEvent::StageChanged {
             stage: ReasoningStage::Understanding,
         })?;
+        let proposal = if request.run_analyzer {
+            match crate::analyzer::analyze(generation, &request.user_query, cancel) {
+                Ok(proposal) => proposal,
+                Err(ReasoningError::Cancelled) => return Err(ReasoningError::Cancelled),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
         let decision = classify(ClassifyRequest {
             user_query: request.user_query.clone(),
             legacy_kind: Some(request.intent.kind.clone()),
             legacy_complexity: Some(request.intent.complexity),
-            proposal: None,
+            proposal,
         });
         if decision.status == IntentStatus::NeedsClarification {
             let message = decision
@@ -86,6 +95,15 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
                 .ambiguity
                 .clarification
                 .unwrap_or_else(|| "Could you clarify what you want me to do?".into());
+            if !decision.intent.ambiguity.candidates.is_empty() {
+                emit(ReasoningEvent::Progress {
+                    message: format!(
+                        "{}{}",
+                        crate::analyzer::CLARIFY_PROGRESS_PREFIX,
+                        decision.intent.ambiguity.candidates.join("|")
+                    ),
+                })?;
+            }
             emit(ReasoningEvent::Error { message })?;
             return Ok(());
         }

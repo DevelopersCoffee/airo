@@ -52,9 +52,10 @@ the gate, or invoke tools.
    Diet, coins, and similar journeys are skills: they route through
    `skill.execute` and run in `feature_mind` / `AgentSkillOrchestrator`.
 5. **Classifier backends are replaceable.** Phase 1 hydrates the contract from
-   the legacy kind adapter. Later analyzers (`GenerationEngine` structured
-   output, then a local SLM) must emit the same schema. Do not add a
-   `ChatService` / `ChatProvider` trait — reuse `GenerationEngine`.
+   the legacy kind adapter. The FRB `reason()` path now also runs a constrained
+   `GenerationEngine` extract (`run_analyzer`) that proposes a registry id.
+   `classify()` still gates the proposal. Flutter does not classify. Do not add
+   a `ChatService` / `ChatProvider` trait — reuse `GenerationEngine`.
 6. **Flutter consumes decisions.** Product skills (`AgentSkillOrchestrator`)
    stay Dart until those journeys are registry capabilities. They must not
    grow new Mind routing rules.
@@ -74,8 +75,9 @@ confirmation is not required. Otherwise ask.
 - DeBERTa, finance/health/legal verticals, keyword routing as the primary
   classifier.
 - LLM-direct tool execution, raw CoT as a contract, provider lock-in.
-- Document ingestion, cost/latency routers, shadow-mode dual-run, FRB
-  `classify()` — later phases against this same schema.
+- Document ingestion, cost/latency routers, shadow-mode dual-run, deleting
+  `IntentParser` — later phases against this same schema. FRB `classify()` as
+  its own method is optional; `reason()` already classifies.
 - Treating LLM-emitted `0.93` as calibrated probability.
 - First-class product domains (`diet.*`, coins, games) in the intent
   registry. Those are skills/plugins.
