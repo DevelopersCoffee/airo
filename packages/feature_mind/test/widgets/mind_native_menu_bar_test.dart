@@ -43,7 +43,7 @@ void main() {
     expect(labels.containsKey('Search Everything'), isTrue);
     expect(labels.containsKey('Everything Browser'), isTrue);
     expect(labels.containsKey('New Chat'), isTrue);
-    expect(labels.containsKey('Model Manager'), isTrue);
+    expect(labels.containsKey('Model Library'), isTrue);
 
     labels['Search Everything']!();
     labels['Everything Browser']!();

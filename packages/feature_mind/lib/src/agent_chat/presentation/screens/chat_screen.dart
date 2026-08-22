@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_calendar/platform_calendar.dart';
 import '../../../host/assistant_host_adapter.dart';
 import '../../../assistant/assistant_surface_policy.dart';
+import '../../../routing/assistant_route_names.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/chat_entity_graph_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
@@ -831,6 +832,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               unawaited(_startNewChat(folderId: folderId)),
           onSetFolderPlugins: (folderId, pluginIds) =>
               unawaited(_setFolderPlugins(folderId, pluginIds)),
+          onBrowseAddOns: _openAddOns,
           pluginOptions: _folderPluginOptions,
         ),
       ),
@@ -1108,6 +1110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             unawaited(_startNewChat(folderId: folderId)),
                         onSetFolderPlugins: (folderId, pluginIds) =>
                             unawaited(_setFolderPlugins(folderId, pluginIds)),
+                        onBrowseAddOns: _openAddOns,
                         pluginOptions: _folderPluginOptions,
                       ),
                     ),
@@ -1440,6 +1443,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 side: BorderSide(color: color.withValues(alpha: 0.35)),
                 backgroundColor: color.withValues(alpha: 0.08),
                 onPressed: () {
+                  if (prompt.key == 'add_ons') {
+                    _openAddOns();
+                    return;
+                  }
                   _messageController.text = _promptForSkill(prompt);
                   _restoreComposerFocus();
                 },
@@ -3286,6 +3293,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'bolt' => Icons.bolt_outlined,
       'model' => Icons.model_training,
       'sports_esports' => Icons.sports_esports,
+      'extension' => Icons.extension_outlined,
       _ => Icons.auto_awesome,
     };
   }
@@ -3302,6 +3310,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'ask_image' => Colors.red,
       'mobile_actions' => Colors.indigo,
       'model_management' => Colors.blueGrey,
+      'add_ons' => Colors.teal,
       'arena_games' => Colors.pink,
       _ => Colors.blue,
     };
@@ -3323,6 +3332,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'arena_games' => 'I am bored, start chess',
       _ => skill.description,
     };
+  }
+
+  void _openAddOns() {
+    context.push(AssistantRouteNames.agentSkills);
   }
 
   void _showPickAssistant() {

@@ -30,6 +30,7 @@ class MindModelsScreen extends ConsumerWidget {
             MaterialPageRoute<void>(builder: (_) => const AIModelsScreen()),
           ),
         ),
+        addOnsTab: const AgentSkillsScreen(embedded: true),
         diagnosticsTab: DeviceCapabilityReportLoaderScreen(
           models: registry.allModels,
           embedded: true,
