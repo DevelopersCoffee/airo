@@ -2368,11 +2368,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               result.message ??
               (result.isError
                   ? 'I could not save that journey locally.'
-<<<<<<< HEAD
-                  : 'Saved the journey on this device.'),
-=======
                   : 'Saved this journey on this device.'),
->>>>>>> 62f329d0 (fix(mind): Route journey offers through adapter projections)
           isUser: false,
           traces: [
             AgentActionTrace(

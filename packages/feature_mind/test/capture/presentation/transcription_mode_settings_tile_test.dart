@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:feature_mind/src/capture/application/transcription_mode_preference.dart';
-import 'package:feature_mind/src/capture/domain/transcription_mode.dart';
 import 'package:feature_mind/src/capture/presentation/transcription_mode_settings_tile.dart';
 
 void main() {
