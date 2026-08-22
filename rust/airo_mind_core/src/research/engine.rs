@@ -65,10 +65,7 @@ pub struct ResearchEngine {
 }
 
 impl ResearchEngine {
-    pub fn new(
-        engines: Vec<Box<dyn SearchEngine>>,
-        fetcher: Box<dyn SourceFetcher>,
-    ) -> Self {
+    pub fn new(engines: Vec<Box<dyn SearchEngine>>, fetcher: Box<dyn SourceFetcher>) -> Self {
         Self {
             engines,
             fetcher,
@@ -230,10 +227,8 @@ impl ResearchEngine {
             &mut searches_used,
             &mut hits,
         );
-        let mut unique = filter_known_hits(
-            super::search::dedupe_hits(hits.clone()),
-            known_source_urls,
-        );
+        let mut unique =
+            filter_known_hits(super::search::dedupe_hits(hits.clone()), known_source_urls);
         let progress = ResearchProgress {
             searches_used,
             max_searches: budget.max_searches,
@@ -372,8 +367,7 @@ impl ResearchEngine {
         let mut conflicts = 0u32;
         for i in 0..claims.len() {
             for j in (i + 1)..claims.len() {
-                let reasons =
-                    super::evidence::contradiction_reasons(&claims[i].0, &claims[j].0);
+                let reasons = super::evidence::contradiction_reasons(&claims[i].0, &claims[j].0);
                 if reasons.is_empty() {
                     continue;
                 }
@@ -659,10 +653,11 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine =
-            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let mut engine = ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("   "));
-        let events = engine.run(&job_id, &[]).expect("empty questions still admit");
+        let events = engine
+            .run(&job_id, &[])
+            .expect("empty questions still admit");
         assert_eq!(
             events.last().map(|e| e.kind),
             Some(ResearchEventKind::Failed)
@@ -678,8 +673,7 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine =
-            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let mut engine = ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         assert_eq!(engine.status(&job_id), Some(ResearchJobState::Created));
         let events = engine.run(&job_id, &[]).expect("run");
@@ -712,8 +706,7 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine =
-            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let mut engine = ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         engine.cancel(&job_id).unwrap();
         let events = engine
@@ -737,8 +730,7 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine =
-            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let mut engine = ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         engine.pause(&job_id).unwrap();
         let paused = engine.run(&job_id, &[]).unwrap();
@@ -769,14 +761,10 @@ mod tests {
             snippet: "SEARCH SNIPPET ONLY",
         };
         let fetch = FakeFetch { body: PAGE };
-        let mut engine =
-            ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
+        let mut engine = ResearchEngine::new(vec![Box::new(search)], Box::new(fetch));
         let job_id = engine.start(quick("What is Qwen?"));
         let events = engine
-            .run(
-                &job_id,
-                &["https://en.wikipedia.org/wiki/Qwen".to_string()],
-            )
+            .run(&job_id, &["https://en.wikipedia.org/wiki/Qwen".to_string()])
             .expect("run");
         assert!(!events
             .iter()

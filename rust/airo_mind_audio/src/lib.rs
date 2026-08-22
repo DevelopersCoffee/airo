@@ -11,6 +11,7 @@ mod decode;
 mod live;
 mod resample;
 mod ring;
+mod speaker_activity;
 mod stabilizer;
 mod vad;
 
@@ -22,8 +23,9 @@ pub const TARGET_CHANNELS: u16 = 1;
 
 pub use live::{LiveSpeechConfig, LiveSpeechPipeline, LiveStepReport};
 pub use ring::{PcmRingBuffer, RingPushReport};
+pub use speaker_activity::{SpeakerActivitySlice, SpeakerActivityTracker};
 pub use stabilizer::TranscriptStabilizer;
-pub use vad::{EnergyVad, VadState};
+pub use vad::{rms_energy, EnergyVad, VadState};
 
 /// Read [path] and return whisper-ready PCM.
 pub fn preprocess_path(path: &std::path::Path) -> Result<Pcm, String> {

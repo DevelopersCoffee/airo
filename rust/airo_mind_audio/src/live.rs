@@ -7,7 +7,7 @@ use airo_mind_core::engine::{
 
 use crate::ring::{PcmRingBuffer, RingPushReport};
 use crate::stabilizer::TranscriptStabilizer;
-use crate::vad::{EnergyVad, VadState};
+use crate::vad::{rms_energy, EnergyVad, VadState};
 use crate::TARGET_SAMPLE_RATE;
 
 /// Configuration for a live session pipeline.
@@ -35,11 +35,13 @@ impl Default for LiveSpeechConfig {
 }
 
 /// Outcome of one [`LiveSpeechPipeline::step`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LiveStepReport {
     pub ring_push: RingPushReport,
     pub degraded: bool,
     pub vad_state: VadState,
+    /// RMS energy of the inference window used this tick.
+    pub window_energy: f32,
 }
 
 /// Native-owned PCM path: ring → VAD → bounded window → engine → stabilizer.
@@ -99,6 +101,7 @@ impl LiveSpeechPipeline {
         }
 
         let window = self.ring.tail(self.config.window_samples);
+        let window_energy = rms_energy(&window);
         let vad_state = self.vad.process(&window);
         let ring_push = RingPushReport {
             accepted: 0,
@@ -141,6 +144,7 @@ impl LiveSpeechPipeline {
             ring_push,
             degraded: self.ring.dropped_samples() > 0,
             vad_state,
+            window_energy,
         })
     }
 
@@ -158,6 +162,7 @@ impl LiveSpeechPipeline {
         }
 
         let window = self.ring.tail(self.config.window_samples);
+        let window_energy = rms_energy(&window);
         let vad_state = self.vad.process(&window);
         let ring_push = RingPushReport {
             accepted: 0,
@@ -200,6 +205,7 @@ impl LiveSpeechPipeline {
             ring_push,
             degraded: self.ring.dropped_samples() > 0,
             vad_state,
+            window_energy,
         })
     }
 
@@ -277,7 +283,9 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Partial),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Partial),
             "expected partial from engine window"
         );
 
@@ -294,7 +302,9 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Stable),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Stable),
             "expected stable after silence boundary"
         );
     }

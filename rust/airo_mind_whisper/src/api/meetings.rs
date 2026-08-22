@@ -45,20 +45,21 @@ use crate::frb_generated::StreamSink;
 
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
+use airo_mind_audio::{rms_energy, LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker};
+use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
     ActionStatus, AudioInput, CancelToken, DecisionStatus, EngineError, Meeting, MeetingActionItem,
-    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex,
-    Supervisor, TranscriptSegment, TranscriptionOptions,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    TranscriptSegment, TranscriptionOptions,
 };
-use airo_mind_audio::{LiveSpeechConfig, LiveSpeechPipeline};
-use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_diarize::{
     diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
     SpeakerEmbedder, SpeakerEnrollmentStore,
 };
 use airo_mind_transcript::Segment;
+use airo_mind_transcript::VocabularyIntelligence;
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -500,10 +501,16 @@ struct LiveSessionState {
     sink: StreamSink<TranscriptEvent>,
     /// One degradation notice per session — ring overflow can drop many frames.
     degraded_notified: bool,
+    /// Provisional live speaker lanes (`P1`); reconciled after recording.
+    speaker_activity: SpeakerActivityTracker,
+    last_window_energy: f32,
 }
 
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static LIVE_VOCABULARY: LazyLock<VocabularyIntelligence> =
+    LazyLock::new(VocabularyIntelligence::with_defaults);
 
 /// Cross-meeting speaker enrollment profiles synced from Dart (#504).
 static SPEAKER_ENROLLMENT: LazyLock<Mutex<SpeakerEnrollmentStore>> =
@@ -543,8 +550,8 @@ fn ensure_speech_engine_for_requirement(
         .clone()
         .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
 
-    let speech_model = models::resolve(&requirement, &models_dir, &[], false)
-        .map_err(|e| e.to_string())?;
+    let speech_model =
+        models::resolve(&requirement, &models_dir, &[], false).map_err(|e| e.to_string())?;
 
     if lock(&LOADED_SPEECH_PATH).as_deref() == Some(&speech_model.path) {
         return Ok(());
@@ -611,9 +618,10 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&INITIALIZED_SPEECH_LANGUAGE) = Some(config.speech_language);
     *lock(&LIBRARY) = Some(Library { store, index });
 
-    ensure_speech_engine_for_requirement(
-        models::speech_file_requirement(config.memory_budget_mb, config.speech_language.into()),
-    )?;
+    ensure_speech_engine_for_requirement(models::speech_file_requirement(
+        config.memory_budget_mb,
+        config.speech_language.into(),
+    ))?;
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
     // Metal device globals are C++ function-local statics. Register after
     // load so this handler runs *before* ggml's unique_ptr destructor.
@@ -783,22 +791,62 @@ pub fn transcribe_recording(
     })
 }
 
+fn vocabulary_correct_stable(text: &str) -> String {
+    LIVE_VOCABULARY.correct(text).corrected_text
+}
+
+fn provisional_speaker_label(index: u8) -> String {
+    format!("sp{index}")
+}
+
 fn emit_live_delta(
     session: &mut LiveSessionState,
     session_id: &str,
     segment: TranscriptSegment,
 ) -> Result<(), String> {
+    let raw_text = segment.text.trim().to_string();
+    let display_text = match segment.state {
+        TranscriptSegmentState::Partial => raw_text.clone(),
+        TranscriptSegmentState::Stable | TranscriptSegmentState::Final => {
+            vocabulary_correct_stable(&raw_text)
+        }
+    };
+
+    let speaker_label = match segment.state {
+        TranscriptSegmentState::Partial => Some(provisional_speaker_label(
+            session.speaker_activity.active_speaker_index(),
+        )),
+        TranscriptSegmentState::Stable => {
+            let index = session.speaker_activity.on_utterance(
+                segment.start_ms,
+                segment.end_ms,
+                session.last_window_energy,
+            );
+            Some(provisional_speaker_label(index))
+        }
+        TranscriptSegmentState::Final => session
+            .segments
+            .last()
+            .and_then(|record| record.speaker_label.clone()),
+    };
+
     let segment_id = match segment.state {
         TranscriptSegmentState::Partial => format!("s{}", session.segment_index),
         TranscriptSegmentState::Stable => {
             let id = format!("s{}", session.segment_index);
-            let record = transcript_segment_record(session.segments.len(), &segment);
+            let mut corrected_segment = TranscriptSegment::new(
+                segment.start_ms,
+                segment.end_ms,
+                display_text.clone(),
+                segment.state,
+            );
+            let record = transcript_segment_record(session.segments.len(), &corrected_segment);
             let record = TranscriptSegmentRecord {
                 id: id.clone(),
                 start_ms: record.start_ms,
                 end_ms: record.end_ms,
                 text: record.text,
-                speaker_label: None,
+                speaker_label: speaker_label.clone(),
             };
             if !session.transcript.is_empty() {
                 session.transcript.push(' ');
@@ -810,13 +858,18 @@ fn emit_live_delta(
         }
         TranscriptSegmentState::Final => {
             if let Some(record) = session.segments.last_mut() {
-                let trimmed = segment.text.trim();
-                record.text = trimmed.to_string();
+                record.text = display_text.clone();
                 record.end_ms = segment.end_ms;
                 record.start_ms = segment.start_ms;
                 record.id.clone()
             } else {
-                let record = transcript_segment_record(session.segments.len(), &segment);
+                let mut corrected_segment = TranscriptSegment::new(
+                    segment.start_ms,
+                    segment.end_ms,
+                    display_text.clone(),
+                    segment.state,
+                );
+                let record = transcript_segment_record(session.segments.len(), &corrected_segment);
                 session.segments.push(record.clone());
                 record.id
             }
@@ -826,8 +879,8 @@ fn emit_live_delta(
     let delta = TranscriptDeltaRecord {
         session_id: session_id.to_string(),
         segment_id,
-        speaker_label: None,
-        text: segment.text.trim().to_string(),
+        speaker_label,
+        text: display_text,
         start_ms: segment.start_ms,
         end_ms: segment.end_ms,
         state: TranscriptSegmentStateWire::from(segment.state),
@@ -879,6 +932,7 @@ fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
             "Live transcript quality reduced — audio ring overflow.",
         )?;
     }
+    session.last_window_energy = report.window_energy;
 
     for segment in produced {
         emit_live_delta(session, session_id, segment)?;
@@ -919,6 +973,8 @@ pub fn start_live_session(
         transcript: String::new(),
         sink,
         degraded_notified: false,
+        speaker_activity: SpeakerActivityTracker::new(1200),
+        last_window_energy: 0.0,
     };
 
     lock(&LIVE_SESSIONS).insert(session_id.clone(), session);
@@ -933,15 +989,16 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
     let session = sessions
         .get_mut(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    if session.paused {
+        return Ok(());
+    }
     let push_report = session.pipeline.push_pcm(&samples);
+    session.last_window_energy = rms_energy(&samples);
     if push_report.dropped > 0 {
         maybe_emit_live_degraded(
             session,
             "Live transcript quality reduced — audio ring overflow.",
         )?;
-    }
-    if session.paused {
-        return Ok(());
     }
     let session_id = session_id.clone();
     drop(sessions);
@@ -1405,10 +1462,8 @@ mod tests {
 
     #[test]
     fn transcript_segment_record_handles_a_single_segment_recording() {
-        let record = transcript_segment_record(
-            0,
-            &TranscriptSegment::final_text(0, 900, "hello".into()),
-        );
+        let record =
+            transcript_segment_record(0, &TranscriptSegment::final_text(0, 900, "hello".into()));
         assert_eq!(record.id, "s0");
         assert_eq!(record.start_ms, 0);
         assert_eq!(record.end_ms, 900);

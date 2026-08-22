@@ -76,25 +76,16 @@ void main() {
   );
 
   testWidgets(
-    'shows Multilingual · auto-detect badge and offline copy by default (#1774)',
+    'shows compact trust bar with language and on-device copy (#1774)',
     (tester) async {
       await pumpScreen(tester);
 
-      expect(find.byKey(const Key('scribe_trust_signals')), findsOneWidget);
       expect(
-        find.byKey(const Key('scribe_trust_language_badge')),
+        find.byKey(const Key('meeting_capture_compact_trust_bar')),
         findsOneWidget,
       );
       expect(find.text('Multilingual · auto-detect'), findsOneWidget);
       expect(find.text('On this device'), findsOneWidget);
-      expect(
-        find.byKey(const Key('scribe_trust_offline_copy')),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Sharing is always an explicit'),
-        findsOneWidget,
-      );
     },
   );
 
@@ -265,7 +256,10 @@ void main() {
       recorder.calls.where((call) => call.startsWith('start:')),
       isNotEmpty,
     );
-    expect(find.byKey(const Key('meeting_capture_visualizer')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meeting_capture_amplitude_meter')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('meeting_capture_pause_button')),
       findsOneWidget,

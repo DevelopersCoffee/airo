@@ -192,10 +192,9 @@ impl Supervisor {
     /// Callers must still route work through [`Self::run_speech`] when they need
     /// admission and concurrency enforcement per window.
     pub fn speech_engine(&self) -> Result<&dyn SpeechEngine, RuntimeError> {
-        Ok(self
-            .speech
+        self.speech
             .as_deref()
-            .ok_or(RuntimeError::NoEngine("speech"))?)
+            .ok_or(RuntimeError::NoEngine("speech"))
     }
 
     /// Runs one generation job.
