@@ -402,7 +402,9 @@ fn engine_allowed(policy: SearchPolicy, id: &str) -> bool {
     match policy {
         SearchPolicy::LocalOnly => false,
         SearchPolicy::PrivacyFirst => id == "wikipedia" || id == "searxng",
-        SearchPolicy::Academic => id == "arxiv" || id == "semantic_scholar",
+        SearchPolicy::Academic => {
+            id == "arxiv" || id == "semantic_scholar" || id == "pubmed"
+        }
         SearchPolicy::Balanced | SearchPolicy::MaximumQuality => {
             id != "google" && id != "bing" && id != "tavily" && id != "duckduckgo"
         }
