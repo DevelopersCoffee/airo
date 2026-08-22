@@ -35,6 +35,47 @@ void main() {
       resolver = LifeTrackTemplateFallbackResolver(
         registry: registry,
         connectivityService: connectivityService,
+        templateKeywords: {
+          'real_estate_under_construction_v1': [
+            'flat',
+            'apartment',
+            'home',
+            'house',
+            'builder',
+            'property',
+            'real estate',
+            'rera',
+          ],
+          'medical_surgery_v1': [
+            'doctor',
+            'hospital',
+            'medical',
+            'operation',
+            'procedure',
+            'recovery',
+            'surgery',
+            'treatment',
+          ],
+          'university_admission_v1': [
+            'admission',
+            'college',
+            'education',
+            'enrollment',
+            'student',
+            'university',
+            'visa',
+          ],
+          'study_progress_v1': [
+            'chapter',
+            'coursework',
+            'exam',
+            'homework',
+            'revision',
+            'study progress',
+            'study',
+            'syllabus',
+          ],
+        },
       );
     });
 

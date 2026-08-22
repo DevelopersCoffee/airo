@@ -3,27 +3,28 @@ import 'package:core_domain/core_domain.dart';
 
 import '../../agent_chat/domain/models/chat_entity_graph.dart';
 import '../../agent_chat/domain/models/entity_graph_bridge.dart';
-import '../../agent_chat/domain/services/chat_entity_graph_projector.dart';
 import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
+import '../../agent_chat/domain/services/projected_chat_journey.dart';
 import '../../agent_chat/domain/services/life_track_fact_extractor.dart';
-import 'graph_workflow_projection_bridge.dart';
+import 'legacy_chat_entity_linker.dart';
+import 'legacy_workflow_graph_patch.dart';
+import 'legacy_workflow_projection.dart';
 
 /// Graph-workflow adapter for the Property Purchase built-in add-on.
 class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
   PropertyPurchaseGraphAdapter({
     LifeTrackFactExtractor facts = const LifeTrackFactExtractor(),
-    GraphWorkflowProjectionBridge projectionBridge =
-        const GraphWorkflowProjectionBridge(),
+    LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
     ChatEntityGraphPending pending = const ChatEntityGraphPending(),
   }) : _facts = facts,
-       _projectionBridge = projectionBridge,
+       _linker = linker,
        _pending = pending;
 
   static const addonId = 'property-purchase-planner';
   static const templateId = 'real_estate_under_construction_v1';
 
   final LifeTrackFactExtractor _facts;
-  final GraphWorkflowProjectionBridge _projectionBridge;
+  final LegacyChatEntityLinker _linker;
   final ChatEntityGraphPending _pending;
 
   @override
@@ -39,22 +40,21 @@ class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
 
   @override
   Future<EntityGraphPatch> extract(GraphIngestContext input) async {
-    return const EntityGraphPatch();
+    if (!accepts(input)) return const EntityGraphPatch();
+    final before = ChatEntityGraphBridge.fromEntityGraph(input.graph);
+    final after = _linker.ingestPropertyDomain(before, input.text);
+    return LegacyWorkflowGraphPatch.delta(before, after);
   }
 
   @override
   Iterable<WorkflowProjection> project(EntityGraph graph) {
     final chatGraph = ChatEntityGraphBridge.fromEntityGraph(graph);
-    return _projectionBridge
-        .projectChatJourneys(chatGraph)
-        .where((journey) => journey.templateId == templateId)
-        .map(
-          (journey) => _projectionBridge.toWorkflowProjection(
-            journey: journey,
-            identity: identity,
-            graph: chatGraph,
-          ),
-        );
+    return chatGraph.nodes
+        .where((node) => node.attributes['kind'] == 'property')
+        .map((property) => _toProjection(
+          LegacyWorkflowProjection.property(chatGraph, property),
+          chatGraph,
+        ));
   }
 
   @override
@@ -63,14 +63,8 @@ class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
     WorkflowProjection projection,
   ) {
     final chatGraph = ChatEntityGraphBridge.fromEntityGraph(graph);
-    ProjectedChatJourney? journey;
-    for (final item in _projectionBridge.projectChatJourneys(chatGraph)) {
-      if (item.subjectNodeId == projection.subjectNodeId) {
-        journey = item;
-        break;
-      }
-    }
-    if (journey == null) {
+    final node = graph.nodeById(projection.subjectNodeId);
+    if (node == null) {
       return PendingAssessment(
         identity: identity,
         subjectNodeId: projection.subjectNodeId,
@@ -79,6 +73,17 @@ class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
         missingOptional: const [],
       );
     }
+    final chatNode = chatGraph.nodeById(node.id);
+    if (chatNode == null) {
+      return PendingAssessment(
+        identity: identity,
+        subjectNodeId: projection.subjectNodeId,
+        storedFacts: projection.factsByFieldId,
+        missingRequired: const [],
+        missingOptional: const [],
+      );
+    }
+    final journey = LegacyWorkflowProjection.property(chatGraph, chatNode);
     return PendingAssessment(
       identity: identity,
       subjectNodeId: projection.subjectNodeId,
@@ -86,6 +91,32 @@ class PropertyPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
       missingRequired: _pending.missingFieldsFor(journey),
       missingOptional: const [],
       crossLinks: _pending.crossLinksFor(chatGraph, journey.subjectNodeId),
+    );
+  }
+
+  WorkflowProjection _toProjection(
+    ProjectedChatJourney journey,
+    ChatEntityGraph graph,
+  ) {
+    final node = graph.nodeById(journey.subjectNodeId);
+    final offered = node?.attributes['journey_offered'] == 'true';
+    return WorkflowProjection(
+      identity: identity,
+      subjectNodeId: journey.subjectNodeId,
+      destinationKind: 'lifetrack',
+      templateId: journey.templateId,
+      templateVersion: '1',
+      title: journey.title,
+      factsByFieldId: journey.facts,
+      identityKey: journey.subjectNodeId,
+      offer: offered
+          ? const OfferDecision(kind: OfferDecisionKind.alreadyOffered)
+          : journey.isOfferable
+          ? const OfferDecision(kind: OfferDecisionKind.offerable)
+          : const OfferDecision(
+              kind: OfferDecisionKind.notOfferable,
+              reason: 'missing_required_facts',
+            ),
     );
   }
 }

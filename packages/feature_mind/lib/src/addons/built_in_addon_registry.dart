@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'draft_diet_plan/draft_diet_plan_adapter.dart';
 import 'generative_addon_coordinator.dart';
 import 'graph_workflow/graph_workflow_coordinator.dart';
+import 'graph_workflow/car_purchase_graph_adapter.dart';
 import 'graph_workflow/hospital_recovery_graph_adapter.dart';
 import 'graph_workflow/insurance_planner_graph_adapter.dart';
 import 'graph_workflow/property_purchase_graph_adapter.dart';
+import 'graph_workflow/university_admission_graph_adapter.dart';
 
 /// Built-in add-ons registered for the Mind host.
 class BuiltInAddonRegistry {
@@ -62,7 +64,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -74,7 +76,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -86,7 +88,31 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: UniversityAdmissionGraphAdapter.addonId,
+      priority: 13,
+      subjectKind: 'admission_cycle',
+      adapter: UniversityAdmissionGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: CarPurchaseGraphAdapter.addonId,
+      priority: 11,
+      subjectKind: 'car_purchase',
+      adapter: CarPurchaseGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
 
     final graphCoordinator = GraphWorkflowCoordinator(registry);

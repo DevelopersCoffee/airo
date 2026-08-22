@@ -1,5 +1,6 @@
 import 'package:core_domain/core_domain.dart';
 
+import '../../../addons/templates/addon_life_track_record_policy.dart';
 import '../../domain/models/agent_skill.dart';
 import '../../domain/services/agent_connector.dart';
 
@@ -12,11 +13,15 @@ class LifeTrackRecordConnector implements AgentConnector {
     DateTime Function()? now,
     String Function()? newTrackId,
     LifeTrackFactPatch patch = const LifeTrackFactPatch(),
+    String Function(String templateId)? followUpHint,
+    List<String> Function(String templateId)? dedupeFieldLabels,
   }) : _repository = repository,
        _resolveTemplate = resolveTemplate,
        _now = now ?? DateTime.now,
        _newTrackId = newTrackId ?? _defaultTrackId,
-       _patch = patch;
+       _patch = patch,
+       _followUpHint = followUpHint ?? _defaultFollowUpHint,
+       _dedupeFieldLabels = dedupeFieldLabels ?? _defaultDedupeFieldLabels;
 
   final LifeTrackRepository _repository;
   final Future<LifeTrackTemplate?> Function(String templateId) _resolveTemplate;
@@ -24,6 +29,22 @@ class LifeTrackRecordConnector implements AgentConnector {
   final DateTime Function() _now;
   final String Function() _newTrackId;
   final LifeTrackFactPatch _patch;
+  final String Function(String templateId) _followUpHint;
+  final List<String> Function(String templateId) _dedupeFieldLabels;
+
+  static String _defaultFollowUpHint(String templateId) {
+    if (templateId == 'study_progress_v1') {
+      return AddonLifeTrackRecordPolicy.defaultStudyFollowUp;
+    }
+    return AddonLifeTrackRecordPolicy.defaultClaimFollowUp;
+  }
+
+  static List<String> _defaultDedupeFieldLabels(String templateId) {
+    if (templateId == 'study_progress_v1') {
+      return const ['Subject', 'Last Topic', 'Exam Date'];
+    }
+    return AddonLifeTrackRecordPolicy.defaultDedupeFields;
+  }
 
   @override
   String get name => 'record_lifetrack_facts';
@@ -146,12 +167,14 @@ class LifeTrackRecordConnector implements AgentConnector {
     final policyNumber = facts['Policy Number'];
     final intermediaryRef = facts['Intermediary Reference'];
     final subject = facts['Subject'];
+    final dedupeLabels = _dedupeFieldLabels(templateId);
     for (final track in tracks) {
       if (track.templateId != templateId) continue;
       if (_valuesMatch(track, claimId) ||
           _valuesMatch(track, policyNumber) ||
           _valuesMatch(track, intermediaryRef) ||
           _valuesMatch(track, subject) ||
+          _matchesDedupeLabels(track, facts, dedupeLabels) ||
           track.title == title) {
         return track;
       }
@@ -178,6 +201,18 @@ class LifeTrackRecordConnector implements AgentConnector {
     return false;
   }
 
+  bool _matchesDedupeLabels(
+    LifeTrack track,
+    Map<String, String> facts,
+    List<String> labels,
+  ) {
+    for (final label in labels) {
+      final value = facts[label];
+      if (value != null && _valuesMatch(track, value)) return true;
+    }
+    return false;
+  }
+
   String _preview({
     required String title,
     required String templateId,
@@ -191,10 +226,7 @@ class LifeTrackRecordConnector implements AgentConnector {
 
   String _savedMessage(LifeTrack track, {required bool created}) {
     final verb = created ? 'Started' : 'Updated';
-    final followUp = track.templateId == 'study_progress_v1'
-        ? 'Ask what is pending on this study track whenever you want a status check.'
-        : 'Ask what is pending on this claim whenever you want a status check.';
-    return '$verb local LifeTrack "${track.title}". $followUp';
+    return '$verb local LifeTrack "${track.title}". ${_followUpHint(track.templateId ?? '')}';
   }
 
   Map<String, String> _stringMap(Object? raw) {

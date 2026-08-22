@@ -1,35 +1,35 @@
 {
   "schema_version": "1.0",
-  "id": "property-purchase-planner",
+  "id": "car-purchase-planner",
   "version": "1.0.0",
   "behaviors": ["graph_workflow"],
   "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
   "tools": ["query_entity_graph", "record_lifetrack_facts"],
+  "safety_class": "financial",
   "adapter": {
     "kind": "required_built_in",
     "contract": "graph_workflow_v1"
   },
   "workflow": {
-    "subject_kind": "property",
-    "template_id": "real_estate_under_construction_v1",
+    "subject_kind": "car_purchase",
+    "template_id": "car_purchase_v1",
     "template_asset": "lifetrack_template.json",
     "fallback_keywords": [
-      "flat",
-      "apartment",
-      "home",
-      "house",
-      "builder",
-      "property",
-      "real estate",
-      "rera"
+      "auto",
+      "automobile",
+      "car",
+      "driving",
+      "loan",
+      "parking",
+      "vehicle"
     ],
-    "record_follow_up_hint": "Ask what is pending on this property purchase track whenever you want a status check.",
+    "record_follow_up_hint": "Ask what is pending on this car purchase track whenever you want a status check.",
     "dedupe_field_labels": [
-      "RERA Registration Number",
-      "Builder",
-      "Project",
+      "Shortlisted Cars",
+      "Budget Range",
+      "Parking Plan",
       "Subject"
     ]
   },
-  "built_in_priority": 12
+  "built_in_priority": 11
 }

@@ -1,0 +1,73 @@
+{
+  "template_id": "medical_surgery_v1",
+  "title": "Medical Surgery Preparation Template",
+  "description": "A bundled skeleton for pre-surgery tests, insurance approval, surgery prep, and recovery planning.",
+  "category": "medical",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: Pre-surgery Tests",
+      "objective": "Complete required diagnostics and specialist consultations",
+      "tasks": [
+        {
+          "summary": "Track required pre-op tests",
+          "requirements": [
+            {
+              "label": "Required Tests List",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Insurance Approval",
+      "objective": "Confirm coverage and pre-authorization requirements",
+      "tasks": [
+        {
+          "summary": "Collect pre-authorization details",
+          "requirements": [
+            {
+              "label": "Insurance Authorization Reference",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Surgery Preparation",
+      "objective": "Prepare documents, logistics, and doctor instructions",
+      "tasks": [
+        {
+          "summary": "Review hospital preparation checklist",
+          "requirements": [
+            {
+              "label": "Hospital Checklist",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Post-op Recovery",
+      "objective": "Plan medicines, follow-ups, and recovery support",
+      "tasks": [
+        {
+          "summary": "Create recovery follow-up plan",
+          "requirements": [
+            {
+              "label": "Recovery Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

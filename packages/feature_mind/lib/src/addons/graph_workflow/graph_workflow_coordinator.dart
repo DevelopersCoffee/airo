@@ -4,24 +4,25 @@ import 'package:core_domain/core_domain.dart';
 import '../../agent_chat/domain/models/chat_entity_graph.dart';
 import '../../agent_chat/domain/models/entity_graph_bridge.dart';
 import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
-import '../../agent_chat/domain/services/chat_entity_graph_projector.dart';
-import '../../agent_chat/domain/services/chat_entity_linker.dart';
+import '../../agent_chat/domain/services/projected_chat_journey.dart';
+import 'legacy_chat_entity_linker.dart';
+import 'legacy_workflow_graph_patch.dart';
 import 'graph_workflow_projection_bridge.dart';
 
 /// Routes graph-workflow add-ons through the registry without host ID switches.
 class GraphWorkflowCoordinator {
   GraphWorkflowCoordinator(
     this._registry, {
-    ChatEntityLinker linker = const ChatEntityLinker(),
+    LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
     GraphWorkflowProjectionBridge projectionBridge =
         const GraphWorkflowProjectionBridge(),
     ChatEntityGraphPending pending = const ChatEntityGraphPending(),
-  }) : _linker = linker,
+  }) : _legacyLinker = linker,
        _projectionBridge = projectionBridge,
        _pending = pending;
 
   final AddonRegistry _registry;
-  final ChatEntityLinker _linker;
+  final LegacyChatEntityLinker _legacyLinker;
   final GraphWorkflowProjectionBridge _projectionBridge;
   final ChatEntityGraphPending _pending;
 
@@ -36,14 +37,46 @@ class GraphWorkflowCoordinator {
 
   ChatEntityGraph ingest(ChatEntityGraph graph, String text) {
     if (!shouldIngest(text, graph)) return graph;
-    return _linker.ingest(graph, text);
+    return _legacyLinker.ingest(graph, text);
+  }
+
+  Future<ChatEntityGraph> ingestWithAddonPatches(
+    ChatEntityGraph graph,
+    String text,
+  ) async {
+    if (!shouldIngest(text, graph)) return graph;
+    var chatGraph = graph;
+    var entityGraph = chatGraph.toEntityGraph();
+    var context = GraphIngestContext(text: text, graph: entityGraph);
+    for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (!adapter.accepts(context)) continue;
+      final patch = await adapter.extract(context);
+      if (patch.isEmpty) continue;
+      chatGraph = LegacyWorkflowGraphPatch.apply(chatGraph, patch);
+      entityGraph = chatGraph.toEntityGraph();
+      context = GraphIngestContext(text: text, graph: entityGraph);
+    }
+    chatGraph = _legacyLinker.ingestGenericMentions(chatGraph, text);
+    return chatGraph;
   }
 
   List<ProjectedChatJourney> projectJourneys(ChatEntityGraph graph) =>
       _projectionBridge.projectChatJourneys(graph);
 
-  ProjectedChatJourney? firstUnofferedJourney(ChatEntityGraph graph) =>
-      _projectionBridge.firstUnoffered(graph);
+  ProjectedChatJourney? firstUnofferedJourney(ChatEntityGraph graph) {
+    for (final projection in workflowProjections(graph)) {
+      if (projection.offer.kind != OfferDecisionKind.offerable) continue;
+      final node = graph.nodeById(projection.subjectNodeId);
+      if (node?.attributes['journey_offered'] == 'true') continue;
+      return ProjectedChatJourney(
+        subjectNodeId: projection.subjectNodeId,
+        templateId: projection.templateId,
+        title: projection.title,
+        facts: Map<String, String>.from(projection.factsByFieldId),
+      );
+    }
+    return null;
+  }
 
   List<WorkflowProjection> workflowProjections(ChatEntityGraph graph) {
     final entityGraph = graph.toEntityGraph();

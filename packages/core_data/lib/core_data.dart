@@ -14,6 +14,7 @@ export 'src/storage/flutter_secure_store.dart';
 export 'src/storage/life_track_local_data_source.dart';
 export 'src/storage/templates/life_track_template_fallback_resolver.dart';
 export 'src/storage/templates/template_registry.dart';
+export 'src/serialization/compact_jsonl.dart';
 export 'src/secure/secure_storage.dart';
 export 'src/secure/in_memory_secure_storage.dart';
 export 'src/secure/sqflite_encrypted_database.dart';

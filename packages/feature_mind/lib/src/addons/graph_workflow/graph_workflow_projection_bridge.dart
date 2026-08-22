@@ -2,6 +2,7 @@ import 'package:core_domain/core_domain.dart';
 
 import '../../agent_chat/domain/models/chat_entity_graph.dart';
 import '../../agent_chat/domain/services/chat_entity_graph_projector.dart';
+import '../../agent_chat/domain/services/projected_chat_journey.dart';
 
 /// Maps chat-local journeys to neutral workflow projections.
 class GraphWorkflowProjectionBridge {
