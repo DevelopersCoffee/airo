@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import 'arxiv_search_engine.dart';
+import 'github_search_engine.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_http.dart';
@@ -60,6 +61,7 @@ class LocalResearchService implements ResearchService {
         WikipediaSearchEngine(),
         ArxivSearchEngine(),
         SemanticScholarSearchEngine(),
+        GitHubSearchEngine(),
         if (searxngBaseUri != null)
           SearxngSearchEngine(baseUri: searxngBaseUri),
       ],

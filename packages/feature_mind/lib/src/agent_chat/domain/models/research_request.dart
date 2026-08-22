@@ -36,7 +36,7 @@ extension PrivacyProfileRouting on PrivacyProfile {
         return const ['wikipedia', 'searxng'];
       case PrivacyProfile.balanced:
       case PrivacyProfile.cloud:
-        return const ['wikipedia', 'arxiv', 'semantic_scholar'];
+        return const ['wikipedia', 'arxiv', 'semantic_scholar', 'github'];
     }
   }
 }
