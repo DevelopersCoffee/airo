@@ -3,6 +3,7 @@ import '../models/research_request.dart';
 import 'research/arxiv_search_engine.dart';
 import 'research/research_http.dart';
 import 'research/research_orchestrator.dart';
+import 'research/semantic_scholar_search_engine.dart';
 import 'research/source_manager.dart';
 import 'research/wikipedia_search_engine.dart';
 
@@ -21,7 +22,11 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
     : _orchestrator =
           orchestrator ??
           ResearchOrchestrator(
-            engines: [WikipediaSearchEngine(), ArxivSearchEngine()],
+            engines: [
+              WikipediaSearchEngine(),
+              ArxivSearchEngine(),
+              SemanticScholarSearchEngine(),
+            ],
             sourceManager: SourceManager(
               fetcher: const ResearchHttpClient().get,
             ),
