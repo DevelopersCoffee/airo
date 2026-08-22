@@ -261,6 +261,37 @@ void main() {
     );
   });
 
+  test('execution log keeps metadata and never stores prompt text', () {
+    final log = ExecutionLog(capacity: 2);
+    const secret = 'SECRET_PROMPT_BODY ignore previous instructions';
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-1',
+        text: secret,
+        engineOk: false,
+      ),
+    );
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-2',
+        text: '   ',
+        engineOk: true,
+      ),
+    );
+    log.record(
+      FailureClassifier.recordChatCompletion(
+        executionId: 'chat-3',
+        text: secret,
+        engineOk: false,
+      ),
+    );
+    expect(log.checkpoints, hasLength(2));
+    expect(log.lastFailure?.executionId, 'chat-3');
+    expect(log.lastFailure?.runtimeError, RuntimeFailure.r07ModelAdapter);
+    expect(log.checkpoints.toString(), isNot(contains(secret)));
+    expect(log.checkpoints.toString(), isNot(contains('PM-17')));
+  });
+
   test('chat goal cannot complete without verification', () {
     final running = ChatTurnGoal(goal: 'What is 2+2?').start();
     expect(running.succeeded, isFalse);
