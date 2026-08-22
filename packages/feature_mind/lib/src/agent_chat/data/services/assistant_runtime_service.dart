@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../services/gguf_load_diagnostics.dart';
 import '../../../services/llama_gguf_service.dart';
 import 'package:flutter/foundation.dart';
@@ -205,6 +207,7 @@ class AssistantRuntimeService {
     ModelCompatibilityCheck? checkModelCompatibility,
     Future<AssistantModelLibraryState> Function()? loadAssistantModelLibrary,
     this._debugTraceEmitter,
+    ReliabilityCheckpointStore? checkpointStore,
   }) : _geminiNano = geminiNano ?? GeminiNanoService(),
        _liteRtLm = liteRtLm ?? LiteRtLmService(),
        _llamaGguf = llamaGguf ?? LlamaGgufService(),
@@ -224,7 +227,12 @@ class AssistantRuntimeService {
        _warmupLiteRtModelOverride = warmupLiteRtModel,
        _loadDeviceInfoOverride = loadDeviceInfo,
        _checkModelCompatibilityOverride = checkModelCompatibility,
-       _loadAssistantModelLibraryOverride = loadAssistantModelLibrary;
+       _loadAssistantModelLibraryOverride = loadAssistantModelLibrary,
+       _checkpointStore = checkpointStore {
+    if (_checkpointStore != null) {
+      _checkpointHydrate = _hydrateCheckpoints();
+    }
+  }
 
   final GeminiNanoService _geminiNano;
   final LiteRtLmService _liteRtLm;
@@ -256,7 +264,11 @@ class AssistantRuntimeService {
   PersistableDiagnostic? lastReliabilityDiagnostic;
 
   /// Bounded checkpoint ring for this runtime. Metadata only (ADR-0023).
+  /// Disk durability is Prefs-tier ids only (ADR-0024).
   final ExecutionLog reliabilityLog = ExecutionLog();
+
+  ReliabilityCheckpointStore? _checkpointStore;
+  Future<void>? _checkpointHydrate;
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
@@ -680,6 +692,7 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
   }) async {
+    await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
     lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
@@ -812,6 +825,7 @@ class AssistantRuntimeService {
     int? maxOutputTokens,
     GenerationConstraint? constraint,
   }) async* {
+    await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
     lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
@@ -1068,9 +1082,54 @@ class AssistantRuntimeService {
     }
   }
 
+  /// Production attaches [PreferencesReliabilityCheckpointStore] from chat.
+  /// Tests inject [MemoryReliabilityCheckpointStore]. Never constructs prefs
+  /// here — many unit tests do not mock SharedPreferences.
+  void attachCheckpointStore(ReliabilityCheckpointStore store) {
+    _checkpointStore = store;
+    _checkpointHydrate ??= _hydrateCheckpoints();
+  }
+
+  Future<void> _ensureCheckpointsHydrated() async {
+    final pending = _checkpointHydrate;
+    if (pending != null) await pending;
+  }
+
+  Future<void> _hydrateCheckpoints() async {
+    final store = _checkpointStore;
+    if (store == null) return;
+    final hadMemory = !reliabilityLog.isEmpty;
+    try {
+      final raw = await store.load();
+      reliabilityLog.restoreFromDisk(ExecutionLog.decode(raw ?? ''));
+      if (hadMemory) {
+        await store.save(reliabilityLog.encode());
+      }
+    } on Object {
+      // Prefs I/O must not fail a chat turn (ADR-0024).
+    }
+  }
+
+  void _persistCheckpoints() {
+    final store = _checkpointStore;
+    if (store == null) return;
+    unawaited(_saveCheckpoints(store));
+  }
+
+  Future<void> _saveCheckpoints(ReliabilityCheckpointStore store) async {
+    try {
+      await store.save(reliabilityLog.encode());
+    } on Object {
+      // Best-effort. The in-process ring remains the live source.
+    }
+  }
+
   void _noteReliability(PersistableDiagnostic? diagnostic) {
     lastReliabilityDiagnostic = diagnostic;
     reliabilityLog.record(diagnostic);
+    if (diagnostic != null) {
+      _persistCheckpoints();
+    }
   }
 
   String _nonEmptyOrUnavailable(
