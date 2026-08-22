@@ -36,6 +36,30 @@ void main() {
     expect(second.document!.url, first.document!.url);
   });
 
+  test('pdf bytes are extracted as evidence, not treated as html', () async {
+    const pdfHit = ResearchHit(
+      engineId: 'arxiv',
+      url: 'https://arxiv.org/pdf/2401.12345',
+      title: 'Qwen paper',
+      snippet: 'SEARCH SNIPPET ONLY',
+    );
+    final manager = SourceManager(
+      fetcher: (uri) async =>
+          '%PDF-1.1\nBT (Qwen is a family of language models) Tj ET\n%%EOF\n',
+      now: () => DateTime.utc(2026, 8, 22),
+    );
+
+    final result = await manager.acquire(pdfHit);
+
+    expect(result.document, isNotNull);
+    expect(result.document!.evidenceText, contains('language models'));
+    expect(result.document!.evidenceText, isNot(contains('SEARCH SNIPPET')));
+    expect(
+      result.document!.evidenceText.toLowerCase(),
+      isNot(contains('%pdf')),
+    );
+  });
+
   test('a failed fetch rejects the source and does not throw', () async {
     final manager = SourceManager(
       fetcher: (uri) async => throw StateError('blocked'),

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:core_data/core_data.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_calendar/platform_calendar.dart';
@@ -33,6 +34,7 @@ import '../../../widgets/mind_desktop_chrome.dart';
 import '../../../widgets/mind_palette.dart';
 import '../../../widgets/mind_presence_pip.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/preferences_reliability_checkpoint_store.dart';
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
@@ -128,6 +130,7 @@ class AgentChatMessage {
   final MindReasoningLevel? reasoningLevel;
   final bool reasoningInProgress;
   final List<ChatHistoryToolCall> reasoningToolCalls;
+  final List<String> clarificationCandidates;
 
   AgentChatMessage({
     required this.text,
@@ -145,6 +148,7 @@ class AgentChatMessage {
     this.reasoningLevel,
     this.reasoningInProgress = false,
     this.reasoningToolCalls = const [],
+    this.clarificationCandidates = const [],
   }) : timestamp = timestamp ?? DateTime.now();
 
   ChatHistoryEntry toHistoryEntry() => ChatHistoryEntry(
@@ -180,6 +184,7 @@ class AgentChatMessage {
     MindReasoningLevel? reasoningLevel,
     bool? reasoningInProgress,
     List<ChatHistoryToolCall>? reasoningToolCalls,
+    List<String>? clarificationCandidates,
   }) {
     return AgentChatMessage(
       text: text ?? this.text,
@@ -197,6 +202,8 @@ class AgentChatMessage {
       reasoningLevel: reasoningLevel ?? this.reasoningLevel,
       reasoningInProgress: reasoningInProgress ?? this.reasoningInProgress,
       reasoningToolCalls: reasoningToolCalls ?? this.reasoningToolCalls,
+      clarificationCandidates:
+          clarificationCandidates ?? this.clarificationCandidates,
     );
   }
 }
@@ -372,6 +379,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         unawaited(_restoreChatHistory());
       }
     }
+    unawaited(_attachReliabilityCheckpoints());
     unawaited(_restorePausedResearch());
     unawaited(initializeLifeTrackStatusConnector());
     unawaited(_loadEntityGraph());
@@ -385,6 +393,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       exportChat: () => unawaited(_copyTranscript()),
       clearChat: () => unawaited(_confirmClearConversation()),
     );
+  }
+
+  Future<void> _attachReliabilityCheckpoints() async {
+    try {
+      final prefs = await PreferencesStore.create();
+      if (!mounted) return;
+      _assistantRuntime.attachCheckpointStore(
+        PreferencesReliabilityCheckpointStore(prefs),
+      );
+    } on Object {
+      // Prefs I/O must not fail chat (ADR-0024).
+    }
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
@@ -1563,6 +1583,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
+            if (!message.isUser && message.clarificationCandidates.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final id in message.clarificationCandidates)
+                      ActionChip(
+                        key: Key('reasoning_clarify_$id'),
+                        label: Text(labelForClarificationCapability(id)),
+                        onPressed: _isGenerating
+                            ? null
+                            : () {
+                                _messageController.text =
+                                    followUpForClarificationCapability(id);
+                                _sendMessage();
+                              },
+                      ),
+                  ],
+                ),
+              ),
             if (!message.isUser &&
                 (message.metadata != null || message.turnTrace != null))
               Padding(
@@ -2746,6 +2788,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               argumentsJson: call.argumentsJson,
             ),
         ],
+        clarificationCandidates: List<String>.from(
+          fold.clarificationCandidates,
+        ),
         turnTrace: current.turnTrace,
       );
     });

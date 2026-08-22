@@ -245,6 +245,7 @@ class _RuntimeConsoleRow extends StatelessWidget {
     MindOpKind.meetingIrExtracted: 'meeting IR extracted',
     MindOpKind.speakerEnrolled: 'speaker enrolled',
     MindOpKind.researchCheckpoint: 'research checkpoint',
+    MindOpKind.researchLibrary: 'research library',
   };
 
   static const Map<SignatureState, String> _signatureLabels = {

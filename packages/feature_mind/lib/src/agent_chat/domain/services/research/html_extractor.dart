@@ -21,7 +21,7 @@ class ExtractedHtml {
   final String? publishedAt;
   final SourceTrust trustLevel;
 
-  String get evidenceText => [...headings, ...paragraphs].join(' ');
+  String get evidenceText => [...headings, ...paragraphs, ...tables].join(' ');
 }
 
 /// Top-level so large pages can run through [runOffMain].
@@ -43,7 +43,7 @@ ExtractedHtml extractHtml(String html) {
     ..._allInner(body, 'h3'),
   ];
   final paragraphs = _allInner(body, 'p');
-  final tables = _allInner(body, 'td');
+  final tables = _tableRows(body);
   final codeBlocks = [..._allInner(body, 'pre'), ..._allInner(body, 'code')];
   return ExtractedHtml(
     title: title,
@@ -73,6 +73,32 @@ String _stripComments(String html) {
 String? _firstInner(String html, String tag) {
   final all = _allInner(html, tag);
   return all.isEmpty ? null : all.first;
+}
+
+List<String> _tableRows(String html) {
+  final out = <String>[];
+  final tables = RegExp(
+    r'<table\b[^>]*>([\s\S]*?)</table>',
+    caseSensitive: false,
+  ).allMatches(html);
+  for (final table in tables) {
+    final rows = RegExp(
+      r'<tr\b[^>]*>([\s\S]*?)</tr>',
+      caseSensitive: false,
+    ).allMatches(table.group(1) ?? '');
+    for (final row in rows) {
+      final cells =
+          RegExp(r'<t[dh]\b[^>]*>([\s\S]*?)</t[dh]>', caseSensitive: false)
+              .allMatches(row.group(1) ?? '')
+              .map((match) => _visibleText(match.group(1) ?? ''))
+              .where((cell) => cell.isNotEmpty)
+              .toList(growable: false);
+      if (cells.length >= 2) {
+        out.add(cells.join(' | '));
+      }
+    }
+  }
+  return _unique(out);
 }
 
 List<String> _allInner(String html, String tag) {

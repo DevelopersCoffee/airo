@@ -19,6 +19,6 @@ pub use classified::{
     IntentStatus, Requirements, SCHEMA_VERSION,
 };
 pub use engine::{classify, ClassifyRequest, RouteDecision};
-pub use legacy::from_legacy;
+pub use legacy::{from_capability, from_legacy};
 pub use router::route;
 pub use validator::validate_intent;

@@ -226,6 +226,39 @@ void main() {
     expect(find.text('Ibuprofen'), findsOneWidget);
     expect(find.text('14 Aug'), findsOneWidget);
     expect(find.byKey(const Key('provenance.entities.empty')), findsNothing);
+    expect(find.byKey(const Key('provenance.relations.empty')), findsOneWidget);
+  });
+
+  testWidgets('renders typed relations for a funding announcement', (
+    tester,
+  ) async {
+    const announcement = MindOp(
+      sequence: 2001,
+      kind: MindOpKind.automation,
+      title: 'Funding note',
+      contextId: 'kneesurgery2026',
+      deviceName: 'Pixel 9 Pro',
+      signature: SignatureState.unverified,
+      recordedAtMs: 0,
+      detail:
+          'On Aug 29th, 2024, Optimist Corp. announced in Chicago that '
+          'its CEO, Brad Doe, would be stepping down after a successful '
+          '\$5 million funding round.',
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        log: _FakeLog(ops: const [announcement]),
+        contexts: _FakeContexts(),
+        projections: _FakeProjections(),
+        opSequence: 2001,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Brad Doe · works at · Optimist Corp.'), findsOneWidget);
+    expect(find.text('Optimist Corp. · located in · Chicago'), findsOneWidget);
+    expect(find.byKey(const Key('provenance.relations.empty')), findsNothing);
   });
 
   // Non-happy: no entities found.

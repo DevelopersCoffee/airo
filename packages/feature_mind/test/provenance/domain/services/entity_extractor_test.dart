@@ -63,6 +63,7 @@ void main() {
           type: EntityType.organization,
         ),
         const ExtractedEntity(text: 'Chicago', type: EntityType.location),
+        const ExtractedEntity(text: 'CEO', type: EntityType.title),
         const ExtractedEntity(text: 'Brad Doe', type: EntityType.person),
         const ExtractedEntity(text: '\$5 million', type: EntityType.money),
       ]);
@@ -70,6 +71,7 @@ void main() {
         'date': ['Aug 29th, 2024'],
         'organization': ['Optimist Corp.'],
         'location': ['Chicago'],
+        'title': ['CEO'],
         'person': ['Brad Doe'],
         'money': ['\$5 million'],
       });
@@ -141,6 +143,35 @@ void main() {
       ]);
     });
 
+    test('untitled people, products, events, phones, and relative dates', () {
+      final entities = extractor.extract(
+        'Sundar Pichai said Google Cloud ships before the Olympic Games. '
+        'Call +1 415-555-0100 tomorrow.',
+      );
+
+      expect(
+        entities,
+        containsAll([
+          const ExtractedEntity(text: 'Sundar Pichai', type: EntityType.person),
+          const ExtractedEntity(text: 'Google Cloud', type: EntityType.product),
+          const ExtractedEntity(text: 'Olympic Games', type: EntityType.event),
+          const ExtractedEntity(
+            text: '+1 415-555-0100',
+            type: EntityType.identifier,
+          ),
+          const ExtractedEntity(text: 'tomorrow', type: EntityType.date),
+        ]),
+      );
+      expect(
+        entities,
+        isNot(
+          contains(
+            const ExtractedEntity(text: 'Knee Brace', type: EntityType.person),
+          ),
+        ),
+      );
+    });
+
     test('serializes extracted entities to JSON with spans', () {
       final json = extractor.extract('Dr. Rao on 14 Aug.').toJson();
 
@@ -152,7 +183,7 @@ void main() {
 
     // Non-happy: no entities found.
     test('plain lower-case text with no dates yields no entities', () {
-      expect(extractor.extract('the appointment went fine today'), isEmpty);
+      expect(extractor.extract('the appointment went fine'), isEmpty);
     });
 
     // Non-happy: no entities found.

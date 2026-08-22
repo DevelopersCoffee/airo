@@ -178,6 +178,61 @@ void main() {
     ).run(const ResearchRequest(question: '  ')).toList();
     expect(events.single.kind, ResearchEventKind.researchFailed);
   });
+
+  test(
+    'known library urls are skipped so only the delta is acquired',
+    () async {
+      final fetched = <Uri>[];
+      final engine = ResearchOrchestrator(
+        engines: [
+          _FakeSearchEngine(
+            id: 'wikipedia',
+            hits: const [
+              ResearchHit(
+                engineId: 'wikipedia',
+                url: 'https://en.wikipedia.org/wiki/Qwen',
+                title: 'Qwen',
+                snippet: 'old',
+              ),
+              ResearchHit(
+                engineId: 'wikipedia',
+                url: 'https://en.wikipedia.org/wiki/Large_language_model',
+                title: 'LLM',
+                snippet: 'new',
+              ),
+            ],
+          ),
+          _FakeSearchEngine(id: 'arxiv', hits: const []),
+        ],
+        sourceManager: SourceManager(
+          fetcher: (uri) async {
+            fetched.add(uri);
+            return _article(
+              title: 'LLM',
+              paragraph: 'Large language models are trained on text.',
+            );
+          },
+        ),
+      );
+
+      final events = await engine
+          .run(
+            const ResearchRequest(
+              question: 'What is Qwen?',
+              mode: ResearchMode.quick,
+            ),
+            knownSourceUrls: const ['https://en.wikipedia.org/wiki/Qwen'],
+          )
+          .toList();
+
+      expect(events.last.kind, ResearchEventKind.researchCompleted);
+      expect(
+        fetched.map((uri) => uri.toString()),
+        isNot(contains('https://en.wikipedia.org/wiki/Qwen')),
+      );
+      expect(events.last.detail, contains('wiki/Large_language_model'));
+    },
+  );
 }
 
 String _article({required String title, required String paragraph}) {

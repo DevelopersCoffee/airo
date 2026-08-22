@@ -9,7 +9,8 @@ use airo_mind_core::{
 };
 use airo_mind_reasoning::{
     DeviceInferenceProfile, ReasoningEngine, ReasoningError, ReasoningEvent, ReasoningLevel,
-    ReasoningRequest, ReasoningStage, ToolCall, ToolDefinition, ToolExecutor, MAX_TOOL_ITERATIONS,
+    ReasoningRequest, ReasoningStage, ToolCall, ToolDefinition, ToolExecutor,
+    CLARIFY_PROGRESS_PREFIX, MAX_TOOL_ITERATIONS,
 };
 
 struct ScriptedEngine {
@@ -83,25 +84,38 @@ impl GenerationEngine for ScriptedEngine {
             .grammar
             .as_deref()
             .expect("reasoning must attach the result grammar");
-        assert!(
-            grammar.contains("root") && grammar.contains("tool_calls"),
-            "reasoning must attach the result grammar"
-        );
-        let lookup = grammar.contains("lookup-tail");
-        let none_or_light = request
-            .prompt
-            .contains("Do not perform unnecessary analysis")
-            || request
+        let analyzer = request.prompt.contains("Pick exactly one capability");
+        if analyzer {
+            assert!(
+                grammar.contains("root") && grammar.contains("capability"),
+                "analyzer must attach the capability grammar"
+            );
+            assert!(!grammar.contains("diet.plan"));
+            assert!(
+                !grammar.contains(r#"root ::= "{""#),
+                "opening brace is teacher-forced; grammar must start at \"capability\""
+            );
+        } else {
+            assert!(
+                grammar.contains("root") && grammar.contains("tool_calls"),
+                "reasoning must attach the result grammar"
+            );
+            let lookup = grammar.contains("lookup-tail");
+            let none_or_light = request
                 .prompt
-                .contains("Return a concise answer and a one-sentence basis");
-        assert_eq!(
-            lookup, none_or_light,
-            "none/light attach lookup grammar; standard/deep keep the full envelope"
-        );
-        assert!(
-            !grammar.contains(r#"root ::= "{""#),
-            "opening brace is teacher-forced; grammar must start at \"answer\""
-        );
+                .contains("Do not perform unnecessary analysis")
+                || request
+                    .prompt
+                    .contains("Return a concise answer and a one-sentence basis");
+            assert_eq!(
+                lookup, none_or_light,
+                "none/light attach lookup grammar; standard/deep keep the full envelope"
+            );
+            assert!(
+                !grammar.contains(r#"root ::= "{""#),
+                "opening brace is teacher-forced; grammar must start at \"answer\""
+            );
+        }
         assert!(
             request.prompt.ends_with('{'),
             "prompt must teacher-force '{{' so greedy GGUF does not EOG before JSON"
@@ -157,6 +171,10 @@ impl ToolExecutor for MapExecutor {
 
 fn envelope(answer: &str, summary: &str, confidence: &str) -> String {
     format!(r#"{{"answer":"{answer}","reasoning_summary":"{summary}","confidence":{confidence}}}"#)
+}
+
+fn analyzer_envelope(capability: &str) -> String {
+    format!(r#"{{"capability":"{capability}","confidence":0.88}}"#)
 }
 
 fn tool_envelope(name: &str) -> String {
@@ -430,6 +448,11 @@ fn underspecified_action_asks_instead_of_generating() {
         e,
         ReasoningEvent::Error { message } if message.contains("calendar")
     )));
+    assert!(events.iter().any(|e| matches!(
+        e,
+        ReasoningEvent::Progress { message } if message.starts_with(CLARIFY_PROGRESS_PREFIX)
+            && message.contains("skill.execute")
+    )));
     assert!(events
         .iter()
         .all(|e| !matches!(e, ReasoningEvent::Completed { .. })));
@@ -511,5 +534,71 @@ fn deep_keeps_the_draft_when_validate_output_is_malformed() {
     )
     .unwrap();
     assert_eq!(completed(&events).answer, "Draft plan.");
+    assert_eq!(gen.calls(), 2);
+}
+
+#[test]
+fn analyzer_proposal_beats_a_wrong_legacy_kind() {
+    let gen = ScriptedEngine::sequence([
+        analyzer_envelope("planning.create"),
+        envelope("A budget plan.", "Split income and bills.", "0.88"),
+    ]);
+    let mut req = ReasoningRequest::fixture("navigation", 0.2);
+    req.user_query = "plan my budget".into();
+    req.run_analyzer = true;
+    req.requested_level = Some(ReasoningLevel::Standard);
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(completed(&events).answer, "A budget plan.");
+    assert_eq!(gen.calls(), 2);
+    let prompts = gen.prompts();
+    assert!(
+        prompts[0].contains("Pick exactly one capability"),
+        "first generate is the analyzer: {}",
+        prompts[0]
+    );
+    assert!(
+        prompts[1].contains("Make a study plan for the week."),
+        "classified planning must condition the few-shots: {}",
+        prompts[1]
+    );
+}
+
+#[test]
+fn analyzer_invented_id_falls_back_to_legacy() {
+    let gen = ScriptedEngine::sequence([
+        analyzer_envelope("diet.plan"),
+        envelope("Opened Budget.", "Navigated.", "0.80"),
+    ]);
+    let mut req = ReasoningRequest::fixture("navigation", 0.2);
+    req.user_query = "plan my budget".into();
+    req.run_analyzer = true;
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(completed(&events).answer, "Opened Budget.");
+    assert_eq!(gen.calls(), 2);
+    assert!(
+        !gen.prompts()[1].contains("Make a study plan for the week."),
+        "legacy navigation must not take the planning shot: {}",
+        gen.prompts()[1]
+    );
+}
+
+#[test]
+fn analyzer_malformed_output_falls_back_to_legacy() {
+    let gen = ScriptedEngine::sequence([
+        "not json".into(),
+        envelope(
+            "Sky is blue because of scattering.",
+            "Used density of air.",
+            "0.80",
+        ),
+    ]);
+    let mut req = ReasoningRequest::fixture("conversation", 0.3);
+    req.user_query = "Why is the sky blue?".into();
+    req.run_analyzer = true;
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(
+        completed(&events).answer,
+        "Sky is blue because of scattering."
+    );
     assert_eq!(gen.calls(), 2);
 }

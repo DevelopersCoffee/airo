@@ -36,9 +36,9 @@ class SearchRouter {
         return const ['wikipedia'];
       case SearchPolicy.balanced:
       case SearchPolicy.maximumQuality:
-        return const ['wikipedia', 'arxiv'];
+        return const ['wikipedia', 'arxiv', 'semantic_scholar'];
       case SearchPolicy.academic:
-        return const ['arxiv'];
+        return const ['arxiv', 'semantic_scholar'];
     }
   }
 }

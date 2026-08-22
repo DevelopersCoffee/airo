@@ -1,11 +1,13 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import 'claim_extractor.dart';
+import 'comparison_matrix.dart';
 import 'contradiction_engine.dart';
 import 'query_generator.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_interpreter.dart';
+import 'research_library.dart';
 import 'research_planner.dart';
 import 'research_search.dart';
 import 'source_manager.dart';
@@ -36,6 +38,8 @@ class ResearchOrchestrator {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
     final question = request.question.trim();
     if (question.isEmpty) {
@@ -46,6 +50,14 @@ class ResearchOrchestrator {
       );
       return;
     }
+
+    final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
+    yield ResearchEvent(
+      kind: ResearchEventKind.jobAdmitted,
+      jobId: jobId,
+      label: 'Research admitted',
+      detail: jobId,
+    );
 
     yield const ResearchEvent(
       kind: ResearchEventKind.planningStarted,
@@ -72,7 +84,6 @@ class ResearchOrchestrator {
     var searchesUsed = resumeFrom?.searchesUsed ?? 0;
     var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
     final completed = {...?resumeFrom?.completedNodeIds};
-    final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
     final collected = <ResearchHit>[];
     final routed = engines
         .where(
@@ -80,6 +91,7 @@ class ResearchOrchestrator {
               SearchRouter.engineIds(request.policy).contains(engine.id),
         )
         .toList(growable: false);
+    final skip = knownSourceUrls.map(canonicalizeUrl).toSet();
 
     void emitCheckpoint(ResearchPhase state, {ResearchPhase? pausedFrom}) {
       onCheckpoint?.call(
@@ -161,7 +173,16 @@ class ResearchOrchestrator {
       return;
     }
 
-    var unique = rankHits(dedupeHits(collected));
+    List<ResearchHit> withoutKnown(List<ResearchHit> hits) {
+      if (skip.isEmpty) {
+        return hits;
+      }
+      return hits
+          .where((hit) => !skip.contains(canonicalizeUrl(hit.url)))
+          .toList(growable: false);
+    }
+
+    var unique = withoutKnown(rankHits(dedupeHits(collected)));
     for (final hit in unique) {
       yield ResearchEvent(
         kind: ResearchEventKind.sourceDiscovered,
@@ -187,7 +208,7 @@ class ResearchOrchestrator {
         detail: 'Depth facets were not covered by the first search wave.',
       );
       await runWave(depth);
-      unique = rankHits(dedupeHits(collected));
+      unique = withoutKnown(rankHits(dedupeHits(collected)));
       for (final hit in unique) {
         yield ResearchEvent(
           kind: ResearchEventKind.sourceDiscovered,
@@ -228,7 +249,7 @@ class ResearchOrchestrator {
           kind: PlanNodeKind.depth,
         ),
       ]);
-      unique = rankHits(dedupeHits(collected));
+      unique = withoutKnown(rankHits(dedupeHits(collected)));
     }
     yield* _controlGate(
       control,
@@ -321,27 +342,39 @@ class ResearchOrchestrator {
     }
 
     emitCheckpoint(ResearchPhase.completed);
+    final report = _report(
+      request: request,
+      plan: plan,
+      goal: goal,
+      hits: unique,
+      documents: documents,
+      claims: claims,
+      conflicts: conflicts,
+      waves: iterationsUsed,
+      searchesUsed: searchesUsed,
+    );
+    onLibrary?.call(
+      ResearchLibraryEntry.fromQuestion(
+        question: question,
+        retrievedAt: DateTime.now().toUtc().toIso8601String(),
+        sourceUrls: documents.map((document) => document.url).toList(),
+        findings: claims
+            .where((claim) => claim.status == ClaimSupport.supported)
+            .map((claim) => claim.text)
+            .toList(),
+      ),
+    );
     yield ResearchEvent(
       kind: ResearchEventKind.researchCompleted,
       label: 'Research completed',
-      detail: _report(
-        request: request,
-        plan: plan,
-        intent: goal.intent.name,
-        hits: unique,
-        documents: documents,
-        claims: claims,
-        conflicts: conflicts,
-        waves: iterationsUsed,
-        searchesUsed: searchesUsed,
-      ),
+      detail: report,
     );
   }
 
   static String _report({
     required ResearchRequest request,
     required ResearchPlan plan,
-    required String intent,
+    required InterpretedGoal goal,
     required List<ResearchHit> hits,
     required List<SourceDocument> documents,
     required List<ResearchClaim> claims,
@@ -349,6 +382,7 @@ class ResearchOrchestrator {
     required int waves,
     required int searchesUsed,
   }) {
+    final intent = goal.intent.name;
     final lines = <String>[
       '# Research Report',
       '',
@@ -429,6 +463,33 @@ class ResearchOrchestrator {
           '- ${conflict.left.text} vs ${conflict.right.text} '
           '(${conflict.reasons.join(', ')}). Neither result is discarded.',
         );
+      }
+    }
+    if (goal.intent == ResearchIntent.comparison) {
+      final cells = comparisonMatrix(
+        subjects: ResearchInterpreter.splitSubjects(goal.topic),
+        criteria: goal.dimensions,
+        claims: [for (final claim in supported) (claim.text, claim.sourceUrl)],
+      );
+      final matrix = matrixMarkdown(cells);
+      if (matrix.isNotEmpty) {
+        lines.addAll(['', matrix]);
+      }
+      final rows = decide(
+        subjects: ResearchInterpreter.splitSubjects(goal.topic),
+        cells: cells,
+        conflicts: conflicts.length,
+      );
+      if (rows.any((row) => row.contested)) {
+        lines.addAll([
+          '',
+          '## Decision',
+          '',
+          'Contested criteria stay visible. No silent winner.',
+          for (final row in rows)
+            '- ${row.subject}: ${row.coveredCriteria} cited cell(s)'
+                '${row.contested ? ' (contested)' : ''}',
+        ]);
       }
     }
     lines.addAll(['', '## Sources', '']);

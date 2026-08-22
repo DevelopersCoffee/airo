@@ -85,7 +85,98 @@ impl ExtractedDocument {
     pub fn evidence_text(&self) -> String {
         let mut parts = self.headings.clone();
         parts.extend(self.paragraphs.iter().cloned());
+        parts.extend(self.tables.iter().cloned());
         parts.join(" ")
+    }
+}
+
+pub fn extract_document(raw: &str, url: Option<&str>) -> ExtractedDocument {
+    let hint = url.unwrap_or("").to_ascii_lowercase();
+    let trimmed = raw.trim_start();
+    if trimmed.starts_with("%PDF") || hint.contains(".pdf") {
+        return extract_pdf(raw);
+    }
+    if looks_like_html(raw) {
+        return extract_html(raw);
+    }
+    extract_markdown(raw)
+}
+
+/// Uncompressed PDF text operators only. Scanned pages stay empty.
+pub fn extract_pdf(raw: &str) -> ExtractedDocument {
+    let mut paragraphs = Vec::new();
+    let bytes = raw.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'(' {
+            if let Some((text, end)) = read_pdf_string(raw, i) {
+                if looks_like_prose(&text) {
+                    paragraphs.push(text);
+                }
+                i = end;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    let title = paragraphs.first().cloned().unwrap_or_default();
+    ExtractedDocument {
+        title,
+        headings: Vec::new(),
+        paragraphs: unique(paragraphs),
+        tables: Vec::new(),
+        code_blocks: Vec::new(),
+        published_at: None,
+        trust: TrustLevel::Untrusted,
+    }
+}
+
+pub fn extract_markdown(raw: &str) -> ExtractedDocument {
+    let (without_code, code_blocks) = strip_fenced_code(raw);
+    let mut headings = Vec::new();
+    let mut paragraphs = Vec::new();
+    let mut tables = Vec::new();
+    let mut title = String::new();
+    for line in without_code.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix('#') {
+            let heading = rest.trim_start_matches('#').trim();
+            if heading.is_empty() {
+                continue;
+            }
+            headings.push(heading.to_string());
+            if title.is_empty() {
+                title = heading.to_string();
+            }
+            continue;
+        }
+        if trimmed.contains('|') {
+            let cells: Vec<String> = trimmed
+                .split('|')
+                .map(str::trim)
+                .filter(|cell| !cell.is_empty())
+                .map(str::to_string)
+                .collect();
+            if cells.len() >= 2 && !cells.iter().all(|cell| is_md_separator(cell)) {
+                tables.push(cells.join(" | "));
+            }
+            continue;
+        }
+        if trimmed.len() >= 2 {
+            paragraphs.push(trimmed.to_string());
+        }
+    }
+    ExtractedDocument {
+        title,
+        headings: unique(headings),
+        paragraphs: unique(paragraphs),
+        tables: unique(tables),
+        code_blocks: unique(code_blocks),
+        published_at: None,
+        trust: TrustLevel::Untrusted,
     }
 }
 
@@ -107,7 +198,7 @@ pub fn extract_html(html: &str) -> ExtractedDocument {
         title,
         headings: unique(headings),
         paragraphs: unique(all_inner(&body, "p")),
-        tables: unique(all_inner(&body, "td")),
+        tables: unique(table_rows(&body)),
         code_blocks: unique(
             all_inner(&body, "pre")
                 .into_iter()
@@ -140,6 +231,115 @@ fn strip_blocks(html: &str, tag: &str) -> String {
     }
     out.push_str(&html[i..]);
     out
+}
+
+fn table_rows(html: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let hay = html.to_ascii_lowercase();
+    let mut search_from = 0;
+    while let Some(rel) = hay[search_from..].find("<table") {
+        let start = search_from + rel;
+        let Some(end_rel) = hay[start..].find("</table>") else {
+            break;
+        };
+        let table = &html[start..start + end_rel];
+        let table_l = table.to_ascii_lowercase();
+        let mut row_from = 0;
+        while let Some(row_rel) = table_l[row_from..].find("<tr") {
+            let row_start = row_from + row_rel;
+            let Some(row_end_rel) = table_l[row_start..].find("</tr>") else {
+                break;
+            };
+            let row = &table[row_start..row_start + row_end_rel];
+            let cells = table_cells(row);
+            if cells.len() >= 2 {
+                out.push(cells.join(" | "));
+            }
+            row_from = row_start + row_end_rel + 5;
+        }
+        search_from = start + end_rel + 8;
+    }
+    out
+}
+
+fn table_cells(row: &str) -> Vec<String> {
+    let mut cells = Vec::new();
+    cells.extend(all_inner(row, "th"));
+    cells.extend(all_inner(row, "td"));
+    cells
+}
+
+fn looks_like_html(raw: &str) -> bool {
+    let lower = raw.to_ascii_lowercase();
+    ["<html", "<body", "<article", "<p", "<table", "<h1", "<div"]
+        .into_iter()
+        .any(|tag| lower.contains(tag))
+}
+
+fn strip_fenced_code(raw: &str) -> (String, Vec<String>) {
+    let mut out = String::new();
+    let mut code_blocks = Vec::new();
+    let mut rest = raw;
+    while let Some(start) = rest.find("```") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 3..];
+        let after_fence = after.find('\n').map(|i| i + 1).unwrap_or(0);
+        let body = &after[after_fence..];
+        if let Some(end) = body.find("```") {
+            let code = body[..end].trim();
+            if code.len() >= 2 {
+                code_blocks.push(code.to_string());
+            }
+            rest = &body[end + 3..];
+            out.push('\n');
+        } else {
+            break;
+        }
+    }
+    out.push_str(rest);
+    (out, code_blocks)
+}
+
+fn is_md_separator(cell: &str) -> bool {
+    let stripped = cell.trim_matches(':');
+    stripped.len() >= 3 && stripped.chars().all(|ch| ch == '-')
+}
+
+fn looks_like_prose(text: &str) -> bool {
+    let letters: String = text.chars().filter(|ch| ch.is_ascii_alphabetic()).collect();
+    letters.len() >= 8 && (letters.len() as f64) / (text.len() as f64) >= 0.4
+}
+
+fn read_pdf_string(raw: &str, start: usize) -> Option<(String, usize)> {
+    let bytes = raw.as_bytes();
+    if start >= bytes.len() || bytes[start] != b'(' {
+        return None;
+    }
+    let mut text = String::new();
+    let mut i = start + 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' if i + 1 < bytes.len() => {
+                let next = bytes[i + 1];
+                text.push(match next {
+                    b'n' => '\n',
+                    b'r' => '\r',
+                    b't' => '\t',
+                    other => other as char,
+                });
+                i += 2;
+            }
+            b')' => return Some((text, i + 1)),
+            ch => {
+                text.push(ch as char);
+                i += 1;
+            }
+        }
+        if text.len() > 400 {
+            return None;
+        }
+    }
+    None
 }
 
 fn first_inner(html: &str, tag: &str) -> Option<String> {
@@ -261,5 +461,43 @@ mod tests {
         let wiki = classify_url("https://en.wikipedia.org/wiki/Qwen");
         assert_eq!(wiki.class, SourceClass::Tertiary);
         assert_eq!(wiki.kind, SourceKind::Community);
+    }
+
+    #[test]
+    fn html_tables_are_structured_rows() {
+        let doc = extract_html(
+            "<table><tr><th>Model</th><th>Score</th></tr><tr><td>Qwen-7B</td><td>64.5</td></tr></table>",
+        );
+        assert!(doc.tables.iter().any(|row| row == "Qwen-7B | 64.5"));
+        assert!(doc.evidence_text().contains("Qwen-7B | 64.5"));
+    }
+
+    #[test]
+    fn uncompressed_pdf_text_is_extracted() {
+        let raw = "%PDF-1.1\nBT (Qwen is a family of language models) Tj ET\n%%EOF\n";
+        let doc = extract_document(raw, Some("https://arxiv.org/pdf/2401.12345"));
+        assert!(doc
+            .paragraphs
+            .iter()
+            .any(|p| p.contains("Qwen is a family")));
+        let text = doc.evidence_text().to_ascii_lowercase();
+        assert!(!text.contains("%pdf"));
+        assert_eq!(doc.trust, TrustLevel::Untrusted);
+    }
+
+    #[test]
+    fn markdown_tables_and_fenced_code_stay_structured() {
+        let raw = "# Qwen\n\nQwen is a family of language models.\n\n| Model | Params |\n| --- | --- |\n| Qwen-7B | 7B |\n\n```rust\nfn main() {}\n```\n";
+        let doc = extract_document(raw, Some("https://example.org/readme.md"));
+        assert!(doc.tables.iter().any(|row| row == "Qwen-7B | 7B"));
+        assert!(doc
+            .code_blocks
+            .iter()
+            .any(|code| code.contains("fn main()")));
+        assert!(doc
+            .paragraphs
+            .iter()
+            .any(|p| p.contains("Qwen is a family")));
+        assert!(!doc.paragraphs.iter().any(|p| p.contains("fn main()")));
     }
 }

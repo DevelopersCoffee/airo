@@ -9,6 +9,7 @@
 //! Chain-of-thought is not a public field. The result envelope admits
 //! `answer`, `reasoning_summary`, `confidence`, and optional `tool_calls`.
 
+pub mod analyzer;
 pub mod context;
 pub mod device;
 pub mod engine;
@@ -25,6 +26,7 @@ pub mod result;
 pub mod tools;
 pub mod validator;
 
+pub use analyzer::CLARIFY_PROGRESS_PREFIX;
 pub use context::{ContextItem, ContextLimits, ReasoningContext};
 pub use device::DeviceInferenceProfile;
 pub use engine::ReasoningEngine;

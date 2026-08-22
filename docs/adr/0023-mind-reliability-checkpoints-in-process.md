@@ -48,8 +48,16 @@ would be a new primitive.
    existing store. This ADR does not create one.
 
 5. **Prefix cache stays an adapter capability.** llama.cpp `n_keep` / KV reuse
-   is not a Mind primitive and is not required here. `llama-cpp-2` 0.1.153
-   does not expose `n_keep`; do not wrap a C API for it under this decision.
+   is not a Mind primitive. `llama-cpp-2` 0.1.153 does not expose `n_keep`.
+   The llama generation engine reuses an **in-process** prefill snapshot
+   (`copy_state_data` / `set_state_data` + `clear_kv_cache_seq`) when consecutive
+   prompts share a token prefix. No session files. Process death drops the KV.
+
+## Amendment 2026-08-22
+
+In-process llama.cpp KV reuse is the adapter implementation of decision 5.
+Host-only evals skip when no GGUF is present (`AIRO_LLAMA_MODEL` or the crate
+`models/` path). CI does not download models.
 
 ## Contract Impact
 
@@ -105,6 +113,8 @@ KV reuse can land later as an adapter flag without this ADR.
   primitive for Mind ops; this ADR does not use it.
 - [ADR-0022](0022-meeting-ir-mind-persistence-mapping.md) — meeting IR may add
   `MindOpKind.meetingIrExtracted`; reliability must not ride that kind.
+- [ADR-0024](0024-reliability-checkpoints-prefs-tier.md) — names the Prefs tier
+  as the existing store for checkpoint *metadata* (ids only).
 
 ## References
 

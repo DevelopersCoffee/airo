@@ -30,6 +30,32 @@ void main() {
     expect(fold.steps.any((s) => s.label.contains('level=')), isFalse);
   });
 
+  test('clarify progress becomes chips, not a thinking step', () {
+    final fold = ReasoningStreamFold();
+    fold.add(const MindReasoningStageChanged(MindReasoningStage.understanding));
+    fold.add(
+      const MindReasoningProgress(
+        'clarify:planning.create|calendar.retrieve|skill.execute',
+      ),
+    );
+    fold.add(
+      const MindReasoningError(
+        'Do you mean planning your day, scheduling something on your calendar, or running a skill such as a meal plan?',
+      ),
+    );
+    expect(fold.clarificationCandidates, [
+      'planning.create',
+      'calendar.retrieve',
+      'skill.execute',
+    ]);
+    expect(fold.clarificationQuestion, contains('skill'));
+    expect(fold.error, contains('calendar'));
+    expect(fold.steps, [
+      const ReasoningProgressStep(label: 'Reading your request'),
+    ]);
+    expect(fold.steps.any((s) => s.label.startsWith('clarify:')), isFalse);
+  });
+
   test('completed tool calls land on the fold, not the step list', () {
     final fold = ReasoningStreamFold();
     fold.add(const MindReasoningToolStarted('read_calendar_events'));

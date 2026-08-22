@@ -90,12 +90,16 @@ fn append_shots(
         return;
     }
     let remaining = limits.max_chars.saturating_sub(packed_chars);
-    let mut shots = vec![render_shot(DIRECT_USER, DIRECT_ENVELOPE)];
-    if let Some(tool) = request.available_tools.first() {
-        shots.push(render_shot(
-            "What is on my calendar tomorrow?",
-            &tool_envelope(&tool.name),
-        ));
+    let (user, envelope) = primary_shot(request);
+    let mut shots = vec![render_shot(&user, &envelope)];
+    let primary_is_tool = envelope.contains("\"tool_calls\"");
+    if !primary_is_tool {
+        if let Some(tool) = request.available_tools.first() {
+            shots.push(render_shot(
+                "What is on my calendar tomorrow?",
+                &tool_envelope(&tool.name),
+            ));
+        }
     }
     shots.truncate(MAX_ENVELOPE_SHOTS);
     const HEADER: &str =
@@ -119,6 +123,38 @@ fn append_shots(
 
 fn render_shot(user: &str, envelope: &str) -> String {
     format!("User request:\n{user}\nJSON:\n{envelope}\n\n")
+}
+
+fn primary_shot(request: &ReasoningRequest) -> (String, String) {
+    match request.intent.capability.as_str() {
+        "calendar.retrieve" | "time.query" => {
+            let envelope = request
+                .available_tools
+                .first()
+                .map(|tool| tool_envelope(&tool.name))
+                .unwrap_or_else(|| {
+                    r#"{"answer":"You have no events tomorrow.","reasoning_summary":"Looked at the calendar.","confidence":0.90}"#
+                        .into()
+                });
+            ("What is on my calendar tomorrow?".into(), envelope)
+        }
+        "planning.create" => (
+            "Make a study plan for the week.".into(),
+            r#"{"answer":"Mon: review notes. Tue: practice problems. Wed: rest.","reasoning_summary":"Split the week into study blocks.","confidence":0.88}"#
+                .into(),
+        ),
+        "skill.execute" => (
+            "Create a 3-day vegetarian meal plan.".into(),
+            r#"{"answer":"Day 1: lentil stew. Day 2: tofu stir-fry. Day 3: chickpea salad.","reasoning_summary":"Used the meal-plan skill constraints.","confidence":0.90}"#
+                .into(),
+        ),
+        "document.summarize" => (
+            "Summarize the attached note.".into(),
+            r#"{"answer":"The note asks to ship on Friday.","reasoning_summary":"Read the attached note.","confidence":0.91}"#
+                .into(),
+        ),
+        _ => (DIRECT_USER.into(), DIRECT_ENVELOPE.into()),
+    }
 }
 
 fn tool_envelope(name: &str) -> String {
@@ -318,8 +354,11 @@ mod tests {
         for level in [ReasoningLevel::Standard, ReasoningLevel::Deep] {
             let prompt = build_prompt(&req, level, ContextLimits::default());
             assert!(prompt.contains("Examples"), "{level:?}: {prompt}");
-            assert!(prompt.contains("Why does ice float?"), "{level:?}");
-            assert!(prompt.contains(r#""answer":"Ice is less dense than liquid water.""#));
+            assert!(
+                prompt.contains("Make a study plan for the week."),
+                "{level:?}"
+            );
+            assert!(prompt.contains("Split the week into study blocks."));
             assert!(!prompt.contains("\"thoughts\""));
             assert!(!prompt.contains("\"scratchpad\""));
             assert!(
@@ -330,6 +369,23 @@ mod tests {
     }
 
     #[test]
+    fn chat_shots_keep_the_direct_envelope_example() {
+        let req = ReasoningRequest::fixture("conversation", 0.4);
+        let prompt = build_prompt(&req, ReasoningLevel::Standard, ContextLimits::default());
+        assert!(prompt.contains("Why does ice float?"));
+        assert!(prompt.contains(r#""answer":"Ice is less dense than liquid water.""#));
+    }
+
+    #[test]
+    fn skill_shots_use_a_meal_plan_example_not_a_diet_capability() {
+        let req = ReasoningRequest::fixture("skill", 0.85);
+        let prompt = build_prompt(&req, ReasoningLevel::Standard, ContextLimits::default());
+        assert!(prompt.contains("Create a 3-day vegetarian meal plan."));
+        assert!(prompt.contains("Used the meal-plan skill constraints."));
+        assert!(!prompt.contains("diet.plan"));
+    }
+
+    #[test]
     fn tools_add_a_tool_call_shot_and_cap_at_two() {
         let mut req = ReasoningRequest::fixture("calendar_retrieval", 0.4);
         req.available_tools = vec![crate::request::ToolDefinition {
@@ -337,9 +393,13 @@ mod tests {
             description: "List events for a day.".into(),
         }];
         let prompt = build_prompt(&req, ReasoningLevel::Standard, ContextLimits::default());
-        assert!(prompt.contains("Why does ice float?"));
+        assert!(prompt.contains("What is on my calendar tomorrow?"));
         assert!(prompt.contains("read_calendar_events"));
         assert!(prompt.contains("\"tool_calls\""));
+        assert!(
+            !prompt.contains("Why does ice float?"),
+            "calendar shots must not pay for a chat example: {prompt}"
+        );
         let examples = prompt.matches("JSON:\n{").count();
         assert!(
             examples <= MAX_ENVELOPE_SHOTS + 1,

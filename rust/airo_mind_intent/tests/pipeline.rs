@@ -1,8 +1,8 @@
 //! End-to-end contract: analyzer vs legacy, no keyword routing, no invented caps.
 
 use airo_mind_intent::{
-    classify, from_legacy, validate_intent, CapabilityRegistry, ClassifyRequest, IntentSource,
-    IntentStatus, SCHEMA_VERSION,
+    classify, from_capability, from_legacy, validate_intent, CapabilityRegistry, ClassifyRequest,
+    IntentSource, IntentStatus, SCHEMA_VERSION,
 };
 
 #[test]
@@ -75,6 +75,20 @@ fn analyzer_proposal_beats_legacy_when_it_validates() {
     assert_eq!(decision.status, IntentStatus::Classified);
     assert_eq!(decision.intent.source, IntentSource::Analyzer);
     assert_eq!(decision.route.unwrap().capability, "research.deep");
+}
+
+#[test]
+fn analyzer_from_capability_beats_a_wrong_legacy_kind() {
+    let proposal = from_capability("planning.create", "plan my budget", 0.88).unwrap();
+    let decision = classify(ClassifyRequest {
+        user_query: "plan my budget".into(),
+        legacy_kind: Some("navigation".into()),
+        legacy_complexity: Some(0.2),
+        proposal: Some(proposal),
+    });
+    assert_eq!(decision.status, IntentStatus::Classified);
+    assert_eq!(decision.intent.source, IntentSource::Analyzer);
+    assert_eq!(decision.route.unwrap().capability, "planning.create");
 }
 
 #[test]

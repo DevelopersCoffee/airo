@@ -18,6 +18,13 @@ void main() {
       ),
     );
     expect(
+      classifySourceUrl('https://www.semanticscholar.org/paper/abc'),
+      const SourceClassification(
+        sourceClass: SourceClass.secondary,
+        kind: SourceKind.academic,
+      ),
+    );
+    expect(
       classifySourceUrl('https://www.nist.gov/publications/x'),
       const SourceClassification(
         sourceClass: SourceClass.primary,
