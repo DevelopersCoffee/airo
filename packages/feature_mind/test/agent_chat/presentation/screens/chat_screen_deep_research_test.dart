@@ -61,6 +61,43 @@ void main() {
     expect(find.textContaining('I think'), findsNothing);
   });
 
+  testWidgets('Private selection is carried by the research request', (
+    tester,
+  ) async {
+    final engine = _RecordingLibraryEngine();
+    await _pumpChatScreen(tester, deepResearchEngine: engine);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('agent_chat_research_privacy_balanced')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('agent_chat_research_privacy_private')),
+    );
+    await tester.pump();
+    expect(
+      find.text('On-device plus Wikipedia and optional self-hosted SearXNG.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'What is private research?',
+    );
+    await tester.ensureVisible(find.byKey(const Key('agent_chat_send_button')));
+    await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+    await tester.pumpAndSettle();
+
+    expect(engine.request?.privacy, PrivacyProfile.private);
+    expect(
+      engine.request!.privacy.engineIds,
+      isNot(contains('semantic_scholar')),
+    );
+  });
+
   testWidgets('new chat dismisses the research progress banner', (
     tester,
   ) async {
@@ -162,6 +199,7 @@ void main() {
 
 class _RecordingLibraryEngine implements DeepResearchEngine {
   List<String> knownSourceUrls = const [];
+  ResearchRequest? request;
 
   @override
   Stream<ResearchEvent> run(
@@ -172,6 +210,7 @@ class _RecordingLibraryEngine implements DeepResearchEngine {
     List<String> knownSourceUrls = const [],
     void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
+    this.request = request;
     this.knownSourceUrls = knownSourceUrls;
     onLibrary?.call(
       ResearchLibraryEntry.fromQuestion(
