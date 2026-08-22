@@ -8,13 +8,22 @@
 #![deny(unsafe_code)]
 
 mod decode;
+mod live;
 mod resample;
+mod ring;
+mod stabilizer;
+mod vad;
 
 pub use airo_mind_core::wav;
 pub use airo_mind_core::wav::Pcm;
 
 pub const TARGET_SAMPLE_RATE: u32 = 16_000;
 pub const TARGET_CHANNELS: u16 = 1;
+
+pub use live::{LiveSpeechConfig, LiveSpeechPipeline, LiveStepReport};
+pub use ring::{PcmRingBuffer, RingPushReport};
+pub use stabilizer::TranscriptStabilizer;
+pub use vad::{EnergyVad, VadState};
 
 /// Read [path] and return whisper-ready PCM.
 pub fn preprocess_path(path: &std::path::Path) -> Result<Pcm, String> {
