@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../domain/live_transcription_support.dart';
 import '../domain/transcription_mode.dart';
 
 const String transcriptionModeKey = 'mind_transcription_mode';
@@ -17,12 +18,20 @@ class TranscriptionModeNotifier extends StateNotifier<TranscriptionMode> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    state = TranscriptionMode.fromStorageValue(
+    var mode = TranscriptionMode.fromStorageValue(
       prefs.getString(transcriptionModeKey),
     );
+    if (!liveTranscriptionPreviewSupported() && mode.usesLivePipeline) {
+      mode = TranscriptionMode.fallback;
+      await prefs.setString(transcriptionModeKey, mode.storageValue);
+    }
+    state = mode;
   }
 
   Future<void> select(TranscriptionMode mode) async {
+    if (!liveTranscriptionPreviewSupported() && mode.usesLivePipeline) {
+      mode = TranscriptionMode.fallback;
+    }
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(transcriptionModeKey, mode.storageValue);

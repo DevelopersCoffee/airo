@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -645143821;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1306602193;
 
 // Section: executor
 
@@ -137,6 +137,39 @@ fn wire__crate__api__meetings__cancel_processing_impl(
                 })?;
                 Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__meetings__delete_meeting_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_meeting",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::meetings::delete_meeting(api_id)?;
+                    Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -1133,10 +1166,12 @@ fn wire__crate__api__meetings__stop_live_session_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_session_id = <String>::sse_decode(&mut deserializer);
+            let api_audio_path = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::meetings::stop_live_session(api_session_id)?;
+                    let output_ok =
+                        crate::api::meetings::stop_live_session(api_session_id, api_audio_path)?;
                     Ok(output_ok)
                 })())
             }
@@ -1988,34 +2023,35 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__meetings__speech_language_default_impl(
+        4 => wire__crate__api__meetings__delete_meeting_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__meetings__speech_language_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        32 => {
+        33 => {
             wire__crate__api__meetings__start_live_session_impl(port, ptr, rust_vec_len, data_len)
         }
-        33 => wire__crate__api__meetings__stop_live_session_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+        34 => wire__crate__api__meetings__stop_live_session_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        35 => {
+        36 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        36 => wire__crate__api__meetings__unload_speech_impl(port, ptr, rust_vec_len, data_len),
-        37 => {
+        37 => wire__crate__api__meetings__unload_speech_impl(port, ptr, rust_vec_len, data_len),
+        38 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -2032,80 +2068,80 @@ fn pde_ffi_dispatcher_sync_impl(
     match func_id {
         2 => wire__crate__api__meetings__cancel_live_session_impl(ptr, rust_vec_len, data_len),
         3 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
+        5 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
+        12 => wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
+        13 => wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => {
+        14 => {
             wire__crate__api__mind_runtime__mind_runtime_edit_note_impl(ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
+        15 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
+        16 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
+        17 => wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
+        18 => wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
+        19 => wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+        20 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+        21 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+        22 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
+        23 => wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
+        24 => wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__meetings__pause_live_session_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__meetings__push_live_pcm_impl(ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__meetings__resume_live_session_impl(ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
+        25 => wire__crate__api__meetings__pause_live_session_impl(ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__meetings__push_live_pcm_impl(ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__meetings__resume_live_session_impl(ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
             ptr,
             rust_vec_len,
             data_len,

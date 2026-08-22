@@ -145,13 +145,13 @@ class MeetingLiveSessionCoordinator {
     await _pcmShim.resume(sessionId: id);
   }
 
-  Future<MeetingLiveSessionResult> finish() async {
+  Future<MeetingLiveSessionResult> finish({String? audioPath}) async {
     final id = _sessionId;
     if (id == null) {
       throw StateError('Live session was not started.');
     }
     await _pcmShim.stop();
-    await _speech.stopLiveSession(sessionId: id);
+    await _speech.stopLiveSession(sessionId: id, audioPath: audioPath);
     return _readyCompleter!.future;
   }
 

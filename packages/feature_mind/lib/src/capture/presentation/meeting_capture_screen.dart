@@ -13,6 +13,7 @@ import '../application/meeting_capture_providers.dart';
 import '../application/meeting_live_session_coordinator.dart';
 import '../application/speech_language_preference.dart';
 import '../application/transcription_mode_preference.dart';
+import '../domain/live_transcription_support.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
 import '../domain/transcription_mode.dart';
@@ -138,7 +139,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     _meetingId = meetingId;
     final transcriptionMode = ref.read(transcriptionModeProvider);
     final languageMode = ref.read(speechLanguageModeProvider);
-    if (transcriptionMode.usesLivePipeline) {
+    if (transcriptionMode.usesLivePipeline && liveTranscriptionPreviewSupported()) {
       _liveCoordinator = MeetingLiveSessionCoordinator(
         onTranscriptChanged: () {
           if (mounted) setState(() {});
@@ -201,7 +202,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     MeetingLiveSessionResult? liveResult;
     if (_liveCoordinator != null) {
       try {
-        liveResult = await _liveCoordinator!.finish();
+        liveResult = await _liveCoordinator!.finish(audioPath: path);
       } on Object catch (error) {
         if (mounted) {
           setState(() => _startError = '$error');
