@@ -105,6 +105,33 @@ final class TranscriptEventCancelled extends TranscriptEvent {
   const TranscriptEventCancelled();
 }
 
+/// Live session partial / stable / final update (`ADR-0025` §6.3).
+@immutable
+class TranscriptDelta {
+  const TranscriptDelta({
+    required this.sessionId,
+    required this.segmentId,
+    required this.text,
+    required this.startMs,
+    required this.endMs,
+    required this.state,
+    this.speakerLabel,
+  });
+
+  final String sessionId;
+  final String segmentId;
+  final String text;
+  final int startMs;
+  final int endMs;
+  final rust.TranscriptSegmentStateWire state;
+  final String? speakerLabel;
+}
+
+final class TranscriptEventDelta extends TranscriptEvent {
+  const TranscriptEventDelta(this.delta);
+  final TranscriptDelta delta;
+}
+
 /// The speech half of the pipeline, and the meeting library. Behind this
 /// abstraction rather than called directly is what makes `MindService`'s
 /// sequencing testable at all — see
@@ -156,6 +183,23 @@ abstract interface class MindSpeechBridge {
     required String wavPath,
     String? language,
   });
+
+  /// Opens a live transcription session keyed by [meetingId].
+  Stream<TranscriptEvent> startLiveSession({
+    required String meetingId,
+    String? language,
+  });
+
+  /// Interim shim — see `LIVE_CAPTURE_FAN_OUT.md` §Interim shim.
+  void pushLivePcm({required String sessionId, required List<int> samples});
+
+  void pauseLiveSession({required String sessionId});
+
+  void resumeLiveSession({required String sessionId});
+
+  Future<void> stopLiveSession({required String sessionId});
+
+  void cancelLiveSession({required String sessionId});
 
   /// Makes a meeting durable and searchable, and persists its structured
   /// transcript document. Returns the meeting's id.
@@ -237,9 +281,32 @@ class RustMindSpeechBridge implements MindSpeechBridge {
   }) => rust.transcribeRecording(wavPath: wavPath, language: language).map((
     event,
   ) {
+    return _mapTranscriptEvent(event);
+  });
+
+  @override
+  Stream<TranscriptEvent> startLiveSession({
+    required String meetingId,
+    String? language,
+  }) => rust.startLiveSession(meetingId: meetingId, language: language).map(
+    (event) => _mapTranscriptEvent(event),
+  );
+
+  TranscriptEvent _mapTranscriptEvent(rust.TranscriptEvent event) {
     return switch (event) {
       rust.TranscriptEvent_Transcribing(:final segment) =>
         TranscriptEventTranscribing(toTranscriptSegment(segment)),
+      rust.TranscriptEvent_Delta(:final delta) => TranscriptEventDelta(
+        TranscriptDelta(
+          sessionId: delta.sessionId,
+          segmentId: delta.segmentId,
+          text: delta.text,
+          startMs: delta.startMs.toInt(),
+          endMs: delta.endMs.toInt(),
+          state: delta.state,
+          speakerLabel: delta.speakerLabel,
+        ),
+      ),
       rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
         TranscriptEventTranscriptReady(
           text,
@@ -247,7 +314,27 @@ class RustMindSpeechBridge implements MindSpeechBridge {
         ),
       rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
     };
-  });
+  }
+
+  @override
+  void pushLivePcm({required String sessionId, required List<int> samples}) =>
+      rust.pushLivePcm(sessionId: sessionId, samples: samples);
+
+  @override
+  void pauseLiveSession({required String sessionId}) =>
+      rust.pauseLiveSession(sessionId: sessionId);
+
+  @override
+  void resumeLiveSession({required String sessionId}) =>
+      rust.resumeLiveSession(sessionId: sessionId);
+
+  @override
+  Future<void> stopLiveSession({required String sessionId}) =>
+      rust.stopLiveSession(sessionId: sessionId);
+
+  @override
+  void cancelLiveSession({required String sessionId}) =>
+      rust.cancelLiveSession(sessionId: sessionId);
 
   @override
   Future<String> save({

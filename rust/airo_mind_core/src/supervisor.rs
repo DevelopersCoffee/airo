@@ -176,6 +176,28 @@ impl Supervisor {
         Ok(())
     }
 
+    /// Refuses before a live session opens the microphone when the speech model
+    /// cannot be admitted under the current budget (`ADR-0025` §6.6).
+    pub fn check_speech_admission(&self) -> Result<(), RuntimeError> {
+        let engine = self
+            .speech
+            .as_ref()
+            .ok_or(RuntimeError::NoEngine("speech"))?;
+        self.admit(engine.resource_request().memory_mb)?;
+        Ok(())
+    }
+
+    /// Borrow the registered speech engine for windowed live inference.
+    ///
+    /// Callers must still route work through [`Self::run_speech`] when they need
+    /// admission and concurrency enforcement per window.
+    pub fn speech_engine(&self) -> Result<&dyn SpeechEngine, RuntimeError> {
+        Ok(self
+            .speech
+            .as_deref()
+            .ok_or(RuntimeError::NoEngine("speech"))?)
+    }
+
     /// Runs one generation job.
     pub fn run_generation(
         &self,

@@ -41,6 +41,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig dco_decode_box_autoadd_mind_config(dynamic raw);
 
   @protected
+  TranscriptDeltaRecord dco_decode_box_autoadd_transcript_delta_record(
+    dynamic raw,
+  );
+
+  @protected
   TranscriptDocumentRecord dco_decode_box_autoadd_transcript_document_record(
     dynamic raw,
   );
@@ -55,6 +60,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double dco_decode_f_64(dynamic raw);
+
+  @protected
+  int dco_decode_i_16(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -98,6 +106,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Float64List dco_decode_list_prim_f_64_strict(dynamic raw);
+
+  @protected
+  List<int> dco_decode_list_prim_i_16_loose(dynamic raw);
+
+  @protected
+  Int16List dco_decode_list_prim_i_16_strict(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -160,6 +174,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SpeechLanguage dco_decode_speech_language(dynamic raw);
 
   @protected
+  TranscriptDeltaRecord dco_decode_transcript_delta_record(dynamic raw);
+
+  @protected
   TranscriptDocumentRecord dco_decode_transcript_document_record(dynamic raw);
 
   @protected
@@ -167,6 +184,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TranscriptSegmentRecord dco_decode_transcript_segment_record(dynamic raw);
+
+  @protected
+  TranscriptSegmentStateWire dco_decode_transcript_segment_state_wire(
+    dynamic raw,
+  );
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -206,6 +228,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MindConfig sse_decode_box_autoadd_mind_config(SseDeserializer deserializer);
 
   @protected
+  TranscriptDeltaRecord sse_decode_box_autoadd_transcript_delta_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TranscriptDocumentRecord sse_decode_box_autoadd_transcript_document_record(
     SseDeserializer deserializer,
   );
@@ -220,6 +247,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_16(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -271,6 +301,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Float64List sse_decode_list_prim_f_64_strict(SseDeserializer deserializer);
+
+  @protected
+  List<int> sse_decode_list_prim_i_16_loose(SseDeserializer deserializer);
+
+  @protected
+  Int16List sse_decode_list_prim_i_16_strict(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -349,6 +385,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SpeechLanguage sse_decode_speech_language(SseDeserializer deserializer);
 
   @protected
+  TranscriptDeltaRecord sse_decode_transcript_delta_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TranscriptDocumentRecord sse_decode_transcript_document_record(
     SseDeserializer deserializer,
   );
@@ -358,6 +399,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TranscriptSegmentRecord sse_decode_transcript_segment_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TranscriptSegmentStateWire sse_decode_transcript_segment_state_wire(
     SseDeserializer deserializer,
   );
 
@@ -407,6 +453,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_transcript_delta_record(
+    TranscriptDeltaRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_transcript_document_record(
     TranscriptDocumentRecord self,
     SseSerializer serializer,
@@ -423,6 +475,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -493,6 +548,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_f_64_strict(
     Float64List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_i_16_loose(
+    List<int> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_i_16_strict(
+    Int16List self,
     SseSerializer serializer,
   );
 
@@ -593,6 +660,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_transcript_delta_record(
+    TranscriptDeltaRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_transcript_document_record(
     TranscriptDocumentRecord self,
     SseSerializer serializer,
@@ -607,6 +680,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_transcript_segment_record(
     TranscriptSegmentRecord self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_transcript_segment_state_wire(
+    TranscriptSegmentStateWire self,
     SseSerializer serializer,
   );
 

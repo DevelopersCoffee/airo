@@ -32,6 +32,7 @@
 //! `recorded_at_ms` comes from Dart. `C2` forbids reading a wall clock on a
 //! path that replay must reproduce, and this is that path.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
@@ -47,10 +48,12 @@ use crate::WhisperSpeechEngine;
 use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
-    ActionStatus, AudioInput, CancelToken, DecisionStatus, Meeting, MeetingActionItem,
-    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
-    TranscriptSegment, TranscriptionOptions,
+    ActionStatus, AudioInput, CancelToken, DecisionStatus, EngineError, Meeting, MeetingActionItem,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, RuntimeError, SearchIndex,
+    Supervisor, TranscriptSegment, TranscriptionOptions,
 };
+use airo_mind_audio::{LiveSpeechConfig, LiveSpeechPipeline};
+use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_diarize::{
     diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
     SpeakerEmbedder, SpeakerEnrollmentStore,
@@ -403,10 +406,42 @@ pub struct TranscriptSegmentRecord {
     pub speaker_label: Option<String>,
 }
 
+/// Live transcript state for a segment (`PARTIAL` / `STABLE` / `FINAL`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TranscriptSegmentStateWire {
+    Partial,
+    Stable,
+    Final,
+}
+
+impl From<TranscriptSegmentState> for TranscriptSegmentStateWire {
+    fn from(state: TranscriptSegmentState) -> Self {
+        match state {
+            TranscriptSegmentState::Partial => Self::Partial,
+            TranscriptSegmentState::Stable => Self::Stable,
+            TranscriptSegmentState::Final => Self::Final,
+        }
+    }
+}
+
+/// One live transcript update during an active session (`ADR-0025` §6.3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptDeltaRecord {
+    pub session_id: String,
+    pub segment_id: String,
+    pub speaker_label: Option<String>,
+    pub text: String,
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub state: TranscriptSegmentStateWire,
+}
+
 /// Transcription progress, as it happens.
 pub enum TranscriptEvent {
     /// One transcript segment, as whisper produced it.
     Transcribing { segment: TranscriptSegmentRecord },
+    /// Live session hypothesis or commit (`PARTIAL` / `STABLE` / `FINAL`).
+    Delta { delta: TranscriptDeltaRecord },
     /// The joined transcript, plus every segment that produced it, in order.
     /// The flat `text` stays for callers that only want to display it; the UI
     /// case that needs a fact to point back at an audio timestamp reads
@@ -443,6 +478,21 @@ static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 /// The in-flight job's token, so the UI can stop it.
 static CANCEL: Mutex<Option<CancelToken>> = Mutex::new(None);
+
+struct LiveSessionState {
+    meeting_id: String,
+    pipeline: LiveSpeechPipeline,
+    cancel: CancelToken,
+    options: TranscriptionOptions,
+    paused: bool,
+    segment_index: usize,
+    segments: Vec<TranscriptSegmentRecord>,
+    transcript: String,
+    sink: StreamSink<TranscriptEvent>,
+}
+
+static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// Cross-meeting speaker enrollment profiles synced from Dart (#504).
 static SPEAKER_ENROLLMENT: LazyLock<Mutex<SpeakerEnrollmentStore>> =
@@ -676,6 +726,238 @@ pub fn transcribe_recording(
         text: transcript,
         segments,
     })
+}
+
+fn emit_live_delta(
+    session: &mut LiveSessionState,
+    session_id: &str,
+    segment: TranscriptSegment,
+) -> Result<(), String> {
+    let segment_id = match segment.state {
+        TranscriptSegmentState::Partial => format!("s{}", session.segment_index),
+        TranscriptSegmentState::Stable => {
+            let id = format!("s{}", session.segment_index);
+            let record = transcript_segment_record(session.segments.len(), &segment);
+            let record = TranscriptSegmentRecord {
+                id: id.clone(),
+                start_ms: record.start_ms,
+                end_ms: record.end_ms,
+                text: record.text,
+                speaker_label: None,
+            };
+            if !session.transcript.is_empty() {
+                session.transcript.push(' ');
+            }
+            session.transcript.push_str(record.text.trim());
+            session.segments.push(record);
+            session.segment_index += 1;
+            id
+        }
+        TranscriptSegmentState::Final => {
+            if let Some(record) = session.segments.last_mut() {
+                let trimmed = segment.text.trim();
+                record.text = trimmed.to_string();
+                record.end_ms = segment.end_ms;
+                record.start_ms = segment.start_ms;
+                record.id.clone()
+            } else {
+                let record = transcript_segment_record(session.segments.len(), &segment);
+                session.segments.push(record.clone());
+                record.id
+            }
+        }
+    };
+
+    let delta = TranscriptDeltaRecord {
+        session_id: session_id.clone(),
+        segment_id,
+        speaker_label: None,
+        text: segment.text.trim().to_string(),
+        start_ms: segment.start_ms,
+        end_ms: segment.end_ms,
+        state: TranscriptSegmentStateWire::from(segment.state),
+    };
+    session
+        .sink
+        .add(TranscriptEvent::Delta { delta })
+        .map_err(|e| e.to_string())
+}
+
+fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
+    let mut engines = lock(&ENGINES);
+    let supervisor = engines
+        .as_mut()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+
+    let mut sessions = lock(&LIVE_SESSIONS);
+    let session = sessions
+        .get_mut(session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    if session.paused {
+        return Ok(());
+    }
+
+    let cancel = session.cancel.clone();
+    let options = session.options.clone();
+    let mut produced = Vec::new();
+
+    session.pipeline.step_with_transcribe(
+        |audio, opts, token, sink| {
+            supervisor
+                .run_speech(audio, opts, token, sink)
+                .map_err(|e| EngineError::Backend(e.to_string()))
+        },
+        &options,
+        &cancel,
+        &mut |segment| {
+            produced.push(segment);
+            Ok(())
+        },
+    )
+    .map_err(|e| e.to_string())?;
+
+    for segment in produced {
+        emit_live_delta(session, session_id, segment)?;
+    }
+
+    Ok(())
+}
+
+/// Opens a live transcription session. Refuses before the mic opens when the
+/// speech model cannot be admitted (`ADR-0025` §6.6).
+pub fn start_live_session(
+    meeting_id: String,
+    language: Option<String>,
+    sink: StreamSink<TranscriptEvent>,
+) -> Result<(), String> {
+    let engines = lock(&ENGINES);
+    let supervisor = engines
+        .as_ref()
+        .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+    supervisor
+        .check_speech_admission()
+        .map_err(|e| e.to_string())?;
+
+    let session_id = meeting_id.clone();
+    let cancel = CancelToken::new();
+    *lock(&CANCEL) = Some(cancel.clone());
+
+    let session = LiveSessionState {
+        meeting_id,
+        pipeline: LiveSpeechPipeline::new(LiveSpeechConfig::default()),
+        cancel,
+        options: TranscriptionOptions { language },
+        paused: false,
+        segment_index: 0,
+        segments: Vec::new(),
+        transcript: String::new(),
+        sink,
+    };
+
+    lock(&LIVE_SESSIONS).insert(session_id.clone(), session);
+    Ok(())
+}
+
+/// Interim platform shim: pushes PCM into the native ring. Not the public
+/// contract — documented in `LIVE_CAPTURE_FAN_OUT.md` §Interim shim.
+#[frb(sync)]
+pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String> {
+    let mut sessions = lock(&LIVE_SESSIONS);
+    let session = sessions
+        .get_mut(&session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.pipeline.push_pcm(&samples);
+    if session.paused {
+        return Ok(());
+    }
+    let session_id = session_id.clone();
+    drop(sessions);
+    run_live_pipeline_step(&session_id)?;
+    Ok(())
+}
+
+#[frb(sync)]
+pub fn pause_live_session(session_id: String) -> Result<(), String> {
+    let mut sessions = lock(&LIVE_SESSIONS);
+    let session = sessions
+        .get_mut(&session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.paused = true;
+    Ok(())
+}
+
+#[frb(sync)]
+pub fn resume_live_session(session_id: String) -> Result<(), String> {
+    let mut sessions = lock(&LIVE_SESSIONS);
+    let session = sessions
+        .get_mut(&session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.paused = false;
+    Ok(())
+}
+
+/// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
+pub fn stop_live_session(session_id: String) -> Result<(), String> {
+    let session = lock(&LIVE_SESSIONS)
+        .remove(&session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+
+    let mut finals = Vec::new();
+    session
+        .pipeline
+        .finish(&mut |segment| {
+            finals.push(segment);
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut segments = session.segments;
+    let mut transcript = session.transcript;
+    for segment in finals {
+        if segment.state == TranscriptSegmentState::Stable {
+            let record = transcript_segment_record(segments.len(), &segment);
+            if !transcript.is_empty() {
+                transcript.push(' ');
+            }
+            transcript.push_str(record.text.trim());
+            segments.push(record);
+        } else if segment.state == TranscriptSegmentState::Final {
+            if let Some(record) = segments.last_mut() {
+                record.text = segment.text.trim().to_string();
+                record.end_ms = segment.end_ms;
+                record.start_ms = segment.start_ms;
+            }
+        }
+    }
+
+    if transcript.trim().is_empty() {
+        return Err("No speech was found in the live session.".into());
+    }
+
+    session
+        .sink
+        .add(TranscriptEvent::TranscriptReady {
+            text: transcript,
+            segments,
+        })
+        .map_err(|e| e.to_string())?;
+    *lock(&CANCEL) = None;
+    Ok(())
+}
+
+/// Aborts a live session without persisting transcript output.
+#[frb(sync)]
+pub fn cancel_live_session(session_id: String) -> Result<(), String> {
+    let session = lock(&LIVE_SESSIONS)
+        .remove(&session_id)
+        .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.cancel.cancel();
+    session
+        .sink
+        .add(TranscriptEvent::Cancelled)
+        .map_err(|e| e.to_string())?;
+    *lock(&CANCEL) = None;
+    Ok(())
 }
 
 /// A meeting's transcript, in the reproducible shape `#1629` Gap D asks for:

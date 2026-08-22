@@ -80,6 +80,70 @@ impl LiveSpeechPipeline {
         &self.stabilizer
     }
 
+    /// Run one pipeline tick using a caller-supplied transcribe hook so
+    /// admission stays in [`airo_mind_core::Supervisor::run_speech`].
+    pub fn step_with_transcribe(
+        &mut self,
+        transcribe: impl FnOnce(
+            AudioInput<'_>,
+            &TranscriptionOptions,
+            &CancelToken,
+            &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
+        ) -> Result<(), EngineError>,
+        options: &TranscriptionOptions,
+        cancel: &CancelToken,
+        sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
+    ) -> Result<LiveStepReport, EngineError> {
+        if cancel.is_cancelled() {
+            return Err(EngineError::Cancelled);
+        }
+
+        let window = self.ring.tail(self.config.window_samples);
+        let vad_state = self.vad.process(&window);
+        let ring_push = RingPushReport {
+            accepted: 0,
+            dropped: 0,
+        };
+
+        if vad_state == VadState::Speech && window.len() >= self.config.window_samples / 4 {
+            let offset_ms = self.elapsed_samples.saturating_sub(window.len() as u64) * 1000
+                / TARGET_SAMPLE_RATE as u64;
+            transcribe(
+                AudioInput {
+                    samples: &window,
+                    sample_rate_hz: TARGET_SAMPLE_RATE,
+                    channels: 1,
+                },
+                options,
+                cancel,
+                &mut |seg| {
+                    let adjusted = TranscriptSegment::new(
+                        offset_ms + seg.start_ms,
+                        offset_ms + seg.end_ms,
+                        seg.text,
+                        seg.state,
+                    );
+                    for event in self.stabilizer.on_engine_segment(adjusted) {
+                        sink(event)?;
+                    }
+                    Ok(())
+                },
+            )?;
+        }
+
+        if vad_state == VadState::SpeechEnded {
+            for event in self.stabilizer.on_speech_ended() {
+                sink(event)?;
+            }
+        }
+
+        Ok(LiveStepReport {
+            ring_push,
+            degraded: self.ring.dropped_samples() > 0,
+            vad_state,
+        })
+    }
+
     /// Run one pipeline tick: VAD on the latest window, optional engine pass,
     /// stabilizer events through `sink`.
     pub fn step(

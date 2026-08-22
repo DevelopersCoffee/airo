@@ -105,6 +105,10 @@ of the following:
 No shim is in place today. This section exists so that adding one is a
 documented decision rather than a discovery made later during profiling.
 
+| Platform | Shim | Tracking |
+|---|---|---|
+| macOS / Linux / Windows (interim) | `record.startStream` (PCM16) → `push_live_pcm` via `MeetingLivePcmShim` | Stage 2 — remove when native fan-out lands |
+
 ## Conformance
 
 These are the checks that make the rule enforceable rather than aspirational.

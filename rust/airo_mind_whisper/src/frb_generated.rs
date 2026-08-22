@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1565237977;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -645143821;
 
 // Section: executor
 
@@ -45,6 +45,70 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__meetings__airo_mind_whisper_unload_speech_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "airo_mind_whisper_unload_speech",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok({
+                        crate::api::meetings::airo_mind_whisper_unload_speech();
+                    })?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__cancel_live_session_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cancel_live_session",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::meetings::cancel_live_session(api_session_id)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__meetings__cancel_processing_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -728,6 +792,67 @@ fn wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
         },
     )
 }
+fn wire__crate__api__meetings__pause_live_session_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "pause_live_session",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::meetings::pause_live_session(api_session_id)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__meetings__push_live_pcm_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "push_live_pcm",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            let api_samples = <Vec<i16>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::meetings::push_live_pcm(api_session_id, api_samples)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__api__setup__required_models_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -757,6 +882,36 @@ fn wire__crate__api__setup__required_models_impl(
                     Ok(output_ok)
                 })())
             }
+        },
+    )
+}
+fn wire__crate__api__meetings__resume_live_session_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "resume_live_session",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, String>((move || {
+                let output_ok = crate::api::meetings::resume_live_session(api_session_id)?;
+                Ok(output_ok)
+            })())
         },
     )
 }
@@ -913,6 +1068,81 @@ fn wire__crate__api__meetings__speech_language_default_impl(
         },
     )
 }
+fn wire__crate__api__meetings__start_live_session_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "start_live_session",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_meeting_id = <String>::sse_decode(&mut deserializer);
+            let api_language = <Option<String>>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::meetings::TranscriptEvent,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::meetings::start_live_session(
+                        api_meeting_id,
+                        api_language,
+                        api_sink,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__stop_live_session_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "stop_live_session",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_session_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::meetings::stop_live_session(api_session_id)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -984,6 +1214,40 @@ fn wire__crate__api__meetings__transcribe_recording_impl(
                         api_language,
                         api_sink,
                     )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__meetings__unload_speech_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "unload_speech",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok({
+                        crate::api::meetings::unload_speech();
+                    })?;
                     Ok(output_ok)
                 })())
             }
@@ -1075,6 +1339,13 @@ impl SseDecode for f64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for i16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i16::<NativeEndian>().unwrap()
     }
 }
 
@@ -1230,6 +1501,18 @@ impl SseDecode for Vec<f64> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<f64>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<i16> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<i16>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1533,6 +1816,29 @@ impl SseDecode for crate::api::meetings::SpeechLanguage {
     }
 }
 
+impl SseDecode for crate::api::meetings::TranscriptDeltaRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_sessionId = <String>::sse_decode(deserializer);
+        let mut var_segmentId = <String>::sse_decode(deserializer);
+        let mut var_speakerLabel = <Option<String>>::sse_decode(deserializer);
+        let mut var_text = <String>::sse_decode(deserializer);
+        let mut var_startMs = <u64>::sse_decode(deserializer);
+        let mut var_endMs = <u64>::sse_decode(deserializer);
+        let mut var_state =
+            <crate::api::meetings::TranscriptSegmentStateWire>::sse_decode(deserializer);
+        return crate::api::meetings::TranscriptDeltaRecord {
+            session_id: var_sessionId,
+            segment_id: var_segmentId,
+            speaker_label: var_speakerLabel,
+            text: var_text,
+            start_ms: var_startMs,
+            end_ms: var_endMs,
+            state: var_state,
+        };
+    }
+}
+
 impl SseDecode for crate::api::meetings::TranscriptDocumentRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1563,6 +1869,11 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                 };
             }
             1 => {
+                let mut var_delta =
+                    <crate::api::meetings::TranscriptDeltaRecord>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::Delta { delta: var_delta };
+            }
+            2 => {
                 let mut var_text = <String>::sse_decode(deserializer);
                 let mut var_segments =
                     <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_decode(deserializer);
@@ -1571,7 +1882,7 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                     segments: var_segments,
                 };
             }
-            2 => {
+            3 => {
                 return crate::api::meetings::TranscriptEvent::Cancelled;
             }
             _ => {
@@ -1595,6 +1906,19 @@ impl SseDecode for crate::api::meetings::TranscriptSegmentRecord {
             end_ms: var_endMs,
             text: var_text,
             speaker_label: var_speakerLabel,
+        };
+    }
+}
+
+impl SseDecode for crate::api::meetings::TranscriptSegmentStateWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::meetings::TranscriptSegmentStateWire::Partial,
+            1 => crate::api::meetings::TranscriptSegmentStateWire::Stable,
+            2 => crate::api::meetings::TranscriptSegmentStateWire::Final,
+            _ => unreachable!("Invalid variant for TranscriptSegmentStateWire: {}", inner),
         };
     }
 }
@@ -1652,29 +1976,40 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        3 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__meetings__speech_language_default_impl(
+        1 => wire__crate__api__meetings__airo_mind_whisper_unload_speech_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+        5 => wire__crate__api__meetings__get_meeting_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__meetings__get_transcript_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__meetings__initialize_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__meetings__list_meetings_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__setup__required_models_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__meetings__save_meeting_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__meetings__search_meetings_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__meetings__speech_language_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        28 => {
+        32 => {
+            wire__crate__api__meetings__start_live_session_impl(port, ptr, rust_vec_len, data_len)
+        }
+        33 => wire__crate__api__meetings__stop_live_session_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__meetings__sync_speaker_enrollment_json_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        35 => {
             wire__crate__api__meetings__transcribe_recording_impl(port, ptr, rust_vec_len, data_len)
         }
-        29 => {
+        36 => wire__crate__api__meetings__unload_speech_impl(port, ptr, rust_vec_len, data_len),
+        37 => {
             wire__crate__api__setup__verify_installed_models_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
@@ -1689,78 +2024,82 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
+        2 => wire__crate__api__meetings__cancel_live_session_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__meetings__cancel_processing_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__meetings__embed_speaker_segment_impl(ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__meetings__is_ready_impl(ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__mind_runtime__mind_runtime_append_scribe_op_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
+        11 => wire__crate__api__mind_runtime__mind_runtime_create_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
+        12 => wire__crate__api__mind_runtime__mind_runtime_delete_note_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => {
+        13 => {
             wire__crate__api__mind_runtime__mind_runtime_edit_note_impl(ptr, rust_vec_len, data_len)
         }
-        12 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
+        14 => wire__crate__api__mind_runtime__mind_runtime_enroll_speaker_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
+        15 => wire__crate__api__mind_runtime__mind_runtime_initialize_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
+        16 => wire__crate__api__mind_runtime__mind_runtime_notes_json_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
+        17 => wire__crate__api__mind_runtime__mind_runtime_replay_from_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
+        18 => wire__crate__api__mind_runtime__mind_runtime_revoke_vault_device_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
+        19 => wire__crate__api__mind_runtime__mind_runtime_scribe_op_count_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
+        20 => wire__crate__api__mind_runtime__mind_runtime_scribe_ops_recent_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
+        21 => wire__crate__api__mind_runtime__mind_runtime_speaker_profiles_json_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
+        22 => wire__crate__api__mind_runtime__mind_runtime_vault_devices_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
+        23 => wire__crate__api__mind_runtime__mind_runtime_vault_state_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
+        24 => wire__crate__api__meetings__pause_live_session_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__meetings__push_live_pcm_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__meetings__resume_live_session_impl(ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__meetings__sarvam_edge_speech_available_impl(
             ptr,
             rust_vec_len,
             data_len,
@@ -2080,6 +2419,32 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::SpeechLanguage>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptDeltaRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.session_id.into_into_dart().into_dart(),
+            self.segment_id.into_into_dart().into_dart(),
+            self.speaker_label.into_into_dart().into_dart(),
+            self.text.into_into_dart().into_dart(),
+            self.start_ms.into_into_dart().into_dart(),
+            self.end_ms.into_into_dart().into_dart(),
+            self.state.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptDeltaRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptDeltaRecord>
+    for crate::api::meetings::TranscriptDeltaRecord
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptDeltaRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptDocumentRecord {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2109,13 +2474,16 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
             crate::api::meetings::TranscriptEvent::Transcribing { segment } => {
                 [0.into_dart(), segment.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::meetings::TranscriptEvent::Delta { delta } => {
+                [1.into_dart(), delta.into_into_dart().into_dart()].into_dart()
+            }
             crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => [
-                1.into_dart(),
+                2.into_dart(),
                 text.into_into_dart().into_dart(),
                 segments.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::api::meetings::TranscriptEvent::Cancelled => [2.into_dart()].into_dart(),
+            crate::api::meetings::TranscriptEvent::Cancelled => [3.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -2154,6 +2522,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptSegmentRe
     for crate::api::meetings::TranscriptSegmentRecord
 {
     fn into_into_dart(self) -> crate::api::meetings::TranscriptSegmentRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptSegmentStateWire {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Partial => 0.into_dart(),
+            Self::Stable => 1.into_dart(),
+            Self::Final => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::meetings::TranscriptSegmentStateWire
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::meetings::TranscriptSegmentStateWire>
+    for crate::api::meetings::TranscriptSegmentStateWire
+{
+    fn into_into_dart(self) -> crate::api::meetings::TranscriptSegmentStateWire {
         self
     }
 }
@@ -2226,6 +2616,13 @@ impl SseEncode for f64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for i16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i16::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -2342,6 +2739,16 @@ impl SseEncode for Vec<f64> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <f64>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<i16> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <i16>::sse_encode(item, serializer);
         }
     }
 }
@@ -2572,6 +2979,19 @@ impl SseEncode for crate::api::meetings::SpeechLanguage {
     }
 }
 
+impl SseEncode for crate::api::meetings::TranscriptDeltaRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.session_id, serializer);
+        <String>::sse_encode(self.segment_id, serializer);
+        <Option<String>>::sse_encode(self.speaker_label, serializer);
+        <String>::sse_encode(self.text, serializer);
+        <u64>::sse_encode(self.start_ms, serializer);
+        <u64>::sse_encode(self.end_ms, serializer);
+        <crate::api::meetings::TranscriptSegmentStateWire>::sse_encode(self.state, serializer);
+    }
+}
+
 impl SseEncode for crate::api::meetings::TranscriptDocumentRecord {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2590,15 +3010,19 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
                 <i32>::sse_encode(0, serializer);
                 <crate::api::meetings::TranscriptSegmentRecord>::sse_encode(segment, serializer);
             }
-            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => {
+            crate::api::meetings::TranscriptEvent::Delta { delta } => {
                 <i32>::sse_encode(1, serializer);
+                <crate::api::meetings::TranscriptDeltaRecord>::sse_encode(delta, serializer);
+            }
+            crate::api::meetings::TranscriptEvent::TranscriptReady { text, segments } => {
+                <i32>::sse_encode(2, serializer);
                 <String>::sse_encode(text, serializer);
                 <Vec<crate::api::meetings::TranscriptSegmentRecord>>::sse_encode(
                     segments, serializer,
                 );
             }
             crate::api::meetings::TranscriptEvent::Cancelled => {
-                <i32>::sse_encode(2, serializer);
+                <i32>::sse_encode(3, serializer);
             }
             _ => {
                 unimplemented!("");
@@ -2615,6 +3039,23 @@ impl SseEncode for crate::api::meetings::TranscriptSegmentRecord {
         <u64>::sse_encode(self.end_ms, serializer);
         <String>::sse_encode(self.text, serializer);
         <Option<String>>::sse_encode(self.speaker_label, serializer);
+    }
+}
+
+impl SseEncode for crate::api::meetings::TranscriptSegmentStateWire {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::meetings::TranscriptSegmentStateWire::Partial => 0,
+                crate::api::meetings::TranscriptSegmentStateWire::Stable => 1,
+                crate::api::meetings::TranscriptSegmentStateWire::Final => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 

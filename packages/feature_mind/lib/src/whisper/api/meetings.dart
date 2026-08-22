@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `lock`, `replace_speaker_enrollment_store`, `sarvam_edge_speech_model_path`, `transcript_segment_record`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `lock`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `transcript_segment_record`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`, `LiveSessionState`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -71,6 +71,38 @@ Stream<TranscriptEvent> transcribeRecording({
   language: language,
 );
 
+/// Opens a live transcription session. Refuses before the mic opens when the
+/// speech model cannot be admitted (`ADR-0025` §6.6).
+Stream<TranscriptEvent> startLiveSession({
+  required String meetingId,
+  String? language,
+}) => RustLib.instance.api.crateApiMeetingsStartLiveSession(
+  meetingId: meetingId,
+  language: language,
+);
+
+/// Interim platform shim: pushes PCM into the native ring. Not the public
+/// contract — documented in `LIVE_CAPTURE_FAN_OUT.md` §Interim shim.
+void pushLivePcm({required String sessionId, required List<int> samples}) =>
+    RustLib.instance.api.crateApiMeetingsPushLivePcm(
+      sessionId: sessionId,
+      samples: samples,
+    );
+
+void pauseLiveSession({required String sessionId}) =>
+    RustLib.instance.api.crateApiMeetingsPauseLiveSession(sessionId: sessionId);
+
+void resumeLiveSession({required String sessionId}) => RustLib.instance.api
+    .crateApiMeetingsResumeLiveSession(sessionId: sessionId);
+
+/// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
+Future<void> stopLiveSession({required String sessionId}) =>
+    RustLib.instance.api.crateApiMeetingsStopLiveSession(sessionId: sessionId);
+
+/// Aborts a live session without persisting transcript output.
+void cancelLiveSession({required String sessionId}) => RustLib.instance.api
+    .crateApiMeetingsCancelLiveSession(sessionId: sessionId);
+
 /// Makes a meeting durable and searchable, and persists its structured
 /// transcript document. Returns the meeting's id.
 ///
@@ -126,6 +158,23 @@ Future<TranscriptDocumentRecord?> getTranscript({required String meetingId}) =>
 /// two engines, two admission controls, two cancellations.
 void cancelProcessing() =>
     RustLib.instance.api.crateApiMeetingsCancelProcessing();
+
+/// Drops the speech Supervisor so whisper.cpp can release Metal buffers
+/// before ggml's process-exit `ggml_metal_device` destructor runs.
+///
+/// Rust statics are never dropped, so without this `NSApplication terminate`
+/// hits `GGML_ASSERT([rsets->data count] == 0)` in `ggml_metal_rsets_free`.
+/// Safe to call when nothing is loaded. Dart reaches this through the
+/// exported C symbol — a new FRB method would require regenerating the
+/// bridge, and quit must work on the already-linked dylib.
+Future<void> unloadSpeech() =>
+    RustLib.instance.api.crateApiMeetingsUnloadSpeech();
+
+/// Exported so Dart can drop the speech engine on Cmd-Q / SIGTERM while
+/// AppKit Metal is still valid. Hidden ggml symbols stay unexported; this
+/// is a `#[no_mangle]` cdylib entry like the FRB wire functions.
+Future<void> airoMindWhisperUnloadSpeech() =>
+    RustLib.instance.api.crateApiMeetingsAiroMindWhisperUnloadSpeech();
 
 /// Every meeting, newest first.
 Future<List<MeetingRecord>> listMeetings() =>
@@ -421,6 +470,50 @@ enum SpeechLanguage {
       RustLib.instance.api.crateApiMeetingsSpeechLanguageDefault();
 }
 
+/// One live transcript update during an active session (`ADR-0025` §6.3).
+class TranscriptDeltaRecord {
+  final String sessionId;
+  final String segmentId;
+  final String? speakerLabel;
+  final String text;
+  final BigInt startMs;
+  final BigInt endMs;
+  final TranscriptSegmentStateWire state;
+
+  const TranscriptDeltaRecord({
+    required this.sessionId,
+    required this.segmentId,
+    this.speakerLabel,
+    required this.text,
+    required this.startMs,
+    required this.endMs,
+    required this.state,
+  });
+
+  @override
+  int get hashCode =>
+      sessionId.hashCode ^
+      segmentId.hashCode ^
+      speakerLabel.hashCode ^
+      text.hashCode ^
+      startMs.hashCode ^
+      endMs.hashCode ^
+      state.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranscriptDeltaRecord &&
+          runtimeType == other.runtimeType &&
+          sessionId == other.sessionId &&
+          segmentId == other.segmentId &&
+          speakerLabel == other.speakerLabel &&
+          text == other.text &&
+          startMs == other.startMs &&
+          endMs == other.endMs &&
+          state == other.state;
+}
+
 /// A meeting's transcript, in the reproducible shape `#1629` Gap D asks for:
 /// the segments that produced the flat transcript string, which speech model
 /// produced them, and which audio file they came from.
@@ -463,6 +556,10 @@ sealed class TranscriptEvent with _$TranscriptEvent {
   const factory TranscriptEvent.transcribing({
     required TranscriptSegmentRecord segment,
   }) = TranscriptEvent_Transcribing;
+
+  /// Live session hypothesis or commit (`PARTIAL` / `STABLE` / `FINAL`).
+  const factory TranscriptEvent.delta({required TranscriptDeltaRecord delta}) =
+      TranscriptEvent_Delta;
 
   /// The joined transcript, plus every segment that produced it, in order.
   /// The flat `text` stays for callers that only want to display it; the UI
@@ -523,3 +620,6 @@ class TranscriptSegmentRecord {
           text == other.text &&
           speakerLabel == other.speakerLabel;
 }
+
+/// Live transcript state for a segment (`PARTIAL` / `STABLE` / `FINAL`).
+enum TranscriptSegmentStateWire { partial, stable, final_ }

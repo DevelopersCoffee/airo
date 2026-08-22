@@ -8,9 +8,12 @@ import '../../trust/scribe_trust_signals.dart';
 import '../../trust/scribe_trust_state.dart';
 import '../application/meeting_capture_controller.dart';
 import '../application/meeting_capture_providers.dart';
+import '../application/meeting_live_session_coordinator.dart';
 import '../application/speech_language_preference.dart';
+import '../application/transcription_mode_preference.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
+import '../domain/transcription_mode.dart';
 
 /// In-app meeting capture (#1656 AC1, AC6).
 ///
@@ -47,11 +50,14 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   String? _consentError;
 
   MeetingCaptureController? _controller;
+  MeetingLiveSessionCoordinator? _liveCoordinator;
+  String? _meetingId;
   MeetingRecordingSnapshot _snapshot = MeetingRecordingSnapshot.idle;
   String? _startError;
 
   @override
   void dispose() {
+    _liveCoordinator?.dispose();
     _controller?.dispose();
     super.dispose();
   }
@@ -87,6 +93,29 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     controller.snapshots.listen((snapshot) {
       if (mounted) setState(() => _snapshot = snapshot);
     });
+    final meetingId = 'meeting-${DateTime.now().millisecondsSinceEpoch}';
+    _meetingId = meetingId;
+    final transcriptionMode = ref.read(transcriptionModeProvider);
+    final languageMode = ref.read(speechLanguageModeProvider);
+    if (transcriptionMode.usesLivePipeline) {
+      _liveCoordinator = MeetingLiveSessionCoordinator(
+        onTranscriptChanged: () {
+          if (mounted) setState(() {});
+        },
+      );
+      try {
+        await _liveCoordinator!.start(
+          meetingId: meetingId,
+          language: languageMode.processLanguageCode,
+        );
+      } on Object catch (error) {
+        if (!mounted) return;
+        setState(() => _startError = '$error');
+        await _liveCoordinator?.dispose();
+        _liveCoordinator = null;
+        return;
+      }
+    }
     final path = await nextMeetingRecordingPath();
     try {
       await _consentGate.startRecording(() => controller.start(path));
@@ -104,23 +133,52 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     }
   }
 
-  Future<void> _pause() async => _controller?.pause();
+  Future<void> _pause() async {
+    await _controller?.pause();
+    _liveCoordinator?.pause();
+  }
 
-  Future<void> _resume() async => _controller?.resume();
+  Future<void> _resume() async {
+    await _controller?.resume();
+    _liveCoordinator?.resume();
+  }
 
   Future<void> _stop() async {
     final controller = _controller;
     if (controller == null) return;
     final path = await controller.stop();
     if (path == null) return;
+
+    MeetingLiveSessionResult? liveResult;
+    if (_liveCoordinator != null) {
+      try {
+        liveResult = await _liveCoordinator!.finish();
+      } on Object catch (error) {
+        if (mounted) {
+          setState(() => _startError = '$error');
+        }
+      }
+      await _liveCoordinator!.dispose();
+      _liveCoordinator = null;
+    }
+
+    final transcriptionMode = ref.read(transcriptionModeProvider);
     final queue = await ref.read(meetingProcessingQueueProvider.future);
+    final meetingId = _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
+    final title = 'Meeting ${DateTime.now().toLocal()}';
     await queue.enqueue(
       MeetingProcessingJob(
-        id: 'meeting-${DateTime.now().millisecondsSinceEpoch}',
+        id: meetingId,
         audioPath: path,
-        title: 'Meeting ${DateTime.now().toLocal()}',
+        title: title,
         enqueuedAtMs: DateTime.now().millisecondsSinceEpoch,
         source: MeetingProcessingSource.live,
+        completedTranscript: transcriptionMode == TranscriptionMode.live
+            ? liveResult?.text
+            : null,
+        completedSegments: transcriptionMode == TranscriptionMode.live
+            ? liveResult?.segments
+            : null,
       ),
     );
   }
@@ -133,6 +191,9 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final paused = lifecycle == MeetingRecordingLifecycle.paused;
     final active = recording || paused;
     final languageMode = ref.watch(speechLanguageModeProvider);
+    final transcriptionMode = ref.watch(transcriptionModeProvider);
+    final showLiveTranscript =
+        active && transcriptionMode.usesLivePipeline && _liveCoordinator != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record meeting')),
@@ -177,6 +238,10 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
             key: const Key('meeting_capture_elapsed'),
             style: Theme.of(context).textTheme.displaySmall,
           ),
+          if (showLiveTranscript) ...[
+            const SizedBox(height: 16),
+            _LiveTranscriptPanel(coordinator: _liveCoordinator!),
+          ],
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
@@ -229,6 +294,48 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final minutes = seconds ~/ 60;
     final remSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remSeconds.toString().padLeft(2, '0')}';
+  }
+}
+
+class _LiveTranscriptPanel extends StatelessWidget {
+  const _LiveTranscriptPanel({required this.coordinator});
+
+  final MeetingLiveSessionCoordinator coordinator;
+
+  @override
+  Widget build(BuildContext context) {
+    final stable = coordinator.stableSegments;
+    final partial = coordinator.partialText;
+    return Card(
+      key: const Key('meeting_capture_live_transcript'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Live transcript',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            if (stable.isEmpty && partial == null)
+              const Text('Listening…')
+            else ...[
+              for (final segment in stable)
+                Text(segment.text, key: Key('live_stable_${segment.id}')),
+              if (partial != null)
+                Text(
+                  partial,
+                  key: const Key('meeting_capture_live_partial'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
