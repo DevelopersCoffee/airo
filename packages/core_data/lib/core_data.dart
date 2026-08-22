@@ -16,6 +16,13 @@ export 'src/storage/templates/life_track_template_fallback_resolver.dart';
 export 'src/storage/templates/template_registry.dart';
 export 'src/secure/secure_storage.dart';
 export 'src/secure/in_memory_secure_storage.dart';
+export 'src/secure/sqflite_encrypted_database.dart';
+export 'src/storage/life_track_sql_schema.dart';
+export 'src/storage/life_track_graph_sql_store.dart';
+export 'src/storage/encrypted_life_track_data_source.dart';
+export 'src/storage/life_track_idempotency_store.dart';
+export 'src/storage/life_track_plaintext_migration.dart';
+export 'src/storage/secure_life_track_destination.dart';
 
 // Connectivity
 export 'src/connectivity/connectivity_service.dart';
@@ -32,6 +39,7 @@ export 'src/sync/outbox_repository.dart';
 // Base Repository
 export 'src/repositories/base_repository.dart';
 export 'src/repositories/life_track_repository_impl.dart';
+export 'src/repositories/secure_life_track_repository_impl.dart';
 
 // Plugin Storage and Runtime Controls
 export 'src/plugins/local_plugin_storage.dart';

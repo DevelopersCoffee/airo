@@ -75,6 +75,8 @@ class ResearchHttpClient {
     'arxiv.org',
     'api.semanticscholar.org',
     'www.semanticscholar.org',
+    'eutils.ncbi.nlm.nih.gov',
+    'pubmed.ncbi.nlm.nih.gov',
   };
 
   final Set<String> allowedHosts;
