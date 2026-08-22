@@ -16,6 +16,7 @@ enum IntelligenceSection {
   capabilities,
   models,
   library,
+  addOns,
   diagnostics,
 }
 
@@ -25,6 +26,7 @@ class IntelligenceHomeScreen extends ConsumerStatefulWidget {
     super.key,
     this.modelsTab,
     this.libraryTab,
+    this.addOnsTab,
     this.diagnosticsTab,
     this.onOpenChat,
     this.onOpenScribe,
@@ -35,6 +37,7 @@ class IntelligenceHomeScreen extends ConsumerStatefulWidget {
 
   final Widget? modelsTab;
   final Widget? libraryTab;
+  final Widget? addOnsTab;
   final Widget? diagnosticsTab;
   final VoidCallback? onOpenChat;
   final VoidCallback? onOpenScribe;
@@ -86,6 +89,7 @@ class _IntelligenceHomeScreenState
       IntelligenceSection.capabilities => 'Capabilities',
       IntelligenceSection.models => 'Models',
       IntelligenceSection.library => 'Library',
+      IntelligenceSection.addOns => 'Add-ons',
       IntelligenceSection.diagnostics => 'Diagnostics',
     };
 
@@ -132,6 +136,7 @@ class _IntelligenceHomeScreenState
                 showModels:
                     widget.modelsTab != null || widget.onOpenModels != null,
                 showLibrary: widget.libraryTab != null,
+                showAddOns: widget.addOnsTab != null,
                 showDiagnostics: widget.diagnosticsTab != null,
               ),
             ),
@@ -193,6 +198,7 @@ class _IntelligenceHomeScreenState
         },
         showModels: widget.modelsTab != null || widget.onOpenModels != null,
         showLibrary: widget.libraryTab != null,
+        showAddOns: widget.addOnsTab != null,
         showDiagnostics: widget.diagnosticsTab != null,
       );
     }
@@ -218,6 +224,7 @@ class _IntelligenceHomeScreenState
       IntelligenceSection.models => widget.modelsTab ?? const SizedBox.shrink(),
       IntelligenceSection.library =>
         widget.libraryTab ?? const SizedBox.shrink(),
+      IntelligenceSection.addOns => widget.addOnsTab ?? const SizedBox.shrink(),
       IntelligenceSection.diagnostics =>
         widget.diagnosticsTab ?? const SizedBox.shrink(),
     };
@@ -280,6 +287,7 @@ class _SectionChips extends StatelessWidget {
     required this.onChanged,
     required this.showModels,
     required this.showLibrary,
+    required this.showAddOns,
     required this.showDiagnostics,
   });
 
@@ -287,6 +295,7 @@ class _SectionChips extends StatelessWidget {
   final ValueChanged<IntelligenceSection> onChanged;
   final bool showModels;
   final bool showLibrary;
+  final bool showAddOns;
   final bool showDiagnostics;
 
   @override
@@ -296,6 +305,7 @@ class _SectionChips extends StatelessWidget {
       (IntelligenceSection.capabilities, 'Capabilities'),
       if (showModels) (IntelligenceSection.models, 'Models'),
       if (showLibrary) (IntelligenceSection.library, 'Library'),
+      if (showAddOns) (IntelligenceSection.addOns, 'Add-ons'),
       if (showDiagnostics) (IntelligenceSection.diagnostics, 'Diagnostics'),
     ];
     return SingleChildScrollView(
@@ -331,6 +341,7 @@ class _OverviewBody extends StatelessWidget {
     this.onOpenAdvanced,
     this.showModels = false,
     this.showLibrary = false,
+    this.showAddOns = false,
     this.showDiagnostics = false,
   });
 
@@ -345,6 +356,7 @@ class _OverviewBody extends StatelessWidget {
   final ValueChanged<IntelligenceSection>? onOpenAdvanced;
   final bool showModels;
   final bool showLibrary;
+  final bool showAddOns;
   final bool showDiagnostics;
 
   @override
@@ -455,6 +467,11 @@ class _OverviewBody extends StatelessWidget {
             _AdvancedTile(
               title: 'Library',
               onTap: () => onOpenAdvanced?.call(IntelligenceSection.library),
+            ),
+          if (showAddOns)
+            _AdvancedTile(
+              title: 'Add-ons',
+              onTap: () => onOpenAdvanced?.call(IntelligenceSection.addOns),
             ),
           if (showDiagnostics)
             _AdvancedTile(

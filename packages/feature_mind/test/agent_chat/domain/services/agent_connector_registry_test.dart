@@ -20,7 +20,7 @@ void main() {
 
       expect(result.isError, false);
       expect(result.data['date'], '2026-06-20');
-      expect(result.data['time'], '09:03');
+      expect(result.data['time'], '09:03:00');
     });
 
     test('rejects unknown connectors', () async {

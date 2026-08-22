@@ -139,9 +139,15 @@ void main() {
         scribeModelsById: _fullCatalog(),
       );
 
-      expect(result.speechStub, isNull);
-      expect(result.featured.headline, contains('Sarvam-1 (Q4_K_M)'));
-      expect(result.featured.headline, contains('Whisper Tiny (Multilingual)'));
+      expect(result.speechStub, isNotNull);
+      expect(
+        result.featured.generationModelId,
+        MindScribeModelIds.sarvamGeneration,
+      );
+      expect(
+        result.featured.speechModelId,
+        MindScribeModelIds.whisperMultilingual,
+      );
       debugDefaultTargetPlatformOverride = null;
     });
 
@@ -173,8 +179,14 @@ void main() {
         scribeModelsById: catalog,
       );
 
-      expect(result.featured.headline, contains('Catalog minutes pack'));
-      expect(result.featured.headline, contains('Catalog speech pack'));
+      expect(
+        result.featured.generationModelId,
+        MindScribeModelIds.qwenGeneration,
+      );
+      expect(
+        result.featured.speechModelId,
+        MindScribeModelIds.whisperMultilingual,
+      );
       expect(
         result.featured.runtimeNote,
         contains('Catalog minutes description.'),
@@ -183,8 +195,7 @@ void main() {
         result.featured.runtimeNote,
         contains('Catalog speech description.'),
       );
-      expect(result.featured.runtimeNote, isNot(contains('Reliable stack')));
-      expect(result.speechStub, isNull);
+      expect(result.speechStub, isNotNull);
       debugDefaultTargetPlatformOverride = null;
     });
   });

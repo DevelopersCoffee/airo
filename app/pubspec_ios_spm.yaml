@@ -88,7 +88,7 @@ dependencies:
   google_mlkit_image_labeling: 0.15.0
   video_player: ^2.13.0
   flutter_chrome_cast: ^1.4.6
-  wakelock_plus: 1.6.1
+  wakelock_plus: ^1.7.0
   package_info_plus: 10.2.0
   screenshot: 3.0.0
   flutter_image_compress: 2.4.0
@@ -103,7 +103,7 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.15.2
   drift_dev: ^2.18.0
-  riverpod_generator: 4.0.4
+  riverpod_generator: ^4.0.8
 
   # Testing
   mocktail: 1.0.4
@@ -112,7 +112,7 @@ dev_dependencies:
   # Linting
   flutter_lints: 6.0.0
   custom_lint: ^0.8.1
-  riverpod_lint: 3.1.4
+  riverpod_lint: ^3.1.4
 
 dependency_overrides:
   video_player_avfoundation:
