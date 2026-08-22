@@ -182,11 +182,12 @@ pub use research::{
     strategy_for, Claim, ClaimId, ClaimStatus, Evidence, EvidenceGraph, EvidenceId,
     EvidenceSufficiencyPolicy, ExtractedDocument, InMemoryResearchService, InterpretedGoal,
     PlanNodeKind, QuerySet, ResearchBudget, ResearchCheckpoint, ResearchCommand,
-    ResearchCompleteness, ResearchIntent, ResearchJob, ResearchJobState, ResearchMode,
-    ResearchPlan, ResearchPlanNode, ResearchProgress, ResearchRequest, ResearchStateError,
-    ResearchStrategy, SearchEngine, SearchError, SearchHit, SearchPolicy, SearchRequest,
-    SearchResponse, Source, SourceClass, SourceClassification, SourceContent, SourceId, SourceKind,
-    SourceType, StopDecision, StoppingPolicy, TrustLevel,
+    ResearchCompleteness, ResearchEngine, ResearchEvent, ResearchEventKind, ResearchIntent,
+    ResearchJob, ResearchJobState, ResearchMode, ResearchPlan, ResearchPlanNode, ResearchProgress,
+    ResearchRequest, ResearchStateError, ResearchStrategy, SearchEngine, SearchError, SearchHit,
+    SearchPolicy, SearchRequest, SearchResponse, Source, SourceClass, SourceClassification,
+    SourceContent, SourceFetcher, SourceId, SourceKind, SourceType, StopDecision, StoppingPolicy,
+    TrustLevel,
 };
 pub use runtime::{
     AppendRequest, Operation, OperationLog, OperationLogError, OperationRequest, Projection,
