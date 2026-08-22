@@ -89,15 +89,28 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 12. Orchestrator: interpret → plan → breadth → gaps → depth → optional counter-research → citation report.
 13. Source manager: fetch → HTML extract (nav/script stripped) → freshness/credibility → cache. Hits are not evidence. One fetch failure does not kill the job.
 14. Claims from acquired paragraphs; citations are unverified unless the excerpt appears in the acquired source.
+15. Semantic Scholar search/acquisition alongside Wikipedia and arXiv.
+16. Pause/resume/cancel and operation-log checkpoints. The `v2` record
+    preserves mode and policy; ambiguous `v1` records fail closed to
+    Quick/LocalOnly (zero remote engines). Chat can reattach a paused job after
+    process restart and waits for the user to resume it. The Rust
+    `ResearchCheckpoint` public struct now carries `mode` and `policy`; external
+    struct-literal callers must supply those fields or migrate to `from_job` /
+    `from_record`. The future FRB surface must use its own versioned checkpoint
+    DTO rather than exporting this core struct directly.
+17. Operation-log research library, incremental URL delta, cited comparison
+    matrix, and contested-row decisions.
+18. User-facing Private / Balanced / Cloud profiles, observability metrics,
+    and abstract cost ceilings. Private currently routes to Wikipedia only;
+    the SearXNG adapter and configuration support are not implemented.
 
 Not shipped (locked below, do not pretend they exist):
 
-- Google / Bing / Brave / DuckDuckGo / SearXNG / Tavily / PubMed / Semantic Scholar / GitHub / news APIs
+- Google / Bing / Brave / DuckDuckGo / SearXNG HTTP / Tavily / PubMed / GitHub / news APIs
 - HTML/PDF tables-from-scanned-pages, PDF binary extraction
 - Claim-level citation validation, contradiction explanations, confidence scores
-- HTTP cache, job resumability across process death, `ResearchService` FFI
-- Research library / incremental delta research / comparison matrices / decision weights
-- Privacy modes as a user-facing control (policy enum exists; PRIVATE/CLOUD profiles do not)
+- HTTP cache, automatic continuation without user reattachment, `ResearchService` FFI
+- Weighted decision scoring beyond contested-row flags
 
 ## 5. Locked production scope (do not drop)
 

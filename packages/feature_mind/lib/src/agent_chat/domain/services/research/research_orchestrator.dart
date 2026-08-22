@@ -87,9 +87,7 @@ class ResearchOrchestrator {
     var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
     final completed = {...?resumeFrom?.completedNodeIds};
     final collected = <ResearchHit>[];
-    final allowedIds = request.privacy == PrivacyProfile.balanced
-        ? SearchRouter.engineIds(request.policy)
-        : SearchRouter.engineIdsFor(request.privacy);
+    final allowedIds = SearchRouter.engineIds(request.policy);
     final routed = engines
         .where((engine) => allowedIds.contains(engine.id))
         .toList(growable: false);
@@ -105,6 +103,8 @@ class ResearchOrchestrator {
           searchesUsed: searchesUsed,
           iterationsUsed: iterationsUsed,
           completedNodeIds: completed.toList(growable: false),
+          mode: request.mode,
+          policy: request.policy,
         ),
       );
     }

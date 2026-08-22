@@ -1,0 +1,5 @@
+# kind|name|record, with \x1f representing the operation-log field separator
+valid|v2-private|v2\x1fjob-1\x1fPixel 9 offline LLM\x1fpaused\x1fsearching\x1f2\x1f1\x1fn1,n2\x1fquick\x1fprivacy_first
+invalid|invalid-paused-phase|v2\x1fjob-1\x1fQuestion\x1fpaused\x1fnot_a_phase\x1f2\x1f1\x1fn1\x1fquick\x1fprivacy_first
+invalid|negative-search-count|v2\x1fjob-1\x1fQuestion\x1fpaused\x1fsearching\x1f-1\x1f1\x1fn1\x1fquick\x1fprivacy_first
+invalid|overflow-search-count|v2\x1fjob-1\x1fQuestion\x1fpaused\x1fsearching\x1f4294967296\x1f1\x1fn1\x1fquick\x1fprivacy_first

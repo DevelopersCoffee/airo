@@ -236,6 +236,36 @@ void main() {
       expect(events.last.detail, contains('wiki/Large_language_model'));
     },
   );
+
+  test(
+    'local-only policy stays authoritative for a restored Private UI',
+    () async {
+      var searches = 0;
+      final engine = ResearchOrchestrator(
+        engines: [
+          _CountingEngine(
+            id: 'wikipedia',
+            onSearch: () => searches++,
+            hitsFor: (_) => const [],
+          ),
+        ],
+      );
+
+      final events = await engine
+          .run(
+            const ResearchRequest(
+              question: 'Use only local research',
+              mode: ResearchMode.quick,
+              policy: SearchPolicy.localOnly,
+              privacy: PrivacyProfile.private,
+            ),
+          )
+          .toList();
+
+      expect(events.last.kind, ResearchEventKind.researchCompleted);
+      expect(searches, 0);
+    },
+  );
 }
 
 String _article({required String title, required String paragraph}) {

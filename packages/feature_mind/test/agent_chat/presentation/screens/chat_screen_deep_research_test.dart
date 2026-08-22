@@ -1,6 +1,4 @@
-import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/agent_chat/application/assistant_model_preferences.dart';
-import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
@@ -79,7 +77,10 @@ void main() {
     );
     await tester.pump();
     expect(
-      find.text('On-device plus Wikipedia and optional self-hosted SearXNG.'),
+      find.text(
+        'Private routing currently uses Wikipedia only. '
+        'Self-hosted SearXNG support is not configured yet.',
+      ),
       findsOneWidget,
     );
 
@@ -92,9 +93,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(engine.request?.privacy, PrivacyProfile.private);
+    expect(engine.request?.policy, SearchPolicy.privacyFirst);
     expect(
       engine.request!.privacy.engineIds,
       isNot(contains('semantic_scholar')),
+    );
+    final semantics = tester
+        .getSemantics(
+          find.byKey(const Key('agent_chat_research_privacy_private')),
+        )
+        .getSemanticsData();
+    expect(semantics.hint, contains('Self-hosted SearXNG'));
+  });
+
+  testWidgets('Cloud copy names every currently routed source', (tester) async {
+    await _pumpChatScreen(tester);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const Key('agent_chat_research_privacy_cloud')),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('Remote sources: Wikipedia, arXiv, and Semantic Scholar.'),
+      findsOneWidget,
     );
   });
 
@@ -195,6 +219,125 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('resumes a Private checkpoint without widening its policy', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchCheckpointOp(
+      log: log,
+      checkpoint: const ResearchCheckpoint(
+        jobId: 'job-private',
+        question: 'What is Qwen?',
+        state: ResearchPhase.paused,
+        pausedFrom: ResearchPhase.searching,
+        searchesUsed: 1,
+        iterationsUsed: 1,
+        completedNodeIds: ['root'],
+        policy: SearchPolicy.privacyFirst,
+      ),
+    );
+    final engine = _RecordingLibraryEngine();
+
+    await _pumpChatScreen(
+      tester,
+      operationLogPort: log,
+      deepResearchEngine: engine,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_private')),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_private')),
+          )
+          .onSelected,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_balanced')),
+          )
+          .selected,
+      isFalse,
+    );
+    expect(
+      find.text(
+        'Private routing currently uses Wikipedia only. '
+        'Self-hosted SearXNG support is not configured yet.',
+      ),
+      findsOneWidget,
+    );
+    expect(engine.request, isNull);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
+    await tester.pumpAndSettle();
+
+    expect(engine.request?.privacy, PrivacyProfile.private);
+    expect(engine.request?.policy, SearchPolicy.privacyFirst);
+  });
+
+  testWidgets('resumed local-only checkpoint performs no policy widening', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchCheckpointOp(
+      log: log,
+      checkpoint: const ResearchCheckpoint(
+        jobId: 'job-local-only',
+        question: 'Use only local research',
+        state: ResearchPhase.paused,
+        pausedFrom: ResearchPhase.searching,
+        searchesUsed: 0,
+        iterationsUsed: 0,
+        policy: SearchPolicy.localOnly,
+      ),
+    );
+    final engine = _RecordingLibraryEngine();
+
+    await _pumpChatScreen(
+      tester,
+      operationLogPort: log,
+      deepResearchEngine: engine,
+    );
+    expect(
+      find.text('Restored local-only job: no remote sources.'),
+      findsOneWidget,
+    );
+    final privateSemantics = tester
+        .getSemantics(
+          find.byKey(const Key('agent_chat_research_privacy_private')),
+        )
+        .getSemanticsData();
+    expect(privateSemantics.hint, contains('no remote sources'));
+    expect(privateSemantics.hint, isNot(contains('Wikipedia')));
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
+    await tester.pumpAndSettle();
+
+    expect(engine.request?.policy, SearchPolicy.localOnly);
+  });
+
+  testWidgets('privacy controls leave a usable input at 320px', (tester) async {
+    await _pumpChatScreen(tester, physicalSize: const Size(320, 1000));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+
+    expect(find.text('Research privacy'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('agent_chat_input'))).width,
+      greaterThanOrEqualTo(200),
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _RecordingLibraryEngine implements DeepResearchEngine {
@@ -271,9 +414,10 @@ Future<void> _pumpChatScreen(
   WidgetTester tester, {
   OperationLogPort? operationLogPort,
   DeepResearchEngine? deepResearchEngine,
+  Size physicalSize = const Size(1200, 1000),
 }) async {
   tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(1200, 1000);
+  tester.view.physicalSize = physicalSize;
   addTearDown(() {
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();
