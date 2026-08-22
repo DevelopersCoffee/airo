@@ -1,6 +1,6 @@
 import 'package:core_workers/core_workers.dart';
 
-import 'html_extractor.dart';
+import 'document_intelligence.dart';
 import 'research_search.dart';
 import 'source_classifier.dart';
 import 'source_normalizer.dart';
@@ -34,7 +34,7 @@ class SourceDocument {
   final SourceClassification classification;
   final SourceTrust trustLevel;
 
-  String get evidenceText => [...headings, ...paragraphs].join(' ');
+  String get evidenceText => [...headings, ...paragraphs, ...tables].join(' ');
 }
 
 class SourceAcquireResult {
@@ -61,9 +61,9 @@ class SourceManager {
     }
     try {
       final raw = await fetcher(Uri.parse(hit.url));
-      final extracted = raw.length > 50 * 1024
-          ? await runOffMain(() => extractHtml(raw))
-          : extractHtml(raw);
+      final extracted = _shouldOffload(raw)
+          ? await runOffMain(() => extractDocument(raw, url: hit.url))
+          : extractDocument(raw, url: hit.url);
       if (extracted.evidenceText.trim().isEmpty) {
         return const SourceAcquireResult(rejection: 'empty document');
       }
@@ -98,4 +98,8 @@ class SourceManager {
     }
     return out;
   }
+}
+
+bool _shouldOffload(String raw) {
+  return raw.length > 50 * 1024 || raw.trimLeft().startsWith('%PDF');
 }
