@@ -255,6 +255,9 @@ class AssistantRuntimeService {
   /// In-process PM/AIRO diagnostic from the last generateText / stream.
   PersistableDiagnostic? lastReliabilityDiagnostic;
 
+  /// Bounded checkpoint ring for this runtime. Metadata only (ADR-0023).
+  final ExecutionLog reliabilityLog = ExecutionLog();
+
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
     int? contextLengthOverride,
@@ -860,10 +863,12 @@ class AssistantRuntimeService {
       yield chunk;
     }
     if (!yielded) {
-      lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
-        executionId: runtimeId,
-        text: '',
-        engineOk: true,
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: '',
+          engineOk: true,
+        ),
       );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
@@ -922,20 +927,24 @@ class AssistantRuntimeService {
     lastGenerationStats = _llamaGguf.lastStats;
     final response = lastYielded.trim();
     if (response.isEmpty) {
-      lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
-        executionId: runtimeId,
-        text: '',
-        engineOk: true,
+      _noteReliability(
+        FailureClassifier.recordChatCompletion(
+          executionId: runtimeId,
+          text: '',
+          engineOk: true,
+        ),
       );
       throw AssistantRuntimeUnavailableException(
         runtimeId,
         ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
       );
     }
-    lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
-      executionId: runtimeId,
-      text: response,
-      engineOk: true,
+    _noteReliability(
+      FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: response,
+        engineOk: true,
+      ),
     );
     _emitResponseTrace(runtimeId, response, detail: package.id);
   }
@@ -1033,15 +1042,22 @@ class AssistantRuntimeService {
     }
   }
 
+  void _noteReliability(PersistableDiagnostic? diagnostic) {
+    lastReliabilityDiagnostic = diagnostic;
+    reliabilityLog.record(diagnostic);
+  }
+
   String _nonEmptyOrUnavailable(
     String runtimeId,
     String? text,
     String message,
   ) {
-    lastReliabilityDiagnostic = FailureClassifier.recordChatCompletion(
-      executionId: runtimeId,
-      text: text ?? '',
-      engineOk: text != null,
+    _noteReliability(
+      FailureClassifier.recordChatCompletion(
+        executionId: runtimeId,
+        text: text ?? '',
+        engineOk: text != null,
+      ),
     );
     if (text == null) {
       throw AssistantRuntimeUnavailableException(runtimeId, message);
