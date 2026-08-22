@@ -1873,24 +1873,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
-    final promptGate = PromptQualityGate.inspectUserTurn(
+    final dietApplies = DietPlanPluginPrompt.applies(
+      currentPrompt: message,
+      history: _chatHistoryMessages(),
+    );
+    final selectedModelIdForGate = ref.read(selectedAssistantModelIdProvider);
+    final systemPrompt = _buildChatSystemPrompt(message);
+    final promptGate = ChatTurnReliability.plan(
       userText: message,
+      systemPrompt: systemPrompt,
       historyEmpty: _messages.where((m) => m.isUser).length <= 1,
+      estimatedTokens: TokenCounter.estimate('$systemPrompt\n$message'),
+      modelContextLimit: _selectedContextLimit(),
+      definition: dietApplies
+          ? AiroPromptRegistry.dietPlan
+          : selectedModelIdForGate != null &&
+                _shouldUseReasoning(selectedModelIdForGate)
+          ? AiroPromptRegistry.reasoningEngine
+          : _personaSession.isPinned
+          ? AiroPromptRegistry.skillPersona
+          : AiroPromptRegistry.chatAssistant,
+      prefixCache:
+          selectedModelIdForGate != null &&
+              assistantRuntimeSupportsPrefixCache(selectedModelIdForGate)
+          ? PrefixCacheCapability.supported
+          : PrefixCacheCapability.unsupported,
+      cacheablePrefixTokens: TokenCounter.estimate(systemPrompt),
     );
     if (promptGate.blocksInference) {
       setState(() {
         _messages.add(
-          AgentChatMessage(text: promptGate.userMessage, isUser: false),
+          AgentChatMessage(text: promptGate.gate.userMessage, isUser: false),
         );
       });
       _scrollMessagesToLatest();
       return;
     }
-
-    final dietApplies = DietPlanPluginPrompt.applies(
-      currentPrompt: message,
-      history: _chatHistoryMessages(),
-    );
     if (!dietApplies) {
       final skillStopwatch = Stopwatch()..start();
       final skillResult = await _skillOrchestrator.run(
@@ -2436,6 +2454,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         builder: contextBuilder,
         compact: compact,
       );
+    }
+    if (turn.blocksInference) {
+      _replaceStreamingMessage(turn.gate.userMessage);
+      return null;
     }
     try {
       if (_shouldUseReasoning(selectedModelId)) {
