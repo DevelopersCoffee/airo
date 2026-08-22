@@ -8,6 +8,8 @@ import 'package:feature_mind/src/agent_chat/domain/services/deep_research_engine
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint_log.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_control.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_library.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_library_log.dart';
 import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:feature_mind/src/agent_chat/presentation/screens/chat_screen.dart';
@@ -90,6 +92,47 @@ void main() {
     expect(find.text('RESEARCH COMPLETE'), findsNothing);
   });
 
+  testWidgets('reuses prior library urls and persists the onLibrary entry', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchLibraryOp(
+      log: log,
+      entry: ResearchLibraryEntry.fromQuestion(
+        question: 'Best offline LLM for Pixel 9 in 2026',
+        retrievedAt: '2026-08-22T00:00:00Z',
+        sourceUrls: const ['https://en.wikipedia.org/wiki/Qwen'],
+        findings: const ['Qwen is a family of large language models.'],
+      ),
+    );
+    final engine = _RecordingLibraryEngine();
+    await _pumpChatScreen(
+      tester,
+      operationLogPort: log,
+      deepResearchEngine: engine,
+    );
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'Best offline LLM for Pixel 9 in 2026',
+    );
+    await tester.ensureVisible(find.byKey(const Key('agent_chat_send_button')));
+    await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+    await tester.pumpAndSettle();
+
+    expect(engine.knownSourceUrls, ['https://en.wikipedia.org/wiki/Qwen']);
+    expect(log.appended.last.kind, MindOpKind.researchLibrary);
+    expect(
+      (await latestLibraryEntryFor(
+        log,
+        'Best offline LLM for Pixel 9 in 2026',
+      ))?.sourceUrls,
+      ['https://en.wikipedia.org/wiki/Large_language_model'],
+    );
+  });
+
   testWidgets('reattaches a paused research job from the operation log', (
     tester,
   ) async {
@@ -117,6 +160,37 @@ void main() {
   });
 }
 
+class _RecordingLibraryEngine implements DeepResearchEngine {
+  List<String> knownSourceUrls = const [];
+
+  @override
+  Stream<ResearchEvent> run(
+    ResearchRequest request, {
+    ResearchControl? control,
+    ResearchCheckpoint? resumeFrom,
+    void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
+  }) async* {
+    this.knownSourceUrls = knownSourceUrls;
+    onLibrary?.call(
+      ResearchLibraryEntry.fromQuestion(
+        question: request.question,
+        retrievedAt: '2026-08-22T12:00:00Z',
+        sourceUrls: const [
+          'https://en.wikipedia.org/wiki/Large_language_model',
+        ],
+        findings: const ['Large language models are trained on text.'],
+      ),
+    );
+    yield ResearchEvent(
+      kind: ResearchEventKind.researchCompleted,
+      label: 'Research completed',
+      detail: 'Question: ${request.question}',
+    );
+  }
+}
+
 class _ImmediateResearchEngine implements DeepResearchEngine {
   const _ImmediateResearchEngine();
 
@@ -126,6 +200,8 @@ class _ImmediateResearchEngine implements DeepResearchEngine {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) async* {
     yield const ResearchEvent(
       kind: ResearchEventKind.planningStarted,
@@ -155,6 +231,7 @@ class _ImmediateResearchEngine implements DeepResearchEngine {
 Future<void> _pumpChatScreen(
   WidgetTester tester, {
   OperationLogPort? operationLogPort,
+  DeepResearchEngine? deepResearchEngine,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
@@ -185,7 +262,8 @@ Future<void> _pumpChatScreen(
         home: ChatScreen(
           enableAiInitialization: false,
           initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
-          deepResearchEngine: const _ImmediateResearchEngine(),
+          deepResearchEngine:
+              deepResearchEngine ?? const _ImmediateResearchEngine(),
           operationLogPort: operationLogPort,
         ),
       ),

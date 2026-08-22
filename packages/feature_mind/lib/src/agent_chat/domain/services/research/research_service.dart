@@ -4,6 +4,7 @@ import 'arxiv_search_engine.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_http.dart';
+import 'research_library.dart';
 import 'research_orchestrator.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
@@ -20,6 +21,8 @@ abstract class ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   });
 }
 
@@ -49,10 +52,14 @@ class LocalResearchService implements ResearchService {
     ResearchControl? control,
     ResearchCheckpoint? resumeFrom,
     void Function(ResearchCheckpoint checkpoint)? onCheckpoint,
+    List<String> knownSourceUrls = const [],
+    void Function(ResearchLibraryEntry entry)? onLibrary,
   }) => _orchestrator.run(
     request,
     control: control,
     resumeFrom: resumeFrom,
     onCheckpoint: onCheckpoint,
+    knownSourceUrls: knownSourceUrls,
+    onLibrary: onLibrary,
   );
 }

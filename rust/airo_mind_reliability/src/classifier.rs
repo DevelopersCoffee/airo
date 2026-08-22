@@ -351,6 +351,7 @@ fn classify_observability(o: &PipelineObservation) -> Option<Classification> {
     None
 }
 
+#[allow(clippy::too_many_arguments)]
 fn hit(
     primary: FailureMode,
     runtime_error: Option<RuntimeFailure>,

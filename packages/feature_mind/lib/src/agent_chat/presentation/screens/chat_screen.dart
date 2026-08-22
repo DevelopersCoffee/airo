@@ -56,6 +56,8 @@ import '../../../agent_chat/domain/services/deep_research_engine.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint.dart';
 import '../../../agent_chat/domain/services/research/research_checkpoint_log.dart';
 import '../../../agent_chat/domain/services/research/research_control.dart';
+import '../../../agent_chat/domain/services/research/research_library.dart';
+import '../../../agent_chat/domain/services/research/research_library_log.dart';
 import '../../../agent_chat/domain/services/remote_agent_skill_installer.dart';
 import '../../../agent_chat/domain/services/agent_tool_interceptor.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
@@ -2086,6 +2088,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ResearchCheckpoint? resumeFrom,
   }) async {
     final request = ResearchRequest(question: question);
+    final known =
+        (await latestLibraryEntryFor(
+          _operationLogPort,
+          question,
+        ))?.sourceUrls ??
+        const <String>[];
+    if (!mounted) {
+      return;
+    }
     final epoch = ++_researchEpoch;
     final control = ResearchControl();
     setState(() {
@@ -2098,6 +2109,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         request,
         control: control,
         resumeFrom: resumeFrom,
+        knownSourceUrls: known,
+        onLibrary: (entry) {
+          unawaited(
+            appendResearchLibraryOp(log: _operationLogPort, entry: entry),
+          );
+        },
         onCheckpoint: (checkpoint) {
           _resumableCheckpoint = checkpoint;
           unawaited(
