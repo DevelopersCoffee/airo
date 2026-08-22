@@ -104,6 +104,40 @@ Microphone
                  └─ session close → today's TranscriptReady → save → IR/search
 ```
 
+## 3.1 Transcription mode is the user's choice
+
+Live transcription is **not** a replacement for post-processing, and the user
+picks. This is P0, not a settings nicety, because the choice is also the input
+to model selection (§6.7) and to the resource budget.
+
+| Mode | Behavior | Who it is for |
+|---|---|---|
+| **Live** | Transcript appears while recording. Live `FINAL` is the canonical transcript; no second pass. | Someone who needs the text now — live notes, a conversation they are steering. |
+| **After recording** | Today's behavior, unchanged. Nothing runs during capture; `transcribe_recording` runs on stop. | Battery- or thermal-constrained devices, long meetings, best accuracy per watt. |
+| **Live + refine** | Live transcript during capture, then a post-session pass over the recorded file replaces `FINAL` text where it differs. | Someone who wants both immediacy and the best transcript. |
+
+Rules that make this a contract rather than three code paths:
+
+- **The mode is chosen before the session starts** and does not change
+  mid-session. Switching modes mid-recording would mean two transcripts of the
+  same span with no rule for which wins.
+- **`After recording` must remain reachable on every device**, including one
+  that cannot afford live STT. A device refused at `start_live_session` (§6.6)
+  falls back to this mode rather than losing transcription entirely.
+- **`Live + refine` reconciles by segment id.** The refine pass produces a new
+  `FINAL` for a segment id that already exists; it does not append a second
+  transcript. Meeting IR evidence links (ADR-0022 §4) therefore keep resolving
+  across the replacement.
+- **Default is `After recording`** until §8's evaluation says otherwise. Today's
+  behavior stays the default behavior; live is opt-in until it is measured.
+
+The setting follows the pattern `SpeechLanguageMode` already established
+(`packages/feature_mind/lib/src/capture/domain/speech_language_mode.dart` plus
+`speech_language_preference.dart`): a domain enum with labels and a storage
+value, a `SharedPreferences`-backed notifier, and a loader usable before a
+widget tree exists. A second, differently-shaped preference mechanism for this
+would be a defect.
+
 ## 4. Qualifying "zero-copy"
 
 The pasted blueprint proposes Dart allocating `Pointer<Float>` buffers and
@@ -147,6 +181,7 @@ not be smuggled in as part of the inference path.
 | Dart `Pointer<Float>` waveform sharing | Out of scope (ZC-5). |
 | Continuous LLM inference / live KV-cache insights | Out of this slice (§9). |
 | 4 GB as the architecture constraint | **Change.** Minimum compatibility tier. Admission is `Supervisor` + `ResourceBudget`, which already answers "does this device fit this model" per device rather than per assumption. |
+| whisper-turbo / v3 / distil as the model choice | **Not decided here** (§6.7). The registry ships tiny and small ggml rows; adding a family is a licence-and-digest decision under ADR-0018, not a spec sentence. |
 | New `native_ai_bridge.cpp` with a hand-rolled C ABI | **Reject** (§6, Approach C). |
 | `push_pcm_audio_chunk` as the public API | **Reject as public.** Internal native ingest only (§6.1). |
 | `callback(const char* tokens)` | **Reject.** Structured events (§6.3). |
@@ -288,11 +323,76 @@ Live sessions go through the existing `Supervisor` / `ResourceBudget`
 admission (`run_speech` already calls `admit` and `admit_concurrency`). A device
 that cannot afford the speech model must fail closed at
 `start_live_session` — before the mic opens — with the same
-`ModelUnavailable` / over-budget vocabulary the file path already uses.
+`ModelUnavailable` / over-budget vocabulary the file path already uses. Failing
+closed means falling back to `After recording` (§3.1), not losing
+transcription: the user is told live is unavailable on this device, and the
+recording still produces a transcript on stop.
 
 Thermal and battery states (`NORMAL | WARM | HOT | CRITICAL`) are specified
 here and implemented P1. The P0 mitigation already exists: VAD gating, plus
 `MeetingCaptureController`'s pause path.
+
+### 6.7 Which model runs live — open, and the current rule is wrong
+
+**No model is pinned for live transcription, and this spec does not pin one.**
+ADR-0018 forbids a capability from naming a file, a quantisation, or a runtime:
+it asks for a task, a budget, a minimum quality, and a language, and the Model
+Manager resolves. That inversion is right and live sessions keep it.
+
+What today's registry offers for `ModelTask::Speech`
+(`rust/airo_mind_core/src/models.rs`):
+
+| Logical id | File | Quality | Language | Admission cost |
+|---|---|---|---|---|
+| `airo.speech.compact` | `ggml-tiny.en.bin` | Draft | English | 512 MB |
+| `airo.speech.multilingual` | `ggml-tiny.bin` | Draft | Multilingual | 512 MB |
+| `airo.speech.standard.en` | `ggml-small.en.bin` | Standard | English | 1024 MB |
+| `airo.speech.standard` | `ggml-small.bin` | Standard | Multilingual | 1024 MB |
+
+Only `ggml-tiny.en` is `required_by_default`; the rest are opt-in installs.
+
+**The gap:** `resolve()` picks the *highest quality tier that fits the memory
+budget*. For file transcription that is exactly right — a slower, better model
+costs wall-clock time the user already agreed to spend. For a live session it
+is the wrong axis. `ggml-small` fits a 2 GB budget comfortably and will still
+miss the §6.2 PARTIAL target on a mid-range phone, because the binding
+constraint is **real-time factor**, not resident memory. A model that transcribes
+at 0.9× real time fits every budget and still falls behind the speaker forever.
+
+So the live model is resolved by measurement, not by tier. Options:
+
+1. **Cap live sessions at `ModelQuality::Draft`** using the existing
+   `maximum_quality: Option<ModelQuality>` field, the same mechanism the
+   compact generation fallback already uses. Zero contract change, ships
+   immediately, and is wrong on a desktop that could comfortably run `small`
+   in real time.
+2. **Add a real-time-factor dimension to `ModelRequirement`** — the capability
+   states "must sustain ≥ N× real time on this device" and the Manager resolves
+   against a measured or declared RTF per registry row. Correct, and a public
+   surface change to `airo_mind_core::models` that needs an ADR-0018 amendment.
+3. **Probe once per device and cache.** Run a fixed fixture through each
+   installed speech model at first live session, record the RTF, resolve from
+   that. Most accurate, slowest to build, and needs a cache-invalidation story
+   when the device is thermally throttled — which is exactly when the number
+   changes.
+
+**Recommendation: (1) now, (2) as the real answer**, with (1)'s cap recorded as
+a deliberate interim in the same place the fallback cap already lives, not
+scattered at the call site. (3) is a refinement of (2)'s input, not an
+alternative to it. Stage 1 measures RTF for tiny and small across the rig
+devices; that measurement decides whether (2) lands before or after the first
+live release.
+
+Two things this explicitly does not do:
+
+- **No new model is added to the registry by this spec.** Whisper turbo,
+  distil-whisper, and the streaming-oriented ASR families the source material
+  mentions are all plausible future rows, and each is a separate
+  licence-and-digest decision under ADR-0018. `sarvam_edge_speech` is already a
+  probe-only availability flag and stays one.
+- **No live-only model.** Whatever runs live must be a registry row that the
+  file path can also resolve, so `Live + refine` (§3.1) is comparing two passes
+  of a known pair rather than two unrelated engines.
 
 ## 7. Session lifecycle
 
@@ -323,10 +423,18 @@ A latency or memory claim with no number is not a requirement. Golden cases:
 | Pause / resume | Timestamps stay monotonic across the gap |
 | OS interruption (call, Siri) | Session survives or degrades cleanly |
 | Forced ring overflow | DEGRADED emitted, no OOM, no silent hole |
+| `Live + refine` over the same audio | Refined FINAL replaces by segment id; evidence links still resolve |
+| Live refused on an under-budget device | Falls back to `After recording`, transcript still produced |
 
 Metrics: PARTIAL and STABLE latency, WER of live FINAL against file-ASR output
 on the same audio, peak RSS across the session, dropped-ring sample count,
 and STABLE-text rewrite count (flicker is a defect, so it is measured).
+
+**Real-time factor per model per device** is measured here too, and it is what
+§6.7 needs to stop guessing: sustained RTF for `ggml-tiny(.en)` and
+`ggml-small(.en)` on each rig device (Pixel 9, iPad Air 4, and a desktop),
+including under thermal load. A model that cannot sustain > 1× real time is not
+a live model on that device, whatever its memory cost says.
 
 Host-runnable with fixture PCM. No device rig required to prove the contract.
 
@@ -403,10 +511,16 @@ handles PCM; Rust never learns what a "live notes screen" is.
 2. Start, speak, pause 30 s, resume, speak, stop → no inference during the
    pause, timestamps monotonic across it.
 3. Start with a device below the speech model's budget → refused at
-   `start_live_session`, mic never opens.
+   `start_live_session`, mic never opens, session continues in
+   `After recording` mode and still produces a transcript on stop.
 4. Force ring overflow → DEGRADED emitted, session continues, no OOM.
 5. Kill the app mid-session → encoded file on disk still transcribes through
    `transcribe_recording`.
+6. Record in `After recording` mode → nothing runs during capture, and the
+   result is byte-for-byte what today's pipeline produces.
+7. Record in `Live + refine` → live FINAL is shown during capture, the refine
+   pass replaces text by segment id, and an action item extracted from a
+   refined segment still resolves to an audio timestamp.
 
 ### Automation Flow
 
@@ -427,9 +541,11 @@ weaker entry point into the mic.
 
 ### Rollback
 
-Feature-flag the live session at the capability surface. Disabling it returns
-the product to today's behavior with no data migration: capture still writes
-the file, and `transcribe_recording` still produces the transcript.
+The transcription mode (§3.1) is the rollback. `After recording` is the
+default and is today's pipeline unchanged, so withdrawing live transcription is
+a matter of hiding the other two options — no data migration, no schema change,
+and no user left without a transcript. Capture still writes the file, and
+`transcribe_recording` still produces the text.
 
 ## 11. Ownership and required review
 
@@ -462,10 +578,14 @@ the file, and `transcribe_recording` still produces the transcript.
 Open, non-blocking:
 
 - Exact ring size and window length — measured in Stage 1.
-- Whether post-session file ASR stays a quality pass: default is **optional,
-  P1**. Live FINAL is canonical unless §8's WER comparison shows file ASR is
-  materially better, in which case the pass becomes a background job on the
-  file that already exists.
+- **Which speech model runs live** (§6.7) — interim is the `maximum_quality:
+  Some(Draft)` cap; the real answer is a real-time-factor dimension on
+  `ModelRequirement`, which needs an ADR-0018 amendment. Stage 1's RTF
+  measurement decides whether that lands before or after the first live
+  release.
+- Whether `Live + refine` is on by default once it exists (§3.1). Default stays
+  `After recording` until §8's WER comparison says live FINAL is good enough to
+  promote.
 
 ## 13. References
 
@@ -476,6 +596,11 @@ Open, non-blocking:
 - `rust/airo_mind_whisper/src/whisper.rs` — windowing, chunking, and the
   anti-hallucination guards §6.4 must revisit.
 - `rust/airo_mind_audio/src/lib.rs` — decode/downmix/resample, the ring's home.
+- `rust/airo_mind_core/src/models.rs` — the speech registry rows and the
+  `resolve()` rule §6.7 says is the wrong axis for live.
+- `packages/feature_mind/lib/src/capture/domain/speech_language_mode.dart` and
+  `.../application/speech_language_preference.dart` — the settings pattern the
+  transcription-mode preference (§3.1) must follow.
 - `packages/feature_mind/lib/src/capture/` — recorder port, capture controller,
   Android foreground-service gateway.
 - [`docs/features/airo-mind/LIVE_CAPTURE_FAN_OUT.md`](../../features/airo-mind/LIVE_CAPTURE_FAN_OUT.md)

@@ -100,7 +100,16 @@ type in `airo_mind_core`, the same way there is no `Minutes` type there today.
 `Supervisor::run_speech` already calls `admit` (memory) and `admit_concurrency`.
 A live session is admitted the same way, once, at session start — so a device
 that cannot afford the model is refused before the microphone opens rather than
-mid-sentence.
+mid-sentence. A refusal degrades to post-recording transcription; it never
+costs the user their transcript.
+
+This ADR does **not** decide which speech model runs live. The capability keeps
+asking for a task, a budget, a quality and a language, per ADR-0018. What the
+design spec §6.7 records is that `resolve()`'s "highest quality that fits the
+memory budget" rule is the wrong axis for a live session — the binding
+constraint is real-time factor, not resident memory — and that fixing it
+properly means a new dimension on `ModelRequirement`, which is an ADR-0018
+amendment, not a change to this trait.
 
 ### 6. Zero-copy is a boundary rule, not a trait property
 
@@ -117,7 +126,7 @@ the design spec §4.
 
 | Question | Answer |
 |---|---|
-| Which runtime contracts change? | `SpeechEngine` (`airo_mind_core::engine`) gains a streaming entry point, and `TranscriptSegment` gains a state discriminant. Additive: `transcribe`'s signature and semantics are unchanged, and existing segments are `Final`. Every implementor must answer the new method — today that is `WhisperSpeechEngine` and the `supervisor.rs` test fixture. `C5`, `C6`, `I2`, `I4`, ADR-0018 and ADR-0021 are unchanged and not widened. |
+| Which runtime contracts change? | `SpeechEngine` (`airo_mind_core::engine`) gains a streaming entry point, and `TranscriptSegment` gains a state discriminant. Additive: `transcribe`'s signature and semantics are unchanged, and existing segments are `Final`. Every implementor must answer the new method — today that is `WhisperSpeechEngine` and the `supervisor.rs` test fixture. `C5`, `C6`, `I2`, `I4`, ADR-0018 and ADR-0021 are unchanged and not widened here. **Adjacent, not decided here:** if design spec §6.7's option (2) is adopted, `ModelRequirement` gains a real-time-factor dimension — an `airo_mind_core::models` public surface change requiring its own ADR-0018 amendment. |
 | Which conformance tests become invalid? | None become invalid. `rust/airo_mind_whisper/tests/speech_offline.rs` continues to hold for the file path and gains a sibling for the streaming path. The `#1629` timestamp-preservation test (`meetings.rs`) must be extended to cover live segments, since the same `u64` → Dart `BigInt` → `int` narrowing applies to them. |
 | Which benchmarks must be re-run? | The whisper RTFx bench (`docs/features/airo-mind/GENERATION_BENCH_PROTOCOL.md`) is file-throughput and stays valid, but it is not evidence about a live session. New budgets required before promoting the design spec §6.2 latency targets to gates: PARTIAL/STABLE latency, peak RSS across a 10+ minute session, dropped-ring sample count, and STABLE-text rewrite count. `I8`: none of these ships as prose. |
 | Which review roles must re-review? | Rust Architect (owns `airo_mind_core`, `airo_mind_audio`, `airo_mind_whisper`), Chief Performance Officer (required on every Rust change; owns the copy and RSS budgets), Chief Architect (trait/contract shape), Platform Architect (FRB session surface and capture fan-out), Chief Security Officer (a live session is a second mic entry point and must sit behind the same consent gate), Chief QA Officer (user-visible change). |
