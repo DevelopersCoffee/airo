@@ -46,6 +46,10 @@ enum MindOpKind {
   /// A Deep Research job wrote a durable checkpoint. Resume rebuilds from this
   /// record — not from a model scratchpad or a sidecar research database.
   researchCheckpoint,
+
+  /// A completed Deep Research report was written to the research library.
+  /// Follow-up jobs load this instead of a sidecar database (`I2`).
+  researchLibrary,
 }
 
 /// Whether this operation's signature checked out.
