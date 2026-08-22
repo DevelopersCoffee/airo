@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "id": "property-purchase-planner",
+  "version": "1.0.0",
+  "behaviors": ["graph_workflow"],
+  "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
+  "tools": ["query_entity_graph"],
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "graph_workflow_v1"
+  },
+  "workflow": { "subject_kind": "property" },
+  "built_in_priority": 12
+}

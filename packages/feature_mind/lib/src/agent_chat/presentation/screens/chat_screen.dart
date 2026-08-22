@@ -47,7 +47,6 @@ import '../../../agent_chat/domain/models/chat_transcript_turn.dart';
 import '../../../agent_chat/domain/models/chat_response_metadata.dart';
 import '../../../agent_chat/domain/models/grounded_citation.dart';
 import '../../../agent_chat/domain/services/agent_connector.dart';
-import '../../../agent_chat/domain/services/chat_entity_graph_projector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/models/research_event.dart';
 import '../../../agent_chat/domain/models/research_request.dart';
@@ -311,7 +310,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Map<String, dynamic>? _pendingCalendarEvent;
   Map<String, dynamic>? _pendingLifeTrackWrite;
   ChatEntityGraph _entityGraph = ChatEntityGraph.empty;
-  static const _journeyProjector = ChatEntityGraphProjector();
   String? _pinnedPersonaId;
   final PinnedPersonaStore _pinnedPersonaStore = PinnedPersonaStore();
   String? _pendingCalendarPermissionPrompt;
@@ -2323,7 +2321,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (lower.contains('pending') || lower.contains('what is missing')) {
       return false;
     }
-    final journey = _journeyProjector.firstUnoffered(_entityGraph);
+    final journey = ref
+        .read(graphWorkflowCoordinatorProvider)
+        .firstUnofferedJourney(_entityGraph);
     if (journey == null) return false;
 
     _entityGraph = await chatEntityGraphSession.markAttribute(

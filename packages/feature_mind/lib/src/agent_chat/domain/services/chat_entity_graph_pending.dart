@@ -229,4 +229,15 @@ class ChatEntityGraphPending {
     }
     return lines;
   }
+
+  bool looksInsurance(String text) => _looksInsurance(text.toLowerCase());
+
+  bool looksHospital(String text) => _looksHospital(text.toLowerCase());
+
+  bool looksProperty(String text) => _looksProperty(text.toLowerCase());
+
+  List<String> missingFieldsFor(ProjectedChatJourney journey) => _missing(journey);
+
+  List<String> crossLinksFor(ChatEntityGraph graph, String subjectNodeId) =>
+      _crossLinks(graph, subjectNodeId);
 }

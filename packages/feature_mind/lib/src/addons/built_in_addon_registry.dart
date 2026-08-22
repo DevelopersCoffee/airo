@@ -4,13 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'draft_diet_plan/draft_diet_plan_adapter.dart';
 import 'generative_addon_coordinator.dart';
+import 'graph_workflow/graph_workflow_coordinator.dart';
+import 'graph_workflow/hospital_recovery_graph_adapter.dart';
+import 'graph_workflow/insurance_planner_graph_adapter.dart';
+import 'graph_workflow/property_purchase_graph_adapter.dart';
 
 /// Built-in add-ons registered for the Mind host.
 class BuiltInAddonRegistry {
-  BuiltInAddonRegistry._(this.registry, this.coordinator);
+  BuiltInAddonRegistry._({
+    required this.registry,
+    required this.coordinator,
+    required this.graphCoordinator,
+  });
 
   final AddonRegistry registry;
   final GenerativeAddonCoordinator coordinator;
+  final GraphWorkflowCoordinator graphCoordinator;
 
   static BuiltInAddonRegistry create() {
     final registry = AddonRegistry();
@@ -42,9 +51,78 @@ class BuiltInAddonRegistry {
         },
       ),
     );
-    return BuiltInAddonRegistry._(
+
+    _registerGraphAddon(
       registry,
-      GenerativeAddonCoordinator(registry),
+      id: InsurancePlannerGraphAdapter.addonId,
+      priority: 20,
+      subjectKind: 'claim',
+      adapter: InsurancePlannerGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: HospitalRecoveryGraphAdapter.addonId,
+      priority: 15,
+      subjectKind: 'hospital_stay',
+      adapter: HospitalRecoveryGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: PropertyPurchaseGraphAdapter.addonId,
+      priority: 12,
+      subjectKind: 'property',
+      adapter: PropertyPurchaseGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph'],
+    );
+
+    final graphCoordinator = GraphWorkflowCoordinator(registry);
+    return BuiltInAddonRegistry._(
+      registry: registry,
+      coordinator: GenerativeAddonCoordinator(registry),
+      graphCoordinator: graphCoordinator,
+    );
+  }
+
+  static void _registerGraphAddon(
+    AddonRegistry registry, {
+    required String id,
+    required int priority,
+    required String subjectKind,
+    required GraphWorkflowAddonAdapter adapter,
+    required Set<String> scopes,
+    required List<String> tools,
+  }) {
+    registry.registerBuiltIn(
+      manifest: AddonManifest.fromJson({
+        'schema_version': '1.0',
+        'id': id,
+        'version': '1.0.0',
+        'behaviors': ['graph_workflow'],
+        'capabilities': scopes.toList(growable: false),
+        'tools': tools,
+        'adapter': {'kind': 'required_built_in', 'contract': 'graph_workflow_v1'},
+        'workflow': {'subject_kind': subjectKind},
+        'built_in_priority': priority,
+      }),
+      graphAdapter: adapter,
+    );
+    registry.setEligibility(
+      id,
+      AddonEligibility(enabled: true, grantedScopes: scopes),
     );
   }
 }
@@ -55,6 +133,10 @@ final builtInAddonRegistryProvider = Provider<BuiltInAddonRegistry>(
 
 final generativeAddonCoordinatorProvider = Provider<GenerativeAddonCoordinator>(
   (ref) => ref.watch(builtInAddonRegistryProvider).coordinator,
+);
+
+final graphWorkflowCoordinatorProvider = Provider<GraphWorkflowCoordinator>(
+  (ref) => ref.watch(builtInAddonRegistryProvider).graphCoordinator,
 );
 
 final addonRegistryProvider = Provider<AddonRegistry>(
