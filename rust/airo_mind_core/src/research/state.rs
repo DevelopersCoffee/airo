@@ -285,7 +285,7 @@ impl ResearchCheckpoint {
                 parts[7].split(',').map(str::to_string).collect()
             },
             mode: if legacy {
-                ResearchMode::Deep
+                ResearchMode::Quick
             } else {
                 ResearchMode::parse(parts[8]).ok_or(ResearchStateError::InvalidCheckpoint)?
             },
@@ -324,8 +324,13 @@ impl InMemoryResearchService {
     }
 
     pub fn start(&mut self, request: ResearchRequest) -> String {
-        self.next_id = self.next_id.saturating_add(1);
-        let id = format!("job-{}", self.next_id);
+        let id = loop {
+            self.next_id = self.next_id.saturating_add(1);
+            let candidate = format!("job-{}", self.next_id);
+            if !self.jobs.contains_key(&candidate) {
+                break candidate;
+            }
+        };
         self.jobs
             .insert(id.clone(), (ResearchJob::new(request), Vec::new()));
         id
@@ -370,6 +375,12 @@ impl InMemoryResearchService {
 
     pub fn restore(&mut self, checkpoint: ResearchCheckpoint) -> Result<(), ResearchStateError> {
         let id = checkpoint.job_id.clone();
+        if let Some(sequence) = id
+            .strip_prefix("job-")
+            .and_then(|value| value.parse::<u64>().ok())
+        {
+            self.next_id = self.next_id.max(sequence);
+        }
         let nodes = checkpoint.completed_node_ids.clone();
         self.jobs.insert(id, (checkpoint.into_job(), nodes));
         Ok(())
@@ -457,13 +468,33 @@ mod tests {
     }
 
     #[test]
-    fn legacy_v1_checkpoint_fails_closed_to_deep_local_only() {
+    fn legacy_v1_checkpoint_fails_closed_to_quick_local_only() {
         let restored = ResearchCheckpoint::from_record(
             "v1\u{1f}job-1\u{1f}Legacy\u{1f}paused\u{1f}searching\u{1f}2\u{1f}1\u{1f}n1",
         )
         .unwrap();
-        assert_eq!(restored.mode, ResearchMode::Deep);
+        assert_eq!(restored.mode, ResearchMode::Quick);
         assert_eq!(restored.policy, SearchPolicy::LocalOnly);
+    }
+
+    #[test]
+    fn rust_decoder_matches_shared_valid_and_corrupt_fixtures() {
+        let fixtures = include_str!("../../../../test_fixtures/research_checkpoint_records.txt");
+        for line in fixtures
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        {
+            let mut parts = line.splitn(3, '|');
+            let kind = parts.next().unwrap();
+            let name = parts.next().unwrap();
+            let record = parts.next().unwrap().replace("\\x1f", "\u{1f}");
+            let parsed = ResearchCheckpoint::from_record(&record);
+            match kind {
+                "valid" => assert!(parsed.is_ok(), "{name} must be accepted"),
+                "invalid" => assert!(parsed.is_err(), "{name} must be rejected"),
+                other => panic!("unknown fixture kind {other}"),
+            }
+        }
     }
 
     #[test]
@@ -489,5 +520,28 @@ mod tests {
         assert_eq!(revived.job(&id).unwrap().request.mode, ResearchMode::Quick);
         revived.resume(&id).unwrap();
         assert_eq!(revived.status(&id), Some(ResearchJobState::Planning));
+    }
+
+    #[test]
+    fn restored_job_id_is_not_reused_by_the_next_start() {
+        let restored = ResearchCheckpoint {
+            job_id: "job-1".into(),
+            question: "Restored".into(),
+            state: ResearchJobState::Paused,
+            paused_from: Some(ResearchJobState::Searching),
+            searches_used: 0,
+            iterations_used: 0,
+            completed_node_ids: Vec::new(),
+            mode: ResearchMode::Quick,
+            policy: SearchPolicy::LocalOnly,
+        };
+        let mut service = InMemoryResearchService::new();
+        service.restore(restored).unwrap();
+
+        let next = service.start(ResearchRequest::new("New"));
+
+        assert_eq!(next, "job-2");
+        assert!(service.job("job-1").is_some());
+        assert!(service.job("job-2").is_some());
     }
 }

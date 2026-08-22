@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
@@ -30,14 +32,40 @@ void main() {
     },
   );
 
-  test('legacy v1 checkpoint fails closed as deep local-only research', () {
+  test('legacy v1 checkpoint fails closed as quick local-only research', () {
     final restored = ResearchCheckpoint.fromRecord(
       'v1\u{1f}job-1\u{1f}Legacy\u{1f}paused\u{1f}searching'
       '\u{1f}2\u{1f}1\u{1f}n1',
     );
 
-    expect(restored.mode, ResearchMode.deep);
+    expect(restored.mode, ResearchMode.quick);
     expect(restored.policy, SearchPolicy.localOnly);
     expect(restored.privacy, PrivacyProfile.private);
+  });
+
+  test('Dart decoder matches shared valid and corrupt fixtures', () {
+    final lines = File('../../test_fixtures/research_checkpoint_records.txt')
+        .readAsLinesSync()
+        .where((line) => line.isNotEmpty && !line.startsWith('#'));
+
+    for (final line in lines) {
+      final parts = line.split('|');
+      final kind = parts[0];
+      final name = parts[1];
+      final record = parts.sublist(2).join('|').replaceAll(r'\x1f', '\u{1f}');
+      if (kind == 'valid') {
+        expect(
+          () => ResearchCheckpoint.fromRecord(record),
+          returnsNormally,
+          reason: name,
+        );
+      } else {
+        expect(
+          () => ResearchCheckpoint.fromRecord(record),
+          throwsFormatException,
+          reason: name,
+        );
+      }
+    }
   });
 }

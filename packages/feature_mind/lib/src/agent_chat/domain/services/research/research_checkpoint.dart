@@ -89,7 +89,10 @@ class ResearchCheckpoint {
       throw const FormatException('invalid research checkpoint state');
     }
     final pausedFrom = parts[4].isEmpty ? null : parseResearchPhase(parts[4]);
-    final mode = legacy ? ResearchMode.deep : parseResearchMode(parts[8]);
+    if (parts[4].isNotEmpty && pausedFrom == null) {
+      throw const FormatException('invalid research checkpoint paused state');
+    }
+    final mode = legacy ? ResearchMode.quick : parseResearchMode(parts[8]);
     final policy = legacy
         ? SearchPolicy.localOnly
         : parseResearchPolicy(parts[9]);
@@ -101,8 +104,8 @@ class ResearchCheckpoint {
       question: parts[2],
       state: state,
       pausedFrom: pausedFrom,
-      searchesUsed: int.parse(parts[5]),
-      iterationsUsed: int.parse(parts[6]),
+      searchesUsed: parseResearchCounter(parts[5]),
+      iterationsUsed: parseResearchCounter(parts[6]),
       completedNodeIds: parts[7].isEmpty ? const [] : parts[7].split(','),
       mode: mode,
       policy: policy,
@@ -134,6 +137,14 @@ class ResearchCheckpoint {
     policy,
     Object.hashAll(completedNodeIds),
   );
+}
+
+int parseResearchCounter(String value) {
+  final parsed = int.tryParse(value);
+  if (parsed == null || parsed < 0 || parsed > 0xffffffff) {
+    throw const FormatException('invalid research checkpoint counter');
+  }
+  return parsed;
 }
 
 String researchPolicyWire(SearchPolicy policy) => switch (policy) {
