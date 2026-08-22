@@ -156,6 +156,86 @@ void main() {
     );
     expect(bridge.lastReasonRequest?.availableMemoryMb, 3072);
   });
+
+  testWidgets(
+    'empty reason() output is a verification failure, not a successful turn',
+    (tester) async {
+      final bridge = FakeMindGenerationBridge()
+        ..reasoningEvents = const [
+          MindReasoningCompleted(
+            answer: '   ',
+            reasoningSummary: 'No answer.',
+            level: MindReasoningLevel.light,
+          ),
+        ];
+      await bridge.ensureLoaded(modelsDir: '/tmp', memoryBudgetMb: 1024);
+
+      await _pumpChatScreen(
+        tester,
+        initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+        generationBridge: bridge,
+        useOnDeviceReasoning: () => true,
+        deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+          LlmDeviceSignals(totalRamMb: 8192, availableStorageMb: 8192),
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('agent_chat_input')),
+        'Why does ice float?',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('agent_chat_send_button')),
+      );
+      await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          ChatOutputVerifier.userMessageFor(OutputVerification.incomplete)!,
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('ungrounded calendar claims from reason() are refused', (
+    tester,
+  ) async {
+    final bridge = FakeMindGenerationBridge()
+      ..reasoningEvents = const [
+        MindReasoningCompleted(
+          answer: 'I checked your calendar. You are free at 4 PM.',
+          reasoningSummary: 'Guessed.',
+          level: MindReasoningLevel.light,
+        ),
+      ];
+    await bridge.ensureLoaded(modelsDir: '/tmp', memoryBudgetMb: 1024);
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [AgentChatMessage(text: 'Ready', isUser: false)],
+      generationBridge: bridge,
+      useOnDeviceReasoning: () => true,
+      deviceSignalsProbe: const FakeLlmDeviceSignalsProbe(
+        LlmDeviceSignals(totalRamMb: 8192, availableStorageMb: 8192),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'Am I free at 4?',
+    );
+    await tester.ensureVisible(find.byKey(const Key('agent_chat_send_button')));
+    await tester.tap(find.byKey(const Key('agent_chat_send_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('I can only report tools I actually ran.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('You are free at 4 PM'), findsNothing);
+  });
 }
 
 Future<void> _pumpChatScreen(

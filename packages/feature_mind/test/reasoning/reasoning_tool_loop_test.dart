@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/reasoning/reasoning_models.dart';
 import 'package:feature_mind/src/reasoning/reasoning_tool_loop.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -118,7 +119,11 @@ void main() {
             ),
           ]);
         }
-        expect(req.toolResults.single.text, 'a, b, c');
+        expect(req.toolResults.single.text, contains('a, b, c'));
+        expect(
+          req.toolResults.single.text,
+          contains(ContextCompiler.dataBegin),
+        );
         return Stream.fromIterable(const [
           MindReasoningCompleted(
             answer: 'You have three meetings.',
