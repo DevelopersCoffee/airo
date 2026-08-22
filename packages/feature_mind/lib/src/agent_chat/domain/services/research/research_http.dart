@@ -75,6 +75,8 @@ class ResearchHttpClient {
     'arxiv.org',
     'api.semanticscholar.org',
     'www.semanticscholar.org',
+    'api.crossref.org',
+    'doi.org',
   };
 
   final Set<String> allowedHosts;

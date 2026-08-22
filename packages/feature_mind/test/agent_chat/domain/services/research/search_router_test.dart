@@ -11,7 +11,7 @@ void main() {
 
   test('academic policy prefers papers', () {
     final ids = SearchRouter.engineIds(SearchPolicy.academic);
-    expect(ids, containsAll(['arxiv', 'semantic_scholar']));
+    expect(ids, containsAll(['arxiv', 'semantic_scholar', 'crossref']));
     expect(ids, isNot(contains('google')));
   });
 
