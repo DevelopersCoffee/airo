@@ -40,12 +40,7 @@ impl SpeakerActivityTracker {
     }
 
     /// Commits one stable utterance and returns the provisional speaker index.
-    pub fn on_utterance(
-        &mut self,
-        start_ms: u64,
-        end_ms: u64,
-        peak_energy: f32,
-    ) -> u8 {
+    pub fn on_utterance(&mut self, start_ms: u64, end_ms: u64, peak_energy: f32) -> u8 {
         if self.last_utterance_end_ms > 0 {
             let gap = start_ms.saturating_sub(self.last_utterance_end_ms);
             if gap >= self.long_gap_ms {

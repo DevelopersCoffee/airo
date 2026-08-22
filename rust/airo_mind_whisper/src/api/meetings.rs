@@ -45,17 +45,15 @@ use crate::frb_generated::StreamSink;
 
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
+use airo_mind_audio::{rms_energy, LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker};
+use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
     ActionStatus, AudioInput, CancelToken, DecisionStatus, EngineError, Meeting, MeetingActionItem,
-    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex,
-    Supervisor, TranscriptSegment, TranscriptionOptions,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    TranscriptSegment, TranscriptionOptions,
 };
-use airo_mind_audio::{
-    LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker, rms_energy,
-};
-use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_diarize::{
     diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
     SpeakerEmbedder, SpeakerEnrollmentStore,
@@ -552,8 +550,8 @@ fn ensure_speech_engine_for_requirement(
         .clone()
         .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
 
-    let speech_model = models::resolve(&requirement, &models_dir, &[], false)
-        .map_err(|e| e.to_string())?;
+    let speech_model =
+        models::resolve(&requirement, &models_dir, &[], false).map_err(|e| e.to_string())?;
 
     if lock(&LOADED_SPEECH_PATH).as_deref() == Some(&speech_model.path) {
         return Ok(());
@@ -620,9 +618,10 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&INITIALIZED_SPEECH_LANGUAGE) = Some(config.speech_language);
     *lock(&LIBRARY) = Some(Library { store, index });
 
-    ensure_speech_engine_for_requirement(
-        models::speech_file_requirement(config.memory_budget_mb, config.speech_language.into()),
-    )?;
+    ensure_speech_engine_for_requirement(models::speech_file_requirement(
+        config.memory_budget_mb,
+        config.speech_language.into(),
+    ))?;
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
     // Metal device globals are C++ function-local statics. Register after
     // load so this handler runs *before* ggml's unique_ptr destructor.
@@ -814,9 +813,9 @@ fn emit_live_delta(
     };
 
     let speaker_label = match segment.state {
-        TranscriptSegmentState::Partial => {
-            Some(provisional_speaker_label(session.speaker_activity.active_speaker_index()))
-        }
+        TranscriptSegmentState::Partial => Some(provisional_speaker_label(
+            session.speaker_activity.active_speaker_index(),
+        )),
         TranscriptSegmentState::Stable => {
             let index = session.speaker_activity.on_utterance(
                 segment.start_ms,
@@ -1463,10 +1462,8 @@ mod tests {
 
     #[test]
     fn transcript_segment_record_handles_a_single_segment_recording() {
-        let record = transcript_segment_record(
-            0,
-            &TranscriptSegment::final_text(0, 900, "hello".into()),
-        );
+        let record =
+            transcript_segment_record(0, &TranscriptSegment::final_text(0, 900, "hello".into()));
         assert_eq!(record.id, "s0");
         assert_eq!(record.start_ms, 0);
         assert_eq!(record.end_ms, 900);

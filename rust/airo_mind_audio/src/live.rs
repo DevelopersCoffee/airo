@@ -7,7 +7,7 @@ use airo_mind_core::engine::{
 
 use crate::ring::{PcmRingBuffer, RingPushReport};
 use crate::stabilizer::TranscriptStabilizer;
-use crate::vad::{EnergyVad, VadState, rms_energy};
+use crate::vad::{rms_energy, EnergyVad, VadState};
 use crate::TARGET_SAMPLE_RATE;
 
 /// Configuration for a live session pipeline.
@@ -283,7 +283,9 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Partial),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Partial),
             "expected partial from engine window"
         );
 
@@ -300,7 +302,9 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Stable),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Stable),
             "expected stable after silence boundary"
         );
     }

@@ -145,7 +145,12 @@ impl VocabularyIntelligence {
             }
         }
 
-        working = correct_fuzzy_words(&working, &self.context, &mut corrections, self.min_confidence);
+        working = correct_fuzzy_words(
+            &working,
+            &self.context,
+            &mut corrections,
+            self.min_confidence,
+        );
 
         let confidence = if corrections.is_empty() {
             1.0
@@ -295,9 +300,16 @@ fn replace_phrase_ci(
 }
 
 fn word_boundary_match(text: &str, start: usize, end: usize) -> bool {
-    let before_ok = start == 0 || !text[..start].chars().last().is_some_and(|c| c.is_alphanumeric());
+    let before_ok = start == 0
+        || !text[..start]
+            .chars()
+            .last()
+            .is_some_and(|c| c.is_alphanumeric());
     let after_ok = end >= text.len()
-        || !text[end..].chars().next().is_some_and(|c| c.is_alphanumeric());
+        || !text[end..]
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_alphanumeric());
     before_ok && after_ok
 }
 
@@ -399,9 +411,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
         cur[0] = i + 1;
         for (j, bc) in b_chars.iter().enumerate() {
             let cost = if ac == bc { 0 } else { 1 };
-            cur[j + 1] = (cur[j] + 1)
-                .min(prev[j + 1] + 1)
-                .min(prev[j] + cost);
+            cur[j + 1] = (cur[j] + 1).min(prev[j + 1] + 1).min(prev[j] + cost);
         }
         prev.clone_from_slice(&cur);
     }
@@ -418,7 +428,10 @@ mod tests {
         let result = intel.correct("we need to update arrow mind");
         assert_eq!(result.corrected_text, "we need to update Airo Mind");
         assert_eq!(result.original_text, "we need to update arrow mind");
-        assert!(result.corrections.iter().any(|c| c.original == "arrow mind"));
+        assert!(result
+            .corrections
+            .iter()
+            .any(|c| c.original == "arrow mind"));
         assert!(result.confidence >= 0.85);
     }
 

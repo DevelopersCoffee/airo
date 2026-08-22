@@ -37,8 +37,8 @@ pub use chunk::{Chunk, ChunkConfig, ChunkInput};
 pub use normalize::{NormalizationResult, NumberNormalization, TermCorrection};
 pub use segment::Segment;
 pub use vocabulary::{
-    CorrectionResult, VocabularyCategory, VocabularyContext, VocabularyCorrection,
-    VocabularyEntry, VocabularyIntelligence, VocabularySource,
+    CorrectionResult, VocabularyCategory, VocabularyContext, VocabularyCorrection, VocabularyEntry,
+    VocabularyIntelligence, VocabularySource,
 };
 
 /// One segment's raw and normalized text side by side, with its timestamps

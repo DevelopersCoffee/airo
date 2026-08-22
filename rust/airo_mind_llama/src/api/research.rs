@@ -9,9 +9,8 @@ use std::time::Duration;
 
 use airo_mind_core::research::{
     ResearchCheckpoint, ResearchEngine, ResearchEvent as CoreEvent, ResearchEventKind as CoreKind,
-    ResearchJobState as CoreJobState, ResearchRequest as CoreRequest, ResearchMode,
-    SearchEngine, SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse,
-    SourceFetcher,
+    ResearchJobState as CoreJobState, ResearchMode, ResearchRequest as CoreRequest, SearchEngine,
+    SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse, SourceFetcher,
 };
 use flutter_rust_bridge::{frb, DartFnFuture};
 
@@ -144,8 +143,7 @@ impl SearchEngine for ChannelSearchEngine {
                 respond_to: tx,
             })
             .map_err(|_| SearchError::Unavailable(self.id))?;
-        rx.recv()
-            .map_err(|_| SearchError::Unavailable(self.id))?
+        rx.recv().map_err(|_| SearchError::Unavailable(self.id))?
     }
 }
 
@@ -174,9 +172,8 @@ fn leak_engine_id(id: String) -> &'static str {
 // Handle
 // ---------------------------------------------------------------------------
 
-type SearchCallback = Arc<
-    dyn Fn(String, FrbSearchRequest) -> DartFnFuture<FrbSearchResponse> + Send + Sync,
->;
+type SearchCallback =
+    Arc<dyn Fn(String, FrbSearchRequest) -> DartFnFuture<FrbSearchResponse> + Send + Sync>;
 type FetchCallback = Arc<dyn Fn(String) -> DartFnFuture<String> + Send + Sync>;
 
 #[frb(opaque)]
@@ -190,10 +187,7 @@ pub struct ResearchServiceHandle {
 /// Create a research service with Dart-injected search/fetch adapters.
 pub fn create_research_service(
     engine_ids: Vec<String>,
-    search: impl Fn(String, FrbSearchRequest) -> DartFnFuture<FrbSearchResponse>
-        + Send
-        + Sync
-        + 'static,
+    search: impl Fn(String, FrbSearchRequest) -> DartFnFuture<FrbSearchResponse> + Send + Sync + 'static,
     fetch: impl Fn(String) -> DartFnFuture<String> + Send + Sync + 'static,
 ) -> ResearchServiceHandle {
     let (io_tx, io_rx) = mpsc::channel();
@@ -271,9 +265,11 @@ pub fn research_checkpoint(
     job_id: String,
 ) -> Option<FrbResearchCheckpoint> {
     let engine = handle.engine.lock().expect("research engine lock");
-    engine.checkpoint(&job_id).map(|checkpoint| FrbResearchCheckpoint {
-        record: checkpoint.to_record(),
-    })
+    engine
+        .checkpoint(&job_id)
+        .map(|checkpoint| FrbResearchCheckpoint {
+            record: checkpoint.to_record(),
+        })
 }
 
 #[frb(sync)]
@@ -281,8 +277,8 @@ pub fn research_restore(
     handle: &ResearchServiceHandle,
     checkpoint: FrbResearchCheckpoint,
 ) -> Result<(), String> {
-    let checkpoint = ResearchCheckpoint::from_record(&checkpoint.record)
-        .map_err(|error| error.to_string())?;
+    let checkpoint =
+        ResearchCheckpoint::from_record(&checkpoint.record).map_err(|error| error.to_string())?;
     handle
         .engine
         .lock()
@@ -351,8 +347,7 @@ pub async fn research_run(
         if let Ok(result) = done_rx.try_recv() {
             let events = result.map_err(|error| error.to_string())?;
             for event in events {
-                sink.add(event.into())
-                    .map_err(|error| error.to_string())?;
+                sink.add(event.into()).map_err(|error| error.to_string())?;
             }
             return Ok(());
         }

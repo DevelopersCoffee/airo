@@ -19,8 +19,7 @@ pub struct EnergyVad {
 
 impl EnergyVad {
     pub fn new(threshold: f32, silence_ms: u64, sample_rate_hz: u32) -> Self {
-        let silence_samples_required =
-            (sample_rate_hz as u64 * silence_ms / 1000).max(1) as usize;
+        let silence_samples_required = (sample_rate_hz as u64 * silence_ms / 1000).max(1) as usize;
         Self {
             threshold,
             silence_samples_required,

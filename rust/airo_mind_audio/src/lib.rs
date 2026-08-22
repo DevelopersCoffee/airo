@@ -25,7 +25,7 @@ pub use live::{LiveSpeechConfig, LiveSpeechPipeline, LiveStepReport};
 pub use ring::{PcmRingBuffer, RingPushReport};
 pub use speaker_activity::{SpeakerActivitySlice, SpeakerActivityTracker};
 pub use stabilizer::TranscriptStabilizer;
-pub use vad::{EnergyVad, VadState, rms_energy};
+pub use vad::{rms_energy, EnergyVad, VadState};
 
 /// Read [path] and return whisper-ready PCM.
 pub fn preprocess_path(path: &std::path::Path) -> Result<Pcm, String> {
