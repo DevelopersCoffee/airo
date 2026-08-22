@@ -95,10 +95,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(engine.request?.privacy, PrivacyProfile.private);
+    expect(engine.request?.policy, SearchPolicy.privacyFirst);
     expect(
       engine.request!.privacy.engineIds,
       isNot(contains('semantic_scholar')),
     );
+    final semantics = tester
+        .getSemantics(
+          find.byKey(const Key('agent_chat_research_privacy_private')),
+        )
+        .getSemanticsData();
+    expect(semantics.hint, contains('Self-hosted SearXNG'));
   });
 
   testWidgets('Cloud copy names every currently routed remote source', (
@@ -218,6 +225,52 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('resumes a Private checkpoint without widening its policy', (
+    tester,
+  ) async {
+    final log = RecordingOperationLog();
+    await appendResearchCheckpointOp(
+      log: log,
+      checkpoint: const ResearchCheckpoint(
+        jobId: 'job-private',
+        question: 'What is Qwen?',
+        state: ResearchPhase.paused,
+        pausedFrom: ResearchPhase.searching,
+        searchesUsed: 1,
+        iterationsUsed: 1,
+        completedNodeIds: ['root'],
+        policy: SearchPolicy.privacyFirst,
+      ),
+    );
+    final engine = _RecordingLibraryEngine();
+
+    await _pumpChatScreen(
+      tester,
+      operationLogPort: log,
+      deepResearchEngine: engine,
+    );
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
+    await tester.pumpAndSettle();
+
+    expect(engine.request?.privacy, PrivacyProfile.private);
+    expect(engine.request?.policy, SearchPolicy.privacyFirst);
+  });
+
+  testWidgets('privacy controls leave a usable input at 320px', (tester) async {
+    await _pumpChatScreen(tester, physicalSize: const Size(320, 1000));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
+    await tester.pump();
+
+    expect(find.text('Research privacy'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('agent_chat_input'))).width,
+      greaterThanOrEqualTo(200),
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _RecordingLibraryEngine implements DeepResearchEngine {
@@ -294,9 +347,10 @@ Future<void> _pumpChatScreen(
   WidgetTester tester, {
   OperationLogPort? operationLogPort,
   DeepResearchEngine? deepResearchEngine,
+  Size physicalSize = const Size(1200, 1000),
 }) async {
   tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(1200, 1000);
+  tester.view.physicalSize = physicalSize;
   addTearDown(() {
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();

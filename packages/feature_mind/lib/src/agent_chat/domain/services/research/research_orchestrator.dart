@@ -105,6 +105,8 @@ class ResearchOrchestrator {
           searchesUsed: searchesUsed,
           iterationsUsed: iterationsUsed,
           completedNodeIds: completed.toList(growable: false),
+          mode: request.mode,
+          policy: request.policy,
         ),
       );
     }
