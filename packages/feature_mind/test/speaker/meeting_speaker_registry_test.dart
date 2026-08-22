@@ -10,9 +10,7 @@ void main() {
   });
 
   test('mergeSpeakers aliases labels for display', () {
-    const registry = MeetingSpeakerRegistry(
-      displayNames: {'sp0': 'Alice'},
-    );
+    const registry = MeetingSpeakerRegistry(displayNames: {'sp0': 'Alice'});
     final merged = registry.mergeSpeakers(fromLabel: 'sp2', intoLabel: 'sp0');
     expect(merged.canonicalLabel('sp2'), 'sp0');
     expect(merged.displayNameFor('sp2'), 'Alice');

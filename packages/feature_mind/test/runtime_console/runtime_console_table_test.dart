@@ -70,9 +70,7 @@ void main() {
   });
 
   group('rendering rows', () {
-    testWidgets('shows the seeded ops paged, not all at once', (
-      tester,
-    ) async {
+    testWidgets('shows the seeded ops paged, not all at once', (tester) async {
       final port = FakeOperationLogPort(opCount: 12481);
       final controller = RuntimeConsoleController(log: port, pageSize: 20);
 
@@ -107,22 +105,23 @@ void main() {
       expect(unverifiedText.style?.color, isNot(verifiedText.style?.color));
     });
 
-    testWidgets('an unsigned row is distinct from both verified and unverified', (
-      tester,
-    ) async {
-      final port = FakeOperationLogPort(opCount: 20);
-      final controller = RuntimeConsoleController(log: port, pageSize: 20);
-      await _pumpConsole(tester, controller);
-      final unsignedOp = controller.rows.firstWhere(
-        (op) => op.signature == SignatureState.unsigned,
-      );
+    testWidgets(
+      'an unsigned row is distinct from both verified and unverified',
+      (tester) async {
+        final port = FakeOperationLogPort(opCount: 20);
+        final controller = RuntimeConsoleController(log: port, pageSize: 20);
+        await _pumpConsole(tester, controller);
+        final unsignedOp = controller.rows.firstWhere(
+          (op) => op.signature == SignatureState.unsigned,
+        );
 
-      final unsignedText = tester.widget<Text>(
-        find.byKey(Key('mind.console.signature.${unsignedOp.sequence}')),
-      );
+        final unsignedText = tester.widget<Text>(
+          find.byKey(Key('mind.console.signature.${unsignedOp.sequence}')),
+        );
 
-      expect(unsignedText.data, 'UNSIGNED');
-    });
+        expect(unsignedText.data, 'UNSIGNED');
+      },
+    );
 
     testWidgets('each of the seven cited op types renders a distinct label', (
       tester,
@@ -148,7 +147,11 @@ void main() {
         );
         labels.add(text.data!);
       }
-      expect(labels.length, citedKinds.length, reason: 'every kind renders a distinct label');
+      expect(
+        labels.length,
+        citedKinds.length,
+        reason: 'every kind renders a distinct label',
+      );
     });
 
     testWidgets('every MindOpKind renders a label rather than crashing', (
@@ -203,25 +206,26 @@ void main() {
   });
 
   group('per-row actions', () {
-    testWidgets('tapping the verify icon calls verifyRow and updates the label', (
-      tester,
-    ) async {
-      final port = FakeOperationLogPort(opCount: 20);
-      final controller = RuntimeConsoleController(log: port, pageSize: 20);
-      await _pumpConsole(tester, controller);
-      final op = controller.rows.firstWhere(
-        (op) => op.signature == SignatureState.verified,
-      );
-      port.verifyResults[op.sequence] = SignatureState.unverified;
+    testWidgets(
+      'tapping the verify icon calls verifyRow and updates the label',
+      (tester) async {
+        final port = FakeOperationLogPort(opCount: 20);
+        final controller = RuntimeConsoleController(log: port, pageSize: 20);
+        await _pumpConsole(tester, controller);
+        final op = controller.rows.firstWhere(
+          (op) => op.signature == SignatureState.verified,
+        );
+        port.verifyResults[op.sequence] = SignatureState.unverified;
 
-      await tester.tap(find.byKey(Key('mind.console.verify.${op.sequence}')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(Key('mind.console.verify.${op.sequence}')));
+        await tester.pumpAndSettle();
 
-      final text = tester.widget<Text>(
-        find.byKey(Key('mind.console.signature.${op.sequence}')),
-      );
-      expect(text.data, 'UNVERIFIED');
-    });
+        final text = tester.widget<Text>(
+          find.byKey(Key('mind.console.signature.${op.sequence}')),
+        );
+        expect(text.data, 'UNVERIFIED');
+      },
+    );
 
     testWidgets('right-clicking a row replays from that op against the port', (
       tester,
@@ -243,40 +247,45 @@ void main() {
       expect(port.replayFromCalls, [op.sequence]);
     });
 
-    testWidgets('a running replay renders progress as a percentage, not a spinner', (
-      tester,
-    ) async {
-      final port = FakeOperationLogPort(opCount: 20);
-      final controller = RuntimeConsoleController(log: port, pageSize: 20);
-      await _pumpConsole(tester, controller);
-      final op = controller.rows[0];
-      port.replaySteps[op.sequence] = [0.5];
+    testWidgets(
+      'a running replay renders progress as a percentage, not a spinner',
+      (tester) async {
+        final port = FakeOperationLogPort(opCount: 20);
+        final controller = RuntimeConsoleController(log: port, pageSize: 20);
+        await _pumpConsole(tester, controller);
+        final op = controller.rows[0];
+        port.replaySteps[op.sequence] = [0.5];
 
-      final gesture = await tester.startGesture(
-        tester.getCenter(find.byKey(Key('mind.console.row.${op.sequence}'))),
-        kind: PointerDeviceKind.mouse,
-        buttons: kSecondaryMouseButton,
-      );
-      await gesture.up();
-      await tester.pumpAndSettle();
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byKey(Key('mind.console.row.${op.sequence}'))),
+          kind: PointerDeviceKind.mouse,
+          buttons: kSecondaryMouseButton,
+        );
+        await gesture.up();
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(Key('mind.console.replay.${op.sequence}')), findsOneWidget);
-      expect(find.text('50%'), findsOneWidget);
-    });
+        expect(
+          find.byKey(Key('mind.console.replay.${op.sequence}')),
+          findsOneWidget,
+        );
+        expect(find.text('50%'), findsOneWidget);
+      },
+    );
   });
 
   group('non-happy: runtime unavailable', () {
-    testWidgets('shows an error rather than an empty table when count() fails', (
-      tester,
-    ) async {
-      final port = FakeOperationLogPort(opCount: 20)
-        ..countError = StateError('runtime unavailable');
-      final controller = RuntimeConsoleController(log: port);
+    testWidgets(
+      'shows an error rather than an empty table when count() fails',
+      (tester) async {
+        final port = FakeOperationLogPort(opCount: 20)
+          ..countError = StateError('runtime unavailable');
+        final controller = RuntimeConsoleController(log: port);
 
-      await _pumpConsole(tester, controller);
+        await _pumpConsole(tester, controller);
 
-      expect(find.byKey(const Key('mind.console.error')), findsOneWidget);
-      expect(find.byKey(const Key('mind.console.list')), findsNothing);
-    });
+        expect(find.byKey(const Key('mind.console.error')), findsOneWidget);
+        expect(find.byKey(const Key('mind.console.list')), findsNothing);
+      },
+    );
   });
 }

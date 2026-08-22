@@ -1,6 +1,9 @@
 import 'package:meta/meta.dart';
 
+import 'action_item.dart';
+import 'input_requirement.dart';
 import 'life_track.dart';
+import 'milestone.dart';
 
 @immutable
 class LifeTrackTemplate {
@@ -47,6 +50,86 @@ class LifeTrackTemplate {
         .map((item) => item.toJson())
         .toList(growable: false),
   };
+
+  /// Builds a local LifeTrack graph from this template. IDs are derived from
+  /// [trackId] so tests and connectors can stay deterministic.
+  LifeTrack instantiate({
+    required String trackId,
+    required String title,
+    required DateTime now,
+    TrackStatus status = TrackStatus.active,
+  }) {
+    final milestones = <Milestone>[];
+    for (
+      var milestoneIndex = 0;
+      milestoneIndex < this.milestones.length;
+      milestoneIndex++
+    ) {
+      final milestoneTemplate = this.milestones[milestoneIndex];
+      final milestoneId = '${trackId}_m$milestoneIndex';
+      final items = <ActionItem>[];
+      for (
+        var taskIndex = 0;
+        taskIndex < milestoneTemplate.tasks.length;
+        taskIndex++
+      ) {
+        final task = milestoneTemplate.tasks[taskIndex];
+        final itemId = '${milestoneId}_i$taskIndex';
+        final requirements = <InputRequirement>[];
+        for (
+          var requirementIndex = 0;
+          requirementIndex < task.requirements.length;
+          requirementIndex++
+        ) {
+          final requirement = task.requirements[requirementIndex];
+          requirements.add(
+            InputRequirement(
+              id: '${itemId}_r$requirementIndex',
+              actionItemId: itemId,
+              label: requirement.label,
+              fieldType: requirement.type,
+              isRequired: requirement.isRequired,
+              hint: requirement.hint,
+            ),
+          );
+        }
+        items.add(
+          ActionItem(
+            id: itemId,
+            milestoneId: milestoneId,
+            summary: task.summary,
+            description: task.description,
+            status: ItemStatus.todo,
+            requirements: requirements,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+      milestones.add(
+        Milestone(
+          id: milestoneId,
+          trackId: trackId,
+          name: milestoneTemplate.name,
+          objective: milestoneTemplate.objective,
+          sortOrder: milestoneIndex,
+          status: ItemStatus.todo,
+          actionItems: items,
+        ),
+      );
+    }
+
+    return LifeTrack(
+      id: trackId,
+      title: title,
+      category: category,
+      status: status,
+      milestones: milestones,
+      createdAt: now,
+      updatedAt: now,
+      templateId: templateId,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>

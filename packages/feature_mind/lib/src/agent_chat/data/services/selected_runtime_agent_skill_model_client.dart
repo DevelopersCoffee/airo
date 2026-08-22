@@ -33,11 +33,11 @@ $skillList
 User request:
 "$prompt"
 
-Return JSON only:
-{"skill_id":"skill-id"}
-
-If no skill applies:
-{"skill_id":null}
+Rules:
+- Return JSON only: {"skill_id":"skill-id"} or {"skill_id":null}.
+- Pick read-calendar-events only if the user asked about their calendar, meetings, agenda, appointments, or schedule.
+- Diet plans, meal plans, and recipes are written by the chat model. Return {"skill_id":null}.
+- If no device skill applies, return {"skill_id":null}.
 ''');
 
     if (response == null) return null;

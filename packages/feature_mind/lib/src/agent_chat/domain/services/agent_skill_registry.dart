@@ -60,6 +60,8 @@ class AgentSkillRegistry {
 
   bool addSkill(AgentSkill skill) => _repository.addSkill(skill);
 
+  void replaceSkill(AgentSkill skill) => _repository.replaceSkill(skill);
+
   List<AgentSkill> search(String query) => _repository.search(query);
 
   List<String> enabledSkillSummariesForPrompt() {

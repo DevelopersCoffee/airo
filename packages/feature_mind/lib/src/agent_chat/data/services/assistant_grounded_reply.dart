@@ -7,8 +7,9 @@ class AssistantGroundedReply {
 
   static const capabilitiesMessage =
       'I can chat on this device, use enabled skills, check your schedule, '
-      'set reminders, split bills, draft diet plans, plan routines, and open '
-      'Airo tools such as Money, Games, Reader, and model management.\n\n'
+      'set reminders, split bills, draft diet plans, plan routines, store '
+      'study and other LifeTrack journeys locally, and open Airo tools such '
+      'as Money, Games, Reader, and model management.\n\n'
       'Ask a question, or tell me which of those to do.';
 
   static String? tryHandle({

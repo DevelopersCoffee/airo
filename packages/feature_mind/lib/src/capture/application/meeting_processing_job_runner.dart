@@ -48,7 +48,9 @@ class MeetingProcessingJobRunner {
       speechLanguage: mode.speechLanguage,
     );
     if (!ready.isReady) {
-      throw StateError(ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.');
+      throw StateError(
+        ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.',
+      );
     }
     MindProgress? last;
     await for (final progress in _mindService.process(

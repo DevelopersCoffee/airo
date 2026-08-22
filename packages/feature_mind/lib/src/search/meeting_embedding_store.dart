@@ -58,11 +58,8 @@ class MeetingEmbeddingStore {
 
   /// Stores a single [vector] for [meetingId], produced by [modelId].
   /// Overwrites whatever was stored for that meeting before.
-  Future<void> put(
-    String meetingId,
-    String modelId,
-    List<double> vector,
-  ) => putChunks(meetingId, modelId, [vector]);
+  Future<void> put(String meetingId, String modelId, List<double> vector) =>
+      putChunks(meetingId, modelId, [vector]);
 
   /// Stores one vector per chunk for [meetingId]. [chunkVectors] must be
   /// non-empty — call [remove] to clear instead of writing an empty list.

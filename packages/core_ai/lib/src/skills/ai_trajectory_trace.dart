@@ -31,6 +31,19 @@ class AiTrajectoryTrace {
     'run_id': runId,
     'nodes': nodes.map((node) => node.toJson()).toList(growable: false),
   };
+
+  factory AiTrajectoryTrace.fromJson(Map<String, Object?> json) {
+    final nodes = (json['nodes'] as List<dynamic>? ?? const [])
+        .map(
+          (raw) =>
+              AiTrajectoryNode.fromJson(Map<String, Object?>.from(raw as Map)),
+        )
+        .toList(growable: false);
+    return AiTrajectoryTrace(
+      runId: json['run_id'] as String? ?? '',
+      nodes: nodes,
+    );
+  }
 }
 
 /// One redacted trajectory node.
@@ -63,6 +76,24 @@ class AiTrajectoryNode {
     if (summary != null) 'summary': summary,
     if (errorCode != null) 'error_code': errorCode,
   };
+
+  factory AiTrajectoryNode.fromJson(Map<String, Object?> json) {
+    return AiTrajectoryNode(
+      sequence: (json['sequence'] as num?)?.toInt() ?? 0,
+      kind: AiTrajectoryNodeKind.values.firstWhere(
+        (value) => value.name == json['kind'],
+        orElse: () => AiTrajectoryNodeKind.error,
+      ),
+      status: AiTrajectoryNodeStatus.values.firstWhere(
+        (value) => value.name == json['status'],
+        orElse: () => AiTrajectoryNodeStatus.succeeded,
+      ),
+      label: json['label'] as String? ?? '',
+      ref: json['ref'] as String?,
+      summary: json['summary'] as String?,
+      errorCode: json['error_code'] as String?,
+    );
+  }
 }
 
 /// Deterministic builder for redacted trajectories.

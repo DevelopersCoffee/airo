@@ -51,7 +51,8 @@ final class ModelDownloadInsufficientStorage extends ModelDownloadState {
       other.shortfallBytes == shortfallBytes;
 
   @override
-  int get hashCode => Object.hash(ModelDownloadInsufficientStorage, shortfallBytes);
+  int get hashCode =>
+      Object.hash(ModelDownloadInsufficientStorage, shortfallBytes);
 }
 
 /// Stopped on a metered connection. Explicit and named on the row itself —

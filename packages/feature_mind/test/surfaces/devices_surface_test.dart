@@ -248,10 +248,7 @@ void main() {
     (tester) async {
       await pumpSurface(
         tester,
-        DevicesSurface(
-          runtime: FixtureMindRuntime(),
-          nowMs: fixtureNowMs,
-        ),
+        DevicesSurface(runtime: FixtureMindRuntime(), nowMs: fixtureNowMs),
       );
       await tester.pumpAndSettle();
 

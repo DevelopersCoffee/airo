@@ -225,8 +225,8 @@ class MoneyTool implements Tool {
         );
       case IntentType.modelManagement:
         return const AgentToolResult(
-          route: '/agent/profile',
-          message: 'Opening Profile model settings.',
+          route: '/agent/models',
+          message: 'Opening model manager.',
         );
       default:
         return null;

@@ -84,6 +84,11 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     'Follow',
     'Please',
     'There',
+    'Make',
+    'Can',
+    'Hi',
+    'Give',
+    'Hello',
   };
 
   @override

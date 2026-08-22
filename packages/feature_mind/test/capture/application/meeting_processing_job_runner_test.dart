@@ -279,10 +279,7 @@ void main() {
 
       // ensureReady now re-inits when Settings picks a new speechLanguage;
       // with FakeReadyModelProvider that reaches the fake bridge.
-      expect(
-        speech.initializedSpeechLanguage,
-        rust.SpeechLanguage.englishOnly,
-      );
+      expect(speech.initializedSpeechLanguage, rust.SpeechLanguage.englishOnly);
       expect(speech.transcribeLanguage, 'en');
     },
   );

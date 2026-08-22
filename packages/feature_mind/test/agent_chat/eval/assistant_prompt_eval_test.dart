@@ -1,4 +1,3 @@
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_chat_context_builder.dart';
 import 'package:feature_mind/src/agent_chat/data/services/diet_plan_plugin_prompt.dart';
 import 'package:feature_mind/src/agent_chat/data/services/gguf_instruct_prompt.dart';
@@ -6,6 +5,10 @@ import 'package:feature_mind/src/agent_chat/domain/services/intent_parser.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/tool_registry.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/plugin_skill_fixture.dart';
+
+final draftDietPlanSkill = loadPluginSkillFixture('draft-diet-plan');
 
 /// Deterministic eval of the Assistant chip prompts plus the transcript
 /// follow-ups that failed in the 0.5B Mind chat session.
@@ -151,6 +154,19 @@ void main() {
       expect(wrapped, contains('or repeat a previous reply'));
     },
   );
+
+  test('prefills the Gemma model turn with a locked header', () {
+    final wrapped = formatGgufInstructPrompt(
+      prompt: 'write the plan',
+      systemPrompt: 'You are Airo.',
+      family: ModelFamily.gemma,
+      assistantPrefill: "Here's a 3-day diet plan:\n\n",
+    );
+    expect(
+      wrapped,
+      endsWith("<start_of_turn>model\nHere's a 3-day diet plan:\n\n"),
+    );
+  });
 
   test('trims 0.5B transcript continuation after a short answer', () {
     expect(

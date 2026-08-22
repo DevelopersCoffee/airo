@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 /// A closed set rather than a free-form string for the same reason
 /// [MindOpKind] is one: a new type must be a deliberate change to what the
 /// inspector can render, not a typo that shows up unstyled.
-enum EntityType { person, date, term }
+enum EntityType { person, date, term, organization, identifier, document }
 
 /// One entity pulled out of an op's title and detail text.
 ///

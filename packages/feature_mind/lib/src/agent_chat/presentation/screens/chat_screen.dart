@@ -231,6 +231,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late ChatWorkspaceStore _workspace;
   String? _conversationId;
   List<MindChatRecord> _chats = const [];
+  List<MindChatFolder> _folders = const [];
   static const _desktopBreakpoint = 1024.0;
   static const _activeChatPref = 'airo_mind.active_chat_id';
   final ChatTurnTraceStore _chatTurnTraceStore = ChatTurnTraceStore();
@@ -582,8 +583,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _restoreFromWorkspace() async {
     final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
     if (!mounted || chats.isEmpty) {
-      if (mounted) setState(() => _chats = chats);
+      if (mounted) {
+        setState(() {
+          _chats = chats;
+          _folders = folders;
+        });
+      }
       return;
     }
     final prefs = await SharedPreferences.getInstance();
@@ -592,10 +599,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       id = chats.first.id;
     }
     final turns = await _workspace.loadTranscript(id);
+    final folderId = _folderIdFor(id, chats);
+    final graph = await _workspace.loadSharedGraph(folderId);
+    await chatEntityGraphSession.replaceGraph(graph);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
       _chats = chats;
+      _folders = folders;
+      _entityGraph = graph;
       _historyRestored = true;
       if (turns.isNotEmpty) {
         _messages
@@ -603,6 +615,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ..addAll(turns.map(_messageFromTurn));
       }
     });
+  }
+
+  Future<void> _refreshChatList() async {
+    final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
+    _chats = chats;
+    _folders = folders;
+    if (mounted) setState(() {});
+  }
+
+  String? _folderIdFor(String? chatId, [List<MindChatRecord>? chats]) {
+    if (chatId == null) return null;
+    for (final chat in chats ?? _chats) {
+      if (chat.id == chatId) return chat.folderId;
+    }
+    return null;
+  }
+
+  Future<void> _applySharedGraph(String? folderId) async {
+    final graph = await _workspace.loadSharedGraph(folderId);
+    await chatEntityGraphSession.replaceGraph(graph);
+    if (mounted) setState(() => _entityGraph = graph);
   }
 
   Future<void> _persistWorkspace() async {
@@ -616,7 +650,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _conversationId ??= await _workspace.createChat();
     final id = _conversationId!;
     await _workspace.replaceTranscript(id, turns);
-    await _workspace.saveDirectory(_entityGraph);
+    await _workspace.saveSharedGraph(_folderIdFor(id), _entityGraph);
     await _workspace.saveChatGraph(id, _entityGraph);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -625,12 +659,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Tests without a mock still persist the transcript in-memory.
     }
     final chats = await _workspace.listChats();
+    final folders = await _workspace.listFolders();
     _chats = chats;
+    _folders = folders;
   }
 
-  Future<void> _startNewChat() async {
+  Future<void> _startNewChat({String? folderId}) async {
     await _persistWorkspace();
-    final id = await _workspace.createChat();
+    final previousFolder = _folderIdFor(_conversationId);
+    final targetFolder = folderId ?? previousFolder;
+    final id = await _workspace.createChat(folderId: targetFolder);
     _conversationId = id;
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -642,8 +680,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _messages.clear();
     });
-    _chats = await _workspace.listChats();
-    if (mounted) setState(() {});
+    await _refreshChatList();
+    if (targetFolder != previousFolder) {
+      await _applySharedGraph(targetFolder);
+    }
+  }
+
+  Future<void> _createFolder(String name) async {
+    await _workspace.createFolder(name);
+    await _refreshChatList();
+  }
+
+  Future<void> _setFolderPlugins(
+    String folderId,
+    List<String> pluginIds,
+  ) async {
+    MindChatFolder? current;
+    for (final folder in _folders) {
+      if (folder.id == folderId) current = folder;
+    }
+    if (current == null) return;
+    await _workspace.updateFolder(current.copyWith(pluginIds: pluginIds));
+    await _refreshChatList();
   }
 
   Future<void> _openChat(String id) async {
@@ -664,6 +722,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ..clear()
         ..addAll(turns.map(_messageFromTurn));
     });
+    await _applySharedGraph(_folderIdFor(id));
+  }
+
+  Future<void> _moveChat(String chatId, String? folderId) async {
+    await _persistWorkspace();
+    await _workspace.moveChatToFolder(chatId, folderId);
+    await _refreshChatList();
+    if (chatId == _conversationId) {
+      await _applySharedGraph(folderId);
+    }
+  }
+
+  Future<void> _removeChat(String id) async {
+    final wasActive = id == _conversationId;
+    final folderId = _folderIdFor(id);
+    if (wasActive) {
+      _conversationId = null;
+    } else {
+      await _persistWorkspace();
+    }
+    await _workspace.deleteChat(id);
+    await _refreshChatList();
+    if (!wasActive || !mounted) return;
+    if (_chats.isNotEmpty) {
+      await _openChat(_chats.first.id);
+      return;
+    }
+    final nextId = await _workspace.createChat(folderId: folderId);
+    _conversationId = nextId;
+    _resetResearchUi();
+    setState(() => _messages.clear());
+    await _refreshChatList();
+    await _applySharedGraph(folderId);
   }
 
   void _openMemoryGraph() {
@@ -674,6 +765,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           contextId: 'kneesurgery2026',
           directory: _entityGraph,
           chats: _chats,
+          folders: _folders,
           activeChatId: _conversationId,
           onBack: () => Navigator.of(context).pop(),
           onOpenChat: (id) {
@@ -684,6 +776,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Navigator.of(context).pop();
             unawaited(_startNewChat());
           },
+          onCreateFolder: (name) => unawaited(_createFolder(name)),
+          onMoveChat: (chatId, folderId) =>
+              unawaited(_moveChat(chatId, folderId)),
+          onRemoveChat: (id) => unawaited(_removeChat(id)),
+          onNewChatInFolder: (folderId) =>
+              unawaited(_startNewChat(folderId: folderId)),
+          onSetFolderPlugins: (folderId, pluginIds) =>
+              unawaited(_setFolderPlugins(folderId, pluginIds)),
+          pluginOptions: _folderPluginOptions,
         ),
       ),
     );
@@ -945,10 +1046,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: MindDirectoryChatsPane(
                         directory: _entityGraph,
                         chats: _chats,
+                        folders: _folders,
                         activeChatId: _conversationId,
+                        activeFolderId: _folderIdFor(_conversationId),
                         onOpenChat: (id) => unawaited(_openChat(id)),
                         onNewChat: () => unawaited(_startNewChat()),
                         onOpenMemory: _openMemoryGraph,
+                        onCreateFolder: (name) =>
+                            unawaited(_createFolder(name)),
+                        onMoveChat: (chatId, folderId) =>
+                            unawaited(_moveChat(chatId, folderId)),
+                        onRemoveChat: (id) => unawaited(_removeChat(id)),
+                        onNewChatInFolder: (folderId) =>
+                            unawaited(_startNewChat(folderId: folderId)),
+                        onSetFolderPlugins: (folderId, pluginIds) =>
+                            unawaited(_setFolderPlugins(folderId, pluginIds)),
+                        pluginOptions: _folderPluginOptions,
                       ),
                     ),
                     const VerticalDivider(width: 1),
@@ -961,10 +1074,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  MindChatFolder? get _activeFolder {
+    final id = _folderIdFor(_conversationId);
+    if (id == null) return null;
+    for (final folder in _folders) {
+      if (folder.id == id) return folder;
+    }
+    return null;
+  }
+
+  String? get _effectivePersonaId {
+    final folder = _activeFolder;
+    if (folder != null) {
+      for (final pluginId in folder.pluginIds) {
+        final skill = _skillRegistry.getById(pluginId);
+        if (skill != null && skill.isPersona) return pluginId;
+      }
+    }
+    return _pinnedPersonaId;
+  }
+
+  List<MindFolderPluginOption> get _folderPluginOptions => [
+    for (final skill in _skillRegistry.getAllSkills())
+      if (skill.isPersona || skill.isGenerativePlugin)
+        MindFolderPluginOption(
+          id: skill.id,
+          name: skill.name,
+          description: skill.description,
+        ),
+  ];
+
   PersonaSession get _personaSession => PersonaSession(
-    pinned: _pinnedPersonaId == null
+    pinned: _effectivePersonaId == null
         ? null
-        : _skillRegistry.getById(_pinnedPersonaId!),
+        : _skillRegistry.getById(_effectivePersonaId!),
   );
 
   Widget _buildPinnedAssistantBar(PersonaSession session) {
@@ -1643,7 +1786,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final skillStopwatch = Stopwatch()..start();
       final skillResult = await _skillOrchestrator.run(
         message,
-        pinnedPersonaId: _pinnedPersonaId,
+        pinnedPersonaId: _effectivePersonaId,
       );
       skillStopwatch.stop();
       if (skillResult.handled) {
@@ -2431,16 +2574,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentPrompt: currentPrompt,
       history: history,
     );
-    return _skillRegistry
-        .getEnabledSkills()
-        .where(
-          (skill) =>
-              skill.isGenerativePlugin &&
-              (!skill.isPersona || skill.id == 'draft-diet-plan'),
-        )
-        .where((skill) => skill.id != 'draft-diet-plan' || dietApplies)
-        .map((skill) => '${skill.name}: ${skill.instructions}')
-        .toList(growable: false);
+    final seen = <String>{};
+    final playbooks = <String>[];
+    final folder = _activeFolder;
+    if (folder != null) {
+      for (final pluginId in folder.pluginIds) {
+        final skill = _skillRegistry.getById(pluginId);
+        if (skill == null) continue;
+        final line = '${skill.name}: ${skill.instructions}';
+        if (seen.add(line)) playbooks.add(line);
+      }
+    }
+    for (final skill in _skillRegistry.getEnabledSkills()) {
+      if (!skill.isGenerativePlugin) continue;
+      if (skill.isPersona && skill.id != 'draft-diet-plan') continue;
+      if (skill.id == 'draft-diet-plan' && !dietApplies) continue;
+      final line = '${skill.name}: ${skill.instructions}';
+      if (seen.add(line)) playbooks.add(line);
+    }
+    return playbooks;
   }
 
   String _previewForMetadata(String? value) {

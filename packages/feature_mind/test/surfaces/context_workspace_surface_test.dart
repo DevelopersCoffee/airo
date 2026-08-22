@@ -35,7 +35,9 @@ Future<void> _pumpAtSize(
   });
 
   await tester.pumpWidget(
-    MaterialApp(home: Scaffold(body: SizedBox.expand(child: child))),
+    MaterialApp(
+      home: Scaffold(body: SizedBox.expand(child: child)),
+    ),
   );
 }
 
@@ -87,8 +89,7 @@ class _UnavailableContextPort implements ContextPort {
   Future<void> unlink(String fromId, String toId) async => _fail();
 
   @override
-  Future<List<String>> survivorsIfDestroyed(String contextId) async =>
-      _fail();
+  Future<List<String>> survivorsIfDestroyed(String contextId) async => _fail();
 }
 
 class _UnavailableProjectionPort implements ProjectionPort {
@@ -154,7 +155,8 @@ void main() {
       expect(
         600 >= ContextWorkspaceSurface.tabletBreakpoint,
         isTrue,
-        reason: 'RESPONSIVE_STANDARDS.md documents 600px as the start of '
+        reason:
+            'RESPONSIVE_STANDARDS.md documents 600px as the start of '
             'the tablet range.',
       );
     });
@@ -277,9 +279,7 @@ void main() {
   });
 
   group('R02 — context chips', () {
-    testWidgets('every chip meets the 48px minimum tap target', (
-      tester,
-    ) async {
+    testWidgets('every chip meets the 48px minimum tap target', (tester) async {
       await _pumpAtSize(
         tester,
         ContextWorkspaceSurface(

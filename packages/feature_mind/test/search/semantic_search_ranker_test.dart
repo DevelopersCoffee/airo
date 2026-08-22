@@ -87,32 +87,29 @@ void main() {
       expect(result.map((h) => h.meetingId), ['m1']);
     });
 
-    test(
-      're-ranks keyword hits by descending semantic similarity',
-      () async {
-        final ranker = SemanticSearchRanker(
-          embeddingService: _FakeEmbeddingService(
-            vectors: {
-              'query': [1.0, 0.0],
-              'far text': [0.7, 0.3],
-              'close text': [0.9, 0.1],
-            },
-          ),
-          embeddingStore: store,
-        );
+    test('re-ranks keyword hits by descending semantic similarity', () async {
+      final ranker = SemanticSearchRanker(
+        embeddingService: _FakeEmbeddingService(
+          vectors: {
+            'query': [1.0, 0.0],
+            'far text': [0.7, 0.3],
+            'close text': [0.9, 0.1],
+          },
+        ),
+        embeddingStore: store,
+      );
 
-        final result = await ranker.rank(
-          query: 'query',
-          keywordHits: [_hit('far'), _hit('close')],
-          meetings: [
-            _meeting('far', transcript: 'far', minutes: 'text'),
-            _meeting('close', transcript: 'close', minutes: 'text'),
-          ],
-        );
+      final result = await ranker.rank(
+        query: 'query',
+        keywordHits: [_hit('far'), _hit('close')],
+        meetings: [
+          _meeting('far', transcript: 'far', minutes: 'text'),
+          _meeting('close', transcript: 'close', minutes: 'text'),
+        ],
+      );
 
-        expect(result.map((h) => h.meetingId), ['close', 'far']);
-      },
-    );
+      expect(result.map((h) => h.meetingId), ['close', 'far']);
+    });
 
     test(
       'adds a semantic-only match that clears the similarity threshold',
@@ -285,8 +282,10 @@ void main() {
             vectors: {
               'query': [1.0, 0.0],
               'transcript text minutes text Adopt Kubernetes for staging '
-                      'Finish the migration Priya':
-                  [1.0, 0.0],
+                  'Finish the migration Priya': [
+                1.0,
+                0.0,
+              ],
             },
           ),
           embeddingStore: store,
@@ -334,8 +333,10 @@ void main() {
             vectors: {
               'query': [1.0, 0.0],
               'transcript text minutes text Adopt Kubernetes for staging '
-                      'Finish the migration Priya':
-                  [1.0, 0.0],
+                  'Finish the migration Priya': [
+                1.0,
+                0.0,
+              ],
             },
           ),
           embeddingStore: store,
@@ -438,8 +439,10 @@ void main() {
             vectors: {
               'pricing decision': [1.0, 0.0],
               'We agreed on the Q3 cost structure for enterprise seats '
-                      'minutes text':
-                  [0.95, 0.05],
+                  'minutes text': [
+                0.95,
+                0.05,
+              ],
             },
           ),
           embeddingStore: store,
@@ -463,10 +466,7 @@ void main() {
         );
 
         expect(result.map((h) => h.meetingId), ['budget']);
-        expect(
-          result.first.snippet.toLowerCase().contains('pricing'),
-          isFalse,
-        );
+        expect(result.first.snippet.toLowerCase().contains('pricing'), isFalse);
       },
     );
   });
@@ -487,9 +487,7 @@ void main() {
 
       expect(await ranker.indexMeeting(meeting), isTrue);
       expect(await store.get('m1'), isNotNull);
-      expect(embeddingService.taskTypes, [
-        EmbeddingTaskType.retrievalDocument,
-      ]);
+      expect(embeddingService.taskTypes, [EmbeddingTaskType.retrievalDocument]);
 
       embeddingService.embedCallsByText.clear();
       embeddingService.taskTypes.clear();

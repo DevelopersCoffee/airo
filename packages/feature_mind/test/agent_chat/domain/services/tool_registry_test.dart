@@ -212,8 +212,8 @@ void main() {
       expect(game.route, '/games');
       expect(game.message, contains('Arena'));
       expect(game.parameters['game'], 'chess');
-      expect(models.route, '/agent/profile');
-      expect(models.message, contains('Profile model settings'));
+      expect(models.route, '/agent/models');
+      expect(models.message, contains('model manager'));
     });
 
     test(

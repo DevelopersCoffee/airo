@@ -48,8 +48,12 @@ class PersonaSession {
     final templateId = persona.lifeTrackTemplateId;
     if (templateId != null && templateId.isNotEmpty) {
       lines.add(
-        'When asked what is pending or the next to-do, use LifeTrack '
-        '(template $templateId) rather than inventing tasks.',
+        'When asked what is pending or the next to-do, read stored chat '
+        'entities first, then LifeTrack (template $templateId) if a journey '
+        'was saved. Do not invent tasks. Extract entities from each message '
+        'and keep relations (insurer, broker, claim ids, documents) in the '
+        'local graph. When the user asks who or what is linked, query that '
+        'graph.',
       );
     }
     return lines;

@@ -124,6 +124,12 @@ class ChatEntityGraph {
     return null;
   }
 
+  ChatEntityGraph merge(ChatEntityGraph other) => upsert(
+    incomingNodes: other.nodes,
+    incomingEdges: other.edges,
+    mentionedIds: other.recentNodeIds,
+  );
+
   ChatEntityGraph upsert({
     required List<ChatGraphNode> incomingNodes,
     required List<ChatGraphEdge> incomingEdges,

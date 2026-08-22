@@ -637,10 +637,12 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   speakerRegistry: _speakerRegistry,
                   onRenameSpeaker: _renameSpeaker,
                   onMergeSpeaker: _mergeSpeaker,
-                  onRememberSpeaker:
-                      _audioPath != null ? _rememberSpeaker : null,
-                  globalEnrolledNames:
-                      globalEnrolledSpeakerNames(_globalProfiles),
+                  onRememberSpeaker: _audioPath != null
+                      ? _rememberSpeaker
+                      : null,
+                  globalEnrolledNames: globalEnrolledSpeakerNames(
+                    _globalProfiles,
+                  ),
                 ),
               ],
               if (stored != null) ...[

@@ -90,9 +90,7 @@ class _MindRuntimeNotesScreenState extends State<MindRuntimeNotesScreen> {
       final path = p.join(base.path, 'airo_mind', 'notes.log');
       final log = await NotesOperationLog.open(path);
       if (!mounted) return;
-      setState(
-        () => _capability = NotesCapability.rustPreferred(log),
-      );
+      setState(() => _capability = NotesCapability.rustPreferred(log));
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _error = error);
@@ -108,9 +106,7 @@ class _MindRuntimeNotesScreenState extends State<MindRuntimeNotesScreen> {
       );
     }
     if (_capability == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       appBar: AppBar(
@@ -159,9 +155,7 @@ class _MindRuntimeConsoleScreenState
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       appBar: AppBar(

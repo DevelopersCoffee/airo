@@ -47,12 +47,17 @@ Stream<GenerationEvent> generateMinutes({
 /// General text completion for assistant chat — prompt is used as-is (no
 /// meeting-secretary wrapper). Shares the same generation engine as
 /// [`generate_minutes`].
+///
+/// `grammar` is a GBNF grammar (start symbol `root`) constraining the token
+/// stream, or `null` for unconstrained sampling.
 Stream<GenerationEvent> generateCompletion({
   required String prompt,
   required int maxOutputTokens,
+  String? grammar,
 }) => RustLib.instance.api.crateApiMinutesGenerateCompletion(
   prompt: prompt,
   maxOutputTokens: maxOutputTokens,
+  grammar: grammar,
 );
 
 /// Stops the in-flight generation at the next token.

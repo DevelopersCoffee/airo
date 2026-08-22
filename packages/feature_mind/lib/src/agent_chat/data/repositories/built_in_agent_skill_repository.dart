@@ -2,12 +2,7 @@ import '../../domain/models/agent_skill.dart';
 import '../../domain/repositories/agent_skill_repository.dart';
 import '../built_in_skills/calendar_today.dart';
 import '../built_in_skills/create_calendar_event.dart';
-import '../built_in_skills/draft_diet_plan.dart';
-import '../built_in_skills/insurance_planner.dart';
-import '../built_in_skills/law_personas.dart';
-import '../built_in_skills/life_workflow_personas.dart';
-import '../built_in_skills/property_purchase.dart';
-import '../built_in_skills/teacher_personas.dart';
+import '../built_in_skills/record_study_progress.dart';
 import '../built_in_skills/wellbeing.dart';
 
 class BuiltInAgentSkillRepository implements AgentSkillRepository {
@@ -41,6 +36,11 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
     _skills[skill.id] = skill;
     _notifyEnabledStateChanged();
     return true;
+  }
+
+  void replaceSkill(AgentSkill skill) {
+    _skills[skill.id] = skill;
+    _notifyEnabledStateChanged();
   }
 
   @override
@@ -101,13 +101,8 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
 final builtInAgentSkills = <AgentSkill>[
   calendarTodaySkill,
   createCalendarEventSkill,
-  draftDietPlanSkill,
-  insurancePlannerPersona,
-  propertyPurchasePersona,
-  ...builtInTeacherPersonas,
-  ...builtInLawPersonas,
-  ...builtInLifeWorkflowPersonas,
   wellbeingSkill,
+  recordStudyProgressSkill,
   AgentSkill(
     id: 'schedule-notification',
     name: 'Schedule Notification',

@@ -123,6 +123,7 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   var unloadCalls = 0;
   String? lastGrammar;
   String? lastCompletePrompt;
+  String? lastCompleteGrammar;
   int? lastCompleteMaxOutputTokens;
   var _loaded = false;
 
@@ -163,9 +164,11 @@ class FakeMindGenerationBridge implements MindGenerationBridge {
   Stream<GenerationEvent> complete({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   }) {
     lastCompletePrompt = prompt;
     lastCompleteMaxOutputTokens = maxOutputTokens;
+    lastCompleteGrammar = grammar;
     return Stream.fromIterable(completeEvents ?? generationEvents);
   }
 

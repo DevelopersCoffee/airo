@@ -63,9 +63,7 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: const Text('Settings'),
-              subtitle: const Text(
-                'Appearance, audio, playback, and playlist source',
-              ),
+              subtitle: const Text('Appearance, on-device AI, and capture'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => host.openHostSettings(context),
             ),

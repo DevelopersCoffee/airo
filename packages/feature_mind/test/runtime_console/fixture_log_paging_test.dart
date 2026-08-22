@@ -34,30 +34,36 @@ void main() {
     );
   });
 
-  test('bySequence resolves a synthesized row the same as range does', () async {
-    final runtime = FixtureMindRuntime();
-    final page = await runtime.log.range(offset: 50, limit: 1);
-    final synthesizedOp = page.single;
+  test(
+    'bySequence resolves a synthesized row the same as range does',
+    () async {
+      final runtime = FixtureMindRuntime();
+      final page = await runtime.log.range(offset: 50, limit: 1);
+      final synthesizedOp = page.single;
 
-    final bySequence = await runtime.log.bySequence(synthesizedOp.sequence);
+      final bySequence = await runtime.log.bySequence(synthesizedOp.sequence);
 
-    expect(bySequence, synthesizedOp);
-  });
+      expect(bySequence, synthesizedOp);
+    },
+  );
 
-  test('paging past nine rows exercises more than one signature state', () async {
-    final runtime = FixtureMindRuntime();
+  test(
+    'paging past nine rows exercises more than one signature state',
+    () async {
+      final runtime = FixtureMindRuntime();
 
-    final page = await runtime.log.range(offset: 0, limit: 500);
+      final page = await runtime.log.range(offset: 0, limit: 500);
 
-    expect(
-      page.map((op) => op.signature).toSet(),
-      containsAll(<SignatureState>{
-        SignatureState.verified,
-        SignatureState.unverified,
-        SignatureState.unsigned,
-      }),
-    );
-  });
+      expect(
+        page.map((op) => op.signature).toSet(),
+        containsAll(<SignatureState>{
+          SignatureState.verified,
+          SignatureState.unverified,
+          SignatureState.unsigned,
+        }),
+      );
+    },
+  );
 
   test('paging past nine rows exercises every cited op type', () async {
     final runtime = FixtureMindRuntime();
@@ -82,11 +88,14 @@ void main() {
     expect(await runtime.log.count(), 12481);
   });
 
-  test('the first three rows are unchanged from the design-named ops', () async {
-    final runtime = FixtureMindRuntime();
+  test(
+    'the first three rows are unchanged from the design-named ops',
+    () async {
+      final runtime = FixtureMindRuntime();
 
-    final page = await runtime.log.range(offset: 0, limit: 3);
+      final page = await runtime.log.range(offset: 0, limit: 3);
 
-    expect(page.map((op) => op.sequence), [12481, 12477, 12463]);
-  });
+      expect(page.map((op) => op.sequence), [12481, 12477, 12463]);
+    },
+  );
 }

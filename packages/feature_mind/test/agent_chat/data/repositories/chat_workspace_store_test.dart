@@ -80,4 +80,125 @@ void main() {
       expect(directory.nodes.single.name, 'Niva Bupa');
     },
   );
+
+  test('chats in a folder share that folder knowledge graph', () async {
+    final store = MemoryChatWorkspaceStore();
+    final folder = await store.createFolder('Study');
+    final first = await store.createChat(folderId: folder.id);
+    await store.saveChatGraph(
+      first,
+      const ChatEntityGraph(
+        nodes: [
+          ChatGraphNode(id: 'term:queue', type: EntityType.term, name: 'queue'),
+        ],
+      ),
+    );
+    await store.moveChatToFolder(first, folder.id);
+    final second = await store.createChat(folderId: folder.id);
+
+    final shared = await store.loadSharedGraph(folder.id);
+    expect(shared.nodes.single.name, 'queue');
+    expect((await store.listChats()).map((chat) => chat.folderId).toSet(), {
+      folder.id,
+    });
+    expect(second, isNotEmpty);
+  });
+
+  test(
+    'deleteChat removes the transcript and leaves folder knowledge',
+    () async {
+      final store = MemoryChatWorkspaceStore();
+      final folder = await store.createFolder('Study');
+      final id = await store.createChat(folderId: folder.id);
+      await store.replaceTranscript(id, [
+        ChatTranscriptTurn(
+          role: 'user',
+          text: 'hi',
+          createdAt: DateTime.utc(2026, 8, 22),
+        ),
+      ]);
+      await store.saveSharedGraph(
+        folder.id,
+        const ChatEntityGraph(
+          nodes: [
+            ChatGraphNode(
+              id: 'term:queue',
+              type: EntityType.term,
+              name: 'queue',
+            ),
+          ],
+        ),
+      );
+
+      await store.deleteChat(id);
+
+      expect(await store.listChats(), isEmpty);
+      expect(
+        (await store.loadSharedGraph(folder.id)).nodes.single.name,
+        'queue',
+      );
+    },
+  );
+
+  test('IO workspace persists folder membership and shared KV', () async {
+    final root = await Directory.systemTemp.createTemp('airo_mind_folders_');
+    addTearDown(() => root.delete(recursive: true));
+    final store = IoChatWorkspaceStore(root);
+    final folder = await store.createFolder('Study');
+    final id = await store.createChat(folderId: folder.id);
+    await store.saveSharedGraph(
+      folder.id,
+      const ChatEntityGraph(
+        nodes: [
+          ChatGraphNode(id: 'term:queue', type: EntityType.term, name: 'queue'),
+        ],
+      ),
+    );
+
+    expect(
+      File(
+        '${root.path}/${ChatWorkspaceLayout.folderGraphPath(folder.id)}',
+      ).existsSync(),
+      isTrue,
+    );
+    final chats = await store.listChats();
+    expect(chats.single.folderId, folder.id);
+    expect((await store.loadSharedGraph(folder.id)).nodes.single.name, 'queue');
+
+    await store.deleteChat(id);
+    expect(await store.listChats(), isEmpty);
+    expect(
+      Directory(
+        '${root.path}/${ChatWorkspaceLayout.chatFolder(id)}',
+      ).existsSync(),
+      isFalse,
+    );
+  });
+
+  test('folder plugins persist and survive a chat delete', () async {
+    final store = MemoryChatWorkspaceStore();
+    final folder = await store.createFolder('Study');
+    await store.updateFolder(
+      folder.copyWith(pluginIds: const ['draft-diet-plan']),
+    );
+    final id = await store.createChat(folderId: folder.id);
+    await store.deleteChat(id);
+
+    final folders = await store.listFolders();
+    expect(folders.single.pluginIds, ['draft-diet-plan']);
+  });
+
+  test('IO workspace persists folder plugin ids', () async {
+    final root = await Directory.systemTemp.createTemp('airo_mind_plugins_');
+    addTearDown(() => root.delete(recursive: true));
+    final store = IoChatWorkspaceStore(root);
+    final folder = await store.createFolder('Study');
+    await store.updateFolder(
+      folder.copyWith(pluginIds: const ['lesson-planning-assistant']),
+    );
+
+    final reloaded = IoChatWorkspaceStore(root);
+    final folders = await reloaded.listFolders();
+    expect(folders.single.pluginIds, ['lesson-planning-assistant']);
+  });
 }

@@ -407,7 +407,9 @@ class MeetingIrTranscriptList extends StatelessWidget {
                                     ),
                                     if (onRememberSpeaker != null)
                                       ListTile(
-                                        leading: const Icon(Icons.badge_outlined),
+                                        leading: const Icon(
+                                          Icons.badge_outlined,
+                                        ),
                                         title: const Text(
                                           'Remember for future meetings',
                                         ),

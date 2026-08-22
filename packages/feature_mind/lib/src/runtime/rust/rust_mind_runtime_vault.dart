@@ -12,8 +12,10 @@ class RustMindRuntimeVault implements VaultPort {
 
   bool get _rustReady => mindRuntimeRustReady();
 
-  Never _unavailable(String detail) =>
-      throw MindPortUnavailable('VaultPort', 'not implemented yet — $_issue ($detail)');
+  Never _unavailable(String detail) => throw MindPortUnavailable(
+    'VaultPort',
+    'not implemented yet — $_issue ($detail)',
+  );
 
   @override
   Future<VaultState> state() async {

@@ -9,16 +9,21 @@ class ChatHistoryEntry {
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.runId,
   });
 
   final String text;
   final bool isUser;
   final DateTime timestamp;
 
+  /// Inspector run for this assistant bubble. Absent on user rows and v1 history.
+  final String? runId;
+
   Map<String, Object?> toJson() => {
     'text': text,
     'isUser': isUser,
     'timestamp': timestamp.toUtc().toIso8601String(),
+    if (runId != null) 'runId': runId,
   };
 
   static ChatHistoryEntry? fromJson(Object? value) {
@@ -31,10 +36,12 @@ class ChatHistoryEntry {
     }
     final parsedTimestamp = DateTime.tryParse(timestamp);
     if (parsedTimestamp == null) return null;
+    final runId = value['runId'];
     return ChatHistoryEntry(
       text: text,
       isUser: isUser,
       timestamp: parsedTimestamp.toLocal(),
+      runId: runId is String && runId.isNotEmpty ? runId : null,
     );
   }
 }
@@ -43,7 +50,8 @@ class ChatHistoryStore {
   ChatHistoryStore({this.preferences});
 
   static const storageKey = 'airo_mind.chat_history.v1';
-  static const schemaVersion = 1;
+  static const schemaVersion = 2;
+  static const minSupportedSchemaVersion = 1;
   static const maxEntries = 200;
   static const maxEntryCharacters = 20000;
 
@@ -60,7 +68,11 @@ class ChatHistoryStore {
     if (raw == null) return const [];
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! Map || decoded['schemaVersion'] != schemaVersion) {
+      if (decoded is! Map) return const [];
+      final version = decoded['schemaVersion'];
+      if (version is! int ||
+          version < minSupportedSchemaVersion ||
+          version > schemaVersion) {
         return const [];
       }
       final entries = decoded['entries'];

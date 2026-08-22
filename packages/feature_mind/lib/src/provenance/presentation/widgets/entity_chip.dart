@@ -22,6 +22,9 @@ class EntityChip extends StatelessWidget {
     EntityType.person: 'person',
     EntityType.date: 'date',
     EntityType.term: 'term',
+    EntityType.organization: 'organization',
+    EntityType.identifier: 'identifier',
+    EntityType.document: 'document',
   };
 
   @override
@@ -49,7 +52,7 @@ class EntityChip extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: MindPalette.ink),
                 ),
                 Text(
-                  _typeLabels[entity.type]!,
+                  _typeLabels[entity.type] ?? entity.type.name,
                   style: TextStyle(
                     fontSize: 10,
                     color: MindPalette.ink.withValues(alpha: 0.55),
