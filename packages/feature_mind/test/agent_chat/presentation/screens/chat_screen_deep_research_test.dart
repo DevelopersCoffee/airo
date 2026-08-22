@@ -307,6 +307,10 @@ void main() {
       operationLogPort: log,
       deepResearchEngine: engine,
     );
+    expect(
+      find.text('Restored local-only job: no remote sources.'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
     await tester.pumpAndSettle();
 

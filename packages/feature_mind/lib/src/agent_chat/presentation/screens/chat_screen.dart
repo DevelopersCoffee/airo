@@ -327,6 +327,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool get _canChangeResearchPrivacy =>
       !_isGenerating && !(_resumableCheckpoint?.isTerminal == false);
 
+  String get _selectedResearchPrivacyDescription =>
+      _resumableCheckpoint?.policy == SearchPolicy.localOnly
+      ? 'Restored local-only job: no remote sources.'
+      : _privacyDescription(_researchPrivacy);
+
   final FocusNode _selectedModelBarFocusNode = FocusNode();
   final FocusNode _skillsButtonFocusNode = FocusNode();
   final FocusNode _messageInputFocusNode = FocusNode();
@@ -1083,7 +1088,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   ),
                                   const SizedBox(height: AiroSpacing.xs),
                                   Text(
-                                    _privacyDescription(_researchPrivacy),
+                                    _selectedResearchPrivacyDescription,
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: colorScheme.onSurfaceVariant,

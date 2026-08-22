@@ -92,10 +92,11 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 15. Semantic Scholar search/acquisition alongside Wikipedia and arXiv.
 16. Pause/resume/cancel and operation-log checkpoints. The `v2` record
     preserves mode and policy; ambiguous `v1` records fail closed to
-    Deep/Private. Chat can reattach a paused job after process restart and waits
-    for the user to resume it. The Rust `ResearchCheckpoint` public struct now
-    carries `mode` and `policy`; external struct-literal callers must supply
-    those fields or migrate to `from_job` / `from_record`.
+    Deep/LocalOnly (zero remote engines). Chat can reattach a paused job after
+    process restart and waits for the user to resume it. The Rust
+    `ResearchCheckpoint` public struct now carries `mode` and `policy`; external
+    struct-literal callers must supply those fields or migrate to `from_job` /
+    `from_record`.
 17. Operation-log research library, incremental URL delta, cited comparison
     matrix, and contested-row decisions.
 18. User-facing Private / Balanced / Cloud profiles, observability metrics,

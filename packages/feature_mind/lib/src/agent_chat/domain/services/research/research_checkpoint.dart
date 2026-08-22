@@ -91,7 +91,7 @@ class ResearchCheckpoint {
     final pausedFrom = parts[4].isEmpty ? null : parseResearchPhase(parts[4]);
     final mode = legacy ? ResearchMode.deep : parseResearchMode(parts[8]);
     final policy = legacy
-        ? SearchPolicy.privacyFirst
+        ? SearchPolicy.localOnly
         : parseResearchPolicy(parts[9]);
     if (mode == null || policy == null) {
       throw const FormatException('invalid research checkpoint policy');
