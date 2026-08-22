@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use airo_mind_core::research::{
-    ResearchEngine, ResearchEvent as CoreEvent, ResearchEventKind as CoreKind,
+    ResearchCheckpoint, ResearchEngine, ResearchEvent as CoreEvent, ResearchEventKind as CoreKind,
     ResearchJobState as CoreJobState, ResearchRequest as CoreRequest, ResearchMode,
     SearchEngine, SearchError, SearchHit, SearchPolicy, SearchRequest, SearchResponse,
     SourceFetcher,
@@ -258,6 +258,36 @@ pub fn research_cancel(handle: &ResearchServiceHandle, job_id: String) -> Result
         .map_err(|error| error.to_string())
 }
 
+pub struct FrbResearchCheckpoint {
+    pub record: String,
+}
+
+#[frb(sync)]
+pub fn research_checkpoint(
+    handle: &ResearchServiceHandle,
+    job_id: String,
+) -> Option<FrbResearchCheckpoint> {
+    let engine = handle.engine.lock().expect("research engine lock");
+    engine.checkpoint(&job_id).map(|checkpoint| FrbResearchCheckpoint {
+        record: checkpoint.to_record(),
+    })
+}
+
+#[frb(sync)]
+pub fn research_restore(
+    handle: &ResearchServiceHandle,
+    checkpoint: FrbResearchCheckpoint,
+) -> Result<(), String> {
+    let checkpoint = ResearchCheckpoint::from_record(&checkpoint.record)
+        .map_err(|error| error.to_string())?;
+    handle
+        .engine
+        .lock()
+        .expect("research engine lock")
+        .restore(checkpoint)
+        .map_err(|error| error.to_string())
+}
+
 #[frb(sync)]
 pub fn research_report(handle: &ResearchServiceHandle, job_id: String) -> Option<String> {
     let engine = handle.engine.lock().expect("research engine lock");
@@ -268,6 +298,7 @@ pub fn research_report(handle: &ResearchServiceHandle, job_id: String) -> Option
 pub async fn research_run(
     handle: &ResearchServiceHandle,
     job_id: String,
+    known_source_urls: Vec<String>,
     sink: StreamSink<FrbResearchEvent>,
 ) -> Result<(), String> {
     let engine = Arc::clone(&handle.engine);
@@ -277,7 +308,7 @@ pub async fn research_run(
     std::thread::spawn(move || {
         let result = {
             let mut engine = engine.lock().expect("research engine lock");
-            engine.run(&job_id_for_thread)
+            engine.run(&job_id_for_thread, &known_source_urls)
         };
         let _ = done_tx.send(result);
     });
