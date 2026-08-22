@@ -14,6 +14,7 @@ class ResearchHttpException implements Exception {
 class ResearchHttpClient {
   const ResearchHttpClient({
     this.allowedHosts = defaultAllowedHosts,
+    this.allowedOrigins = const {},
     this.maxBytes = 256 * 1024,
     this.timeout = const Duration(seconds: 8),
     this.maxRedirects = 3,
@@ -28,6 +29,7 @@ class ResearchHttpClient {
   };
 
   final Set<String> allowedHosts;
+  final Set<String> allowedOrigins;
   final int maxBytes;
   final Duration timeout;
   final int maxRedirects;
@@ -41,6 +43,11 @@ class ResearchHttpClient {
     if (!allowedHosts.contains(uri.host)) {
       throw ResearchHttpException(
         'Host ${uri.host} is not an allowed research provider.',
+      );
+    }
+    if (allowedOrigins.isNotEmpty && !allowedOrigins.contains(uri.origin)) {
+      throw ResearchHttpException(
+        'Origin ${uri.origin} is not an allowed research provider.',
       );
     }
   }

@@ -103,7 +103,9 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 18. User-facing Private / Balanced / Cloud profiles, observability metrics,
     and abstract cost ceilings. Private routes to Wikipedia by default and can
     use the SearXNG adapter only when the host injects an explicit self-hosted
-    HTTPS base URI. Airo has no default/public SearXNG endpoint.
+    HTTPS base URI. Airo has no default/public SearXNG endpoint. The adapter is
+    origin-isolated and candidate-only: result URLs do not expand the separate
+    source-acquisition allowlist.
 
 Not shipped (locked below, do not pretend they exist):
 

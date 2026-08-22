@@ -57,7 +57,8 @@ void main() {
     final baseUri = Uri.parse('https://search.home.example/searx/');
     final engine = SearxngSearchEngine(baseUri: baseUri);
 
-    expect(engine.http.allowedHosts, contains('search.home.example'));
+    expect(engine.http.allowedHosts, {'search.home.example'});
+    expect(engine.http.allowedOrigins, {baseUri.origin});
     expect(
       ResearchHttpClient.defaultAllowedHosts,
       isNot(contains('search.home.example')),
@@ -83,6 +84,13 @@ void main() {
       'search.home.example',
     );
     expect(
+      () => engine.http.resolveRedirect(
+        baseUri,
+        'https://search.home.example:8443/redirected',
+      ),
+      throwsA(isA<ResearchHttpException>()),
+    );
+    expect(
       () => LocalResearchService(searxngBaseUri: baseUri),
       returnsNormally,
     );
@@ -94,16 +102,30 @@ void main() {
     );
   });
 
+  test('arbitrary SearXNG candidates do not expand acquisition hosts', () {
+    const arbitraryBody = '''
+{"results":[{"url":"https://unknown.example/page","title":"Unknown","content":"Candidate"}]}
+''';
+    final hit = SearxngSearchEngine.parseSearchJson(arbitraryBody).single;
+
+    expect(
+      () => const ResearchHttpClient().get(Uri.parse(hit.url)),
+      throwsA(isA<ResearchHttpException>()),
+    );
+  });
+
   test(
-    'Private profile uses SearXNG when the configured engine is injected',
+    'Private uses injected SearXNG while source policy owns acquisition',
     () async {
       final baseUri = Uri.parse('https://search.home.example/searx/');
       final http = _FakeHttp(baseUri: baseUri, body: body);
       final orchestrator = ResearchOrchestrator(
         engines: [SearxngSearchEngine(baseUri: baseUri, http: http)],
         sourceManager: SourceManager(
-          fetcher: (_) async =>
-              '<article><h1>Qwen</h1><p>Qwen is a family of language models.</p></article>',
+          fetcher: (uri) async {
+            expect(uri.host, 'en.wikipedia.org');
+            return '<article><h1>Qwen</h1><p>Qwen is a family of language models.</p></article>';
+          },
         ),
       );
 
@@ -133,9 +155,7 @@ void main() {
 
 class _FakeHttp extends ResearchHttpClient {
   _FakeHttp({required this.baseUri, required this.body})
-    : super(
-        allowedHosts: {...ResearchHttpClient.defaultAllowedHosts, baseUri.host},
-      );
+    : super(allowedHosts: {baseUri.host}, allowedOrigins: {baseUri.origin});
 
   final Uri baseUri;
   final String body;

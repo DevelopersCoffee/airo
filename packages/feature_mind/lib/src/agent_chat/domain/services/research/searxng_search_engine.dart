@@ -8,7 +8,9 @@ import 'research_search.dart';
 /// Search adapter for an explicitly configured self-hosted SearXNG instance.
 ///
 /// SearXNG results are candidates, not evidence. The configured API host is
-/// added only to this adapter's HTTP allowlist; there is no default public host.
+/// isolated to this adapter's HTTP origin; there is no default public host.
+/// Candidate URLs still pass through the independent source-acquisition
+/// allowlist, which this adapter never expands.
 class SearxngSearchEngine implements ResearchSearchEngine {
   factory SearxngSearchEngine({
     required Uri baseUri,
@@ -26,11 +28,17 @@ class SearxngSearchEngine implements ResearchSearchEngine {
     final client =
         http ??
         ResearchHttpClient(
-          allowedHosts: {
-            ...ResearchHttpClient.defaultAllowedHosts,
-            baseUri.host,
-          },
+          allowedHosts: {baseUri.host},
+          allowedOrigins: {baseUri.origin},
         );
+    if (client.allowedHosts.length != 1 ||
+        !client.allowedHosts.contains(baseUri.host) ||
+        client.allowedOrigins.length != 1 ||
+        !client.allowedOrigins.contains(baseUri.origin)) {
+      throw const ResearchHttpException(
+        'SearXNG HTTP access must be isolated to its configured origin.',
+      );
+    }
     client.validate(baseUri);
     return SearxngSearchEngine._(baseUri: baseUri, http: client);
   }
