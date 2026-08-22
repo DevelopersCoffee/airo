@@ -66,8 +66,20 @@ class GraphWorkflowCoordinator {
   List<ProjectedChatJourney> projectJourneys(ChatEntityGraph graph) =>
       _projectionBridge.projectChatJourneys(graph);
 
-  ProjectedChatJourney? firstUnofferedJourney(ChatEntityGraph graph) =>
-      _projectionBridge.firstUnoffered(graph);
+  ProjectedChatJourney? firstUnofferedJourney(ChatEntityGraph graph) {
+    for (final projection in workflowProjections(graph)) {
+      if (projection.offer.kind != OfferDecisionKind.offerable) continue;
+      final node = graph.nodeById(projection.subjectNodeId);
+      if (node?.attributes['journey_offered'] == 'true') continue;
+      return ProjectedChatJourney(
+        subjectNodeId: projection.subjectNodeId,
+        templateId: projection.templateId,
+        title: projection.title,
+        facts: Map<String, String>.from(projection.factsByFieldId),
+      );
+    }
+    return null;
+  }
 
   List<WorkflowProjection> workflowProjections(ChatEntityGraph graph) {
     final entityGraph = graph.toEntityGraph();
