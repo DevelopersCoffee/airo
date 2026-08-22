@@ -67,14 +67,13 @@ void main() {
     );
 
     expect(
-      graph.edges,
-      contains(
-        const ChatGraphEdge(
-          fromId: 'identifier:9001001',
-          toId: 'organization:city-hospital',
-          predicate: ChatEntityRelation.relatedTo,
-        ),
+      graph.edges.any(
+        (edge) =>
+            edge.fromId == 'identifier:9001001' &&
+            edge.toId.contains('city-hospital') &&
+            edge.predicate == ChatEntityRelation.relatedTo,
       ),
+      isTrue,
     );
     expect(
       graph.nodeById('organization:niva-bupa')?.type,

@@ -85,6 +85,15 @@ class MindSettingsScreen extends ConsumerWidget {
             onTap: () => context.go(AssistantRouteNames.profile),
           ),
           ListTile(
+            leading: const Icon(Icons.extension_outlined),
+            title: const Text('Add-ons'),
+            subtitle: const Text(
+              'Install skills and plugins, then attach them to chat folders',
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => context.push(AssistantRouteNames.agentSkills),
+          ),
+          ListTile(
             leading: const Icon(Icons.memory_outlined),
             title: const Text('Offline models'),
             subtitle: const Text('Download and manage local GGUF weights'),

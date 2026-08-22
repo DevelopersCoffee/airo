@@ -24,6 +24,7 @@ class MindDirectoryChatsPane extends StatelessWidget {
     this.onRemoveChat,
     this.onNewChatInFolder,
     this.onSetFolderPlugins,
+    this.onBrowseAddOns,
     this.pluginOptions = const [],
   });
 
@@ -41,6 +42,7 @@ class MindDirectoryChatsPane extends StatelessWidget {
   final ValueChanged<String>? onNewChatInFolder;
   final void Function(String folderId, List<String> pluginIds)?
   onSetFolderPlugins;
+  final VoidCallback? onBrowseAddOns;
   final List<MindFolderPluginOption> pluginOptions;
 
   @override
@@ -61,7 +63,7 @@ class MindDirectoryChatsPane extends StatelessWidget {
                 : 'DIRECTORY · ${_folderName(activeFolderId)}',
             style: theme.textTheme.labelSmall,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           if (grouped.isEmpty)
             Text(
               activeFolderId == null
@@ -125,6 +127,7 @@ class MindDirectoryChatsPane extends StatelessWidget {
                 onRemoveChat: onRemoveChat,
                 onNewChatInFolder: onNewChatInFolder,
                 onSetFolderPlugins: onSetFolderPlugins,
+                onBrowseAddOns: onBrowseAddOns,
                 pluginOptions: pluginOptions,
                 folders: folders,
               ),
@@ -225,6 +228,7 @@ class _FolderBlock extends StatelessWidget {
     this.onRemoveChat,
     this.onNewChatInFolder,
     this.onSetFolderPlugins,
+    this.onBrowseAddOns,
   });
 
   final MindChatFolder folder;
@@ -238,6 +242,7 @@ class _FolderBlock extends StatelessWidget {
   final ValueChanged<String>? onNewChatInFolder;
   final void Function(String folderId, List<String> pluginIds)?
   onSetFolderPlugins;
+  final VoidCallback? onBrowseAddOns;
 
   @override
   Widget build(BuildContext context) {
@@ -290,17 +295,23 @@ class _FolderBlock extends StatelessWidget {
                     IconButton(
                       key: Key('mind.chats.folder.${folder.id}.new'),
                       tooltip: 'New chat in ${folder.name}',
-                      icon: const Icon(Icons.add, size: 18),
-                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.add, size: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
                       onPressed: () => onNewChatInFolder!(folder.id),
                     ),
                   if (onSetFolderPlugins != null)
                     IconButton(
                       key: Key('mind.chats.folder.${folder.id}.plugins'),
-                      tooltip: 'Folder plugins',
-                      icon: const Icon(Icons.extension_outlined, size: 18),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => unawaited(_editPlugins(context)),
+                      tooltip: 'Folder add-ons',
+                      icon: const Icon(Icons.extension_outlined, size: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      onPressed: () => unawaited(_editAddOns(context)),
                     ),
                 ],
               ),
@@ -323,49 +334,57 @@ class _FolderBlock extends StatelessWidget {
     );
   }
 
-  Future<void> _editPlugins(BuildContext context) async {
+  Future<void> _editAddOns(BuildContext context) async {
     final selected = {...folder.pluginIds};
     final result = await showDialog<List<String>>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setLocal) {
+            final empty = pluginOptions.isEmpty;
             return AlertDialog(
-              title: Text('Plugins for ${folder.name}'),
-              content: SizedBox(
-                width: 360,
-                child: pluginOptions.isEmpty
-                    ? const Text(
-                        'Install a plugin from Assistants first, then attach it here.',
-                      )
-                    : ListView(
-                        shrinkWrap: true,
-                        children: [
-                          for (final plugin in pluginOptions)
-                            CheckboxListTile(
-                              key: Key(
-                                'mind.chats.folder.${folder.id}.plugin.${plugin.id}',
-                              ),
-                              value: selected.contains(plugin.id),
-                              title: Text(plugin.name),
-                              subtitle: plugin.description.isEmpty
-                                  ? null
-                                  : Text(
-                                      plugin.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                              onChanged: (value) {
-                                setLocal(() {
-                                  if (value == true) {
-                                    selected.add(plugin.id);
-                                  } else {
-                                    selected.remove(plugin.id);
-                                  }
-                                });
-                              },
+              title: Text('Add-ons for ${folder.name}'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: empty
+                    ? const _AddOnsEmptyState()
+                    : SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Attach installed skills to every chat in this folder.',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                        ],
+                            const SizedBox(height: 12),
+                            for (final plugin in pluginOptions)
+                              CheckboxListTile(
+                                key: Key(
+                                  'mind.chats.folder.${folder.id}.plugin.${plugin.id}',
+                                ),
+                                value: selected.contains(plugin.id),
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(plugin.name),
+                                subtitle: plugin.description.isEmpty
+                                    ? null
+                                    : Text(
+                                        plugin.description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                onChanged: (value) {
+                                  setLocal(() {
+                                    if (value == true) {
+                                      selected.add(plugin.id);
+                                    } else {
+                                      selected.remove(plugin.id);
+                                    }
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
                       ),
               ),
               actions: [
@@ -373,11 +392,31 @@ class _FolderBlock extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
-                FilledButton(
-                  key: Key('mind.chats.folder.${folder.id}.plugins.save'),
-                  onPressed: () => Navigator.of(context).pop(selected.toList()),
-                  child: const Text('Save'),
-                ),
+                if (onBrowseAddOns != null && empty)
+                  FilledButton(
+                    key: Key('mind.chats.folder.${folder.id}.addons.browse'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onBrowseAddOns!();
+                    },
+                    child: const Text('Browse add-ons'),
+                  ),
+                if (onBrowseAddOns != null && !empty)
+                  TextButton(
+                    key: Key('mind.chats.folder.${folder.id}.addons.browse'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onBrowseAddOns!();
+                    },
+                    child: const Text('Browse more'),
+                  ),
+                if (!empty)
+                  FilledButton(
+                    key: Key('mind.chats.folder.${folder.id}.plugins.save'),
+                    onPressed: () =>
+                        Navigator.of(context).pop(selected.toList()),
+                    child: const Text('Save'),
+                  ),
               ],
             );
           },
@@ -385,6 +424,35 @@ class _FolderBlock extends StatelessWidget {
       },
     );
     if (result != null) onSetFolderPlugins!(folder.id, result);
+  }
+}
+
+class _AddOnsEmptyState extends StatelessWidget {
+  const _AddOnsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.extension_outlined,
+          size: 32,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(height: 16),
+        Text('No add-ons installed yet.', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(
+          'Install a skill or plugin, then attach it here so every chat in this folder uses it.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
   }
 }
 
