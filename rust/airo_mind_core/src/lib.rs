@@ -160,7 +160,7 @@ pub use dsl::{
 };
 pub use engine::{
     AudioInput, EngineError, GenerationChunk, GenerationEngine, GenerationRequest, RuntimeStats,
-    SpeechEngine, TranscriptSegment, TranscriptionOptions,
+    SpeechEngine, TranscriptSegment, TranscriptSegmentState, TranscriptionOptions,
 };
 pub use event::{CapabilityEvent, EventBus};
 pub use lifecycle::{

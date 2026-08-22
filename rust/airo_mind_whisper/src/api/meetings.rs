@@ -977,21 +977,9 @@ mod tests {
     #[test]
     fn transcript_segment_record_preserves_timestamps_text_and_order() {
         let raw = [
-            TranscriptSegment {
-                start_ms: 0,
-                end_ms: 1_200,
-                text: "  the deploy is blocked  ".into(),
-            },
-            TranscriptSegment {
-                start_ms: 1_200,
-                end_ms: 3_450,
-                text: "on the migration".into(),
-            },
-            TranscriptSegment {
-                start_ms: 3_450,
-                end_ms: 5_000,
-                text: "Raj is looking at it".into(),
-            },
+            TranscriptSegment::final_text(0, 1_200, "  the deploy is blocked  ".into()),
+            TranscriptSegment::final_text(1_200, 3_450, "on the migration".into()),
+            TranscriptSegment::final_text(3_450, 5_000, "Raj is looking at it".into()),
         ];
 
         let records: Vec<TranscriptSegmentRecord> = raw
@@ -1034,11 +1022,7 @@ mod tests {
     fn transcript_segment_record_handles_a_single_segment_recording() {
         let record = transcript_segment_record(
             0,
-            &TranscriptSegment {
-                start_ms: 0,
-                end_ms: 900,
-                text: "hello".into(),
-            },
+            &TranscriptSegment::final_text(0, 900, "hello".into()),
         );
         assert_eq!(record.id, "s0");
         assert_eq!(record.start_ms, 0);

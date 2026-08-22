@@ -341,11 +341,11 @@ mod tests {
                 if cancel.is_cancelled() {
                     return Err(EngineError::Cancelled);
                 }
-                sink(TranscriptSegment {
-                    start_ms: (i as u64) * 1000,
-                    end_ms: (i as u64 + 1) * 1000,
-                    text: format!("segment {i}"),
-                })?;
+                sink(TranscriptSegment::final_text(
+                    (i as u64) * 1000,
+                    (i as u64 + 1) * 1000,
+                    format!("segment {i}"),
+                ))?;
             }
             Ok(())
         }
@@ -447,11 +447,7 @@ mod tests {
                 sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
             ) -> Result<(), EngineError> {
                 *self.observed.lock().unwrap() = Some(options.clone());
-                sink(TranscriptSegment {
-                    start_ms: 0,
-                    end_ms: 100,
-                    text: "hi".into(),
-                })
+                sink(TranscriptSegment::final_text(0, 100, "hi".into()))
             }
         }
         s.register_speech(Box::new(ObservingSpeech {
