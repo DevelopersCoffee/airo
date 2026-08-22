@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: 3.3.2
+  flutter_riverpod: 3.4.2
   go_router: ^17.3.0
   # The standalone shell's lean home reuses the legacy read path (ADR-0010
   # interim exception): recent transactions + display card. That pulls the

@@ -56,7 +56,7 @@ void main() {
       currentPrompt: current,
       history: history,
     );
-    expect(prompt, contains('7 day diet plan'));
+    expect(prompt, contains('Duration: 7 days'));
     expect(prompt, contains('indian menu only'));
     expect(prompt, contains('veg only'));
     expect(prompt, contains('Stop after Day 7'));
@@ -134,6 +134,58 @@ void main() {
     );
   });
 
+  test('rewrites the full week instead of echoing the collapsed stub', () {
+    expect(
+      DietPlanPluginPrompt.applies(
+        currentPrompt: 'whole week',
+        history: history,
+      ),
+      isTrue,
+    );
+    expect(DietPlanPluginPrompt.parseDayCount('whole week'), 7);
+
+    final prompt = DietPlanPluginPrompt.modelUserPrompt(
+      currentPrompt: 'whole week',
+      history: history,
+    );
+    expect(prompt, contains('Write a new diet plan'));
+    expect(prompt, contains('Write Day 1 through Day 7'));
+    expect(prompt, contains('Do not stop after Day 1'));
+    expect(prompt, isNot(contains('Continue the existing diet plan')));
+    expect(prompt, isNot(contains('Drafted a meal plan')));
+  });
+
+  test('treats give me in a diet thread as a request to write the plan', () {
+    expect(
+      DietPlanPluginPrompt.applies(currentPrompt: 'give me', history: history),
+      isTrue,
+    );
+    final prompt = DietPlanPluginPrompt.modelUserPrompt(
+      currentPrompt: 'give me',
+      history: history,
+    );
+    expect(prompt, contains('Write a new diet plan'));
+    expect(prompt, contains('Duration: 7 days'));
+    expect(prompt, isNot(contains('\ngive me')));
+  });
+
+  test('treats diet chart and full-response follow-ups as diet turns', () {
+    expect(
+      DietPlanPluginPrompt.applies(
+        currentPrompt: 'can u give me 3 days diet chart',
+        history: const [],
+      ),
+      isTrue,
+    );
+    expect(
+      DietPlanPluginPrompt.applies(
+        currentPrompt: 'i cant see the full response',
+        history: history,
+      ),
+      isTrue,
+    );
+  });
+
   test('later day counts override the first 7-day request', () {
     const history = [
       AssistantChatContextMessage(
@@ -147,11 +199,54 @@ void main() {
       history: history,
     );
     expect(prompt, contains('The latest day count is 3'));
+    expect(prompt, contains('Title it a 3-day plan'));
+    expect(prompt, contains('Duration: 3 days'));
+    expect(prompt, isNot(contains('Make me a 7 day diet plan')));
     expect(
       DietPlanPluginPrompt.parseDayCount(
         'Make me a 7 day diet plan veg only give me 3 days only',
       ),
       3,
+    );
+  });
+
+  test('for 3 days retitles a copied 7-day preamble', () {
+    const history = [
+      AssistantChatContextMessage(
+        text: 'Make me a 7 day diet plan',
+        isUser: true,
+      ),
+    ];
+    expect(
+      DietPlanPluginPrompt.applies(
+        currentPrompt: 'for 3 days',
+        history: history,
+      ),
+      isTrue,
+    );
+    final prompt = DietPlanPluginPrompt.modelUserPrompt(
+      currentPrompt: 'for 3 days',
+      history: history,
+    );
+    expect(prompt, contains('The latest day count is 3'));
+    expect(prompt, contains('for 3 days'));
+
+    const copied =
+        'Okay, here\'s a 7-day diet plan for you:\n\n'
+        '**Day 1**\n* Breakfast: Oatmeal\n'
+        '**Day 2**\n* Lunch: Salad\n'
+        '**Day 3**\n* Dinner: Soup\n';
+    expect(
+      DietPlanPluginPrompt.alignPlanTitle(copied, 3),
+      contains('3-day diet plan'),
+    );
+    expect(
+      DietPlanPluginPrompt.alignPlanTitle(copied, 3),
+      isNot(contains('7-day')),
+    );
+    expect(
+      DietPlanPluginPrompt.alignPlanTitle(copied, 3),
+      contains('**Day 1**'),
     );
   });
 

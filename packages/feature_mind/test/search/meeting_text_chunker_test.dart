@@ -17,10 +17,7 @@ void main() {
       );
 
       expect(chunks, isNotEmpty);
-      expect(
-        chunks.every((c) => !c.text.contains('fallback')),
-        isTrue,
-      );
+      expect(chunks.every((c) => !c.text.contains('fallback')), isTrue);
       expect(chunks.map((c) => c.text).join(' '), contains('alpha'));
       expect(chunks.map((c) => c.text).join(' '), contains('gamma'));
     });

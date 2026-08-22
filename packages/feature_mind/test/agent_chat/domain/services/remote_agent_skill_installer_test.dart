@@ -56,6 +56,61 @@ void main() {
     expect(fetched, isFalse);
   });
 
+  test('resolves Gallery folder and GitHub tree URLs to SKILL.md', () {
+    expect(
+      resolveRemoteSkillDocumentUri(
+        'https://skills.example.com/kitchen-adventure',
+      ).toString(),
+      'https://skills.example.com/kitchen-adventure/SKILL.md',
+    );
+    expect(
+      resolveRemoteSkillDocumentUri(
+        'https://github.com/google-ai-edge/gallery/tree/main/skills/built-in/kitchen-adventure',
+      ).toString(),
+      'https://raw.githubusercontent.com/google-ai-edge/gallery/main/skills/built-in/kitchen-adventure/SKILL.md',
+    );
+    expect(
+      resolveRemoteSkillDocumentUri(
+        'https://github.com/google-ai-edge/gallery/blob/main/skills/built-in/kitchen-adventure/SKILL.md',
+      ).toString(),
+      'https://raw.githubusercontent.com/google-ai-edge/gallery/main/skills/built-in/kitchen-adventure/SKILL.md',
+    );
+  });
+
+  test('imports a Gallery text-only skill as a quarantined persona', () async {
+    const gallery = '''
+---
+name: kitchen-adventure
+description: Act as a dungeon master for a kitchen adventure.
+---
+
+# Kitchen Adventure
+
+When the user initiates a session, you must transform into the Head Chef.
+''';
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    Uri? requested;
+    final skill =
+        await RemoteAgentSkillInstaller(
+          store: RemoteAgentSkillStore(preferences),
+          fetcher: (uri) async {
+            requested = uri;
+            return gallery;
+          },
+        ).install(
+          'https://github.com/google-ai-edge/gallery/tree/main/skills/built-in/kitchen-adventure',
+        );
+
+    expect(
+      requested.toString(),
+      'https://raw.githubusercontent.com/google-ai-edge/gallery/main/skills/built-in/kitchen-adventure/SKILL.md',
+    );
+    expect(skill.id, 'kitchen-adventure');
+    expect(skill.isPersona, isTrue);
+    expect(skill.manifest.installState, SkillInstallState.disabled);
+  });
+
   test('rejects oversized remote documents', () async {
     final installer = RemoteAgentSkillInstaller(
       fetcher: (_) async => 'x' * (RemoteAgentSkillStore.maxDocumentBytes + 1),

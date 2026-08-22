@@ -89,9 +89,7 @@ class ModelBenchDisplay {
       status: status ?? this.status,
       bench: bench ?? this.bench,
       progress: clearProgress ? null : (progress ?? this.progress),
-      staleReason: clearStaleReason
-          ? null
-          : (staleReason ?? this.staleReason),
+      staleReason: clearStaleReason ? null : (staleReason ?? this.staleReason),
     );
   }
 

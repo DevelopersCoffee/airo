@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:airo_app/core/mind/mind_model_catalog.dart';
 import 'package:airo_app/core/mind/mind_model_sources.dart';
+import 'package:airo_app/core/platform/platform_config.dart';
 import 'package:airo_app/features/settings/application/ai_model_management.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/feature_mind.dart';
@@ -218,7 +219,10 @@ void main() {
         // settings screen must not block on disk. Let it land.
         await Future<void>.delayed(Duration.zero);
 
-        for (final bundled in ModelCatalog.bundledModels) {
+        final profile = ModelRuntimeProfile.resolve(
+          isAndroidHost: PlatformConfig.isAndroid,
+        );
+        for (final bundled in ModelCatalog.forProfile(profile)) {
           expect(registry.hasModel(bundled.id), isTrue);
         }
         expect(registry.hasModel('mind-scribe-whisper-tiny-en'), isTrue);

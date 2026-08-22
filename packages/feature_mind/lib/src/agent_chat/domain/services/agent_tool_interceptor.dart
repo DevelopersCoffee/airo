@@ -59,10 +59,17 @@ class AgentToolInterceptor {
     return lower.contains('current time') ||
         lower.contains('what time') ||
         lower.contains('time is it') ||
-        lower.contains('today\'s date') ||
+        lower.contains("today's date") ||
         lower.contains('todays date') ||
         lower.contains('what date') ||
+        lower.contains('which date') ||
+        lower.contains('which day') ||
+        lower.contains('what day') ||
         lower.contains('day of the week') ||
+        lower.contains('day is it') ||
+        lower.contains('day is today') ||
+        (lower.contains('today is') &&
+            (lower.contains('day') || lower.contains('date'))) ||
         lower.contains('timezone');
   }
 

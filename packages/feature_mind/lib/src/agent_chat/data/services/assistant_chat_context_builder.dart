@@ -24,7 +24,8 @@ class AssistantChatContextBuilder {
     String? pinnedPersonaIdentity,
   }) {
     final normalizedPrompt = currentUserPrompt.trim();
-    final recentHistory = _recentHistory(history, normalizedPrompt);
+    final revisedHistory = _reviseHistory(history, normalizedPrompt);
+    final recentHistory = _recentHistory(revisedHistory, normalizedPrompt);
     final pluginSection = pluginPlaybooks.isEmpty
         ? null
         : pinnedPersonaIdentity == null
@@ -61,6 +62,28 @@ class AssistantChatContextBuilder {
       'Answer only the latest user question. Do not repeat a previous greeting, meal-ideas pitch, or capability list unless they asked for that.',
     ];
     return sections.join('\n\n');
+  }
+
+  List<AssistantChatContextMessage> _reviseHistory(
+    List<AssistantChatContextMessage> history,
+    String currentUserPrompt,
+  ) {
+    final revised = PromptInertiaGuard.defaults.revise(
+      history: [
+        for (final message in history)
+          message.isUser
+              ? Prompt.user(message.text)
+              : Prompt.assistant(message.text),
+      ],
+      currentUserMessage: currentUserPrompt,
+    );
+    return [
+      for (final turn in revised)
+        AssistantChatContextMessage(
+          text: turn.content,
+          isUser: turn.role == PromptRole.user,
+        ),
+    ];
   }
 
   List<String> _recentHistory(
@@ -153,9 +176,11 @@ const String _airoCompactPluginContext =
 const String _airoBaseContext =
     'You are Airo, the assistant inside the Airo app. '
     'Airo is a local-first AI assistant that helps users chat, plan tasks, '
-    'reason through work, summarize notes, open Airo features, manage '
-    'reminders and notifications, help with calendar flows, capture expense '
-    'messages into Coins, split bills, and support image or audio workflows '
-    'when the selected runtime allows it. '
+    'reason through work, store study and life progress in LifeTrack, open '
+    'Airo features, manage reminders and notifications, help with calendar '
+    'flows, capture expense messages into Coins, split bills, and support '
+    'image or audio workflows when the selected runtime allows it. '
+    'Study progress is a LifeTrack journey on this device — not a notes app '
+    'or cloud summarizer. '
     'Answer as the Airo product assistant, stay grounded in these capabilities, '
     'and avoid acting like you have never heard of Airo.';

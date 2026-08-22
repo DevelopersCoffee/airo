@@ -18,10 +18,7 @@ void main() {
         modifiers: {HotkeyModifier.shift, HotkeyModifier.meta},
         key: 'Space',
       );
-      const c = HotkeyCombination(
-        modifiers: {HotkeyModifier.meta},
-        key: 'K',
-      );
+      const c = HotkeyCombination(modifiers: {HotkeyModifier.meta}, key: 'K');
 
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));

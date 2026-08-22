@@ -10,13 +10,18 @@ import 'package:flutter_test/flutter_test.dart';
 /// A [ModelPort] test double. Only `storage` and `download` are exercised —
 /// the coordinator does not touch the rest of the port.
 class FakeModelPort implements ModelPort {
-  FakeModelPort({this.usedBytes = 0, this.budgetBytes = 1000, this.storageError});
+  FakeModelPort({
+    this.usedBytes = 0,
+    this.budgetBytes = 1000,
+    this.storageError,
+  });
 
   int usedBytes;
   int budgetBytes;
   final Object? storageError;
 
-  final _downloadControllers = <String, StreamController<({int received, int total})>>{};
+  final _downloadControllers =
+      <String, StreamController<({int received, int total})>>{};
 
   StreamController<({int received, int total})> controllerFor(String modelId) =>
       _downloadControllers.putIfAbsent(
@@ -48,7 +53,8 @@ class FakeModelPort implements ModelPort {
   Future<void> unload(String modelId) async {}
 
   @override
-  Future<ModelBench> benchmark(String modelId) async => throw UnimplementedError();
+  Future<ModelBench> benchmark(String modelId) async =>
+      throw UnimplementedError();
 
   @override
   Stream<ThermalState> thermal() => const Stream.empty();
@@ -83,14 +89,19 @@ void main() {
         connectivity: FakeConnectivity(),
       );
 
-      final states = await coordinator
-          .download('m1', sizeBytes: 300)
-          .toList();
+      final states = await coordinator.download('m1', sizeBytes: 300).toList();
 
       expect(states.first, const ModelDownloadCheckingStorage());
       // Available is 100, requested is 300: 200 bytes short.
-      expect(states.last, const ModelDownloadInsufficientStorage(shortfallBytes: 200));
-      expect(port.downloadCallCount, 0, reason: 'must be refused before it starts');
+      expect(
+        states.last,
+        const ModelDownloadInsufficientStorage(shortfallBytes: 200),
+      );
+      expect(
+        port.downloadCallCount,
+        0,
+        reason: 'must be refused before it starts',
+      );
     });
 
     test('starts the download when it fits the budget', () async {
@@ -101,16 +112,17 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 300)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 300).listen(states.add);
       await Future<void>.delayed(Duration.zero);
 
       expect(port.downloadCallCount, 1);
       port.controllerFor('m1').add((received: 150, total: 300));
       await Future<void>.delayed(Duration.zero);
 
-      expect(states, contains(const ModelDownloadInProgress(received: 150, total: 300)));
+      expect(
+        states,
+        contains(const ModelDownloadInProgress(received: 150, total: 300)),
+      );
       await sub.cancel();
     });
 
@@ -121,9 +133,7 @@ void main() {
         connectivity: FakeConnectivity(),
       );
 
-      final states = await coordinator
-          .download('m1', sizeBytes: 300)
-          .toList();
+      final states = await coordinator.download('m1', sizeBytes: 300).toList();
 
       expect(states.last, isA<ModelDownloadFailed>());
       expect(
@@ -142,9 +152,7 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 300)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 300).listen(states.add);
       await Future<void>.delayed(Duration.zero);
 
       expect(
@@ -163,14 +171,15 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 300)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 300).listen(states.add);
       await Future<void>.delayed(Duration.zero);
 
       port.controllerFor('m1').add((received: 100, total: 300));
       await Future<void>.delayed(Duration.zero);
-      expect(states.last, const ModelDownloadInProgress(received: 100, total: 300));
+      expect(
+        states.last,
+        const ModelDownloadInProgress(received: 100, total: 300),
+      );
 
       connectivity.setMetered(true);
       await Future<void>.delayed(Duration.zero);
@@ -203,9 +212,7 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 300)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 300).listen(states.add);
       await Future<void>.delayed(Duration.zero);
       expect(states.last, isA<ModelDownloadPausedForMetered>());
 
@@ -245,28 +252,37 @@ void main() {
   });
 
   group('progress and failure', () {
-    test('reports bytes of total while downloading, not a bare percentage', () async {
-      final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
-      final coordinator = ModelDownloadCoordinator(
-        models: port,
-        connectivity: FakeConnectivity(),
-      );
+    test(
+      'reports bytes of total while downloading, not a bare percentage',
+      () async {
+        final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
+        final coordinator = ModelDownloadCoordinator(
+          models: port,
+          connectivity: FakeConnectivity(),
+        );
 
-      final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 500)
-          .listen(states.add);
-      await Future<void>.delayed(Duration.zero);
+        final states = <ModelDownloadState>[];
+        final sub = coordinator
+            .download('m1', sizeBytes: 500)
+            .listen(states.add);
+        await Future<void>.delayed(Duration.zero);
 
-      port.controllerFor('m1').add((received: 100, total: 500));
-      port.controllerFor('m1').add((received: 250, total: 500));
-      await Future<void>.delayed(Duration.zero);
+        port.controllerFor('m1').add((received: 100, total: 500));
+        port.controllerFor('m1').add((received: 250, total: 500));
+        await Future<void>.delayed(Duration.zero);
 
-      expect(states, contains(const ModelDownloadInProgress(received: 100, total: 500)));
-      expect(states, contains(const ModelDownloadInProgress(received: 250, total: 500)));
+        expect(
+          states,
+          contains(const ModelDownloadInProgress(received: 100, total: 500)),
+        );
+        expect(
+          states,
+          contains(const ModelDownloadInProgress(received: 250, total: 500)),
+        );
 
-      await sub.cancel();
-    });
+        await sub.cancel();
+      },
+    );
 
     test('completes when the port stream reports received == total', () async {
       final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
@@ -276,9 +292,7 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 500)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 500).listen(states.add);
       await Future<void>.delayed(Duration.zero);
 
       port.controllerFor('m1').add((received: 500, total: 500));
@@ -288,29 +302,32 @@ void main() {
       await sub.cancel();
     });
 
-    test('a download failure names the reason rather than going silent', () async {
-      final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
-      final coordinator = ModelDownloadCoordinator(
-        models: port,
-        connectivity: FakeConnectivity(),
-      );
+    test(
+      'a download failure names the reason rather than going silent',
+      () async {
+        final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
+        final coordinator = ModelDownloadCoordinator(
+          models: port,
+          connectivity: FakeConnectivity(),
+        );
 
-      final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 500)
-          .listen(states.add);
-      await Future<void>.delayed(Duration.zero);
+        final states = <ModelDownloadState>[];
+        final sub = coordinator
+            .download('m1', sizeBytes: 500)
+            .listen(states.add);
+        await Future<void>.delayed(Duration.zero);
 
-      port.controllerFor('m1').addError(StateError('connection reset'));
-      await Future<void>.delayed(Duration.zero);
+        port.controllerFor('m1').addError(StateError('connection reset'));
+        await Future<void>.delayed(Duration.zero);
 
-      expect(states.last, isA<ModelDownloadFailed>());
-      expect(
-        (states.last as ModelDownloadFailed).reason,
-        contains('connection reset'),
-      );
-      await sub.cancel();
-    });
+        expect(states.last, isA<ModelDownloadFailed>());
+        expect(
+          (states.last as ModelDownloadFailed).reason,
+          contains('connection reset'),
+        );
+        await sub.cancel();
+      },
+    );
 
     test('emits stalled when bytes stop moving for the stall window', () async {
       final port = FakeModelPort(usedBytes: 0, budgetBytes: 1000);
@@ -322,9 +339,7 @@ void main() {
       );
 
       final states = <ModelDownloadState>[];
-      final sub = coordinator
-          .download('m1', sizeBytes: 500)
-          .listen(states.add);
+      final sub = coordinator.download('m1', sizeBytes: 500).listen(states.add);
       await Future<void>.delayed(Duration.zero);
 
       port.controllerFor('m1').add((received: 100, total: 500));

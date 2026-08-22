@@ -53,9 +53,7 @@ Future<String?> showSpeakerMergeDialog({
   return showDialog<String>(
     context: context,
     builder: (context) => SimpleDialog(
-      title: Text(
-        'Merge ${formatMindSpeakerLabel(fromLabel)} into…',
-      ),
+      title: Text('Merge ${formatMindSpeakerLabel(fromLabel)} into…'),
       children: [
         for (final label in targets)
           SimpleDialogOption(

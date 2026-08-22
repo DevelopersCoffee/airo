@@ -16,7 +16,7 @@ void main() {
         prompt,
         contains('You are Airo, the assistant inside the Airo app.'),
       );
-      expect(prompt, contains('local-first AI assistant'));
+      expect(prompt, contains('store study and life progress in LifeTrack'));
       expect(
         prompt,
         contains('avoid acting like you have never heard of Airo'),
@@ -167,6 +167,27 @@ void main() {
 
       expect(prompt, isNot(contains('healthy and delicious meal')));
       expect(prompt, contains('Do not repeat a previous greeting'));
+    });
+
+    test('evicts superseded day-count tokens from history', () {
+      final prompt = builder.buildSystemPrompt(
+        currentUserPrompt: 'for 3 days',
+        history: const [
+          AssistantChatContextMessage(
+            text: 'Make me a 7 day diet plan',
+            isUser: true,
+          ),
+          AssistantChatContextMessage(
+            text: 'Here is a 7-day diet plan.\nDay 1: oats',
+            isUser: false,
+          ),
+        ],
+      );
+
+      expect(prompt, contains('Make me a diet plan'));
+      expect(prompt, isNot(contains('7 day')));
+      expect(prompt, isNot(contains('7-day')));
+      expect(prompt, contains('superseded'));
     });
 
     test('rebuildForBudget keeps identity and drops older history', () {

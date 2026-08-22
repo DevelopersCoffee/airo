@@ -98,9 +98,7 @@ void main() {
       );
       expect(
         md,
-        contains(
-          '[00:01:05] sp0: Priya said the lag is the bottleneck.',
-        ),
+        contains('[00:01:05] sp0: Priya said the lag is the bottleneck.'),
       );
     });
 

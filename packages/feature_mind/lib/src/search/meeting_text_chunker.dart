@@ -26,10 +26,7 @@ class MeetingTextChunk {
 ///
 /// Pure and isolate-safe: no I/O, no Flutter bindings beyond `@immutable`.
 class MeetingTextChunker {
-  const MeetingTextChunker({
-    this.maxChars = 700,
-    this.overlapChars = 120,
-  });
+  const MeetingTextChunker({this.maxChars = 700, this.overlapChars = 120});
 
   /// Soft ceiling per chunk. ~700 Latin characters is comfortably under
   /// EmbeddingGemma's 256-token window for English meeting prose; keep it

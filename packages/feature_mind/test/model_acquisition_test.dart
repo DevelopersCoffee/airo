@@ -213,10 +213,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Resume download'), findsOneWidget);
-    expect(
-      find.textContaining('Partial download kept'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Partial download kept'), findsOneWidget);
   });
 }
 

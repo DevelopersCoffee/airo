@@ -34,15 +34,16 @@ class SkillManifestParser {
       );
     }
 
-    final fields = _parseFrontmatter(match.group(1)!);
+    final frontmatter = match.group(1)!;
+    final fields = _parseFrontmatter(frontmatter);
     final body = match.group(2)!.trim();
 
-    final id = _requiredString(fields, 'id');
+    final id = _resolveId(fields);
     if (!_idPattern.hasMatch(id)) {
       throw SkillManifestFormatException('Skill id must be kebab-case: $id');
     }
 
-    final runtimeKey = _requiredString(fields, 'runtime');
+    final runtimeKey = _optionalString(fields, 'runtime') ?? 'native';
     final runtime = SkillRuntime.fromKey(runtimeKey);
     if (runtime == null) {
       throw SkillManifestFormatException('Unsupported runtime: $runtimeKey');
@@ -57,14 +58,29 @@ class SkillManifestParser {
     }).toList();
 
     final tools = _optionalList(fields, 'tools');
-    final mode = _optionalMode(fields);
+    var mode = _optionalMode(fields);
     if (body.isEmpty) {
       throw SkillManifestFormatException(
         'Skill instructions body is required.',
       );
     }
+    if (RegExp(r'require-secret:\s*true').hasMatch(frontmatter)) {
+      throw SkillManifestFormatException(
+        'This skill requires a secret. Airo does not collect Gallery secrets yet.',
+      );
+    }
+    if (_usesUnsupportedGalleryRuntime(body)) {
+      throw SkillManifestFormatException(
+        'This skill calls run_js or run_intent, which Airo does not execute. '
+        'Import a text-only Gallery skill (persona instructions only).',
+      );
+    }
     if (tools.isEmpty && mode == AgentSkillMode.skill) {
-      throw SkillManifestFormatException('Missing required list: tools');
+      if (_optionalString(fields, 'mode') == 'skill') {
+        throw SkillManifestFormatException('Missing required list: tools');
+      }
+      // Google AI Edge Gallery text-only skills omit tools and are personas.
+      mode = AgentSkillMode.persona;
     }
 
     final safetyClassKey = _optionalString(fields, 'safety_class');
@@ -91,10 +107,10 @@ class SkillManifestParser {
     return AgentSkill.fromManifest(
       manifest: AgentSkillManifest(
         id: id,
-        name: _requiredString(fields, 'name'),
+        name: _resolveDisplayName(fields, id),
         description: _requiredString(fields, 'description'),
-        version: _requiredString(fields, 'version'),
-        author: _requiredString(fields, 'author'),
+        version: _optionalString(fields, 'version') ?? '1.0.0',
+        author: _optionalString(fields, 'author') ?? 'Community',
         runtime: runtime,
         source: skillSource,
         installState: installState,
@@ -130,6 +146,11 @@ class SkillManifestParser {
         continue;
       }
 
+      // Gallery nested `metadata:` maps (homepage, require-secret).
+      if (RegExp(r'^\s+\S').hasMatch(rawLine)) {
+        continue;
+      }
+
       final keyMatch = RegExp(r'^([A-Za-z0-9_-]+):\s*(.*)$').firstMatch(line);
       if (keyMatch == null) {
         throw SkillManifestFormatException('Invalid frontmatter line: $line');
@@ -147,6 +168,33 @@ class SkillManifestParser {
     }
 
     return fields;
+  }
+
+  static String _resolveId(Map<String, Object> fields) {
+    final explicitId = _optionalString(fields, 'id');
+    if (explicitId != null) return explicitId;
+    final name = _optionalString(fields, 'name');
+    if (name != null && _idPattern.hasMatch(name)) return name;
+    throw SkillManifestFormatException('Missing required field: id');
+  }
+
+  static String _resolveDisplayName(Map<String, Object> fields, String id) {
+    final name = _requiredString(fields, 'name');
+    if (name == id) return _titleCaseKebab(id);
+    return name;
+  }
+
+  static String _titleCaseKebab(String id) {
+    return id
+        .split('-')
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
+
+  static bool _usesUnsupportedGalleryRuntime(String body) {
+    final lower = body.toLowerCase();
+    return lower.contains('run_js') || lower.contains('run_intent');
   }
 
   static String _requiredString(Map<String, Object> fields, String key) {

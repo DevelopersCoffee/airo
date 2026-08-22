@@ -232,10 +232,7 @@ class _DisabledRegion extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              FilledButton(
-                onPressed: null,
-                child: const Text('Coming soon'),
-              ),
+              FilledButton(onPressed: null, child: const Text('Coming soon')),
             ],
           ),
         ),

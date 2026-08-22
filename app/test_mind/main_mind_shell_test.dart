@@ -124,7 +124,7 @@ void main() {
     },
   );
 
-  test('mind shell wraps its three destinations in one navigation shell', () {
+  test('mind shell wraps its destinations in one navigation shell', () {
     final routes = buildMindRoutes(buildMindModuleRegistry());
 
     final shellRoutes = routes.whereType<StatefulShellRoute>().toList();
@@ -140,40 +140,91 @@ void main() {
       branches
           .map((branch) => branch.routes.whereType<GoRoute>().first.path)
           .toList(),
-      [
-        '/',
-        AssistantRouteNames.assistant,
-        '/models',
-        AssistantRouteNames.wellbeing,
-      ],
+      ['/', AssistantRouteNames.assistant, '/models', '/settings'],
       reason: 'branch order must match MindShell.destinations',
     );
   });
 
-  test('mind shell mounts wellbeing exactly once', () {
-    // MindModule.routesFor() returns scribe + hub + root routes combined, so
-    // mounting `registry.allRoutes` *and* a wellbeing branch would register
-    // `/wellbeing` twice. The shell assembles branches from the module's three
-    // named accessors instead; this pins that it stayed that way.
-    final paths = _allPaths(buildMindRoutes(buildMindModuleRegistry()));
+  test('mind shell does not mount a wellbeing branch', () {
+    // Wellbeing is a chat skill on ShellId.mind, so rootRoutesFor is empty.
+    // Mounting that empty list as a StatefulShellBranch crashes go_router
+    // (initialLocation cannot be derived). Leftover /wellbeing links redirect
+    // onto the hub instead of registering a Wellbeing tab.
+    final routes = buildMindRoutes(buildMindModuleRegistry());
+    final shell = routes.whereType<StatefulShellRoute>().single;
+    final branchPaths = [
+      for (final branch in shell.branches)
+        ...branch.routes.whereType<GoRoute>().map((route) => route.path),
+    ];
+
+    expect(branchPaths, isNot(contains(AssistantRouteNames.wellbeing)));
+    expect(
+      branchPaths.where((path) => path == AssistantRouteNames.assistant),
+      hasLength(1),
+    );
+    expect(branchPaths.where((path) => path == '/'), hasLength(1));
+  });
+
+  testWidgets('mind shell rewrites leftover /wellbeing links onto the hub', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    final context = tester.element(find.byType(SizedBox));
+    final router = buildMindRouter();
+    addTearDown(router.dispose);
+    final route = buildMindRoutes(buildMindModuleRegistry())
+        .whereType<GoRoute>()
+        .firstWhere((r) => r.path == AssistantRouteNames.wellbeing);
+    final state = GoRouterState(
+      router.configuration,
+      uri: Uri.parse(AssistantRouteNames.wellbeing),
+      matchedLocation: AssistantRouteNames.wellbeing,
+      fullPath: route.path,
+      pathParameters: const {},
+      pageKey: const ValueKey('test'),
+    );
 
     expect(
-      paths.where((path) => path == AssistantRouteNames.wellbeing),
-      hasLength(1),
+      await route.redirect!(context, state),
+      AssistantRouteNames.assistant,
     );
-    expect(
-      paths.where((path) => path == AssistantRouteNames.assistant),
-      hasLength(1),
+  });
+
+  testWidgets('mind hub models child redirects onto the Intelligence tab', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    final context = tester.element(find.byType(SizedBox));
+    final router = buildMindRouter();
+    addTearDown(router.dispose);
+    final hub = buildMindRoutes(buildMindModuleRegistry())
+        .whereType<StatefulShellRoute>()
+        .single
+        .branches[1]
+        .routes
+        .whereType<GoRoute>()
+        .first;
+    final models = hub.routes.whereType<GoRoute>().firstWhere(
+      (route) => route.path == AssistantRouteNames.modelsSegment,
     );
-    expect(paths.where((path) => path == '/'), hasLength(1));
+    final state = GoRouterState(
+      router.configuration,
+      uri: Uri.parse(AssistantRouteNames.models),
+      matchedLocation: AssistantRouteNames.models,
+      fullPath: '${hub.path}/${models.path}',
+      pathParameters: const {},
+      pageKey: const ValueKey('test'),
+    );
+
+    expect(await models.redirect!(context, state), '/models');
   });
 
   test(
-    'mind shell labels its destinations Scribe, Assistant, Intelligence, Wellbeing',
+    'mind shell labels its destinations Scribe, Assistant, Intelligence, Settings',
     () {
       expect(
         MindShell.destinations.map((destination) => destination.label).toList(),
-        ['Scribe', 'Assistant', 'Intelligence', 'Wellbeing'],
+        ['Scribe', 'Assistant', 'Intelligence', 'Settings'],
       );
     },
   );
@@ -184,54 +235,45 @@ void main() {
     // the assistant hub (which needs the host adapter's provider overrides),
     // neither of which belongs in a test of the navigation chrome. The real
     // branch wiring is covered by the structural tests above.
-    final router = GoRouter(
-      initialLocation: '/',
-      routes: [
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) =>
-              MindShell(navigationShell: navigationShell),
-          branches: [
-            for (final path in const [
-              '/',
-              '/assistant',
-              '/models',
-              '/wellbeing',
-            ])
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: path,
-                    builder: (context, state) => Text('branch $path'),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ],
-    );
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = _mindChromeRouter();
     addTearDown(router.dispose);
 
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Scribe'), findsOneWidget);
-    expect(find.text('Assistant'), findsOneWidget);
-    expect(find.text('Intelligence'), findsOneWidget);
-    expect(find.text('Wellbeing'), findsOneWidget);
+    Finder barLabel(String label) => find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text(label),
+    );
+    expect(barLabel('Scribe'), findsOneWidget);
+    expect(barLabel('Assistant'), findsOneWidget);
+    expect(barLabel('Intelligence'), findsOneWidget);
+    expect(barLabel('Settings'), findsOneWidget);
+    expect(find.text('Wellbeing'), findsNothing);
     expect(find.text('branch /'), findsOneWidget);
 
-    await tester.tap(find.text('Assistant'));
+    await tester.tap(barLabel('Assistant'));
     await tester.pumpAndSettle();
     expect(find.text('branch /assistant'), findsOneWidget);
     expect(router.state.uri.toString(), '/assistant');
 
-    await tester.tap(find.text('Wellbeing'));
+    await tester.tap(barLabel('Intelligence'));
     await tester.pumpAndSettle();
-    expect(find.text('branch /wellbeing'), findsOneWidget);
-    expect(router.state.uri.toString(), '/wellbeing');
+    expect(find.text('branch /models'), findsOneWidget);
+    expect(router.state.uri.toString(), '/models');
 
-    await tester.tap(find.text('Scribe'));
+    await tester.tap(barLabel('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('branch /settings'), findsOneWidget);
+    expect(router.state.uri.toString(), '/settings');
+
+    await tester.tap(barLabel('Scribe'));
     await tester.pumpAndSettle();
     expect(find.text('branch /'), findsOneWidget);
     expect(router.state.uri.toString(), '/');
@@ -243,31 +285,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final router = GoRouter(
-      initialLocation: '/',
-      routes: [
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) =>
-              MindShell(navigationShell: navigationShell),
-          branches: [
-            for (final path in const [
-              '/',
-              '/assistant',
-              '/models',
-              '/wellbeing',
-            ])
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: path,
-                    builder: (context, state) => Text('branch $path'),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ],
-    );
+    final router = _mindChromeRouter();
     addTearDown(router.dispose);
 
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -275,21 +293,78 @@ void main() {
 
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('Intelligence'), findsWidgets);
+    expect(find.byType(Drawer), findsNothing);
+    expect(find.byKey(const ValueKey('mind_nav_menu')), findsNothing);
+    expect(find.text('Offline models'), findsNothing);
+    expect(find.text('Intelligence'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('Intelligence'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('branch /models'), findsOneWidget);
+    expect(router.state.uri.toString(), '/models');
+  });
+
+  testWidgets(
+    'iPad portrait uses a rail and does not duplicate destinations in a drawer',
+    (tester) async {
+      tester.view.physicalSize = const Size(768, 1024);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final router = _mindChromeRouter();
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(Drawer), findsNothing);
+      expect(find.byKey(const ValueKey('mind_nav_menu')), findsNothing);
+      expect(find.text('Scribe'), findsOneWidget);
+      expect(find.text('Assistant'), findsOneWidget);
+      expect(find.text('Intelligence'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Offline models'), findsNothing);
+    },
+  );
+
+  testWidgets('compact mind shell uses a bar and no drawer', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = _mindChromeRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(find.byType(Drawer), findsNothing);
+    expect(find.byKey(const ValueKey('mind_nav_menu')), findsNothing);
+    expect(find.text('Offline models'), findsNothing);
   });
 
   testWidgets('super-app destinations degrade to the Mind explainer', (
     tester,
   ) async {
     // Every super-app path the assistant package can emit but this shell does
-    // not mount (tool registry routes, the Settings tile on ProfileScreen).
+    // not mount (tool registry routes). Settings is a Mind tab.
     for (final location in const [
       '/games',
       '/quest/new',
       '/money',
       '/live/music',
       '/reader',
-      '/settings',
     ]) {
       final router = buildMindRouter(initialLocation: location);
       addTearDown(router.dispose);
@@ -307,13 +382,25 @@ void main() {
   });
 }
 
-/// Every [GoRoute] path in [routes], walking children and shell branches.
-List<String> _allPaths(List<RouteBase> routes) => [
-  for (final route in routes) ...[
-    if (route is GoRoute) route.path,
-    if (route is StatefulShellRoute)
-      ..._allPaths([for (final branch in route.branches) ...branch.routes])
-    else
-      ..._allPaths(route.routes),
-  ],
-];
+GoRouter _mindChromeRouter() {
+  return GoRouter(
+    initialLocation: '/',
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MindShell(navigationShell: navigationShell),
+        branches: [
+          for (final path in const ['/', '/assistant', '/models', '/settings'])
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: path,
+                  builder: (context, state) => Text('branch $path'),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ],
+  );
+}

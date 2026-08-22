@@ -158,9 +158,12 @@ abstract interface class MindGenerationBridge {
 
   /// Prompt-as-is completion for Model Bench and assistant chat.
   /// Shares the generation engine; does not wrap a meeting-secretary prompt.
+  ///
+  /// [grammar] is optional llama.cpp GBNF (start symbol `root`).
   Stream<GenerationEvent> complete({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   });
 
   /// Capability path: policy, grammar, and parse stay in Rust.
@@ -294,8 +297,13 @@ class RustMindGenerationBridge implements MindGenerationBridge {
   Stream<GenerationEvent> complete({
     required String prompt,
     required int maxOutputTokens,
+    String? grammar,
   }) => llama
-      .generateCompletion(prompt: prompt, maxOutputTokens: maxOutputTokens)
+      .generateCompletion(
+        prompt: prompt,
+        maxOutputTokens: maxOutputTokens,
+        grammar: grammar,
+      )
       .map((event) {
         return switch (event) {
           llama.GenerationEvent_Generating(:final text) =>

@@ -11,7 +11,8 @@ enum SpeakerEnrollmentOpKind {
   static SpeakerEnrollmentOpKind fromWireName(String name) =>
       SpeakerEnrollmentOpKind.values.firstWhere(
         (kind) => kind.name == name,
-        orElse: () => throw FormatException('unknown speaker enrollment op: $name'),
+        orElse: () =>
+            throw FormatException('unknown speaker enrollment op: $name'),
       );
 }
 

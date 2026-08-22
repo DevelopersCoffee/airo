@@ -9,6 +9,8 @@ enum SkillCapability {
   calendarWrite('calendar.write', 'Calendar write'),
   notificationsSchedule('notifications.schedule', 'Notifications'),
   lifeTrackRead('lifetrack.read', 'LifeTrack read'),
+  lifeTrackWrite('lifetrack.write', 'LifeTrack write'),
+  memoryRead('memory.read', 'Memory graph read'),
   locationRead('location.read', 'Location read'),
   webFetch('web.fetch', 'Web fetch'),
   routeOpen('route.open', 'Open route');
@@ -233,6 +235,7 @@ class AgentSkill extends Equatable {
   String get id => manifest.id;
   String get name => manifest.name;
   String get description => manifest.description;
+  String get version => manifest.version;
   List<String> get tools => manifest.tools;
   List<SkillCapability> get capabilities => manifest.capabilities;
   SkillRuntime get runtime => manifest.runtime;
@@ -319,6 +322,7 @@ class AgentRunResult extends Equatable {
   final Map<String, dynamic> parameters;
   final Map<String, dynamic>? pendingCalendarEvent;
   final bool pendingCalendarPermission;
+  final Map<String, dynamic>? pendingLifeTrackWrite;
 
   /// Ops the final answer was replayed from. Empty unless [groundingState]
   /// is [GroundingState.grounded].
@@ -341,6 +345,7 @@ class AgentRunResult extends Equatable {
     this.parameters = const {},
     this.pendingCalendarEvent,
     this.pendingCalendarPermission = false,
+    this.pendingLifeTrackWrite,
     this.citations = const [],
     this.groundingState = GroundingState.notApplicable,
     this.safetyClass,
@@ -355,6 +360,7 @@ class AgentRunResult extends Equatable {
       parameters = const {},
       pendingCalendarEvent = null,
       pendingCalendarPermission = false,
+      pendingLifeTrackWrite = null,
       citations = const [],
       groundingState = GroundingState.notApplicable,
       safetyClass = null;
@@ -371,6 +377,7 @@ class AgentRunResult extends Equatable {
     parameters,
     pendingCalendarEvent,
     pendingCalendarPermission,
+    pendingLifeTrackWrite,
     citations,
     groundingState,
     safetyClass,

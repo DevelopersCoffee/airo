@@ -1,8 +1,13 @@
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_chat_context_builder.dart';
 import 'package:feature_mind/src/agent_chat/data/services/diet_plan_output_eval.dart';
 import 'package:feature_mind/src/agent_chat/data/services/diet_plan_plugin_prompt.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/chat_turn_inspector.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/plugin_skill_fixture.dart';
+
+final draftDietPlanSkill = loadPluginSkillFixture('draft-diet-plan');
 
 /// Code-based evals for Airo's diet plugin (constraint routing + output checks).
 /// Clinical BMR/TDEE math is out of scope for the on-device 0.5B chat model.
@@ -239,5 +244,69 @@ Snack — Apple slices with almond butter
       draftDietPlanSkill.instructions.toLowerCase(),
       isNot(contains('bmr')),
     );
+  });
+
+  group('Turn inspector evals', () {
+    test('AUTO-003 abort then follow-up are two diet runs', () {
+      const abortPrompt = 'Make me a 7 day diet plan';
+      const followUp = 'i cant see the full response';
+      final aborted =
+          startChatGenerateTurn(
+                runId: 'run-diet-1',
+                runtimeId: 'offline-gemma-2b-it-q4',
+                routing: ChatTurnRouting.local,
+                userPrompt: abortPrompt,
+                pluginId: draftDietPlanPluginId,
+                gbnfAttached: true,
+              )
+              .markFirstToken()
+              .abort(reason: ChatTurnStopReason.processKilled)
+              .build();
+      final parent = parentRunIdFromMessages([
+        AgentChatTurnRef(
+          isUser: false,
+          runId: aborted.runId,
+          lifecycle: aborted.lifecycle,
+        ),
+      ]);
+      final follow = startChatGenerateTurn(
+        runId: 'run-diet-2',
+        parentRunId: parent,
+        runtimeId: 'offline-gemma-2b-it-q4',
+        routing: ChatTurnRouting.local,
+        userPrompt: followUp,
+        pluginId: draftDietPlanPluginId,
+        gbnfAttached: true,
+      ).finish(reason: ChatTurnStopReason.eos).build();
+
+      expect(aborted.runId, isNot(follow.runId));
+      expect(follow.parentRunId, aborted.runId);
+      expect(aborted.pluginId, draftDietPlanPluginId);
+      expect(follow.pluginId, draftDietPlanPluginId);
+      expect(aborted.stopReason, isNot(ChatTurnStopReason.eos));
+    });
+
+    test('AUTO-003 constraint change records day_count inertia', () {
+      final deltas = chatTurnInertiaDeltas(
+        currentPrompt: 'for 3 days',
+        priorUserPrompts: const ['Make me a 7 day diet plan'],
+      );
+      expect(deltas, isNotEmpty);
+      expect(deltas.single.kindId, 'day_count');
+      expect(deltas.single.previousValue, 7);
+      expect(deltas.single.currentValue, 3);
+
+      final trace = startChatGenerateTurn(
+        runId: 'run-diet-3',
+        runtimeId: 'offline-qwen',
+        routing: ChatTurnRouting.local,
+        userPrompt: 'for 3 days',
+        pluginId: draftDietPlanPluginId,
+        gbnfAttached: true,
+        inertia: deltas,
+      ).finish().build();
+      expect(trace.inertia.single.previousValue, 7);
+      expect(trace.constraint.gbnfAttached, isTrue);
+    });
   });
 }
