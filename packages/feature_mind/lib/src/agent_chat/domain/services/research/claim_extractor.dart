@@ -33,7 +33,7 @@ List<ResearchClaim> extractClaims(List<SourceDocument> documents) {
   final claims = <ResearchClaim>[];
   var index = 0;
   for (final document in documents) {
-    for (final paragraph in document.paragraphs) {
+    for (final paragraph in [...document.paragraphs, ...document.tables]) {
       final text = paragraph.trim();
       if (text.length < 12) {
         continue;

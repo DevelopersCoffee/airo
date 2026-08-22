@@ -5,6 +5,7 @@ import 'research_request.dart';
 /// Structured execution events. The UI renders these; it never shows
 /// model scratchpad or chain-of-thought.
 enum ResearchEventKind {
+  jobAdmitted,
   planningStarted,
   intentClassified,
   planCreated,
@@ -45,9 +46,15 @@ enum ResearchPhase {
 
 @immutable
 class ResearchEvent {
-  const ResearchEvent({required this.kind, this.label = '', this.detail = ''});
+  const ResearchEvent({
+    required this.kind,
+    this.jobId = '',
+    this.label = '',
+    this.detail = '',
+  });
 
   final ResearchEventKind kind;
+  final String jobId;
   final String label;
   final String detail;
 

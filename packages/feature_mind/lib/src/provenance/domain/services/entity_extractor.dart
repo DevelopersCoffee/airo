@@ -18,9 +18,8 @@ abstract interface class EntityExtractor {
 /// Thrown when no extraction capability exists on this device.
 ///
 /// [RuleBasedEntityExtractor] never throws this — the regex pass has no
-/// external dependency — but a future model-backed extractor (routed through
-/// `ModelPort`, see the scoping note on issue #1463) can, when no model is
-/// loaded.
+/// external dependency — but `ModelBackedEntityExtractor` does when
+/// `ModelPort` has no loaded GGUF (issue #1846).
 class EntityExtractionUnavailable implements Exception {
   const EntityExtractionUnavailable([
     this.reason = 'Entity extraction is unavailable on this device.',
@@ -35,9 +34,10 @@ class EntityExtractionUnavailable implements Exception {
 /// A hybrid, deterministic extractor: high-precision patterns first, then a
 /// capitalised-phrase catch-all. No ML model, no download, no `ModelPort`.
 ///
-/// Scoping decision (issue #1463): a contextual NER model would route through
-/// the local model via `ModelPort`. This pass stays rule-based so the
-/// inspector always has typed entities without a loaded GGUF.
+/// Scoping decision (issue #1463 / #1846): contextual NER routes through
+/// the local GGUF via `ModelBackedEntityExtractor`. This pass stays
+/// rule-based so the inspector always has typed entities without a loaded
+/// model.
 ///
 /// Specific shapes claim their span before the generic term pass, so
 /// "Dr. Rao" is a person (not an orphaned "Rao"), "Optimist Corp." is an

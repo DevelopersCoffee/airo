@@ -22,6 +22,8 @@ class ResearchHttpClient {
     'en.wikipedia.org',
     'export.arxiv.org',
     'arxiv.org',
+    'api.semanticscholar.org',
+    'www.semanticscholar.org',
   };
 
   final Set<String> allowedHosts;

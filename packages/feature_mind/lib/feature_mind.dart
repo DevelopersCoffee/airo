@@ -293,6 +293,7 @@ export 'src/provenance/domain/models/extracted_entity.dart';
 export 'src/provenance/domain/models/entity_relation.dart';
 export 'src/provenance/domain/services/entity_extractor.dart';
 export 'src/provenance/domain/services/entity_relation_extractor.dart';
+export 'src/provenance/domain/services/model_entity_extractor.dart';
 export 'src/provenance/presentation/widgets/entity_chip.dart';
 export 'src/provenance/presentation/widgets/provenance_inspector.dart';
 

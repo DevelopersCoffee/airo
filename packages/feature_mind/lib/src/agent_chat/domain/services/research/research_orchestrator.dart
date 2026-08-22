@@ -47,6 +47,14 @@ class ResearchOrchestrator {
       return;
     }
 
+    final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
+    yield ResearchEvent(
+      kind: ResearchEventKind.jobAdmitted,
+      jobId: jobId,
+      label: 'Research admitted',
+      detail: jobId,
+    );
+
     yield const ResearchEvent(
       kind: ResearchEventKind.planningStarted,
       label: 'Understanding question',
@@ -72,7 +80,6 @@ class ResearchOrchestrator {
     var searchesUsed = resumeFrom?.searchesUsed ?? 0;
     var iterationsUsed = resumeFrom?.iterationsUsed ?? 0;
     final completed = {...?resumeFrom?.completedNodeIds};
-    final jobId = resumeFrom?.jobId ?? 'job-${request.question.hashCode}';
     final collected = <ResearchHit>[];
     final routed = engines
         .where(
