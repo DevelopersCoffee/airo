@@ -37,6 +37,9 @@ final propertyPurchasePersona = loadPluginSkillFixture(
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+
   group('AgentSkillOrchestrator', () {
     test('parses selected skill ids from json and rejects malformed input', () {
       expect(
