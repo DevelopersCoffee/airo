@@ -38,7 +38,7 @@ class SearchRouter {
       case SearchPolicy.maximumQuality:
         return const ['wikipedia', 'arxiv', 'semantic_scholar', 'github'];
       case SearchPolicy.academic:
-        return const ['arxiv', 'semantic_scholar', 'pubmed'];
+        return const ['arxiv', 'semantic_scholar', 'pubmed', 'crossref'];
     }
   }
 

@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import 'arxiv_search_engine.dart';
+import 'crossref_search_engine.dart';
 import 'github_search_engine.dart';
 import 'pubmed_search_engine.dart';
 import 'research_checkpoint.dart';
@@ -64,6 +65,7 @@ class LocalResearchService implements ResearchService {
         SemanticScholarSearchEngine(),
         PubMedSearchEngine(),
         GitHubSearchEngine(),
+        CrossrefSearchEngine(),
         if (searxngBaseUri != null)
           SearxngSearchEngine(baseUri: searxngBaseUri),
       ],
