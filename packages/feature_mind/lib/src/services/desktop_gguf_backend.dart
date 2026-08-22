@@ -46,9 +46,9 @@ class LiveDesktopLlamaSession extends DesktopLlamaSession {
   void unload() => llama.unloadGeneration();
 }
 
-/// macOS / Windows / Linux GGUF path via the Rust `airo_mind_llama` bridge.
-///
-/// Android keeps using [LlamaGgufService]'s `llama_flutter_android` adapter.
+/// macOS / Windows / Linux / Android GGUF path via the Rust `airo_mind_llama`
+/// bridge (FRB). Android falls back to [LlamaGgufService]'s
+/// `llama_flutter_android` JNI adapter only when this slot cannot load.
 class DesktopGgufBackend {
   DesktopGgufBackend({
     Future<void> Function()? ensureBridge,
@@ -60,15 +60,22 @@ class DesktopGgufBackend {
   final DesktopLlamaSession _session;
   String? _loadedPath;
 
-  static bool get isSupported {
-    if (kIsWeb) return false;
-    return switch (defaultTargetPlatform) {
+  static bool supportedOn({
+    required TargetPlatform platform,
+    required bool isWeb,
+  }) {
+    if (isWeb) return false;
+    return switch (platform) {
       TargetPlatform.macOS ||
       TargetPlatform.windows ||
-      TargetPlatform.linux => true,
+      TargetPlatform.linux ||
+      TargetPlatform.android => true,
       _ => false,
     };
   }
+
+  static bool get isSupported =>
+      supportedOn(platform: defaultTargetPlatform, isWeb: kIsWeb);
 
   Future<bool> isAvailable() async {
     final outcome = await probe();
@@ -195,6 +202,11 @@ class DesktopGgufBackend {
   /// Safe in tests that never called `RustLib.init` — FRB throws, and we
   /// treat that as not ready rather than crashing the ModelPort.
   bool get isEngineReady {
+    try {
+      if (_session.isReady) return true;
+    } on Object {
+      // Live session reads FRB; tests without RustLib must not crash.
+    }
     try {
       return llama.isReady();
     } on Object {

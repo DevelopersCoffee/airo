@@ -127,9 +127,11 @@ class DietPlanPluginPrompt {
         return [
           'Continue the existing diet plan. Do not rewrite days already written.',
           'Constraints:',
-          ...promptConstraints.map((line) => '- $line'),
+          ContextCompiler.wrapAsData(
+            promptConstraints.map((line) => '- $line').join('\n'),
+          ),
           'Already written:',
-          lastPlan,
+          ContextCompiler.wrapAsData(lastPlan),
           'Write Day $nextDay through Day $targetDays. Stop after Day $targetDays.',
           'Use different dishes from the days already written.',
           'For each day list exactly four meals, one dish each: Breakfast, Lunch, Dinner, Snack.',
@@ -155,7 +157,9 @@ class DietPlanPluginPrompt {
     return [
       'Write a new diet plan that satisfies every user constraint below.',
       'Constraints:',
-      ...promptConstraints.map((line) => '- $line'),
+      ContextCompiler.wrapAsData(
+        promptConstraints.map((line) => '- $line').join('\n'),
+      ),
       'Rules:',
       '- Rewrite the whole plan when constraints change. Do not copy a previous draft.',
       '- If they named a cuisine, every meal must be from that cuisine — do not keep old meals and add bread.',

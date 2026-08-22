@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:core_ai/core_ai.dart';
+
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/models/log_models.dart';
 import '../../../runtime/ports/operation_log_port.dart';
@@ -25,9 +27,10 @@ class SkillModelAction {
        message = null,
        pendingCalendarEvent = null,
        pendingCalendarPermission = false,
-       pendingLifeTrackWrite = null;
+       pendingLifeTrackWrite = null,
+       schemaInvalid = false;
 
-  const SkillModelAction.finalAnswer(this.message)
+  const SkillModelAction.finalAnswer(this.message, {this.schemaInvalid = false})
     : type = SkillModelActionType.finalAnswer,
       tool = null,
       arguments = const {},
@@ -42,7 +45,8 @@ class SkillModelAction {
        tool = null,
        arguments = const {},
        pendingCalendarPermission = false,
-       pendingLifeTrackWrite = null;
+       pendingLifeTrackWrite = null,
+       schemaInvalid = false;
 
   const SkillModelAction.finalAnswerWithCalendarPermission({
     required this.message,
@@ -51,7 +55,8 @@ class SkillModelAction {
        arguments = const {},
        pendingCalendarEvent = null,
        pendingCalendarPermission = true,
-       pendingLifeTrackWrite = null;
+       pendingLifeTrackWrite = null,
+       schemaInvalid = false;
 
   const SkillModelAction.finalAnswerWithLifeTrackWrite({
     required this.message,
@@ -60,7 +65,8 @@ class SkillModelAction {
        tool = null,
        arguments = const {},
        pendingCalendarEvent = null,
-       pendingCalendarPermission = false;
+       pendingCalendarPermission = false,
+       schemaInvalid = false;
 
   final SkillModelActionType type;
   final String? tool;
@@ -69,6 +75,7 @@ class SkillModelAction {
   final Map<String, dynamic>? pendingCalendarEvent;
   final bool pendingCalendarPermission;
   final Map<String, dynamic>? pendingLifeTrackWrite;
+  final bool schemaInvalid;
 }
 
 abstract interface class AgentSkillModelClient {
@@ -808,6 +815,45 @@ class AgentSkillOrchestrator {
       }
 
       if (action.type == SkillModelActionType.finalAnswer) {
+        if (action.schemaInvalid) {
+          traces.add(
+            const AgentActionTrace(
+              title: 'Blocked schema violation',
+              detail: 'AIRO-R04',
+              success: false,
+            ),
+          );
+          return AgentRunResult(
+            handled: true,
+            message: action.message ?? OutputSchemaGuard.userMessage(),
+            traces: traces,
+            isError: true,
+            safetyClass: safetyClass,
+          );
+        }
+        final executedTools = traces
+            .where((trace) => trace.success && trace.title == 'Execute action')
+            .map((trace) => trace.detail);
+        final denied = ToolAuthorityGuard.denyUngroundedClaim(
+          message: action.message ?? '',
+          executedTools: executedTools,
+        );
+        if (denied != null) {
+          traces.add(
+            const AgentActionTrace(
+              title: 'Blocked ungrounded tool claim',
+              detail: 'AIRO-R03',
+              success: false,
+            ),
+          );
+          return AgentRunResult(
+            handled: true,
+            message: denied,
+            traces: traces,
+            isError: true,
+            safetyClass: safetyClass,
+          );
+        }
         return AgentRunResult(
           handled: true,
           message: action.message ?? '',
@@ -1113,43 +1159,27 @@ Map<String, dynamic>? _calendarEventFromNotificationResult(
 }
 
 SkillModelAction? parseSkillModelAction(String text) {
-  try {
-    final decoded = jsonDecode(_stripCodeFence(text));
-    if (decoded is! Map<String, dynamic>) return null;
-    final type = decoded['type'] as String?;
-    if (type == 'final') {
-      return SkillModelAction.finalAnswer(decoded['message'] as String? ?? '');
-    }
-    if (type == 'tool_call') {
-      return SkillModelAction.toolCall(
-        tool: decoded['tool'] as String? ?? '',
-        arguments:
-            (decoded['arguments'] as Map?)?.cast<String, dynamic>() ?? const {},
-      );
-    }
-  } catch (_) {
-    return null;
+  final parsed = LLMJsonParser.parseObject(text);
+  if (parsed.isFailure) return null;
+  final decoded = parsed.value;
+  final type = decoded['type'] as String?;
+  if (type == 'final') {
+    return SkillModelAction.finalAnswer(decoded['message'] as String? ?? '');
+  }
+  if (type == 'tool_call') {
+    return SkillModelAction.toolCall(
+      tool: decoded['tool'] as String? ?? '',
+      arguments:
+          (decoded['arguments'] as Map?)?.cast<String, dynamic>() ?? const {},
+    );
   }
   return null;
 }
 
 String? parseSelectedSkillId(String text) {
-  try {
-    final decoded = jsonDecode(_stripCodeFence(text));
-    if (decoded is! Map<String, dynamic>) return null;
-    return decoded['skill_id'] as String?;
-  } catch (_) {
-    return null;
-  }
-}
-
-String _stripCodeFence(String text) {
-  final trimmed = text.trim();
-  final match = RegExp(
-    r'```(?:json)?\s*([\s\S]*?)\s*```',
-    multiLine: true,
-  ).firstMatch(trimmed);
-  return match?.group(1)?.trim() ?? trimmed;
+  final parsed = LLMJsonParser.parseObject(text);
+  if (parsed.isFailure) return null;
+  return parsed.value['skill_id'] as String?;
 }
 
 String _formatEventTime(dynamic value) {

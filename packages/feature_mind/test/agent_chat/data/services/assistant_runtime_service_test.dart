@@ -1257,7 +1257,17 @@ void main() {
               prompt: 'hello',
             )
             .drain<void>(),
-        throwsA(isA<AssistantRuntimeUnavailableException>()),
+        throwsA(
+          isA<AssistantRuntimeUnavailableException>().having(
+            (error) => error.message,
+            'message',
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
+          ),
+        ),
+      );
+      expect(
+        service.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
       );
     });
 
@@ -1318,6 +1328,7 @@ void main() {
         prompt: 'hello',
       );
       expect(text, 'trimmed cloud');
+      expect(service.lastReliabilityDiagnostic, isNull);
 
       final emptyService = AssistantRuntimeService(
         initializeCloud: () async {},
@@ -1333,9 +1344,22 @@ void main() {
           isA<AssistantRuntimeUnavailableException>().having(
             (error) => error.message,
             'message',
-            geminiCloudEmptyResponseMessage,
+            ChatOutputVerifier.userMessageFor(OutputVerification.incomplete),
           ),
         ),
+      );
+      expect(
+        emptyService.lastReliabilityDiagnostic?.failureMode,
+        FailureMode.pm06LogicCollapse,
+      );
+      expect(emptyService.reliabilityLog.checkpoints, hasLength(1));
+      expect(
+        emptyService.reliabilityLog.lastFailure?.runtimeError,
+        RuntimeFailure.r06VerificationFailure,
+      );
+      expect(
+        emptyService.reliabilityLog.checkpoints.toString(),
+        isNot(contains('hello')),
       );
     });
 

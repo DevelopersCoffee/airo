@@ -22,6 +22,30 @@ void main() {
     expect(decoded.status, job.status);
     expect(decoded.attempt, job.attempt);
     expect(decoded.lastError, job.lastError);
+    expect(decoded.source, MeetingProcessingSource.live);
+  });
+
+  test('source round-trips and missing source defaults to live', () {
+    const job = MeetingProcessingJob(
+      id: 'p1',
+      audioPath: '/tmp/pod.mp3',
+      title: 'Podcast',
+      enqueuedAtMs: 1,
+      source: MeetingProcessingSource.podcast,
+    );
+    expect(
+      MeetingProcessingJob.fromJson(job.toJson()).source,
+      MeetingProcessingSource.podcast,
+    );
+
+    final legacy = MeetingProcessingJob.fromJson({
+      'id': 'm1',
+      'audioPath': '/tmp/m1.m4a',
+      'title': 'Standup',
+      'enqueuedAtMs': 1,
+      'status': 'queued',
+    });
+    expect(legacy.source, MeetingProcessingSource.live);
   });
 
   test('an unrecognised status in storage falls back to queued', () {

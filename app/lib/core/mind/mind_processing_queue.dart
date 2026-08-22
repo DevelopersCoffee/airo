@@ -28,6 +28,18 @@ List<Override> mindMeetingProcessingOverrides(MindService service) => [
       // Same live-read pattern for #1664 language mode → process(language:)
       // and ensureReady(speechLanguage:).
       languageMode: () => ref.read(speechLanguageModeProvider),
+      onProcessed: (job, last) async {
+        final capability = await openNotebookCapability();
+        await NotebookRepository(capability).ingestProcessed(
+          job: job,
+          transcript: last.transcript,
+          minutes: last.minutes,
+          meetingId: last.meetingId,
+          languageCode: ref
+              .read(speechLanguageModeProvider)
+              .processLanguageCode,
+        );
+      },
     );
     final queue = MeetingProcessingQueue(
       store: FileMeetingProcessingQueueStore(path),

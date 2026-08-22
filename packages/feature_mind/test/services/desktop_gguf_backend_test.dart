@@ -86,6 +86,30 @@ void main() {
     expect(outcome.reasonCode, 'model_file_missing');
     expect(session.loadPaths, [gemma.path]);
   });
+
+  test('the FFI llama slot is supported on Android, not iOS', () {
+    expect(
+      DesktopGgufBackend.supportedOn(
+        platform: TargetPlatform.android,
+        isWeb: false,
+      ),
+      isTrue,
+    );
+    expect(
+      DesktopGgufBackend.supportedOn(
+        platform: TargetPlatform.iOS,
+        isWeb: false,
+      ),
+      isFalse,
+    );
+    expect(
+      DesktopGgufBackend.supportedOn(
+        platform: TargetPlatform.android,
+        isWeb: true,
+      ),
+      isFalse,
+    );
+  });
 }
 
 class _FakeLlamaSession extends DesktopLlamaSession {

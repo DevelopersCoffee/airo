@@ -29,6 +29,25 @@ enum MeetingProcessingStatus {
       this == MeetingProcessingStatus.failed;
 }
 
+/// Where the audio for a processing job came from.
+enum MeetingProcessingSource {
+  /// In-app microphone capture.
+  live,
+
+  /// A local file the person picked (voice memo, lecture recording, …).
+  upload,
+
+  /// A remote podcast / audio URL downloaded then queued.
+  podcast;
+
+  static MeetingProcessingSource fromName(String? name) {
+    return MeetingProcessingSource.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => MeetingProcessingSource.live,
+    );
+  }
+}
+
 /// One recording's trip through transcription + extraction.
 ///
 /// Everything here is plain data so it round-trips through JSON — the whole
@@ -43,6 +62,7 @@ class MeetingProcessingJob {
     this.status = MeetingProcessingStatus.queued,
     this.attempt = 0,
     this.lastError,
+    this.source = MeetingProcessingSource.live,
   });
 
   /// Stable id for this job — the recording session id it was enqueued from.
@@ -65,10 +85,15 @@ class MeetingProcessingJob {
 
   final String? lastError;
 
+  /// Live capture vs uploaded file vs podcast URL. Missing from older queue
+  /// files — [MeetingProcessingSource.fromName] treats that as [live].
+  final MeetingProcessingSource source;
+
   MeetingProcessingJob copyWith({
     MeetingProcessingStatus? status,
     int? attempt,
     String? lastError,
+    MeetingProcessingSource? source,
   }) {
     return MeetingProcessingJob(
       id: id,
@@ -78,6 +103,7 @@ class MeetingProcessingJob {
       status: status ?? this.status,
       attempt: attempt ?? this.attempt,
       lastError: lastError ?? this.lastError,
+      source: source ?? this.source,
     );
   }
 
@@ -89,6 +115,7 @@ class MeetingProcessingJob {
     'status': status.name,
     'attempt': attempt,
     'lastError': lastError,
+    'source': source.name,
   };
 
   static MeetingProcessingJob fromJson(Map<String, Object?> json) {
@@ -103,6 +130,7 @@ class MeetingProcessingJob {
       ),
       attempt: json['attempt'] as int? ?? 0,
       lastError: json['lastError'] as String?,
+      source: MeetingProcessingSource.fromName(json['source'] as String?),
     );
   }
 }

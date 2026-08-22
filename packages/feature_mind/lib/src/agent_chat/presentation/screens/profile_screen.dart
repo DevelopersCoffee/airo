@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../capture/presentation/audio_retention_settings_tile.dart';
 import '../../../capture/presentation/speech_language_settings_tile.dart';
+import '../../../notebook/presentation/notebook_locale_settings_tile.dart';
 import '../../../settings/indic_generation_settings_tile.dart';
 import '../../../settings/indic_speech_backend_settings_tile.dart';
 import '../../../host/assistant_host_adapter.dart';
@@ -80,6 +81,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const AudioRetentionSettingsTile(),
             const SpeechLanguageSettingsTile(),
+            const NotebookLocaleSettingsTile(),
             const IndicGenerationSettingsTile(),
             const IndicSpeechBackendSettingsTile(),
 

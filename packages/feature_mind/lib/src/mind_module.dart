@@ -25,7 +25,9 @@ import 'intelligence/intelligence_home_screen.dart';
 import 'meeting_archive/meeting_archive_port.dart';
 import 'mind_home_screen.dart';
 import 'mind_service.dart';
+import 'notebook/application/super_summary_recap_port.dart';
 import 'routing/assistant_route_names.dart';
+import 'surfaces/mind_runtime_hub_screen.dart';
 import 'wellbeing/presentation/screens/wellbeing_screen.dart';
 
 /// Builds the host adapter for a shell, given that shell's Riverpod [Ref].
@@ -173,6 +175,26 @@ class MindModule extends AppModule {
             path: 'record',
             name: 'mind_meeting_capture',
             builder: (context, state) => const MeetingCaptureScreen(),
+          ),
+          GoRoute(
+            path: 'notes',
+            name: 'mind_notebook',
+            builder: (context, state) => MindRuntimeNotesScreen(
+              onRecordLive: () async {
+                await context.push(
+                  shell == ShellId.mind ? '/record' : '/scribe/record',
+                );
+              },
+              recapPort: superSummaryRecapPort(
+                isEngineReady: () => service.isGenerationReady,
+                complete:
+                    ({required String prompt, required int maxOutputTokens}) =>
+                        service.complete(
+                          prompt: prompt,
+                          maxOutputTokens: maxOutputTokens,
+                        ),
+              ),
+            ),
           ),
         ],
       ),

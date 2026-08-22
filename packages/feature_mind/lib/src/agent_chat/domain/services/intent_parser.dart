@@ -52,7 +52,9 @@ class Intent extends Equatable {
   List<Object?> get props => [type, originalText, parameters, confidence];
 }
 
-/// Intent parser - converts text to structured intents
+/// Legacy keyword classifier. Compatibility adapter only — it must emit a
+/// kind the Rust `ClassifiedIntent` registry already understands. Do not add
+/// new Mind routing behaviour here (ADR-0003).
 class IntentParser {
   static const Map<String, IntentType> _phraseMap = {
     // Music intents

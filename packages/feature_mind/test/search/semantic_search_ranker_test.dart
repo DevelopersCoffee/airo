@@ -87,6 +87,36 @@ void main() {
       expect(result.map((h) => h.meetingId), ['m1']);
     });
 
+    test(
+      'zero semantic similarity on a keyword hit is PM-05 provenance, not a drop',
+      () async {
+        final ranker = SemanticSearchRanker(
+          embeddingService: _FakeEmbeddingService(
+            vectors: {
+              'pricing question': [1.0, 0.0],
+              'transcript text minutes text': [-1.0, 0.0],
+            },
+          ),
+          embeddingStore: store,
+        );
+
+        final result = await ranker.rankWithAlignment(
+          query: 'pricing question',
+          keywordHits: [_hit('m1')],
+          meetings: [_meeting('m1')],
+        );
+
+        expect(result.hits.map((h) => h.meetingId), ['m1']);
+        expect(result.hasEmbeddingMismatch, isTrue);
+        expect(
+          result.alignments.single.failureMode,
+          FailureMode.pm05SemanticEmbeddingMismatch,
+        );
+        expect(result.alignments.single.retrievalScore, 1.0);
+        expect(result.alignments.single.semanticScore, lessThan(0.5));
+      },
+    );
+
     test('re-ranks keyword hits by descending semantic similarity', () async {
       final ranker = SemanticSearchRanker(
         embeddingService: _FakeEmbeddingService(

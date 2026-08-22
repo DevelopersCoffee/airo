@@ -32,35 +32,71 @@ class EntityExtractionUnavailable implements Exception {
   String toString() => reason;
 }
 
-/// A lightweight, deterministic v1 extractor: no ML model, no download, no
-/// `ModelPort` dependency.
+/// A hybrid, deterministic extractor: high-precision patterns first, then a
+/// capitalised-phrase catch-all. No ML model, no download, no `ModelPort`.
 ///
-/// Scoping decision (issue #1463): a proper NER pass would route through the
-/// local model via `ModelPort`, but `core_ai` and `feature_mind/src/llama`
-/// carry no entity-extraction capability today, and training one is out of
-/// scope for this issue. This pass recognises three shapes — `Honorific.
-/// Name` as a person, `DD Mon` as a date, and a run of capitalised words as
-/// a generic term — which reproduces the design's own worked example ("Dr.
-/// Rao, Ibuprofen, 14 Aug, Brace" from a discharge note) and gives the
-/// inspector real, typed entities to render.
+/// Scoping decision (issue #1463): a contextual NER model would route through
+/// the local model via `ModelPort`. This pass stays rule-based so the
+/// inspector always has typed entities without a loaded GGUF.
 ///
-/// Known limitation, accepted for v1: there is no grammar model behind this,
-/// so a proper noun that opens a sentence and is not one of the small set of
-/// curated [_leadingStopwords] still extracts as a term. A false positive of
-/// that shape is the accepted cost of not shipping a full NER model for one
-/// P1 issue; the on-device model-backed extractor that replaces this one can
-/// remove it.
+/// Specific shapes claim their span before the generic term pass, so
+/// "Dr. Rao" is a person (not an orphaned "Rao"), "Optimist Corp." is an
+/// organization, and "in Chicago" is a location rather than a bare term.
 class RuleBasedEntityExtractor implements EntityExtractor {
   const RuleBasedEntityExtractor();
 
-  static final RegExp _honorific = RegExp(
-    r'\b(?:Dr|Mr|Mrs|Ms|Prof)\.\s+[A-Z][A-Za-z]*\b',
+  static final RegExp _email = RegExp(
+    r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b',
   );
 
-  static final RegExp _date = RegExp(
-    r'\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)'
-    r'[a-z]*\b',
+  static final RegExp _identifier = RegExp(
+    r'\b[A-Z]{2,}[-/][A-Z0-9]{2,}(?:[-/][A-Z0-9]+)*\b',
+  );
+
+  static final RegExp _money = RegExp(
+    r'(?:\$|\b(?:USD|INR|EUR|GBP|Rs\.?)\b)\s*\d[\d,]*(?:\.\d+)?'
+    r'(?:\s*(?:million|billion|thousand|hundred))?\b',
     caseSensitive: false,
+  );
+
+  static final RegExp _percent = RegExp(r'\b\d+(?:\.\d+)?%');
+
+  static final RegExp _dayMonthDate = RegExp(
+    r'\b\d{1,2}(?:st|nd|rd|th)?\s+'
+    r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*'
+    r'(?:\s*,?\s*\d{4})?\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _monthDayDate = RegExp(
+    r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+'
+    r'\d{1,2}(?:st|nd|rd|th)?'
+    r'(?:\s*,\s*\d{4}|\s+\d{4})?\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _isoDate = RegExp(r'\b\d{4}-\d{2}-\d{2}\b');
+
+  static final RegExp _honorific = RegExp(
+    r'\b(?:(?:Dr|Mr|Mrs|Ms|Prof)\.|Sir)\s+[A-Z][A-Za-z]+'
+    r'(?:\s+[A-Z][A-Za-z]+)?\b',
+  );
+
+  static final RegExp _titledPerson = RegExp(
+    r'\b(?:CEO|CFO|CTO|COO|CMO|Founder|President|Director|'
+    r'Chairman|Chairwoman|Professor|Judge)\s*,?\s+'
+    r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b',
+  );
+
+  static final RegExp _organization = RegExp(
+    r'\b[A-Z][A-Za-z0-9&]+(?:\s+[A-Z][A-Za-z0-9&]+){0,7}\s+'
+    r'(?:(?:Corp|Inc|Ltd|LLC|LLP|PLC|GmbH|University|Hospital|'
+    r'Foundation|Institute|Organization)\b\.?|Co\.)',
+  );
+
+  static final RegExp _location = RegExp(
+    r'\b(?:in|at|from|near)\s+'
+    r'([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2})\b',
   );
 
   static final RegExp _word = RegExp(r'[A-Za-z]+');
@@ -89,6 +125,53 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     'Hi',
     'Give',
     'Hello',
+    'On',
+    'In',
+    'At',
+    'From',
+    'Near',
+  };
+
+  static const Set<String> _roleTitles = {
+    'CEO',
+    'CFO',
+    'CTO',
+    'COO',
+    'CMO',
+    'Founder',
+    'President',
+    'Director',
+    'Chairman',
+    'Chairwoman',
+    'Professor',
+    'Judge',
+  };
+
+  static const Set<String> _monthWords = {
+    'Jan',
+    'January',
+    'Feb',
+    'February',
+    'Mar',
+    'March',
+    'Apr',
+    'April',
+    'May',
+    'Jun',
+    'June',
+    'Jul',
+    'July',
+    'Aug',
+    'August',
+    'Sep',
+    'Sept',
+    'September',
+    'Oct',
+    'October',
+    'Nov',
+    'November',
+    'Dec',
+    'December',
   };
 
   @override
@@ -98,26 +181,40 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     final claimed = <_Span>[];
     final positioned = <_Positioned>[];
 
-    void take(Iterable<RegExpMatch> matches, EntityType type) {
+    void take(Iterable<RegExpMatch> matches, EntityType type, {int group = 0}) {
       for (final match in matches) {
-        final span = _Span(match.start, match.end);
+        final start = _groupStart(match, group);
+        final end = start + match.group(group)!.length;
+        final span = _Span(start, end);
         if (claimed.any(span.overlaps)) continue;
         claimed.add(span);
         positioned.add(
           _Positioned(
-            match.start,
-            ExtractedEntity(text: match.group(0)!, type: type),
+            start,
+            ExtractedEntity(
+              text: match.group(group)!,
+              type: type,
+              start: start,
+              end: end,
+            ),
           ),
         );
       }
     }
 
-    // Order matters: honorific and date shapes are the most specific and
-    // claim their span first, so the generic term pass below never
-    // fragments "Dr. Rao" into an orphaned "Rao".
+    // Most specific patterns claim first so the capitalised-phrase pass
+    // never fragments "Dr. Rao", "$5 million", or "Optimist Corp.".
+    take(_email.allMatches(text), EntityType.identifier);
+    take(_identifier.allMatches(text), EntityType.identifier);
+    take(_money.allMatches(text), EntityType.money);
+    take(_percent.allMatches(text), EntityType.money);
+    take(_isoDate.allMatches(text), EntityType.date);
+    take(_dayMonthDate.allMatches(text), EntityType.date);
+    take(_monthDayDate.allMatches(text), EntityType.date);
     take(_honorific.allMatches(text), EntityType.person);
-    take(_date.allMatches(text), EntityType.date);
-
+    take(_titledPerson.allMatches(text), EntityType.person, group: 1);
+    take(_organization.allMatches(text), EntityType.organization);
+    _takeLocations(text, claimed, positioned);
     _takeCapitalisedPhrases(text, claimed, positioned);
 
     positioned.sort((a, b) => a.start.compareTo(b.start));
@@ -128,6 +225,39 @@ class RuleBasedEntityExtractor implements EntityExtractor {
       if (seen.add(item.entity)) ordered.add(item.entity);
     }
     return List.unmodifiable(ordered);
+  }
+
+  void _takeLocations(
+    String text,
+    List<_Span> claimed,
+    List<_Positioned> positioned,
+  ) {
+    for (final match in _location.allMatches(text)) {
+      final mention = match.group(1)!;
+      final start = _groupStart(match, 1);
+      final end = start + mention.length;
+      final span = _Span(start, end);
+      if (claimed.any(span.overlaps)) continue;
+      final firstWord = mention.split(RegExp(r'\s+')).first;
+      // Months and sentence-starters after in/at/from/near are not places.
+      // Do not claim the span: "in The Ibuprofen" must still yield the term.
+      if (_monthWords.contains(mention) ||
+          _leadingStopwords.contains(firstWord)) {
+        continue;
+      }
+      claimed.add(span);
+      positioned.add(
+        _Positioned(
+          start,
+          ExtractedEntity(
+            text: mention,
+            type: EntityType.location,
+            start: start,
+            end: end,
+          ),
+        ),
+      );
+    }
   }
 
   /// Merges runs of adjacent capitalised words — separated by nothing but
@@ -173,6 +303,12 @@ class RuleBasedEntityExtractor implements EntityExtractor {
         j++;
       }
 
+      final phrase = text.substring(token.start, end);
+      if (_roleTitles.contains(phrase) || _monthWords.contains(phrase)) {
+        i = j;
+        continue;
+      }
+
       final phraseSpan = _Span(token.start, end);
       claimed.add(phraseSpan);
       positioned.add(
@@ -181,12 +317,24 @@ class RuleBasedEntityExtractor implements EntityExtractor {
           ExtractedEntity(
             text: text.substring(token.start, end),
             type: EntityType.term,
+            start: token.start,
+            end: end,
           ),
         ),
       );
       i = j;
     }
   }
+}
+
+int _groupStart(RegExpMatch match, int group) {
+  if (group == 0) return match.start;
+  final part = match.group(group);
+  final full = match.group(0);
+  if (part == null || part.isEmpty || full == null) return match.start;
+  final offset = full.lastIndexOf(part);
+  if (offset < 0) return match.start;
+  return match.start + offset;
 }
 
 class _Span {

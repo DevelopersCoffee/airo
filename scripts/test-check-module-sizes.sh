@@ -65,4 +65,27 @@ rm -rf "$TMP_DIR/packages/large"
 grep -q 'Plugin Module Size Gate' /tmp/check-module-sizes-plugin.out
 grep -q 'packages/plugins/large_plugin' /tmp/check-module-sizes-plugin.out
 
+mkdir -p "$TMP_DIR/packages/tests_heavy/lib" "$TMP_DIR/packages/tests_heavy/test"
+cat >"$TMP_DIR/packages/tests_heavy/pubspec.yaml" <<'YAML'
+name: tests_heavy
+YAML
+printf 'ok' >"$TMP_DIR/packages/tests_heavy/lib/tests_heavy.dart"
+python3 - <<'PY' >"$TMP_DIR/packages/tests_heavy/test/blob.bin"
+import sys
+sys.stdout.buffer.write(b'x' * (4 * 1024 * 1024))
+PY
+set +e
+(
+  cd "$TMP_DIR"
+  MODULE_SIZE_CHANGED_ONLY=false MODULE_SIZE_REPORT_FILE=report.md scripts/check-module-sizes.sh >/tmp/check-module-sizes-tests.out 2>&1
+)
+status=$?
+set -e
+if [ "$status" -ne 0 ]; then
+  echo "Expected test/ blobs to be excluded from the bundled-module size"
+  cat /tmp/check-module-sizes-tests.out
+  exit 1
+fi
+grep -q 'packages/tests_heavy' /tmp/check-module-sizes-tests.out
+
 echo "check-module-sizes tests passed"

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:feature_mind/src/agent_chat/data/services/chat_history_store.dart';
+import 'package:feature_mind/src/reasoning/chat_reasoning_request.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -106,6 +109,71 @@ void main() {
 
       final loaded = await store.load();
       expect(loaded.single.text, 'newer');
+    },
+  );
+
+  test(
+    'chat history persists summary and level and never thought traces',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final store = ChatHistoryStore(preferences: preferences);
+      final timestamp = DateTime.utc(2026, 8, 21, 18);
+
+      await store.save([
+        ChatHistoryEntry(
+          text: 'Ice is less dense than water.',
+          isUser: false,
+          timestamp: timestamp,
+          reasoningSummary: 'Used density, not a scratchpad.',
+          reasoningLevel: 'light',
+          toolCalls: const [
+            ChatHistoryToolCall(name: 'calendar', argumentsJson: '{}'),
+          ],
+        ),
+      ]);
+
+      final loaded = await store.load();
+      expect(loaded.single.reasoningSummary, 'Used density, not a scratchpad.');
+      expect(loaded.single.reasoningLevel, 'light');
+      expect(loaded.single.toolCalls.single.name, 'calendar');
+
+      final raw = jsonDecode(
+        preferences.getString(ChatHistoryStore.storageKey)!,
+      );
+      expect(jsonContainsBannedReasoningTraceKeys(raw), isFalse);
+    },
+  );
+
+  test(
+    'loading a payload that smuggled thoughts drops them on the next save',
+    () async {
+      final timestamp = DateTime.utc(2026, 8, 21, 18).toIso8601String();
+      SharedPreferences.setMockInitialValues({
+        ChatHistoryStore.storageKey: jsonEncode({
+          'schemaVersion': 1,
+          'entries': [
+            {
+              'text': 'Ice floats.',
+              'isUser': false,
+              'timestamp': timestamp,
+              'reasoningSummary': 'Density.',
+              'reasoningLevel': 'light',
+              'thoughts': 'SECRET TRACE',
+              'scratchpad': 'step by step...',
+            },
+          ],
+        }),
+      });
+      final preferences = await SharedPreferences.getInstance();
+      final store = ChatHistoryStore(preferences: preferences);
+      final loaded = await store.load();
+      expect(loaded.single.reasoningSummary, 'Density.');
+      await store.save(loaded);
+      final raw = jsonDecode(
+        preferences.getString(ChatHistoryStore.storageKey)!,
+      );
+      expect(jsonContainsBannedReasoningTraceKeys(raw), isFalse);
     },
   );
 }

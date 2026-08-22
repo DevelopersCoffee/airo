@@ -5,6 +5,7 @@
 
 import 'api/meeting_intelligence.dart';
 import 'api/minutes.dart';
+import 'api/reasoning.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -65,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 576920894;
+  int get rustContentHash => 68556957;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +80,8 @@ abstract class RustLibApi extends BaseApi {
   void crateApiMinutesCancelGeneration();
 
   void crateApiMeetingIntelligenceCancelMeetingIntelligence();
+
+  void crateApiReasoningCancelReasoning();
 
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
@@ -104,6 +107,10 @@ abstract class RustLibApi extends BaseApi {
     required String meetingId,
     required String title,
     required List<MeetingIntelligenceSegment> segments,
+  });
+
+  Stream<ReasoningEvent> crateApiReasoningReason({
+    required ReasoningRequest request,
   });
 
   void crateApiMinutesUnloadGeneration();
@@ -167,6 +174,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  void crateApiReasoningCancelReasoning() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiReasoningCancelReasoningConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiReasoningCancelReasoningConstMeta =>
+      const TaskConstMeta(debugName: "cancel_reasoning", argNames: []);
+
+  @override
   Stream<GenerationEvent> crateApiMinutesGenerateCompletion({
     required String prompt,
     required int maxOutputTokens,
@@ -185,7 +214,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 3,
+              funcId: 4,
               port: port_,
             );
           },
@@ -225,7 +254,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 4,
+              funcId: 5,
               port: port_,
             );
           },
@@ -254,7 +283,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -276,7 +305,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_generation_stats,
@@ -302,7 +331,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -326,7 +355,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -365,7 +394,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 9,
+              funcId: 10,
               port: port_,
             );
           },
@@ -391,12 +420,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Stream<ReasoningEvent> crateApiReasoningReason({
+    required ReasoningRequest request,
+  }) {
+    final sink = RustStreamSink<ReasoningEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_box_autoadd_reasoning_request(request, serializer);
+            sse_encode_StreamSink_reasoning_event_Sse(sink, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 11,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_String,
+          ),
+          constMeta: kCrateApiReasoningReasonConstMeta,
+          argValues: [request, sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta get kCrateApiReasoningReasonConstMeta =>
+      const TaskConstMeta(debugName: "reason", argNames: ["request", "sink"]);
+
+  @override
   void crateApiMinutesUnloadGeneration() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -434,6 +498,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<ReasoningEvent> dco_decode_StreamSink_reasoning_event_Sse(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -446,9 +518,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_box_autoadd_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   GenerationConfig dco_decode_box_autoadd_generation_config(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_generation_config(raw);
+  }
+
+  @protected
+  ReasoningLevel dco_decode_box_autoadd_reasoning_level(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_reasoning_level(raw);
+  }
+
+  @protected
+  ReasoningRequest dco_decode_box_autoadd_reasoning_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_reasoning_request(raw);
+  }
+
+  @protected
+  double dco_decode_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -559,6 +655,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ReasoningContextItem> dco_decode_list_reasoning_context_item(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_reasoning_context_item)
+        .toList();
+  }
+
+  @protected
+  List<ReasoningToolCall> dco_decode_list_reasoning_tool_call(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_reasoning_tool_call).toList();
+  }
+
+  @protected
   MeetingActionItemRecord dco_decode_meeting_action_item_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -664,6 +776,114 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? dco_decode_opt_box_autoadd_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_f_32(raw);
+  }
+
+  @protected
+  ReasoningLevel? dco_decode_opt_box_autoadd_reasoning_level(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_reasoning_level(raw);
+  }
+
+  @protected
+  ReasoningContextItem dco_decode_reasoning_context_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ReasoningContextItem(
+      source: dco_decode_String(arr[0]),
+      text: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  ReasoningEvent dco_decode_reasoning_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ReasoningEvent_Started();
+      case 1:
+        return ReasoningEvent_StageChanged(
+          stage: dco_decode_reasoning_stage(raw[1]),
+        );
+      case 2:
+        return ReasoningEvent_Progress(message: dco_decode_String(raw[1]));
+      case 3:
+        return ReasoningEvent_ToolStarted(tool: dco_decode_String(raw[1]));
+      case 4:
+        return ReasoningEvent_ToolCompleted(tool: dco_decode_String(raw[1]));
+      case 5:
+        return ReasoningEvent_AnswerDelta(text: dco_decode_String(raw[1]));
+      case 6:
+        return ReasoningEvent_Completed(
+          answer: dco_decode_String(raw[1]),
+          reasoningSummary: dco_decode_opt_String(raw[2]),
+          level: dco_decode_reasoning_level(raw[3]),
+          confidence: dco_decode_opt_box_autoadd_f_32(raw[4]),
+          toolCalls: dco_decode_list_reasoning_tool_call(raw[5]),
+        );
+      case 7:
+        return ReasoningEvent_Error(message: dco_decode_String(raw[1]));
+      case 8:
+        return ReasoningEvent_Cancelled();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  ReasoningLevel dco_decode_reasoning_level(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ReasoningLevel.values[raw as int];
+  }
+
+  @protected
+  ReasoningRequest dco_decode_reasoning_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 15)
+      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
+    return ReasoningRequest(
+      userQuery: dco_decode_String(arr[0]),
+      intentKind: dco_decode_String(arr[1]),
+      intentComplexity: dco_decode_f_32(arr[2]),
+      requestedLevel: dco_decode_opt_box_autoadd_reasoning_level(arr[3]),
+      maxReasoningLevel: dco_decode_reasoning_level(arr[4]),
+      availableMemoryMb: dco_decode_u_32(arr[5]),
+      gpuAvailable: dco_decode_bool(arr[6]),
+      npuAvailable: dco_decode_bool(arr[7]),
+      thermalConstrained: dco_decode_bool(arr[8]),
+      batteryConstrained: dco_decode_bool(arr[9]),
+      memories: dco_decode_list_reasoning_context_item(arr[10]),
+      documents: dco_decode_list_reasoning_context_item(arr[11]),
+      toolResults: dco_decode_list_reasoning_context_item(arr[12]),
+      history: dco_decode_list_reasoning_context_item(arr[13]),
+      toolNames: dco_decode_list_String(arr[14]),
+    );
+  }
+
+  @protected
+  ReasoningStage dco_decode_reasoning_stage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ReasoningStage.values[raw as int];
+  }
+
+  @protected
+  ReasoningToolCall dco_decode_reasoning_tool_call(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ReasoningToolCall(
+      name: dco_decode_String(arr[0]),
+      argumentsJson: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   int dco_decode_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -712,6 +932,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<ReasoningEvent> sse_decode_StreamSink_reasoning_event_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -725,11 +953,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_box_autoadd_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_f_32(deserializer));
+  }
+
+  @protected
   GenerationConfig sse_decode_box_autoadd_generation_config(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_generation_config(deserializer));
+  }
+
+  @protected
+  ReasoningLevel sse_decode_box_autoadd_reasoning_level(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_reasoning_level(deserializer));
+  }
+
+  @protected
+  ReasoningRequest sse_decode_box_autoadd_reasoning_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_reasoning_request(deserializer));
+  }
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat32();
   }
 
   @protected
@@ -873,6 +1129,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ReasoningContextItem> sse_decode_list_reasoning_context_item(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ReasoningContextItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_reasoning_context_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ReasoningToolCall> sse_decode_list_reasoning_tool_call(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ReasoningToolCall>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_reasoning_tool_call(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   MeetingActionItemRecord sse_decode_meeting_action_item_record(
     SseDeserializer deserializer,
   ) {
@@ -1010,6 +1294,149 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_f_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ReasoningLevel? sse_decode_opt_box_autoadd_reasoning_level(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_reasoning_level(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ReasoningContextItem sse_decode_reasoning_context_item(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_source = sse_decode_String(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return ReasoningContextItem(source: var_source, text: var_text);
+  }
+
+  @protected
+  ReasoningEvent sse_decode_reasoning_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return ReasoningEvent_Started();
+      case 1:
+        var var_stage = sse_decode_reasoning_stage(deserializer);
+        return ReasoningEvent_StageChanged(stage: var_stage);
+      case 2:
+        var var_message = sse_decode_String(deserializer);
+        return ReasoningEvent_Progress(message: var_message);
+      case 3:
+        var var_tool = sse_decode_String(deserializer);
+        return ReasoningEvent_ToolStarted(tool: var_tool);
+      case 4:
+        var var_tool = sse_decode_String(deserializer);
+        return ReasoningEvent_ToolCompleted(tool: var_tool);
+      case 5:
+        var var_text = sse_decode_String(deserializer);
+        return ReasoningEvent_AnswerDelta(text: var_text);
+      case 6:
+        var var_answer = sse_decode_String(deserializer);
+        var var_reasoningSummary = sse_decode_opt_String(deserializer);
+        var var_level = sse_decode_reasoning_level(deserializer);
+        var var_confidence = sse_decode_opt_box_autoadd_f_32(deserializer);
+        var var_toolCalls = sse_decode_list_reasoning_tool_call(deserializer);
+        return ReasoningEvent_Completed(
+          answer: var_answer,
+          reasoningSummary: var_reasoningSummary,
+          level: var_level,
+          confidence: var_confidence,
+          toolCalls: var_toolCalls,
+        );
+      case 7:
+        var var_message = sse_decode_String(deserializer);
+        return ReasoningEvent_Error(message: var_message);
+      case 8:
+        return ReasoningEvent_Cancelled();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  ReasoningLevel sse_decode_reasoning_level(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ReasoningLevel.values[inner];
+  }
+
+  @protected
+  ReasoningRequest sse_decode_reasoning_request(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_userQuery = sse_decode_String(deserializer);
+    var var_intentKind = sse_decode_String(deserializer);
+    var var_intentComplexity = sse_decode_f_32(deserializer);
+    var var_requestedLevel = sse_decode_opt_box_autoadd_reasoning_level(
+      deserializer,
+    );
+    var var_maxReasoningLevel = sse_decode_reasoning_level(deserializer);
+    var var_availableMemoryMb = sse_decode_u_32(deserializer);
+    var var_gpuAvailable = sse_decode_bool(deserializer);
+    var var_npuAvailable = sse_decode_bool(deserializer);
+    var var_thermalConstrained = sse_decode_bool(deserializer);
+    var var_batteryConstrained = sse_decode_bool(deserializer);
+    var var_memories = sse_decode_list_reasoning_context_item(deserializer);
+    var var_documents = sse_decode_list_reasoning_context_item(deserializer);
+    var var_toolResults = sse_decode_list_reasoning_context_item(deserializer);
+    var var_history = sse_decode_list_reasoning_context_item(deserializer);
+    var var_toolNames = sse_decode_list_String(deserializer);
+    return ReasoningRequest(
+      userQuery: var_userQuery,
+      intentKind: var_intentKind,
+      intentComplexity: var_intentComplexity,
+      requestedLevel: var_requestedLevel,
+      maxReasoningLevel: var_maxReasoningLevel,
+      availableMemoryMb: var_availableMemoryMb,
+      gpuAvailable: var_gpuAvailable,
+      npuAvailable: var_npuAvailable,
+      thermalConstrained: var_thermalConstrained,
+      batteryConstrained: var_batteryConstrained,
+      memories: var_memories,
+      documents: var_documents,
+      toolResults: var_toolResults,
+      history: var_history,
+      toolNames: var_toolNames,
+    );
+  }
+
+  @protected
+  ReasoningStage sse_decode_reasoning_stage(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ReasoningStage.values[inner];
+  }
+
+  @protected
+  ReasoningToolCall sse_decode_reasoning_tool_call(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_argumentsJson = sse_decode_String(deserializer);
+    return ReasoningToolCall(name: var_name, argumentsJson: var_argumentsJson);
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
@@ -1076,6 +1503,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_StreamSink_reasoning_event_Sse(
+    RustStreamSink<ReasoningEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_reasoning_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -1088,12 +1532,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_32(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_generation_config(
     GenerationConfig self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_generation_config(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_reasoning_level(
+    ReasoningLevel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_reasoning_level(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_reasoning_request(
+    ReasoningRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_reasoning_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat32(self);
   }
 
   @protected
@@ -1220,6 +1694,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_reasoning_context_item(
+    List<ReasoningContextItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_reasoning_context_item(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_reasoning_tool_call(
+    List<ReasoningToolCall> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_reasoning_tool_call(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_meeting_action_item_record(
     MeetingActionItemRecord self,
     SseSerializer serializer,
@@ -1324,6 +1822,135 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_String(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_f_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_reasoning_level(
+    ReasoningLevel? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_reasoning_level(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_reasoning_context_item(
+    ReasoningContextItem self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.source, serializer);
+    sse_encode_String(self.text, serializer);
+  }
+
+  @protected
+  void sse_encode_reasoning_event(
+    ReasoningEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ReasoningEvent_Started():
+        sse_encode_i_32(0, serializer);
+      case ReasoningEvent_StageChanged(stage: final stage):
+        sse_encode_i_32(1, serializer);
+        sse_encode_reasoning_stage(stage, serializer);
+      case ReasoningEvent_Progress(message: final message):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(message, serializer);
+      case ReasoningEvent_ToolStarted(tool: final tool):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(tool, serializer);
+      case ReasoningEvent_ToolCompleted(tool: final tool):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(tool, serializer);
+      case ReasoningEvent_AnswerDelta(text: final text):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(text, serializer);
+      case ReasoningEvent_Completed(
+        answer: final answer,
+        reasoningSummary: final reasoningSummary,
+        level: final level,
+        confidence: final confidence,
+        toolCalls: final toolCalls,
+      ):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(answer, serializer);
+        sse_encode_opt_String(reasoningSummary, serializer);
+        sse_encode_reasoning_level(level, serializer);
+        sse_encode_opt_box_autoadd_f_32(confidence, serializer);
+        sse_encode_list_reasoning_tool_call(toolCalls, serializer);
+      case ReasoningEvent_Error(message: final message):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(message, serializer);
+      case ReasoningEvent_Cancelled():
+        sse_encode_i_32(8, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_reasoning_level(
+    ReasoningLevel self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_reasoning_request(
+    ReasoningRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.userQuery, serializer);
+    sse_encode_String(self.intentKind, serializer);
+    sse_encode_f_32(self.intentComplexity, serializer);
+    sse_encode_opt_box_autoadd_reasoning_level(self.requestedLevel, serializer);
+    sse_encode_reasoning_level(self.maxReasoningLevel, serializer);
+    sse_encode_u_32(self.availableMemoryMb, serializer);
+    sse_encode_bool(self.gpuAvailable, serializer);
+    sse_encode_bool(self.npuAvailable, serializer);
+    sse_encode_bool(self.thermalConstrained, serializer);
+    sse_encode_bool(self.batteryConstrained, serializer);
+    sse_encode_list_reasoning_context_item(self.memories, serializer);
+    sse_encode_list_reasoning_context_item(self.documents, serializer);
+    sse_encode_list_reasoning_context_item(self.toolResults, serializer);
+    sse_encode_list_reasoning_context_item(self.history, serializer);
+    sse_encode_list_String(self.toolNames, serializer);
+  }
+
+  @protected
+  void sse_encode_reasoning_stage(
+    ReasoningStage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_reasoning_tool_call(
+    ReasoningToolCall self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.argumentsJson, serializer);
   }
 
   @protected
