@@ -78,8 +78,8 @@ void main() {
     await tester.pump();
     expect(
       find.text(
-        'On-device orchestration with Wikipedia. '
-        'Self-hosted SearXNG is used when configured.',
+        'Private routing currently uses Wikipedia only. '
+        'Self-hosted SearXNG support is not configured yet.',
       ),
       findsOneWidget,
     );
@@ -106,9 +106,7 @@ void main() {
     expect(semantics.hint, contains('Self-hosted SearXNG'));
   });
 
-  testWidgets('Cloud copy names every currently routed remote source', (
-    tester,
-  ) async {
+  testWidgets('Cloud copy names every currently routed source', (tester) async {
     await _pumpChatScreen(tester);
 
     await tester.tap(find.byKey(const Key('agent_chat_deep_research_button')));
@@ -119,9 +117,7 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text(
-        'Remote allowlisted sources: Wikipedia, arXiv, and Semantic Scholar.',
-      ),
+      find.text('Remote sources: Wikipedia, arXiv, and Semantic Scholar.'),
       findsOneWidget,
     );
   });
@@ -248,6 +244,31 @@ void main() {
       operationLogPort: log,
       deepResearchEngine: engine,
     );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_private')),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const Key('agent_chat_research_privacy_balanced')),
+          )
+          .selected,
+      isFalse,
+    );
+    expect(
+      find.text(
+        'Private routing currently uses Wikipedia only. '
+        'Self-hosted SearXNG support is not configured yet.',
+      ),
+      findsOneWidget,
+    );
+    expect(engine.request, isNull);
+
     await tester.tap(find.byKey(const Key('agent_chat_deep_research_resume')));
     await tester.pumpAndSettle();
 

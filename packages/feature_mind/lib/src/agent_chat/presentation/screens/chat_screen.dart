@@ -2036,11 +2036,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted || checkpoint == null) {
       return;
     }
+    final privacy = checkpoint.privacy;
     setState(() {
       _resumableCheckpoint = checkpoint;
       _deepResearchEnabled = true;
+      _researchPrivacy = privacy;
       _researchSession = ResearchSession(
-        request: ResearchRequest(question: checkpoint.question),
+        request: ResearchRequest(
+          question: checkpoint.question,
+          mode: checkpoint.mode,
+          policy: checkpoint.policy,
+          privacy: privacy,
+        ),
         events: [
           const ResearchEvent(
             kind: ResearchEventKind.planningStarted,
@@ -2184,12 +2191,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   String _privacyDescription(PrivacyProfile profile) => switch (profile) {
     PrivacyProfile.private =>
-      'On-device orchestration with Wikipedia. '
-          'Self-hosted SearXNG is used when configured.',
+      'Private routing currently uses Wikipedia only. '
+          'Self-hosted SearXNG support is not configured yet.',
     PrivacyProfile.balanced =>
       'Wikipedia, arXiv, and Semantic Scholar with local orchestration.',
     PrivacyProfile.cloud =>
-      'Remote allowlisted sources: Wikipedia, arXiv, and Semantic Scholar.',
+      'Remote sources: Wikipedia, arXiv, and Semantic Scholar.',
   };
 
   Future<void> _runDeepResearch(

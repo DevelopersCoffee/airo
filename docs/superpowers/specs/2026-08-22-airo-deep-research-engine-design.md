@@ -89,6 +89,9 @@ Shipped as **contracts and a thin live slice**, not the full production engine:
 12. Orchestrator: interpret → plan → breadth → gaps → depth → optional counter-research → citation report.
 13. Source manager: fetch → HTML extract (nav/script stripped) → freshness/credibility → cache. Hits are not evidence. One fetch failure does not kill the job.
 14. Claims from acquired paragraphs; citations are unverified unless the excerpt appears in the acquired source.
+15. User-facing Private / Balanced / Cloud profiles select typed search policy.
+    Private currently routes to Wikipedia only; the SearXNG engine id remains
+    policy-only until a user configures the adapter in a later phase.
 
 Not shipped (locked below, do not pretend they exist):
 
@@ -97,7 +100,6 @@ Not shipped (locked below, do not pretend they exist):
 - Claim-level citation validation, contradiction explanations, confidence scores
 - HTTP cache, job resumability across process death, `ResearchService` FFI
 - Research library / incremental delta research / comparison matrices / decision weights
-- Privacy modes as a user-facing control (policy enum exists; PRIVATE/CLOUD profiles do not)
 
 ## 5. Locked production scope (do not drop)
 
