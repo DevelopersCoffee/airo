@@ -1,6 +1,7 @@
 import '../../models/research_event.dart';
 import '../../models/research_request.dart';
 import 'arxiv_search_engine.dart';
+import 'local_memory_search_engine.dart';
 import 'research_checkpoint.dart';
 import 'research_control.dart';
 import 'research_http.dart';
@@ -10,6 +11,7 @@ import 'searxng_search_engine.dart';
 import 'semantic_scholar_search_engine.dart';
 import 'source_manager.dart';
 import 'wikipedia_search_engine.dart';
+import '../../../runtime/ports/operation_log_port.dart';
 
 /// Flutter-facing Deep Research API. The model does not own this workflow.
 ///
@@ -34,14 +36,20 @@ class LocalResearchService implements ResearchService {
   factory LocalResearchService({
     ResearchOrchestrator? orchestrator,
     Uri? searxngBaseUri,
+    OperationLogPort? operationLogPort,
   }) {
-    if (orchestrator != null && searxngBaseUri != null) {
+    if (orchestrator != null &&
+        (searxngBaseUri != null || operationLogPort != null)) {
       throw ArgumentError(
-        'Inject either an orchestrator or a SearXNG base URI, not both.',
+        'Inject either an orchestrator or engine configuration, not both.',
       );
     }
     return LocalResearchService._(
-      orchestrator ?? _defaultOrchestrator(searxngBaseUri),
+      orchestrator ??
+          _defaultOrchestrator(
+            searxngBaseUri: searxngBaseUri,
+            operationLogPort: operationLogPort,
+          ),
       hasConfiguredSearxng: searxngBaseUri != null,
     );
   }
@@ -54,12 +62,17 @@ class LocalResearchService implements ResearchService {
   final ResearchOrchestrator _orchestrator;
   final bool hasConfiguredSearxng;
 
-  static ResearchOrchestrator _defaultOrchestrator(Uri? searxngBaseUri) {
+  static ResearchOrchestrator _defaultOrchestrator({
+    Uri? searxngBaseUri,
+    OperationLogPort? operationLogPort,
+  }) {
     return ResearchOrchestrator(
       engines: [
         WikipediaSearchEngine(),
         ArxivSearchEngine(),
         SemanticScholarSearchEngine(),
+        if (operationLogPort != null)
+          LocalMemorySearchEngine(operationLog: operationLogPort),
         if (searxngBaseUri != null)
           SearxngSearchEngine(baseUri: searxngBaseUri),
       ],
