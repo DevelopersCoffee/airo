@@ -185,6 +185,8 @@ abstract final class ChatTurnReliability {
 
   static ChatTurnPlan plan({
     required String userText,
+    String systemPrompt = '',
+    String taskInstructions = '',
     bool historyEmpty = true,
     int estimatedTokens = 0,
     int modelContextLimit = 0,
@@ -194,8 +196,12 @@ abstract final class ChatTurnReliability {
     int cacheablePrefixTokens = 0,
     int fewShotCount = 0,
   }) {
-    final gate = PromptQualityGate.inspectUserTurn(
+    final gate = PromptQualityGate.inspectLivePrompt(
       userText: userText,
+      systemPrompt: systemPrompt,
+      taskInstructions: taskInstructions,
+      outputContract: definition.outputSchema,
+      requiresStructuredOutput: definition.outputSchema.isNotEmpty,
       historyEmpty: historyEmpty,
       estimatedTokens: estimatedTokens,
       modelContextLimit: modelContextLimit,

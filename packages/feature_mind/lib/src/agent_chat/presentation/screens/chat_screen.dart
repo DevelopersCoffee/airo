@@ -1601,6 +1601,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final estimated = TokenCounter.estimate('$systemPrompt\n$modelPrompt');
     final turn = ChatTurnReliability.plan(
       userText: message,
+      systemPrompt: systemPrompt,
       historyEmpty: false,
       estimatedTokens: estimated,
       modelContextLimit: contextLimit,

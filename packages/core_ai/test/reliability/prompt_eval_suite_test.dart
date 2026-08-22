@@ -256,4 +256,23 @@ void main() {
       expect(report.userMessage, isNot(contains('PM-')));
     }
   });
+
+  test('compiled-prompt conflicts never flip an allow fixture', () {
+    for (final fixture in _cases) {
+      if (fixture.decision != PromptGateDecision.allow) continue;
+      final report = PromptQualityGate.inspectLivePrompt(
+        userText: fixture.userText,
+        systemPrompt: 'Be brief. Respond in JSON only.',
+        outputContract: fixture.outputContract,
+        requiresStructuredOutput: fixture.requiresStructuredOutput,
+      );
+      expect(
+        report.decision,
+        PromptGateDecision.allow,
+        reason: '${fixture.promptId}: "${fixture.userText}"',
+      );
+      expect(report.blocksInference, isFalse);
+      expect(report.userMessage, isNot(contains('PD-')));
+    }
+  });
 }

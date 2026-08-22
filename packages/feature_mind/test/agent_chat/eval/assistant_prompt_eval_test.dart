@@ -36,6 +36,14 @@ void main() {
       );
       expect(gate.definition.qualifiedId, 'chat.assistant.v1');
       expect(gate.blocksInference, isFalse, reason: prompt);
+      final live = ChatTurnReliability.plan(
+        userText: prompt,
+        systemPrompt:
+            'You are Airo. Be brief. Stay on the last user question.',
+        definition: AiroPromptRegistry.chatAssistant,
+      );
+      expect(live.blocksInference, isFalse, reason: prompt);
+      expect(live.gate.userMessage, isNot(contains('PD-')));
     }
   });
 

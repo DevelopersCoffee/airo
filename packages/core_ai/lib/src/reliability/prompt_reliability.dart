@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import 'instruction_set.dart';
 import 'reasoning_reliability.dart';
 
 /// Prompt-defect taxonomy. Separate domain from [FailureMode] / [RuntimeFailure].
@@ -56,12 +57,17 @@ class PromptGateReport {
     required this.defects,
     required this.userMessage,
     this.recovery,
+    this.warnings = const [],
   });
 
   final PromptGateDecision decision;
   final List<PromptDefect> defects;
   final String userMessage;
   final RecoveryAction? recovery;
+
+  /// Compiled-prompt issues (system vs user, product-prompt polarity).
+  /// Never included in [defects], never changes [decision].
+  final List<PromptDefect> warnings;
 
   bool get blocksInference =>
       decision == PromptGateDecision.askUser ||
@@ -172,6 +178,57 @@ abstract final class PromptQualityGate {
       defects: defects,
       recovery: recovery,
       userMessage: _userCopy(defects),
+    );
+  }
+
+  /// User-turn gate plus compiled system/task/output analysis.
+  ///
+  /// Cross-layer conflicts and compiled-system unsatisfiable polarity are
+  /// [PromptGateReport.warnings] only — they must not block an allow-path.
+  static PromptGateReport inspectLivePrompt({
+    required String userText,
+    String systemPrompt = '',
+    String taskInstructions = '',
+    String outputContract = '',
+    bool historyEmpty = true,
+    int estimatedTokens = 0,
+    int modelContextLimit = 0,
+    int outputBudget = 256,
+    bool requiresStructuredOutput = false,
+    PrefixCacheCapability prefixCache = PrefixCacheCapability.unsupported,
+    int cacheablePrefixTokens = 0,
+    int fewShotCount = 0,
+  }) {
+    final userReport = inspectUserTurn(
+      userText: userText,
+      historyEmpty: historyEmpty,
+      estimatedTokens: estimatedTokens,
+      modelContextLimit: modelContextLimit,
+      outputBudget: outputBudget,
+      requiresStructuredOutput: requiresStructuredOutput,
+      outputContract: outputContract,
+      prefixCache: prefixCache,
+      cacheablePrefixTokens: cacheablePrefixTokens,
+      fewShotCount: fewShotCount,
+    );
+    final warnings = InstructionSet.fromLayers(
+      system: systemPrompt,
+      task: taskInstructions,
+      user: userText,
+      output: outputContract,
+    ).compiledWarnings(hasAcceptanceCriteria: outputContract.trim().isNotEmpty);
+    if (warnings.isEmpty) return userReport;
+    final seen = <PromptDefect>{};
+    final unique = <PromptDefect>[];
+    for (final issue in warnings) {
+      if (seen.add(issue.defect)) unique.add(issue.defect);
+    }
+    return PromptGateReport(
+      decision: userReport.decision,
+      defects: userReport.defects,
+      recovery: userReport.recovery,
+      userMessage: userReport.userMessage,
+      warnings: unique,
     );
   }
 
