@@ -16,11 +16,13 @@ class DecisionRow {
   const DecisionRow({
     required this.subject,
     required this.coveredCriteria,
+    required this.weightedScore,
     required this.contested,
   });
 
   final String subject;
   final int coveredCriteria;
+  final double weightedScore;
   final bool contested;
 }
 
@@ -51,20 +53,48 @@ List<ComparisonCell> comparisonMatrix({
   return cells;
 }
 
+List<double> criterionWeights(List<String> criteria) {
+  return [
+    for (final criterion in criteria)
+      criterion.toLowerCase() == 'memory' ? 2.0 : 1.0,
+  ];
+}
+
 List<DecisionRow> decide({
   required List<String> subjects,
   required List<ComparisonCell> cells,
+  required List<String> criteria,
+  required List<double> weights,
   required int conflicts,
 }) {
+  double weightFor(String criterion) {
+    final index = criteria.indexOf(criterion);
+    if (index < 0 || index >= weights.length) {
+      return 1.0;
+    }
+    return weights[index];
+  }
+
   final rows = [
     for (final subject in subjects)
-      DecisionRow(
-        subject: subject,
-        coveredCriteria: cells.where((cell) => cell.subject == subject).length,
-        contested:
-            conflicts > 0 && cells.any((cell) => cell.subject == subject),
-      ),
-  ]..sort((a, b) => b.coveredCriteria.compareTo(a.coveredCriteria));
+      () {
+        final seen = <String>{};
+        var weightedScore = 0.0;
+        var covered = 0;
+        for (final cell in cells.where((entry) => entry.subject == subject)) {
+          if (seen.add(cell.criterion)) {
+            covered += 1;
+            weightedScore += weightFor(cell.criterion);
+          }
+        }
+        return DecisionRow(
+          subject: subject,
+          coveredCriteria: covered,
+          weightedScore: weightedScore,
+          contested: conflicts > 0 && covered > 0,
+        );
+      }(),
+  ]..sort((a, b) => b.weightedScore.compareTo(a.weightedScore));
   return rows;
 }
 

@@ -1,5 +1,6 @@
 import 'package:feature_mind/src/agent_chat/domain/models/research_event.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/research_request.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/research/research_checkpoint.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/research/rust_research_mapping.dart';
 import 'package:feature_mind/src/llama/api/research.dart' as frb;
 import 'package:flutter_test/flutter_test.dart';
@@ -28,5 +29,22 @@ void main() {
     );
     expect(frbRequest.mode, frb.FrbResearchMode.quick);
     expect(frbRequest.policy, frb.FrbSearchPolicy.privacyFirst);
+  });
+
+  test('research checkpoint maps to FRB record wire', () {
+    const checkpoint = ResearchCheckpoint(
+      jobId: 'job-42',
+      question: 'What is Qwen?',
+      state: ResearchPhase.searching,
+      searchesUsed: 2,
+      iterationsUsed: 1,
+      mode: ResearchMode.deep,
+      policy: SearchPolicy.balanced,
+    );
+    final mapped = mapResearchCheckpoint(checkpoint);
+    expect(
+      ResearchCheckpoint.fromRecord(mapped.record),
+      checkpoint,
+    );
   });
 }

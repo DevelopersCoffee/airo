@@ -507,9 +507,12 @@ class ResearchOrchestrator {
       if (matrix.isNotEmpty) {
         lines.addAll(['', matrix]);
       }
+      final weights = criterionWeights(goal.dimensions);
       final rows = decide(
         subjects: ResearchInterpreter.splitSubjects(goal.topic),
         cells: cells,
+        criteria: goal.dimensions,
+        weights: weights,
         conflicts: conflicts.length,
       );
       if (rows.any((row) => row.contested)) {
@@ -519,7 +522,8 @@ class ResearchOrchestrator {
           '',
           'Contested criteria stay visible. No silent winner.',
           for (final row in rows)
-            '- ${row.subject}: ${row.coveredCriteria} cited cell(s)'
+            '- ${row.subject}: ${row.weightedScore.toStringAsFixed(1)} weighted score '
+                '(${row.coveredCriteria} cited cell(s))'
                 '${row.contested ? ' (contested)' : ''}',
         ]);
       }

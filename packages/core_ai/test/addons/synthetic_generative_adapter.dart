@@ -1,7 +1,7 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:core_domain/core_domain.dart';
 
-class SyntheticGenerativeAdapter implements GenerativeAddonAdapter {
+final class SyntheticGenerativeAdapter extends GenerativeAddonAdapterStub {
   SyntheticGenerativeAdapter({this.trigger = 'sample-trigger'});
 
   final String trigger;
@@ -21,7 +21,7 @@ class SyntheticGenerativeAdapter implements GenerativeAddonAdapter {
   );
 
   @override
-  AddonEvaluation evaluate(String output) {
+  AddonEvaluation evaluate(AddonConversation input, String output) {
     if (output.contains('invalid')) {
       return const AddonEvaluation(
         kind: AddonEvaluationKind.invalid,

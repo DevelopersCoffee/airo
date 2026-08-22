@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:feature_mind/src/addons/addon_host_dispatch.dart';
 
-class _HostGenerativeAdapter implements GenerativeAddonAdapter {
+final class _HostGenerativeAdapter extends GenerativeAddonAdapterStub {
   @override
   AddonIdentity get identity =>
       const AddonIdentity(id: AddonId('sample-generative'), version: '1.0.0');
@@ -20,7 +20,7 @@ class _HostGenerativeAdapter implements GenerativeAddonAdapter {
   );
 
   @override
-  AddonEvaluation evaluate(String output) =>
+  AddonEvaluation evaluate(AddonConversation input, String output) =>
       const AddonEvaluation(kind: AddonEvaluationKind.valid);
 }
 

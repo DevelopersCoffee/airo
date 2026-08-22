@@ -62,6 +62,22 @@ void researchCancel({
   jobId: jobId,
 );
 
+FrbResearchCheckpoint? researchCheckpoint({
+  required ResearchServiceHandle handle,
+  required String jobId,
+}) => RustLib.instance.api.crateApiResearchResearchCheckpoint(
+  handle: handle,
+  jobId: jobId,
+);
+
+void researchRestore({
+  required ResearchServiceHandle handle,
+  required FrbResearchCheckpoint checkpoint,
+}) => RustLib.instance.api.crateApiResearchResearchRestore(
+  handle: handle,
+  checkpoint: checkpoint,
+);
+
 String? researchReport({
   required ResearchServiceHandle handle,
   required String jobId,
@@ -74,13 +90,31 @@ String? researchReport({
 Stream<FrbResearchEvent> researchRun({
   required ResearchServiceHandle handle,
   required String jobId,
+  required List<String> knownSourceUrls,
 }) => RustLib.instance.api.crateApiResearchResearchRun(
   handle: handle,
   jobId: jobId,
+  knownSourceUrls: knownSourceUrls,
 );
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ResearchServiceHandle>>
 abstract class ResearchServiceHandle implements RustOpaqueInterface {}
+
+class FrbResearchCheckpoint {
+  final String record;
+
+  const FrbResearchCheckpoint({required this.record});
+
+  @override
+  int get hashCode => record.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FrbResearchCheckpoint &&
+          runtimeType == other.runtimeType &&
+          record == other.record;
+}
 
 class FrbResearchEvent {
   final FrbResearchEventKind kind;
@@ -123,6 +157,9 @@ enum FrbResearchEventKind {
   documentParsed,
   analyzingStarted,
   claimCreated,
+  gapDetected,
+  counterResearchStarted,
+  conflictDetected,
   synthesisStarted,
   completed,
   failed,

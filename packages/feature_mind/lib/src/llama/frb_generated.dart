@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1730392733;
+  int get rustContentHash => -1641887784;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -126,6 +126,11 @@ abstract class RustLibApi extends BaseApi {
     required String jobId,
   });
 
+  FrbResearchCheckpoint? crateApiResearchResearchCheckpoint({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  });
+
   void crateApiResearchResearchPause({
     required ResearchServiceHandle handle,
     required String jobId,
@@ -136,6 +141,11 @@ abstract class RustLibApi extends BaseApi {
     required String jobId,
   });
 
+  void crateApiResearchResearchRestore({
+    required ResearchServiceHandle handle,
+    required FrbResearchCheckpoint checkpoint,
+  });
+
   void crateApiResearchResearchResume({
     required ResearchServiceHandle handle,
     required String jobId,
@@ -144,6 +154,7 @@ abstract class RustLibApi extends BaseApi {
   Stream<FrbResearchEvent> crateApiResearchResearchRun({
     required ResearchServiceHandle handle,
     required String jobId,
+    required List<String> knownSourceUrls,
   });
 
   String crateApiResearchResearchStart({
@@ -585,7 +596,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  void crateApiResearchResearchPause({
+  FrbResearchCheckpoint? crateApiResearchResearchCheckpoint({
     required ResearchServiceHandle handle,
     required String jobId,
   }) {
@@ -599,6 +610,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_String(jobId, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_frb_research_checkpoint,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiResearchResearchCheckpointConstMeta,
+        argValues: [handle, jobId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchCheckpointConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_checkpoint",
+        argNames: ["handle", "jobId"],
+      );
+
+  @override
+  void crateApiResearchResearchPause({
+    required ResearchServiceHandle handle,
+    required String jobId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_String(jobId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -631,7 +675,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(jobId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_String,
@@ -651,6 +695,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  void crateApiResearchResearchRestore({
+    required ResearchServiceHandle handle,
+    required FrbResearchCheckpoint checkpoint,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerResearchServiceHandle(
+            handle,
+            serializer,
+          );
+          sse_encode_box_autoadd_frb_research_checkpoint(
+            checkpoint,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiResearchResearchRestoreConstMeta,
+        argValues: [handle, checkpoint],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiResearchResearchRestoreConstMeta =>
+      const TaskConstMeta(
+        debugName: "research_restore",
+        argNames: ["handle", "checkpoint"],
+      );
+
+  @override
   void crateApiResearchResearchResume({
     required ResearchServiceHandle handle,
     required String jobId,
@@ -664,7 +744,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(jobId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -687,6 +767,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Stream<FrbResearchEvent> crateApiResearchResearchRun({
     required ResearchServiceHandle handle,
     required String jobId,
+    required List<String> knownSourceUrls,
   }) {
     final sink = RustStreamSink<FrbResearchEvent>();
     unawaited(
@@ -699,11 +780,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
               serializer,
             );
             sse_encode_String(jobId, serializer);
+            sse_encode_list_String(knownSourceUrls, serializer);
             sse_encode_StreamSink_frb_research_event_Sse(sink, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 17,
+              funcId: 19,
               port: port_,
             );
           },
@@ -712,7 +794,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: sse_decode_String,
           ),
           constMeta: kCrateApiResearchResearchRunConstMeta,
-          argValues: [handle, jobId, sink],
+          argValues: [handle, jobId, knownSourceUrls, sink],
           apiImpl: this,
         ),
       ),
@@ -723,7 +805,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiResearchResearchRunConstMeta =>
       const TaskConstMeta(
         debugName: "research_run",
-        argNames: ["handle", "jobId", "sink"],
+        argNames: ["handle", "jobId", "knownSourceUrls", "sink"],
       );
 
   @override
@@ -740,7 +822,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_box_autoadd_frb_research_request(request, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -773,7 +855,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(jobId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_frb_research_job_state,
@@ -798,7 +880,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -998,6 +1080,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchCheckpoint dco_decode_box_autoadd_frb_research_checkpoint(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_frb_research_checkpoint(raw);
+  }
+
+  @protected
   FrbResearchJobState dco_decode_box_autoadd_frb_research_job_state(
     dynamic raw,
   ) {
@@ -1039,6 +1129,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
+  }
+
+  @protected
+  FrbResearchCheckpoint dco_decode_frb_research_checkpoint(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return FrbResearchCheckpoint(record: dco_decode_String(arr[0]));
   }
 
   @protected
@@ -1371,6 +1470,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchCheckpoint? dco_decode_opt_box_autoadd_frb_research_checkpoint(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_frb_research_checkpoint(raw);
+  }
+
+  @protected
   FrbResearchJobState? dco_decode_opt_box_autoadd_frb_research_job_state(
     dynamic raw,
   ) {
@@ -1615,6 +1724,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchCheckpoint sse_decode_box_autoadd_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_frb_research_checkpoint(deserializer));
+  }
+
+  @protected
   FrbResearchJobState sse_decode_box_autoadd_frb_research_job_state(
     SseDeserializer deserializer,
   ) {
@@ -1664,6 +1781,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FrbResearchCheckpoint sse_decode_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_record = sse_decode_String(deserializer);
+    return FrbResearchCheckpoint(record: var_record);
   }
 
   @protected
@@ -2088,6 +2214,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FrbResearchCheckpoint? sse_decode_opt_box_autoadd_frb_research_checkpoint(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_frb_research_checkpoint(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   FrbResearchJobState? sse_decode_opt_box_autoadd_frb_research_job_state(
     SseDeserializer deserializer,
   ) {
@@ -2438,6 +2577,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_frb_research_checkpoint(
+    FrbResearchCheckpoint self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_frb_research_checkpoint(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_frb_research_job_state(
     FrbResearchJobState self,
     SseSerializer serializer,
@@ -2492,6 +2640,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_frb_research_checkpoint(
+    FrbResearchCheckpoint self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.record, serializer);
   }
 
   @protected
@@ -2855,6 +3012,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_f_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_frb_research_checkpoint(
+    FrbResearchCheckpoint? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_frb_research_checkpoint(self, serializer);
     }
   }
 
