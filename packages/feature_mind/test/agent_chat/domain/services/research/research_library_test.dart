@@ -98,7 +98,13 @@ void main() {
 
       expect(cells, hasLength(2));
       expect(matrixMarkdown(cells), contains('| Qwen | memory |'));
-      final rows = decide(subjects: subjects, cells: cells, conflicts: 1);
+      final rows = decide(
+        subjects: subjects,
+        cells: cells,
+        criteria: const ['memory'],
+        weights: criterionWeights(const ['memory']),
+        conflicts: 1,
+      );
       expect(
         rows.where((row) => row.coveredCriteria > 0 && !row.contested),
         isEmpty,

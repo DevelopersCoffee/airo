@@ -1,6 +1,6 @@
 //! Comparison matrix and decision scores. Contradictions stay visible.
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MatrixCell {
     pub subject: String,
     pub criterion: String,
@@ -33,27 +33,68 @@ pub fn comparison_matrix(
     cells
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+pub fn criterion_weights(criteria: &[String]) -> Vec<f64> {
+    criteria
+        .iter()
+        .map(|criterion| {
+            if criterion.eq_ignore_ascii_case("memory") {
+                2.0
+            } else {
+                1.0
+            }
+        })
+        .collect()
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct DecisionRow {
     pub subject: String,
     pub covered_criteria: usize,
+    pub weighted_score: f64,
     pub contested: bool,
 }
 
-/// Rank by coverage. Contested subjects are flagged, never silently dropped.
-pub fn decide(subjects: &[String], cells: &[MatrixCell], conflicts: usize) -> Vec<DecisionRow> {
+/// Rank by weighted coverage. Contested subjects are flagged, never silently dropped.
+pub fn decide(
+    subjects: &[String],
+    cells: &[MatrixCell],
+    criteria: &[String],
+    weights: &[f64],
+    conflicts: usize,
+) -> Vec<DecisionRow> {
+    let weight_for = |criterion: &str| -> f64 {
+        criteria
+            .iter()
+            .position(|entry| entry == criterion)
+            .and_then(|index| weights.get(index).copied())
+            .unwrap_or(1.0)
+    };
     let mut rows: Vec<DecisionRow> = subjects
         .iter()
         .map(|subject| {
-            let covered = cells.iter().filter(|cell| cell.subject == *subject).count();
+            let mut seen = std::collections::BTreeSet::new();
+            let mut weighted_score = 0.0;
+            let mut covered = 0usize;
+            for cell in cells.iter().filter(|cell| cell.subject == *subject) {
+                if seen.insert(cell.criterion.clone()) {
+                    covered += 1;
+                    weighted_score += weight_for(&cell.criterion);
+                }
+            }
             DecisionRow {
                 subject: subject.clone(),
                 covered_criteria: covered,
+                weighted_score,
                 contested: conflicts > 0 && covered > 0,
             }
         })
         .collect();
-    rows.sort_by_key(|row| std::cmp::Reverse(row.covered_criteria));
+    rows.sort_by(|left, right| {
+        right
+            .weighted_score
+            .partial_cmp(&left.weighted_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     rows
 }
 
@@ -108,15 +149,17 @@ mod tests {
     #[test]
     fn decision_flags_contested_rows_instead_of_picking_a_winner() {
         let subjects = ["Qwen".into(), "Llama".into()];
+        let criteria = ["memory".into()];
+        let weights = criterion_weights(&criteria);
         let cells = comparison_matrix(
             &subjects,
-            &["memory".into()],
+            &criteria,
             &[(
                 "Qwen memory is 4 GB.".into(),
                 "https://en.wikipedia.org/wiki/Qwen".into(),
             )],
         );
-        let rows = decide(&subjects, &cells, 1);
+        let rows = decide(&subjects, &cells, &criteria, &weights, 1);
         assert!(rows
             .iter()
             .any(|row| row.subject == "Qwen" && row.contested));
@@ -126,5 +169,29 @@ mod tests {
                 .any(|row| row.covered_criteria > 0 && !row.contested),
             "a contested comparison must not present a silent winner"
         );
+    }
+
+    #[test]
+    fn weighted_memory_criterion_outranks_equal_coverage() {
+        let subjects = ["Qwen".into(), "Llama".into()];
+        let criteria = ["memory".into(), "latency".into()];
+        let weights = criterion_weights(&criteria);
+        let cells = comparison_matrix(
+            &subjects,
+            &criteria,
+            &[
+                (
+                    "Qwen memory is 4 GB.".into(),
+                    "https://en.wikipedia.org/wiki/Qwen".into(),
+                ),
+                (
+                    "Llama latency is low.".into(),
+                    "https://en.wikipedia.org/wiki/Llama".into(),
+                ),
+            ],
+        );
+        let rows = decide(&subjects, &cells, &criteria, &weights, 0);
+        assert_eq!(rows.first().map(|row| row.subject.as_str()), Some("Qwen"));
+        assert!(rows[0].weighted_score > rows[1].weighted_score);
     }
 }

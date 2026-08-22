@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'research_http_cache.dart';
+import 'source_normalizer.dart' show canonicalizeUrl;
+
 class ResearchHttpException implements Exception {
   const ResearchHttpException(this.message);
   final String message;
@@ -67,6 +70,7 @@ class ResearchHttpClient {
     this.timeout = const Duration(seconds: 8),
     this.maxRedirects = 3,
     this.transport = _ioResearchHttpTransport,
+    this.cache,
   });
 
   static const defaultAllowedHosts = {
@@ -89,6 +93,7 @@ class ResearchHttpClient {
   final Duration timeout;
   final int maxRedirects;
   final ResearchHttpTransport transport;
+  final ResearchHttpCache? cache;
 
   void validate(Uri uri) {
     if (uri.scheme != 'https') {
@@ -125,6 +130,13 @@ class ResearchHttpClient {
   }
 
   Future<String> _fetch(Uri uri) async {
+    final cacheKey = canonicalizeUrl(uri.toString());
+    final activeCache = cache ?? researchHttpCache;
+    final cached = activeCache.read(cacheKey, DateTime.now());
+    if (cached != null) {
+      return cached;
+    }
+
     var current = uri;
     for (var redirects = 0; ; redirects++) {
       final response = await transport(current, timeout).timeout(timeout);
@@ -154,7 +166,9 @@ class ResearchHttpClient {
               return buffer..addAll(chunk);
             })
             .timeout(timeout);
-        return utf8.decode(bytes);
+        final body = utf8.decode(bytes);
+        activeCache.write(cacheKey, body, DateTime.now());
+        return body;
       } finally {
         response.close();
       }

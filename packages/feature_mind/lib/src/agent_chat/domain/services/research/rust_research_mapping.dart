@@ -38,6 +38,12 @@ ResearchEventKind mapFrbResearchEventKind(frb.FrbResearchEventKind kind) {
       return ResearchEventKind.analyzingStarted;
     case frb.FrbResearchEventKind.claimCreated:
       return ResearchEventKind.claimCreated;
+    case frb.FrbResearchEventKind.gapDetected:
+      return ResearchEventKind.gapDetected;
+    case frb.FrbResearchEventKind.counterResearchStarted:
+      return ResearchEventKind.counterResearchStarted;
+    case frb.FrbResearchEventKind.conflictDetected:
+      return ResearchEventKind.conflictDetected;
     case frb.FrbResearchEventKind.synthesisStarted:
       return ResearchEventKind.synthesisStarted;
     case frb.FrbResearchEventKind.completed:

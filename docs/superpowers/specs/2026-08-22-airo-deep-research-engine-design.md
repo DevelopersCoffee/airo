@@ -118,11 +118,9 @@ Not shipped (locked below, do not pretend they exist):
 
 - Google / Bing / Brave / DuckDuckGo / Tavily / news APIs
 - SearXNG endpoint settings UI and persisted endpoint configuration
-- HTML/PDF tables-from-scanned-pages, PDF binary extraction
-- Claim-level citation validation, contradiction explanations, confidence scores
-- HTTP cache, automatic checkpoint restore through FRB, automatic continuation
-  without user reattachment, richer event stream parity with the Dart orchestrator
-- Weighted decision scoring beyond contested-row flags
+- HTML/PDF tables-from-scanned-pages, PDF binary extraction from scanned pages
+- Claim-level citation validation, contradiction explanations with confidence scores
+- Automatic continuation for explicitly user-paused jobs without a resume tap
 
 ## 5. Locked production scope (do not drop)
 
