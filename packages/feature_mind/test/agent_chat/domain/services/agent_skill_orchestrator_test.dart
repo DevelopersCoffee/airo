@@ -29,6 +29,12 @@ final lessonPlanningAssistant = loadPluginSkillFixture(
   'lesson-planning-assistant',
 );
 final insurancePlannerPersona = loadPluginSkillFixture('insurance-planner');
+final hospitalRecoveryPersona = loadPluginSkillFixture(
+  'hospital-recovery-planner',
+);
+final propertyPurchasePersona = loadPluginSkillFixture(
+  'property-purchase-planner',
+);
 
 void main() {
   group('AgentSkillOrchestrator', () {
@@ -216,6 +222,75 @@ void main() {
         expect(result.message, contains('Documents: received'));
         expect(result.message, contains('Settlement outcome'));
         expect(result.message, contains('City Hospital'));
+        expect(result.message, isNot(contains('I could not find a LifeTrack')));
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('query_entity_graph'),
+        );
+      },
+    );
+
+    test(
+      'pinned hospital-recovery-planner answers pending from the graph without the word track',
+      () async {
+        final session = ChatEntityGraphSession(
+          store: ChatEntityGraphStore.memory(),
+        );
+        await session.ingest(
+          'surgery at City Hospital on 12 Sep, pre-op tests CBC and ECG, '
+          'auth ref PREAUTH-44',
+        );
+        final orchestrator = _buildOrchestrator(
+          skills: [hospitalRecoveryPersona],
+          lifeTrackRepository: _FakeLifeTrackRepository([]),
+          entityGraphSession: session,
+        );
+
+        final result = await orchestrator.run(
+          "What's pending on my hospital recovery?",
+          pinnedPersonaId: 'hospital-recovery-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.isError, isFalse);
+        expect(result.message, contains('City Hospital'));
+        expect(result.message, contains('PREAUTH-44'));
+        expect(result.message, contains('CBC and ECG'));
+        expect(result.message.toLowerCase(), isNot(contains('diagnose')));
+        expect(result.message, isNot(contains('I could not find a LifeTrack')));
+        expect(
+          result.traces.map((trace) => trace.detail),
+          contains('query_entity_graph'),
+        );
+      },
+    );
+
+    test(
+      'pinned property-purchase-planner answers pending from the graph without the word track',
+      () async {
+        final session = ChatEntityGraphSession(
+          store: ChatEntityGraphStore.memory(),
+        );
+        await session.ingest(
+          'buying Tower B floor 14 from Prestige, RERA P52100012345',
+        );
+        final orchestrator = _buildOrchestrator(
+          skills: [propertyPurchasePersona],
+          lifeTrackRepository: _FakeLifeTrackRepository([]),
+          entityGraphSession: session,
+        );
+
+        final result = await orchestrator.run(
+          "What's pending on my flat?",
+          pinnedPersonaId: 'property-purchase-planner',
+        );
+
+        expect(result.handled, true);
+        expect(result.isError, isFalse);
+        expect(result.message, contains('P52100012345'));
+        expect(result.message, contains('Prestige'));
+        expect(result.message, contains('Promised Amenities List'));
+        expect(result.message.toLowerCase(), isNot(contains('legal advice')));
         expect(result.message, isNot(contains('I could not find a LifeTrack')));
         expect(
           result.traces.map((trace) => trace.detail),

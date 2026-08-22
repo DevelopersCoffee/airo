@@ -75,7 +75,7 @@ void main() {
       final v1 = File(
         'skills/hospital-recovery-planner/SKILL.md',
       ).readAsStringSync();
-      final v2 = v1.replaceFirst('version: 1.0.0', 'version: 1.1.0');
+      final v2 = v1.replaceFirst('version: 1.1.0', 'version: 1.2.0');
       final installer = RemoteAgentSkillInstaller(
         store: store,
         fetcher: (_) async => v1,
@@ -84,7 +84,7 @@ void main() {
         id: 'hospital-recovery-planner',
         name: 'Hospital Recovery',
         description: 'Stage a surgery or hospital stay.',
-        version: '1.0.0',
+        version: '1.1.0',
         family: AgentPersonaFamily.health,
         safetyClass: CapabilitySafetyClass.health,
         author: 'Airo',
@@ -93,16 +93,16 @@ void main() {
 
       final installed = await installer.installFromCatalog(entry);
       expect(installed.isEnabled, isTrue);
-      expect(installed.version, '1.0.0');
-      expect(store.loadRecords().single.version, '1.0.0');
+      expect(installed.version, '1.1.0');
+      expect(store.loadRecords().single.version, '1.1.0');
 
       final updated = await RemoteAgentSkillInstaller(
         store: store,
         fetcher: (_) async => v2,
       ).installFromCatalog(entry);
-      expect(updated.version, '1.1.0');
+      expect(updated.version, '1.2.0');
       expect(store.loadRecords(), hasLength(1));
-      expect(store.loadRecords().single.version, '1.1.0');
+      expect(store.loadRecords().single.version, '1.2.0');
     },
   );
 }
