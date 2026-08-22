@@ -15,6 +15,7 @@ use airo_mind_reasoning::{
 struct ScriptedEngine {
     bodies: Mutex<VecDeque<String>>,
     generate_count: Mutex<u32>,
+    prompts: Mutex<Vec<String>>,
     fail: Option<EngineError>,
 }
 
@@ -27,6 +28,7 @@ impl ScriptedEngine {
         Self {
             bodies: Mutex::new(bodies.into_iter().collect()),
             generate_count: Mutex::new(0),
+            prompts: Mutex::new(Vec::new()),
             fail: None,
         }
     }
@@ -39,12 +41,17 @@ impl ScriptedEngine {
         Self {
             bodies: Mutex::new(VecDeque::new()),
             generate_count: Mutex::new(0),
+            prompts: Mutex::new(Vec::new()),
             fail: Some(err),
         }
     }
 
     fn calls(&self) -> u32 {
         *self.generate_count.lock().unwrap()
+    }
+
+    fn prompts(&self) -> Vec<String> {
+        self.prompts.lock().unwrap().clone()
     }
 }
 
@@ -60,6 +67,7 @@ impl GenerationEngine for ScriptedEngine {
         sink: &mut dyn FnMut(GenerationChunk) -> Result<(), EngineError>,
     ) -> Result<(), EngineError> {
         *self.generate_count.lock().unwrap() += 1;
+        self.prompts.lock().unwrap().push(request.prompt.clone());
         if cancel.is_cancelled() {
             return Err(EngineError::Cancelled);
         }
@@ -409,4 +417,83 @@ fn tool_loop_stops_at_five() {
     let err = collect_with_tools(&gen, req, &CancelToken::new(), Some(&exec)).unwrap_err();
     assert_eq!(err, ReasoningError::ToolBudgetExceeded);
     assert_eq!(exec.names.lock().unwrap().len() as u32, MAX_TOOL_ITERATIONS);
+}
+
+#[test]
+fn deep_revises_the_draft_on_a_second_generation() {
+    let gen = ScriptedEngine::sequence([
+        envelope("Draft plan.", "First pass.", "0.70"),
+        envelope("Revised plan.", "Checked constraints.", "0.92"),
+    ]);
+    let mut req = ReasoningRequest::fixture("planning", 0.9);
+    req.user_query = "Plan the week around the launch.".into();
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    let result = completed(&events);
+    assert_eq!(result.level, ReasoningLevel::Deep);
+    assert_eq!(result.answer, "Revised plan.");
+    assert_eq!(
+        result.reasoning_summary.as_deref(),
+        Some("Checked constraints.")
+    );
+    assert_eq!(gen.calls(), 2);
+    let prompts = gen.prompts();
+    assert_eq!(prompts.len(), 2);
+    assert!(
+        prompts[1].contains("Draft plan."),
+        "validate pass must see the draft: {}",
+        prompts[1]
+    );
+    assert!(
+        prompts[1].contains("Check this draft") || prompts[1].contains("draft"),
+        "validate pass must ask for a check: {}",
+        prompts[1]
+    );
+    assert!(!prompts[1].contains("\"thoughts\""));
+    let streamed: String = events
+        .iter()
+        .filter_map(|e| match e {
+            ReasoningEvent::AnswerDelta { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        streamed, "Revised plan.",
+        "draft tokens must not stream; only the validated answer"
+    );
+}
+
+#[test]
+fn standard_stays_one_generation() {
+    let gen = ScriptedEngine::once(envelope("A shorter plan.", "One pass.", "0.80"));
+    let req = ReasoningRequest::fixture("planning", 0.6);
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(completed(&events).level, ReasoningLevel::Standard);
+    assert_eq!(completed(&events).answer, "A shorter plan.");
+    assert_eq!(gen.calls(), 1);
+}
+
+#[test]
+fn deep_does_not_validate_a_tool_call_draft() {
+    let gen = ScriptedEngine::once(tool_envelope("read_calendar_events"));
+    let mut req = ReasoningRequest::fixture("planning", 0.9);
+    req.available_tools = vec![calendar_tool()];
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(completed(&events).tool_calls.len(), 1);
+    assert_eq!(gen.calls(), 1);
+}
+
+#[test]
+fn deep_keeps_the_draft_when_validate_output_is_malformed() {
+    let gen = ScriptedEngine::sequence([
+        envelope("Draft plan.", "First pass.", "0.70"),
+        "not json at all".into(),
+    ]);
+    let events = collect(
+        &gen,
+        ReasoningRequest::fixture("planning", 0.9),
+        &CancelToken::new(),
+    )
+    .unwrap();
+    assert_eq!(completed(&events).answer, "Draft plan.");
+    assert_eq!(gen.calls(), 2);
 }

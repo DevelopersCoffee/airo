@@ -13,7 +13,7 @@ use crate::parser::{
     extract_tool_calls, reject_unknown_trace_keys, ResultStreamParser, ThinkingChannelStripper,
 };
 use crate::policy::{HeuristicReasoningPolicy, ReasoningPolicy};
-use crate::prompt::build_prompt;
+use crate::prompt::{build_prompt, build_validate_prompt};
 use crate::request::ReasoningRequest;
 use crate::result::ReasoningResult;
 use crate::tools::{ToolExecutor, MAX_TOOL_ITERATIONS};
@@ -105,7 +105,39 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
             })?;
 
             let gen_started = Instant::now();
-            let result = self.generate_envelope(generation, &prompt, level, cancel, emit)?;
+            let mut result = self.generate_envelope(
+                generation,
+                &prompt,
+                level,
+                cancel,
+                emit,
+                level != ReasoningLevel::Deep,
+            )?;
+            if level == ReasoningLevel::Deep && result.tool_calls.is_empty() {
+                emit(ReasoningEvent::StageChanged {
+                    stage: ReasoningStage::Validating,
+                })?;
+                emit(ReasoningEvent::Progress {
+                    message: "checking draft".into(),
+                })?;
+                let validate_prompt = build_validate_prompt(&working, level, self.limits, &result);
+                match self.generate_envelope(
+                    generation,
+                    &validate_prompt,
+                    level,
+                    cancel,
+                    emit,
+                    true,
+                ) {
+                    Ok(revised)
+                        if revised.tool_calls.is_empty() && validate_result(&revised).is_ok() =>
+                    {
+                        result = revised;
+                    }
+                    Ok(_) | Err(ReasoningError::InvalidModelOutput) => {}
+                    Err(err) => return Err(err),
+                }
+            }
             generation_ms += gen_started.elapsed().as_millis();
 
             emit(ReasoningEvent::StageChanged {
@@ -221,6 +253,7 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
         level: ReasoningLevel,
         cancel: &CancelToken,
         emit: &mut dyn FnMut(ReasoningEvent) -> Result<(), ReasoningError>,
+        stream_answer: bool,
     ) -> Result<ReasoningResult, ReasoningError> {
         let mut parser = ResultStreamParser::new();
         let mut stripper = ThinkingChannelStripper::new();
@@ -251,8 +284,10 @@ impl<P: ReasoningPolicy> ReasoningEngine<P> {
             }
             raw.push_str(&visible);
             match parser.push(&visible) {
-                Ok(delta) if !delta.is_empty() => emit(ReasoningEvent::AnswerDelta { text: delta })
-                    .map_err(|_| airo_mind_core::EngineError::Cancelled),
+                Ok(delta) if stream_answer && !delta.is_empty() => {
+                    emit(ReasoningEvent::AnswerDelta { text: delta })
+                        .map_err(|_| airo_mind_core::EngineError::Cancelled)
+                }
                 Ok(_) => Ok(()),
                 Err(_) => Err(airo_mind_core::EngineError::InvalidInput(
                     "malformed reasoning envelope".into(),
