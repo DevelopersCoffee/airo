@@ -88,4 +88,27 @@ void main() {
       expect(extractor.extract('   ').entities, isEmpty);
     });
   });
+
+  group('EntityExtractionPipeline', () {
+    test('runs identify, classify, and relate in one pass', () {
+      const pipeline = EntityExtractionPipeline();
+      final graph = pipeline.run(
+        'On Aug 29th, 2024, Optimist Corp. announced in Chicago that '
+        'its CEO, Brad Doe, would be stepping down after a successful '
+        '\$5 million funding round.',
+      );
+
+      expect(graph.entities.toStructuredMap()['person'], ['Brad Doe']);
+      expect(graph.relations, isNotEmpty);
+      expect(
+        graph.relations.map((r) => r.kind),
+        containsAll([
+          EntityRelationKind.worksAt,
+          EntityRelationKind.locatedIn,
+          EntityRelationKind.announcedOn,
+          EntityRelationKind.valuedAt,
+        ]),
+      );
+    });
+  });
 }

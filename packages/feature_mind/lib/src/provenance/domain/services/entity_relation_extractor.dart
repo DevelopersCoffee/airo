@@ -109,3 +109,19 @@ class EntityRelationExtractor {
     return gap <= nearWindow;
   }
 }
+
+/// One on-device pass: identify, classify, then relate.
+///
+/// This is the public workflow from text to a structured graph. Callers
+/// that only need mentions can still use [EntityExtractor] directly.
+class EntityExtractionPipeline {
+  const EntityExtractionPipeline({
+    this.extractor = const RuleBasedEntityExtractor(),
+  });
+
+  final EntityExtractor extractor;
+
+  EntityRelationGraph run(String text) {
+    return EntityRelationExtractor(entities: extractor).extract(text);
+  }
+}

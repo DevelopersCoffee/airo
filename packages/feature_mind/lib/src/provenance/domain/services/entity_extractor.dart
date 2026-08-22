@@ -53,6 +53,33 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     r'\b[A-Z]{2,}[-/][A-Z0-9]{2,}(?:[-/][A-Z0-9]+)*\b',
   );
 
+  static final RegExp _phone = RegExp(
+    r'(?:\+?\d{1,3}[\s.-])?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b',
+  );
+
+  static final RegExp _relativeDate = RegExp(
+    r'\b(?:today|yesterday|tomorrow)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _productNamed = RegExp(
+    r'\b(?:iPhone|iPad|iMac|MacBook|iPod|AirPods|Pixel|Galaxy|Kindle)'
+    r'[A-Za-z0-9]*\b',
+  );
+
+  static final RegExp _productSuffixed = RegExp(
+    r'\b[A-Z][A-Za-z0-9]+ (?:Cloud|Watch|Phone)\b',
+  );
+
+  static final RegExp _eventNamed = RegExp(
+    r'\b(?:Olympic Games|FIFA World Cup|World War (?:[IVX]+|\d+))\b',
+  );
+
+  static final RegExp _eventSuffixed = RegExp(
+    r'\b[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)? '
+    r'(?:Games|Conference|Festival|Cup|Summit)\b',
+  );
+
   static final RegExp _money = RegExp(
     r'(?:\$|\b(?:USD|INR|EUR|GBP|Rs\.?)\b)\s*\d[\d,]*(?:\.\d+)?'
     r'(?:\s*(?:million|billion|thousand|hundred))?\b',
@@ -147,6 +174,44 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     'Judge',
   };
 
+  static const Set<String> _notFamilyNames = {
+    'Brace',
+    'Plan',
+    'Note',
+    'Dose',
+    'Round',
+    'Street',
+    'Drive',
+    'Avenue',
+    'City',
+    'Games',
+    'War',
+    'Cup',
+    'Cloud',
+    'Phone',
+    'Watch',
+    'Conference',
+    'Festival',
+  };
+
+  static const Set<String> _notGivenNames = {
+    'New',
+    'North',
+    'South',
+    'East',
+    'West',
+    'United',
+    'National',
+    'International',
+    'Lake',
+    'Mount',
+    'San',
+    'Los',
+    'Las',
+    'Saint',
+    'Knee',
+  };
+
   static const Set<String> _monthWords = {
     'Jan',
     'January',
@@ -205,15 +270,21 @@ class RuleBasedEntityExtractor implements EntityExtractor {
     // Most specific patterns claim first so the capitalised-phrase pass
     // never fragments "Dr. Rao", "$5 million", or "Optimist Corp.".
     take(_email.allMatches(text), EntityType.identifier);
+    take(_phone.allMatches(text), EntityType.identifier);
     take(_identifier.allMatches(text), EntityType.identifier);
     take(_money.allMatches(text), EntityType.money);
     take(_percent.allMatches(text), EntityType.money);
     take(_isoDate.allMatches(text), EntityType.date);
     take(_dayMonthDate.allMatches(text), EntityType.date);
     take(_monthDayDate.allMatches(text), EntityType.date);
+    take(_relativeDate.allMatches(text), EntityType.date);
     take(_honorific.allMatches(text), EntityType.person);
     take(_titledPerson.allMatches(text), EntityType.person, group: 1);
     take(_organization.allMatches(text), EntityType.organization);
+    take(_productNamed.allMatches(text), EntityType.product);
+    take(_productSuffixed.allMatches(text), EntityType.product);
+    take(_eventNamed.allMatches(text), EntityType.event);
+    take(_eventSuffixed.allMatches(text), EntityType.event);
     _takeLocations(text, claimed, positioned);
     _takeCapitalisedPhrases(text, claimed, positioned);
 
@@ -304,10 +375,16 @@ class RuleBasedEntityExtractor implements EntityExtractor {
       }
 
       final phrase = text.substring(token.start, end);
-      if (_roleTitles.contains(phrase) || _monthWords.contains(phrase)) {
+      if (_monthWords.contains(phrase)) {
         i = j;
         continue;
       }
+
+      final type = _roleTitles.contains(phrase)
+          ? EntityType.title
+          : _isUntitledPerson(phrase)
+          ? EntityType.person
+          : EntityType.term;
 
       final phraseSpan = _Span(token.start, end);
       claimed.add(phraseSpan);
@@ -315,8 +392,8 @@ class RuleBasedEntityExtractor implements EntityExtractor {
         _Positioned(
           token.start,
           ExtractedEntity(
-            text: text.substring(token.start, end),
-            type: EntityType.term,
+            text: phrase,
+            type: type,
             start: token.start,
             end: end,
           ),
@@ -324,6 +401,23 @@ class RuleBasedEntityExtractor implements EntityExtractor {
       );
       i = j;
     }
+  }
+
+  static final RegExp _nameWord = RegExp(r'^[A-Z][a-z]{2,}$');
+
+  static bool _isUntitledPerson(String phrase) {
+    final parts = phrase.split(RegExp(r'\s+'));
+    if (parts.length != 2) return false;
+    if (!_nameWord.hasMatch(parts[0]) || !_nameWord.hasMatch(parts[1])) {
+      return false;
+    }
+    if (_notGivenNames.contains(parts[0])) return false;
+    if (_notFamilyNames.contains(parts[1])) return false;
+    if (_leadingStopwords.contains(parts[0])) return false;
+    if (_monthWords.contains(parts[0]) || _monthWords.contains(parts[1])) {
+      return false;
+    }
+    return true;
   }
 }
 
