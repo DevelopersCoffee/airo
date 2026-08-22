@@ -1,6 +1,7 @@
 import '../models/entity_relation.dart';
 import '../models/extracted_entity.dart';
 import 'entity_extractor.dart';
+import 'model_entity_extractor.dart';
 
 /// Infers typed relations among entities already found in one text.
 ///
@@ -117,11 +118,27 @@ class EntityRelationExtractor {
 class EntityExtractionPipeline {
   const EntityExtractionPipeline({
     this.extractor = const RuleBasedEntityExtractor(),
+    this.model,
   });
 
   final EntityExtractor extractor;
+  final ModelBackedEntityExtractor? model;
 
   EntityRelationGraph run(String text) {
     return EntityRelationExtractor(entities: extractor).extract(text);
+  }
+
+  /// Rule pass, then a loaded GGUF pass when [model] is set.
+  ///
+  /// Callers that must not wait on generation keep using [run].
+  Future<EntityRelationGraph> runEnriched(String text) async {
+    if (model == null) return run(text);
+    final entities = await HybridEntityExtractor(
+      rules: extractor,
+      model: model!,
+    ).extract(text);
+    return EntityRelationExtractor(
+      entities: extractor,
+    ).extractFrom(text, entities);
   }
 }

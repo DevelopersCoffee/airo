@@ -19,6 +19,10 @@ pub struct ReasoningRequest {
     pub available_tools: Vec<ToolDefinition>,
     pub requested_level: Option<ReasoningLevel>,
     pub device: DeviceInferenceProfile,
+    /// When true, run a constrained capability extract before the legacy
+    /// adapter. Host tests and fixtures keep this off so one scripted
+    /// generate is still the answer envelope.
+    pub run_analyzer: bool,
 }
 
 impl ReasoningRequest {
@@ -30,6 +34,7 @@ impl ReasoningRequest {
             available_tools: Vec::new(),
             requested_level: None,
             device: DeviceInferenceProfile::unconstrained(),
+            run_analyzer: false,
         }
     }
 }
