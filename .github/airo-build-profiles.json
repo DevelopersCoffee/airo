@@ -4,8 +4,8 @@
     "dio": "^5.10.0",
     "equatable": "^2.1.0",
     "flutter_chrome_cast": "^1.4.6",
-    "flutter_riverpod": "3.3.2",
-    "riverpod": "3.3.2",
+    "flutter_riverpod": "3.4.2",
+    "riverpod": "3.4.2",
     "shared_preferences": "^2.5.5"
   },
   "profiles": [
@@ -21,10 +21,11 @@
       "ciBuild": true,
       "edgeProfile": false,
       "requiredPackages": [
-        "airo"
+        "feature_mind",
+        "feature_coin"
       ],
       "featureModules": [
-        "airo",
+        "feature_mind",
         "feature_coin"
       ],
       "allowedNativePlugins": [
