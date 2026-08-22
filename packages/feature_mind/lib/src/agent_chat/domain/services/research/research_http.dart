@@ -77,6 +77,10 @@ class ResearchHttpClient {
     'www.semanticscholar.org',
     'eutils.ncbi.nlm.nih.gov',
     'pubmed.ncbi.nlm.nih.gov',
+    'api.github.com',
+    'github.com',
+    'api.crossref.org',
+    'doi.org',
   };
 
   final Set<String> allowedHosts;

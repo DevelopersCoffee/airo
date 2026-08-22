@@ -18,7 +18,7 @@ void main() {
   test('balanced and cloud never imply google', () {
     for (final profile in [PrivacyProfile.balanced, PrivacyProfile.cloud]) {
       final ids = SearchRouter.engineIdsFor(profile);
-      expect(ids, containsAll(['wikipedia', 'arxiv', 'semantic_scholar']));
+      expect(ids, containsAll(['wikipedia', 'arxiv', 'semantic_scholar', 'github']));
       for (final id in commercial) {
         expect(ids, isNot(contains(id)));
       }

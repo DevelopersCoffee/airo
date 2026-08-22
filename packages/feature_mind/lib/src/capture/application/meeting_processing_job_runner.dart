@@ -56,12 +56,33 @@ class MeetingProcessingJobRunner {
       );
     }
     MindProgress? last;
-    await for (final progress in _mindService.process(
-      wavPath: job.audioPath,
-      title: job.title,
-      language: mode.processLanguageCode,
-    )) {
-      last = progress;
+    if (job.hasCompletedTranscript) {
+      await for (final progress in _mindService.processWithTranscript(
+        wavPath: job.audioPath,
+        title: job.title,
+        transcript: job.completedTranscript!,
+        segments: job.completedSegments!,
+        language: mode.processLanguageCode,
+      )) {
+        last = progress;
+      }
+    } else if (job.hasRefineBaseline) {
+      await for (final progress in _mindService.processWithRefine(
+        wavPath: job.audioPath,
+        title: job.title,
+        baselineSegments: job.refineBaselineSegments!,
+        language: mode.processLanguageCode,
+      )) {
+        last = progress;
+      }
+    } else {
+      await for (final progress in _mindService.process(
+        wavPath: job.audioPath,
+        title: job.title,
+        language: mode.processLanguageCode,
+      )) {
+        last = progress;
+      }
     }
     if (last == null || last.stage == MindStage.failed) {
       throw StateError(last?.error ?? 'Processing produced no result.');
