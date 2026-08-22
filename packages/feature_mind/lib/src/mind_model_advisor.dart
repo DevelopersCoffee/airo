@@ -407,6 +407,14 @@ class MindModelAdvisor {
         ? MindModelRecommendationAction.tryNow
         : MindModelRecommendationAction.download;
 
+    final extraDescriptions = [
+      if (generationModel?.description != null) generationModel!.description,
+      if (speechModel?.description != null) speechModel!.description,
+    ];
+    final combinedRuntimeNote = extraDescriptions.isNotEmpty
+        ? '${extraDescriptions.join(' ')} $runtimeNote'.trim()
+        : runtimeNote;
+
     return MindModelRecommendation(
       id: id,
       headline: switch (strategy) {
@@ -425,7 +433,7 @@ class MindModelAdvisor {
         MindScribeStrategy.englishOnly =>
           'English-only speech when you do not need auto-detect',
       },
-      runtimeNote: runtimeNote,
+      runtimeNote: combinedRuntimeNote,
       severity: severity,
       action: action,
       badge: badge,

@@ -210,6 +210,7 @@ class ReasoningStreamFold {
   final List<String> clarificationCandidates = [];
   final List<ReasoningProgressStep> steps = [];
   final List<MindReasoningToolCall> toolCalls = [];
+  IntentParserShadowCompare? shadowCompare;
 
   void add(MindReasoningEvent event) {
     switch (event) {
@@ -220,6 +221,13 @@ class ReasoningStreamFold {
         steps.add(ReasoningProgressStep(label: labelForReasoningStage(stage)));
       case MindReasoningProgress(:final message):
         if (message.startsWith('level=')) return;
+        if (message.startsWith(shadowProgressPrefix)) {
+          shadowCompare = parseShadowProgress(message);
+          if (kDebugMode) {
+            debugPrint('IntentParser shadow: $message');
+          }
+          return;
+        }
         if (message.startsWith(clarifyProgressPrefix)) {
           clarificationCandidates
             ..clear()
@@ -279,6 +287,46 @@ String labelForReasoningStage(MindReasoningStage stage) {
 
 /// Progress payload from Rust when classify() asks instead of generating.
 const clarifyProgressPrefix = 'clarify:';
+
+/// Log-only leftover IntentParser kind vs ClassifiedIntent. Never a step.
+const shadowProgressPrefix = 'shadow:';
+
+/// Dual-run compare of the Dart leftover kind against the gated contract.
+///
+/// Does not route. Product intercepts keep using IntentParser; `reason()`
+/// still follows `classify()`.
+@immutable
+class IntentParserShadowCompare {
+  const IntentParserShadowCompare({
+    required this.parserKind,
+    required this.parserCapability,
+    required this.classifiedKind,
+    required this.classifiedCapability,
+    required this.status,
+    required this.capabilitiesMatch,
+  });
+
+  final String parserKind;
+  final String parserCapability;
+  final String classifiedKind;
+  final String classifiedCapability;
+  final String status;
+  final bool capabilitiesMatch;
+}
+
+IntentParserShadowCompare? parseShadowProgress(String message) {
+  if (!message.startsWith(shadowProgressPrefix)) return null;
+  final parts = message.substring(shadowProgressPrefix.length).split('|');
+  if (parts.length != 6) return null;
+  return IntentParserShadowCompare(
+    parserKind: parts[0],
+    parserCapability: parts[1],
+    classifiedKind: parts[2],
+    classifiedCapability: parts[3],
+    status: parts[4],
+    capabilitiesMatch: parts[5] == '1',
+  );
+}
 
 String labelForClarificationCapability(String id) {
   return switch (id) {

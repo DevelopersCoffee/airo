@@ -268,3 +268,14 @@ class LlamaGgufService {
     );
   }
 }
+
+LlamaGgufService? _sharedLlamaGgufService;
+
+/// One GGUF adapter for production ModelPort load and on-device NER complete.
+///
+/// Chat and provenance must not each construct a fresh [LlamaGgufService]
+/// while a model is already mapped — the second instance cannot see the
+/// loaded weights.
+LlamaGgufService sharedLlamaGgufService() {
+  return _sharedLlamaGgufService ??= LlamaGgufService();
+}

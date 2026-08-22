@@ -38,6 +38,7 @@ class MemorySurface extends StatefulWidget {
     this.onRemoveChat,
     this.onNewChatInFolder,
     this.onSetFolderPlugins,
+    this.onBrowseAddOns,
     this.pluginOptions = const [],
   });
 
@@ -61,6 +62,7 @@ class MemorySurface extends StatefulWidget {
   final ValueChanged<String>? onNewChatInFolder;
   final void Function(String folderId, List<String> pluginIds)?
   onSetFolderPlugins;
+  final VoidCallback? onBrowseAddOns;
   final List<MindFolderPluginOption> pluginOptions;
 
   /// Called with the labels of contexts that would survive destroying this
@@ -209,6 +211,7 @@ class _MemorySurfaceState extends State<MemorySurface> {
         onRemoveChat: widget.onRemoveChat,
         onNewChatInFolder: widget.onNewChatInFolder,
         onSetFolderPlugins: widget.onSetFolderPlugins,
+        onBrowseAddOns: widget.onBrowseAddOns,
         pluginOptions: widget.pluginOptions,
       ),
       ProjectionKind.timeline => _TimelineView(
@@ -252,6 +255,7 @@ class _GraphView extends StatelessWidget {
     this.onRemoveChat,
     this.onNewChatInFolder,
     this.onSetFolderPlugins,
+    this.onBrowseAddOns,
     this.pluginOptions = const [],
   });
 
@@ -270,6 +274,7 @@ class _GraphView extends StatelessWidget {
   final ValueChanged<String>? onNewChatInFolder;
   final void Function(String folderId, List<String> pluginIds)?
   onSetFolderPlugins;
+  final VoidCallback? onBrowseAddOns;
   final List<MindFolderPluginOption> pluginOptions;
 
   @override
@@ -294,6 +299,7 @@ class _GraphView extends StatelessWidget {
             onRemoveChat: onRemoveChat,
             onNewChatInFolder: onNewChatInFolder,
             onSetFolderPlugins: onSetFolderPlugins,
+            onBrowseAddOns: onBrowseAddOns,
             pluginOptions: pluginOptions,
           ),
         ),

@@ -49,6 +49,82 @@ void main() {
     }
   });
 
+  test(
+    'send-path live gate uses the compiled Airo prompt without blocking chips',
+    () {
+      const builder = AssistantChatContextBuilder();
+      for (final prompt in chipPrompts) {
+        final systemPrompt = builder.buildSystemPrompt(
+          currentUserPrompt: prompt,
+          compact: true,
+          history: const [],
+        );
+        final live = ChatTurnReliability.plan(
+          userText: prompt,
+          systemPrompt: systemPrompt,
+          definition: AiroPromptRegistry.chatAssistant,
+        );
+        expect(live.blocksInference, isFalse, reason: prompt);
+        expect(live.gate.userMessage, isNot(contains('PD-')));
+        expect(live.gate.userMessage, isNot(contains('PM-')));
+      }
+    },
+  );
+
+  test(
+    'compiled JSON vs user markdown warns on send and still allows inference',
+    () {
+      const builder = AssistantChatContextBuilder();
+      const userText = 'Output markdown only.';
+      final systemPrompt = [
+        builder.buildSystemPrompt(
+          currentUserPrompt: userText,
+          compact: true,
+          history: const [],
+        ),
+        'Respond in JSON only.',
+      ].join('\n\n');
+      final live = ChatTurnReliability.plan(
+        userText: userText,
+        systemPrompt: systemPrompt,
+        definition: AiroPromptRegistry.chatAssistant,
+      );
+      expect(live.blocksInference, isFalse);
+      expect(live.gate.decision, PromptGateDecision.allow);
+      expect(
+        live.gate.warnings,
+        contains(PromptDefect.spec003ConflictingInstructions),
+      );
+      expect(
+        live.gate.defects,
+        isNot(contains(PromptDefect.spec003ConflictingInstructions)),
+      );
+      expect(live.gate.userMessage, isEmpty);
+      expect(live.gate.userMessage, isNot(contains('PD-')));
+    },
+  );
+
+  test(
+    'user-only format conflict still asks before the send-path model call',
+    () {
+      const builder = AssistantChatContextBuilder();
+      const userText = 'Always return JSON. Explain this normally.';
+      final live = ChatTurnReliability.plan(
+        userText: userText,
+        systemPrompt: builder.buildSystemPrompt(
+          currentUserPrompt: userText,
+          compact: true,
+          history: const [],
+        ),
+        definition: AiroPromptRegistry.chatAssistant,
+      );
+      expect(live.blocksInference, isTrue);
+      expect(live.gate.decision, PromptGateDecision.askUser);
+      expect(live.gate.userMessage, contains('more detail'));
+      expect(live.gate.userMessage, isNot(contains('PD-')));
+    },
+  );
+
   test('tool-backed chip prompts return a usable draft or route', () async {
     const toolBacked = [
       'Split this ₹2400 bill with Asha, Ben and Chen',

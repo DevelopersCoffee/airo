@@ -73,13 +73,20 @@ const LEGACY: &[LegacyMap] = &[
     },
 ];
 
+/// Registry id the leftover parser kind would hydrate. Unknown kinds chat.
+pub fn capability_for_legacy_kind(kind: &str) -> &'static str {
+    LEGACY
+        .iter()
+        .find(|row| row.kind == kind)
+        .map(|row| row.capability)
+        .unwrap_or("general.chat")
+}
+
 pub fn from_legacy(kind: &str, complexity: f32, user_query: &str) -> ClassifiedIntent {
     let registry = CapabilityRegistry::builtin();
     let mapped = LEGACY.iter().find(|row| row.kind == kind);
-    let (capability_id, default_complexity) = match mapped {
-        Some(row) => (row.capability, row.complexity),
-        None => ("general.chat", 0.25),
-    };
+    let capability_id = capability_for_legacy_kind(kind);
+    let default_complexity = mapped.map(|row| row.complexity).unwrap_or(0.25);
     let cap = registry
         .get(capability_id)
         .expect("legacy map only names registered capabilities");

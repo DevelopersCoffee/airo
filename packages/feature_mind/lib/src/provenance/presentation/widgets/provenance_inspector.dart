@@ -14,6 +14,7 @@ import '../../domain/models/entity_relation.dart';
 import '../../domain/models/extracted_entity.dart';
 import '../../domain/services/entity_extractor.dart';
 import '../../domain/services/entity_relation_extractor.dart';
+import '../../domain/services/model_entity_extractor.dart';
 import 'entity_chip.dart';
 
 /// Surfaces 09 (Context Workspace) and 11 (Everything Browser)'s provenance
@@ -34,6 +35,7 @@ class ProvenanceInspector extends StatefulWidget {
     required this.contexts,
     required this.projections,
     this.extractor = const RuleBasedEntityExtractor(),
+    this.model,
     this.relations = const EntityRelationExtractor(),
     this.onContextTap,
     this.onCitationTap,
@@ -46,6 +48,14 @@ class ProvenanceInspector extends StatefulWidget {
   final ContextPort contexts;
   final ProjectionPort projections;
   final EntityExtractor extractor;
+
+  /// Optional loaded-GGUF pass. Null keeps the inspector on [extractor]
+  /// (rules) only. When set, rule chips paint first;
+  /// [EntityExtractionPipeline.runEnriched] then merges model mentions
+  /// without blocking first paint. A missing model is not
+  /// [EntityExtractionUnavailable] in this panel — rule chips stay. A
+  /// throwing [extractor] still shows the unavailable banner.
+  final ModelBackedEntityExtractor? model;
   final EntityRelationExtractor relations;
 
   /// Tapping a linked context chip (rule R02).
@@ -104,6 +114,7 @@ class _ProvenanceInspectorState extends State<ProvenanceInspector> {
           contexts: widget.contexts,
           projections: widget.projections,
           extractor: widget.extractor,
+          model: widget.model,
           relations: widget.relations,
           onContextTap: widget.onContextTap,
           onCitationTap: widget.onCitationTap,
@@ -146,6 +157,7 @@ class _InspectorBody extends StatefulWidget {
     required this.contexts,
     required this.projections,
     required this.extractor,
+    this.model,
     required this.relations,
     required this.onContextTap,
     required this.onCitationTap,
@@ -156,6 +168,7 @@ class _InspectorBody extends StatefulWidget {
   final ContextPort contexts;
   final ProjectionPort projections;
   final EntityExtractor extractor;
+  final ModelBackedEntityExtractor? model;
   final EntityRelationExtractor relations;
   final void Function(String contextId)? onContextTap;
   final void Function(int opSequence)? onCitationTap;
@@ -172,6 +185,7 @@ class _InspectorBodyState extends State<_InspectorBody> {
   List<ExtractedEntity>? _entities;
   List<EntityRelation> _relations = const [];
   Object? _extractionError;
+  int _enrichGeneration = 0;
 
   double? _replayProgress;
   Duration? _replayDuration;
@@ -196,15 +210,36 @@ class _InspectorBodyState extends State<_InspectorBody> {
   }
 
   void _runExtraction() {
+    final text = widget.op.detail.isEmpty
+        ? widget.op.title
+        : '${widget.op.title}. ${widget.op.detail}';
     try {
-      final text = widget.op.detail.isEmpty
-          ? widget.op.title
-          : '${widget.op.title}. ${widget.op.detail}';
       _entities = widget.extractor.extract(text);
       _relations = widget.relations.extractFrom(text, _entities!).relations;
     } on Object catch (error) {
       _extractionError = error;
       _relations = const [];
+      return;
+    }
+    unawaited(_enrichIfModelLoaded(text));
+  }
+
+  Future<void> _enrichIfModelLoaded(String text) async {
+    final model = widget.model;
+    if (model == null) return;
+    final generation = ++_enrichGeneration;
+    try {
+      final graph = await EntityExtractionPipeline(
+        extractor: widget.extractor,
+        model: model,
+      ).runEnriched(text);
+      if (!mounted || generation != _enrichGeneration) return;
+      setState(() {
+        _entities = graph.entities;
+        _relations = graph.relations;
+      });
+    } on Object {
+      // Keep rule chips. A loaded-GGUF miss is not the unavailable banner.
     }
   }
 
