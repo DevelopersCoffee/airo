@@ -182,6 +182,9 @@ not be smuggled in as part of the inference path.
 | Continuous LLM inference / live KV-cache insights | Out of this slice (§9). |
 | 4 GB as the architecture constraint | **Change.** Minimum compatibility tier. Admission is `Supervisor` + `ResourceBudget`, which already answers "does this device fit this model" per device rather than per assumption. |
 | whisper-turbo / v3 / distil as the model choice | **Not decided here** (§6.7). The registry ships tiny and small ggml rows; adding a family is a licence-and-digest decision under ADR-0018, not a spec sentence. |
+| WhisperLive rolling-buffer pattern | **Adopt the shape** (§6.4). The proposed loop itself is rejected — it re-decodes the whole buffer every tick (§6.8). |
+| Model tier chosen from total physical RAM | **Reject** (§6.9). `DeviceProfile` and `AiroRuntimeMemoryBudgetPolicy` already model available memory, pressure, thermal, and battery. |
+| 4 GB is a floor, higher tiers scale up | **Agreed** — this is what "minimum compatibility tier" already meant. The disagreement is only about what selects the tier. |
 | New `native_ai_bridge.cpp` with a hand-rolled C ABI | **Reject** (§6, Approach C). |
 | `push_pcm_audio_chunk` as the public API | **Reject as public.** Internal native ingest only (§6.1). |
 | `callback(const char* tokens)` | **Reject.** Structured events (§6.3). |
@@ -297,7 +300,9 @@ variant and a file variant.
   `compute()` / `Isolate.run` — that is a lint violation per `AGENTS.md`.
 - Sliding window feeds new audio plus prior-text prompting. Re-decoding the
   whole session per tick is forbidden; it is quadratic and it is why naive
-  live-Whisper implementations melt phones.
+  live-Whisper implementations melt phones. Re-decoding the whole *retained
+  buffer* per tick is the subtler version of the same mistake and is also
+  forbidden — see §6.8.
 - Whisper's existing anti-hallucination guards (`suppress_repetition_loops`,
   entropy/logprob thresholds, chunk `no_context` resets) must be reconsidered
   for short windows rather than inherited silently — a 1-second window has
@@ -393,6 +398,99 @@ Two things this explicitly does not do:
 - **No live-only model.** Whatever runs live must be a registry row that the
   file path can also resolve, so `Live + refine` (§3.1) is comparing two passes
   of a known pair rather than two unrelated engines.
+
+### 6.8 The WhisperLive pattern — adopt the shape, not the loop
+
+The WhisperLive architecture is the right reference, and §6.4 already describes
+its shape: a rolling buffer, overlap so words are not cut mid-phrase, prior
+tokens as context, and a VAD boundary that commits and resets. Using
+whisper.cpp's own `stream` example as the model rather than running Collabora's
+Python server on-device is correct and is what this spec already assumes.
+
+The proposed loop, as written, must not be copied. Six specific problems:
+
+1. **It is not incremental.** `whisper_full(ctx, params, buf.data(), buf.size())`
+   every 300 ms re-decodes the *entire* buffer — up to 30 seconds of audio, 100
+   times a minute. The comment calls it an "incremental inference step"; it is
+   the opposite. §6.4's rule stands: feed the new window plus prior-text
+   prompting, never the whole retained buffer.
+2. **`no_context = false` over overlapping audio is the repetition-loop
+   trigger.** `rust/airo_mind_whisper/src/whisper.rs` already carries
+   `suppress_repetition_loops`, `collapse_consecutive_duplicate_text`, and
+   `no_context = true` chunk resets, all added because whisper locked into
+   repeated phrases on long recordings. Re-feeding overlapping audio *with*
+   context is a stronger version of the same failure. Context carrying is still
+   wanted for phrase continuity — it just cannot be switched on without
+   re-deriving those guards for short windows, which §6.4 already requires.
+3. **`params.use_gpu` does not exist.** GPU offload is a
+   `whisper_context_params` field, not a `whisper_full_params` one. In this
+   repo it is already handled at the dependency level: the `metal` feature on
+   the macOS `whisper-rs` target makes `WhisperContextParameters::default()`
+   request GPU offload with no code change (`rust/airo_mind_whisper/Cargo.toml`).
+   CoreML is deliberately off — it needs a second `.mlmodelc` artifact the
+   one-file-per-model registry has no slot for
+   ([#1723](https://github.com/DevelopersCoffee/airo/issues/1723)).
+4. **`vector::erase` from the front is not a ring buffer.** It memmoves the
+   remainder on every trim, at exactly the moment the pipeline is busiest. This
+   is one of the reasons §6.4 specifies a real bounded ring.
+5. **The buffer is mutated with no lock in the snippet** while a capture thread
+   appends to it.
+6. **`send_to_flutter_ui(text)` is the rejected raw-`char*` callback**, and the
+   comment calling it a "zero-copy handoff" describes a string copy. See §6.3.
+
+`single_segment = true` is a genuinely useful hint for short live windows and
+is worth testing in Stage 1 — noted, not adopted sight-unseen, because it
+interacts with the timestamp fidelity `TranscriptSegmentRecord` depends on.
+
+### 6.9 Device tiering — the mechanism exists, and it is better than RAM
+
+The proposal to detect total physical RAM through a new `sysctl` export and map
+it to a model tier should not be built. Three reasons, in increasing order of
+importance.
+
+**It duplicates infrastructure.** `DeviceProfile`
+(`rust/airo_core/src/api/planner.rs`) already carries `total_memory_mb`,
+`available_memory_mb`, `accelerator`, `thermal_limited`, and `battery_saver`,
+and `plan_inference` already returns `InsufficientMemory` rather than guessing.
+On the Dart side, `platform_device_profile`'s `AiroRuntimeMemoryBudgetPolicy`
+already classifies budgets and already encodes the rule the proposal misses —
+high memory pressure forces a constrained budget, and critical pressure returns
+*unsupported* — regardless of how much RAM the machine physically has. A new
+macOS-only dylib export would be a fifth device-capability mechanism, and the
+worst-informed of them.
+
+**Total RAM is the wrong number.** A 16 GB Mac with three other applications
+resident is not a 16 GB budget. `available_memory_mb` and pressure exist for
+this reason. The proposal's own fallback — assume 4 GB if the syscall fails —
+is the only defensive part of it.
+
+**For live transcription, RAM is not the constraint at all.** This is §6.7's
+point restated with a concrete example: the proposed Tier 3 pairs a 16 GB
+machine with `whisper-large-v3`. Large-v3 will not sustain real time on most of
+those machines, so a "premium" tier chosen by RAM would give the *worst* live
+experience of the three tiers while satisfying every memory check. Live model
+selection is bounded by real-time factor; memory only decides whether the model
+can load at all. A tier table indexed on RAM cannot express that.
+
+What Airo does instead: the capability asks for task, budget, quality, and
+language; the Model Manager resolves (ADR-0018); the `Supervisor` admits
+against the real budget; and — once §6.7's option (2) lands — the live request
+additionally states the real-time factor it needs. Higher-spec devices get
+better models because they resolve and sustain better models, not because a
+table said so.
+
+Two related items, out of scope here but named so they are not assumed:
+
+- **Adding `base`, `large-v3`, `q4_1` whisper rows, or 7B/8B generation rows**
+  is a registry change under ADR-0018 — each needs a pinned digest, a licence
+  review (Chief Open Source Officer), and a size/battery review. Note that
+  Llama's licence carries a 700M-MAU clause the current `qwen2.5-0.5b` and
+  `sarvam-1` rows do not.
+- **Gating a quality tier behind payment** is a product and entitlements
+  decision (Product Manager, plus `core_entitlements` and the `airo-pro`
+  overlay), not an architecture one. It is worth saying once that hardware-based
+  upselling has a failure mode: a user who paid for a premium tier and then hits
+  thermal throttling gets the constrained experience they did not pay for.
 
 ## 7. Session lifecycle
 
@@ -598,6 +696,11 @@ Open, non-blocking:
 - `rust/airo_mind_audio/src/lib.rs` — decode/downmix/resample, the ring's home.
 - `rust/airo_mind_core/src/models.rs` — the speech registry rows and the
   `resolve()` rule §6.7 says is the wrong axis for live.
+- `rust/airo_core/src/api/planner.rs` and `packages/platform_device_profile/`
+  — the device-capability and memory-budget mechanisms §6.9 says not to
+  duplicate.
+- `rust/airo_mind_whisper/Cargo.toml` — Metal via the `whisper-rs` `metal`
+  feature, and why CoreML is deliberately off.
 - `packages/feature_mind/lib/src/capture/domain/speech_language_mode.dart` and
   `.../application/speech_language_preference.dart` — the settings pattern the
   transcription-mode preference (§3.1) must follow.
