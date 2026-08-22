@@ -8,9 +8,6 @@ void main() {
       label: 'sp1',
       displayName: 'Raj',
     );
-    expect(
-      mindSpeakerDisplayLabel('sp1', registry: registry),
-      'Raj',
-    );
+    expect(mindSpeakerDisplayLabel('sp1', registry: registry), 'Raj');
   });
 }

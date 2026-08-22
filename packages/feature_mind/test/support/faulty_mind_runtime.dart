@@ -68,8 +68,7 @@ class ThrowingOperationLogPort implements OperationLogPort {
   final String port;
   final String reason;
 
-  MindPortUnavailable get _error =>
-      MindPortUnavailable(port, reason);
+  MindPortUnavailable get _error => MindPortUnavailable(port, reason);
 
   @override
   Future<int> count() async => throw _error;
@@ -105,8 +104,7 @@ class ThrowingMeshPort implements MeshPort {
   final String port;
   final String reason;
 
-  MindPortUnavailable get _error =>
-      MindPortUnavailable(port, reason);
+  MindPortUnavailable get _error => MindPortUnavailable(port, reason);
 
   @override
   Stream<List<MindPeer>> peers() => Stream.error(_error);

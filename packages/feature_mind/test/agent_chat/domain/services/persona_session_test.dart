@@ -1,14 +1,31 @@
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/draft_diet_plan.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/insurance_planner.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/law_personas.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/life_workflow_personas.dart';
-import 'package:feature_mind/src/agent_chat/data/built_in_skills/teacher_personas.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/persona_session.dart';
 import 'package:feature_mind/src/runtime/models/capability_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/plugin_skill_fixture.dart';
+
 void main() {
+  final lessonPlanningAssistant = loadPluginSkillFixture(
+    'lesson-planning-assistant',
+  );
+  final contractReviewAssistant = loadPluginSkillFixture(
+    'contract-review-assistant',
+  );
+  final draftDietPlanSkill = loadPluginSkillFixture('draft-diet-plan');
+  final insurancePlannerPersona = loadPluginSkillFixture('insurance-planner');
+  final hospitalRecoveryPersona = loadPluginSkillFixture(
+    'hospital-recovery-planner',
+  );
+  final universityAdmissionPersona = loadPluginSkillFixture(
+    'university-admission-planner',
+  );
+  final carPurchasePersona = loadPluginSkillFixture('car-purchase-planner');
+  final projectPlannerPersona = loadPluginSkillFixture('project-planner');
+  final gradingSupportAssistant = loadPluginSkillFixture(
+    'grading-support-assistant',
+  );
+
   group('PersonaSession', () {
     test('unpinned chat has no exclusive playbook', () {
       const session = PersonaSession();
@@ -49,6 +66,8 @@ void main() {
       final session = PersonaSession(pinned: insurancePlannerPersona);
       expect(session.safetyClass, CapabilitySafetyClass.financial);
       expect(session.usesTool('query_lifetrack_status'), isTrue);
+      expect(session.usesTool('query_entity_graph'), isTrue);
+      expect(session.usesTool('create_calendar_event'), isTrue);
       expect(
         insurancePlannerPersona.followUpPolicy,
         SkillFollowUpPolicy.offerCalendar,
@@ -72,6 +91,24 @@ void main() {
         expect(
           hospitalRecoveryPersona.followUpPolicy,
           SkillFollowUpPolicy.dailyUntilDone,
+        );
+        expect(
+          PersonaSession(
+            pinned: hospitalRecoveryPersona,
+          ).usesTool('create_calendar_event'),
+          isTrue,
+        );
+        expect(
+          PersonaSession(
+            pinned: universityAdmissionPersona,
+          ).usesTool('create_calendar_event'),
+          isTrue,
+        );
+        expect(
+          PersonaSession(
+            pinned: carPurchasePersona,
+          ).usesTool('create_calendar_event'),
+          isTrue,
         );
         expect(universityAdmissionPersona.family, AgentPersonaFamily.education);
         expect(carPurchasePersona.family, AgentPersonaFamily.vehicle);

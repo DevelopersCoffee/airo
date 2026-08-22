@@ -46,9 +46,11 @@ the gate, or invoke tools.
    and the registry — never the user string.
 3. **Three-way gate:** `classified` / `needs_clarification` / `rejected`.
    Underspecified action requests ask one focused question. Clear requests
-   (diet plan, explicit calendar create) proceed.
+   (explicit calendar create, a selected skill) proceed.
 4. **Capability registry is the source of truth.** Analyzers select from it.
-   They must not invent ids.
+   They must not invent ids. **Product plugins are not registry domains.**
+   Diet, coins, and similar journeys are skills: they route through
+   `skill.execute` and run in `feature_mind` / `AgentSkillOrchestrator`.
 5. **Classifier backends are replaceable.** Phase 1 hydrates the contract from
    the legacy kind adapter. Later analyzers (`GenerationEngine` structured
    output, then a local SLM) must emit the same schema. Do not add a
@@ -75,12 +77,15 @@ confirmation is not required. Otherwise ask.
 - Document ingestion, cost/latency routers, shadow-mode dual-run, FRB
   `classify()` — later phases against this same schema.
 - Treating LLM-emitted `0.93` as calibrated probability.
+- First-class product domains (`diet.*`, coins, games) in the intent
+  registry. Those are skills/plugins.
 
 ## Consequences
 
 - `airo_mind_reasoning::ClassifiedIntent` becomes the v1 contract (legacy
   `kind` / `complexity` remain compatibility fields).
-- Diet maps to `diet.plan`, not `planning`.
+- Application plugins (diet meal plans, etc.) map to `skill.execute`, never
+  a `diet.*` capability.
 - Analyzer coverage replaces the keyword parser; the parser is deleted only
   after evals say so.
 

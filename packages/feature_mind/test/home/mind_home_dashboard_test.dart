@@ -92,7 +92,10 @@ class _FaultyMindRuntime implements MindRuntime {
 class _ThrowingVault implements VaultPort {
   const _ThrowingVault();
 
-  static const _error = MindPortUnavailable('vault', 'root identity not sealed');
+  static const _error = MindPortUnavailable(
+    'vault',
+    'root identity not sealed',
+  );
 
   @override
   Future<VaultState> state() async => throw _error;
@@ -187,8 +190,10 @@ class _ThrowingContexts implements ContextPort {
 class _ThrowingCapabilities implements CapabilityPort {
   const _ThrowingCapabilities();
 
-  static const _error =
-      MindPortUnavailable('capabilities', 'pack registry not wired');
+  static const _error = MindPortUnavailable(
+    'capabilities',
+    'pack registry not wired',
+  );
 
   @override
   Future<List<InstalledCapability>> installed() async => throw _error;
@@ -239,10 +244,7 @@ void main() {
       await _pumpDashboard(tester, FixtureMindRuntime());
 
       expect(find.byKey(const Key('mind.home.contexts')), findsOneWidget);
-      expect(
-        find.text('${fixtureContexts.length} CONTEXTS'),
-        findsOneWidget,
-      );
+      expect(find.text('${fixtureContexts.length} CONTEXTS'), findsOneWidget);
     });
 
     testWidgets('renders a capability summary bound to CapabilityPort', (
@@ -250,13 +252,8 @@ void main() {
     ) async {
       await _pumpDashboard(tester, FixtureMindRuntime());
 
-      expect(
-        find.byKey(const Key('mind.home.capabilities')),
-        findsOneWidget,
-      );
-      final activeCount = fixtureCapabilities
-          .where((c) => c.isActive)
-          .length;
+      expect(find.byKey(const Key('mind.home.capabilities')), findsOneWidget);
+      final activeCount = fixtureCapabilities.where((c) => c.isActive).length;
       expect(
         find.text(
           '$activeCount of ${fixtureCapabilities.length} CAPABILITIES ACTIVE',
@@ -310,10 +307,7 @@ void main() {
       );
       await _pumpDashboard(tester, runtime);
 
-      expect(
-        find.byKey(const Key('mind.home.portError.log')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('mind.home.portError.log')), findsOneWidget);
       expect(find.text('The log is not available.'), findsOneWidget);
       expect(find.byKey(const Key('mind.home.numberStrip')), findsNothing);
     });
@@ -327,10 +321,7 @@ void main() {
       );
       await _pumpDashboard(tester, runtime);
 
-      expect(
-        find.byKey(const Key('mind.home.portError.mesh')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('mind.home.portError.mesh')), findsOneWidget);
       expect(find.text('The mesh is not available.'), findsOneWidget);
       expect(find.byKey(const Key('mind.home.numberStrip')), findsNothing);
     });
@@ -344,10 +335,7 @@ void main() {
       );
       await _pumpDashboard(tester, runtime);
 
-      expect(
-        find.byKey(const Key('mind.home.contexts.error')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('mind.home.contexts.error')), findsOneWidget);
       expect(find.text('The contexts is not available.'), findsOneWidget);
     });
 
@@ -364,10 +352,7 @@ void main() {
           find.byKey(const Key('mind.home.capabilities.error')),
           findsOneWidget,
         );
-        expect(
-          find.text('The capabilities is not available.'),
-          findsOneWidget,
-        );
+        expect(find.text('The capabilities is not available.'), findsOneWidget);
       },
     );
 

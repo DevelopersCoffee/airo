@@ -73,54 +73,51 @@ void main() {
       },
     );
 
-    test(
-      'TranscriptEvent_TranscriptReady preserves segment order across the '
-      'FFI boundary',
-      () {
-        final wire = rust.TranscriptEvent.transcriptReady(
-          text: 'first second third',
-          segments: [
-            rust.TranscriptSegmentRecord(
-              id: 's0',
-              startMs: BigInt.from(0),
-              endMs: BigInt.from(400),
-              text: 'first',
-            ),
-            rust.TranscriptSegmentRecord(
-              id: 's1',
-              startMs: BigInt.from(400),
-              endMs: BigInt.from(900),
-              text: 'second',
-            ),
-            rust.TranscriptSegmentRecord(
-              id: 's2',
-              startMs: BigInt.from(900),
-              endMs: BigInt.from(1500),
-              text: 'third',
-            ),
-          ],
-        );
+    test('TranscriptEvent_TranscriptReady preserves segment order across the '
+        'FFI boundary', () {
+      final wire = rust.TranscriptEvent.transcriptReady(
+        text: 'first second third',
+        segments: [
+          rust.TranscriptSegmentRecord(
+            id: 's0',
+            startMs: BigInt.from(0),
+            endMs: BigInt.from(400),
+            text: 'first',
+          ),
+          rust.TranscriptSegmentRecord(
+            id: 's1',
+            startMs: BigInt.from(400),
+            endMs: BigInt.from(900),
+            text: 'second',
+          ),
+          rust.TranscriptSegmentRecord(
+            id: 's2',
+            startMs: BigInt.from(900),
+            endMs: BigInt.from(1500),
+            text: 'third',
+          ),
+        ],
+      );
 
-        final mapped = switch (wire) {
-          rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
-            TranscriptEventTranscriptReady(
-              text,
-              segments.map(toTranscriptSegment).toList(growable: false),
-            ),
-          _ => throw StateError('unexpected variant'),
-        };
+      final mapped = switch (wire) {
+        rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
+          TranscriptEventTranscriptReady(
+            text,
+            segments.map(toTranscriptSegment).toList(growable: false),
+          ),
+        _ => throw StateError('unexpected variant'),
+      };
 
-        expect(mapped.text, 'first second third');
-        expect(mapped.segments.map((s) => s.id).toList(), ['s0', 's1', 's2']);
-        expect(mapped.segments.map((s) => s.startMs).toList(), [0, 400, 900]);
-        expect(mapped.segments.map((s) => s.endMs).toList(), [400, 900, 1500]);
-        expect(mapped.segments.map((s) => s.text).toList(), [
-          'first',
-          'second',
-          'third',
-        ]);
-      },
-    );
+      expect(mapped.text, 'first second third');
+      expect(mapped.segments.map((s) => s.id).toList(), ['s0', 's1', 's2']);
+      expect(mapped.segments.map((s) => s.startMs).toList(), [0, 400, 900]);
+      expect(mapped.segments.map((s) => s.endMs).toList(), [400, 900, 1500]);
+      expect(mapped.segments.map((s) => s.text).toList(), [
+        'first',
+        'second',
+        'third',
+      ]);
+    });
   });
 
   // `#1629` Gap D: `MindSpeechBridge.save` carries segments back across the
@@ -153,9 +150,7 @@ void main() {
         text: 'long meeting, near-overflow timestamp',
       );
 
-      final roundTripped = toTranscriptSegment(
-        fromTranscriptSegment(original),
-      );
+      final roundTripped = toTranscriptSegment(fromTranscriptSegment(original));
 
       expect(roundTripped, original);
     });
@@ -168,26 +163,29 @@ void main() {
   // plain constructible Dart class, so the wire shape itself is what is
   // checked here.
   group('SpeechLanguage selection reaches MindConfig', () {
-    test('englishOnly is the default and multilingual is a real alternative', () {
-      final defaultConfig = rust.MindConfig(
-        modelsDir: '/models',
-        storePath: '/models/meetings.log',
-        memoryBudgetMb: 4096,
-        speechLanguage: rust.SpeechLanguage.englishOnly,
-      );
-      final multilingualConfig = rust.MindConfig(
-        modelsDir: '/models',
-        storePath: '/models/meetings.log',
-        memoryBudgetMb: 4096,
-        speechLanguage: rust.SpeechLanguage.multilingual,
-      );
+    test(
+      'englishOnly is the default and multilingual is a real alternative',
+      () {
+        final defaultConfig = rust.MindConfig(
+          modelsDir: '/models',
+          storePath: '/models/meetings.log',
+          memoryBudgetMb: 4096,
+          speechLanguage: rust.SpeechLanguage.englishOnly,
+        );
+        final multilingualConfig = rust.MindConfig(
+          modelsDir: '/models',
+          storePath: '/models/meetings.log',
+          memoryBudgetMb: 4096,
+          speechLanguage: rust.SpeechLanguage.multilingual,
+        );
 
-      expect(defaultConfig.speechLanguage, rust.SpeechLanguage.englishOnly);
-      expect(
-        multilingualConfig.speechLanguage,
-        rust.SpeechLanguage.multilingual,
-      );
-      expect(defaultConfig, isNot(equals(multilingualConfig)));
-    });
+        expect(defaultConfig.speechLanguage, rust.SpeechLanguage.englishOnly);
+        expect(
+          multilingualConfig.speechLanguage,
+          rust.SpeechLanguage.multilingual,
+        );
+        expect(defaultConfig, isNot(equals(multilingualConfig)));
+      },
+    );
   });
 }

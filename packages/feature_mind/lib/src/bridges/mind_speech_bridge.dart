@@ -37,8 +37,7 @@ class TranscriptSegment {
   final String? speakerLabel;
 
   @override
-  int get hashCode =>
-      Object.hash(id, startMs, endMs, text, speakerLabel);
+  int get hashCode => Object.hash(id, startMs, endMs, text, speakerLabel);
 
   @override
   bool operator ==(Object other) =>
@@ -153,7 +152,10 @@ abstract interface class MindSpeechBridge {
   /// synchronize, and no way to pin two languages for one pass: whisper.cpp
   /// accepts exactly one language per run (see
   /// `rust.transcribeRecording`/`TranscriptionOptions` on the Rust side).
-  Stream<TranscriptEvent> transcribe({required String wavPath, String? language});
+  Stream<TranscriptEvent> transcribe({
+    required String wavPath,
+    String? language,
+  });
 
   /// Makes a meeting durable and searchable, and persists its structured
   /// transcript document. Returns the meeting's id.
@@ -229,19 +231,23 @@ class RustMindSpeechBridge implements MindSpeechBridge {
   );
 
   @override
-  Stream<TranscriptEvent> transcribe({required String wavPath, String? language}) =>
-      rust.transcribeRecording(wavPath: wavPath, language: language).map((event) {
-        return switch (event) {
-          rust.TranscriptEvent_Transcribing(:final segment) =>
-            TranscriptEventTranscribing(toTranscriptSegment(segment)),
-          rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
-            TranscriptEventTranscriptReady(
-              text,
-              segments.map(toTranscriptSegment).toList(growable: false),
-            ),
-          rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
-        };
-      });
+  Stream<TranscriptEvent> transcribe({
+    required String wavPath,
+    String? language,
+  }) => rust.transcribeRecording(wavPath: wavPath, language: language).map((
+    event,
+  ) {
+    return switch (event) {
+      rust.TranscriptEvent_Transcribing(:final segment) =>
+        TranscriptEventTranscribing(toTranscriptSegment(segment)),
+      rust.TranscriptEvent_TranscriptReady(:final text, :final segments) =>
+        TranscriptEventTranscriptReady(
+          text,
+          segments.map(toTranscriptSegment).toList(growable: false),
+        ),
+      rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
+    };
+  });
 
   @override
   Future<String> save({

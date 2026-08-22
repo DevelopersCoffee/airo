@@ -3,16 +3,25 @@ import 'package:go_router/go_router.dart';
 
 /// The Airo Mind shell's navigation chrome.
 ///
-/// Destinations: Scribe, Assistant, Intelligence, Wellbeing. Layout follows
-/// width: a [NavigationRail] at [railBreakpoint] and a [NavigationBar] below.
+/// Destinations: Scribe, Assistant, Intelligence, Settings. Layout follows
+/// width: a [NavigationRail] from [railBreakpoint] (tablet and up) and a
+/// [NavigationBar] below. The same destinations are never listed twice — no
+/// drawer overlay on top of the bar or rail.
+///
+/// Wellbeing is a chat skill on this shell, not a tab — the Mind module
+/// contributes no `/wellbeing` route here, and go_router cannot derive a
+/// default location from an empty shell branch.
 class MindShell extends StatelessWidget {
   const MindShell({required this.navigationShell, super.key});
 
   /// Width at which the shell switches from a bottom bar to a left rail.
-  static const double railBreakpoint = 900;
+  ///
+  /// Matches the tablet breakpoint in `docs/ui/RESPONSIVE_STANDARDS.md` so
+  /// iPad portrait does not keep phone chrome (bar) plus a duplicate menu.
+  static const double railBreakpoint = 600;
 
   /// The branch stack built by `StatefulShellRoute.indexedStack`. Branch order
-  /// is scribe, assistant, intelligence, wellbeing — the same order as
+  /// is scribe, assistant, intelligence, settings — the same order as
   /// [destinations].
   final StatefulNavigationShell navigationShell;
 
@@ -37,24 +46,15 @@ class MindShell extends StatelessWidget {
       selectedIcon: Icons.memory,
     ),
     MindDestination(
-      label: 'Wellbeing',
-      icon: Icons.self_improvement_outlined,
-      selectedIcon: Icons.self_improvement,
+      label: 'Settings',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= railBreakpoint;
-    final destinations = [
-      for (final destination in MindShell.destinations)
-        NavigationDestination(
-          key: ValueKey('mind_nav_${destination.label.toLowerCase()}'),
-          icon: Icon(destination.icon),
-          selectedIcon: Icon(destination.selectedIcon),
-          label: destination.label,
-        ),
-    ];
 
     void onSelected(int index) => navigationShell.goBranch(
       index,
@@ -90,7 +90,15 @@ class MindShell extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: onSelected,
-        destinations: destinations,
+        destinations: [
+          for (final destination in MindShell.destinations)
+            NavigationDestination(
+              key: ValueKey('mind_nav_${destination.label.toLowerCase()}'),
+              icon: Icon(destination.icon),
+              selectedIcon: Icon(destination.selectedIcon),
+              label: destination.label,
+            ),
+        ],
       ),
     );
   }

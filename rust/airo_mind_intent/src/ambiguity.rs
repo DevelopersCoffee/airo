@@ -42,11 +42,11 @@ pub fn apply_legacy_gate(intent: &mut ClassifiedIntent, user_query: &str) {
             candidates: vec![
                 "planning.create".into(),
                 "calendar.retrieve".into(),
-                "diet.plan".into(),
+                "skill.execute".into(),
             ],
             reason: Some("domain_ambiguity".into()),
             clarification: Some(
-                "Do you mean planning your day, scheduling something on your calendar, or preparing a diet/meal plan?".into(),
+                "Do you mean planning your day, scheduling something on your calendar, or running a skill such as a meal plan?".into(),
             ),
         };
         return;
@@ -84,7 +84,7 @@ mod tests {
             .clarification
             .as_deref()
             .unwrap()
-            .contains("diet/meal plan"));
+            .contains("skill"));
     }
 
     #[test]

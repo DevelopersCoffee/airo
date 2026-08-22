@@ -102,15 +102,15 @@ impl CapabilityRegistry {
                     false,
                 ),
                 cap(
-                    "diet.plan",
-                    "diet",
-                    "meal_plan",
-                    "create",
-                    "diet",
-                    "reasoning",
+                    "skill.execute",
+                    "skill",
+                    "invoke",
+                    "execute",
+                    "skill",
+                    "fast-structured",
                     false,
                     true,
-                    false,
+                    true,
                 ),
                 cap(
                     "document.summarize",
@@ -181,16 +181,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registry_ids_are_unique_and_include_diet() {
+    fn registry_ids_are_unique_and_exclude_product_plugins() {
         let registry = CapabilityRegistry::builtin();
         let mut ids: Vec<_> = registry.ids().collect();
         let before = ids.len();
         ids.sort();
         ids.dedup();
         assert_eq!(ids.len(), before);
-        assert!(registry.contains("diet.plan"));
+        assert!(registry.contains("skill.execute"));
         assert!(registry.contains("planning.create"));
         assert!(registry.contains("research.deep"));
+        assert!(!registry.contains("diet.plan"));
         assert!(!registry.contains("document.magic_analysis"));
     }
 }

@@ -147,7 +147,10 @@ class _FixtureLog implements OperationLogPort {
     final end = (offset + limit).clamp(0, total);
     return [
       for (var i = offset; i < end; i++)
-        if (i < explicit.length) explicit[i] else _synthesize(i, explicit.length),
+        if (i < explicit.length)
+          explicit[i]
+        else
+          _synthesize(i, explicit.length),
     ];
   }
 

@@ -14,10 +14,7 @@ class GgufLoadOutcome {
   const GgufLoadOutcome.success() : this._(succeeded: true);
 
   const GgufLoadOutcome.fileMissing()
-    : this._(
-        succeeded: false,
-        reasonCode: 'model_file_missing',
-      );
+    : this._(succeeded: false, reasonCode: 'model_file_missing');
 
   const GgufLoadOutcome.incompleteDownload({
     required int expectedBytes,

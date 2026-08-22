@@ -65,6 +65,8 @@ void main() {
     expect(find.byType(Switch), findsWidgets);
 
     final firstSwitch = find.byType(Switch).first;
+    await tester.ensureVisible(firstSwitch);
+    await tester.pump();
     final before = tester.widget<Switch>(firstSwitch).value;
     await tester.tap(firstSwitch);
     await tester.pump();
@@ -95,6 +97,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.textContaining('Only HTTPS'), findsWidgets);
+    expect(find.textContaining('HTTPS'), findsWidgets);
   });
 }

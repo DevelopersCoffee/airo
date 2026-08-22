@@ -111,7 +111,8 @@ class _ContextWorkspaceSurfaceState extends State<ContextWorkspaceSurface> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= ContextWorkspaceSurface.tabletBreakpoint;
+        final wide =
+            constraints.maxWidth >= ContextWorkspaceSurface.tabletBreakpoint;
         final fold = AiroFold.of(context);
         // Never let the split-pane straddle a hinge in book posture — the
         // foldable crease rule, `AiroFold.straddles`. Falling back to the
@@ -119,10 +120,7 @@ class _ContextWorkspaceSurfaceState extends State<ContextWorkspaceSurface> {
         // stretching the list/detail split across it.
         final straddlesCrease =
             fold.posture == FoldPosture.halfOpened &&
-            AiroFold.straddles(
-              Offset.zero & constraints.biggest,
-              fold,
-            );
+            AiroFold.straddles(Offset.zero & constraints.biggest, fold);
         final useSplitPane = wide && !straddlesCrease;
 
         return Column(

@@ -28,4 +28,5 @@ CapabilitySafetyClass? resolveCapabilitySafetyClass(
 /// financial or legal safety class.
 const Map<SkillCapability, CapabilitySafetyClass> _safetyClassByCapability = {
   SkillCapability.lifeTrackRead: CapabilitySafetyClass.health,
+  SkillCapability.lifeTrackWrite: CapabilitySafetyClass.financial,
 };

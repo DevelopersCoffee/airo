@@ -809,10 +809,13 @@ class AssistantRuntimeService {
     required String? selectedModelId,
     required String prompt,
     String? systemPrompt,
+    int? maxOutputTokens,
+    GenerationConstraint? constraint,
   }) async* {
     lastGenerationStats = null;
     lastReliabilityDiagnostic = null;
     final runtimeId = _requireSelectedRuntime(selectedModelId);
+    final constrainedPrompt = _applyForcedPrefix(prompt, constraint);
 
     if (runtimeId != geminiNanoAssistantModelId) {
       final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
@@ -824,13 +827,15 @@ class AssistantRuntimeService {
             package: package,
             prompt: prompt,
             systemPrompt: systemPrompt,
+            maxOutputTokens: maxOutputTokens,
+            assistantPrefill: constraint?.forcedPrefix,
           );
           return;
         }
       }
       yield await generateText(
         selectedModelId: runtimeId,
-        prompt: prompt,
+        prompt: constrainedPrompt,
         systemPrompt: systemPrompt,
       );
       return;
@@ -842,7 +847,7 @@ class AssistantRuntimeService {
         stage: 'request',
         recordedAt: DateTime.now(),
         systemPromptPreview: _previewText(systemPrompt),
-        promptPreview: _previewText(prompt),
+        promptPreview: _previewText(constrainedPrompt),
         detail: 'generateTextStream',
       ),
     );
@@ -851,10 +856,10 @@ class AssistantRuntimeService {
     var yielded = false;
     final stream =
         _generateGeminiNanoStreamOverride?.call(
-          _withSystemPrompt(prompt, systemPrompt),
+          _withSystemPrompt(constrainedPrompt, systemPrompt),
         ) ??
         _geminiNano.generateContentStreamStrict(
-          _withSystemPrompt(prompt, systemPrompt),
+          _withSystemPrompt(constrainedPrompt, systemPrompt),
         );
     await for (final chunk in stream) {
       if (chunk.trim().isEmpty) continue;
@@ -882,7 +887,10 @@ class AssistantRuntimeService {
     required OfflineModelInfo package,
     required String prompt,
     String? systemPrompt,
+    int? maxOutputTokens,
     bool emitRequestTrace = true,
+    String? grammar,
+    String? assistantPrefill,
   }) async* {
     if (emitRequestTrace) {
       _emitDebugTrace(
@@ -901,16 +909,28 @@ class AssistantRuntimeService {
       prompt: prompt,
       systemPrompt: systemPrompt,
       family: package.family,
+      assistantPrefill: assistantPrefill,
     );
     var accumulated = '';
     var lastYielded = '';
     var firstChunk = true;
+    final locked = assistantPrefill ?? '';
+    if (locked.isNotEmpty) {
+      lastYielded = locked;
+      yield locked;
+      firstChunk = false;
+      _emitResponseTrace(runtimeId, locked, detail: 'stream-chunk');
+    }
     await for (final token in _llamaGguf.generate(
       prompt: instructPrompt,
-      maxTokens: ggufMaxOutputTokens(package),
+      maxTokens: maxOutputTokens ?? ggufMaxOutputTokens(package),
+      grammar: grammar,
     )) {
       accumulated += token;
-      final trimmed = trimGgufRoleBleed(accumulated);
+      final trimmed = applyAssistantPrefill(
+        trimGgufRoleBleed(accumulated),
+        assistantPrefill,
+      );
       if (trimmed.isNotEmpty && trimmed != lastYielded) {
         lastYielded = trimmed;
         if (firstChunk) {
@@ -1007,6 +1027,12 @@ class AssistantRuntimeService {
       );
     }
     return runtimeId;
+  }
+
+  String _applyForcedPrefix(String prompt, GenerationConstraint? constraint) {
+    final prefix = constraint?.forcedPrefix?.trim();
+    if (prefix == null || prefix.isEmpty) return prompt;
+    return 'Start your reply with exactly:\n$prefix\n\n$prompt';
   }
 
   String _withSystemPrompt(String prompt, String? systemPrompt) {

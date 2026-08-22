@@ -129,9 +129,7 @@ void main() {
     });
   });
 
-  testWidgets('disposes the shortcut when the scope unmounts', (
-    tester,
-  ) async {
+  testWidgets('disposes the shortcut when the scope unmounts', (tester) async {
     await onPlatform(TargetPlatform.macOS, () async {
       final shortcut = _FakeShortcut();
 

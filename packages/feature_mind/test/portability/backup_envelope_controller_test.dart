@@ -44,7 +44,8 @@ class FakeContextPort implements ContextPort {
   Future<List<ContextLink>> linksFor(String contextId) async => const [];
 
   @override
-  Future<MindContext> create({required String label}) => throw UnimplementedError();
+  Future<MindContext> create({required String label}) =>
+      throw UnimplementedError();
 
   @override
   Future<void> link(String fromId, String toId) => throw UnimplementedError();
@@ -199,25 +200,31 @@ void main() {
       expect(controller.value.error, BackupValidationError.passphraseTooShort);
     });
 
-    test('rejects a long-enough phrase whose warning was not acknowledged', () async {
-      await selectAContext();
-      controller.setPassphrase('a very long passphrase indeed');
-      final moved = await controller.advance();
-      expect(moved, isFalse);
-      expect(
-        controller.value.error,
-        BackupValidationError.passphraseWarningNotAcknowledged,
-      );
-    });
+    test(
+      'rejects a long-enough phrase whose warning was not acknowledged',
+      () async {
+        await selectAContext();
+        controller.setPassphrase('a very long passphrase indeed');
+        final moved = await controller.advance();
+        expect(moved, isFalse);
+        expect(
+          controller.value.error,
+          BackupValidationError.passphraseWarningNotAcknowledged,
+        );
+      },
+    );
 
-    test('advances once the phrase is long enough and the warning is acknowledged', () async {
-      await selectAContext();
-      controller.setPassphrase('a very long passphrase indeed');
-      controller.acknowledgePassphraseWarning();
-      final moved = await controller.advance();
-      expect(moved, isTrue);
-      expect(controller.value.step, BackupSealStep.chooseDestination);
-    });
+    test(
+      'advances once the phrase is long enough and the warning is acknowledged',
+      () async {
+        await selectAContext();
+        controller.setPassphrase('a very long passphrase indeed');
+        controller.acknowledgePassphraseWarning();
+        final moved = await controller.advance();
+        expect(moved, isTrue);
+        expect(controller.value.step, BackupSealStep.chooseDestination);
+      },
+    );
   });
 
   group('destination validity', () {
@@ -235,7 +242,10 @@ void main() {
       await reachDestinationStep();
       final moved = await controller.advance();
       expect(moved, isFalse);
-      expect(controller.value.error, BackupValidationError.noDestinationSelected);
+      expect(
+        controller.value.error,
+        BackupValidationError.noDestinationSelected,
+      );
     });
 
     test('this device and USB drive are accepted', () async {
@@ -264,7 +274,10 @@ void main() {
       );
       final moved = await controller.advance();
       expect(moved, isFalse);
-      expect(controller.value.error, BackupValidationError.destinationUnreachable);
+      expect(
+        controller.value.error,
+        BackupValidationError.destinationUnreachable,
+      );
     });
 
     test('lanPeer with no peer chosen is rejected as unreachable', () async {
@@ -272,21 +285,27 @@ void main() {
       controller.selectDestination(PackageDestination.lanPeer);
       final moved = await controller.advance();
       expect(moved, isFalse);
-      expect(controller.value.error, BackupValidationError.destinationUnreachable);
-    });
-
-    test('a target descriptor that looks like a cloud endpoint is rejected immediately', () async {
-      await reachDestinationStep();
-      controller.selectDestination(
-        PackageDestination.usbDrive,
-        targetDescriptor: r'\\backup\drive.google.com\share',
-      );
       expect(
         controller.value.error,
-        BackupValidationError.destinationLooksLikeCloud,
+        BackupValidationError.destinationUnreachable,
       );
-      expect(controller.value.destination, isNull);
     });
+
+    test(
+      'a target descriptor that looks like a cloud endpoint is rejected immediately',
+      () async {
+        await reachDestinationStep();
+        controller.selectDestination(
+          PackageDestination.usbDrive,
+          targetDescriptor: r'\\backup\drive.google.com\share',
+        );
+        expect(
+          controller.value.error,
+          BackupValidationError.destinationLooksLikeCloud,
+        );
+        expect(controller.value.destination, isNull);
+      },
+    );
 
     test('an https-looking peer name is rejected immediately', () async {
       await reachDestinationStep();
@@ -319,7 +338,10 @@ void main() {
 
       final moved = await tightController.advance();
       expect(moved, isFalse);
-      expect(tightController.value.error, BackupValidationError.insufficientSpace);
+      expect(
+        tightController.value.error,
+        BackupValidationError.insufficientSpace,
+      );
     });
 
     test('an unknown space (null) does not block advancing', () async {
@@ -343,11 +365,14 @@ void main() {
       await controller.advance();
     }
 
-    test('walks contexts -> passphrase -> destination -> confirm in order', () async {
-      expect(controller.value.step, BackupSealStep.selectContexts);
-      await reachConfirmStep();
-      expect(controller.value.step, BackupSealStep.confirm);
-    });
+    test(
+      'walks contexts -> passphrase -> destination -> confirm in order',
+      () async {
+        expect(controller.value.step, BackupSealStep.selectContexts);
+        await reachConfirmStep();
+        expect(controller.value.step, BackupSealStep.confirm);
+      },
+    );
 
     test('confirm starts sealing and eventually reaches sealed', () async {
       await reachConfirmStep();
@@ -357,7 +382,10 @@ void main() {
       await pumpEventQueue();
       expect(controller.value.step, BackupSealStep.sealed);
       expect(controller.value.isSealed, isTrue);
-      expect(controller.value.sealProgress!.written, controller.value.sealProgress!.total);
+      expect(
+        controller.value.sealProgress!.written,
+        controller.value.sealProgress!.total,
+      );
     });
 
     test('sealing and sealed refuse further advance calls', () async {
@@ -368,20 +396,23 @@ void main() {
       expect(await controller.advance(), isFalse);
     });
 
-    test('back from destination returns to passphrase without losing it', () async {
-      await controller.loadContexts();
-      await controller.toggleContext(_kneeId);
-      await controller.advance();
-      controller.setPassphrase('a very long passphrase indeed');
-      controller.acknowledgePassphraseWarning();
-      await controller.advance();
-      expect(controller.value.step, BackupSealStep.chooseDestination);
+    test(
+      'back from destination returns to passphrase without losing it',
+      () async {
+        await controller.loadContexts();
+        await controller.toggleContext(_kneeId);
+        await controller.advance();
+        controller.setPassphrase('a very long passphrase indeed');
+        controller.acknowledgePassphraseWarning();
+        await controller.advance();
+        expect(controller.value.step, BackupSealStep.chooseDestination);
 
-      controller.back();
-      expect(controller.value.step, BackupSealStep.setPassphrase);
-      expect(controller.value.passphrase, 'a very long passphrase indeed');
-      expect(controller.value.passphraseWarningAcknowledged, isTrue);
-    });
+        controller.back();
+        expect(controller.value.step, BackupSealStep.setPassphrase);
+        expect(controller.value.passphrase, 'a very long passphrase indeed');
+        expect(controller.value.passphraseWarningAcknowledged, isTrue);
+      },
+    );
 
     test('back from contexts step is a no-op', () async {
       controller.back();

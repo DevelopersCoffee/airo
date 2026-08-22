@@ -27,8 +27,10 @@ const int kMinBackupPassphraseLength = 10;
 typedef DestinationSpaceChecker =
     Future<int?> Function(PackageDestination destination, MindPeer? peer);
 
-Future<int?> _unknownSpace(PackageDestination destination, MindPeer? peer) async =>
-    null;
+Future<int?> _unknownSpace(
+  PackageDestination destination,
+  MindPeer? peer,
+) async => null;
 
 /// Drives surface 08's flow: pick contexts, set the phrase, choose a
 /// destination, confirm.
@@ -94,7 +96,10 @@ class BackupEnvelopeController extends ValueNotifier<BackupEnvelopeState> {
   /// called before [advance] will leave [BackupSealStep.setPassphrase] --
   /// the warning is shown before sealing, not after.
   void acknowledgePassphraseWarning() {
-    value = value.copyWith(passphraseWarningAcknowledged: true, clearError: true);
+    value = value.copyWith(
+      passphraseWarningAcknowledged: true,
+      clearError: true,
+    );
   }
 
   /// Chooses a destination kind, and for [PackageDestination.lanPeer] which
@@ -150,7 +155,10 @@ class BackupEnvelopeController extends ValueNotifier<BackupEnvelopeState> {
       value = value.copyWith(error: BackupValidationError.noContextsSelected);
       return false;
     }
-    value = value.copyWith(step: BackupSealStep.setPassphrase, clearError: true);
+    value = value.copyWith(
+      step: BackupSealStep.setPassphrase,
+      clearError: true,
+    );
     return true;
   }
 
@@ -165,20 +173,27 @@ class BackupEnvelopeController extends ValueNotifier<BackupEnvelopeState> {
       );
       return false;
     }
-    value = value.copyWith(step: BackupSealStep.chooseDestination, clearError: true);
+    value = value.copyWith(
+      step: BackupSealStep.chooseDestination,
+      clearError: true,
+    );
     return true;
   }
 
   Future<bool> _advanceFromDestination() async {
     final destination = value.destination;
     if (destination == null) {
-      value = value.copyWith(error: BackupValidationError.noDestinationSelected);
+      value = value.copyWith(
+        error: BackupValidationError.noDestinationSelected,
+      );
       return false;
     }
     if (destination == PackageDestination.lanPeer) {
       final peer = value.selectedPeer;
       if (peer == null || peer.liveness != PeerLiveness.live) {
-        value = value.copyWith(error: BackupValidationError.destinationUnreachable);
+        value = value.copyWith(
+          error: BackupValidationError.destinationUnreachable,
+        );
         return false;
       }
     }
@@ -196,7 +211,9 @@ class BackupEnvelopeController extends ValueNotifier<BackupEnvelopeState> {
     final plan = value.plan;
     final destination = value.destination;
     if (plan == null || destination == null) {
-      value = value.copyWith(error: BackupValidationError.noDestinationSelected);
+      value = value.copyWith(
+        error: BackupValidationError.noDestinationSelected,
+      );
       return;
     }
     await for (final progress in portability.seal(

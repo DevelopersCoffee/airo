@@ -42,9 +42,7 @@ void main() {
         installedResult: [hospitalRecovery, audioScribe],
       );
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(find.text('Hospital Recovery'), findsOneWidget);
@@ -54,9 +52,7 @@ void main() {
     testWidgets('shows the R01 presence pip', (tester) async {
       final port = FakeCapabilityPort(installedResult: [hospitalRecovery]);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(find.byType(MindPresencePip), findsOneWidget);
@@ -65,9 +61,7 @@ void main() {
     testWidgets('tapping a row opens the detail view', (tester) async {
       final port = FakeCapabilityPort(installedResult: [hospitalRecovery]);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Hospital Recovery'));
@@ -79,14 +73,10 @@ void main() {
       expect(find.textContaining('Capability'), findsWidgets);
     });
 
-    testWidgets('a loading state is shown before data arrives', (
-      tester,
-    ) async {
+    testWidgets('a loading state is shown before data arrives', (tester) async {
       final port = FakeCapabilityPort(installedResult: [hospitalRecovery]);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       await tester.pumpAndSettle();
@@ -116,18 +106,14 @@ void main() {
     ) async {
       final port = FakeCapabilityPort(installedResult: const []);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(find.text('Hospital Recovery'), findsNothing);
       expect(find.textContaining('No capability packs'), findsOneWidget);
     });
 
-    testWidgets('a MindPortUnavailable names the missing port', (
-      tester,
-    ) async {
+    testWidgets('a MindPortUnavailable names the missing port', (tester) async {
       final port = FakeCapabilityPort(
         installedError: const MindPortUnavailable(
           'capabilities',
@@ -135,9 +121,7 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('capabilities'), findsWidgets);
@@ -152,9 +136,7 @@ void main() {
     ) async {
       final port = FakeCapabilityPort(installedError: StateError('boom'));
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Something went wrong'), findsOneWidget);
@@ -162,14 +144,10 @@ void main() {
   });
 
   group('drafter and marketplace regions (out of scope, disabled)', () {
-    testWidgets('the drafter region is present but disabled', (
-      tester,
-    ) async {
+    testWidgets('the drafter region is present but disabled', (tester) async {
       final port = FakeCapabilityPort(installedResult: [hospitalRecovery]);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(
@@ -193,9 +171,7 @@ void main() {
     ) async {
       final port = FakeCapabilityPort(installedResult: [hospitalRecovery]);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(
@@ -218,9 +194,7 @@ void main() {
     ) async {
       final port = FakeCapabilityPort(installedResult: const []);
 
-      await tester.pumpWidget(
-        wrap(CapabilityPacksScreen(capabilities: port)),
-      );
+      await tester.pumpWidget(wrap(CapabilityPacksScreen(capabilities: port)));
       await tester.pumpAndSettle();
 
       expect(

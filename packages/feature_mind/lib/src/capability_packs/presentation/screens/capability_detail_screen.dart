@@ -26,8 +26,7 @@ class CapabilityDetailScreen extends StatefulWidget {
   final VoidCallback? onChanged;
 
   @override
-  State<CapabilityDetailScreen> createState() =>
-      _CapabilityDetailScreenState();
+  State<CapabilityDetailScreen> createState() => _CapabilityDetailScreenState();
 }
 
 class _CapabilityDetailScreenState extends State<CapabilityDetailScreen> {

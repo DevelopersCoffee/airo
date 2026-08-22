@@ -10,24 +10,22 @@ BigInt mindRuntimeAppendScribeOpSafe({
   required String title,
   required String contextId,
   String detail = '',
-}) =>
-    mindRuntimeAppendScribeOp(
-      kind: kind.name,
-      title: title,
-      contextId: contextId,
-      detail: detail,
-    );
+}) => mindRuntimeAppendScribeOp(
+  kind: kind.name,
+  title: title,
+  contextId: contextId,
+  detail: detail,
+);
 
 BigInt mindRuntimeScribeOpCountSafe() => mindRuntimeScribeOpCount();
 
 List<MindOpWire> mindRuntimeScribeOpsRecentSafe({
   required int offset,
   required int limit,
-}) =>
-    mindRuntimeScribeOpsRecent(
-      offset: BigInt.from(offset),
-      limit: BigInt.from(limit),
-    );
+}) => mindRuntimeScribeOpsRecent(
+  offset: BigInt.from(offset),
+  limit: BigInt.from(limit),
+);
 
 Float64List mindRuntimeReplayFromSafe({required int sequence}) =>
     mindRuntimeReplayFrom(sequence: BigInt.from(sequence));

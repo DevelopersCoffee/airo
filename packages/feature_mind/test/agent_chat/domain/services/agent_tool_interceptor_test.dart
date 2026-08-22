@@ -32,5 +32,23 @@ void main() {
         isNull,
       );
     });
+
+    test('answers which-day and date questions from the clock', () async {
+      final interceptor = AgentToolInterceptor(
+        connectors: AgentConnectorRegistry(
+          connectors: [
+            DateTimeConnector(now: () => DateTime(2026, 8, 21, 23, 45, 46)),
+          ],
+        ),
+      );
+
+      final whichDay = await interceptor.handle('today is which day ?');
+      expect(whichDay?.tool, 'get_current_date_time');
+      expect(whichDay?.message, contains('Friday'));
+      expect(whichDay?.message, contains('2026-08-21'));
+
+      final date = await interceptor.handle('what is todays date ?');
+      expect(date?.message, contains('Friday'));
+    });
   });
 }

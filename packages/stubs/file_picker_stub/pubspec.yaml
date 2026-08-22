@@ -1,6 +1,6 @@
 name: file_picker
 description: Stub implementation of file_picker for TV builds
-version: 10.3.10
+version: 12.0.0
 publish_to: none
 
 environment:

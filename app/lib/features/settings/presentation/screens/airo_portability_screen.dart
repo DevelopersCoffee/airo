@@ -200,12 +200,14 @@ class _AiroPortabilityScreenState extends State<AiroPortabilityScreen> {
       _status = null;
     });
     try {
-      final path =
-          await widget.pickBackupPath?.call() ??
-          (await FilePicker.pickFiles(
-            type: FileType.custom,
-            allowedExtensions: ['airobackup'],
-          ))?.files.single.path;
+      var path = await widget.pickBackupPath?.call();
+      if (path == null) {
+        final files = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['airobackup'],
+        );
+        path = files.isEmpty ? null : files.single.path;
+      }
       if (path == null) return;
       final encoded =
           await widget.readBackupContent?.call(path) ??

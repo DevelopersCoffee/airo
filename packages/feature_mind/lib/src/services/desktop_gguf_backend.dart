@@ -147,6 +147,7 @@ class DesktopGgufBackend {
   Stream<String> generate({
     required String prompt,
     int maxTokens = 512,
+    String? grammar,
   }) async* {
     if (!_session.isReady) {
       throw StateError('gguf_model_not_loaded');
@@ -154,6 +155,7 @@ class DesktopGgufBackend {
     await for (final event in llama.generateCompletion(
       prompt: prompt,
       maxOutputTokens: maxTokens,
+      grammar: grammar,
     )) {
       switch (event) {
         case llama.GenerationEvent_Generating(:final text):

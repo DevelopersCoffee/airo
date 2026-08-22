@@ -56,20 +56,15 @@ void main() {
 
     test('stale without a reason is a programmer error', () {
       expect(
-        () => ModelBenchDisplay(
-          status: ModelBenchStatus.stale,
-          bench: _bench(),
-        ),
+        () =>
+            ModelBenchDisplay(status: ModelBenchStatus.stale, bench: _bench()),
         throwsA(isA<AssertionError>()),
       );
     });
 
     test('progress on a non-in-progress status is a programmer error', () {
       expect(
-        () => ModelBenchDisplay(
-          status: ModelBenchStatus.notRun,
-          progress: 0.5,
-        ),
+        () => ModelBenchDisplay(status: ModelBenchStatus.notRun, progress: 0.5),
         throwsA(isA<AssertionError>()),
       );
     });

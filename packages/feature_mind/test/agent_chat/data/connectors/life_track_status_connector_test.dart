@@ -107,6 +107,41 @@ void main() {
       );
       expect(result.data['matched_tracks'], isEmpty);
     });
+
+    test('matches a claim track by stored claim id', () {
+      final track = _track(
+        title: 'Health claim',
+        category: LifeTrackCategory.insurance,
+        milestones: [
+          _milestone(
+            name: 'Claim Filing',
+            items: [
+              _item(
+                summary: 'Record claim references',
+                requirements: [
+                  InputRequirement(
+                    id: 'req-claim-id',
+                    actionItemId: 'item-id',
+                    label: 'Claim ID',
+                    fieldType: FieldType.text,
+                    value: '9001001',
+                    isRequired: true,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final result = LifeTrackStatusFormatter().format(
+        query: 'what is pending on claim 9001001?',
+        tracks: [track],
+      );
+
+      expect(result.matchedTracks, ['track-health-claim']);
+      expect(result.markdown, contains('Health claim'));
+    });
   });
 
   group('LifeTrackStatusConnector', () {

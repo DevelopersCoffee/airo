@@ -43,22 +43,26 @@ class _MindMacOsRootState extends ConsumerState<MindMacOsRoot> {
     if (!_useMacChrome) return widget.child;
 
     final runtime = ref.watch(mindRuntimeProvider);
-    return MindCommandPaletteScope(
-      key: _paletteKey,
-      runtime: runtime,
-      child: MindNativeMenuBar(
+    return Directionality(
+      textDirection: Directionality.maybeOf(context) ?? TextDirection.ltr,
+      child: MindCommandPaletteScope(
+        key: _paletteKey,
         runtime: runtime,
-        onOpenEverythingBrowser: () => _paletteKey.currentState?.openPalette(),
-        onAbout: _showAbout,
-        onToggleTheme: (mode) {
-          ref.read(mindDesktopThemeModeProvider.notifier).state = mode;
-        },
-        onToggleSidebar: () {
-          final visible = ref.read(mindDesktopNavigationVisibleProvider);
-          ref.read(mindDesktopNavigationVisibleProvider.notifier).state =
-              !visible;
-        },
-        child: widget.child,
+        child: MindNativeMenuBar(
+          runtime: runtime,
+          onOpenEverythingBrowser: () =>
+              _paletteKey.currentState?.openPalette(),
+          onAbout: _showAbout,
+          onToggleTheme: (mode) {
+            ref.read(mindDesktopThemeModeProvider.notifier).state = mode;
+          },
+          onToggleSidebar: () {
+            final visible = ref.read(mindDesktopNavigationVisibleProvider);
+            ref.read(mindDesktopNavigationVisibleProvider.notifier).state =
+                !visible;
+          },
+          child: widget.child,
+        ),
       ),
     );
   }

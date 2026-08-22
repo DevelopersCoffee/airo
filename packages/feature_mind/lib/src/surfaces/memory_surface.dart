@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../agent_chat/domain/models/chat_entity_graph.dart';
+import '../agent_chat/domain/models/chat_transcript_turn.dart';
+import '../agent_chat/presentation/widgets/mind_directory_chats_pane.dart';
 import '../runtime/mind_runtime.dart';
 import '../runtime/models/context_models.dart';
 import '../runtime/models/log_models.dart';
@@ -24,6 +27,18 @@ class MemorySurface extends StatefulWidget {
     this.onOpenContext,
     this.onOpenOp,
     this.onDestroyRequested,
+    this.directory = ChatEntityGraph.empty,
+    this.chats = const [],
+    this.folders = const [],
+    this.activeChatId,
+    this.onOpenChat,
+    this.onNewChat,
+    this.onCreateFolder,
+    this.onMoveChat,
+    this.onRemoveChat,
+    this.onNewChatInFolder,
+    this.onSetFolderPlugins,
+    this.pluginOptions = const [],
   });
 
   final MindRuntime runtime;
@@ -31,6 +46,22 @@ class MemorySurface extends StatefulWidget {
   final VoidCallback? onBack;
   final void Function(String contextId)? onOpenContext;
   final void Function(MindOp op)? onOpenOp;
+
+  /// Chat entity tree (Cursor "directory") and chat folders. Empty in tests
+  /// that only assert the fixture context graph.
+  final ChatEntityGraph directory;
+  final List<MindChatRecord> chats;
+  final List<MindChatFolder> folders;
+  final String? activeChatId;
+  final ValueChanged<String>? onOpenChat;
+  final VoidCallback? onNewChat;
+  final ValueChanged<String>? onCreateFolder;
+  final void Function(String chatId, String? folderId)? onMoveChat;
+  final ValueChanged<String>? onRemoveChat;
+  final ValueChanged<String>? onNewChatInFolder;
+  final void Function(String folderId, List<String> pluginIds)?
+  onSetFolderPlugins;
+  final List<MindFolderPluginOption> pluginOptions;
 
   /// Called with the labels of contexts that would survive destroying this
   /// one. There is no `ContextPort.destroy()` yet — only the preview
@@ -167,6 +198,18 @@ class _MemorySurfaceState extends State<MemorySurface> {
         center: data.context,
         linked: data.linked,
         onOpen: widget.onOpenContext,
+        directory: widget.directory,
+        chats: widget.chats,
+        folders: widget.folders,
+        activeChatId: widget.activeChatId,
+        onOpenChat: widget.onOpenChat,
+        onNewChat: widget.onNewChat,
+        onCreateFolder: widget.onCreateFolder,
+        onMoveChat: widget.onMoveChat,
+        onRemoveChat: widget.onRemoveChat,
+        onNewChatInFolder: widget.onNewChatInFolder,
+        onSetFolderPlugins: widget.onSetFolderPlugins,
+        pluginOptions: widget.pluginOptions,
       ),
       ProjectionKind.timeline => _TimelineView(
         ops: data.ops,
@@ -194,14 +237,73 @@ class _MemoryData {
 }
 
 class _GraphView extends StatelessWidget {
-  const _GraphView({required this.center, required this.linked, this.onOpen});
+  const _GraphView({
+    required this.center,
+    required this.linked,
+    this.onOpen,
+    this.directory = ChatEntityGraph.empty,
+    this.chats = const [],
+    this.folders = const [],
+    this.activeChatId,
+    this.onOpenChat,
+    this.onNewChat,
+    this.onCreateFolder,
+    this.onMoveChat,
+    this.onRemoveChat,
+    this.onNewChatInFolder,
+    this.onSetFolderPlugins,
+    this.pluginOptions = const [],
+  });
 
   final MindContext center;
   final List<MindContext> linked;
   final void Function(String contextId)? onOpen;
+  final ChatEntityGraph directory;
+  final List<MindChatRecord> chats;
+  final List<MindChatFolder> folders;
+  final String? activeChatId;
+  final ValueChanged<String>? onOpenChat;
+  final VoidCallback? onNewChat;
+  final ValueChanged<String>? onCreateFolder;
+  final void Function(String chatId, String? folderId)? onMoveChat;
+  final ValueChanged<String>? onRemoveChat;
+  final ValueChanged<String>? onNewChatInFolder;
+  final void Function(String folderId, List<String> pluginIds)?
+  onSetFolderPlugins;
+  final List<MindFolderPluginOption> pluginOptions;
 
   @override
   Widget build(BuildContext context) {
+    final radial = _radialGraph();
+    final showDirectory = directory.nodes.isNotEmpty || chats.isNotEmpty;
+    if (!showDirectory) return radial;
+
+    return Column(
+      children: [
+        Expanded(
+          flex: 3,
+          child: MindDirectoryChatsPane(
+            directory: directory,
+            chats: chats,
+            folders: folders,
+            activeChatId: activeChatId,
+            onOpenChat: onOpenChat,
+            onNewChat: onNewChat,
+            onCreateFolder: onCreateFolder,
+            onMoveChat: onMoveChat,
+            onRemoveChat: onRemoveChat,
+            onNewChatInFolder: onNewChatInFolder,
+            onSetFolderPlugins: onSetFolderPlugins,
+            pluginOptions: pluginOptions,
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(flex: 2, child: radial),
+      ],
+    );
+  }
+
+  Widget _radialGraph() {
     // A radial layout driven by the actual link set, not the design's fixed
     // pixel coordinates -- those describe one fixture's specific graph, and a
     // real context has however many links it has.

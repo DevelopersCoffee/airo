@@ -327,9 +327,7 @@ class DesktopWhisperVoiceSearchService implements VoiceSearchService {
     } on Object catch (error) {
       await _finishCapture();
       _setState(VoiceSearchState.error);
-      return VoiceSearchResult.error(
-        'Voice input failed. ${error.toString()}',
-      );
+      return VoiceSearchResult.error('Voice input failed. ${error.toString()}');
     }
   }
 
