@@ -420,6 +420,22 @@ fn tool_loop_stops_at_five() {
 }
 
 #[test]
+fn underspecified_action_asks_instead_of_generating() {
+    let gen = ScriptedEngine::once(envelope("A plan.", "Guessed.", "0.80"));
+    let mut req = ReasoningRequest::fixture("conversation", 0.25);
+    req.user_query = "I need to prepare for tomorrow.".into();
+    let events = collect(&gen, req, &CancelToken::new()).unwrap();
+    assert_eq!(gen.calls(), 0);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        ReasoningEvent::Error { message } if message.contains("calendar")
+    )));
+    assert!(events
+        .iter()
+        .all(|e| !matches!(e, ReasoningEvent::Completed { .. })));
+}
+
+#[test]
 fn deep_revises_the_draft_on_a_second_generation() {
     let gen = ScriptedEngine::sequence([
         envelope("Draft plan.", "First pass.", "0.70"),

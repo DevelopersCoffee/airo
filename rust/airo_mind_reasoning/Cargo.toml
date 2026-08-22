@@ -12,6 +12,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 airo_mind_core = { path = "../airo_mind_core" }
+airo_mind_intent = { path = "../airo_mind_intent" }
 airo_mind_reliability = { path = "../airo_mind_reliability" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

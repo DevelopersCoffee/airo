@@ -1,0 +1,17 @@
+[package]
+name = "airo_mind_intent"
+version = "0.1.0"
+edition = "2021"
+description = "Airo Mind ClassifiedIntent contract — registry, validation, action-readiness, routing. Keyword IntentParser is a legacy adapter only."
+license = "MIT"
+
+[lib]
+name = "airo_mind_intent"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
