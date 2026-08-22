@@ -1,8 +1,8 @@
 # Airo Mind Add-on Framework
 
 **Date:** 2026-08-22  
-**Status:** Approved product direction; security and QA gates incorporated;
-implementation plan pending user review  
+**Status:** Approved; Increment 1 contracts and characterization landed on
+`cursor/mind-addon-framework-design-45dd`; implementation continues increment-by-increment  
 **Owners:** Framework Agent + Product Manager (Airo Mind)  
 **Required reviewers:** Product Manager, Framework Agent, AI/Brain Agent,
 Memory Agent, Chief Architect, Platform Architect, Flutter Architect, Edge

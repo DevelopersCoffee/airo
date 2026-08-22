@@ -1,0 +1,68 @@
+{
+  "nodes": [
+    {
+      "id": "identifier:9001001",
+      "type": "identifier",
+      "name": "Claim 9001001",
+      "attributes": {
+        "kind": "claim",
+        "value": "9001001"
+      }
+    },
+    {
+      "id": "organization:niva-bupa",
+      "type": "organization",
+      "name": "Niva Bupa",
+      "attributes": {
+        "role": "insurer"
+      }
+    },
+    {
+      "id": "organization:city-hospital",
+      "type": "organization",
+      "name": "City Hospital",
+      "attributes": {
+        "role": "hospital"
+      }
+    },
+    {
+      "id": "identifier:hospital-stay-city-hospital",
+      "type": "identifier",
+      "name": "City Hospital surgery",
+      "attributes": {
+        "kind": "hospital_stay",
+        "hospital": "City Hospital"
+      }
+    },
+    {
+      "id": "term:niva-bupa-claim",
+      "type": "term",
+      "name": "Niva Bupa Claim",
+      "attributes": {}
+    }
+  ],
+  "edges": [
+    {
+      "from_id": "identifier:9001001",
+      "to_id": "organization:niva-bupa",
+      "predicate": "insured_by"
+    },
+    {
+      "from_id": "identifier:hospital-stay-city-hospital",
+      "to_id": "organization:city-hospital",
+      "predicate": "related_to"
+    },
+    {
+      "from_id": "identifier:9001001",
+      "to_id": "organization:city-hospital",
+      "predicate": "related_to"
+    }
+  ],
+  "recent_node_ids": [
+    "identifier:9001001",
+    "organization:niva-bupa",
+    "organization:city-hospital",
+    "identifier:hospital-stay-city-hospital",
+    "term:niva-bupa-claim"
+  ]
+}

@@ -36,6 +36,25 @@ export 'src/state/async_state.dart';
 export 'src/state/paginated_state.dart';
 export 'src/state/track_state_machine.dart';
 
+// Graph contracts (neutral entity graph DTOs)
+export 'src/graph/entity_graph_node.dart';
+export 'src/graph/entity_graph_edge.dart';
+export 'src/graph/entity_graph.dart';
+export 'src/graph/entity_graph_patch.dart';
+export 'src/graph/graph_provenance.dart';
+
+// Add-on contracts
+export 'src/addons/addon_id.dart';
+export 'src/addons/addon_identity.dart';
+export 'src/addons/addon_behavior_kind.dart';
+export 'src/addons/addon_manifest.dart';
+export 'src/addons/addon_registry_port.dart';
+
+// Workflow projection contracts
+export 'src/workflow/offer_decision.dart';
+export 'src/workflow/workflow_projection.dart';
+export 'src/workflow/pending_assessment.dart';
+
 // Plugin System
 export 'src/plugins/plugin_manifest.dart';
 export 'src/plugins/manifest_validator.dart';

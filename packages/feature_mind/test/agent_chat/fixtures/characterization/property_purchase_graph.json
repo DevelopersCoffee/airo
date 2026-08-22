@@ -1,0 +1,76 @@
+{
+  "nodes": [
+    {
+      "id": "identifier:property-p52100012345",
+      "type": "identifier",
+      "name": "Prestige Tower B",
+      "attributes": {
+        "kind": "property",
+        "rera": "P52100012345",
+        "builder": "Prestige",
+        "project": "Tower B",
+        "floor": "14"
+      }
+    },
+    {
+      "id": "identifier:p52100012345",
+      "type": "identifier",
+      "name": "RERA P52100012345",
+      "attributes": {
+        "kind": "rera",
+        "value": "P52100012345"
+      }
+    },
+    {
+      "id": "organization:prestige",
+      "type": "organization",
+      "name": "Prestige",
+      "attributes": {
+        "role": "builder"
+      }
+    },
+    {
+      "id": "term:tower-b",
+      "type": "term",
+      "name": "Tower B",
+      "attributes": {}
+    },
+    {
+      "id": "term:tower",
+      "type": "term",
+      "name": "Tower",
+      "attributes": {}
+    },
+    {
+      "id": "term:rera",
+      "type": "term",
+      "name": "RERA",
+      "attributes": {}
+    }
+  ],
+  "edges": [
+    {
+      "from_id": "identifier:property-p52100012345",
+      "to_id": "identifier:p52100012345",
+      "predicate": "related_to"
+    },
+    {
+      "from_id": "identifier:property-p52100012345",
+      "to_id": "organization:prestige",
+      "predicate": "related_to"
+    },
+    {
+      "from_id": "identifier:property-p52100012345",
+      "to_id": "term:tower-b",
+      "predicate": "related_to"
+    }
+  ],
+  "recent_node_ids": [
+    "identifier:property-p52100012345",
+    "identifier:p52100012345",
+    "organization:prestige",
+    "term:tower-b",
+    "term:tower",
+    "term:rera"
+  ]
+}
