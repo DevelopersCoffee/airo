@@ -125,12 +125,16 @@ impl CompiledPrompt {
 }
 
 pub fn estimate_tokens(text: &str) -> u32 {
-    ((text.len() as u32) + 3) / 4
+    (text.len() as u32).div_ceil(4)
 }
 
 fn balanced_fences(text: &str) -> bool {
     let fences = text.matches("```").count();
-    fences % 2 == 0
+    // rustc 1.83 has no usize::is_multiple_of (Clippy 1.98 wants it).
+    #[allow(unknown_lints, clippy::manual_is_multiple_of)]
+    {
+        fences % 2 == 0
+    }
 }
 
 impl InstructionSet {
