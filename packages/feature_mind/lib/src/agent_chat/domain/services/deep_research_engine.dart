@@ -5,6 +5,7 @@ import 'research/research_control.dart';
 import 'research/research_library.dart';
 import 'research/research_orchestrator.dart';
 import 'research/research_service.dart';
+import '../../../runtime/ports/operation_log_port.dart';
 
 /// Runs a Deep Research job. Implementations own orchestration, not prompts.
 ///
@@ -23,8 +24,14 @@ abstract class DeepResearchEngine {
 
 typedef DeepResearchEngineFactory = DeepResearchEngine Function();
 
-DeepResearchEngine createLocalDeepResearchEngine({Uri? searxngBaseUri}) {
-  return LocalDeepResearchEngine(searxngBaseUri: searxngBaseUri);
+DeepResearchEngine createLocalDeepResearchEngine({
+  Uri? searxngBaseUri,
+  OperationLogPort? operationLogPort,
+}) {
+  return LocalDeepResearchEngine(
+    searxngBaseUri: searxngBaseUri,
+    operationLogPort: operationLogPort,
+  );
 }
 
 /// Shim: Chat talks to [ResearchService], never to a research prompt.
@@ -33,8 +40,12 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
     ResearchService? service,
     ResearchOrchestrator? orchestrator,
     Uri? searxngBaseUri,
+    OperationLogPort? operationLogPort,
   }) {
-    if (service != null && (orchestrator != null || searxngBaseUri != null)) {
+    if (service != null &&
+        (orchestrator != null ||
+            searxngBaseUri != null ||
+            operationLogPort != null)) {
       throw ArgumentError(
         'Inject a service or engine configuration, not both.',
       );
@@ -44,6 +55,7 @@ class LocalDeepResearchEngine implements DeepResearchEngine {
           LocalResearchService(
             orchestrator: orchestrator,
             searxngBaseUri: searxngBaseUri,
+            operationLogPort: operationLogPort,
           ),
     );
   }

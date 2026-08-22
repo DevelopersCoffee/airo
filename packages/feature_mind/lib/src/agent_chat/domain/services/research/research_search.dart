@@ -31,7 +31,7 @@ class SearchRouter {
   static List<String> engineIds(SearchPolicy policy) {
     switch (policy) {
       case SearchPolicy.localOnly:
-        return const [];
+        return const ['local_memory'];
       case SearchPolicy.privacyFirst:
         return const ['wikipedia', 'searxng'];
       case SearchPolicy.balanced:

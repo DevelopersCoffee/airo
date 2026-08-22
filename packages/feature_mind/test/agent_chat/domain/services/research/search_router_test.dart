@@ -31,7 +31,10 @@ void main() {
     expect(ids, isNot(contains('semantic_scholar')));
   });
 
-  test('local-only uses no remote engines', () {
-    expect(SearchRouter.engineIds(SearchPolicy.localOnly), isEmpty);
+  test('local-only uses the research library engine', () {
+    expect(
+      SearchRouter.engineIds(SearchPolicy.localOnly),
+      ['local_memory'],
+    );
   });
 }
