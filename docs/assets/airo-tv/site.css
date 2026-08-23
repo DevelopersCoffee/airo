@@ -484,10 +484,6 @@ button,
   border-radius: 3px;
 }
 
-.quality-badges a:first-child img {
-  height: 28px;
-}
-
 .hero-status {
   display: flex;
   flex-wrap: wrap;
