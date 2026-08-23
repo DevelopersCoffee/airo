@@ -113,6 +113,12 @@ impl ResourceGovernor {
     pub const fn recording_must_continue() -> bool {
         true
     }
+
+    /// Incremental Conversation IR is cheap surface extraction. It stays on
+    /// unless the policy has already collapsed to capture+STT only.
+    pub const fn live_ir_enabled(policy: IntelligencePolicy) -> bool {
+        !matches!(policy, IntelligencePolicy::CaptureAndSttOnly)
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +187,19 @@ mod tests {
     #[test]
     fn recording_survives_every_intelligence_policy() {
         assert!(ResourceGovernor::recording_must_continue());
+    }
+
+    #[test]
+    fn live_ir_stops_only_when_policy_is_capture_and_stt() {
+        assert!(ResourceGovernor::live_ir_enabled(IntelligencePolicy::Full));
+        assert!(ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::ReduceFrequency
+        ));
+        assert!(ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::DisableDeep
+        ));
+        assert!(!ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::CaptureAndSttOnly
+        ));
     }
 }

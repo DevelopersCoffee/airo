@@ -1926,6 +1926,10 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                     message: var_message,
                 };
             }
+            5 => {
+                let mut var_json = <String>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::ConversationIr { json: var_json };
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2529,6 +2533,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
             crate::api::meetings::TranscriptEvent::Degraded { message } => {
                 [4.into_dart(), message.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::meetings::TranscriptEvent::ConversationIr { json } => {
+                [5.into_dart(), json.into_into_dart().into_dart()].into_dart()
+            }
             _ => {
                 unimplemented!("");
             }
@@ -3072,6 +3079,10 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
             crate::api::meetings::TranscriptEvent::Degraded { message } => {
                 <i32>::sse_encode(4, serializer);
                 <String>::sse_encode(message, serializer);
+            }
+            crate::api::meetings::TranscriptEvent::ConversationIr { json } => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(json, serializer);
             }
             _ => {
                 unimplemented!("");
