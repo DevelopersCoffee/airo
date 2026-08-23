@@ -182,4 +182,13 @@ void main() {
     expect(adapters, isEmpty);
     expect(spy.acceptsCalls, 0);
   });
+
+  test('bumpInvocationEpoch increments monotonic counter', () {
+    final registry = AddonRegistry();
+    expect(registry.invocationEpoch, 0);
+    registry.bumpInvocationEpoch();
+    expect(registry.invocationEpoch, 1);
+    registry.bumpInvocationEpoch();
+    expect(registry.invocationEpoch, 2);
+  });
 }

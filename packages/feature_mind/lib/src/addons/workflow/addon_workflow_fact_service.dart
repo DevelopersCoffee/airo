@@ -1,4 +1,4 @@
-import '../../agent_chat/domain/services/life_track_fact_extractor.dart';
+import '../graph_workflow/legacy_life_track_fact_extractor.dart';
 import 'addon_workflow_policy.dart';
 
 /// Add-on-owned fact extraction and clarification copy for LifeTrack records.
