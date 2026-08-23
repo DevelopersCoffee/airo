@@ -11,6 +11,8 @@ export 'src/storage/key_value_store.dart';
 export 'src/storage/preferences_store.dart';
 export 'src/storage/secure_store.dart';
 export 'src/storage/flutter_secure_store.dart';
+export 'src/storage/life_track_encryption_key_manager.dart';
+export 'src/storage/life_track_secure_stack.dart';
 export 'src/storage/life_track_local_data_source.dart';
 export 'src/storage/templates/life_track_template_fallback_resolver.dart';
 export 'src/storage/templates/template_registry.dart';
