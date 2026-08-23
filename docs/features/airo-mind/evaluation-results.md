@@ -10,7 +10,7 @@ Verdict: [NOT PRODUCTION QUALIFIED](./production-qualification.md)
 | `airo_mind_audio` fan-out + isolation + governor + latency harness | Run locally in this change |
 | `airo_mind_meeting` incremental Conversation IR | Run locally in this change |
 | `airo_mind_core` `check_speech_admission` | Run locally in this change |
-| `feature_mind` fan-out port, live admission, capture screen warning | Run locally in this change |
+| `feature_mind` fan-out port, live admission, capture screen warning | Added; Flutter SDK was not available in this agent environment |
 
 ## Golden conversations (not collected)
 
