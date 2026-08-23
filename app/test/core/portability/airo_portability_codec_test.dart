@@ -28,6 +28,8 @@ void main() {
       'returns null for missing, malformed, or incompatible history',
       () async {
         expect(await AiroPortabilityCodec.decodeChatHistory(null), isNull);
+        expect(await AiroPortabilityCodec.decodeChatHistory(''), isNull);
+        expect(await AiroPortabilityCodec.decodeChatHistory('   '), isNull);
         expect(await AiroPortabilityCodec.decodeChatHistory('{broken'), isNull);
         expect(
           await AiroPortabilityCodec.decodeChatHistory(
