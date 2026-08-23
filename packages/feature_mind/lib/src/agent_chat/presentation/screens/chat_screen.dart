@@ -445,7 +445,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (lifeTrackRecordConnector != null) {
       connectors.add(lifeTrackRecordConnector);
     }
-    connectors.add(ChatEntityGraphConnector());
+    connectors.add(
+      ChatEntityGraphConnector(
+        graphCoordinator: ref.read(graphWorkflowCoordinatorProvider),
+      ),
+    );
     return AgentConnectorRegistry(connectors: connectors);
   }
 
