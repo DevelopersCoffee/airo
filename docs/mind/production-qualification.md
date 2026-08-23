@@ -39,7 +39,7 @@ Verdicts: EXISTS / PARTIAL / MISSING, relative to the production spec.
 | # | Requirement | Verdict | Notes |
 | --- | --- | --- | --- |
 | 2 | Unified native audio fan-out | **MISSING** | Duplicate mic capture on desktop; interim PCM shim (ZC-1). |
-| 3 | Crash recovery / failure isolation | **PARTIAL** | Unified degraded-mode state machine + failure classification implemented and unit-tested (`MindLiveFailure`, `CaptureHealth`); enforces "recording never stops / file stays valid / post-recording fallback survives". Runtime wiring into the live coordinator + device validation pending. |
+| 3 | Crash recovery / failure isolation | **PARTIAL** | Unified degraded-mode state machine + failure classification implemented and unit-tested (`MindLiveFailure`, `CaptureHealth`); enforces "recording never stops / file stays valid / post-recording fallback survives". Now wired into `MeetingLiveSessionCoordinator`: native `Degraded` events and mid-session stream errors fold into `CaptureHealth` (tested) and expose the two-line status. Wiring into the file-recorder side + device validation pending. |
 | 4 | Real streaming STT (PARTIAL/STABLE/FINAL) | **PARTIAL** | Contract + stabilizer exist; engine re-transcribes a window; no latency measurement. Dart-side reconciliation hardened (see #5). |
 | 5 | Transcript event protocol | **PARTIAL** | Structured `TranscriptEvent`/`TranscriptDelta`. Dart-side `MindTranscriptSequencer` now adds monotonic `sequence_number`, duplicate rejection, phase-regression rejection, and provenance carry-forward (unit-tested). Native wire `confidence`/`sequence_number` fields + typed engine/model/thermal events still pending Rust regen. |
 | 6 | Vocabulary intelligence | **PARTIAL** | Rust corrector (alias/phrase/normalize/phonetic/fuzzy/threshold); layers mostly empty; provenance dropped at Dart boundary; no context scoring. |
@@ -64,7 +64,7 @@ Verdicts: EXISTS / PARTIAL / MISSING, relative to the production spec.
 | # | Gate | Status |
 | --- | --- | --- |
 | 1 | Unified native audio fan-out | ❌ Not implemented |
-| 2 | Recording survives live inference failure | ⚠️ Invariant enforced + unit-tested in `CaptureHealth`; end-to-end proof pending audio hardware |
+| 2 | Recording survives live inference failure | ⚠️ Invariant enforced in `CaptureHealth`, wired into the live coordinator, unit-tested; end-to-end proof on real audio pending |
 | 3 | Live STT measurable partial/stable/final latency | ❌ Not measured |
 | 4 | Transcript stabilization passes golden tests | ❌ No golden corpus |
 | 5 | Vocabulary correction context-aware + provenance-preserving | ❌ Provenance not surfaced |
@@ -95,7 +95,7 @@ measurement on real audio/devices) is what keeps the gates from turning green.
 | --- | --- | --- | --- |
 | Qualification matrix + state derivation | `lib/src/qualification/mind_qualification.dart` | `test/qualification/` | §23, §24 |
 | Resource/thermal/battery governor + model lifecycle | `lib/src/governor/mind_resource_governor.dart` | `test/governor/mind_resource_governor_test.dart` | §10, §11 |
-| Failure isolation / degraded-mode capture health | `lib/src/governor/mind_capture_health.dart` | `test/governor/mind_capture_health_test.dart` | §3, §22 |
+| Failure isolation / degraded-mode capture health | `lib/src/governor/mind_capture_health.dart` (wired into `MeetingLiveSessionCoordinator`) | `test/governor/mind_capture_health_test.dart`, `test/capture/application/meeting_live_session_coordinator_test.dart` | §3, §22 |
 | Transcript sequencer (seq/dedup/reconcile) | `lib/src/transcript/mind_transcript_sequencer.dart` | `test/transcript/` | §4, §5 |
 
 Invariants asserted by tests (spec §22): recording and STT are never disabled by

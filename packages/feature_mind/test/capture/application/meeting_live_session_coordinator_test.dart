@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/capture/application/meeting_live_session_coordinator.dart';
+import 'package:feature_mind/src/governor/mind_capture_health.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -9,63 +10,66 @@ import '../../support/fake_bridges.dart';
 import '../../support/fake_live_pcm_shim.dart';
 
 void main() {
-  test('stable segments accumulate and partial tail clears on stable', () async {
-    final bridge = FakeMindSpeechBridge();
-    final shim = FakeLivePcmShim();
-    final controller = StreamController<TranscriptEvent>();
-    bridge.transcriptEvents = [];
+  test(
+    'stable segments accumulate and partial tail clears on stable',
+    () async {
+      final bridge = FakeMindSpeechBridge();
+      final shim = FakeLivePcmShim();
+      final controller = StreamController<TranscriptEvent>();
+      bridge.transcriptEvents = [];
 
-    final coordinator = MeetingLiveSessionCoordinator(
-      speechBridge: _LiveSessionBridge(bridge, controller),
-      pcmShim: shim,
-    );
+      final coordinator = MeetingLiveSessionCoordinator(
+        speechBridge: _LiveSessionBridge(bridge, controller),
+        pcmShim: shim,
+      );
 
-    unawaited(coordinator.start(meetingId: 'm1'));
+      unawaited(coordinator.start(meetingId: 'm1'));
 
-    controller.add(
-      TranscriptEventDelta(
-        TranscriptDelta(
-          sessionId: 'm1',
-          segmentId: 's0',
-          text: 'hello',
-          startMs: 0,
-          endMs: 1000,
-          state: rust.TranscriptSegmentStateWire.partial,
-          speakerLabel: 'sp0',
+      controller.add(
+        TranscriptEventDelta(
+          TranscriptDelta(
+            sessionId: 'm1',
+            segmentId: 's0',
+            text: 'hello',
+            startMs: 0,
+            endMs: 1000,
+            state: rust.TranscriptSegmentStateWire.partial,
+            speakerLabel: 'sp0',
+          ),
         ),
-      ),
-    );
-    await pumpEventQueue();
+      );
+      await pumpEventQueue();
 
-    expect(coordinator.partialText, 'hello');
-    expect(coordinator.transcriptLines.length, 1);
-    expect(coordinator.transcriptLines.first.isPartial, isTrue);
-    expect(coordinator.activeSpeakerIndex, 0);
+      expect(coordinator.partialText, 'hello');
+      expect(coordinator.transcriptLines.length, 1);
+      expect(coordinator.transcriptLines.first.isPartial, isTrue);
+      expect(coordinator.activeSpeakerIndex, 0);
 
-    controller.add(
-      TranscriptEventDelta(
-        TranscriptDelta(
-          sessionId: 'm1',
-          segmentId: 's0',
-          text: 'hello there',
-          startMs: 0,
-          endMs: 1200,
-          state: rust.TranscriptSegmentStateWire.stable,
-          speakerLabel: 'sp0',
+      controller.add(
+        TranscriptEventDelta(
+          TranscriptDelta(
+            sessionId: 'm1',
+            segmentId: 's0',
+            text: 'hello there',
+            startMs: 0,
+            endMs: 1200,
+            state: rust.TranscriptSegmentStateWire.stable,
+            speakerLabel: 'sp0',
+          ),
         ),
-      ),
-    );
-    await pumpEventQueue();
+      );
+      await pumpEventQueue();
 
-    expect(coordinator.partialText, isNull);
-    expect(coordinator.stableSegments.length, 1);
-    expect(coordinator.stableSegments.first.text, 'hello there');
-    expect(coordinator.speakerActivitySpans.length, 1);
-    expect(coordinator.speakerActivitySpans.first.speakerIndex, 0);
+      expect(coordinator.partialText, isNull);
+      expect(coordinator.stableSegments.length, 1);
+      expect(coordinator.stableSegments.first.text, 'hello there');
+      expect(coordinator.speakerActivitySpans.length, 1);
+      expect(coordinator.speakerActivitySpans.first.speakerIndex, 0);
 
-    await coordinator.cancel();
-    await controller.close();
-  });
+      await coordinator.cancel();
+      await controller.close();
+    },
+  );
 
   test('degraded message is retained for UI surfacing', () async {
     final bridge = FakeMindSpeechBridge();
@@ -84,6 +88,98 @@ void main() {
     await pumpEventQueue();
 
     expect(coordinator.degradedMessage, 'Live transcript quality reduced');
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
+  test(
+    'degraded event folds into capture health without stopping capture',
+    () async {
+      final bridge = FakeMindSpeechBridge();
+      final shim = FakeLivePcmShim();
+      final controller = StreamController<TranscriptEvent>();
+
+      final coordinator = MeetingLiveSessionCoordinator(
+        speechBridge: _LiveSessionBridge(bridge, controller),
+        pcmShim: shim,
+      );
+
+      unawaited(coordinator.start(meetingId: 'm-degraded'));
+      expect(
+        coordinator.captureHealth.liveIntelligence,
+        LiveIntelligenceHealth.healthy,
+      );
+
+      controller.add(const TranscriptEventDegraded('ring buffer overflow'));
+      await pumpEventQueue();
+
+      // Live intelligence degrades...
+      expect(coordinator.isLiveDegraded, isTrue);
+      expect(
+        coordinator.captureHealth.liveIntelligence,
+        LiveIntelligenceHealth.degraded,
+      );
+      // ...but recording and the recovery artifact are preserved (spec §22).
+      expect(coordinator.captureHealth.captureState, CaptureState.active);
+      expect(coordinator.captureHealth.recordedFileValid, isTrue);
+      expect(coordinator.captureHealth.postRecordingPipelineAvailable, isTrue);
+      expect(coordinator.recordingStatusLine, 'Recording: Active');
+      expect(
+        coordinator.liveIntelligenceStatusLine,
+        'Live intelligence: Degraded',
+      );
+
+      await coordinator.cancel();
+      await controller.close();
+    },
+  );
+
+  test('mid-session stream error degrades live but keeps recording', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+    );
+
+    await coordinator.start(meetingId: 'm-err');
+    // Session already started (ready completer created); an error now is
+    // mid-session, not an admission failure.
+    controller.addError(StateError('native worker died'));
+    await pumpEventQueue();
+
+    expect(coordinator.isLiveDegraded, isTrue);
+    expect(coordinator.captureHealth.captureState, CaptureState.active);
+    expect(coordinator.captureHealth.postRecordingPipelineAvailable, isTrue);
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
+  test('thermal degraded message maps to the thermal failure class', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+    );
+
+    unawaited(coordinator.start(meetingId: 'm-thermal'));
+    controller.add(
+      const TranscriptEventDegraded('device hot: thermal backoff'),
+    );
+    await pumpEventQueue();
+
+    expect(
+      coordinator.captureHealth.reasons,
+      contains(MindLiveFailure.thermalDegradation.message),
+    );
+    expect(coordinator.captureHealth.captureState, CaptureState.active);
 
     await coordinator.cancel();
     await controller.close();
@@ -173,27 +269,24 @@ class _LiveSessionBridge implements MindSpeechBridge {
     required String storePath,
     required int memoryBudgetMb,
     rust.SpeechLanguage speechLanguage = rust.SpeechLanguage.englishOnly,
-  }) =>
-      _inner.initialize(
-        modelsDir: modelsDir,
-        storePath: storePath,
-        memoryBudgetMb: memoryBudgetMb,
-        speechLanguage: speechLanguage,
-      );
+  }) => _inner.initialize(
+    modelsDir: modelsDir,
+    storePath: storePath,
+    memoryBudgetMb: memoryBudgetMb,
+    speechLanguage: speechLanguage,
+  );
 
   @override
   Stream<TranscriptEvent> transcribe({
     required String wavPath,
     String? language,
-  }) =>
-      _inner.transcribe(wavPath: wavPath, language: language);
+  }) => _inner.transcribe(wavPath: wavPath, language: language);
 
   @override
   Stream<TranscriptEvent> startLiveSession({
     required String meetingId,
     String? language,
-  }) =>
-      _liveStream.stream;
+  }) => _liveStream.stream;
 
   @override
   void pushLivePcm({required String sessionId, required List<int> samples}) {}
@@ -225,19 +318,18 @@ class _LiveSessionBridge implements MindSpeechBridge {
     List<rust.MeetingDecisionRecord> decisions = const [],
     List<rust.MeetingActionItemRecord> actionItems = const [],
     List<rust.MeetingMetricRecord> metrics = const [],
-  }) =>
-      _inner.save(
-        title: title,
-        recordedAtMs: recordedAtMs,
-        transcript: transcript,
-        minutes: minutes,
-        model: model,
-        segments: segments,
-        wavPath: wavPath,
-        decisions: decisions,
-        actionItems: actionItems,
-        metrics: metrics,
-      );
+  }) => _inner.save(
+    title: title,
+    recordedAtMs: recordedAtMs,
+    transcript: transcript,
+    minutes: minutes,
+    model: model,
+    segments: segments,
+    wavPath: wavPath,
+    decisions: decisions,
+    actionItems: actionItems,
+    metrics: metrics,
+  );
 
   @override
   Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId) =>
