@@ -26,12 +26,16 @@ class MeetingLiveSessionCoordinator {
     MindSpeechBridge? speechBridge,
     LivePcmShimPort? pcmShim,
     this.onTranscriptChanged,
+    this.collectInsights = true,
   }) : _speech = speechBridge ?? const RustMindSpeechBridge(),
        _pcmShim = pcmShim ?? MeetingLivePcmShim();
 
   final MindSpeechBridge _speech;
   final LivePcmShimPort _pcmShim;
   void Function()? onTranscriptChanged;
+
+  /// Settings: Conversation IR facts for the insights rail.
+  bool collectInsights;
 
   StreamSubscription<TranscriptEvent>? _eventsSub;
   Completer<MeetingLiveSessionResult>? _readyCompleter;
@@ -236,6 +240,9 @@ class MeetingLiveSessionCoordinator {
       case TranscriptEventDegraded(:final message):
         _degradedMessage = message;
       case TranscriptEventConversationIr(:final json):
+        if (!collectInsights) {
+          break;
+        }
         final insight = liveInsightFromJson(json);
         if (insight != null) {
           _insights.add(insight);

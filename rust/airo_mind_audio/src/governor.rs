@@ -119,6 +119,21 @@ impl ResourceGovernor {
     pub const fn live_ir_enabled(policy: IntelligencePolicy) -> bool {
         !matches!(policy, IntelligencePolicy::CaptureAndSttOnly)
     }
+
+    /// Apply a user Settings override on top of the probed policy.
+    ///
+    /// `prefer_full` keeps Full unless the probe already collapsed to
+    /// capture+STT (critical heat/battery). `insights_off` skips IR only.
+    /// Unknown values behave as automatic.
+    pub fn apply_user_mode(probed: IntelligencePolicy, mode: &str) -> IntelligencePolicy {
+        match mode {
+            "insights_off" => IntelligencePolicy::CaptureAndSttOnly,
+            "prefer_full" if probed != IntelligencePolicy::CaptureAndSttOnly => {
+                IntelligencePolicy::Full
+            }
+            _ => probed,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -201,5 +216,25 @@ mod tests {
         assert!(!ResourceGovernor::live_ir_enabled(
             IntelligencePolicy::CaptureAndSttOnly
         ));
+    }
+
+    #[test]
+    fn user_mode_overrides_probed_policy() {
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::ReduceFrequency, "prefer_full"),
+            IntelligencePolicy::Full
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::CaptureAndSttOnly, "prefer_full"),
+            IntelligencePolicy::CaptureAndSttOnly
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::Full, "insights_off"),
+            IntelligencePolicy::CaptureAndSttOnly
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::ReduceFrequency, "automatic"),
+            IntelligencePolicy::ReduceFrequency
+        );
     }
 }

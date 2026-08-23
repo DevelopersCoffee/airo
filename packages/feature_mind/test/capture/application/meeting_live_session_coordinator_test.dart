@@ -121,6 +121,31 @@ void main() {
     await controller.close();
   });
 
+  test('collectInsights false drops Conversation IR facts', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+      collectInsights: false,
+    );
+
+    unawaited(coordinator.start(meetingId: 'm-ir-off'));
+    controller.add(
+      const TranscriptEventConversationIr(
+        '{"type":"decision","text":"We decided Friday","evidence":"s0","confidence":0.86}',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(coordinator.insights, isEmpty);
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
   test('pause and resume gate the PCM shim', () async {
     final bridge = FakeMindSpeechBridge();
     final shim = FakeLivePcmShim();

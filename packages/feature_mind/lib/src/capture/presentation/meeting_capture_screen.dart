@@ -8,6 +8,7 @@ import '../../assistant/consent/jurisdiction_consent_rules.dart';
 import '../../assistant/consent/mind_runtime_provider.dart';
 import '../../assistant/consent/recording_consent_prompt.dart';
 import '../../trust/scribe_trust_state.dart';
+import '../application/live_capture_preferences.dart';
 import '../application/meeting_capture_controller.dart';
 import '../application/meeting_capture_providers.dart';
 import '../application/meeting_live_session_coordinator.dart';
@@ -141,6 +142,12 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
       _liveCoordinator = ref.read(
         meetingLiveSessionCoordinatorFactoryProvider,
       )();
+      final intelligence = ref.read(liveIntelligenceModeProvider);
+      final insightsEnabled = ref.read(liveInsightsEnabledProvider);
+      _liveCoordinator!.collectInsights =
+          insightsEnabled && intelligence.collectInsights;
+      _insightsExpanded = ref.read(liveInsightsAutoExpandProvider);
+      await persistLiveIntelligenceModeToNative(intelligence);
       _liveCoordinator!.onTranscriptChanged = () {
         if (mounted) setState(() {});
       };
@@ -293,6 +300,10 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
         active &&
         transcriptionMode.usesLivePipeline &&
         _liveCoordinator != null;
+    final showInsights =
+        showLive &&
+        ref.watch(liveInsightsEnabledProvider) &&
+        ref.watch(liveIntelligenceModeProvider).collectInsights;
 
     return Scaffold(
       appBar: AppBar(
@@ -382,7 +393,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                                 child: Text('Recording — transcript after stop'),
                               ),
                       ),
-                      if (showLive)
+                      if (showInsights)
                         LiveInsightsRail(
                           expanded: _insightsExpanded,
                           insights: _liveCoordinator!.insights,
