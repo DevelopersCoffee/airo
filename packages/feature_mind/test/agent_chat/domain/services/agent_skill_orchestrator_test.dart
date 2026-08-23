@@ -9,9 +9,11 @@ import 'package:feature_mind/src/agent_chat/data/connectors/life_track_record_co
 import 'package:feature_mind/src/agent_chat/data/connectors/life_track_status_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/notification_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/route_connector.dart';
+import 'package:feature_mind/src/addons/built_in_addon_registry.dart';
 import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_session.dart';
-import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
+import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_linker.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/grounded_citation.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_skill_orchestrator.dart';
@@ -200,10 +202,7 @@ void main() {
     test(
       'pinned insurance planner answers claim pending from the entity graph',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
-        await session.ingest(
+        final session = await _seedGraphSession(
           'Niva Bupa reimbursement Claim ID 9001001 via Policybazaar. '
           'All documents received after surgery at City Hospital.',
         );
@@ -223,7 +222,7 @@ void main() {
         expect(result.message, contains('Niva Bupa'));
         expect(result.message, contains('9001001'));
         expect(result.message, contains('Documents: received'));
-        expect(result.message, contains('Settlement outcome'));
+        expect(result.message, contains('Settlement Notes'));
         expect(result.message, contains('City Hospital'));
         expect(result.message, isNot(contains('I could not find a LifeTrack')));
         expect(
@@ -236,10 +235,7 @@ void main() {
     test(
       'pinned hospital-recovery-planner answers pending from the graph without the word track',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
-        await session.ingest(
+        final session = await _seedGraphSession(
           'surgery at City Hospital on 12 Sep, pre-op tests CBC and ECG, '
           'auth ref PREAUTH-44',
         );
@@ -271,10 +267,7 @@ void main() {
     test(
       'pinned property-purchase-planner answers pending from the graph without the word track',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
-        await session.ingest(
+        final session = await _seedGraphSession(
           'buying Tower B floor 14 from Prestige, RERA P52100012345',
         );
         final orchestrator = _buildOrchestrator(
@@ -1121,6 +1114,14 @@ void main() {
   });
 }
 
+Future<ChatEntityGraphSession> _seedGraphSession(String text) async {
+  final session = ChatEntityGraphSession();
+  await session.replaceGraph(
+    const ChatEntityLinker().ingest(ChatEntityGraph.empty, text),
+  );
+  return session;
+}
+
 AgentSkillOrchestrator _buildOrchestrator({
   Map<String, List<CalendarEventData>>? events,
   InMemoryNotificationScheduler? notificationScheduler,
@@ -1158,9 +1159,8 @@ AgentSkillOrchestrator _buildOrchestrator({
           ),
         ],
         ChatEntityGraphConnector(
-          session:
-              entityGraphSession ??
-              ChatEntityGraphSession(store: ChatEntityGraphStore.memory()),
+          session: entityGraphSession ?? ChatEntityGraphSession(),
+          graphCoordinator: BuiltInAddonRegistry.create().graphCoordinator,
         ),
         RouteConnector(),
         GuideBreathingConnector(),

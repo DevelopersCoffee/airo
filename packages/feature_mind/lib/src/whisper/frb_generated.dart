@@ -1816,6 +1816,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return TranscriptEvent_Cancelled();
       case 4:
         return TranscriptEvent_Degraded(message: dco_decode_String(raw[1]));
+      case 5:
+        return TranscriptEvent_ConversationIr(json: dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
     }
@@ -2476,6 +2478,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 4:
         var var_message = sse_decode_String(deserializer);
         return TranscriptEvent_Degraded(message: var_message);
+      case 5:
+        var var_json = sse_decode_String(deserializer);
+        return TranscriptEvent_ConversationIr(json: var_json);
       default:
         throw UnimplementedError('');
     }
@@ -3080,6 +3085,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case TranscriptEvent_Degraded(message: final message):
         sse_encode_i_32(4, serializer);
         sse_encode_String(message, serializer);
+      case TranscriptEvent_ConversationIr(json: final json):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(json, serializer);
     }
   }
 

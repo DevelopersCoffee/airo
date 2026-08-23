@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_mind/src/bridges/mind_speech_bridge.dart';
 import 'package:feature_mind/src/capture/application/meeting_live_session_coordinator.dart';
+import 'package:feature_mind/src/capture/domain/live_insight.dart';
 import 'package:feature_mind/src/whisper/api/meetings.dart' as rust;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -84,6 +85,37 @@ void main() {
     await pumpEventQueue();
 
     expect(coordinator.degradedMessage, 'Live transcript quality reduced');
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
+  test('conversation IR events populate the insights rail model', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+    );
+
+    unawaited(coordinator.start(meetingId: 'm-ir'));
+    controller.add(
+      const TranscriptEventConversationIr(
+        '{"type":"decision","text":"We decided Friday","evidence":"s0","confidence":0.86}',
+      ),
+    );
+    controller.add(
+      const TranscriptEventConversationIr(
+        '{"type":"segment","segment_id":"s0","text":"hello","start_ms":0,"end_ms":1}',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(coordinator.insights.length, 1);
+    expect(coordinator.insights.first.kind, LiveInsightKind.decision);
+    expect(coordinator.insights.first.text, 'We decided Friday');
 
     await coordinator.cancel();
     await controller.close();

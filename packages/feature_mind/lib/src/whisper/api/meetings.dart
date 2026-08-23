@@ -588,6 +588,10 @@ sealed class TranscriptEvent with _$TranscriptEvent {
   /// Ring overflow, thermal backoff, or another recoverable live degradation.
   const factory TranscriptEvent.degraded({required String message}) =
       TranscriptEvent_Degraded;
+
+  /// Incremental Conversation IR fact as JSON (`ConversationIrEvent`).
+  const factory TranscriptEvent.conversationIr({required String json}) =
+      TranscriptEvent_ConversationIr;
 }
 
 /// One transcript segment, with the evidence-grounding fields `#1657` needs:

@@ -118,6 +118,19 @@ void main() {
         'third',
       ]);
     });
+
+    test('TranscriptEvent_ConversationIr carries JSON through', () {
+      final wire = rust.TranscriptEvent.conversationIr(
+        json:
+            '{"type":"decision","text":"We decided Friday","evidence":"s0"}',
+      );
+      final mapped = switch (wire) {
+        rust.TranscriptEvent_ConversationIr(:final json) =>
+          TranscriptEventConversationIr(json),
+        _ => throw StateError('unexpected variant'),
+      };
+      expect(mapped.json, contains('"type":"decision"'));
+    });
   });
 
   // `#1629` Gap D: `MindSpeechBridge.save` carries segments back across the
