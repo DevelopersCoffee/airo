@@ -222,7 +222,7 @@ void main() {
         expect(result.message, contains('Niva Bupa'));
         expect(result.message, contains('9001001'));
         expect(result.message, contains('Documents: received'));
-        expect(result.message, contains('Settlement outcome'));
+        expect(result.message, contains('Settlement Notes'));
         expect(result.message, contains('City Hospital'));
         expect(result.message, isNot(contains('I could not find a LifeTrack')));
         expect(
