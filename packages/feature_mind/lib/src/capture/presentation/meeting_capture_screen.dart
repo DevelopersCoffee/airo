@@ -13,6 +13,7 @@ import '../application/meeting_capture_providers.dart';
 import '../application/meeting_live_session_coordinator.dart';
 import '../application/speech_language_preference.dart';
 import '../application/transcription_mode_preference.dart';
+import '../data/fanout_backed_audio_recorder_port.dart';
 import '../domain/live_transcription_support.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/meeting_recording_state.dart';
@@ -73,6 +74,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   @override
   void dispose() {
     _liveCoordinator?.dispose();
+    unawaited(_controller?.dispose());
     _snapshotSub?.cancel();
     _jobsSub?.cancel();
     super.dispose();
@@ -128,28 +130,27 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
       _liveWarning = null;
       _followLive = true;
     });
-    final controller = ref.read(meetingCaptureControllerProvider);
-    _controller = controller;
-    await _snapshotSub?.cancel();
-    _snapshotSub = controller.snapshots.listen((snapshot) {
-      if (mounted) setState(() => _snapshot = snapshot);
-    });
-
     final meetingId = 'meeting-${DateTime.now().millisecondsSinceEpoch}';
     _meetingId = meetingId;
     final transcriptionMode = ref.read(transcriptionModeProvider);
     final languageMode = ref.read(speechLanguageModeProvider);
-    if (transcriptionMode.usesLivePipeline && liveTranscriptionPreviewSupported()) {
-      _liveCoordinator = MeetingLiveSessionCoordinator(
-        onTranscriptChanged: () {
-          if (mounted) setState(() {});
-        },
-      );
+    var useFanoutRecorder = false;
+    var path = await ref.read(meetingRecordingPathProvider)();
+    if (transcriptionMode.usesLivePipeline &&
+        liveTranscriptionPreviewSupported()) {
+      _liveCoordinator = ref.read(
+        meetingLiveSessionCoordinatorFactoryProvider,
+      )();
+      _liveCoordinator!.onTranscriptChanged = () {
+        if (mounted) setState(() {});
+      };
       try {
         await _liveCoordinator!.start(
           meetingId: meetingId,
           language: languageMode.processLanguageCode,
         );
+        path = await ref.read(liveFanoutRecordingPathProvider)(meetingId);
+        useFanoutRecorder = true;
       } on Object catch (error) {
         if (!mounted) return;
         setState(() {
@@ -162,8 +163,20 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
       }
     }
 
+    final recorder = useFanoutRecorder
+        ? FanoutBackedAudioRecorderPort(path: path)
+        : ref.read(audioRecorderPortProvider)();
+    final controller = MeetingCaptureController(
+      recorder: recorder,
+      serviceGateway: ref.read(meetingRecordingServiceGatewayProvider),
+    );
+    _controller = controller;
+    await _snapshotSub?.cancel();
+    _snapshotSub = controller.snapshots.listen((snapshot) {
+      if (mounted) setState(() => _snapshot = snapshot);
+    });
+
     try {
-      final path = await ref.read(meetingRecordingPathProvider)();
       await _consentGate.startRecording(() => controller.start(path));
     } on ConsentRequiredException catch (error) {
       if (!mounted) return;
@@ -266,7 +279,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(meetingCaptureControllerProvider);
     final showConsentUi =
         ref.watch(recordingConsentPromptProvider) || _implicitConsentFailed;
     final consentGranted = _consentGate.isGranted;

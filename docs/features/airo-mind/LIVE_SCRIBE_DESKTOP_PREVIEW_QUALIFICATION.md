@@ -76,13 +76,14 @@ Use an external audio source so the mic captures system/room audio (user runs th
 
 ## CI evidence (dev)
 
-- `packages/feature_mind/test/capture/` — capture coordinator, vocabulary, speaker UI.
-- `rust/airo_mind_audio` — ring overflow → degraded step report.
+- `packages/feature_mind/test/capture/` — capture coordinator, vocabulary, speaker UI, fan-out recorder, admission warning.
+- `rust/airo_mind_audio` — ring overflow → degraded; fan-out crash isolation; governor; latency harness.
 - `rust/airo_mind_whisper` — diarization label assignment tests.
+- `rust/airo_mind_meeting` — incremental Conversation IR (stable-sentence extractor).
 
 ## Open for Stage 2 (not blocking preview sign-off)
 
-- Native capture fan-out (Android/iOS).
-- Crash-during-live → file transcribes (per-platform integration).
-- Live RTF / time-to-first-partial SLO in release gates.
+- In-process native capture (cpal / AudioRecord / AVAudioEngine) so `push_live_pcm` leaves the FRB surface.
+- Crash-during-live → file transcribes (per-platform process kill; host fan-out test is done).
+- Live RTF / time-to-first-partial SLO in release gates on real weights.
 - Persona mapping / voice enrollment (P2).
