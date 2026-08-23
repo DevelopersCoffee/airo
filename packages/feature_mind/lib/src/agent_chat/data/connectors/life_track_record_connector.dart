@@ -106,7 +106,7 @@ class LifeTrackRecordConnector implements AgentConnector {
     final legacyConfirmed =
         arguments['confirmed'] == true && arguments['source'] == 'user_confirm';
     if (token == null && !legacyConfirmed) {
-      final issued = _confirmationTokens.issue(
+      final issued = await _confirmationTokens.issue(
         destinationTool: name,
         payload: payload,
       );
@@ -125,7 +125,7 @@ class LifeTrackRecordConnector implements AgentConnector {
     }
 
     if (token != null) {
-      final tokenError = _confirmationTokens.validateAndConsume(
+      final tokenError = await _confirmationTokens.validateAndConsume(
         token: token,
         destinationTool: name,
         payload: payload,

@@ -3,24 +3,32 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
+import 'addon_permission_epoch.dart';
+import 'confirmation_token_store.dart';
+
 /// One-use confirmation tokens for LifeTrack writes (§9 framework gate).
 class LifeTrackConfirmationTokenService {
   LifeTrackConfirmationTokenService({
     DateTime Function()? now,
     Duration ttl = const Duration(minutes: 15),
+    ConfirmationTokenStore? store,
+    AddonPermissionEpoch? permissionEpoch,
   }) : _now = now ?? DateTime.now,
-       _ttl = ttl;
+       _ttl = ttl,
+       _store = store ?? InMemoryConfirmationTokenStore(),
+       _permissionEpoch = permissionEpoch ?? AddonPermissionEpoch.instance;
 
   final DateTime Function() _now;
   final Duration _ttl;
-  final Map<String, _IssuedToken> _issued = {};
+  final ConfirmationTokenStore _store;
+  final AddonPermissionEpoch _permissionEpoch;
   final Set<String> _consumed = {};
 
-  String issue({
+  Future<String> issue({
     required String destinationTool,
     required Map<String, dynamic> payload,
     String actorId = 'local_user',
-  }) {
+  }) async {
     final expiresAt = _now().toUtc().add(_ttl);
     final payloadHash = _payloadHash(payload);
     final record = {
@@ -29,37 +37,53 @@ class LifeTrackConfirmationTokenService {
       'destination_tool': destinationTool,
       'payload_hash': payloadHash,
       'expires_at_ms': expiresAt.millisecondsSinceEpoch,
+      'permission_epoch': _permissionEpoch.current,
     };
     final confirmationHash = _confirmationHash(record);
     final token = _randomToken();
-    _issued[token] = _IssuedToken(
-      destinationTool: destinationTool,
-      payloadHash: payloadHash,
-      confirmationHash: confirmationHash,
-      expiresAt: expiresAt,
+    await _store.write(
+      token: token,
+      record: ConfirmationTokenRecord(
+        destinationTool: destinationTool,
+        payloadHash: payloadHash,
+        confirmationHash: confirmationHash,
+        expiresAtMs: expiresAt.millisecondsSinceEpoch,
+        permissionEpoch: _permissionEpoch.current,
+        actorId: actorId,
+      ),
     );
     return token;
   }
 
-  String? validateAndConsume({
+  Future<String?> validateAndConsume({
     required String token,
     required String destinationTool,
     required Map<String, dynamic> payload,
-  }) {
+    String actorId = 'local_user',
+  }) async {
     if (_consumed.contains(token)) return 'confirmation_consumed';
-    final issued = _issued[token];
+    final issued = await _store.read(token);
     if (issued == null) return 'confirmation_invalid';
     if (issued.destinationTool != destinationTool) {
       return 'confirmation_invalid';
     }
-    if (_now().toUtc().isAfter(issued.expiresAt)) {
-      _issued.remove(token);
-      return 'confirmation_expired';
-    }
-    if (issued.payloadHash != _payloadHash(payload)) {
+    if (issued.actorId != actorId) {
       return 'confirmation_invalid';
     }
-    _issued.remove(token);
+    if (issued.permissionEpoch != _permissionEpoch.current) {
+      return 'confirmation_permission_changed';
+    }
+    if (_now().toUtc().isAfter(
+      DateTime.fromMillisecondsSinceEpoch(issued.expiresAtMs, isUtc: true),
+    )) {
+      await _store.delete(token);
+      return 'confirmation_expired';
+    }
+    final payloadHash = _payloadHash(payload);
+    if (issued.payloadHash != payloadHash) {
+      return 'confirmation_invalid';
+    }
+    await _store.delete(token);
     _consumed.add(token);
     return null;
   }
@@ -74,8 +98,14 @@ class LifeTrackConfirmationTokenService {
       'actor_id': actorId,
       'destination_tool': destinationTool,
       'payload_hash': _payloadHash(payload),
+      'permission_epoch': _permissionEpoch.current,
     };
     return _confirmationHash(record);
+  }
+
+  Future<void> invalidateAll() async {
+    _consumed.clear();
+    await _store.deleteAll();
   }
 
   static String _payloadHash(Map<String, dynamic> payload) =>
@@ -89,8 +119,7 @@ class LifeTrackConfirmationTokenService {
 
   static String _canonicalJson(Object? value) {
     if (value is Map) {
-      final keys = value.keys.map((key) => key.toString()).toList()
-        ..sort();
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
       final ordered = <String, Object?>{};
       for (final key in keys) {
         ordered[key] = _canonicalize(value[key]);
@@ -123,18 +152,4 @@ class LifeTrackConfirmationTokenService {
     final bytes = List<int>.generate(32, (_) => random.nextInt(256));
     return base64Url.encode(bytes).replaceAll('=', '');
   }
-}
-
-class _IssuedToken {
-  const _IssuedToken({
-    required this.destinationTool,
-    required this.payloadHash,
-    required this.confirmationHash,
-    required this.expiresAt,
-  });
-
-  final String destinationTool;
-  final String payloadHash;
-  final String confirmationHash;
-  final DateTime expiresAt;
 }

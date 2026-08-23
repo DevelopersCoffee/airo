@@ -28,21 +28,10 @@ class ChatEntityGraphPending {
         lower.contains("what's next") ||
         lower.contains('whats next');
     if (!asks) return false;
-    for (final policy in _policyTemplates()) {
+    for (final policy in _policy.templatePolicies) {
       if (_policy.queryMatchesTemplate(lower, policy.templateId)) return true;
     }
     return false;
-  }
-
-  Iterable<AddonWorkflowTemplatePolicy> _policyTemplates() {
-    return [
-      _policy.forTemplate('insurance_claim_v1'),
-      _policy.forTemplate('medical_surgery_v1'),
-      _policy.forTemplate('real_estate_under_construction_v1'),
-      _policy.forTemplate('study_progress_v1'),
-      _policy.forTemplate('car_purchase_v1'),
-      _policy.forTemplate('university_admission_v1'),
-    ].whereType<AddonWorkflowTemplatePolicy>();
   }
 
   String format({required ChatEntityGraph graph, required String query}) {
@@ -102,7 +91,8 @@ class ChatEntityGraphPending {
   bool _matchesQuery(ProjectedChatJourney journey, String needle) {
     if (needle.trim().isEmpty) return true;
     final policy = _policy.forTemplate(journey.templateId);
-    if (policy != null && _policy.queryMatchesTemplate(needle, journey.templateId)) {
+    if (policy != null &&
+        _policy.queryMatchesTemplate(needle, journey.templateId)) {
       return true;
     }
     return journey.facts.entries.any(
@@ -113,7 +103,7 @@ class ChatEntityGraphPending {
 
   String _emptyMessage(String query) {
     final lower = query.toLowerCase();
-    for (final policy in _policyTemplates()) {
+    for (final policy in _policy.templatePolicies) {
       if (_policy.queryMatchesTemplate(lower, policy.templateId) &&
           policy.pendingEmptyMessage.trim().isNotEmpty) {
         return policy.pendingEmptyMessage.trim();
@@ -123,37 +113,19 @@ class ChatEntityGraphPending {
   }
 
   List<String> missingFieldsFor(ProjectedChatJourney journey) {
-    if (journey.templateId == 'insurance_claim_v1') {
-      return _missingClaim(journey);
-    }
     final policy = _policy.forTemplate(journey.templateId);
-    if (policy != null && policy.pendingUsualOptionalFields.isNotEmpty) {
-      return [
-        for (final label in policy.pendingUsualOptionalFields)
-          if (!journey.facts.containsKey(label)) label,
-      ];
+    if (policy == null || policy.pendingUsualOptionalFields.isEmpty) {
+      return const [];
     }
-    return _missingClaim(journey);
-  }
-
-  List<String> _missingClaim(ProjectedChatJourney journey) {
-    final missing = <String>[];
-    if (!journey.facts.containsKey('Insurer')) missing.add('Insurer');
-    if (!journey.facts.containsKey('Broker / Intermediary')) {
-      missing.add('Broker / intermediary');
-    }
-    if (!journey.facts.containsKey('Policy Number')) {
-      missing.add('Policy number');
-    }
-    if (!journey.facts.containsKey('Follow-up Log')) {
-      missing.add('Follow-up log');
-    }
-    final docs = journey.facts[LifeTrackFactPatch.documentsReceivedKey];
-    if (docs == null || docs.trim().isEmpty) {
-      missing.add('Claim documents (not marked received)');
-    }
-    if (!journey.facts.containsKey('Settlement Notes')) {
-      missing.add('Settlement outcome');
+    final missing = <String>[
+      for (final label in policy.pendingUsualOptionalFields)
+        if (!journey.facts.containsKey(label)) label,
+    ];
+    if (journey.templateId == 'insurance_claim_v1') {
+      final docs = journey.facts[LifeTrackFactPatch.documentsReceivedKey];
+      if (docs == null || docs.trim().isEmpty) {
+        missing.add('Claim documents (not marked received)');
+      }
     }
     return missing;
   }
