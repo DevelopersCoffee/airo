@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// Whether live STT preview is supported on this host (ADR-0025 / fan-out §Web).
 ///
-/// Desktop: interim `MeetingLivePcmShim` → `push_live_pcm`. Web and mobile
-/// native fan-out are not on the contract path yet — live modes are gated off.
+/// Desktop: one `record.startStream` ingest into native `CaptureFanout`
+/// (file + live worker). Web and mobile native fan-out are not on the
+/// contract path yet — live modes are gated off.
 bool liveTranscriptionPreviewSupported({TargetPlatform? platform}) {
   if (kIsWeb) return false;
   final host = platform ?? defaultTargetPlatform;

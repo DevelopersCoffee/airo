@@ -108,7 +108,7 @@ a discovery made later during profiling.
 
 | Platform | Shim | Tracking |
 |---|---|---|
-| macOS / Linux / Windows (interim) | `record.startStream` (PCM16) → `push_live_pcm` via `MeetingLivePcmShim` | Stage 2 — remove when native fan-out lands |
+| macOS / Linux / Windows (interim) | `record.startStream` (PCM16) → `push_live_pcm` via `MeetingLivePcmShim`. Native `CaptureFanout` writes the WAV; Dart does **not** open a second file encoder. | Stage 2 — remove when cpal (or equivalent) capture starts inside `start_live_session` |
 
 ## Conformance
 
@@ -117,11 +117,12 @@ They belong with Stage 2, alongside the code that first fans out.
 
 | Check | Where | Status |
 |---|---|---|
-| A crash during a live session leaves a file that `transcribe_recording` accepts | Integration test per platform | Open |
-| Live session start on an over-budget device is refused before the mic opens | Host test against `Supervisor` admission | Open |
+| A crash during a live session leaves a file that `transcribe_recording` accepts | `rust/airo_mind_audio/tests/fanout_crash_recovery.rs` (host: drop live consumer + `preprocess_path`) | **Done** (host). Per-platform process-kill still open |
+| Live session start on an over-budget device is refused before the mic opens | `Supervisor::check_speech_admission` + Dart `meeting_capture_live_warning` | **Done** (host + UI) |
 | Ring overflow emits DEGRADED and does not grow memory | `rust/airo_mind_audio/src/live.rs` (`ring_overflow_marks_step_degraded`) + Dart degraded banner test | **Done** (host + UI) |
-| No PCM-shaped type crosses the FRB surface | Reviewable in the generated bridge; candidate for a `scripts/check-*` guard once the surface exists | Open (interim `push_live_pcm` shim documented) |
+| No PCM-shaped type crosses the FRB surface | Reviewable in the generated bridge; candidate for a `scripts/check-*` guard once the surface exists | Open (interim `push_live_pcm` shim; file no longer uses a second mic) |
 | Live transcript UI never rewrites STABLE text | `meeting_live_session_coordinator_test.dart` (stable accumulation) | **Done** (Dart) |
+| Live inference failure does not corrupt the recording | `fanout_crash_recovery.rs` + `live_failed` in `LiveSpeechPipeline` | **Done** (host) |
 
 ## References
 

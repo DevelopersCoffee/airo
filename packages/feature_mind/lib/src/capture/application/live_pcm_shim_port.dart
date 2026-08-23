@@ -1,4 +1,7 @@
-/// PCM fan-out shim for live STT — interim desktop until native capture lands.
+/// PCM ingest for live STT. Desktop uses one `startStream` into native
+/// `CaptureFanout` (file + ring). Not a second `AudioRecorder` beside a
+/// file encoder — `FanoutBackedAudioRecorderPort` owns the controller
+/// lifecycle while this port owns the single microphone stream.
 abstract interface class LivePcmShimPort {
   /// Normalized RMS (0–1) for the live amplitude meter — not speaker identity.
   void Function(double normalizedRms)? onAmplitude;
