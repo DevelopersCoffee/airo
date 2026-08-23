@@ -10,7 +10,6 @@ import 'package:feature_mind/src/agent_chat/data/connectors/life_track_status_co
 import 'package:feature_mind/src/agent_chat/data/connectors/notification_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/connectors/route_connector.dart';
 import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_session.dart';
-import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/agent_skill.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/grounded_citation.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/agent_connector_registry.dart';
@@ -200,9 +199,7 @@ void main() {
     test(
       'pinned insurance planner answers claim pending from the entity graph',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
+        final session = ChatEntityGraphSession();
         await session.ingest(
           'Niva Bupa reimbursement Claim ID 9001001 via Policybazaar. '
           'All documents received after surgery at City Hospital.',
@@ -236,9 +233,7 @@ void main() {
     test(
       'pinned hospital-recovery-planner answers pending from the graph without the word track',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
+        final session = ChatEntityGraphSession();
         await session.ingest(
           'surgery at City Hospital on 12 Sep, pre-op tests CBC and ECG, '
           'auth ref PREAUTH-44',
@@ -271,9 +266,7 @@ void main() {
     test(
       'pinned property-purchase-planner answers pending from the graph without the word track',
       () async {
-        final session = ChatEntityGraphSession(
-          store: ChatEntityGraphStore.memory(),
-        );
+        final session = ChatEntityGraphSession();
         await session.ingest(
           'buying Tower B floor 14 from Prestige, RERA P52100012345',
         );
@@ -1160,7 +1153,7 @@ AgentSkillOrchestrator _buildOrchestrator({
         ChatEntityGraphConnector(
           session:
               entityGraphSession ??
-              ChatEntityGraphSession(store: ChatEntityGraphStore.memory()),
+              ChatEntityGraphSession(),
         ),
         RouteConnector(),
         GuideBreathingConnector(),
