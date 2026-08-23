@@ -7,11 +7,12 @@ import 'package:record/record.dart';
 import '../../whisper/api/meetings.dart' as rust;
 import 'live_pcm_shim_port.dart';
 
-/// Interim desktop shim: `record.startStream` → `push_live_pcm`.
+/// Desktop live ingest: one `record.startStream` → `push_live_pcm`.
 ///
-/// Documented violation of ZC-1 in `LIVE_CAPTURE_FAN_OUT.md` §Interim shim.
-/// Uses a second [AudioRecorder] beside the file encoder until native fan-out
-/// lands on this platform.
+/// Native `CaptureFanout` writes the WAV and feeds the live worker. This is
+/// still a ZC-1 interim (PCM crosses FRB) until cpal capture starts inside
+/// `start_live_session` without a Dart sample array. It is **not** a second
+/// microphone beside `package:record`'s file encoder.
 class MeetingLivePcmShim implements LivePcmShimPort {
   MeetingLivePcmShim({AudioRecorder? streamRecorder})
     : _recorder = streamRecorder ?? AudioRecorder();
