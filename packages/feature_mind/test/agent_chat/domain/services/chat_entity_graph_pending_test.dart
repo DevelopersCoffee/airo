@@ -37,8 +37,8 @@ void main() {
     expect(markdown, contains('Insurer: Niva Bupa'));
     expect(markdown, contains('Documents: received'));
     expect(markdown, contains('Not on the graph yet'));
-    expect(markdown, contains('Settlement outcome'));
-    expect(markdown, contains('Policy number'));
+    expect(markdown, contains('Settlement Notes'));
+    expect(markdown, contains('Policy Number'));
     expect(markdown, isNot(contains('Claim documents (not marked received)')));
     expect(markdown, contains('Also linked'));
     expect(markdown, contains('City Hospital'));

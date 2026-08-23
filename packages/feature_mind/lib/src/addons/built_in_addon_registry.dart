@@ -11,6 +11,8 @@ import 'graph_workflow/insurance_planner_graph_adapter.dart';
 import 'graph_workflow/property_purchase_graph_adapter.dart';
 import 'graph_workflow/university_admission_graph_adapter.dart';
 
+import 'addon_lifecycle_gate.dart';
+
 /// Built-in add-ons registered for the Mind host.
 class BuiltInAddonRegistry {
   BuiltInAddonRegistry._({
@@ -22,6 +24,15 @@ class BuiltInAddonRegistry {
   final AddonRegistry registry;
   final GenerativeAddonCoordinator coordinator;
   final GraphWorkflowCoordinator graphCoordinator;
+
+  static void updateEligibility(
+    AddonRegistry registry,
+    String addonId,
+    AddonEligibility eligibility,
+  ) {
+    registry.setEligibility(addonId, eligibility);
+    AddonLifecycleGate().onEligibilityChanged(eligibility);
+  }
 
   static BuiltInAddonRegistry create() {
     final registry = AddonRegistry();
@@ -43,7 +54,8 @@ class BuiltInAddonRegistry {
       manifest: dietManifest,
       generativeAdapter: DraftDietPlanAdapter(),
     );
-    registry.setEligibility(
+    BuiltInAddonRegistry.updateEligibility(
+      registry,
       DraftDietPlanAdapter.addonId,
       const AddonEligibility(
         enabled: true,
@@ -146,7 +158,8 @@ class BuiltInAddonRegistry {
       }),
       graphAdapter: adapter,
     );
-    registry.setEligibility(
+    BuiltInAddonRegistry.updateEligibility(
+      registry,
       id,
       AddonEligibility(enabled: true, grantedScopes: scopes),
     );

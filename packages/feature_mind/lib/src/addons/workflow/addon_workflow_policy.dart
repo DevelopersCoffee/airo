@@ -22,11 +22,16 @@ class AddonWorkflowTemplatePolicy {
     LifeTrackTemplateAddonMetadata metadata,
     Map<String, dynamic> workflow,
   ) {
+    final pendingKeywords = _stringList(workflow['pending_keywords']);
+    final fallbackKeywords = _stringList(workflow['fallback_keywords']);
     return AddonWorkflowTemplatePolicy(
       templateId: metadata.templateId,
       recordClarificationHint:
-          workflow['record_clarification_hint'] as String? ?? '',
-      pendingKeywords: _stringList(workflow['pending_keywords']),
+          workflow['record_clarification_hint'] as String? ??
+          metadata.recordFollowUpHint,
+      pendingKeywords: pendingKeywords.isNotEmpty
+          ? pendingKeywords
+          : fallbackKeywords,
       pendingUsualOptionalFields:
           _stringList(workflow['pending_usual_optional_fields']),
       pendingEmptyMessage: workflow['pending_empty_message'] as String? ?? '',
@@ -52,6 +57,9 @@ class AddonWorkflowPolicy {
 
   AddonWorkflowTemplatePolicy? forTemplate(String templateId) =>
       _byTemplateId[templateId];
+
+  Iterable<AddonWorkflowTemplatePolicy> get templatePolicies =>
+      _byTemplateId.values;
 
   bool queryMatchesTemplate(String lowerQuery, String templateId) {
     final policy = forTemplate(templateId);

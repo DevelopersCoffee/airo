@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../../addons/templates/addon_life_track_record_policy.dart';
 import '../../../addons/templates/addon_template_catalog.dart';
 import '../../domain/services/agent_connector.dart';
+import 'life_track_confirmation_tokens.dart';
 import 'life_track_record_connector.dart';
 import 'life_track_repository_holder.dart';
 import 'life_track_status_connector.dart';
@@ -83,6 +84,7 @@ AgentConnector createLifeTrackRecordConnector() {
       return await stack.canWrite();
     },
     idempotencyPort: _idempotencyPortHolder,
+    confirmationTokens: sharedLifeTrackConfirmationTokens,
   );
 }
 

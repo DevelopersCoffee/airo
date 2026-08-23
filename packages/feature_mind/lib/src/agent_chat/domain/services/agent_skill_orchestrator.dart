@@ -159,8 +159,9 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
 
     final lower = prompt.toLowerCase();
-    final templateId = skill.lifeTrackTemplateId ?? 'insurance_claim_v1';
-    if (_factService.wantsRecord(
+    final templateId = skill.lifeTrackTemplateId;
+    if (templateId != null &&
+        _factService.wantsRecord(
       AgentSkillRecordContext(
         skillId: skill.id,
         skillTools: skill.tools,
