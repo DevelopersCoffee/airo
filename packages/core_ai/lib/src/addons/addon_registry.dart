@@ -23,6 +23,11 @@ class AddonRegistry implements AddonRegistryPort {
   final Map<String, GenerativeAddonAdapter> _generativeAdapters = {};
   final Map<String, GraphWorkflowAddonAdapter> _graphAdapters = {};
   final Map<String, AddonEligibility> _eligibility = {};
+  int _invocationEpoch = 0;
+
+  int get invocationEpoch => _invocationEpoch;
+
+  void bumpInvocationEpoch() => _invocationEpoch++;
 
   List<AddonManifest> get manifests =>
       _manifests.values.toList(growable: false);

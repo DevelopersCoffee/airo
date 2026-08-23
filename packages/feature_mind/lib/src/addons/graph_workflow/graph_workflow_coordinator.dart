@@ -40,16 +40,22 @@ class GraphWorkflowCoordinator {
     String text,
   ) async {
     if (!shouldIngest(text, graph)) return graph;
+    final invocationEpoch = _registry.invocationEpoch;
     var chatGraph = graph;
     var entityGraph = chatGraph.toEntityGraph();
     var context = GraphIngestContext(text: text, graph: entityGraph);
     for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (_registry.invocationEpoch != invocationEpoch) break;
       if (!adapter.accepts(context)) continue;
       final patch = await adapter.extract(context);
+      if (_registry.invocationEpoch != invocationEpoch) break;
       if (patch.isEmpty) continue;
       chatGraph = LegacyWorkflowGraphPatch.apply(chatGraph, patch);
       entityGraph = chatGraph.toEntityGraph();
       context = GraphIngestContext(text: text, graph: entityGraph);
+    }
+    if (_registry.invocationEpoch != invocationEpoch) {
+      return graph;
     }
     chatGraph = _legacyLinker.ingestGenericMentions(chatGraph, text);
     return chatGraph;

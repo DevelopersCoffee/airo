@@ -3,7 +3,7 @@ import 'package:core_domain/core_domain.dart';
 import '../../provenance/domain/models/extracted_entity.dart';
 import '../../provenance/domain/services/entity_extractor.dart';
 import '../../agent_chat/domain/models/chat_entity_graph.dart';
-import '../../agent_chat/domain/services/life_track_fact_extractor.dart';
+import 'legacy_life_track_fact_extractor.dart';
 
 /// Legacy domain graph ingest retained for characterization parity while
 /// graph-workflow adapters own extract/project boundaries.

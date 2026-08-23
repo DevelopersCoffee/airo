@@ -36,9 +36,7 @@ void main() {
       if (path.endsWith('addon_workflow_policy.dart')) continue;
       if (path.endsWith('chat_entity_graph_pending.dart')) continue;
       if (path.endsWith('projected_chat_journey.dart')) continue;
-      if (path.endsWith('life_track_fact_extractor.dart')) continue;
       if (path.endsWith('chat_turn_inspector.dart')) continue;
-      if (path.endsWith('chat_entity_graph_projector.dart')) continue;
       final content = entity.readAsStringSync();
       for (final id in forbiddenIds) {
         if (content.contains(id)) {

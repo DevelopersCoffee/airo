@@ -14,7 +14,6 @@ import 'agent_skill_registry.dart';
 import 'capability_safety_resolver.dart';
 import 'chat_entity_graph_pending.dart';
 import 'intent_parser.dart';
-import 'life_track_fact_extractor.dart';
 import 'tool_registry.dart';
 import 'reminder_request_parser.dart';
 
@@ -951,7 +950,7 @@ class AgentSkillOrchestrator {
         AgentActionTrace(
           title: 'Execute action',
           detail: tool,
-          parameters: action.arguments,
+          parameters: _traceParameters(tool, action.arguments),
           success: !result.isError,
           durationMs: actionStopwatch.elapsedMilliseconds,
           dataVolume: dataVolume,
@@ -959,8 +958,8 @@ class AgentSkillOrchestrator {
       );
       toolResults.add({
         'tool': tool,
-        'arguments': action.arguments,
-        'result': result.data,
+        'arguments': _traceParameters(tool, action.arguments),
+        'result': _traceResult(tool, result.data, result.isError),
         if (result.isError) 'error': result.errorCode,
       });
 
@@ -1021,6 +1020,53 @@ class AgentSkillOrchestrator {
       return {...pending, 'confirmation_token': token.trim()};
     }
     return pending;
+  }
+
+  Map<String, dynamic> _traceParameters(
+    String tool,
+    Map<String, dynamic> arguments,
+  ) {
+    if (tool == 'record_lifetrack_facts') {
+      final facts = arguments['facts'];
+      return {
+        'template_id': arguments['template_id'],
+        'title_length': (arguments['title'] as String?)?.length ?? 0,
+        'fact_count': facts is Map ? facts.length : 0,
+        'has_confirmation_token': arguments['confirmation_token'] != null,
+      };
+    }
+    if (tool == 'query_entity_graph') {
+      return {
+        'query_length': (arguments['query'] as String?)?.length ?? 0,
+        'intent': arguments['intent'],
+      };
+    }
+    return arguments;
+  }
+
+  Map<String, dynamic> _traceResult(
+    String tool,
+    Map<String, dynamic> data,
+    bool isError,
+  ) {
+    if (isError) {
+      return {'error': data['error'] ?? true};
+    }
+    if (tool == 'record_lifetrack_facts') {
+      return {
+        'created': data['created'],
+        'track_id': data['track_id'],
+        'template_id': data['template_id'],
+      };
+    }
+    if (tool == 'query_entity_graph') {
+      return {
+        'node_count': data['node_count'],
+        'edge_count': data['edge_count'],
+        'markdown_length': (data['markdown'] as String?)?.length ?? 0,
+      };
+    }
+    return data;
   }
 
   /// Measures how much data a connector call actually moved.
