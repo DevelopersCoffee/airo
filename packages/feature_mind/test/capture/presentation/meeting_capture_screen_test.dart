@@ -282,62 +282,66 @@ void main() {
       SharedPreferences.setMockInitialValues({
         transcriptionModeKey: TranscriptionMode.live.storageValue,
       });
+      // Reset before the callback returns — Flutter asserts foundation debug
+      // vars before package:test tearDowns run.
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
-
-      final tempDir = Directory.systemTemp.createTempSync(
-        'meeting_capture_live_',
-      );
-      addTearDown(() {
-        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-      });
-      PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
-      final recorder = FakeAudioRecorderPort();
-      await tester.binding.setSurfaceSize(const Size(400, 1400));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            mindRuntimeProvider.overrideWith(
-              (ref) => ScribeMindRuntime(log: _MemoryLog()),
-            ),
-            recordingConsentPromptProvider.overrideWithValue(false),
-            audioRecorderPortProvider.overrideWith(
-              (ref) =>
-                  () => recorder,
-            ),
-            meetingRecordingPathProvider.overrideWith(
-              (ref) =>
-                  () async => '${tempDir.path}/meeting.m4a',
-            ),
-            meetingRecordingServiceGatewayProvider.overrideWith(
-              (ref) => const NoopMeetingRecordingServiceGateway(),
-            ),
-            meetingLiveSessionCoordinatorFactoryProvider.overrideWithValue(
-              () => MeetingLiveSessionCoordinator(
-                speechBridge: FakeMindSpeechBridge()
-                  ..liveStartError = StateError('OverBudget'),
-                pcmShim: FakeLivePcmShim(),
+      try {
+        final tempDir = Directory.systemTemp.createTempSync(
+          'meeting_capture_live_',
+        );
+        addTearDown(() {
+          if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+        });
+        PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
+        final recorder = FakeAudioRecorderPort();
+        await tester.binding.setSurfaceSize(const Size(400, 1400));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              mindRuntimeProvider.overrideWith(
+                (ref) => ScribeMindRuntime(log: _MemoryLog()),
               ),
-            ),
-          ],
-          child: const MaterialApp(home: MeetingCaptureScreen()),
-        ),
-      );
-      await tester.pumpAndSettle();
+              recordingConsentPromptProvider.overrideWithValue(false),
+              audioRecorderPortProvider.overrideWith(
+                (ref) =>
+                    () => recorder,
+              ),
+              meetingRecordingPathProvider.overrideWith(
+                (ref) =>
+                    () async => '${tempDir.path}/meeting.m4a',
+              ),
+              meetingRecordingServiceGatewayProvider.overrideWith(
+                (ref) => const NoopMeetingRecordingServiceGateway(),
+              ),
+              meetingLiveSessionCoordinatorFactoryProvider.overrideWithValue(
+                () => MeetingLiveSessionCoordinator(
+                  speechBridge: FakeMindSpeechBridge()
+                    ..liveStartError = StateError('OverBudget'),
+                  pcmShim: FakeLivePcmShim(),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: MeetingCaptureScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('meeting_capture_start_button')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+        await tester.tap(find.byKey(const Key('meeting_capture_start_button')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
 
-      expect(
-        find.byKey(const Key('meeting_capture_live_warning')),
-        findsOneWidget,
-      );
-      expect(
-        recorder.calls.where((call) => call.startsWith('start:')),
-        isNotEmpty,
-      );
+        expect(
+          find.byKey(const Key('meeting_capture_live_warning')),
+          findsOneWidget,
+        );
+        expect(
+          recorder.calls.where((call) => call.startsWith('start:')),
+          isNotEmpty,
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     },
   );
 }
