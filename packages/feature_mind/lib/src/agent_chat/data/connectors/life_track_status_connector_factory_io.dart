@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 
@@ -85,6 +86,7 @@ AgentConnector createLifeTrackRecordConnector() {
     },
     idempotencyPort: _idempotencyPortHolder,
     confirmationTokens: sharedLifeTrackConfirmationTokens,
+    readInvocationEpoch: () => AddonInvocationEpoch.instance.current,
   );
 }
 

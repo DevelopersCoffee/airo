@@ -10,6 +10,7 @@ class ConfirmationTokenRecord {
     required this.confirmationHash,
     required this.expiresAtMs,
     required this.permissionEpoch,
+    required this.invocationEpoch,
     this.actorId = 'local_user',
   });
 
@@ -18,6 +19,7 @@ class ConfirmationTokenRecord {
   final String confirmationHash;
   final int expiresAtMs;
   final int permissionEpoch;
+  final int invocationEpoch;
   final String actorId;
 
   Map<String, dynamic> toJson() => {
@@ -26,6 +28,7 @@ class ConfirmationTokenRecord {
     'confirmation_hash': confirmationHash,
     'expires_at_ms': expiresAtMs,
     'permission_epoch': permissionEpoch,
+    'invocation_epoch': invocationEpoch,
     'actor_id': actorId,
   };
 
@@ -36,6 +39,7 @@ class ConfirmationTokenRecord {
       confirmationHash: json['confirmation_hash'] as String,
       expiresAtMs: json['expires_at_ms'] as int,
       permissionEpoch: json['permission_epoch'] as int? ?? 0,
+      invocationEpoch: json['invocation_epoch'] as int? ?? 0,
       actorId: json['actor_id'] as String? ?? 'local_user',
     );
   }

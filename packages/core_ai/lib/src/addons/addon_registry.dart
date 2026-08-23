@@ -1,6 +1,7 @@
 import 'package:core_domain/core_domain.dart';
 
 import 'addon_eligibility.dart';
+import 'addon_invocation_epoch.dart';
 import 'addon_manifest_validator.dart';
 import 'generative_addon_adapter.dart';
 import 'graph_workflow_addon_adapter.dart';
@@ -23,11 +24,10 @@ class AddonRegistry implements AddonRegistryPort {
   final Map<String, GenerativeAddonAdapter> _generativeAdapters = {};
   final Map<String, GraphWorkflowAddonAdapter> _graphAdapters = {};
   final Map<String, AddonEligibility> _eligibility = {};
-  int _invocationEpoch = 0;
 
-  int get invocationEpoch => _invocationEpoch;
+  int get invocationEpoch => AddonInvocationEpoch.instance.current;
 
-  void bumpInvocationEpoch() => _invocationEpoch++;
+  void bumpInvocationEpoch() => AddonInvocationEpoch.instance.bump();
 
   List<AddonManifest> get manifests =>
       _manifests.values.toList(growable: false);

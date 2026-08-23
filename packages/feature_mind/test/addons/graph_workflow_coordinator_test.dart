@@ -46,10 +46,10 @@ void main() {
   test('firstUnofferedJourney surfaces car purchase via adapter projections',
       () async {
     final builtIn = BuiltInAddonRegistry.create();
-    final graph = await builtIn.graphCoordinator.ingestWithAddonPatches(
+    final graph = (await builtIn.graphCoordinator.ingestWithAddonPatches(
       ChatEntityGraph.empty,
       'Shortlisted Honda City, budget 12 lakh, parking plan in society basement.',
-    );
+    )).graph;
 
     final journey = builtIn.graphCoordinator.firstUnofferedJourney(graph);
     expect(journey, isNotNull);

@@ -20,10 +20,10 @@ void main() {
   test('car adapter accepts vehicle plus budget and projects offerable journey',
       () async {
     final builtIn = BuiltInAddonRegistry.create();
-    final graph = await builtIn.graphCoordinator.ingestWithAddonPatches(
+    final graph = (await builtIn.graphCoordinator.ingestWithAddonPatches(
       ChatEntityGraph.empty,
       'Shortlisted Toyota Camry, budget around 25 lakh, parking plan in basement.',
-    );
+    )).graph;
 
     final projections = builtIn.graphCoordinator.workflowProjections(graph);
     expect(
@@ -53,10 +53,10 @@ void main() {
   test('university adapter accepts applying fixture and projects journey',
       () async {
     final builtIn = BuiltInAddonRegistry.create();
-    final graph = await builtIn.graphCoordinator.ingestWithAddonPatches(
+    final graph = (await builtIn.graphCoordinator.ingestWithAddonPatches(
       ChatEntityGraph.empty,
       'I am applying to MIT for Fall 2027.',
-    );
+    )).graph;
 
     final projections = builtIn.graphCoordinator.workflowProjections(graph);
     expect(

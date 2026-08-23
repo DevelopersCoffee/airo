@@ -98,6 +98,10 @@ class _SpyGraphAdapter implements GraphWorkflowAddonAdapter {
 }
 
 void main() {
+  setUp(() {
+    AddonInvocationEpoch.instance.resetForTesting();
+  });
+
   test('duplicate registration fails closed', () {
     final registry = AddonRegistry();
     final manifest = _sampleGenerativeManifest();

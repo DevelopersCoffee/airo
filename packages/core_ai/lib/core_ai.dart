@@ -101,6 +101,7 @@ export 'src/skills/skill_trigger_eval.dart';
 
 // Add-on framework (manifest validation, registry, adapter contracts)
 export 'src/addons/addon_manifest_validator.dart';
+export 'src/addons/addon_invocation_epoch.dart';
 export 'src/addons/addon_registry.dart';
 export 'src/addons/addon_eligibility.dart';
 export 'src/addons/addon_conversation.dart';

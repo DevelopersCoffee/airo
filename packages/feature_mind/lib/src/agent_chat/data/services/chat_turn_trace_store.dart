@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:core_ai/core_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../addons/addon_trace_redaction.dart';
+
 /// Local redacted turn traces, keyed by [ChatTurnTrace.runId].
 ///
 /// Full prompts stay behind refs and are not written here. A failing write
@@ -25,9 +27,10 @@ class ChatTurnTraceStore {
 
   Future<void> upsert(ChatTurnTrace trace) {
     if (!kMindChatTurnInspector) return Future<void>.value();
+    final sanitized = AddonTraceRedaction.redactTraceForPersistence(trace);
     return _enqueueWrite(() async {
       final traces = await _loadAll();
-      traces[trace.runId] = trace;
+      traces[sanitized.runId] = sanitized;
       while (traces.length > maxTraces) {
         final oldest = traces.values.reduce(
           (a, b) => a.startedAt.isBefore(b.startedAt) ? a : b,

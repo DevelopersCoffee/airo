@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:core_ai/core_ai.dart';
 
+import '../../../addons/addon_trace_redaction.dart';
 import '../../../addons/workflow/addon_workflow_fact_service.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/models/log_models.dart';
@@ -932,12 +933,14 @@ class AgentSkillOrchestrator {
       }
 
       final actionStopwatch = Stopwatch()..start();
+      final tracedArguments = _traceParameters(tool, action.arguments);
       final result = await _connectorRegistry.execute(tool, action.arguments);
       actionStopwatch.stop();
+      final tracedResult = _traceResult(tool, result.data, result.isError);
       final dataVolume = await _measureDataVolume(
         succeeded: !result.isError,
-        requestArguments: action.arguments,
-        responseData: result.data,
+        requestArguments: tracedArguments,
+        responseData: tracedResult,
       );
       if (!result.isError && dataVolume?.replayedOpSequence != null) {
         latestCitation = GroundedCitation(
@@ -1025,49 +1028,15 @@ class AgentSkillOrchestrator {
   Map<String, dynamic> _traceParameters(
     String tool,
     Map<String, dynamic> arguments,
-  ) {
-    if (tool == 'record_lifetrack_facts') {
-      final facts = arguments['facts'];
-      return {
-        'template_id': arguments['template_id'],
-        'title_length': (arguments['title'] as String?)?.length ?? 0,
-        'fact_count': facts is Map ? facts.length : 0,
-        'has_confirmation_token': arguments['confirmation_token'] != null,
-      };
-    }
-    if (tool == 'query_entity_graph') {
-      return {
-        'query_length': (arguments['query'] as String?)?.length ?? 0,
-        'intent': arguments['intent'],
-      };
-    }
-    return arguments;
-  }
+  ) =>
+      AddonTraceRedaction.connectorParameters(tool, arguments);
 
   Map<String, dynamic> _traceResult(
     String tool,
     Map<String, dynamic> data,
     bool isError,
-  ) {
-    if (isError) {
-      return {'error': data['error'] ?? true};
-    }
-    if (tool == 'record_lifetrack_facts') {
-      return {
-        'created': data['created'],
-        'track_id': data['track_id'],
-        'template_id': data['template_id'],
-      };
-    }
-    if (tool == 'query_entity_graph') {
-      return {
-        'node_count': data['node_count'],
-        'edge_count': data['edge_count'],
-        'markdown_length': (data['markdown'] as String?)?.length ?? 0,
-      };
-    }
-    return data;
-  }
+  ) =>
+      AddonTraceRedaction.connectorResult(tool, data, isError);
 
   /// Measures how much data a connector call actually moved.
   ///

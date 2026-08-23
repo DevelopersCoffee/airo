@@ -39,6 +39,7 @@ class ChatEntityGraphSession {
   String? _activeConversationId;
   ChatEntityGraph _legacyGraphCache = ChatEntityGraph.empty;
   bool _legacyLoaded = false;
+  String? _lastIngestCancellationCode;
 
   ChatEntityGraph get graph => _currentSlot()?.graph ?? ChatEntityGraph.empty;
 
@@ -81,10 +82,18 @@ class ChatEntityGraphSession {
   Future<ChatEntityGraph> ingest(String text, {String? conversationId}) async {
     final id = conversationId ?? _activeConversationId ?? emptyConversationKey;
     var graph = await ensureLoaded(conversationId: id);
-    graph = await _graphCoordinator.ingestWithAddonPatches(graph, text);
+    final ingestResult = await _graphCoordinator.ingestWithAddonPatches(
+      graph,
+      text,
+    );
+    _lastIngestCancellationCode =
+        ingestResult.cancelled ? ingestResult.errorCode : null;
+    graph = ingestResult.graph;
     _slots[id] = _EphemeralGraphSlot(graph: graph, updatedAt: _now().toUtc());
     return graph;
   }
+
+  String? get lastIngestCancellationCode => _lastIngestCancellationCode;
 
   Future<ChatEntityGraph> markAttribute(
     String nodeId,

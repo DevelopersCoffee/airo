@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:core_domain/core_domain.dart';
 
 import '../../../addons/templates/addon_life_track_record_policy.dart';
@@ -19,6 +20,7 @@ class LifeTrackRecordConnector implements AgentConnector {
     LifeTrackConfirmationTokenService? confirmationTokens,
     Future<bool> Function()? writeGate,
     IdempotentEffectPort? idempotencyPort,
+    int Function()? readInvocationEpoch,
   }) : _repository = repository,
        _resolveTemplate = resolveTemplate,
        _now = now ?? DateTime.now,
@@ -29,7 +31,8 @@ class LifeTrackRecordConnector implements AgentConnector {
        _confirmationTokens =
            confirmationTokens ?? LifeTrackConfirmationTokenService(),
        _writeGate = writeGate,
-       _idempotencyPort = idempotencyPort;
+       _idempotencyPort = idempotencyPort,
+       _readInvocationEpoch = readInvocationEpoch;
 
   final LifeTrackRepository _repository;
   final Future<LifeTrackTemplate?> Function(String templateId) _resolveTemplate;
@@ -42,6 +45,7 @@ class LifeTrackRecordConnector implements AgentConnector {
   final LifeTrackConfirmationTokenService _confirmationTokens;
   final Future<bool> Function()? _writeGate;
   final IdempotentEffectPort? _idempotencyPort;
+  final int Function()? _readInvocationEpoch;
 
   static String _defaultFollowUpHint(String templateId) {
     if (templateId == 'study_progress_v1') {
@@ -133,8 +137,22 @@ class LifeTrackRecordConnector implements AgentConnector {
       if (tokenError != null) {
         return ConnectorResult.error(
           code: tokenError,
-          message: 'That save confirmation expired or no longer matches. '
-              'Ask me to save again and confirm the new preview.',
+          message: tokenError == AddonInvocationEpoch.cancelledCode
+              ? 'That add-on was disabled before the save finished. '
+                  'Ask me to save again after re-enabling it.'
+              : 'That save confirmation expired or no longer matches. '
+                  'Ask me to save again and confirm the new preview.',
+        );
+      }
+    } else if (legacyConfirmed && _readInvocationEpoch != null) {
+      final scheduledEpoch = arguments['invocation_epoch'];
+      if (scheduledEpoch is int &&
+          scheduledEpoch != _readInvocationEpoch!()) {
+        return ConnectorResult.error(
+          code: AddonInvocationEpoch.cancelledCode,
+          message:
+              'That add-on was disabled before the save finished. '
+              'Ask me to save again after re-enabling it.',
         );
       }
     }
