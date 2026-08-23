@@ -88,6 +88,10 @@ class _SlowRevokeSpyAdapter implements GraphWorkflowAddonAdapter {
 }
 
 void main() {
+  setUp(() {
+    AddonInvocationEpoch.instance.resetForTesting();
+  });
+
   test('disabled add-on receives zero extract calls during ingest', () async {
     final registry = AddonRegistry();
     final spy = _SpyGraphAdapter();
@@ -164,7 +168,9 @@ void main() {
     );
 
     expect(spy.extractCalls, 1);
-    expect(result.nodes, isEmpty);
+    expect(result.cancelled, isTrue);
+    expect(result.errorCode, AddonInvocationEpoch.cancelledCode);
+    expect(result.graph.nodes, isEmpty);
     expect(registry.invocationEpoch, 1);
   });
 

@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/addon_permission_epoch.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/confirmation_token_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/lifetrack_confirmation_token_service.dart';
@@ -12,6 +13,7 @@ void main() {
   };
 
   setUp(() {
+    AddonInvocationEpoch.instance.resetForTesting();
     service = LifeTrackConfirmationTokenService(
       store: InMemoryConfirmationTokenStore(),
     );
@@ -111,6 +113,22 @@ void main() {
         payload: payload,
       ),
       'confirmation_permission_changed',
+    );
+  });
+
+  test('invocation epoch bump after issue rejects redemption', () async {
+    final token = await service.issue(
+      destinationTool: 'record_lifetrack_facts',
+      payload: payload,
+    );
+    AddonInvocationEpoch.instance.bump();
+    expect(
+      await service.validateAndConsume(
+        token: token,
+        destinationTool: 'record_lifetrack_facts',
+        payload: payload,
+      ),
+      AddonInvocationEpoch.cancelledCode,
     );
   });
 }

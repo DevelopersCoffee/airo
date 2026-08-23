@@ -161,10 +161,10 @@ void main() {
   test('graph workflow ingest is deterministic without model or network',
       () async {
     final builtIn = BuiltInAddonRegistry.create();
-    final graph = await builtIn.graphCoordinator.ingestWithAddonPatches(
+    final graph = (await builtIn.graphCoordinator.ingestWithAddonPatches(
       ChatEntityGraph.empty,
       'Niva Bupa Claim ID 9001001 via Policybazaar. All documents received.',
-    );
+    )).graph;
     expect(graph.nodes, isNotEmpty);
     final projections = builtIn.graphCoordinator.workflowProjections(graph);
     expect(
