@@ -235,11 +235,7 @@ void main() {
               },
             ],
             'audioTracks': [
-              {
-                'id': 'audio-0',
-                'codec': 'aac',
-                'confidence': 'exact',
-              },
+              {'id': 'audio-0', 'codec': 'aac', 'confidence': 'exact'},
             ],
             'subtitleTracks': [],
             'warnings': [],
@@ -336,7 +332,8 @@ final class _TestPlatformFile extends PlatformFile {
   final Uri _uri;
 
   @override
-  String? get path => _path ?? (_uri.scheme == 'file' ? _uri.toFilePath() : null);
+  String? get path =>
+      _path ?? (_uri.scheme == 'file' ? _uri.toFilePath() : null);
 
   @override
   final String name;
