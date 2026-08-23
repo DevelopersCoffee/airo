@@ -959,10 +959,12 @@ class AgentSkillOrchestrator {
           dataVolume: dataVolume,
         ),
       );
+      // Traces stay redacted. toolResults stay complete so later steps
+      // (pending answers, entity listing) can still read markdown.
       toolResults.add({
         'tool': tool,
-        'arguments': _traceParameters(tool, action.arguments),
-        'result': _traceResult(tool, result.data, result.isError),
+        'arguments': action.arguments,
+        'result': result.data,
         if (result.isError) 'error': result.errorCode,
       });
 

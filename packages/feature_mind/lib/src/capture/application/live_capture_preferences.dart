@@ -87,9 +87,9 @@ Future<void> persistLiveIntelligenceModeToNative(
 ) async {
   try {
     final dir = await getApplicationSupportDirectory();
-    await File(
+    File(
       p.join(dir.path, 'mind_live_intelligence_mode'),
-    ).writeAsString(mode.storageValue);
+    ).writeAsStringSync(mode.storageValue);
   } on Object {
     // Host tests and web have no path_provider channel.
   }
