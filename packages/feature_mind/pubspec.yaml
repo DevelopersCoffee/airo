@@ -58,6 +58,7 @@ dependencies:
   # same package and version core_data, platform_player and feature_iptv
   # already use for the same purpose.
   connectivity_plus: ^7.2.0
+  crypto: ^3.0.3
   # Markdown export (#1663): rendering the transcript body runs off the main
   # isolate once it crosses ~50 KB, per the repo's own parsing rule.
   core_workers:

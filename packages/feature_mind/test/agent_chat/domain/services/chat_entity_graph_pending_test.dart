@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const linker = ChatEntityLinker();
-  const pending = ChatEntityGraphPending();
+  final pending = ChatEntityGraphPending();
 
   test('matches claim pending questions without the word track', () {
     expect(pending.wantsPending("What's pending on my claim?"), isTrue);

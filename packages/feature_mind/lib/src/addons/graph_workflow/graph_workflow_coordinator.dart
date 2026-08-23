@@ -16,10 +16,10 @@ class GraphWorkflowCoordinator {
     LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
     GraphWorkflowProjectionBridge projectionBridge =
         const GraphWorkflowProjectionBridge(),
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
+    ChatEntityGraphPending? pending,
   }) : _legacyLinker = linker,
        _projectionBridge = projectionBridge,
-       _pending = pending;
+       _pending = pending ?? ChatEntityGraphPending();
 
   final AddonRegistry _registry;
   final LegacyChatEntityLinker _legacyLinker;

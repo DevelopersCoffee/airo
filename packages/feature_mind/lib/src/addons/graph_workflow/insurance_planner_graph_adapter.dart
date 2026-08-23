@@ -16,10 +16,10 @@ class InsurancePlannerGraphAdapter implements GraphWorkflowAddonAdapter {
   InsurancePlannerGraphAdapter({
     LifeTrackFactExtractor facts = const LifeTrackFactExtractor(),
     LegacyChatEntityLinker linker = const LegacyChatEntityLinker(),
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
+    ChatEntityGraphPending? pending,
   }) : _facts = facts,
        _linker = linker,
-       _pending = pending;
+       _pending = pending ?? ChatEntityGraphPending();
 
   static const addonId = 'insurance-planner';
   static const templateId = 'insurance_claim_v1';

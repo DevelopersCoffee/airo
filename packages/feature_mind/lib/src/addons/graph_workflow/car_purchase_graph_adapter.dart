@@ -8,8 +8,8 @@ import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
 /// Graph-workflow adapter for the Car Purchase built-in add-on.
 class CarPurchaseGraphAdapter implements GraphWorkflowAddonAdapter {
   CarPurchaseGraphAdapter({
-    ChatEntityGraphPending pending = const ChatEntityGraphPending(),
-  }) : _pending = pending;
+    ChatEntityGraphPending? pending,
+  }) : _pending = pending ?? ChatEntityGraphPending();
 
   static const addonId = 'car-purchase-planner';
   static const templateId = 'car_purchase_v1';

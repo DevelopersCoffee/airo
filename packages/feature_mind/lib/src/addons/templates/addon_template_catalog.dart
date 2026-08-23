@@ -26,10 +26,12 @@ class AddonTemplateCatalog {
   AddonTemplateCatalog._({
     required this.templates,
     required this.metadataByTemplateId,
+    required this.workflowBlocksByAddonId,
   });
 
   final List<LifeTrackTemplate> templates;
   final Map<String, LifeTrackTemplateAddonMetadata> metadataByTemplateId;
+  final Map<String, Map<String, dynamic>> workflowBlocksByAddonId;
 
   static const bundledJsonlAsset =
       'packages/feature_mind/addons/bundled_workflow_templates.jsonl';
@@ -61,6 +63,7 @@ class AddonTemplateCatalog {
     }
 
     final metadataByTemplateId = <String, LifeTrackTemplateAddonMetadata>{};
+    final workflowBlocksByAddonId = <String, Map<String, dynamic>>{};
     for (final assetPath in bundledManifestAssets) {
       final rawManifest = await assetBundle.loadString(assetPath);
       final decoded = jsonDecode(rawManifest);
@@ -68,6 +71,7 @@ class AddonTemplateCatalog {
       final manifest = AddonManifest.fromJson(decoded);
       final workflow = decoded['workflow'] as Map<String, dynamic>?;
       if (workflow == null) continue;
+      workflowBlocksByAddonId[manifest.id.value] = workflow;
       final templateId = workflow['template_id'] as String?;
       if (templateId == null || templateId.trim().isEmpty) continue;
       metadataByTemplateId[templateId] = LifeTrackTemplateAddonMetadata(
@@ -82,6 +86,7 @@ class AddonTemplateCatalog {
     return AddonTemplateCatalog._(
       templates: List.unmodifiable(templates),
       metadataByTemplateId: metadataByTemplateId,
+      workflowBlocksByAddonId: workflowBlocksByAddonId,
     );
   }
 

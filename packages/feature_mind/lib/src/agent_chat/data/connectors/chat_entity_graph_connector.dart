@@ -51,7 +51,7 @@ class ChatEntityGraphConnector implements AgentConnector {
     required String query,
     bool pending = false,
   }) {
-    const pendingFormatter = ChatEntityGraphPending();
+    final pendingFormatter = ChatEntityGraphPending();
     if (pending || pendingFormatter.wantsPending(query)) {
       return pendingFormatter.format(graph: graph, query: query);
     }

@@ -1,5 +1,6 @@
 import 'package:core_domain/core_domain.dart';
 
+import '../../../addons/workflow/addon_workflow_policy.dart';
 import '../../../provenance/domain/models/extracted_entity.dart';
 import '../models/chat_entity_graph.dart';
 import 'chat_entity_graph_projector.dart';
@@ -11,23 +12,11 @@ import 'projected_chat_journey.dart';
 /// template fields are still absent, including cross-links (hospital, policy)
 /// so a bill can sit on more than one journey at once.
 class ChatEntityGraphPending {
-  const ChatEntityGraphPending();
+  ChatEntityGraphPending({AddonWorkflowPolicy? policy})
+    : _policy = policy ?? AddonWorkflowPolicy.defaults();
 
+  final AddonWorkflowPolicy _policy;
   static const _projector = ChatEntityGraphProjector();
-
-  static const _hospitalUsual = [
-    'Required Tests List',
-    'Insurance Authorization Reference',
-    'Hospital Checklist',
-    'Recovery Notes',
-  ];
-
-  static const _propertyUsual = [
-    'RERA Registration Number',
-    'Builder Track Record Notes',
-    'Your Target Floor',
-    'Promised Amenities List',
-  ];
 
   bool wantsPending(String query) {
     final lower = query.toLowerCase();
@@ -39,9 +28,21 @@ class ChatEntityGraphPending {
         lower.contains("what's next") ||
         lower.contains('whats next');
     if (!asks) return false;
-    return _looksInsurance(lower) ||
-        _looksHospital(lower) ||
-        _looksProperty(lower);
+    for (final policy in _policyTemplates()) {
+      if (_policy.queryMatchesTemplate(lower, policy.templateId)) return true;
+    }
+    return false;
+  }
+
+  Iterable<AddonWorkflowTemplatePolicy> _policyTemplates() {
+    return [
+      _policy.forTemplate('insurance_claim_v1'),
+      _policy.forTemplate('medical_surgery_v1'),
+      _policy.forTemplate('real_estate_under_construction_v1'),
+      _policy.forTemplate('study_progress_v1'),
+      _policy.forTemplate('car_purchase_v1'),
+      _policy.forTemplate('university_admission_v1'),
+    ].whereType<AddonWorkflowTemplatePolicy>();
   }
 
   String format({required ChatEntityGraph graph, required String query}) {
@@ -78,25 +79,18 @@ class ChatEntityGraphPending {
         if (entry.key.startsWith('_')) continue;
         buffer.writeln('- ${entry.key}: ${entry.value}');
       }
-
-      final missing = _missing(journey);
-      buffer.writeln();
-      if (missing.isEmpty) {
-        buffer.writeln(
-          'No usual ${_usualName(journey.templateId)} fields are missing from the graph.',
-        );
-      } else {
-        buffer.writeln('Not on the graph yet');
-        for (final item in missing) {
-          buffer.writeln('- $item');
+      final missing = missingFieldsFor(journey);
+      if (missing.isNotEmpty) {
+        buffer.writeln();
+        for (final line in missing) {
+          buffer.writeln('Not on the graph yet: $line');
         }
       }
-
-      final linked = _crossLinks(graph, journey.subjectNodeId);
-      if (linked.isNotEmpty) {
+      final crossLinks = crossLinksFor(graph, journey.subjectNodeId);
+      if (crossLinks.isNotEmpty) {
         buffer.writeln();
-        buffer.writeln('Also linked');
-        for (final line in linked) {
+        buffer.writeln('Also linked in this chat:');
+        for (final line in crossLinks) {
           buffer.writeln('- $line');
         }
       }
@@ -107,93 +101,39 @@ class ChatEntityGraphPending {
 
   bool _matchesQuery(ProjectedChatJourney journey, String needle) {
     if (needle.trim().isEmpty) return true;
-    switch (journey.templateId) {
-      case 'insurance_claim_v1':
-        return _looksInsurance(needle) ||
-            _containsFact(needle, journey, 'Claim ID') ||
-            _containsFact(needle, journey, 'Insurer');
-      case 'medical_surgery_v1':
-        return _looksHospital(needle) ||
-            _containsFact(needle, journey, 'Hospital');
-      case 'real_estate_under_construction_v1':
-        return _looksProperty(needle) ||
-            _containsFact(needle, journey, 'RERA Registration Number') ||
-            _containsFact(needle, journey, 'Project');
-      default:
-        return true;
+    final policy = _policy.forTemplate(journey.templateId);
+    if (policy != null && _policy.queryMatchesTemplate(needle, journey.templateId)) {
+      return true;
     }
+    return journey.facts.entries.any(
+      (entry) =>
+          entry.value.isNotEmpty && needle.contains(entry.value.toLowerCase()),
+    );
   }
-
-  bool _containsFact(String needle, ProjectedChatJourney journey, String key) {
-    final value = (journey.facts[key] ?? '').toLowerCase();
-    return value.isNotEmpty && needle.contains(value);
-  }
-
-  bool _looksInsurance(String lower) =>
-      lower.contains('claim') ||
-      lower.contains('insurance') ||
-      lower.contains('insurer') ||
-      lower.contains('document') ||
-      lower.contains('reimbursement') ||
-      lower.contains('policy');
-
-  bool _looksHospital(String lower) =>
-      lower.contains('hospital') ||
-      lower.contains('surgery') ||
-      lower.contains('recovery') ||
-      lower.contains('pre-op') ||
-      lower.contains('operation') ||
-      lower.contains('medical');
-
-  bool _looksProperty(String lower) =>
-      lower.contains('flat') ||
-      lower.contains('rera') ||
-      lower.contains('property') ||
-      lower.contains('builder') ||
-      lower.contains('tower') ||
-      lower.contains('apartment');
 
   String _emptyMessage(String query) {
     final lower = query.toLowerCase();
-    if (_looksHospital(lower)) {
-      return 'I have no stored hospital or surgery entities yet. Paste the '
-          'hospital, surgery date, required tests, and authorization reference '
-          '— I will extract them from this chat.';
+    for (final policy in _policyTemplates()) {
+      if (_policy.queryMatchesTemplate(lower, policy.templateId) &&
+          policy.pendingEmptyMessage.trim().isNotEmpty) {
+        return policy.pendingEmptyMessage.trim();
+      }
     }
-    if (_looksProperty(lower)) {
-      return 'I have no stored property entities yet. Paste the RERA number, '
-          'builder, project, and floor — I will extract them from this chat.';
-    }
-    return 'I have no stored claim entities yet. Paste the insurer, claim ID, '
-        'and whether documents were received — I will extract them from this chat.';
+    return 'I have no stored workflow entities yet for that question.';
   }
 
-  String _usualName(String templateId) {
-    switch (templateId) {
-      case 'medical_surgery_v1':
-        return 'hospital';
-      case 'real_estate_under_construction_v1':
-        return 'property';
-      default:
-        return 'claim';
+  List<String> missingFieldsFor(ProjectedChatJourney journey) {
+    if (journey.templateId == 'insurance_claim_v1') {
+      return _missingClaim(journey);
     }
-  }
-
-  List<String> _missing(ProjectedChatJourney journey) {
-    switch (journey.templateId) {
-      case 'medical_surgery_v1':
-        return [
-          for (final label in _hospitalUsual)
-            if (!journey.facts.containsKey(label)) label,
-        ];
-      case 'real_estate_under_construction_v1':
-        return [
-          for (final label in _propertyUsual)
-            if (!journey.facts.containsKey(label)) label,
-        ];
-      default:
-        return _missingClaim(journey);
+    final policy = _policy.forTemplate(journey.templateId);
+    if (policy != null && policy.pendingUsualOptionalFields.isNotEmpty) {
+      return [
+        for (final label in policy.pendingUsualOptionalFields)
+          if (!journey.facts.containsKey(label)) label,
+      ];
     }
+    return _missingClaim(journey);
   }
 
   List<String> _missingClaim(ProjectedChatJourney journey) {
@@ -218,7 +158,7 @@ class ChatEntityGraphPending {
     return missing;
   }
 
-  List<String> _crossLinks(ChatEntityGraph graph, String claimId) {
+  List<String> crossLinksFor(ChatEntityGraph graph, String claimId) {
     final lines = <String>[];
     for (final edge in graph.edgesFor(claimId)) {
       if (edge.predicate != ChatEntityRelation.relatedTo) continue;
@@ -231,14 +171,15 @@ class ChatEntityGraphPending {
     return lines;
   }
 
-  bool looksInsurance(String text) => _looksInsurance(text.toLowerCase());
+  bool looksInsurance(String text) =>
+      _policy.queryMatchesTemplate(text.toLowerCase(), 'insurance_claim_v1');
 
-  bool looksHospital(String text) => _looksHospital(text.toLowerCase());
+  bool looksHospital(String text) =>
+      _policy.queryMatchesTemplate(text.toLowerCase(), 'medical_surgery_v1');
 
-  bool looksProperty(String text) => _looksProperty(text.toLowerCase());
-
-  List<String> missingFieldsFor(ProjectedChatJourney journey) => _missing(journey);
-
-  List<String> crossLinksFor(ChatEntityGraph graph, String subjectNodeId) =>
-      _crossLinks(graph, subjectNodeId);
+  bool looksProperty(String text) =>
+      _policy.queryMatchesTemplate(
+        text.toLowerCase(),
+        'real_estate_under_construction_v1',
+      );
 }
