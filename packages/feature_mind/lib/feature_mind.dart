@@ -81,6 +81,11 @@ export 'src/search/meeting_embedding_store.dart';
 export 'src/search/meeting_text_chunker.dart';
 export 'src/search/semantic_search_ranker.dart';
 
+// Explicit capability x platform qualification matrix and state derivation
+// (docs/mind/platform-capability-matrix.md). The resolved state is capped by
+// actual runtime signals so the UI never claims Production from a flag alone.
+export 'src/qualification/mind_qualification.dart';
+
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
 // Phase 2).
