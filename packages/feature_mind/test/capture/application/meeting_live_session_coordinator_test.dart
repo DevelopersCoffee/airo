@@ -136,6 +136,22 @@ void main() {
     await coordinator.cancel();
     await controller.close();
   });
+
+  test('start surfaces live admission errors to the caller', () async {
+    final bridge = FakeMindSpeechBridge()
+      ..liveStartError = StateError('OverBudget needs_mb=4096 budget_mb=512');
+    final shim = FakeLivePcmShim();
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: bridge,
+      pcmShim: shim,
+    );
+
+    await expectLater(
+      coordinator.start(meetingId: 'm-admit'),
+      throwsA(isA<StateError>()),
+    );
+    expect(shim.startCalls, 0);
+  });
 }
 
 /// Routes [startLiveSession] to a controllable stream for tests.

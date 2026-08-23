@@ -25,6 +25,9 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   rust.SpeechLanguage? initializedSpeechLanguage;
   rust.TranscriptDocumentRecord? transcriptDocumentToReturn;
 
+  /// When set, [startLiveSession] throws — admission refusal / missing engine.
+  Object? liveStartError;
+
   /// `#1664`: what the last `transcribe` call was asked to pin, so a test can
   /// assert a Settings-chosen language reaches the bridge unchanged.
   String? transcribeLanguage;
@@ -98,8 +101,13 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   Stream<TranscriptEvent> startLiveSession({
     required String meetingId,
     String? language,
-  }) =>
-      Stream.fromIterable(transcriptEvents);
+  }) {
+    final error = liveStartError;
+    if (error != null) {
+      throw error;
+    }
+    return Stream.fromIterable(transcriptEvents);
+  }
 
   @override
   void pushLivePcm({required String sessionId, required List<int> samples}) {}

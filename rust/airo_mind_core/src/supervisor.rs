@@ -589,6 +589,23 @@ mod tests {
     }
 
     #[test]
+    fn check_speech_admission_refuses_an_over_budget_engine() {
+        let s = supervisor(512, 4096);
+        assert_eq!(
+            s.check_speech_admission(),
+            Err(RuntimeError::OverBudget {
+                needs_mb: 4096,
+                budget_mb: 512
+            })
+        );
+    }
+
+    #[test]
+    fn check_speech_admission_allows_an_in_budget_engine() {
+        assert!(supervisor(2048, 512).check_speech_admission().is_ok());
+    }
+
+    #[test]
     fn an_unregistered_engine_is_a_refusal_not_a_panic() {
         let samples = audio();
         let s = Supervisor::new(ResourceBudget::new(2048));

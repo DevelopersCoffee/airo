@@ -34,7 +34,9 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{LazyLock, Mutex};
+use std::thread::JoinHandle;
 
 use flutter_rust_bridge::frb;
 
@@ -45,7 +47,9 @@ use crate::frb_generated::StreamSink;
 
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
-use airo_mind_audio::{rms_energy, LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker};
+use airo_mind_audio::{
+    rms_energy, CaptureFanout, LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker,
+};
 use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
@@ -479,6 +483,11 @@ static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
 /// diarization strategy (ECAPA optional weights).
 static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
+/// Parent of `MindConfig.store_path` — live fan-out WAVs live in
+/// `{parent}/mind_recordings/{meeting_id}.wav`, matching Dart's app-support
+/// layout (`mind_service` store + `nextMeetingRecordingPath`).
+static STORE_PARENT_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+
 static SPEECH_MEMORY_BUDGET_MB: Mutex<Option<u32>> = Mutex::new(None);
 
 static INITIALIZED_SPEECH_LANGUAGE: Mutex<Option<SpeechLanguage>> = Mutex::new(None);
@@ -504,9 +513,15 @@ struct LiveSessionState {
     /// Provisional live speaker lanes (`P1`); reconciled after recording.
     speaker_activity: SpeakerActivityTracker,
     last_window_energy: f32,
+    /// Authoritative file writer. Live STT consumes a bounded channel, not this handle.
+    fanout: Option<CaptureFanout>,
+    live_tx: Option<SyncSender<Vec<i16>>>,
 }
 
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static LIVE_WORKERS: LazyLock<Mutex<HashMap<String, JoinHandle<()>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static LIVE_VOCABULARY: LazyLock<VocabularyIntelligence> =
@@ -595,6 +610,77 @@ fn maybe_emit_live_degraded(session: &mut LiveSessionState, message: &str) -> Re
         .map_err(|e| e.to_string())
 }
 
+fn sanitize_meeting_id(meeting_id: &str) -> String {
+    let safe: String = meeting_id
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if safe.is_empty() {
+        "meeting".into()
+    } else {
+        safe
+    }
+}
+
+fn live_fanout_path(meeting_id: &str) -> Option<PathBuf> {
+    let parent = lock(&STORE_PARENT_DIR).clone()?;
+    Some(
+        parent
+            .join("mind_recordings")
+            .join(format!("{}.wav", sanitize_meeting_id(meeting_id))),
+    )
+}
+
+fn spawn_live_worker(session_id: String, rx: Receiver<Vec<i16>>) {
+    let worker_id = session_id.clone();
+    let spawned = std::thread::Builder::new()
+        .name(format!("airo-live-{session_id}"))
+        .spawn(move || loop {
+            let chunk = match rx.recv() {
+                Ok(samples) => samples,
+                Err(_) => break,
+            };
+            let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                {
+                    let mut sessions = lock(&LIVE_SESSIONS);
+                    let Some(session) = sessions.get_mut(&worker_id) else {
+                        return;
+                    };
+                    if session.paused {
+                        return;
+                    }
+                    session.pipeline.push_pcm(&chunk);
+                    session.last_window_energy = rms_energy(&chunk);
+                }
+                let _ = run_live_pipeline_step(&worker_id);
+            }));
+            if panicked.is_err() {
+                let mut sessions = lock(&LIVE_SESSIONS);
+                if let Some(session) = sessions.get_mut(&worker_id) {
+                    let _ = maybe_emit_live_degraded(
+                        session,
+                        "Live intelligence degraded — native worker recovered. Recording continues.",
+                    );
+                }
+            }
+        });
+    if let Ok(handle) = spawned {
+        lock(&LIVE_WORKERS).insert(session_id, handle);
+    }
+}
+
+fn stop_live_worker(session_id: &str) {
+    if let Some(handle) = lock(&LIVE_WORKERS).remove(session_id) {
+        let _ = handle.join();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The capability surface
 // ---------------------------------------------------------------------------
@@ -617,6 +703,10 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&SPEECH_MEMORY_BUDGET_MB) = Some(config.memory_budget_mb);
     *lock(&INITIALIZED_SPEECH_LANGUAGE) = Some(config.speech_language);
     *lock(&LIBRARY) = Some(Library { store, index });
+    *lock(&STORE_PARENT_DIR) = PathBuf::from(&config.store_path)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .or_else(|| Some(PathBuf::from(".")));
 
     ensure_speech_engine_for_requirement(models::speech_file_requirement(
         config.memory_budget_mb,
@@ -932,6 +1022,12 @@ fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
             "Live transcript quality reduced — audio ring overflow.",
         )?;
     }
+    if report.live_failed {
+        maybe_emit_live_degraded(
+            session,
+            "Live intelligence degraded — inference failed. Recording continues.",
+        )?;
+    }
     session.last_window_energy = report.window_energy;
 
     for segment in produced {
@@ -962,6 +1058,11 @@ pub fn start_live_session(
     let cancel = CancelToken::new();
     *lock(&CANCEL) = Some(cancel.clone());
 
+    let (tx, rx) = mpsc::sync_channel::<Vec<i16>>(8);
+    spawn_live_worker(session_id.clone(), rx);
+    let fanout =
+        live_fanout_path(&meeting_id).and_then(|path| CaptureFanout::create_file(path).ok());
+
     let session = LiveSessionState {
         meeting_id,
         pipeline: LiveSpeechPipeline::new(LiveSpeechConfig::default()),
@@ -975,9 +1076,11 @@ pub fn start_live_session(
         degraded_notified: false,
         speaker_activity: SpeakerActivityTracker::new(1200),
         last_window_energy: 0.0,
+        fanout,
+        live_tx: Some(tx),
     };
 
-    lock(&LIVE_SESSIONS).insert(session_id.clone(), session);
+    lock(&LIVE_SESSIONS).insert(session_id, session);
     Ok(())
 }
 
@@ -992,17 +1095,26 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
     if session.paused {
         return Ok(());
     }
-    let push_report = session.pipeline.push_pcm(&samples);
+    if let Some(fanout) = session.fanout.as_mut() {
+        if let Err(error) = fanout.ingest(&samples) {
+            maybe_emit_live_degraded(
+                session,
+                &format!("Live transcript quality reduced — recording write failed ({error})."),
+            )?;
+        }
+    }
     session.last_window_energy = rms_energy(&samples);
-    if push_report.dropped > 0 {
+    let live_busy = session
+        .live_tx
+        .as_ref()
+        .map(|tx| tx.try_send(samples).is_err())
+        .unwrap_or(true);
+    if live_busy {
         maybe_emit_live_degraded(
             session,
-            "Live transcript quality reduced — audio ring overflow.",
+            "Live transcript quality reduced — live worker backpressure.",
         )?;
     }
-    let session_id = session_id.clone();
-    drop(sessions);
-    run_live_pipeline_step(&session_id)?;
     Ok(())
 }
 
@@ -1035,6 +1147,9 @@ pub fn stop_live_session(session_id: String, audio_path: Option<String>) -> Resu
     let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.live_tx = None;
+    session.fanout = None;
+    stop_live_worker(&session_id);
 
     let mut finals = Vec::new();
     session
@@ -1092,9 +1207,12 @@ pub fn stop_live_session(session_id: String, audio_path: Option<String>) -> Resu
 /// Aborts a live session without persisting transcript output.
 #[frb(sync)]
 pub fn cancel_live_session(session_id: String) -> Result<(), String> {
-    let session = lock(&LIVE_SESSIONS)
+    let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.live_tx = None;
+    session.fanout = None;
+    stop_live_worker(&session_id);
     session.cancel.cancel();
     session
         .sink

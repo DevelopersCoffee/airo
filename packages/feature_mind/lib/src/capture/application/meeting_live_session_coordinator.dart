@@ -30,7 +30,7 @@ class MeetingLiveSessionCoordinator {
 
   final MindSpeechBridge _speech;
   final LivePcmShimPort _pcmShim;
-  final void Function()? onTranscriptChanged;
+  void Function()? onTranscriptChanged;
 
   StreamSubscription<TranscriptEvent>? _eventsSub;
   Completer<MeetingLiveSessionResult>? _readyCompleter;

@@ -48,6 +48,7 @@ pub mod dedup;
 pub mod diagnostics;
 mod fact;
 pub mod ir;
+pub mod live_ir;
 pub mod mom;
 mod mom_prompt;
 pub mod pass1;
@@ -67,6 +68,7 @@ pub use ir::{
     ActionItem, ActionStatus, ChunkIr, Decision, DecisionStatus, Facts, Meeting, MeetingIr, Metric,
     NextStep, Observation, Question, Risk, Topic, IR_SCHEMA_VERSION,
 };
+pub use live_ir::{ConversationIrEvent, IncrementalConversationIr, LiveEntityKind};
 pub use mom::{
     generate_mom, render_action_items_table, render_decisions_table, render_next_steps, MomError,
 };
