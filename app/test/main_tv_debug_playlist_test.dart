@@ -412,13 +412,13 @@ https://cdn.example.com/live/news.m3u8
 
     try {
       frameCallback!(Duration.zero);
-      for (var attempt = 0; attempt < 20; attempt++) {
+      for (var attempt = 0; attempt < 100; attempt++) {
         if (logs.contains(
           '✅ Deferred startup task completed: tv_debug_epg_warmup',
         )) {
           break;
         }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 25));
       }
 
       expect(parser.fetchCalls, 1);

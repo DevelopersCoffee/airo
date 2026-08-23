@@ -102,8 +102,9 @@ of the following:
 4. It does not change the file path: the encoded file is still written by the
    platform recorder, so durability never depends on the shim.
 
-No shim is in place today. This section exists so that adding one is a
-documented decision rather than a discovery made later during profiling.
+No shim is in place today on Android/iOS. Desktop uses the interim shim below.
+This section exists so adding one elsewhere is a documented decision rather than
+a discovery made later during profiling.
 
 | Platform | Shim | Tracking |
 |---|---|---|
@@ -114,13 +115,13 @@ documented decision rather than a discovery made later during profiling.
 These are the checks that make the rule enforceable rather than aspirational.
 They belong with Stage 2, alongside the code that first fans out.
 
-| Check | Where |
-|---|---|
-| A crash during a live session leaves a file that `transcribe_recording` accepts | Integration test per platform |
-| Live session start on an over-budget device is refused before the mic opens | Host test against `Supervisor` admission |
-| Ring overflow emits DEGRADED and does not grow memory | Host test, fixture PCM, forced stall |
-| No PCM-shaped type crosses the FRB surface | Reviewable in the generated bridge; candidate for a `scripts/check-*` guard once the surface exists |
-| Live transcript UI never rewrites STABLE text | Dart test with scripted event sequences |
+| Check | Where | Status |
+|---|---|---|
+| A crash during a live session leaves a file that `transcribe_recording` accepts | Integration test per platform | Open |
+| Live session start on an over-budget device is refused before the mic opens | Host test against `Supervisor` admission | Open |
+| Ring overflow emits DEGRADED and does not grow memory | `rust/airo_mind_audio/src/live.rs` (`ring_overflow_marks_step_degraded`) + Dart degraded banner test | **Done** (host + UI) |
+| No PCM-shaped type crosses the FRB surface | Reviewable in the generated bridge; candidate for a `scripts/check-*` guard once the surface exists | Open (interim `push_live_pcm` shim documented) |
+| Live transcript UI never rewrites STABLE text | `meeting_live_session_coordinator_test.dart` (stable accumulation) | **Done** (Dart) |
 
 ## References
 
