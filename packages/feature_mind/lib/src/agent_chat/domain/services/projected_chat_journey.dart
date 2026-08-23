@@ -1,3 +1,5 @@
+import 'package:core_domain/core_domain.dart';
+
 /// One LifeTrack-shaped journey projected from the chat entity graph.
 class ProjectedChatJourney {
   const ProjectedChatJourney({
@@ -5,14 +7,29 @@ class ProjectedChatJourney {
     required this.templateId,
     required this.title,
     required this.facts,
+    this.offerable,
   });
 
   final String subjectNodeId;
   final String templateId;
   final String title;
   final Map<String, String> facts;
+  final bool? offerable;
+
+  factory ProjectedChatJourney.fromWorkflowProjection(
+    WorkflowProjection projection,
+  ) {
+    return ProjectedChatJourney(
+      subjectNodeId: projection.subjectNodeId,
+      templateId: projection.templateId,
+      title: projection.title,
+      facts: Map<String, String>.from(projection.factsByFieldId),
+      offerable: projection.offer.kind == OfferDecisionKind.offerable,
+    );
+  }
 
   bool get isOfferable {
+    if (offerable != null) return offerable!;
     switch (templateId) {
       case 'insurance_claim_v1':
         return facts.containsKey('Claim ID') ||

@@ -1,6 +1,7 @@
 import 'package:feature_mind/src/addons/built_in_addon_registry.dart';
 import 'package:feature_mind/src/addons/graph_workflow/car_purchase_graph_adapter.dart';
 import 'package:feature_mind/src/addons/graph_workflow/insurance_planner_graph_adapter.dart';
+import 'package:feature_mind/src/addons/graph_workflow/graph_workflow_coordinator.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_linker.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,5 +67,21 @@ void main() {
 
     final first = builtIn.graphCoordinator.firstUnofferedJourney(graph);
     expect(first?.templateId, InsurancePlannerGraphAdapter.templateId);
+  });
+
+  test('formatPending uses adapter assessments for missing fields', () {
+    final builtIn = BuiltInAddonRegistry.create();
+    const linker = ChatEntityLinker();
+    final graph = linker.ingest(
+      ChatEntityGraph.empty,
+      'Niva Bupa reimbursement Claim ID 9001001 via Policybazaar.',
+    );
+
+    final markdown = builtIn.graphCoordinator.formatPending(
+      graph: graph,
+      query: "What's pending on my claim?",
+    );
+    expect(markdown, contains('Stored for'));
+    expect(markdown, contains('Not on the graph yet'));
   });
 }

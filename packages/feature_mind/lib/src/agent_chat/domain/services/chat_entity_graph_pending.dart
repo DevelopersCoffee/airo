@@ -3,7 +3,6 @@ import 'package:core_domain/core_domain.dart';
 import '../../../addons/workflow/addon_workflow_policy.dart';
 import '../../../provenance/domain/models/extracted_entity.dart';
 import '../models/chat_entity_graph.dart';
-import 'chat_entity_graph_projector.dart';
 import 'projected_chat_journey.dart';
 
 /// Deterministic "what's pending" answer from stored chat entities.
@@ -16,7 +15,6 @@ class ChatEntityGraphPending {
     : _policy = policy ?? AddonWorkflowPolicy.defaults();
 
   final AddonWorkflowPolicy _policy;
-  static const _projector = ChatEntityGraphProjector();
 
   bool wantsPending(String query) {
     final lower = query.toLowerCase();
@@ -34,12 +32,22 @@ class ChatEntityGraphPending {
     return false;
   }
 
-  String format({required ChatEntityGraph graph, required String query}) {
+  String format({
+    required ChatEntityGraph graph,
+    required String query,
+    List<WorkflowProjection>? projections,
+    Map<String, PendingAssessment>? assessments,
+  }) {
     if (graph.nodes.isEmpty) {
       return _emptyMessage(query);
     }
 
-    final journeys = _projector.project(graph);
+    final journeys = projections == null
+        ? const <ProjectedChatJourney>[]
+        : projections
+              .map(ProjectedChatJourney.fromWorkflowProjection)
+              .toList(growable: false);
+
     if (journeys.isEmpty) {
       final buffer = StringBuffer('Chat entity graph')
         ..writeln()
@@ -68,14 +76,21 @@ class ChatEntityGraphPending {
         if (entry.key.startsWith('_')) continue;
         buffer.writeln('- ${entry.key}: ${entry.value}');
       }
-      final missing = missingFieldsFor(journey);
+      final missing = _missingFor(
+        journey: journey,
+        assessment: assessments?[journey.subjectNodeId],
+      );
       if (missing.isNotEmpty) {
         buffer.writeln();
         for (final line in missing) {
           buffer.writeln('Not on the graph yet: $line');
         }
       }
-      final crossLinks = crossLinksFor(graph, journey.subjectNodeId);
+      final crossLinks = _crossLinksFor(
+        graph: graph,
+        subjectNodeId: journey.subjectNodeId,
+        assessment: assessments?[journey.subjectNodeId],
+      );
       if (crossLinks.isNotEmpty) {
         buffer.writeln();
         buffer.writeln('Also linked in this chat:');
@@ -112,6 +127,19 @@ class ChatEntityGraphPending {
     return 'I have no stored workflow entities yet for that question.';
   }
 
+  List<String> _missingFor({
+    required ProjectedChatJourney journey,
+    PendingAssessment? assessment,
+  }) {
+    if (assessment != null) {
+      return [
+        ...assessment.missingRequired,
+        ...assessment.missingOptional,
+      ];
+    }
+    return missingFieldsFor(journey);
+  }
+
   List<String> missingFieldsFor(ProjectedChatJourney journey) {
     final policy = _policy.forTemplate(journey.templateId);
     if (policy == null || policy.pendingUsualOptionalFields.isEmpty) {
@@ -130,11 +158,21 @@ class ChatEntityGraphPending {
     return missing;
   }
 
-  List<String> crossLinksFor(ChatEntityGraph graph, String claimId) {
+  List<String> crossLinksFor(ChatEntityGraph graph, String subjectNodeId) =>
+      _crossLinksFor(graph: graph, subjectNodeId: subjectNodeId);
+
+  List<String> _crossLinksFor({
+    required ChatEntityGraph graph,
+    required String subjectNodeId,
+    PendingAssessment? assessment,
+  }) {
+    if (assessment != null && assessment.crossLinks.isNotEmpty) {
+      return List<String>.from(assessment.crossLinks);
+    }
     final lines = <String>[];
-    for (final edge in graph.edgesFor(claimId)) {
+    for (final edge in graph.edgesFor(subjectNodeId)) {
       if (edge.predicate != ChatEntityRelation.relatedTo) continue;
-      final otherId = edge.fromId == claimId ? edge.toId : edge.fromId;
+      final otherId = edge.fromId == subjectNodeId ? edge.toId : edge.fromId;
       final other = graph.nodeById(otherId);
       if (other == null) continue;
       if (other.type == EntityType.identifier) continue;
