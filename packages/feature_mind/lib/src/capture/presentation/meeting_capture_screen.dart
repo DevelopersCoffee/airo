@@ -385,6 +385,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
                       if (showLive)
                         LiveInsightsRail(
                           expanded: _insightsExpanded,
+                          insights: _liveCoordinator!.insights,
                           onToggle: () => setState(
                             () => _insightsExpanded = !_insightsExpanded,
                           ),

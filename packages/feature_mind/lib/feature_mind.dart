@@ -81,6 +81,21 @@ export 'src/search/meeting_embedding_store.dart';
 export 'src/search/meeting_text_chunker.dart';
 export 'src/search/semantic_search_ranker.dart';
 
+// Explicit capability x platform qualification matrix and state derivation
+// (docs/mind/platform-capability-matrix.md). The resolved state is capped by
+// actual runtime signals so the UI never claims Production from a flag alone.
+export 'src/qualification/mind_qualification.dart';
+
+// Unified resource/thermal/battery governor + failure-isolation capture health
+// (docs/mind/real-time-architecture.md §3). Recording and STT are invariants;
+// only the intelligence tiers degrade under pressure.
+export 'src/governor/mind_resource_governor.dart';
+export 'src/governor/mind_capture_health.dart';
+
+// Streaming transcript sequencer: monotonic sequence numbers, dedup, and
+// deterministic partial/stable/final reconciliation (real-time spec §4-5).
+export 'src/transcript/mind_transcript_sequencer.dart';
+
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
 // Phase 2).
