@@ -9,13 +9,15 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_mind/feature_mind.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class _MockMindService extends Mock implements MindService {}
+class _FakeMindService implements MindService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _FakePathProviderPlatform extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -66,7 +68,7 @@ void main() {
   );
 
   test('mindMeetingProcessingOverrides restores an empty queue store', () async {
-    final mindService = _MockMindService();
+    final mindService = _FakeMindService();
 
     final container = ProviderContainer(
       overrides: mindMeetingProcessingOverrides(mindService),
