@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../bridges/mind_speech_bridge.dart';
 import '../../whisper/api/meetings.dart' as rust;
+import '../domain/live_insight.dart';
 import '../domain/live_speaker_label.dart';
 import '../domain/live_transcript_line.dart';
 import '../domain/speaker_activity_span.dart';
@@ -62,6 +63,9 @@ class MeetingLiveSessionCoordinator {
   /// Recoverable degradation notice from the native live session (ring overflow, etc.).
   String? get degradedMessage => _degradedMessage;
 
+  /// Incremental Conversation IR facts for the insights rail.
+  List<LiveInsight> get insights => List<LiveInsight>.unmodifiable(_insights);
+
   /// Rows for the live transcript UI (stable + optional partial tail).
   List<LiveTranscriptLine> get transcriptLines {
     final lines = <LiveTranscriptLine>[
@@ -102,6 +106,7 @@ class MeetingLiveSessionCoordinator {
   String? _degradedMessage;
   final List<TranscriptSegment> _stableSegments = [];
   final List<double> _amplitudeSamples = [];
+  final List<LiveInsight> _insights = [];
 
   Future<void> start({
     required String meetingId,
@@ -115,6 +120,7 @@ class MeetingLiveSessionCoordinator {
     _degradedMessage = null;
     _stableSegments.clear();
     _amplitudeSamples.clear();
+    _insights.clear();
 
     _pcmShim.onAmplitude = _onAmplitude;
 
@@ -229,7 +235,11 @@ class MeetingLiveSessionCoordinator {
         break;
       case TranscriptEventDegraded(:final message):
         _degradedMessage = message;
-        break;
+      case TranscriptEventConversationIr(:final json):
+        final insight = liveInsightFromJson(json);
+        if (insight != null) {
+          _insights.add(insight);
+        }
     }
     onTranscriptChanged?.call();
   }

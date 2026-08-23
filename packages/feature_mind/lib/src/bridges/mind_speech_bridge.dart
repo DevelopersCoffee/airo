@@ -138,6 +138,12 @@ final class TranscriptEventDegraded extends TranscriptEvent {
   final String message;
 }
 
+/// Incremental Conversation IR fact as JSON from the native extractor.
+final class TranscriptEventConversationIr extends TranscriptEvent {
+  const TranscriptEventConversationIr(this.json);
+  final String json;
+}
+
 /// The speech half of the pipeline, and the meeting library. Behind this
 /// abstraction rather than called directly is what makes `MindService`'s
 /// sequencing testable at all — see
@@ -324,6 +330,8 @@ class RustMindSpeechBridge implements MindSpeechBridge {
       rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
       rust.TranscriptEvent_Degraded(:final message) =>
         TranscriptEventDegraded(message),
+      rust.TranscriptEvent_ConversationIr(:final json) =>
+        TranscriptEventConversationIr(json),
     };
   }
 
