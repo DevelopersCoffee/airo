@@ -71,6 +71,86 @@ void main() {
     },
   );
 
+  test('duplicate stable deltas are deduped by the sequencer', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+    );
+
+    unawaited(coordinator.start(meetingId: 'm-dup'));
+    TranscriptDelta stable() => TranscriptDelta(
+      sessionId: 'm-dup',
+      segmentId: 's0',
+      text: 'hello there',
+      startMs: 0,
+      endMs: 1200,
+      state: rust.TranscriptSegmentStateWire.stable,
+      speakerLabel: 'sp0',
+    );
+    controller.add(TranscriptEventDelta(stable()));
+    await pumpEventQueue();
+    controller.add(TranscriptEventDelta(stable()));
+    await pumpEventQueue();
+
+    expect(coordinator.stableSegments.length, 1);
+    expect(coordinator.lastTranscriptSequence, 1);
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
+  test('a late partial cannot rewrite a finalized segment', () async {
+    final bridge = FakeMindSpeechBridge();
+    final shim = FakeLivePcmShim();
+    final controller = StreamController<TranscriptEvent>();
+
+    final coordinator = MeetingLiveSessionCoordinator(
+      speechBridge: _LiveSessionBridge(bridge, controller),
+      pcmShim: shim,
+    );
+
+    unawaited(coordinator.start(meetingId: 'm-order'));
+    controller.add(
+      TranscriptEventDelta(
+        TranscriptDelta(
+          sessionId: 'm-order',
+          segmentId: 's0',
+          text: 'Committed.',
+          startMs: 0,
+          endMs: 1000,
+          state: rust.TranscriptSegmentStateWire.stable,
+          speakerLabel: 'sp0',
+        ),
+      ),
+    );
+    await pumpEventQueue();
+    controller.add(
+      TranscriptEventDelta(
+        TranscriptDelta(
+          sessionId: 'm-order',
+          segmentId: 's0',
+          text: 'garbage partial',
+          startMs: 0,
+          endMs: 1000,
+          state: rust.TranscriptSegmentStateWire.partial,
+          speakerLabel: 'sp0',
+        ),
+      ),
+    );
+    await pumpEventQueue();
+
+    // The out-of-order partial is rejected; committed text and tail are intact.
+    expect(coordinator.partialText, isNull);
+    expect(coordinator.stableSegments.single.text, 'Committed.');
+
+    await coordinator.cancel();
+    await controller.close();
+  });
+
   test('degraded message is retained for UI surfacing', () async {
     final bridge = FakeMindSpeechBridge();
     final shim = FakeLivePcmShim();

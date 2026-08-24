@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../bridges/mind_speech_bridge.dart';
 import '../../governor/mind_capture_health.dart';
+import '../../transcript/mind_transcript_sequencer.dart';
 import '../../whisper/api/meetings.dart' as rust;
 import '../domain/live_speaker_label.dart';
 import '../domain/live_transcript_line.dart';
@@ -56,6 +57,10 @@ class MeetingLiveSessionCoordinator {
   }
 
   int? get activeSpeakerIndex => _activeSpeakerIndex;
+
+  /// Monotonic sequence number of the last accepted transcript update. Exposed
+  /// for consumers that need ordered, gap-checked delivery (spec §5).
+  int get lastTranscriptSequence => _sequencer.lastSequence;
 
   /// Recoverable degradation notice from the native live session (ring overflow, etc.).
   String? get degradedMessage => _degradedMessage;
@@ -112,6 +117,7 @@ class MeetingLiveSessionCoordinator {
   String? _degradedMessage;
   CaptureHealth _captureHealth = CaptureHealth.recording();
   bool _started = false;
+  MindTranscriptSequencer _sequencer = MindTranscriptSequencer();
   final List<TranscriptSegment> _stableSegments = [];
   final List<double> _amplitudeSamples = [];
 
@@ -124,6 +130,7 @@ class MeetingLiveSessionCoordinator {
     _degradedMessage = null;
     _captureHealth = CaptureHealth.recording();
     _started = false;
+    _sequencer = MindTranscriptSequencer();
     _stableSegments.clear();
     _amplitudeSamples.clear();
 
@@ -195,6 +202,13 @@ class MeetingLiveSessionCoordinator {
     await _pcmShim.dispose();
   }
 
+  TranscriptPhase _phaseFromWire(rust.TranscriptSegmentStateWire state) =>
+      switch (state) {
+        rust.TranscriptSegmentStateWire.partial => TranscriptPhase.partial,
+        rust.TranscriptSegmentStateWire.stable => TranscriptPhase.stable,
+        rust.TranscriptSegmentStateWire.final_ => TranscriptPhase.finalized,
+      };
+
   void _onAmplitude(double normalizedRms) {
     _amplitudeSamples.add(normalizedRms);
     const maxSamples = 12;
@@ -207,6 +221,22 @@ class MeetingLiveSessionCoordinator {
   void _onEvent(TranscriptEvent event) {
     switch (event) {
       case TranscriptEventDelta(:final delta):
+        // Enforce ordering: dedup identical updates and reject phase
+        // regressions (a late partial can never rewrite committed text) via the
+        // sequencer before mutating render state (spec §5).
+        final ingest = _sequencer.ingest(
+          TranscriptUpdate(
+            segmentId: delta.segmentId,
+            phase: _phaseFromWire(delta.state),
+            text: delta.text,
+            startMs: delta.startMs.toInt(),
+            endMs: delta.endMs.toInt(),
+            speakerId: delta.speakerLabel,
+          ),
+        );
+        if (!ingest.accepted) {
+          break;
+        }
         switch (delta.state) {
           case rust.TranscriptSegmentStateWire.partial:
             _partialText = delta.text;
