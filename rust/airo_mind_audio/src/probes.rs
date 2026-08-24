@@ -162,7 +162,7 @@ pub fn parse_vm_stat_available_mb(raw: &str) -> Option<u32> {
 
 /// `pmset -g batt` line such as `87%; discharging`.
 pub fn parse_pmset_battery_percent(raw: &str) -> Option<u8> {
-    for token in raw.split(|c: char| matches!(c, ' ' | '\t' | ';' | '\n' | '\r')) {
+    for token in raw.split([' ', '\t', ';', '\n', '\r']) {
         let trimmed = token.trim();
         let Some(digits) = trimmed.strip_suffix('%') else {
             continue;
