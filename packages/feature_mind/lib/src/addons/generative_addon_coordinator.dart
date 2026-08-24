@@ -8,11 +8,13 @@ class GenerativeAddonRunPlan {
     required this.adapter,
     required this.prompt,
     required this.conversation,
+    required this.invocationEpoch,
   });
 
   final GenerativeAddonAdapter adapter;
   final AddonPrompt prompt;
   final AddonConversation conversation;
+  final int invocationEpoch;
 
   AddonIdentity get identity => adapter.identity;
 
@@ -86,6 +88,7 @@ class GenerativeAddonCoordinator {
     required String currentPrompt,
     required List<AssistantChatContextMessage> history,
   }) {
+    final invocationEpoch = _registry.invocationEpoch;
     final conversation = AddonConversation(
       currentPrompt: currentPrompt,
       history: [
@@ -94,11 +97,14 @@ class GenerativeAddonCoordinator {
       ],
     );
     for (final adapter in _registry.eligibleGenerativeAdapters()) {
+      if (_registry.invocationEpoch != invocationEpoch) return null;
       if (adapter.accepts(conversation)) {
+        if (_registry.invocationEpoch != invocationEpoch) return null;
         return GenerativeAddonRunPlan(
           adapter: adapter,
           prompt: adapter.buildPrompt(conversation),
           conversation: conversation,
+          invocationEpoch: invocationEpoch,
         );
       }
     }
@@ -110,6 +116,15 @@ class GenerativeAddonCoordinator {
     required String output,
     required bool alreadyRetried,
   }) {
+    if (plan.invocationEpoch != _registry.invocationEpoch) {
+      return GenerativeAddonReview(
+        output:
+            'That add-on was disabled before generation finished. '
+            'Ask again after re-enabling it.',
+        shouldRetry: false,
+        invalid: true,
+      );
+    }
     var processed = plan.adapter.postProcessOutput(plan.conversation, output);
     final evaluation = plan.adapter.evaluate(plan.conversation, processed);
 

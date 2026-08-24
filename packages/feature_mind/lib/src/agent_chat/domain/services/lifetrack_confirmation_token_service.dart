@@ -28,6 +28,7 @@ class LifeTrackConfirmationTokenService {
   final AddonPermissionEpoch _permissionEpoch;
   final AddonInvocationEpoch _invocationEpoch;
   final Set<String> _consumed = {};
+  bool _redeemInFlight = false;
 
   Future<String> issue({
     required String destinationTool,
@@ -69,33 +70,39 @@ class LifeTrackConfirmationTokenService {
     String actorId = 'local_user',
   }) async {
     if (_consumed.contains(token)) return 'confirmation_consumed';
-    final issued = await _store.read(token);
-    if (issued == null) return 'confirmation_invalid';
-    if (issued.destinationTool != destinationTool) {
-      return 'confirmation_invalid';
-    }
-    if (issued.actorId != actorId) {
-      return 'confirmation_invalid';
-    }
-    if (issued.permissionEpoch != _permissionEpoch.current) {
-      return 'confirmation_permission_changed';
-    }
-    if (issued.invocationEpoch != _invocationEpoch.current) {
-      return AddonInvocationEpoch.cancelledCode;
-    }
-    if (_now().toUtc().isAfter(
-      DateTime.fromMillisecondsSinceEpoch(issued.expiresAtMs, isUtc: true),
-    )) {
+    if (_redeemInFlight) return 'confirmation_consumed';
+    _redeemInFlight = true;
+    try {
+      final issued = await _store.read(token);
+      if (issued == null) return 'confirmation_invalid';
+      if (issued.destinationTool != destinationTool) {
+        return 'confirmation_invalid';
+      }
+      if (issued.actorId != actorId) {
+        return 'confirmation_invalid';
+      }
+      if (issued.permissionEpoch != _permissionEpoch.current) {
+        return 'confirmation_permission_changed';
+      }
+      if (issued.invocationEpoch != _invocationEpoch.current) {
+        return AddonInvocationEpoch.cancelledCode;
+      }
+      if (_now().toUtc().isAfter(
+        DateTime.fromMillisecondsSinceEpoch(issued.expiresAtMs, isUtc: true),
+      )) {
+        await _store.delete(token);
+        return 'confirmation_expired';
+      }
+      final payloadHash = _payloadHash(payload);
+      if (issued.payloadHash != payloadHash) {
+        return 'confirmation_invalid';
+      }
       await _store.delete(token);
-      return 'confirmation_expired';
+      _consumed.add(token);
+      return null;
+    } finally {
+      _redeemInFlight = false;
     }
-    final payloadHash = _payloadHash(payload);
-    if (issued.payloadHash != payloadHash) {
-      return 'confirmation_invalid';
-    }
-    await _store.delete(token);
-    _consumed.add(token);
-    return null;
   }
 
   String confirmationHashFor({
