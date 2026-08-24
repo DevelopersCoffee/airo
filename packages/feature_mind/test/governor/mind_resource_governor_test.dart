@@ -186,6 +186,37 @@ void main() {
     });
   });
 
+  group(
+    'resolveMindMemoryBudgetMb (spec §10 available-headroom admission)',
+    () {
+      test(
+        'unknown/zero headroom falls back to the ceiling (prior behaviour)',
+        () {
+          expect(resolveMindMemoryBudgetMb(availableMemoryMb: 0), 4096);
+          expect(resolveMindMemoryBudgetMb(availableMemoryMb: -1), 4096);
+        },
+      );
+
+      test('ample headroom is capped at the ceiling', () {
+        expect(resolveMindMemoryBudgetMb(availableMemoryMb: 16000), 4096);
+      });
+
+      test('moderate headroom yields available-minus-reserve', () {
+        expect(
+          resolveMindMemoryBudgetMb(availableMemoryMb: 3000, reserveMb: 512),
+          2488,
+        );
+      });
+
+      test('low headroom clamps to the floor', () {
+        expect(
+          resolveMindMemoryBudgetMb(availableMemoryMb: 700, floorMb: 512),
+          512,
+        );
+      });
+    },
+  );
+
   group('MindModelLifecycleState', () {
     test('usable and terminal classification', () {
       expect(MindModelLifecycleState.loaded.isUsable, isTrue);

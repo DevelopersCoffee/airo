@@ -8,7 +8,7 @@ import '../capture/domain/live_transcription_support.dart';
 /// [production] when its declared ceiling AND the runtime's actual reported
 /// capability both allow it — a feature flag alone can never reach production
 /// (see [MindQualificationResolver]). This mirrors the qualification policy in
-/// `docs/mind/production-qualification.md`.
+/// `docs/features/airo-mind/production-qualification.md`.
 enum MindQualificationState {
   /// The capability is not available on the platform (e.g. no native FFI on
   /// web, or the platform build is not wired).

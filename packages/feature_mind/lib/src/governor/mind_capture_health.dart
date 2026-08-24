@@ -77,6 +77,27 @@ enum MindLiveFailure {
     MindLiveFailure.appPaused => LiveIntelligenceHealth.healthy,
   };
 
+  /// Best-effort classification of a native `TranscriptEvent::Degraded`
+  /// message (ring overflow, thermal backoff, etc.) into a failure class.
+  /// Unknown messages map to a soft [sttRuntimeFailure] so the session keeps
+  /// running degraded rather than being treated as fatal.
+  static MindLiveFailure fromDegradedMessage(String message) {
+    final m = message.toLowerCase();
+    if (m.contains('overflow') || m.contains('buffer')) {
+      return MindLiveFailure.ringBufferOverflow;
+    }
+    if (m.contains('thermal') || m.contains('hot') || m.contains('heat')) {
+      return MindLiveFailure.thermalDegradation;
+    }
+    if (m.contains('memory') || m.contains('budget') || m.contains('ram')) {
+      return MindLiveFailure.memoryAdmissionFailure;
+    }
+    if (m.contains('model')) {
+      return MindLiveFailure.modelLoadFailure;
+    }
+    return MindLiveFailure.sttRuntimeFailure;
+  }
+
   String get message => switch (this) {
     MindLiveFailure.sttInitFailure => 'Speech engine failed to start',
     MindLiveFailure.sttRuntimeFailure => 'Speech engine error',
