@@ -20,6 +20,9 @@ class AddonLifecycleGate {
 
   void onEligibilityChanged(AddonEligibility eligibility) {
     if (eligibility.isEligible) return;
+    if (eligibility.revoked) {
+      AddonInvocationEpoch.instance.bump();
+    }
     AddonPermissionEpoch.instance.bump();
     unawaited(
       (_confirmationTokens ?? sharedLifeTrackConfirmationTokens).invalidateAll(),
