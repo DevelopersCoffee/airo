@@ -32,7 +32,7 @@ This document does not lower gates. Remaining P0 items are listed below.
 | Incremental Conversation IR (no live LLM) | `airo_mind_meeting::live_ir` |
 | Desktop one-mic (no second `AudioRecorder` file encoder) | `FanoutBackedAudioRecorderPort` |
 | Conversation IR on FRB/UI | `TranscriptEvent::ConversationIr` + insights rail |
-| Runtime thermal/battery probes | Linux sysfs/proc → `ResourceGovernor` at live start |
+| Runtime thermal/battery probes | Linux sysfs/proc; macOS `sysctl`/`vm_stat`/`pmset`; Windows `wmic` → `ResourceGovernor` at live start. Thermal still Linux-only. |
 
 ## Still open (blocks PRODUCTION)
 
@@ -46,7 +46,7 @@ This document does not lower gates. Remaining P0 items are listed below.
 5. Speaker timeline reconciliation beyond provisional live lanes + post-stop
    diarization (already present when `audio_path` is passed to
    `stop_live_session`).
-6. Non-Linux OS probes (macOS/Windows still use an unconstrained snapshot).
+6. Thermal probes on macOS/Windows (RAM + battery when the host reports them; thermal stays Linux-only).
 
 ## Product states
 
