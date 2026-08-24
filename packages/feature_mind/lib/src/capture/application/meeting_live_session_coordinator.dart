@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import '../../bridges/mind_speech_bridge.dart';
+import '../../governor/mind_capture_health.dart';
+import '../../transcript/mind_transcript_sequencer.dart';
 import '../../whisper/api/meetings.dart' as rust;
 import '../domain/live_insight.dart';
 import '../domain/live_speaker_label.dart';
@@ -11,10 +13,7 @@ import 'meeting_live_pcm_shim.dart';
 
 /// Result of a completed live STT session.
 class MeetingLiveSessionResult {
-  const MeetingLiveSessionResult({
-    required this.text,
-    required this.segments,
-  });
+  const MeetingLiveSessionResult({required this.text, required this.segments});
 
   final String text;
   final List<TranscriptSegment> segments;
@@ -64,8 +63,24 @@ class MeetingLiveSessionCoordinator {
 
   int? get activeSpeakerIndex => _activeSpeakerIndex;
 
+  /// Monotonic sequence number of the last accepted transcript update. Exposed
+  /// for consumers that need ordered, gap-checked delivery (spec §5).
+  int get lastTranscriptSequence => _sequencer.lastSequence;
+
   /// Recoverable degradation notice from the native live session (ring overflow, etc.).
   String? get degradedMessage => _degradedMessage;
+
+  /// Health of the live-intelligence pipeline (spec §3, §22). Live failures
+  /// degrade this without ever implying recording stopped — the file recorder
+  /// is owned separately, so [CaptureHealth.captureState] stays `active` here.
+  CaptureHealth get captureHealth => _captureHealth;
+
+  /// Two-line status the degraded banner renders (spec §3).
+  String get recordingStatusLine => _captureHealth.recordingLine;
+  String get liveIntelligenceStatusLine => _captureHealth.liveIntelligenceLine;
+
+  /// True once any live-inference failure has degraded the session.
+  bool get isLiveDegraded => _captureHealth.isLiveDegraded;
 
   /// Incremental Conversation IR facts for the insights rail.
   List<LiveInsight> get insights => List<LiveInsight>.unmodifiable(_insights);
@@ -108,20 +123,23 @@ class MeetingLiveSessionCoordinator {
   String? _activeSpeakerLabel;
   int? _activeSpeakerIndex;
   String? _degradedMessage;
+  CaptureHealth _captureHealth = CaptureHealth.recording();
+  bool _started = false;
+  MindTranscriptSequencer _sequencer = MindTranscriptSequencer();
   final List<TranscriptSegment> _stableSegments = [];
   final List<double> _amplitudeSamples = [];
   final List<LiveInsight> _insights = [];
 
-  Future<void> start({
-    required String meetingId,
-    String? language,
-  }) async {
+  Future<void> start({required String meetingId, String? language}) async {
     _sessionId = meetingId;
     _readyCompleter = Completer<MeetingLiveSessionResult>();
     _partialText = null;
     _activeSpeakerLabel = null;
     _activeSpeakerIndex = null;
     _degradedMessage = null;
+    _captureHealth = CaptureHealth.recording();
+    _started = false;
+    _sequencer = MindTranscriptSequencer();
     _stableSegments.clear();
     _amplitudeSamples.clear();
     _insights.clear();
@@ -132,13 +150,25 @@ class MeetingLiveSessionCoordinator {
       meetingId: meetingId,
       language: language,
     );
-    _eventsSub = stream.listen(_onEvent, onError: (Object error, _) {
-      if (_readyCompleter?.isCompleted == false) {
-        _readyCompleter!.completeError(error);
-      }
-    });
+    _eventsSub = stream.listen(
+      _onEvent,
+      onError: (Object error, _) {
+        if (!_started && _readyCompleter?.isCompleted == false) {
+          // Pre-start stream error: surface it to the caller (admission, etc.).
+          _readyCompleter!.completeError(error);
+        } else {
+          // Mid-session error: the live pipeline is degraded, but recording
+          // and the post-recording fallback must survive (spec §22).
+          _captureHealth = _captureHealth.applyFailure(
+            MindLiveFailure.sttRuntimeFailure,
+          );
+          onTranscriptChanged?.call();
+        }
+      },
+    );
 
     await _pcmShim.start(sessionId: meetingId);
+    _started = true;
   }
 
   Future<void> pause() async {
@@ -182,6 +212,13 @@ class MeetingLiveSessionCoordinator {
     await _pcmShim.dispose();
   }
 
+  TranscriptPhase _phaseFromWire(rust.TranscriptSegmentStateWire state) =>
+      switch (state) {
+        rust.TranscriptSegmentStateWire.partial => TranscriptPhase.partial,
+        rust.TranscriptSegmentStateWire.stable => TranscriptPhase.stable,
+        rust.TranscriptSegmentStateWire.final_ => TranscriptPhase.finalized,
+      };
+
   void _onAmplitude(double normalizedRms) {
     _amplitudeSamples.add(normalizedRms);
     const maxSamples = 12;
@@ -194,6 +231,22 @@ class MeetingLiveSessionCoordinator {
   void _onEvent(TranscriptEvent event) {
     switch (event) {
       case TranscriptEventDelta(:final delta):
+        // Enforce ordering: dedup identical updates and reject phase
+        // regressions (a late partial can never rewrite committed text) via the
+        // sequencer before mutating render state (spec §5).
+        final ingest = _sequencer.ingest(
+          TranscriptUpdate(
+            segmentId: delta.segmentId,
+            phase: _phaseFromWire(delta.state),
+            text: delta.text,
+            startMs: delta.startMs.toInt(),
+            endMs: delta.endMs.toInt(),
+            speakerId: delta.speakerLabel,
+          ),
+        );
+        if (!ingest.accepted) {
+          break;
+        }
         switch (delta.state) {
           case rust.TranscriptSegmentStateWire.partial:
             _partialText = delta.text;
@@ -215,7 +268,9 @@ class MeetingLiveSessionCoordinator {
               ),
             );
           case rust.TranscriptSegmentStateWire.final_:
-            final index = _stableSegments.indexWhere((s) => s.id == delta.segmentId);
+            final index = _stableSegments.indexWhere(
+              (s) => s.id == delta.segmentId,
+            );
             if (index >= 0) {
               _stableSegments[index] = TranscriptSegment(
                 id: delta.segmentId,
@@ -239,6 +294,9 @@ class MeetingLiveSessionCoordinator {
         break;
       case TranscriptEventDegraded(:final message):
         _degradedMessage = message;
+        _captureHealth = _captureHealth.applyFailure(
+          MindLiveFailure.fromDegradedMessage(message),
+        );
       case TranscriptEventConversationIr(:final json):
         if (!collectInsights) {
           break;
