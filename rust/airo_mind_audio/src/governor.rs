@@ -113,6 +113,27 @@ impl ResourceGovernor {
     pub const fn recording_must_continue() -> bool {
         true
     }
+
+    /// Incremental Conversation IR is cheap surface extraction. It stays on
+    /// unless the policy has already collapsed to capture+STT only.
+    pub const fn live_ir_enabled(policy: IntelligencePolicy) -> bool {
+        !matches!(policy, IntelligencePolicy::CaptureAndSttOnly)
+    }
+
+    /// Apply a user Settings override on top of the probed policy.
+    ///
+    /// `prefer_full` keeps Full unless the probe already collapsed to
+    /// capture+STT (critical heat/battery). `insights_off` skips IR only.
+    /// Unknown values behave as automatic.
+    pub fn apply_user_mode(probed: IntelligencePolicy, mode: &str) -> IntelligencePolicy {
+        match mode {
+            "insights_off" => IntelligencePolicy::CaptureAndSttOnly,
+            "prefer_full" if probed != IntelligencePolicy::CaptureAndSttOnly => {
+                IntelligencePolicy::Full
+            }
+            _ => probed,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +202,39 @@ mod tests {
     #[test]
     fn recording_survives_every_intelligence_policy() {
         assert!(ResourceGovernor::recording_must_continue());
+    }
+
+    #[test]
+    fn live_ir_stops_only_when_policy_is_capture_and_stt() {
+        assert!(ResourceGovernor::live_ir_enabled(IntelligencePolicy::Full));
+        assert!(ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::ReduceFrequency
+        ));
+        assert!(ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::DisableDeep
+        ));
+        assert!(!ResourceGovernor::live_ir_enabled(
+            IntelligencePolicy::CaptureAndSttOnly
+        ));
+    }
+
+    #[test]
+    fn user_mode_overrides_probed_policy() {
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::ReduceFrequency, "prefer_full"),
+            IntelligencePolicy::Full
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::CaptureAndSttOnly, "prefer_full"),
+            IntelligencePolicy::CaptureAndSttOnly
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::Full, "insights_off"),
+            IntelligencePolicy::CaptureAndSttOnly
+        );
+        assert_eq!(
+            ResourceGovernor::apply_user_mode(IntelligencePolicy::ReduceFrequency, "automatic"),
+            IntelligencePolicy::ReduceFrequency
+        );
     }
 }

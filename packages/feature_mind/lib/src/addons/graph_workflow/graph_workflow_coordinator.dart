@@ -7,6 +7,7 @@ import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
 import '../../agent_chat/domain/services/projected_chat_journey.dart';
 import 'legacy_chat_entity_linker.dart';
 import 'legacy_workflow_graph_patch.dart';
+import 'graph_ingest_result.dart';
 
 /// Routes graph-workflow add-ons through the registry without host ID switches.
 class GraphWorkflowCoordinator {
@@ -35,24 +36,36 @@ class GraphWorkflowCoordinator {
     return _legacyLinker.ingest(graph, text);
   }
 
-  Future<ChatEntityGraph> ingestWithAddonPatches(
+  Future<GraphIngestResult> ingestWithAddonPatches(
     ChatEntityGraph graph,
     String text,
   ) async {
-    if (!shouldIngest(text, graph)) return graph;
+    if (!shouldIngest(text, graph)) {
+      return GraphIngestResult.success(graph);
+    }
+    final invocationEpoch = _registry.invocationEpoch;
     var chatGraph = graph;
     var entityGraph = chatGraph.toEntityGraph();
     var context = GraphIngestContext(text: text, graph: entityGraph);
     for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (_registry.invocationEpoch != invocationEpoch) {
+        return GraphIngestResult.cancelled(graph);
+      }
       if (!adapter.accepts(context)) continue;
       final patch = await adapter.extract(context);
+      if (_registry.invocationEpoch != invocationEpoch) {
+        return GraphIngestResult.cancelled(graph);
+      }
       if (patch.isEmpty) continue;
       chatGraph = LegacyWorkflowGraphPatch.apply(chatGraph, patch);
       entityGraph = chatGraph.toEntityGraph();
       context = GraphIngestContext(text: text, graph: entityGraph);
     }
+    if (_registry.invocationEpoch != invocationEpoch) {
+      return GraphIngestResult.cancelled(graph);
+    }
     chatGraph = _legacyLinker.ingestGenericMentions(chatGraph, text);
-    return chatGraph;
+    return GraphIngestResult.success(chatGraph);
   }
 
   List<ProjectedChatJourney> projectJourneys(ChatEntityGraph graph) {

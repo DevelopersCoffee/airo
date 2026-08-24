@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:core_ai/core_ai.dart';
 
+import '../../../addons/addon_trace_redaction.dart';
 import '../../../addons/workflow/addon_workflow_fact_service.dart';
 import '../../../runtime/models/capability_models.dart';
 import '../../../runtime/models/log_models.dart';
@@ -14,7 +15,6 @@ import 'agent_skill_registry.dart';
 import 'capability_safety_resolver.dart';
 import 'chat_entity_graph_pending.dart';
 import 'intent_parser.dart';
-import 'life_track_fact_extractor.dart';
 import 'tool_registry.dart';
 import 'reminder_request_parser.dart';
 
@@ -933,12 +933,14 @@ class AgentSkillOrchestrator {
       }
 
       final actionStopwatch = Stopwatch()..start();
+      final tracedArguments = _traceParameters(tool, action.arguments);
       final result = await _connectorRegistry.execute(tool, action.arguments);
       actionStopwatch.stop();
+      final tracedResult = _traceResult(tool, result.data, result.isError);
       final dataVolume = await _measureDataVolume(
         succeeded: !result.isError,
-        requestArguments: action.arguments,
-        responseData: result.data,
+        requestArguments: tracedArguments,
+        responseData: tracedResult,
       );
       if (!result.isError && dataVolume?.replayedOpSequence != null) {
         latestCitation = GroundedCitation(
@@ -951,12 +953,14 @@ class AgentSkillOrchestrator {
         AgentActionTrace(
           title: 'Execute action',
           detail: tool,
-          parameters: action.arguments,
+          parameters: _traceParameters(tool, action.arguments),
           success: !result.isError,
           durationMs: actionStopwatch.elapsedMilliseconds,
           dataVolume: dataVolume,
         ),
       );
+      // Traces stay redacted. toolResults stay complete so later steps
+      // (pending answers, entity listing) can still read markdown.
       toolResults.add({
         'tool': tool,
         'arguments': action.arguments,
@@ -1022,6 +1026,19 @@ class AgentSkillOrchestrator {
     }
     return pending;
   }
+
+  Map<String, dynamic> _traceParameters(
+    String tool,
+    Map<String, dynamic> arguments,
+  ) =>
+      AddonTraceRedaction.connectorParameters(tool, arguments);
+
+  Map<String, dynamic> _traceResult(
+    String tool,
+    Map<String, dynamic> data,
+    bool isError,
+  ) =>
+      AddonTraceRedaction.connectorResult(tool, data, isError);
 
   /// Measures how much data a connector call actually moved.
   ///

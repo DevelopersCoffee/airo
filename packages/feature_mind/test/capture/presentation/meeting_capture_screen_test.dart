@@ -329,6 +329,8 @@ void main() {
 
         await tester.tap(find.byKey(const Key('meeting_capture_start_button')));
         await tester.pump();
+        // Extra hop: persistLiveIntelligenceModeToNative awaits path_provider.
+        await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
         expect(

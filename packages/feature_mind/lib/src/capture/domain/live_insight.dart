@@ -1,84 +1,65 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 
-/// The kinds of high-confidence live insight the rail may surface (spec §19).
-enum LiveInsightKind {
-  decision,
-  action,
-  topic,
-  person,
-  date;
-
-  String get label => switch (this) {
-    LiveInsightKind.decision => 'Decision',
-    LiveInsightKind.action => 'Action',
-    LiveInsightKind.topic => 'Topic',
-    LiveInsightKind.person => 'Person',
-    LiveInsightKind.date => 'Date',
-  };
-
-  /// Decisions and actions are the highest-signal insights and sort first.
-  int get priority => switch (this) {
-    LiveInsightKind.decision => 0,
-    LiveInsightKind.action => 1,
-    LiveInsightKind.topic => 2,
-    LiveInsightKind.person => 3,
-    LiveInsightKind.date => 4,
-  };
-}
-
-/// A single live insight extracted from the conversation so far. [confidence]
-/// is 0..1; only high-confidence insights are shown (spec §19: never show
-/// speculative insights).
-@immutable
+/// One live Conversation IR fact for the insights rail.
+///
+/// Evidence is a transcript segment id, never raw audio (ADR-0022).
 class LiveInsight {
   const LiveInsight({
     required this.kind,
     required this.text,
-    required this.confidence,
-    this.detail,
+    required this.evidence,
   });
 
   final LiveInsightKind kind;
   final String text;
-  final double confidence;
-
-  /// Optional secondary line (e.g. an owner for an action, "Uday → …").
-  final String? detail;
-
-  @override
-  int get hashCode => Object.hash(kind, text, detail);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LiveInsight &&
-          runtimeType == other.runtimeType &&
-          kind == other.kind &&
-          text == other.text &&
-          detail == other.detail;
+  final String evidence;
 }
 
-/// The confidence below which an insight is considered speculative and hidden.
-const double kLiveInsightConfidenceThreshold = 0.7;
+enum LiveInsightKind { decision, action, question, topic, entity }
 
-/// Filters to high-confidence insights only, de-duplicates identical entries,
-/// and orders by kind priority then descending confidence. Pure and
-/// deterministic (spec §19). Empty output means the rail shows its empty state
-/// rather than anything speculative.
-List<LiveInsight> filterHighConfidenceInsights(
-  Iterable<LiveInsight> insights, {
-  double threshold = kLiveInsightConfidenceThreshold,
-}) {
-  final seen = <LiveInsight>{};
-  final kept = <LiveInsight>[];
-  for (final insight in insights) {
-    if (insight.confidence < threshold) continue;
-    if (seen.add(insight)) kept.add(insight);
+/// Parses one native `ConversationIrEvent` JSON object.
+///
+/// Segment events are omitted — they already appear in the transcript.
+LiveInsight? liveInsightFromJson(String raw) {
+  final decoded = jsonDecode(raw);
+  if (decoded is! Map) {
+    return null;
   }
-  kept.sort((a, b) {
-    final byKind = a.kind.priority.compareTo(b.kind.priority);
-    if (byKind != 0) return byKind;
-    return b.confidence.compareTo(a.confidence);
-  });
-  return List.unmodifiable(kept);
+  final map = decoded.cast<String, Object?>();
+  final type = map['type'] as String?;
+  final evidence = (map['evidence'] as String?) ?? '';
+  switch (type) {
+    case 'decision':
+      return LiveInsight(
+        kind: LiveInsightKind.decision,
+        text: (map['text'] as String?) ?? '',
+        evidence: evidence,
+      );
+    case 'action':
+      return LiveInsight(
+        kind: LiveInsightKind.action,
+        text: (map['text'] as String?) ?? '',
+        evidence: evidence,
+      );
+    case 'question':
+      return LiveInsight(
+        kind: LiveInsightKind.question,
+        text: (map['text'] as String?) ?? '',
+        evidence: evidence,
+      );
+    case 'topic':
+      return LiveInsight(
+        kind: LiveInsightKind.topic,
+        text: (map['title'] as String?) ?? '',
+        evidence: evidence,
+      );
+    case 'entity':
+      return LiveInsight(
+        kind: LiveInsightKind.entity,
+        text: (map['text'] as String?) ?? '',
+        evidence: evidence,
+      );
+    default:
+      return null;
+  }
 }

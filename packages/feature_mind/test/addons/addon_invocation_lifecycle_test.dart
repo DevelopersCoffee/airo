@@ -4,6 +4,7 @@ import 'package:feature_mind/src/addons/addon_lifecycle_gate.dart';
 import 'package:feature_mind/src/addons/built_in_addon_registry.dart';
 import 'package:feature_mind/src/addons/graph_workflow/graph_workflow_coordinator.dart';
 import 'package:feature_mind/src/agent_chat/data/repositories/chat_entity_graph_session.dart';
+import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/confirmation_token_store.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/lifetrack_confirmation_token_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,7 +41,57 @@ class _SpyGraphAdapter implements GraphWorkflowAddonAdapter {
   );
 }
 
+class _SlowRevokeSpyAdapter implements GraphWorkflowAddonAdapter {
+  _SlowRevokeSpyAdapter({required this.onExtractStarted});
+
+  final void Function() onExtractStarted;
+  int extractCalls = 0;
+
+  @override
+  AddonIdentity get identity =>
+      const AddonIdentity(id: AddonId('slow-revoke'), version: '1.0.0');
+
+  @override
+  bool accepts(GraphIngestContext input) => true;
+
+  @override
+  Future<EntityGraphPatch> extract(GraphIngestContext input) async {
+    extractCalls++;
+    onExtractStarted();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    return EntityGraphPatch(
+      nodes: [
+        EntityGraphNode(
+          id: 'claim-1',
+          typeKey: 'claim',
+          name: 'Niva claim',
+          attributes: {'Claim ID': 'ABC123'},
+        ),
+      ],
+    );
+  }
+
+  @override
+  Iterable<WorkflowProjection> project(EntityGraph graph) => const [];
+
+  @override
+  PendingAssessment assessPending(
+    EntityGraph graph,
+    WorkflowProjection projection,
+  ) => PendingAssessment(
+    identity: identity,
+    subjectNodeId: projection.subjectNodeId,
+    storedFacts: {},
+    missingRequired: [],
+    missingOptional: [],
+  );
+}
+
 void main() {
+  setUp(() {
+    AddonInvocationEpoch.instance.resetForTesting();
+  });
+
   test('disabled add-on receives zero extract calls during ingest', () async {
     final registry = AddonRegistry();
     final spy = _SpyGraphAdapter();
@@ -74,6 +125,53 @@ void main() {
 
     expect(spy.extractCalls, 0);
     expect((await session.ensureLoaded()).nodes, isEmpty);
+  });
+
+  test('revoke mid-extract discards adapter patch', () async {
+    final registry = AddonRegistry();
+    final spy = _SlowRevokeSpyAdapter(
+      onExtractStarted: () => BuiltInAddonRegistry.updateEligibility(
+        registry,
+        'slow-revoke',
+        const AddonEligibility(enabled: false),
+      ),
+    );
+    registry.registerBuiltIn(
+      manifest: AddonManifest.fromJson({
+        'schema_version': '1.0',
+        'id': 'slow-revoke',
+        'version': '1.0.0',
+        'behaviors': ['graph_workflow'],
+        'capabilities': ['conversation.current_turn'],
+        'tools': ['query_entity_graph'],
+        'adapter': {
+          'kind': 'required_built_in',
+          'contract': 'graph_workflow_v1',
+        },
+        'workflow': {'subject_kind': 'claim'},
+      }),
+      graphAdapter: spy,
+    );
+    BuiltInAddonRegistry.updateEligibility(
+      registry,
+      'slow-revoke',
+      const AddonEligibility(
+        enabled: true,
+        grantedScopes: {'conversation.current_turn'},
+      ),
+    );
+
+    final coordinator = GraphWorkflowCoordinator(registry);
+    final result = await coordinator.ingestWithAddonPatches(
+      ChatEntityGraph.empty,
+      'Niva claim ABC123',
+    );
+
+    expect(spy.extractCalls, 1);
+    expect(result.cancelled, isTrue);
+    expect(result.errorCode, AddonInvocationEpoch.cancelledCode);
+    expect(result.graph.nodes, isEmpty);
+    expect(registry.invocationEpoch, 1);
   });
 
   test('revoke invalidates confirmation token before redemption', () async {

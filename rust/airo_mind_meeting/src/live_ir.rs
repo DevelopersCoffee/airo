@@ -272,4 +272,16 @@ mod tests {
         let mut ir = IncrementalConversationIr::new();
         assert!(ir.on_stable_sentence("s2", None, "   ", 0, 1).is_empty());
     }
+
+    #[test]
+    fn events_serialize_with_type_tag_for_the_dart_rail() {
+        let event = ConversationIrEvent::Decision {
+            text: "We decided Friday".into(),
+            evidence: "s0".into(),
+            confidence: 0.86,
+        };
+        let json = serde_json::to_string(&event).expect("serialize");
+        assert!(json.contains("\"type\":\"decision\""));
+        assert!(json.contains("\"evidence\":\"s0\""));
+    }
 }

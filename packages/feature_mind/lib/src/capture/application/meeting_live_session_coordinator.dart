@@ -4,6 +4,7 @@ import '../../bridges/mind_speech_bridge.dart';
 import '../../governor/mind_capture_health.dart';
 import '../../transcript/mind_transcript_sequencer.dart';
 import '../../whisper/api/meetings.dart' as rust;
+import '../domain/live_insight.dart';
 import '../domain/live_speaker_label.dart';
 import '../domain/live_transcript_line.dart';
 import '../domain/speaker_activity_span.dart';
@@ -24,12 +25,16 @@ class MeetingLiveSessionCoordinator {
     MindSpeechBridge? speechBridge,
     LivePcmShimPort? pcmShim,
     this.onTranscriptChanged,
+    this.collectInsights = true,
   }) : _speech = speechBridge ?? const RustMindSpeechBridge(),
        _pcmShim = pcmShim ?? MeetingLivePcmShim();
 
   final MindSpeechBridge _speech;
   final LivePcmShimPort _pcmShim;
   void Function()? onTranscriptChanged;
+
+  /// Settings: Conversation IR facts for the insights rail.
+  bool collectInsights;
 
   StreamSubscription<TranscriptEvent>? _eventsSub;
   Completer<MeetingLiveSessionResult>? _readyCompleter;
@@ -77,6 +82,9 @@ class MeetingLiveSessionCoordinator {
   /// True once any live-inference failure has degraded the session.
   bool get isLiveDegraded => _captureHealth.isLiveDegraded;
 
+  /// Incremental Conversation IR facts for the insights rail.
+  List<LiveInsight> get insights => List<LiveInsight>.unmodifiable(_insights);
+
   /// Rows for the live transcript UI (stable + optional partial tail).
   List<LiveTranscriptLine> get transcriptLines {
     final lines = <LiveTranscriptLine>[
@@ -120,6 +128,7 @@ class MeetingLiveSessionCoordinator {
   MindTranscriptSequencer _sequencer = MindTranscriptSequencer();
   final List<TranscriptSegment> _stableSegments = [];
   final List<double> _amplitudeSamples = [];
+  final List<LiveInsight> _insights = [];
 
   Future<void> start({required String meetingId, String? language}) async {
     _sessionId = meetingId;
@@ -133,6 +142,7 @@ class MeetingLiveSessionCoordinator {
     _sequencer = MindTranscriptSequencer();
     _stableSegments.clear();
     _amplitudeSamples.clear();
+    _insights.clear();
 
     _pcmShim.onAmplitude = _onAmplitude;
 
@@ -287,7 +297,14 @@ class MeetingLiveSessionCoordinator {
         _captureHealth = _captureHealth.applyFailure(
           MindLiveFailure.fromDegradedMessage(message),
         );
-        break;
+      case TranscriptEventConversationIr(:final json):
+        if (!collectInsights) {
+          break;
+        }
+        final insight = liveInsightFromJson(json);
+        if (insight != null) {
+          _insights.add(insight);
+        }
     }
     onTranscriptChanged?.call();
   }

@@ -30,7 +30,11 @@ class BuiltInAddonRegistry {
     String addonId,
     AddonEligibility eligibility,
   ) {
+    final wasEligible = registry.eligibilityFor(addonId).isEligible;
     registry.setEligibility(addonId, eligibility);
+    if (wasEligible && !eligibility.isEligible) {
+      registry.bumpInvocationEpoch();
+    }
     AddonLifecycleGate().onEligibilityChanged(eligibility);
   }
 

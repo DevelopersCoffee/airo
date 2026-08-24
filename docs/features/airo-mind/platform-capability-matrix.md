@@ -15,8 +15,8 @@ host. Compilation alone is not enough.
 | Vocabulary (stable/final) | PREVIEW | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
 | Live speaker activity | PREVIEW (provisional lanes) | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
 | Final diarization | PREVIEW (post-stop on file) | PREVIEW | UNSUPPORTED | UNSUPPORTED |
-| Live Conversation IR | EXPERIMENTAL (Rust extractor; not on FRB/UI) | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
-| Live insights | EXPERIMENTAL (UI stub) | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
+| Live Conversation IR | PREVIEW (FRB `ConversationIr` + rail) | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
+| Live insights | PREVIEW (decisions/actions/topics from IR) | UNSUPPORTED | UNSUPPORTED | UNSUPPORTED |
 | Post-recording IR | PREVIEW (`airo_mind_meeting` two-pass) | PREVIEW | UNSUPPORTED | UNSUPPORTED |
 | Search | PRODUCTION (meeting library) | PREVIEW | UNSUPPORTED | UNSUPPORTED |
 | Memory | PREVIEW (vault / notes) | PREVIEW | UNSUPPORTED | UNSUPPORTED |

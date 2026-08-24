@@ -479,6 +479,8 @@ class MindService {
             continue;
           case TranscriptEventDegraded():
             continue;
+          case TranscriptEventConversationIr():
+            continue;
         }
         yield progress;
       }
@@ -781,6 +783,8 @@ class MindService {
           case TranscriptEventDelta():
             continue;
           case TranscriptEventDegraded():
+            continue;
+          case TranscriptEventConversationIr():
             continue;
         }
         yield progress;

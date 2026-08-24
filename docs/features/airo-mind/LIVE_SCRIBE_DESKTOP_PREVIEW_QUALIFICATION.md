@@ -76,10 +76,20 @@ Use an external audio source so the mic captures system/room audio (user runs th
 
 ## CI evidence (dev)
 
-- `packages/feature_mind/test/capture/` — capture coordinator, vocabulary, speaker UI, fan-out recorder, admission warning.
-- `rust/airo_mind_audio` — ring overflow → degraded; fan-out crash isolation; governor; latency harness.
-- `rust/airo_mind_whisper` — diarization label assignment tests.
+- `packages/feature_mind/test/capture/` — capture coordinator, vocabulary, speaker UI, fan-out recorder, admission warning, live IR rail.
+- `rust/airo_mind_audio` — ring overflow → degraded; fan-out crash isolation; governor; Linux/macOS/Windows RAM probes (thermal Linux-only); latency harness.
+- `rust/airo_mind_whisper` — diarization label assignment tests; live IR emit on stable.
 - `rust/airo_mind_meeting` — incremental Conversation IR (stable-sentence extractor).
+
+## Settings (user-tunable)
+
+Profile → Meeting recordings (desktop Preview only):
+
+- **Live insights** — show or hide the Conversation IR rail
+- **Expand insights by default** — open the rail on start
+- **Live intelligence** — Automatic / Prefer full insights / Transcript only.
+  Prefer full keeps IR on Warm/Low battery. Critical heat or battery still
+  collapses to capture + STT. Transcript only skips IR; the file still records.
 
 ## Open for Stage 2 (not blocking preview sign-off)
 

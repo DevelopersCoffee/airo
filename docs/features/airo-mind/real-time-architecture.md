@@ -62,6 +62,10 @@ when admission refuses live STT.
 
 `airo_mind_meeting::IncrementalConversationIr` consumes **stable sentences**
 and emits structured events (segment, entity, action, decision, question,
-topic) without an LLM. It is not yet on the FRB event surface — live UI still
-reads transcript events. Deep Meeting IR remains the post-recording two-pass
-pipeline.
+topic) without an LLM. Stable sentences fan out as
+`TranscriptEvent::ConversationIr` (JSON) onto the live insights rail. Deep
+Meeting IR remains the post-recording two-pass pipeline.
+
+`ResourceGovernor` is applied at `start_live_session` from a host snapshot
+(Linux `/proc` + sysfs). `CaptureAndSttOnly` keeps recording and STT and
+skips live IR.

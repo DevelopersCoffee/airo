@@ -48,7 +48,8 @@ use crate::frb_generated::StreamSink;
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
 use airo_mind_audio::{
-    rms_energy, CaptureFanout, LiveSpeechConfig, LiveSpeechPipeline, SpeakerActivityTracker,
+    probe_resource_snapshot, rms_energy, CaptureFanout, IntelligencePolicy, LiveSpeechConfig,
+    LiveSpeechPipeline, ResourceGovernor, SpeakerActivityTracker,
 };
 use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_core::models;
@@ -62,6 +63,7 @@ use airo_mind_diarize::{
     diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
     SpeakerEmbedder, SpeakerEnrollmentStore,
 };
+use airo_mind_meeting::IncrementalConversationIr;
 use airo_mind_transcript::Segment;
 use airo_mind_transcript::VocabularyIntelligence;
 
@@ -459,6 +461,9 @@ pub enum TranscriptEvent {
     Cancelled,
     /// Ring overflow, thermal backoff, or another recoverable live degradation.
     Degraded { message: String },
+    /// One incremental Conversation IR fact (JSON of `ConversationIrEvent`).
+    /// Evidence is a segment id, never raw audio (ADR-0022).
+    ConversationIr { json: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -516,6 +521,8 @@ struct LiveSessionState {
     /// Authoritative file writer. Live STT consumes a bounded channel, not this handle.
     fanout: Option<CaptureFanout>,
     live_tx: Option<SyncSender<Vec<i16>>>,
+    conversation_ir: IncrementalConversationIr,
+    intelligence_policy: IntelligencePolicy,
 }
 
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
@@ -635,6 +642,18 @@ fn live_fanout_path(meeting_id: &str) -> Option<PathBuf> {
             .join("mind_recordings")
             .join(format!("{}.wav", sanitize_meeting_id(meeting_id))),
     )
+}
+
+/// Settings override written by Dart (`mind_live_intelligence_mode`).
+fn read_live_intelligence_mode() -> String {
+    let Some(parent) = lock(&STORE_PARENT_DIR).clone() else {
+        return "automatic".into();
+    };
+    std::fs::read_to_string(parent.join("mind_live_intelligence_mode"))
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+        .unwrap_or_else(|| "automatic".into())
 }
 
 fn spawn_live_worker(session_id: String, rx: Receiver<Vec<i16>>) {
@@ -968,9 +987,9 @@ fn emit_live_delta(
 
     let delta = TranscriptDeltaRecord {
         session_id: session_id.to_string(),
-        segment_id,
-        speaker_label,
-        text: display_text,
+        segment_id: segment_id.clone(),
+        speaker_label: speaker_label.clone(),
+        text: display_text.clone(),
         start_ms: segment.start_ms,
         end_ms: segment.end_ms,
         state: TranscriptSegmentStateWire::from(segment.state),
@@ -978,7 +997,46 @@ fn emit_live_delta(
     session
         .sink
         .add(TranscriptEvent::Delta { delta })
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    if segment.state == TranscriptSegmentState::Stable {
+        emit_live_ir(
+            session,
+            &segment_id,
+            speaker_label,
+            &display_text,
+            segment.start_ms,
+            segment.end_ms,
+        )?;
+    }
+    Ok(())
+}
+
+fn emit_live_ir(
+    session: &mut LiveSessionState,
+    segment_id: &str,
+    speaker_label: Option<String>,
+    text: &str,
+    start_ms: u64,
+    end_ms: u64,
+) -> Result<(), String> {
+    if !ResourceGovernor::live_ir_enabled(session.intelligence_policy) {
+        return Ok(());
+    }
+    let events = session.conversation_ir.on_stable_sentence(
+        segment_id,
+        speaker_label,
+        text,
+        start_ms,
+        end_ms,
+    );
+    for event in events {
+        let json = serde_json::to_string(&event).map_err(|e| e.to_string())?;
+        session
+            .sink
+            .add(TranscriptEvent::ConversationIr { json })
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
@@ -1062,6 +1120,12 @@ pub fn start_live_session(
     spawn_live_worker(session_id.clone(), rx);
     let fanout =
         live_fanout_path(&meeting_id).and_then(|path| CaptureFanout::create_file(path).ok());
+    let stt_model_mb = lock(&SPEECH_MEMORY_BUDGET_MB).unwrap_or(512);
+    let snapshot = probe_resource_snapshot(stt_model_mb);
+    let intelligence_policy = ResourceGovernor::apply_user_mode(
+        ResourceGovernor::policy(&snapshot),
+        &read_live_intelligence_mode(),
+    );
 
     let session = LiveSessionState {
         meeting_id,
@@ -1078,7 +1142,16 @@ pub fn start_live_session(
         last_window_energy: 0.0,
         fanout,
         live_tx: Some(tx),
+        conversation_ir: IncrementalConversationIr::new(),
+        intelligence_policy,
     };
+
+    if intelligence_policy != IntelligencePolicy::Full {
+        let _ = session.sink.add(TranscriptEvent::Degraded {
+            message: "Live intelligence reduced — thermal or battery policy. Recording continues."
+                .into(),
+        });
+    }
 
     lock(&LIVE_SESSIONS).insert(session_id, session);
     Ok(())

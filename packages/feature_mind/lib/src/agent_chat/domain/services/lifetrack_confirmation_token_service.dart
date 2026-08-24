@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
+import 'package:core_ai/core_ai.dart';
+
 import 'addon_permission_epoch.dart';
 import 'confirmation_token_store.dart';
 
@@ -13,15 +15,18 @@ class LifeTrackConfirmationTokenService {
     Duration ttl = const Duration(minutes: 15),
     ConfirmationTokenStore? store,
     AddonPermissionEpoch? permissionEpoch,
+    AddonInvocationEpoch? invocationEpoch,
   }) : _now = now ?? DateTime.now,
        _ttl = ttl,
        _store = store ?? InMemoryConfirmationTokenStore(),
-       _permissionEpoch = permissionEpoch ?? AddonPermissionEpoch.instance;
+       _permissionEpoch = permissionEpoch ?? AddonPermissionEpoch.instance,
+       _invocationEpoch = invocationEpoch ?? AddonInvocationEpoch.instance;
 
   final DateTime Function() _now;
   final Duration _ttl;
   final ConfirmationTokenStore _store;
   final AddonPermissionEpoch _permissionEpoch;
+  final AddonInvocationEpoch _invocationEpoch;
   final Set<String> _consumed = {};
 
   Future<String> issue({
@@ -38,6 +43,7 @@ class LifeTrackConfirmationTokenService {
       'payload_hash': payloadHash,
       'expires_at_ms': expiresAt.millisecondsSinceEpoch,
       'permission_epoch': _permissionEpoch.current,
+      'invocation_epoch': _invocationEpoch.current,
     };
     final confirmationHash = _confirmationHash(record);
     final token = _randomToken();
@@ -49,6 +55,7 @@ class LifeTrackConfirmationTokenService {
         confirmationHash: confirmationHash,
         expiresAtMs: expiresAt.millisecondsSinceEpoch,
         permissionEpoch: _permissionEpoch.current,
+        invocationEpoch: _invocationEpoch.current,
         actorId: actorId,
       ),
     );
@@ -72,6 +79,9 @@ class LifeTrackConfirmationTokenService {
     }
     if (issued.permissionEpoch != _permissionEpoch.current) {
       return 'confirmation_permission_changed';
+    }
+    if (issued.invocationEpoch != _invocationEpoch.current) {
+      return AddonInvocationEpoch.cancelledCode;
     }
     if (_now().toUtc().isAfter(
       DateTime.fromMillisecondsSinceEpoch(issued.expiresAtMs, isUtc: true),
@@ -99,6 +109,7 @@ class LifeTrackConfirmationTokenService {
       'destination_tool': destinationTool,
       'payload_hash': _payloadHash(payload),
       'permission_epoch': _permissionEpoch.current,
+      'invocation_epoch': _invocationEpoch.current,
     };
     return _confirmationHash(record);
   }

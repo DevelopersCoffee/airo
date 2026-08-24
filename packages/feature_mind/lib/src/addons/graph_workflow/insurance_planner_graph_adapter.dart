@@ -5,7 +5,7 @@ import '../../agent_chat/domain/models/chat_entity_graph.dart';
 import '../../agent_chat/domain/models/entity_graph_bridge.dart';
 import '../../agent_chat/domain/services/chat_entity_graph_pending.dart';
 import '../../agent_chat/domain/services/projected_chat_journey.dart';
-import '../../agent_chat/domain/services/life_track_fact_extractor.dart';
+import 'legacy_life_track_fact_extractor.dart';
 import '../../provenance/domain/models/extracted_entity.dart';
 import 'legacy_chat_entity_linker.dart';
 import 'legacy_workflow_graph_patch.dart';

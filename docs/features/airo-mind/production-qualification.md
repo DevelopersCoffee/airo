@@ -31,22 +31,22 @@ This document does not lower gates. Remaining P0 items are listed below.
 | In-process partial/stable latency harness | `fake_engine_partial_and_stable_latencies_are_measurable` |
 | Incremental Conversation IR (no live LLM) | `airo_mind_meeting::live_ir` |
 | Desktop one-mic (no second `AudioRecorder` file encoder) | `FanoutBackedAudioRecorderPort` |
+| Conversation IR on FRB/UI | `TranscriptEvent::ConversationIr` + insights rail |
+| Runtime thermal/battery probes | Linux sysfs/proc; macOS `sysctl`/`vm_stat`/`pmset`; Windows `wmic` → `ResourceGovernor` at live start. Thermal still Linux-only. |
 
 ## Still open (blocks PRODUCTION)
 
 1. Native microphone capture inside Rust (cpal / platform AudioRecord) so PCM
-   no longer crosses FRB (`push_live_pcm` / ZC-1).
+   no longer crosses FRB (`push_live_pcm` / ZC-1). Device-test this separately.
 2. Measured live latency on real whisper weights (partial &lt; 500 ms, stable
    &lt; 1 s) as a release gate, not only the in-process fake-engine harness.
 3. Golden conversation suite (WER/CER, speakers, entities) on representative
    recordings.
-4. Conversation IR events on the FRB/UI surface (insights rail is still a stub).
-5. Runtime thermal/battery probes wired into the live session (policy types
-   exist; OS probes do not).
-6. Android / iOS native capture lifecycle and device qualification.
-7. Speaker timeline reconciliation beyond provisional live lanes + post-stop
+4. Android / iOS native capture lifecycle and device qualification.
+5. Speaker timeline reconciliation beyond provisional live lanes + post-stop
    diarization (already present when `audio_path` is passed to
    `stop_live_session`).
+6. Thermal probes on macOS/Windows (RAM + battery when the host reports them; thermal stays Linux-only).
 
 ## Product states
 

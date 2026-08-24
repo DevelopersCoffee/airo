@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/live_insight.dart';
 
-/// Collapsible live insights rail (spec §19). Renders only high-confidence
-/// insights; when none clear the threshold it shows the empty-state copy
-/// rather than anything speculative. The insight producer (incremental
-/// Conversation IR) is wired separately; an empty [insights] list is the
-/// current default until that producer lands.
+/// Collapsible live insights rail — decisions, actions, questions, topics.
 class LiveInsightsRail extends StatelessWidget {
   const LiveInsightsRail({
     required this.expanded,
@@ -17,17 +13,7 @@ class LiveInsightsRail extends StatelessWidget {
 
   final bool expanded;
   final VoidCallback onToggle;
-
-  /// Raw candidate insights; the rail filters these to high-confidence only.
   final List<LiveInsight> insights;
-
-  IconData _iconFor(LiveInsightKind kind) => switch (kind) {
-    LiveInsightKind.decision => Icons.check_circle_outline,
-    LiveInsightKind.action => Icons.task_alt,
-    LiveInsightKind.topic => Icons.topic_outlined,
-    LiveInsightKind.person => Icons.person_outline,
-    LiveInsightKind.date => Icons.event_outlined,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +24,11 @@ class LiveInsightsRail extends StatelessWidget {
           key: const Key('meeting_capture_insights_expand'),
           tooltip: 'Live insights',
           onPressed: onToggle,
-          icon: const Icon(Icons.insights_outlined),
+          icon: Badge(
+            isLabelVisible: insights.isNotEmpty,
+            label: Text('${insights.length}'),
+            child: const Icon(Icons.insights_outlined),
+          ),
         ),
       );
     }
@@ -72,62 +62,45 @@ class LiveInsightsRail extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(child: _body(context)),
+          Expanded(
+            child: insights.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'Decisions, actions, and topics will appear here as '
+                      'Airo understands the meeting.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  )
+                : ListView.builder(
+                    key: const Key('meeting_capture_insights_list'),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    itemCount: insights.length,
+                    itemBuilder: (context, index) {
+                      final item = insights[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          '${_label(item.kind)} · ${item.text}',
+                          key: Key('meeting_capture_insights_item_$index'),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _body(BuildContext context) {
-    final visible = filterHighConfidenceInsights(insights);
-    if (visible.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: Text(
-          'Decisions, actions, and topics will appear here as '
-          'Airo understands the meeting.',
-          style: TextStyle(fontSize: 13),
-        ),
-      );
-    }
-    return ListView.separated(
-      key: const Key('meeting_capture_insights_list'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      itemCount: visible.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) => _tile(context, visible[index]),
-    );
-  }
-
-  Widget _tile(BuildContext context, LiveInsight insight) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          _iconFor(insight.kind),
-          size: 16,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                insight.kind.label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  letterSpacing: 0.6,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(insight.text, style: theme.textTheme.bodyMedium),
-              if (insight.detail case final detail?)
-                Text(detail, style: theme.textTheme.bodySmall),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+String _label(LiveInsightKind kind) {
+  return switch (kind) {
+    LiveInsightKind.decision => 'Decision',
+    LiveInsightKind.action => 'Action',
+    LiveInsightKind.question => 'Question',
+    LiveInsightKind.topic => 'Topic',
+    LiveInsightKind.entity => 'Entity',
+  };
 }

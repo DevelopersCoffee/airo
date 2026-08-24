@@ -98,6 +98,10 @@ class _SpyGraphAdapter implements GraphWorkflowAddonAdapter {
 }
 
 void main() {
+  setUp(() {
+    AddonInvocationEpoch.instance.resetForTesting();
+  });
+
   test('duplicate registration fails closed', () {
     final registry = AddonRegistry();
     final manifest = _sampleGenerativeManifest();
@@ -181,5 +185,14 @@ void main() {
     final adapters = registry.eligibleGenerativeAdapters();
     expect(adapters, isEmpty);
     expect(spy.acceptsCalls, 0);
+  });
+
+  test('bumpInvocationEpoch increments monotonic counter', () {
+    final registry = AddonRegistry();
+    expect(registry.invocationEpoch, 0);
+    registry.bumpInvocationEpoch();
+    expect(registry.invocationEpoch, 1);
+    registry.bumpInvocationEpoch();
+    expect(registry.invocationEpoch, 2);
   });
 }
