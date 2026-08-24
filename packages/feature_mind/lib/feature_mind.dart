@@ -96,6 +96,11 @@ export 'src/governor/mind_capture_health.dart';
 // deterministic partial/stable/final reconciliation (real-time spec §4-5).
 export 'src/transcript/mind_transcript_sequencer.dart';
 
+// Live insight contract for the insights rail (real-time spec §19). Only
+// high-confidence insights are surfaced; the producer (incremental IR) is
+// wired separately.
+export 'src/capture/domain/live_insight.dart';
+
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
 // Phase 2).
