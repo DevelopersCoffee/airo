@@ -85,19 +85,24 @@ class GraphWorkflowCoordinator {
   }
 
   List<WorkflowProjection> workflowProjections(ChatEntityGraph graph) {
+    final invocationEpoch = _registry.invocationEpoch;
     final entityGraph = graph.toEntityGraph();
     final projections = <WorkflowProjection>[];
     for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (_registry.invocationEpoch != invocationEpoch) break;
       projections.addAll(adapter.project(entityGraph));
     }
     return projections;
   }
 
   Map<String, PendingAssessment> pendingAssessments(ChatEntityGraph graph) {
+    final invocationEpoch = _registry.invocationEpoch;
     final entityGraph = graph.toEntityGraph();
     final assessments = <String, PendingAssessment>{};
     for (final adapter in _registry.eligibleGraphAdapters()) {
+      if (_registry.invocationEpoch != invocationEpoch) break;
       for (final projection in adapter.project(entityGraph)) {
+        if (_registry.invocationEpoch != invocationEpoch) break;
         assessments[projection.subjectNodeId] = adapter.assessPending(
           entityGraph,
           projection,

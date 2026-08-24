@@ -131,4 +131,55 @@ void main() {
       AddonInvocationEpoch.cancelledCode,
     );
   });
+
+  test('expiry boundary rejects redemption after ttl', () async {
+    final now = DateTime.utc(2026, 8, 22, 12, 0);
+    final sharedStore = InMemoryConfirmationTokenStore();
+    final issuer = LifeTrackConfirmationTokenService(
+      store: sharedStore,
+      now: () => now,
+      ttl: const Duration(minutes: 15),
+    );
+    final edgeToken = await issuer.issue(
+      destinationTool: 'record_lifetrack_facts',
+      payload: payload,
+    );
+    final redeemer = LifeTrackConfirmationTokenService(
+      store: sharedStore,
+      now: () => now.add(const Duration(minutes: 15, seconds: 1)),
+      ttl: const Duration(minutes: 15),
+    );
+    expect(
+      await redeemer.validateAndConsume(
+        token: edgeToken,
+        destinationTool: 'record_lifetrack_facts',
+        payload: payload,
+      ),
+      'confirmation_expired',
+    );
+  });
+
+  test('concurrent redemption allows only one success', () async {
+    final token = await service.issue(
+      destinationTool: 'record_lifetrack_facts',
+      payload: payload,
+    );
+    final results = await Future.wait([
+      service.validateAndConsume(
+        token: token,
+        destinationTool: 'record_lifetrack_facts',
+        payload: payload,
+      ),
+      service.validateAndConsume(
+        token: token,
+        destinationTool: 'record_lifetrack_facts',
+        payload: payload,
+      ),
+    ]);
+    expect(results.where((code) => code == null).length, 1);
+    expect(
+      results.where((code) => code == 'confirmation_consumed').length,
+      1,
+    );
+  });
 }
