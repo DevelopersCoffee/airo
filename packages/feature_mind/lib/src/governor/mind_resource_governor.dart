@@ -143,6 +143,24 @@ class MindGovernorDecision {
       fastIntelligenceFrequency == MindIntelligenceFrequency.full;
 }
 
+/// Resolves the model admission ceiling (MB) from *available* runtime headroom
+/// rather than total RAM (spec §10). Unknown or zero headroom falls back to
+/// [ceilingMb], preserving the previous fixed-budget behaviour; otherwise the
+/// ceiling is available headroom minus a safety [reserveMb], clamped to the
+/// range `[floorMb, ceilingMb]`. The result is an admission ceiling the Rust
+/// Supervisor charges models against — never an allocation.
+int resolveMindMemoryBudgetMb({
+  required int availableMemoryMb,
+  int reserveMb = 512,
+  int ceilingMb = 4096,
+  int floorMb = 512,
+}) {
+  if (availableMemoryMb <= 0) return ceilingMb;
+  final headroom = availableMemoryMb - reserveMb;
+  if (headroom <= floorMb) return floorMb;
+  return headroom < ceilingMb ? headroom : ceilingMb;
+}
+
 /// A single `decide` policy that folds thermal, battery, and memory pressure
 /// into one decision by taking the most restrictive of each dimension. Pure and
 /// deterministic so it is fully unit-testable without hardware.

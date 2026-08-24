@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 import 'bridges/mind_generation_bridge.dart';
 import 'bridges/mind_speech_bridge.dart';
 import 'capture/domain/live_refine_reconciliation.dart';
+import 'governor/mind_resource_governor.dart';
 import 'meeting_ir/meeting_ir_status_writer.dart';
 import 'meeting_title.dart';
 import 'mind_diarization.dart';
@@ -279,12 +280,17 @@ class MindService {
     try {
       // `ADR-0018 §1`: hand over a DIRECTORY and a budget. Which model serves
       // which task is the Model Manager's decision, not this layer's.
+      final memoryInfo = await core_ai.DeviceCapabilityService()
+          .getMemoryInfo();
       await _speech.initialize(
         modelsDir: dir.path,
         storePath: p.join(dir.path, 'meetings.log'),
-        // Admission ceiling, not an allocation. The Supervisor refuses a
-        // model it cannot afford before anything is loaded.
-        memoryBudgetMb: 4096,
+        // Admission ceiling, not an allocation. Derived from available runtime
+        // headroom (spec §10) rather than a fixed cap; unknown headroom keeps
+        // the previous 4096 MB ceiling.
+        memoryBudgetMb: resolveMindMemoryBudgetMb(
+          availableMemoryMb: memoryInfo.availableBytes ~/ (1024 * 1024),
+        ),
         speechLanguage: language,
       );
       _activeSpeechLanguage = language;
@@ -497,7 +503,9 @@ class MindService {
           PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
       await _generation.ensureLoaded(
         modelsDir: dir.path,
-        memoryBudgetMb: 4096,
+        memoryBudgetMb: resolveMindMemoryBudgetMb(
+          availableMemoryMb: memoryInfo.availableBytes ~/ (1024 * 1024),
+        ),
         preferIndicGeneration: sarvamOnDisk,
         allowCompactFallback:
             generationMode != MindIndicGenerationMode.enhancedIndic,
@@ -636,7 +644,9 @@ class MindService {
           PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
       await _generation.ensureLoaded(
         modelsDir: dir.path,
-        memoryBudgetMb: 4096,
+        memoryBudgetMb: resolveMindMemoryBudgetMb(
+          availableMemoryMb: memoryInfo.availableBytes ~/ (1024 * 1024),
+        ),
         preferIndicGeneration: sarvamOnDisk,
         allowCompactFallback:
             generationMode != MindIndicGenerationMode.enhancedIndic,
@@ -792,7 +802,9 @@ class MindService {
           PinnedModelFiles.isPresent(dir, pinnedIndicGenerationModel);
       await _generation.ensureLoaded(
         modelsDir: dir.path,
-        memoryBudgetMb: 4096,
+        memoryBudgetMb: resolveMindMemoryBudgetMb(
+          availableMemoryMb: memoryInfo.availableBytes ~/ (1024 * 1024),
+        ),
         preferIndicGeneration: sarvamOnDisk,
         allowCompactFallback:
             generationMode != MindIndicGenerationMode.enhancedIndic,
