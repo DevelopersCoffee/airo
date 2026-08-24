@@ -42,6 +42,7 @@ allowed_dependencies:
   # isolate once a meeting crosses ~50 KB, per the repo's own parsing rule.
   - core_workers
   - platform_calendar
+  - youtube_explode_dart
 forbidden_dependencies:
   - app
 quality_gates: {}

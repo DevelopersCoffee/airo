@@ -225,7 +225,7 @@ class RustBuilder {
     if (featureIndex >= 0 && featureIndex + 1 < args.length) {
       final current = args[featureIndex + 1];
       if (!current.contains('ecapa')) {
-        args[featureIndex + 1] = '$current,ecapa';
+        args[featureIndex + 1] = '$current,ecapa,ecapa-bundle';
       }
     }
     return args;

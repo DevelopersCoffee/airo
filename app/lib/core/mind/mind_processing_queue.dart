@@ -17,17 +17,15 @@ import 'package:path_provider/path_provider.dart';
 /// `MindService` instance is "the" one.
 List<Override> mindMeetingProcessingOverrides(MindService service) => [
   meetingProcessingQueueProvider.overrideWith((ref) async {
+    ref.keepAlive();
     final path = await _processingQueuePath();
+    late final MeetingProcessingQueue queue;
     final runner = MeetingProcessingJobRunner(
       mindService: service,
-      // A closure that reads current Riverpod state at call time, not a
-      // value captured once here, so a person who flips the Settings toggle
-      // mid-queue has it apply to the very next job that finishes or fails,
-      // not just ones enqueued after the change.
       retentionPolicy: () => ref.read(audioRetentionPolicyProvider),
-      // Same live-read pattern for #1664 language mode → process(language:)
-      // and ensureReady(speechLanguage:).
       languageMode: () => ref.read(speechLanguageModeProvider),
+      processingProfile: () => ref.read(processingProfileProvider),
+      onProgress: (job, progress) => queue.reportProgress(job.id, progress),
       onProcessed: (job, last) async {
         final capability = await openNotebookCapability();
         await NotebookRepository(capability).ingestProcessed(
@@ -41,7 +39,7 @@ List<Override> mindMeetingProcessingOverrides(MindService service) => [
         );
       },
     );
-    final queue = MeetingProcessingQueue(
+    queue = MeetingProcessingQueue(
       store: FileMeetingProcessingQueueStore(path),
       // No real free-disk-space probe exists in this codebase yet -- see
       // `RealLlmDeviceSignalsProbe.availableStorageMb`'s doc comment and

@@ -14,12 +14,15 @@ use crate::result::DiarizationResult;
 use crate::single_speaker::SingleSpeakerDiarizer;
 use crate::stub_embedder::StubSpeakerEmbedder;
 
-/// Cosine threshold for joining an existing speaker cluster.
+/// Cosine threshold for joining an existing speaker cluster (closest-member).
 ///
-/// `0.85` merged distinct talkers in short mixed recordings (ECAPA same-speaker
-/// scores often sit 0.6–0.9). `0.72` still merges a voice with itself and
-/// splits two people in the same room.
-pub const DEFAULT_EMBEDDING_SIMILARITY: f32 = 0.72;
+/// On vedk00 ECAPA short segments, same-speaker scores often sit 0.97–0.99 and
+/// distinct voices in one room 0.92–0.97. `0.72` merged everyone; `0.95` splits
+/// most two-speaker recordings without fragmenting one voice.
+pub const DEFAULT_EMBEDDING_SIMILARITY: f32 = 0.95;
+
+/// Adjacent-segment similarity below this toggles speaker in the Q&A fallback.
+pub use crate::cluster::ADJACENT_SPLIT_SIMILARITY;
 
 /// Which diarizer runs for a recording.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

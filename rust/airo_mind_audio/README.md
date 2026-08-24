@@ -13,6 +13,7 @@ airo_mind_audio::preprocess_path(path) -> Result<wav::Pcm, String>
 ## Supported inputs
 
 - AAC in MP4 (`.m4a`)
+- MP3 (`.mp3`)
 - WAV (any rate/channels — resampled/downmixed as needed)
 - PCM in common symphonia containers
 

@@ -3,6 +3,9 @@
 use crate::embedder::SpeakerEmbedding;
 use crate::segment::SpeakerId;
 
+/// Adjacent-segment similarity below this toggles speaker in the Q&A fallback.
+pub const ADJACENT_SPLIT_SIMILARITY: f32 = 0.96;
+
 /// Per-segment clustering output — local speaker id plus optional enrollment label.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClusterAssignment {
@@ -10,10 +13,50 @@ pub struct ClusterAssignment {
     pub enrolled_id: Option<String>,
 }
 
+/// Summary stats for optional diarization logging.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EmbeddingStats {
+    pub min_adjacent: f32,
+    pub min_pairwise: f32,
+}
+
+pub fn adjacent_split_similarity() -> f32 {
+    ADJACENT_SPLIT_SIMILARITY
+}
+
+/// Minimum cosine similarity between consecutive segment embeddings.
+pub fn min_adjacent_similarity(embeddings: &[SpeakerEmbedding]) -> f32 {
+    if embeddings.len() < 2 {
+        return 1.0;
+    }
+    embeddings
+        .windows(2)
+        .map(|pair| cosine_similarity(&pair[0], &pair[1]))
+        .fold(f32::INFINITY, f32::min)
+}
+
+/// Minimum cosine similarity across all segment pairs.
+pub fn min_pairwise_similarity(embeddings: &[SpeakerEmbedding]) -> f32 {
+    if embeddings.len() < 2 {
+        return 1.0;
+    }
+    let mut min_sim = f32::INFINITY;
+    for i in 0..embeddings.len() {
+        for j in (i + 1)..embeddings.len() {
+            min_sim = min_sim.min(cosine_similarity(&embeddings[i], &embeddings[j]));
+        }
+    }
+    min_sim
+}
+
+pub fn embedding_stats(embeddings: &[SpeakerEmbedding]) -> EmbeddingStats {
+    EmbeddingStats {
+        min_adjacent: min_adjacent_similarity(embeddings),
+        min_pairwise: min_pairwise_similarity(embeddings),
+    }
+}
+
 /// Assigns each embedding to a speaker cluster in transcript order.
-///
-/// Greedy: compare to running centroids; join the best match above [threshold],
-/// otherwise start a new speaker. Deterministic for fixed inputs.
 pub fn cluster_embeddings_greedy(
     embeddings: &[SpeakerEmbedding],
     threshold: f32,
@@ -26,8 +69,9 @@ pub fn cluster_embeddings_greedy(
 
 /// Greedy clustering with optional per-segment enrollment hints (#504).
 ///
-/// When [enrollment_hints] contains an enrolled id for a segment, that segment
-/// joins (or creates) a cluster keyed by that id so cross-meeting labels survive.
+/// Compares each embedding to the **closest member** of each cluster (not a
+/// running centroid) so ECAPA's high same-room scores do not drag distinct
+/// voices into one bucket.
 pub fn cluster_embeddings_greedy_with_enrollment(
     embeddings: &[SpeakerEmbedding],
     threshold: f32,
@@ -37,7 +81,7 @@ pub fn cluster_embeddings_greedy_with_enrollment(
         return Vec::new();
     }
 
-    let mut centroids: Vec<SpeakerEmbedding> = Vec::new();
+    let mut clusters: Vec<Vec<usize>> = Vec::new();
     let mut enrolled_keys: Vec<Option<String>> = Vec::new();
     let mut assignments = Vec::with_capacity(embeddings.len());
 
@@ -49,17 +93,17 @@ pub fn cluster_embeddings_greedy_with_enrollment(
                 .iter()
                 .position(|key| key.as_deref() == Some(enrolled_id.as_str()))
             {
-                update_centroid(&mut centroids[cluster_idx], embedding);
+                clusters[cluster_idx].push(idx);
                 assignments.push(ClusterAssignment {
                     speaker: SpeakerId(cluster_idx as u32),
                     enrolled_id: Some(enrolled_id),
                 });
                 continue;
             }
-            centroids.push(embedding.clone());
+            clusters.push(vec![idx]);
             enrolled_keys.push(Some(enrolled_id.clone()));
             assignments.push(ClusterAssignment {
-                speaker: SpeakerId((centroids.len() - 1) as u32),
+                speaker: SpeakerId((clusters.len() - 1) as u32),
                 enrolled_id: Some(enrolled_id),
             });
             continue;
@@ -68,16 +112,18 @@ pub fn cluster_embeddings_greedy_with_enrollment(
         let mut best_idx: Option<usize> = None;
         let mut best_sim = threshold;
 
-        for (cluster_idx, centroid) in centroids.iter().enumerate() {
+        for (cluster_idx, members) in clusters.iter().enumerate() {
             if enrolled_keys
                 .get(cluster_idx)
                 .map(|k| k.is_some())
                 .unwrap_or(false)
             {
-                // Enrolled clusters only accept explicit enrollment hints.
                 continue;
             }
-            let sim = cosine_similarity(embedding, centroid);
+            let sim = members
+                .iter()
+                .map(|member_idx| cosine_similarity(embedding, &embeddings[*member_idx]))
+                .fold(0.0f32, f32::max);
             if sim >= best_sim {
                 best_sim = sim;
                 best_idx = Some(cluster_idx);
@@ -85,22 +131,147 @@ pub fn cluster_embeddings_greedy_with_enrollment(
         }
 
         if let Some(cluster_idx) = best_idx {
-            update_centroid(&mut centroids[cluster_idx], embedding);
+            clusters[cluster_idx].push(idx);
             assignments.push(ClusterAssignment {
                 speaker: SpeakerId(cluster_idx as u32),
                 enrolled_id: None,
             });
         } else {
-            centroids.push(embedding.clone());
+            clusters.push(vec![idx]);
             enrolled_keys.push(None);
             assignments.push(ClusterAssignment {
-                speaker: SpeakerId((centroids.len() - 1) as u32),
+                speaker: SpeakerId((clusters.len() - 1) as u32),
                 enrolled_id: None,
             });
         }
     }
 
     assignments
+}
+
+/// Two-speaker interview fallback: toggle speaker when adjacent embeddings dip.
+///
+/// Used when greedy clustering collapses to one voice but consecutive segments
+/// still show ECAPA similarity valleys (typical Q&A handoffs).
+pub fn cluster_adjacent_turn_split(
+    embeddings: &[SpeakerEmbedding],
+    split_threshold: f32,
+) -> Vec<SpeakerId> {
+    if embeddings.is_empty() {
+        return Vec::new();
+    }
+    let mut labels = Vec::with_capacity(embeddings.len());
+    let mut current = SpeakerId(0);
+    labels.push(current);
+    for pair in embeddings.windows(2) {
+        if cosine_similarity(&pair[0], &pair[1]) < split_threshold {
+            current = if current.0 == 0 {
+                SpeakerId(1)
+            } else {
+                SpeakerId(0)
+            };
+        }
+        labels.push(current);
+    }
+    labels
+}
+
+/// If greedy clustering yields one speaker but embeddings vary, try adjacent splits.
+pub fn maybe_refine_single_speaker(
+    embeddings: &[SpeakerEmbedding],
+    assignments: &[ClusterAssignment],
+    join_threshold: f32,
+) -> (Vec<ClusterAssignment>, bool) {
+    if should_use_adjacent_turn(embeddings, assignments) {
+        return apply_adjacent_turn_refinement(embeddings, assignments);
+    }
+    let speaker_count = distinct_speaker_count(assignments);
+    if speaker_count != 1 || embeddings.len() < 4 {
+        return (assignments.to_vec(), false);
+    }
+    let min_adjacent = min_adjacent_similarity(embeddings);
+    if min_adjacent >= ADJACENT_SPLIT_SIMILARITY {
+        return (assignments.to_vec(), false);
+    }
+    apply_adjacent_turn_refinement(embeddings, assignments)
+}
+
+/// Product clustering: greedy closest-member, then adjacent-turn when ECAPA
+/// collapses most segments onto one speaker (typical short-segment Q&A).
+pub fn cluster_embeddings_product(
+    embeddings: &[SpeakerEmbedding],
+    join_threshold: f32,
+    enrollment_hints: &[Option<String>],
+) -> (Vec<ClusterAssignment>, bool) {
+    let greedy = cluster_embeddings_greedy_with_enrollment(
+        embeddings,
+        join_threshold,
+        enrollment_hints,
+    );
+    if should_use_adjacent_turn(embeddings, &greedy) {
+        apply_adjacent_turn_refinement(embeddings, &greedy)
+    } else {
+        (greedy, false)
+    }
+}
+
+fn should_use_adjacent_turn(
+    embeddings: &[SpeakerEmbedding],
+    assignments: &[ClusterAssignment],
+) -> bool {
+    if embeddings.len() < 3 {
+        return false;
+    }
+    if min_adjacent_similarity(embeddings) >= ADJACENT_SPLIT_SIMILARITY {
+        return false;
+    }
+    let speaker_count = distinct_speaker_count(assignments);
+    if speaker_count <= 1 {
+        return true;
+    }
+    let max_share = max_speaker_share(assignments);
+    max_share > 0.7
+}
+
+pub(crate) fn max_speaker_share(assignments: &[ClusterAssignment]) -> f32 {
+    if assignments.is_empty() {
+        return 1.0;
+    }
+    let mut counts = std::collections::BTreeMap::<u32, usize>::new();
+    for assignment in assignments {
+        *counts.entry(assignment.speaker.0).or_default() += 1;
+    }
+    let max_count = counts.values().copied().max().unwrap_or(0);
+    max_count as f32 / assignments.len() as f32
+}
+
+pub(crate) fn distinct_speaker_count(assignments: &[ClusterAssignment]) -> usize {
+    assignments
+        .iter()
+        .map(|a| a.speaker.0)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+}
+
+fn apply_adjacent_turn_refinement(
+    embeddings: &[SpeakerEmbedding],
+    assignments: &[ClusterAssignment],
+) -> (Vec<ClusterAssignment>, bool) {
+    let split = cluster_adjacent_turn_split(embeddings, ADJACENT_SPLIT_SIMILARITY);
+    let refined: Vec<ClusterAssignment> = assignments
+        .iter()
+        .zip(split.iter())
+        .map(|(assignment, speaker)| ClusterAssignment {
+            speaker: *speaker,
+            enrolled_id: assignment.enrolled_id.clone(),
+        })
+        .collect();
+
+    let refined_count = distinct_speaker_count(&refined);
+    if refined_count <= 1 {
+        return (assignments.to_vec(), false);
+    }
+    (refined, true)
 }
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
@@ -121,22 +292,6 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     dot / (na.sqrt() * nb.sqrt())
 }
 
-fn update_centroid(centroid: &mut [f32], sample: &[f32]) {
-    for (c, s) in centroid.iter_mut().zip(sample.iter()) {
-        *c = (*c + *s) / 2.0;
-    }
-    l2_normalize(centroid);
-}
-
-fn l2_normalize(v: &mut [f32]) {
-    let norm = v.iter().map(|x| x * x).sum::<f32>().sqrt();
-    if norm > 0.0 {
-        for x in v.iter_mut() {
-            *x /= norm;
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,5 +309,58 @@ mod tests {
         let b = vec![0.0, 1.0, 0.0];
         let ids = cluster_embeddings_greedy(&[a, b], 0.5);
         assert_eq!(ids, vec![SpeakerId(0), SpeakerId(1)]);
+    }
+
+    #[test]
+    fn high_threshold_splits_close_embeddings() {
+        let a = vec![1.0, 0.0, 0.0];
+        let b = vec![0.0, 1.0, 0.0];
+        let ids = cluster_embeddings_greedy(&[a, b], 0.95);
+        assert_eq!(ids, vec![SpeakerId(0), SpeakerId(1)]);
+    }
+
+    #[test]
+    fn adjacent_turn_split_toggles_on_low_similarity() {
+        let a = vec![1.0, 0.0, 0.0];
+        let b = vec![0.99, 0.14, 0.0];
+        let c = vec![0.0, 1.0, 0.0];
+        let labels = cluster_adjacent_turn_split(&[a, b, c], 0.98);
+        assert_eq!(labels, vec![SpeakerId(0), SpeakerId(0), SpeakerId(1)]);
+    }
+
+    #[test]
+    fn imbalanced_greedy_refines_to_adjacent_turn() {
+        // Greedy at 0.95 keeps three "expert" slices together and one "guest"
+        // slice separate — 75% on sp0. Adjacent dips should still refine.
+        let expert = vec![1.0, 0.0, 0.0];
+        let guest = vec![0.0, 1.0, 0.0];
+        let embeddings = vec![
+            expert.clone(),
+            expert.clone(),
+            expert.clone(),
+            guest.clone(),
+        ];
+        let greedy = vec![
+            ClusterAssignment {
+                speaker: SpeakerId(0),
+                enrolled_id: None,
+            },
+            ClusterAssignment {
+                speaker: SpeakerId(0),
+                enrolled_id: None,
+            },
+            ClusterAssignment {
+                speaker: SpeakerId(0),
+                enrolled_id: None,
+            },
+            ClusterAssignment {
+                speaker: SpeakerId(1),
+                enrolled_id: None,
+            },
+        ];
+        assert!(should_use_adjacent_turn(&embeddings, &greedy));
+        let (refined, did_refine) = apply_adjacent_turn_refinement(&embeddings, &greedy);
+        assert!(did_refine);
+        assert_eq!(distinct_speaker_count(&refined), 2);
     }
 }

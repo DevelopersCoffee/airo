@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 
 import 'bridges/mind_speech_bridge.dart' show TranscriptSegment;
 import 'export/application/meeting_export_service.dart';
+import 'export/application/meeting_share_port.dart';
 import 'export/data/meeting_export_gateway.dart';
+import 'export/domain/meeting_export_models.dart';
+import 'export/domain/meeting_markdown_renderer.dart';
 import 'meeting_audio/meeting_audio_bar.dart';
 import 'meeting_audio/meeting_audio_playback.dart';
 import 'meeting_ir/evidence_resolver.dart';
@@ -21,6 +24,8 @@ import 'speaker/speaker_remember_dialog.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'mind_diarization.dart';
 import 'mind_service.dart';
+import 'processing/application/transcript_quality_evaluator.dart';
+import 'processing/presentation/transcript_review_banner.dart';
 import 'trust/scribe_trust_signals.dart';
 
 /// Transcript and minutes — live, or reopened.
@@ -120,6 +125,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
     speakerRegistryStore: _speakerStore,
   );
   final _exportGateway = const PlatformMeetingExportGateway();
+  final _sharePort = const PlatformMeetingSharePort();
   bool _exporting = false;
 
   MeetingIrUserEdits _edits = const MeetingIrUserEdits();
@@ -136,6 +142,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
   bool _dismissedLowTier = false;
   int? _pendingSeekMs;
   bool _regenerating = false;
+  MeetingTranscriptQualityReport? _qualityReport;
   late final MeetingAudioPlayback _playback;
 
   @override
@@ -157,6 +164,9 @@ class _MeetingScreenState extends State<MeetingScreen> {
         if (mounted) {
           setState(() {
             _progress = p;
+            if (p.qualityReport != null) {
+              _qualityReport = p.qualityReport;
+            }
             _syncLiveSegments();
           });
           if (p.meetingId != null && _meeting == null) {
@@ -179,6 +189,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
     );
     if (stored != null) {
       _loadIrContext(stored);
+      unawaited(_loadQualityReport(stored.id));
     } else {
       _syncLiveSegments();
       _audioPath = widget.audioPath;
@@ -266,7 +277,17 @@ class _MeetingScreenState extends State<MeetingScreen> {
     if (meeting == null || !mounted) return;
     setState(() => _meeting = meeting);
     await _loadIrContext(meeting);
+    await _loadQualityReport(id);
   }
+
+  Future<void> _loadQualityReport(String meetingId) async {
+    final report = await widget.service.transcriptQualityReport(meetingId);
+    if (!mounted) return;
+    setState(() => _qualityReport = report);
+  }
+
+  MeetingTranscriptQualityReport? get _activeQualityReport =>
+      _qualityReport ?? _progress.qualityReport;
 
   bool get _isRunning =>
       _progress.stage == MindStage.transcribing ||
@@ -299,6 +320,158 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _notify('Export failed: $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  String? get _meetingId => _meeting?.id ?? _progress.meetingId;
+
+  String get _displayTitle =>
+      _meeting?.title.trim().isNotEmpty == true
+          ? _meeting!.title
+          : widget.title;
+
+  Map<String, String> get _globalEnrolledNames =>
+      globalEnrolledSpeakerNames(_globalProfiles);
+
+  List<TranscriptExportLine> get _exportLines => [
+    for (final segment in _orderedSegments)
+      TranscriptExportLine(
+        startMs: segment.startMs,
+        text: segment.text,
+        speakerLabel: segment.speakerLabel,
+      ),
+  ];
+
+  String _plainTranscriptText() => renderTranscriptPlainText(
+    lines: _exportLines,
+    fallbackTranscript: _progress.transcript,
+    speakerRegistry: _speakerRegistry,
+    globalEnrolledNames: _globalEnrolledNames,
+    applyPersonaNames: _applySpeakerPersonaNames,
+  );
+
+  String? _plainMinutesText() {
+    final minutes = (_meeting?.minutes ?? _progress.minutes).trim();
+    if (minutes.isEmpty || isEmptyMeetingMinutes(minutes)) return null;
+    return minutes;
+  }
+
+  bool get _soloDiarizationHint {
+    if (_orderedSegments.length < 2) return false;
+    return !mindShouldApplySpeakerPersonaNames(
+      _orderedSegments.map((segment) => segment.speakerLabel),
+    );
+  }
+
+  bool get _applySpeakerPersonaNames => mindShouldApplySpeakerPersonaNames(
+    _orderedSegments.map((segment) => segment.speakerLabel),
+  );
+
+  Future<void> _copyTranscript() async {
+    final text = _plainTranscriptText();
+    if (text.isEmpty) {
+      _notify('No transcript to copy.');
+      return;
+    }
+    await _sharePort.copyText(text);
+    _notify('Transcript copied.');
+  }
+
+  Future<void> _copyMinutes() async {
+    final minutes = _plainMinutesText();
+    if (minutes == null) {
+      _notify('No minutes to copy.');
+      return;
+    }
+    await _sharePort.copyText(minutes);
+    _notify('Minutes copied.');
+  }
+
+  Future<void> _shareRecording() async {
+    final path = _audioPath;
+    if (!MeetingAudioPlayback.fileExists(path)) {
+      _notify('Recording file is not available.');
+      return;
+    }
+    final ok = await _sharePort.shareFiles(
+      [path!],
+      subject: _displayTitle,
+    );
+    if (ok) {
+      _notify('Shared recording.');
+    }
+  }
+
+  Future<void> _shareTranscriptMarkdown() async {
+    final meetingId = _meetingId;
+    if (meetingId == null || _exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final bundle = await _exportService.exportMeeting(meetingId);
+      final markdown = bundle == null
+          ? null
+          : transcriptMarkdownFromBundle(bundle);
+      if (markdown == null || markdown.isEmpty) {
+        _notify('No transcript to share.');
+        return;
+      }
+      final ok = await _sharePort.shareMarkdown(
+        filename: '${bundle!.folderName}-transcript.md',
+        markdown: markdown,
+        subject: '$_displayTitle — transcript',
+      );
+      if (ok) _notify('Shared transcript.');
+    } on Object catch (e) {
+      _notify('Share failed: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _shareMinutesMarkdown() async {
+    final meetingId = _meetingId;
+    if (meetingId == null || _exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final bundle = await _exportService.exportMeeting(meetingId);
+      final markdown = bundle == null
+          ? null
+          : minutesMarkdownFromBundle(bundle);
+      if (markdown == null || markdown.isEmpty) {
+        _notify('No minutes to share.');
+        return;
+      }
+      final ok = await _sharePort.shareMarkdown(
+        filename: '${bundle!.folderName}-mom.md',
+        markdown: markdown,
+        subject: '$_displayTitle — minutes',
+      );
+      if (ok) _notify('Shared minutes.');
+    } on Object catch (e) {
+      _notify('Share failed: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  void _onShareMenuSelected(String value) {
+    switch (value) {
+      case 'copy_transcript':
+        unawaited(_copyTranscript());
+      case 'copy_minutes':
+        unawaited(_copyMinutes());
+      case 'share_recording':
+        unawaited(_shareRecording());
+      case 'share_transcript':
+        unawaited(_shareTranscriptMarkdown());
+      case 'share_minutes':
+        unawaited(_shareMinutesMarkdown());
+      case 'save':
+        unawaited(_export(share: false));
+      case 'share_all':
+        unawaited(_export(share: true));
+      case 'regenerate':
+        unawaited(_regenerate());
     }
   }
 
@@ -475,6 +648,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
       }
       if (!mounted) return;
       await _reloadMeeting(meeting.id);
+      await _loadQualityReport(meeting.id);
     } on Object catch (e) {
       if (mounted) _notify('Could not regenerate: $e');
     } finally {
@@ -618,27 +792,45 @@ class _MeetingScreenState extends State<MeetingScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.more_vert),
-              tooltip: 'Meeting actions',
-              onSelected: (value) {
-                switch (value) {
-                  case 'save':
-                    unawaited(_export(share: false));
-                  case 'share':
-                    unawaited(_export(share: true));
-                  case 'regenerate':
-                    unawaited(_regenerate());
-                }
-              },
+              tooltip: 'Share and export',
+              onSelected: _onShareMenuSelected,
               itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'copy_transcript',
+                  child: Text('Copy transcript'),
+                ),
+                if (_plainMinutesText() != null)
+                  const PopupMenuItem(
+                    value: 'copy_minutes',
+                    child: Text('Copy minutes'),
+                  ),
+                if (_hasAudio)
+                  const PopupMenuItem(
+                    value: 'share_recording',
+                    child: Text('Share recording'),
+                  ),
+                const PopupMenuItem(
+                  value: 'share_transcript',
+                  child: Text('Share transcript'),
+                ),
+                if (_plainMinutesText() != null)
+                  const PopupMenuItem(
+                    value: 'share_minutes',
+                    child: Text('Share minutes'),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'share_all',
+                  child: Text('Share all (markdown)'),
+                ),
                 const PopupMenuItem(
                   value: 'save',
                   child: Text('Save to folder'),
                 ),
-                const PopupMenuItem(value: 'share', child: Text('Share')),
                 if (_hasAudio)
                   const PopupMenuItem(
                     value: 'regenerate',
-                    child: Text('Regenerate minutes'),
+                    child: Text('Re-transcribe (speakers + minutes)'),
                   ),
               ],
             ),
@@ -652,6 +844,10 @@ class _MeetingScreenState extends State<MeetingScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               ScribeTrustSignals(state: widget.service.scribeTrustState()),
+              if (_activeQualityReport != null) ...[
+                const SizedBox(height: 12),
+                TranscriptReviewBanner(report: _activeQualityReport!),
+              ],
               const SizedBox(height: 12),
               if (_isRunning) const LinearProgressIndicator(),
               if (_stageLabel.isNotEmpty)
@@ -716,6 +912,17 @@ class _MeetingScreenState extends State<MeetingScreen> {
               if (_progress.transcript.isNotEmpty ||
                   _orderedSegments.isNotEmpty) ...[
                 const _SectionTitle('Transcript'),
+                if (_soloDiarizationHint)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Speaker labels show as one voice. Open ⋯ → Re-transcribe '
+                      'to refresh diarization, or rename speakers manually.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 if (_pendingSeekMs != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -740,6 +947,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                   globalEnrolledNames: globalEnrolledSpeakerNames(
                     _globalProfiles,
                   ),
+                  applyPersonaNames: _applySpeakerPersonaNames,
                 ),
               ],
               if (stored != null) ...[

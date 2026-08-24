@@ -18,6 +18,23 @@ pub fn slice_segment_pcm(pcm: &Pcm, start_ms: u64, end_ms: u64) -> Vec<i16> {
     pcm.samples[start_sample..end_sample].to_vec()
 }
 
+/// Segment slice with symmetric context padding for stabler speaker embeddings.
+pub fn slice_segment_pcm_padded(
+    pcm: &Pcm,
+    start_ms: u64,
+    end_ms: u64,
+    pad_ms: u64,
+) -> Vec<i16> {
+    if pcm.sample_rate_hz == 0 || pcm.samples.is_empty() {
+        return Vec::new();
+    }
+    let audio_end_ms = (pcm.samples.len() as u64 * 1000)
+        / (pcm.sample_rate_hz as u64 * pcm.channels as u64);
+    let padded_start = start_ms.saturating_sub(pad_ms);
+    let padded_end = (end_ms + pad_ms).min(audio_end_ms);
+    slice_segment_pcm(pcm, padded_start, padded_end)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

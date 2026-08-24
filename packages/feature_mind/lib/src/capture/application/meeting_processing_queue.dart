@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:core_ai/core_ai.dart';
 
+import '../../mind_service.dart';
 import '../data/meeting_processing_queue_store.dart';
 import '../domain/meeting_processing_job.dart';
+import 'meeting_processing_progress.dart';
 
 /// # Design note — post-meeting processing job orchestration (#1656 AC4)
 ///
@@ -293,6 +295,27 @@ class MeetingProcessingQueue {
 
   Future<void> _persist() async {
     await _store.save(_jobs);
+    _emitJobs();
+  }
+
+  /// Updates live progress for a running job without persisting every tick.
+  void reportProgress(String jobId, MindProgress progress) {
+    final index = _jobs.indexWhere((job) => job.id == jobId);
+    if (index == -1) return;
+    final transcript = progress.transcript.trim();
+    _jobs = _replace(
+      index,
+      _jobs[index].copyWith(
+        progressStage: progress.stage.name,
+        progressDetail: transcript.isNotEmpty
+            ? transcript
+            : meetingProcessingStageLabel(progress.stage),
+      ),
+    );
+    _emitJobs();
+  }
+
+  void _emitJobs() {
     if (!_jobsController.isClosed) _jobsController.add(current);
   }
 

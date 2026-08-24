@@ -95,6 +95,17 @@ class FakeMindSpeechBridge implements MindSpeechBridge {
   void cancel() => cancelCalls++;
 
   @override
+  void setFinalProcessingProfile(rust.FinalProcessingProfile profile) {}
+
+  @override
+  String transcribeRange({
+    required String wavPath,
+    required int startMs,
+    required int endMs,
+    String? language,
+  }) => 'retried segment';
+
+  @override
   Stream<TranscriptEvent> startLiveSession({
     required String meetingId,
     String? language,

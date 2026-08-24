@@ -62,13 +62,44 @@ void main() {
     expect(formatMindSpeakerLabel('guest'), 'guest');
   });
 
-  test('mindSpeakerDisplayLabel prefers global enrolled name', () {
+  test('mindSpeakerDisplayLabel prefers global enrolled name when multi-speaker', () {
     expect(
       mindSpeakerDisplayLabel(
         'enrolled_0',
         globalEnrolledNames: {'enrolled_0': 'Alice'},
+        applyPersonaNames: true,
       ),
       'Alice',
+    );
+  });
+
+  test('mindSpeakerDisplayLabel skips persona names for solo diarization', () {
+    expect(
+      mindSpeakerDisplayLabel(
+        'enrolled_0',
+        globalEnrolledNames: {'enrolled_0': 'Alice'},
+        applyPersonaNames: false,
+      ),
+      'enrolled_0',
+    );
+    expect(
+      mindSpeakerDisplayLabel(
+        'sp0',
+        globalEnrolledNames: {'sp0': 'Alice'},
+        applyPersonaNames: false,
+      ),
+      'Speaker 1',
+    );
+  });
+
+  test('mindShouldApplySpeakerPersonaNames requires two labels', () {
+    expect(
+      mindShouldApplySpeakerPersonaNames(['sp0', 'sp0', 'sp1']),
+      isTrue,
+    );
+    expect(
+      mindShouldApplySpeakerPersonaNames(['sp0', 'sp0']),
+      isFalse,
     );
   });
 

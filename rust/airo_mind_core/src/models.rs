@@ -108,11 +108,43 @@ pub fn speech_file_requirement(
     memory_budget_mb: u32,
     language: ModelLanguage,
 ) -> ModelRequirement {
+    speech_final_requirement(
+        memory_budget_mb,
+        language,
+        FinalProcessingProfile::MaximumQuality,
+    )
+}
+
+/// User-facing final-transcript quality outcome mapped to model tiers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FinalProcessingProfile {
+    /// Fast / live-style tier — Draft only.
+    Fast,
+    /// Balanced — Standard when available.
+    Balanced,
+    /// Best local quality the device can sustain.
+    MaximumQuality,
+}
+
+/// Final (non-live) transcription requirement. Accuracy dominates; hardware
+/// caps are applied via [memory_budget_mb] and profile tier bounds.
+pub fn speech_final_requirement(
+    memory_budget_mb: u32,
+    language: ModelLanguage,
+    profile: FinalProcessingProfile,
+) -> ModelRequirement {
+    let (minimum_quality, maximum_quality) = match profile {
+        FinalProcessingProfile::Fast => (ModelQuality::Draft, Some(ModelQuality::Draft)),
+        FinalProcessingProfile::Balanced => {
+            (ModelQuality::Standard, Some(ModelQuality::Standard))
+        }
+        FinalProcessingProfile::MaximumQuality => (ModelQuality::Standard, None),
+    };
     ModelRequirement {
         task: ModelTask::Speech,
         memory_budget_mb,
-        minimum_quality: ModelQuality::Draft,
-        maximum_quality: None,
+        minimum_quality,
+        maximum_quality,
         language,
     }
 }
@@ -537,6 +569,62 @@ mod tests {
 
         let resolved = resolve(
             &speech_file_requirement(4096, ModelLanguage::EnglishOnly),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.standard.en");
+    }
+
+    #[test]
+    fn speech_final_fast_caps_at_draft() {
+        let d = dir("final-fast");
+        let compact = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.compact")
+            .expect("compact speech row");
+        let standard = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard.en")
+            .expect("standard speech row");
+        install(&d, compact, compact.size_bytes);
+        install(&d, standard, standard.size_bytes);
+
+        let resolved = resolve(
+            &speech_final_requirement(
+                4096,
+                ModelLanguage::EnglishOnly,
+                FinalProcessingProfile::Fast,
+            ),
+            &d,
+            &[],
+            false,
+        )
+        .unwrap();
+        assert_eq!(resolved.logical_id, "airo.speech.compact");
+    }
+
+    #[test]
+    fn speech_final_balanced_prefers_standard() {
+        let d = dir("final-balanced");
+        let compact = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.compact")
+            .expect("compact speech row");
+        let standard = REGISTRY
+            .iter()
+            .find(|e| e.logical_id == "airo.speech.standard.en")
+            .expect("standard speech row");
+        install(&d, compact, compact.size_bytes);
+        install(&d, standard, standard.size_bytes);
+
+        let resolved = resolve(
+            &speech_final_requirement(
+                4096,
+                ModelLanguage::EnglishOnly,
+                FinalProcessingProfile::Balanced,
+            ),
             &d,
             &[],
             false,

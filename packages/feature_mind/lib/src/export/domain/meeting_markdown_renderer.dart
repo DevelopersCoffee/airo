@@ -73,6 +73,7 @@ String renderTranscriptMarkdown({
   String fallbackTranscript = '',
   MeetingSpeakerRegistry speakerRegistry = MeetingSpeakerRegistry.empty,
   Map<String, String> globalEnrolledNames = const {},
+  bool applyPersonaNames = true,
 }) {
   final buf = StringBuffer()
     ..write(
@@ -90,7 +91,7 @@ String renderTranscriptMarkdown({
       if (text.isEmpty) continue;
       final speakerPrefix = line.speakerLabel == null
           ? ''
-          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry, globalEnrolledNames)}: ';
+          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry, globalEnrolledNames, applyPersonaNames)}: ';
       buf
         ..writeln('${formatTimestamp(line.startMs)} $speakerPrefix$text')
         ..writeln();
@@ -102,6 +103,29 @@ String renderTranscriptMarkdown({
   }
 
   return '${buf.toString().trimRight()}\n';
+}
+
+/// Plain-text transcript for clipboard copy — same speaker labels as export.
+String renderTranscriptPlainText({
+  List<TranscriptExportLine> lines = const [],
+  String fallbackTranscript = '',
+  MeetingSpeakerRegistry speakerRegistry = MeetingSpeakerRegistry.empty,
+  Map<String, String> globalEnrolledNames = const {},
+  bool applyPersonaNames = true,
+}) {
+  if (lines.isNotEmpty) {
+    final buf = StringBuffer();
+    for (final line in lines) {
+      final text = line.text.trim();
+      if (text.isEmpty) continue;
+      final speakerPrefix = line.speakerLabel == null
+          ? ''
+          : '${_exportSpeakerPrefix(line.speakerLabel!, speakerRegistry, globalEnrolledNames, applyPersonaNames)}: ';
+      buf.writeln('${formatTimestamp(line.startMs)} $speakerPrefix$text');
+    }
+    return buf.toString().trimRight();
+  }
+  return fallbackTranscript.trim();
 }
 
 /// A standalone `## Action Items` table. Empty string for an empty list, so
@@ -152,6 +176,9 @@ String _slugify(String input) {
 /// items supplied on their own, they get a dedicated `action-items.md`
 /// instead of being silently dropped.
 MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
+  final applyPersonaNames = mindShouldApplySpeakerPersonaNames(
+    input.transcriptLines.map((line) => line.speakerLabel),
+  );
   final files = <String, String>{
     'transcript.md': renderTranscriptMarkdown(
       title: input.title,
@@ -161,6 +188,7 @@ MeetingExportBundle composeMeetingExportBundle(MeetingExportInput input) {
       fallbackTranscript: input.fallbackTranscript,
       speakerRegistry: input.speakerRegistry,
       globalEnrolledNames: input.globalEnrolledNames,
+      applyPersonaNames: applyPersonaNames,
     ),
   };
 
@@ -214,10 +242,12 @@ String _exportSpeakerPrefix(
   String label,
   MeetingSpeakerRegistry registry,
   Map<String, String> globalEnrolledNames,
+  bool applyPersonaNames,
 ) {
   return mindSpeakerDisplayLabel(
     label,
     registry: registry,
     globalEnrolledNames: globalEnrolledNames,
+    applyPersonaNames: applyPersonaNames,
   );
 }

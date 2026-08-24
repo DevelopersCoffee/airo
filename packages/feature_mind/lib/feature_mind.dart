@@ -383,3 +383,8 @@ export 'src/capture/application/speech_language_preference.dart';
 export 'src/capture/presentation/meeting_capture_screen.dart';
 export 'src/capture/presentation/audio_retention_settings_tile.dart';
 export 'src/capture/presentation/speech_language_settings_tile.dart';
+export 'src/processing/application/processing_profile_preference.dart';
+export 'src/processing/domain/processing_profile.dart';
+export 'src/processing/presentation/processing_profile_settings_tile.dart';
+export 'src/processing/presentation/processing_transparency_banner.dart';
+export 'src/processing/presentation/transcript_review_banner.dart';

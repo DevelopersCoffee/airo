@@ -78,6 +78,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
   MeetingProcessingJob? _processing;
   bool _processed = false;
   String? _processingError;
+  bool _stopping = false;
 
   @override
   void initState() {
@@ -89,7 +90,9 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   @override
   void dispose() {
-    _liveCoordinator?.dispose();
+    if (!_stopping) {
+      _liveCoordinator?.dispose();
+    }
     _snapshotSub?.cancel();
     _jobsSub?.cancel();
     super.dispose();
@@ -214,50 +217,64 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   Future<void> _stop() async {
     final controller = _controller;
-    if (controller == null) return;
-    final path = await controller.stop();
-    if (path == null) return;
+    if (controller == null || _stopping) return;
+    _stopping = true;
 
-    MeetingLiveSessionResult? liveResult;
-    if (_liveCoordinator != null) {
-      try {
-        liveResult = await _liveCoordinator!.finish();
-      } on Object catch (error) {
-        if (mounted) {
-          setState(() => _startError = '$error');
-        }
-      }
-      await _liveCoordinator!.dispose();
-      _liveCoordinator = null;
-    }
-
-    final transcriptionMode = ref.read(transcriptionModeProvider);
+    // Snapshot provider reads before any await — the widget may unmount while
+    // stop/finish runs, but the processing queue must still receive the job.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final transcriptionMode = container.read(transcriptionModeProvider);
+    final queueFuture = container.read(meetingProcessingQueueProvider.future);
     final meetingId =
         _meetingId ?? 'meeting-${DateTime.now().millisecondsSinceEpoch}';
-    final now = DateTime.now();
-    final title = 'Meeting ${now.toLocal()}';
-    final isLiveOnly = transcriptionMode == TranscriptionMode.live;
-    final isLiveRefine = transcriptionMode == TranscriptionMode.liveRefine;
-    final job = MeetingProcessingJob(
-      id: meetingId,
-      audioPath: path,
-      title: title,
-      enqueuedAtMs: now.millisecondsSinceEpoch,
-      source: MeetingProcessingSource.live,
-      completedTranscript: isLiveOnly ? liveResult?.text : null,
-      completedSegments: isLiveOnly ? liveResult?.segments : null,
-      refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
-    );
-    if (!mounted) return;
-    setState(() {
-      _processing = job;
-      _processed = false;
-      _processingError = null;
-    });
-    final queue = await ref.read(meetingProcessingQueueProvider.future);
-    await _jobsSub?.cancel();
-    _jobsSub = queue.jobs.listen((jobs) => _onJobsChanged(job.id, jobs));
-    await queue.enqueue(job);
+
+    try {
+      final path = await controller.stop();
+      if (path == null) return;
+
+      MeetingLiveSessionResult? liveResult;
+      if (_liveCoordinator != null) {
+        try {
+          liveResult = await _liveCoordinator!.finish();
+        } on Object catch (error) {
+          if (mounted) {
+            setState(() => _startError = '$error');
+          }
+        }
+        await _liveCoordinator!.dispose();
+        _liveCoordinator = null;
+      }
+
+      final now = DateTime.now();
+      final title = 'Meeting ${now.toLocal()}';
+      final isLiveOnly = transcriptionMode == TranscriptionMode.live;
+      final isLiveRefine = transcriptionMode == TranscriptionMode.liveRefine;
+      final job = MeetingProcessingJob(
+        id: meetingId,
+        audioPath: path,
+        title: title,
+        enqueuedAtMs: now.millisecondsSinceEpoch,
+        source: MeetingProcessingSource.live,
+        completedTranscript: isLiveOnly ? liveResult?.text : null,
+        completedSegments: isLiveOnly ? liveResult?.segments : null,
+        refineBaselineSegments: isLiveRefine ? liveResult?.segments : null,
+      );
+
+      final queue = await queueFuture;
+      await queue.enqueue(job);
+
+      if (!mounted) return;
+      await _jobsSub?.cancel();
+      _jobsSub = queue.jobs.listen((jobs) => _onJobsChanged(job.id, jobs));
+      setState(() {
+        _processing = job;
+        _processed = false;
+        _processingError = null;
+      });
+    } finally {
+      _stopping = false;
+      container.invalidate(meetingCaptureControllerProvider);
+    }
   }
 
   void _onJobsChanged(String jobId, List<MeetingProcessingJob> jobs) {
@@ -285,7 +302,6 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(meetingCaptureControllerProvider);
     final showConsentUi =
         ref.watch(recordingConsentPromptProvider) || _implicitConsentFailed;
     final consentGranted = _consentGate.isGranted;
@@ -297,8 +313,11 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
     final transcriptionMode = ref.watch(transcriptionModeProvider);
     final showLiveTranscript =
         active && transcriptionMode.usesLivePipeline && _liveCoordinator != null;
+    final canLeave = !_stopping && !active;
 
-    return Scaffold(
+    return PopScope(
+      canPop: canLeave,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Record meeting')),
       body: Column(
         children: [
@@ -448,6 +467,7 @@ class _MeetingCaptureScreenState extends ConsumerState<MeetingCaptureScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

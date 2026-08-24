@@ -29,7 +29,7 @@ class AIPreferencesSection extends ConsumerWidget {
       children: [
         Text(
           'AI Model Preferences',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: theme.textTheme.titleMedium?.copyWith(inherit: false),
         ),
         const SizedBox(height: 8),
         Card(
@@ -199,7 +199,10 @@ class AIPreferencesSection extends ConsumerWidget {
                               AIDownloadLocationPreference.appManaged
                           ? 'Uses app-scoped external storage when available; existing internal models remain discoverable.'
                           : 'Uses the app documents directory for private model storage.',
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        inherit: false,
+                      ),
                     ),
                   ),
                   ListTile(
@@ -289,7 +292,10 @@ class AIPreferencesSection extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       'Harmful-content protection always stays enabled. This setting controls additional advisory filters.',
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        inherit: false,
+                      ),
                     ),
                   ),
                   _SettingDropdownRow<SafetyProfile>(
@@ -314,6 +320,7 @@ class AIPreferencesSection extends ConsumerWidget {
             'Use the model manager to browse downloads, set an active local model, and inspect device-specific readiness.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              inherit: false,
             ),
           ),
         ),

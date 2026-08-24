@@ -39,18 +39,26 @@ final meetingRecordingServiceGatewayProvider =
       (ref) => const PlatformMeetingRecordingServiceGateway(),
     );
 
-/// One controller per recording session. `family`-less and `autoDispose`
-/// because a screen creates exactly one session at a time and should dispose
-/// it (stopping the encoder cleanly) the moment it's no longer watched.
-final meetingCaptureControllerProvider =
-    Provider.autoDispose<MeetingCaptureController>((ref) {
-      final controller = MeetingCaptureController(
-        recorder: ref.watch(audioRecorderPortProvider)(),
-        serviceGateway: ref.watch(meetingRecordingServiceGatewayProvider),
-      );
-      ref.onDispose(controller.dispose);
-      return controller;
-    });
+/// One controller per recording session. Not `autoDispose`: popping this
+/// screen while `_stop` is still running must not dispose the encoder under
+/// a live `stop()` call — that was tripping `_dependents.isEmpty` and losing
+/// the recording. Call [invalidateMeetingCaptureController] after stop to
+/// mint a fresh controller for the next session.
+final meetingCaptureControllerProvider = Provider<MeetingCaptureController>((
+  ref,
+) {
+  final controller = MeetingCaptureController(
+    recorder: ref.watch(audioRecorderPortProvider)(),
+    serviceGateway: ref.watch(meetingRecordingServiceGatewayProvider),
+  );
+  ref.onDispose(controller.dispose);
+  return controller;
+});
+
+/// Drops the terminal controller so the next capture session gets a new one.
+void invalidateMeetingCaptureController(ProviderContainer container) {
+  container.invalidate(meetingCaptureControllerProvider);
+}
 
 /// Where a session's `.m4a` is written. One file per session, named by
 /// start time so two sessions never collide even if the app is killed
@@ -87,6 +95,9 @@ Future<String> _processingQueuePath() async {
 final meetingProcessingQueueProvider = FutureProvider<MeetingProcessingQueue>((
   ref,
 ) async {
+  // Survives leaving the capture screen — otherwise the queue disposes mid-job
+  // and the library never gets the meeting.
+  ref.keepAlive();
   final path = await _processingQueuePath();
   final queue = MeetingProcessingQueue(
     store: FileMeetingProcessingQueueStore(path),

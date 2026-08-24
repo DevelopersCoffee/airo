@@ -10,7 +10,10 @@ use ort::value::Tensor;
 use crate::diarizer::DiarizationError;
 use crate::ecapa_fbank::features_from_pcm_i16;
 use crate::embedder::{SpeakerEmbedder, SpeakerEmbedding};
-use crate::pcm_slice::slice_segment_pcm;
+use crate::pcm_slice::slice_segment_pcm_padded;
+
+/// Extra audio context on each side of a whisper segment for ECAPA embeddings.
+const EMBED_CONTEXT_PAD_MS: u64 = 300;
 
 /// Speaker embedder backed by an ECAPA-TDNN ONNX file.
 pub struct EcapaOnnxEmbedder {
@@ -36,7 +39,7 @@ impl SpeakerEmbedder for EcapaOnnxEmbedder {
         start_ms: u64,
         end_ms: u64,
     ) -> Result<SpeakerEmbedding, DiarizationError> {
-        let slice = slice_segment_pcm(pcm, start_ms, end_ms);
+        let slice = slice_segment_pcm_padded(pcm, start_ms, end_ms, EMBED_CONTEXT_PAD_MS);
         if slice.is_empty() {
             return Err(DiarizationError::Internal(
                 "segment produced no PCM samples".into(),

@@ -8,9 +8,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'meetings.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `ensure_speech_engine_for_live`, `ensure_speech_engine_for_requirement`, `lock`, `maybe_emit_live_degraded`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `stored_speech_requirement_inputs`, `transcript_segment_record`
+// These functions are ignored because they are not marked as `pub`: `apply_diarization_labels`, `emit_live_delta`, `ensure_speech_engine_for_live`, `ensure_speech_engine_for_requirement`, `lock`, `maybe_emit_live_degraded`, `register_speech_exit_guard`, `release_speech_on_process_exit`, `release_speech_resources`, `replace_speaker_enrollment_store`, `run_live_pipeline_step`, `sarvam_edge_speech_model_path`, `stored_final_processing_profile`, `stored_speech_requirement_inputs`, `transcript_segment_record`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `EnrolledSpeakerRecord`, `Library`, `LiveSessionState`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `airo_mind_whisper_delete_meeting`
+
+/// Dart sets this before each file/batch transcription so the Model Manager
+/// can honor the user's final-transcript quality preference.
+void setFinalProcessingProfile({required FinalProcessingProfile profile}) =>
+    RustLib.instance.api.crateApiMeetingsSetFinalProcessingProfile(
+      profile: profile,
+    );
 
 /// Loads the speech model and opens the store. Safe to call again — a Flutter
 /// hot restart runs it a second time, and refusing would make development
@@ -47,6 +55,21 @@ Float32List embedSpeakerSegment({
   wavPath: wavPath,
   startMs: startMs,
   endMs: endMs,
+);
+
+/// Re-transcribes one time range from a recording using maximum-quality
+/// weights. Used by the adaptive planner's segment-level retry — only the
+/// suspicious slice is reprocessed, not the whole file.
+String transcribeRecordingRange({
+  required String wavPath,
+  required BigInt startMs,
+  required BigInt endMs,
+  String? language,
+}) => RustLib.instance.api.crateApiMeetingsTranscribeRecordingRange(
+  wavPath: wavPath,
+  startMs: startMs,
+  endMs: endMs,
+  language: language,
 );
 
 /// Recording → transcript, streaming throughout.
@@ -187,6 +210,13 @@ Future<List<SearchHit>> searchMeetings({required String query}) =>
 /// Step 8. Opens one meeting.
 Future<MeetingRecord?> getMeeting({required String id}) =>
     RustLib.instance.api.crateApiMeetingsGetMeeting(id: id);
+
+/// Drops a meeting from the append-only store and search index.
+Future<bool> deleteMeeting({required String id}) =>
+    RustLib.instance.api.crateApiMeetingsDeleteMeeting(id: id);
+
+/// Final-transcript quality profile exposed to Dart for the adaptive planner.
+enum FinalProcessingProfile { fast, balanced, maximumQuality }
 
 /// Wire mirror of `airo_mind_core::MeetingActionItem`.
 class MeetingActionItemRecord {

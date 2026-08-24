@@ -13,6 +13,11 @@ audio → whisper (segments)
 ## ECAPA ONNX (optional)
 
 Multi-speaker labels use vedk00 ECAPA ONNX weights (`ecapa_tdnn_tiny_int8.onnx`).
+Greedy clustering joins segments when cosine similarity ≥ **0.95** (closest
+member). When one speaker still holds >70% of segments but adjacent ECAPA
+scores dip below **0.96**, an adjacent-turn fallback alternates speakers on
+Q&A handoffs. Embeddings use ±300 ms audio context around each whisper segment.
+Set `AIRO_MIND_ENGINE_LOGS=1` to see diarization collapse/refinement hints on stderr.
 Inference is gated behind the `ecapa-ort` feature and links against ONNX Runtime
 1.20 — **not** `download-binaries` (edition2024 deps on older Rust).
 

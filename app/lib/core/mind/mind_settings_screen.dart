@@ -63,6 +63,7 @@ class MindSettingsScreen extends ConsumerWidget {
           Text('Meeting recordings', style: theme.textTheme.titleMedium),
           const AudioRetentionSettingsTile(),
           const SpeechLanguageSettingsTile(),
+          const ProcessingProfileSettingsTile(),
           const IndicGenerationSettingsTile(),
           const IndicSpeechBackendSettingsTile(),
           const SizedBox(height: 24),

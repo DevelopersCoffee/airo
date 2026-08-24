@@ -1,9 +1,16 @@
 import 'dart:io';
 
+import 'package:core_ai/core_ai.dart';
+
 import '../../mind_service.dart';
 import '../domain/audio_retention_policy.dart';
 import '../domain/meeting_processing_job.dart';
 import '../domain/speech_language_mode.dart';
+import '../../processing/application/adaptive_processing_planner.dart';
+import '../../processing/application/processing_profile_bridge.dart';
+import '../../processing/domain/processing_plan.dart';
+import '../../processing/domain/processing_profile.dart';
+import 'meeting_processing_progress.dart';
 import 'speech_language_preference.dart';
 
 /// Adapts [MindService.process] (the existing "transcribe → minutes → save"
@@ -34,16 +41,26 @@ class MeetingProcessingJobRunner {
     required MindService mindService,
     required AudioRetentionPolicy Function() retentionPolicy,
     SpeechLanguageMode Function()? languageMode,
+    ProcessingProfile Function()? processingProfile,
     MeetingProcessedCallback? onProcessed,
+    MeetingJobProgressCallback? onProgress,
+    MeetingProcessingPlanCallback? onPlan,
   }) : _mindService = mindService,
        _retentionPolicy = retentionPolicy,
        _languageMode = languageMode ?? (() => SpeechLanguageMode.fallback),
-       _onProcessed = onProcessed;
+       _processingProfile = processingProfile ?? (() => ProcessingProfile.balanced),
+       _onProcessed = onProcessed,
+       _onProgress = onProgress,
+       _onPlan = onPlan;
 
   final MindService _mindService;
   final AudioRetentionPolicy Function() _retentionPolicy;
   final SpeechLanguageMode Function() _languageMode;
+  final ProcessingProfile Function() _processingProfile;
   final MeetingProcessedCallback? _onProcessed;
+  final MeetingJobProgressCallback? _onProgress;
+  final MeetingProcessingPlanCallback? _onPlan;
+  static const _planner = AdaptiveProcessingPlanner();
 
   Future<void> call(MeetingProcessingJob job) async {
     final mode = _languageMode();
@@ -55,6 +72,18 @@ class MeetingProcessingJobRunner {
         ready.detail.isNotEmpty ? ready.detail : 'Mind is not ready.',
       );
     }
+
+    final file = File(job.audioPath);
+    final audioBytes = file.existsSync() ? await file.length() : null;
+    final memory = await DeviceCapabilityService().getMemoryInfo();
+    final plan = await _planner.plan(
+      intent: ProcessingIntent.finalTranscript,
+      userProfile: _processingProfile(),
+      memoryInfo: memory,
+      audioBytes: audioBytes,
+    );
+    _mindService.applyFinalProcessingPlan(plan);
+    _onPlan?.call(job, plan);
     MindProgress? last;
     if (job.hasCompletedTranscript) {
       await for (final progress in _mindService.processWithTranscript(
@@ -65,6 +94,7 @@ class MeetingProcessingJobRunner {
         language: mode.processLanguageCode,
       )) {
         last = progress;
+        _onProgress?.call(job, progress);
       }
     } else if (job.hasRefineBaseline) {
       await for (final progress in _mindService.processWithRefine(
@@ -74,6 +104,7 @@ class MeetingProcessingJobRunner {
         language: mode.processLanguageCode,
       )) {
         last = progress;
+        _onProgress?.call(job, progress);
       }
     } else {
       await for (final progress in _mindService.process(
@@ -82,10 +113,17 @@ class MeetingProcessingJobRunner {
         language: mode.processLanguageCode,
       )) {
         last = progress;
+        _onProgress?.call(job, progress);
       }
     }
     if (last == null || last.stage == MindStage.failed) {
       throw StateError(last?.error ?? 'Processing produced no result.');
+    }
+    if (last.transcript.trim().isEmpty) {
+      throw StateError(
+        'No speech was detected in this audio. The file may be empty, '
+        'still downloading, or in an unsupported format.',
+      );
     }
     final onProcessed = _onProcessed;
     if (onProcessed != null) {
@@ -115,3 +153,9 @@ class MeetingProcessingJobRunner {
 /// uploaded file, and a podcast URL all become searchable notes.
 typedef MeetingProcessedCallback =
     Future<void> Function(MeetingProcessingJob job, MindProgress last);
+
+typedef MeetingJobProgressCallback =
+    void Function(MeetingProcessingJob job, MindProgress progress);
+
+typedef MeetingProcessingPlanCallback =
+    void Function(MeetingProcessingJob job, ProcessingPlan plan);
