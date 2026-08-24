@@ -644,6 +644,18 @@ fn live_fanout_path(meeting_id: &str) -> Option<PathBuf> {
     )
 }
 
+/// Settings override written by Dart (`mind_live_intelligence_mode`).
+fn read_live_intelligence_mode() -> String {
+    let Some(parent) = lock(&STORE_PARENT_DIR).clone() else {
+        return "automatic".into();
+    };
+    std::fs::read_to_string(parent.join("mind_live_intelligence_mode"))
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+        .unwrap_or_else(|| "automatic".into())
+}
+
 fn spawn_live_worker(session_id: String, rx: Receiver<Vec<i16>>) {
     let worker_id = session_id.clone();
     let spawned = std::thread::Builder::new()
@@ -1110,7 +1122,10 @@ pub fn start_live_session(
         live_fanout_path(&meeting_id).and_then(|path| CaptureFanout::create_file(path).ok());
     let stt_model_mb = lock(&SPEECH_MEMORY_BUDGET_MB).unwrap_or(512);
     let snapshot = probe_resource_snapshot(stt_model_mb);
-    let intelligence_policy = ResourceGovernor::policy(&snapshot);
+    let intelligence_policy = ResourceGovernor::apply_user_mode(
+        ResourceGovernor::policy(&snapshot),
+        &read_live_intelligence_mode(),
+    );
 
     let session = LiveSessionState {
         meeting_id,
