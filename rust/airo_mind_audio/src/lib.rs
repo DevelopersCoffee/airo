@@ -30,7 +30,11 @@ pub use governor::{
     BatteryBand, IntelligencePolicy, LiveAdmission, ResourceGovernor, ResourceSnapshot, ThermalBand,
 };
 pub use live::{LiveSpeechConfig, LiveSpeechPipeline, LiveStepReport};
-pub use probes::{parse_meminfo_mb, probe_resource_snapshot, thermal_from_millideg_c};
+pub use probes::{
+    parse_meminfo_mb, parse_pmset_battery_percent, parse_sysctl_memsize_mb,
+    parse_vm_stat_available_mb, parse_wmic_battery_percent, parse_wmic_memory_mb,
+    probe_resource_snapshot, thermal_from_millideg_c,
+};
 pub use ring::{PcmRingBuffer, RingPushReport};
 pub use speaker_activity::{SpeakerActivitySlice, SpeakerActivityTracker};
 pub use stabilizer::TranscriptStabilizer;

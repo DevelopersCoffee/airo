@@ -9,7 +9,7 @@ Verdict: [NOT PRODUCTION QUALIFIED](./production-qualification.md)
 |---|---|
 | `airo_mind_audio` fan-out + isolation + governor + latency harness | Run locally in this change |
 | `airo_mind_meeting` incremental Conversation IR | Run locally in this change |
-| `airo_mind_audio` Linux resource probes | Run locally in this change |
+| `airo_mind_audio` Linux / macOS / Windows resource probes | Parser tests on every host; live command path on matching OS |
 | `airo_mind_core` `check_speech_admission` | Run locally in this change |
 | `feature_mind` live IR rail + JSON parser | Added; Flutter SDK was not available in this agent environment |
 
