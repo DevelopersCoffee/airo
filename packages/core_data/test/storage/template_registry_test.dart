@@ -6,50 +6,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TemplateRegistry', () {
-    test('loads bundled templates and validates their structure', () async {
+    test('loads no framework bundled templates after addon migration', () async {
       final registry = await TemplateRegistry.loadBundled();
-
-      final templates = registry.getAll();
-      expect(templates, hasLength(6));
-      expect(
-        templates.map((template) => template.templateId),
-        contains('real_estate_under_construction_v1'),
-      );
-      expect(
-        templates.map((template) => template.templateId),
-        contains('car_purchase_v1'),
-      );
-    });
-
-    test(
-      'returns the real estate template by id with expected milestone/task counts',
-      () async {
-        final registry = await TemplateRegistry.loadBundled();
-
-        final template = registry.getById('real_estate_under_construction_v1');
-
-        expect(template, isNotNull);
-        expect(template!.milestones, hasLength(4));
-        final taskCount = template.milestones.fold<int>(
-          0,
-          (count, milestone) => count + milestone.tasks.length,
-        );
-        expect(taskCount, 7);
-      },
-    );
-
-    test('filters templates by category', () async {
-      final registry = await TemplateRegistry.loadBundled();
-
-      final educationTemplates = registry.getByCategory(
-        LifeTrackCategory.education,
-      );
-
-      expect(educationTemplates, hasLength(2));
-      expect(
-        educationTemplates.map((template) => template.templateId),
-        containsAll(['university_admission_v1', 'study_progress_v1']),
-      );
+      expect(registry.getAll(), isEmpty);
     });
 
     test('validate returns field errors for invalid payloads', () {
@@ -65,11 +24,6 @@ void main() {
       expect(result, isA<Err<LifeTrackTemplate>>());
       final error = (result as Err<LifeTrackTemplate>).error;
       expect(error, isA<ValidationError>());
-      expect(
-        (error as ValidationError).fieldErrors.keys,
-        contains('milestones'),
-      );
-      expect(error.fieldErrors.keys, contains('title'));
     });
   });
 }

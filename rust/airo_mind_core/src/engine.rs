@@ -75,12 +75,7 @@ pub struct TranscriptSegment {
 }
 
 impl TranscriptSegment {
-    pub fn new(
-        start_ms: u64,
-        end_ms: u64,
-        text: String,
-        state: TranscriptSegmentState,
-    ) -> Self {
+    pub fn new(start_ms: u64, end_ms: u64, text: String, state: TranscriptSegmentState) -> Self {
         Self {
             start_ms,
             end_ms,

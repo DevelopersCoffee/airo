@@ -17,6 +17,7 @@ import '../data/meeting_processing_queue_store.dart';
 import '../data/meeting_recording_service_gateway.dart';
 import '../domain/meeting_processing_job.dart';
 import 'meeting_capture_controller.dart';
+import 'meeting_live_session_coordinator.dart';
 import 'meeting_processing_queue.dart';
 
 /// Factory for one microphone encoder per capture session. Widget tests
@@ -70,6 +71,28 @@ Future<String> nextMeetingRecordingPath() async {
   final stamp = DateTime.now().millisecondsSinceEpoch;
   return p.join(recordingsDir.path, 'meeting-$stamp.m4a');
 }
+
+/// WAV path the native live fan-out writes. Must stay in lock-step with
+/// `airo_mind_whisper::api::meetings::live_fanout_path`:
+/// `{store_path.parent}/mind_recordings/{meetingId}.wav`.
+Future<String> nextLiveFanoutRecordingPath(String meetingId) async {
+  final dir = await getApplicationSupportDirectory();
+  final recordingsDir = Directory(p.join(dir.path, 'mind_recordings'));
+  await recordingsDir.create(recursive: true);
+  return p.join(recordingsDir.path, '$meetingId.wav');
+}
+
+final liveFanoutRecordingPathProvider =
+    Provider<Future<String> Function(String)>(
+      (ref) => nextLiveFanoutRecordingPath,
+    );
+
+/// Builds a live STT coordinator. Tests replace this to simulate admission
+/// refusal without loading the whisper cdylib.
+final meetingLiveSessionCoordinatorFactoryProvider =
+    Provider<MeetingLiveSessionCoordinator Function()>(
+      (ref) => () => MeetingLiveSessionCoordinator(),
+    );
 
 Future<String> _processingQueuePath() async {
   final dir = await getApplicationSupportDirectory();

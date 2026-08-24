@@ -192,10 +192,9 @@ impl Supervisor {
     /// Callers must still route work through [`Self::run_speech`] when they need
     /// admission and concurrency enforcement per window.
     pub fn speech_engine(&self) -> Result<&dyn SpeechEngine, RuntimeError> {
-        Ok(self
-            .speech
+        self.speech
             .as_deref()
-            .ok_or(RuntimeError::NoEngine("speech"))?)
+            .ok_or(RuntimeError::NoEngine("speech"))
     }
 
     /// Runs one generation job.
@@ -587,6 +586,23 @@ mod tests {
             !called,
             "refusal must happen BEFORE the engine allocates -- afterwards it is an OOM kill"
         );
+    }
+
+    #[test]
+    fn check_speech_admission_refuses_an_over_budget_engine() {
+        let s = supervisor(512, 4096);
+        assert_eq!(
+            s.check_speech_admission(),
+            Err(RuntimeError::OverBudget {
+                needs_mb: 4096,
+                budget_mb: 512
+            })
+        );
+    }
+
+    #[test]
+    fn check_speech_admission_allows_an_in_budget_engine() {
+        assert!(supervisor(2048, 512).check_speech_admission().is_ok());
     }
 
     #[test]

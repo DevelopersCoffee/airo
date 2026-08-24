@@ -3,8 +3,12 @@ import 'dart:io';
 import 'package:feature_mind/src/assistant/consent/mind_runtime_provider.dart';
 import 'package:feature_mind/src/assistant/consent/recording_consent_prompt.dart';
 import 'package:feature_mind/src/capture/application/meeting_capture_providers.dart';
+import 'package:feature_mind/src/capture/application/meeting_live_session_coordinator.dart';
+import 'package:feature_mind/src/capture/application/transcription_mode_preference.dart';
 import 'package:feature_mind/src/capture/data/meeting_recording_service_gateway.dart';
+import 'package:feature_mind/src/capture/domain/transcription_mode.dart';
 import 'package:feature_mind/src/capture/presentation/meeting_capture_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:feature_mind/src/runtime/models/log_models.dart';
 import 'package:feature_mind/src/runtime/ports/operation_log_port.dart';
 import 'package:feature_mind/src/runtime/scribe_mind_runtime.dart';
@@ -16,6 +20,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_audio_recorder_port.dart';
+import '../../support/fake_bridges.dart';
+import '../../support/fake_live_pcm_shim.dart';
 
 void main() {
   Future<void> pumpScreen(
@@ -76,25 +82,16 @@ void main() {
   );
 
   testWidgets(
-    'shows Multilingual · auto-detect badge and offline copy by default (#1774)',
+    'shows compact trust bar with language and on-device copy (#1774)',
     (tester) async {
       await pumpScreen(tester);
 
-      expect(find.byKey(const Key('scribe_trust_signals')), findsOneWidget);
       expect(
-        find.byKey(const Key('scribe_trust_language_badge')),
+        find.byKey(const Key('meeting_capture_compact_trust_bar')),
         findsOneWidget,
       );
       expect(find.text('Multilingual · auto-detect'), findsOneWidget);
       expect(find.text('On this device'), findsOneWidget);
-      expect(
-        find.byKey(const Key('scribe_trust_offline_copy')),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Sharing is always an explicit'),
-        findsOneWidget,
-      );
     },
   );
 
@@ -265,7 +262,10 @@ void main() {
       recorder.calls.where((call) => call.startsWith('start:')),
       isNotEmpty,
     );
-    expect(find.byKey(const Key('meeting_capture_visualizer')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meeting_capture_amplitude_meter')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('meeting_capture_pause_button')),
       findsOneWidget,
@@ -275,6 +275,77 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'live admission failure warns and still starts file recording',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        transcriptionModeKey: TranscriptionMode.live.storageValue,
+      });
+      // Reset before the callback returns — Flutter asserts foundation debug
+      // vars before package:test tearDowns run.
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      try {
+        final tempDir = Directory.systemTemp.createTempSync(
+          'meeting_capture_live_',
+        );
+        addTearDown(() {
+          if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+        });
+        PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
+        final recorder = FakeAudioRecorderPort();
+        await tester.binding.setSurfaceSize(const Size(400, 1400));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              mindRuntimeProvider.overrideWith(
+                (ref) => ScribeMindRuntime(log: _MemoryLog()),
+              ),
+              recordingConsentPromptProvider.overrideWithValue(false),
+              audioRecorderPortProvider.overrideWith(
+                (ref) =>
+                    () => recorder,
+              ),
+              meetingRecordingPathProvider.overrideWith(
+                (ref) =>
+                    () async => '${tempDir.path}/meeting.m4a',
+              ),
+              meetingRecordingServiceGatewayProvider.overrideWith(
+                (ref) => const NoopMeetingRecordingServiceGateway(),
+              ),
+              meetingLiveSessionCoordinatorFactoryProvider.overrideWithValue(
+                () => MeetingLiveSessionCoordinator(
+                  speechBridge: FakeMindSpeechBridge()
+                    ..liveStartError = StateError('OverBudget'),
+                  pcmShim: FakeLivePcmShim(),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: MeetingCaptureScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('meeting_capture_start_button')));
+        await tester.pump();
+        // Extra hop: persistLiveIntelligenceModeToNative awaits path_provider.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(
+          find.byKey(const Key('meeting_capture_live_warning')),
+          findsOneWidget,
+        );
+        expect(
+          recorder.calls.where((call) => call.startsWith('start:')),
+          isNotEmpty,
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
 }
 
 class _FakePathProvider extends PathProviderPlatform

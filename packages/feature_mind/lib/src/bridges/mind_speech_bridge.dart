@@ -138,6 +138,12 @@ final class TranscriptEventDegraded extends TranscriptEvent {
   final String message;
 }
 
+/// Incremental Conversation IR fact as JSON from the native extractor.
+final class TranscriptEventConversationIr extends TranscriptEvent {
+  const TranscriptEventConversationIr(this.json);
+  final String json;
+}
+
 /// The speech half of the pipeline, and the meeting library. Behind this
 /// abstraction rather than called directly is what makes `MindService`'s
 /// sequencing testable at all — see
@@ -203,7 +209,10 @@ abstract interface class MindSpeechBridge {
 
   void resumeLiveSession({required String sessionId});
 
-  Future<void> stopLiveSession({required String sessionId});
+  Future<void> stopLiveSession({
+    required String sessionId,
+    String? audioPath,
+  });
 
   void cancelLiveSession({required String sessionId});
 
@@ -332,6 +341,8 @@ class RustMindSpeechBridge implements MindSpeechBridge {
       rust.TranscriptEvent_Cancelled() => const TranscriptEventCancelled(),
       rust.TranscriptEvent_Degraded(:final message) =>
         TranscriptEventDegraded(message),
+      rust.TranscriptEvent_ConversationIr(:final json) =>
+        TranscriptEventConversationIr(json),
     };
   }
 
@@ -348,8 +359,11 @@ class RustMindSpeechBridge implements MindSpeechBridge {
       rust.resumeLiveSession(sessionId: sessionId);
 
   @override
-  Future<void> stopLiveSession({required String sessionId}) =>
-      rust.stopLiveSession(sessionId: sessionId);
+  Future<void> stopLiveSession({
+    required String sessionId,
+    String? audioPath,
+  }) =>
+      rust.stopLiveSession(sessionId: sessionId, audioPath: audioPath);
 
   @override
   void cancelLiveSession({required String sessionId}) =>

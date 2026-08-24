@@ -151,10 +151,7 @@ pub fn speech_final_requirement(
 
 /// Live sessions: interim cap at Draft until real-time-factor resolution lands
 /// (design spec §6.7 option 1).
-pub fn speech_live_requirement(
-    memory_budget_mb: u32,
-    language: ModelLanguage,
-) -> ModelRequirement {
+pub fn speech_live_requirement(memory_budget_mb: u32, language: ModelLanguage) -> ModelRequirement {
     ModelRequirement {
         task: ModelTask::Speech,
         memory_budget_mb,

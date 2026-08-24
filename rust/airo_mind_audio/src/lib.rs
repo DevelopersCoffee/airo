@@ -8,11 +8,16 @@
 #![deny(unsafe_code)]
 
 mod decode;
+mod fanout;
+mod governor;
 mod live;
+mod probes;
 mod resample;
 mod ring;
+mod speaker_activity;
 mod stabilizer;
 mod vad;
+mod wav_write;
 
 pub use airo_mind_core::wav;
 pub use airo_mind_core::wav::Pcm;
@@ -20,10 +25,21 @@ pub use airo_mind_core::wav::Pcm;
 pub const TARGET_SAMPLE_RATE: u32 = 16_000;
 pub const TARGET_CHANNELS: u16 = 1;
 
+pub use fanout::{CaptureFanout, FanoutReport};
+pub use governor::{
+    BatteryBand, IntelligencePolicy, LiveAdmission, ResourceGovernor, ResourceSnapshot, ThermalBand,
+};
 pub use live::{LiveSpeechConfig, LiveSpeechPipeline, LiveStepReport};
+pub use probes::{
+    parse_meminfo_mb, parse_pmset_battery_percent, parse_sysctl_memsize_mb,
+    parse_vm_stat_available_mb, parse_wmic_battery_percent, parse_wmic_memory_mb,
+    probe_resource_snapshot, thermal_from_millideg_c,
+};
 pub use ring::{PcmRingBuffer, RingPushReport};
+pub use speaker_activity::{SpeakerActivitySlice, SpeakerActivityTracker};
 pub use stabilizer::TranscriptStabilizer;
-pub use vad::{EnergyVad, VadState};
+pub use vad::{rms_energy, EnergyVad, VadState};
+pub use wav_write::IncrementalWavWriter;
 
 /// Read [path] and return whisper-ready PCM.
 pub fn preprocess_path(path: &std::path::Path) -> Result<Pcm, String> {

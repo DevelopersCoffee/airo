@@ -4,11 +4,32 @@
   "version": "1.0.0",
   "behaviors": ["graph_workflow"],
   "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
-  "tools": ["query_entity_graph"],
+  "tools": ["query_entity_graph", "record_lifetrack_facts"],
   "adapter": {
     "kind": "required_built_in",
     "contract": "graph_workflow_v1"
   },
-  "workflow": { "subject_kind": "property" },
+  "workflow": {
+    "subject_kind": "property",
+    "template_id": "real_estate_under_construction_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "flat",
+      "apartment",
+      "home",
+      "house",
+      "builder",
+      "property",
+      "real estate",
+      "rera"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this property purchase track whenever you want a status check.",
+    "dedupe_field_labels": [
+      "RERA Registration Number",
+      "Builder",
+      "Project",
+      "Subject"
+    ]
+  },
   "built_in_priority": 12
 }

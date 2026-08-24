@@ -1,0 +1,152 @@
+{
+  "template_id": "insurance_claim_v1",
+  "title": "Insurance Claim Tracking Template",
+  "description": "A bundled skeleton for policy details, filing a claim, documents, follow-up, and settlement.",
+  "category": "insurance",
+  "version": "1.1",
+  "milestones": [
+    {
+      "name": "Phase 1: Policy & Incident",
+      "objective": "Record the policy on file and capture incident details",
+      "tasks": [
+        {
+          "summary": "Record policy details",
+          "requirements": [
+            {
+              "label": "Insurer",
+              "type": "text",
+              "is_required": true,
+              "hint": "For example Niva Bupa or Star Insurance"
+            },
+            {
+              "label": "Policy Number",
+              "type": "text",
+              "is_required": false
+            },
+            {
+              "label": "Broker / Intermediary",
+              "type": "text",
+              "is_required": false,
+              "hint": "For example Policybazaar"
+            },
+            {
+              "label": "Product Name",
+              "type": "text",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "summary": "Collect incident evidence",
+          "requirements": [
+            {
+              "label": "Evidence Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Claim Filing",
+      "objective": "Store claim identifiers and submission references",
+      "tasks": [
+        {
+          "summary": "Record claim references",
+          "requirements": [
+            {
+              "label": "Claim ID",
+              "type": "text",
+              "is_required": true
+            },
+            {
+              "label": "Intermediary Reference",
+              "type": "text",
+              "is_required": false,
+              "hint": "Policybazaar or broker reference"
+            },
+            {
+              "label": "Claim Type",
+              "type": "text",
+              "is_required": false,
+              "hint": "Reimbursement, cashless, or other"
+            }
+          ]
+        },
+        {
+          "summary": "Submit claim form",
+          "requirements": [
+            {
+              "label": "Claim Submission Reference",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Follow-up",
+      "objective": "Track documents and insurer communication",
+      "tasks": [
+        {
+          "summary": "Collect required documents",
+          "requirements": [
+            {
+              "label": "Discharge Summary",
+              "type": "document",
+              "is_required": true
+            },
+            {
+              "label": "Hospital Bills",
+              "type": "document",
+              "is_required": true
+            },
+            {
+              "label": "ID Proof",
+              "type": "document",
+              "is_required": false
+            },
+            {
+              "label": "Prescriptions",
+              "type": "document",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "summary": "Log insurer follow-up requests",
+          "requirements": [
+            {
+              "label": "Follow-up Log",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Settlement",
+      "objective": "Confirm payout and close pending actions",
+      "tasks": [
+        {
+          "summary": "Record settlement outcome",
+          "requirements": [
+            {
+              "label": "Settlement Notes",
+              "type": "text",
+              "is_required": true
+            },
+            {
+              "label": "Amount Received",
+              "type": "number",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

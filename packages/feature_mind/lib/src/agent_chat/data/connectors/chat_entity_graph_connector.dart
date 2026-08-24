@@ -1,3 +1,4 @@
+import '../../../addons/graph_workflow/graph_workflow_coordinator.dart';
 import '../../domain/models/agent_skill.dart';
 import '../../domain/models/chat_entity_graph.dart';
 import '../../domain/services/agent_connector.dart';
@@ -5,10 +6,14 @@ import '../../domain/services/chat_entity_graph_pending.dart';
 import '../repositories/chat_entity_graph_session.dart';
 
 class ChatEntityGraphConnector implements AgentConnector {
-  ChatEntityGraphConnector({ChatEntityGraphSession? session})
-    : _session = session ?? chatEntityGraphSession;
+  ChatEntityGraphConnector({
+    ChatEntityGraphSession? session,
+    GraphWorkflowCoordinator? graphCoordinator,
+  }) : _session = session ?? chatEntityGraphSession,
+       _graphCoordinator = graphCoordinator;
 
   final ChatEntityGraphSession _session;
+  final GraphWorkflowCoordinator? _graphCoordinator;
 
   @override
   String get name => 'query_entity_graph';
@@ -30,10 +35,10 @@ class ChatEntityGraphConnector implements AgentConnector {
 
     final graph = await _session.ensureLoaded();
     final intent = (arguments['intent'] as String?)?.trim().toLowerCase();
-    final markdown = format(
+    final markdown = _formatMarkdown(
       graph: graph,
       query: query,
-      pending: intent == 'pending',
+      pendingIntent: intent == 'pending',
     );
     return ConnectorResult(
       data: {
@@ -46,16 +51,29 @@ class ChatEntityGraphConnector implements AgentConnector {
     );
   }
 
-  static String format({
+  String _formatMarkdown({
     required ChatEntityGraph graph,
     required String query,
-    bool pending = false,
+    required bool pendingIntent,
   }) {
-    const pendingFormatter = ChatEntityGraphPending();
-    if (pending || pendingFormatter.wantsPending(query)) {
-      return pendingFormatter.format(graph: graph, query: query);
+    final coordinator = _graphCoordinator;
+    if (coordinator != null) {
+      if (pendingIntent || coordinator.wantsPending(query)) {
+        return coordinator.formatPending(graph: graph, query: query);
+      }
+    } else {
+      final pendingFormatter = ChatEntityGraphPending();
+      if (pendingIntent || pendingFormatter.wantsPending(query)) {
+        return pendingFormatter.format(graph: graph, query: query);
+      }
     }
+    return formatGraphListing(graph: graph, query: query);
+  }
 
+  static String formatGraphListing({
+    required ChatEntityGraph graph,
+    required String query,
+  }) {
     if (graph.nodes.isEmpty) {
       return 'I have no stored chat entities yet. I will extract them from what you type.';
     }

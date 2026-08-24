@@ -4,11 +4,27 @@
   "version": "1.0.0",
   "behaviors": ["graph_workflow"],
   "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
-  "tools": ["query_entity_graph"],
+  "tools": ["query_entity_graph", "record_lifetrack_facts"],
   "adapter": {
     "kind": "required_built_in",
     "contract": "graph_workflow_v1"
   },
-  "workflow": { "subject_kind": "hospital_stay" },
+  "workflow": {
+    "subject_kind": "hospital_stay",
+    "template_id": "medical_surgery_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "doctor",
+      "hospital",
+      "medical",
+      "operation",
+      "procedure",
+      "recovery",
+      "surgery",
+      "treatment"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this hospital recovery track whenever you want a status check.",
+    "dedupe_field_labels": ["Hospital", "Surgery Date", "Subject"]
+  },
   "built_in_priority": 15
 }

@@ -58,6 +58,7 @@ dependencies:
   # same package and version core_data, platform_player and feature_iptv
   # already use for the same purpose.
   connectivity_plus: ^7.2.0
+  crypto: ^3.0.3
   # Markdown export (#1663): rendering the transcript body runs off the main
   # isolate once it crosses ~50 KB, per the repo's own parsing rule.
   core_workers:
@@ -84,6 +85,20 @@ flutter:
   uses-material-design: true
   assets:
     - skills/catalog.json
+    - addons/bundled_workflow_templates.jsonl
+    - addons/insurance-planner/addon.json
+    - addons/insurance-planner/lifetrack_template.json
+    - addons/hospital-recovery-planner/addon.json
+    - addons/hospital-recovery-planner/lifetrack_template.json
+    - addons/property-purchase-planner/addon.json
+    - addons/property-purchase-planner/lifetrack_template.json
+    - addons/car-purchase-planner/addon.json
+    - addons/car-purchase-planner/lifetrack_template.json
+    - addons/university-admission-planner/addon.json
+    - addons/university-admission-planner/lifetrack_template.json
+    - addons/study-progress-tracker/addon.json
+    - addons/study-progress-tracker/lifetrack_template.json
+    - addons/draft-diet-plan/addon.json
   # No bundled `assets/models/` any more. Neither app ships model weights in
   # the APK -- both default to `DownloadModelProvider`
   # (`docs/superpowers/specs/2026-08-07-airo-mind-abstraction-layer.md`).

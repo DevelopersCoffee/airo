@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "id": "university-admission-planner",
+  "version": "1.0.0",
+  "behaviors": ["graph_workflow"],
+  "capabilities": ["conversation.current_turn", "graph.addon_scope.read"],
+  "tools": ["query_entity_graph", "record_lifetrack_facts"],
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "graph_workflow_v1"
+  },
+  "workflow": {
+    "subject_kind": "admission_cycle",
+    "template_id": "university_admission_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "admission",
+      "college",
+      "education",
+      "enrollment",
+      "student",
+      "university",
+      "visa"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this admission track whenever you want a status check.",
+    "dedupe_field_labels": [
+      "University Shortlist",
+      "Submitted Programs",
+      "Visa or Enrollment Notes",
+      "Subject"
+    ]
+  },
+  "built_in_priority": 13
+}

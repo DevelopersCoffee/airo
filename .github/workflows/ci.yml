@@ -419,6 +419,17 @@ jobs:
         run: |
           cd app
           flutter test --coverage --reporter=compact
+          # Mind-shell tests (`test_mind/`) exercise `lib/core/mind/**`, which is
+          # excluded from the default analyzer graph but still ships in app/lib
+          # and counts toward Sonar new-code coverage. Merge their lcov trace so
+          # Sonar sees the same lines the airo-mind-shell job already proves.
+          cp coverage/lcov.info coverage/lcov.base.info
+          if ! command -v lcov >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y lcov
+          fi
+          flutter test test_mind/ --coverage --merge-coverage \
+            --reporter=compact --dart-define=APP_VARIANT=mind
 
       - name: Convert coverage to SonarQube generic format
         if: always() && github.event_name == 'push'

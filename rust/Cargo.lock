@@ -195,6 +195,7 @@ dependencies = [
  "airo_mind_audio",
  "airo_mind_core",
  "airo_mind_diarize",
+ "airo_mind_meeting",
  "airo_mind_transcript",
  "flutter_rust_bridge",
  "serde",

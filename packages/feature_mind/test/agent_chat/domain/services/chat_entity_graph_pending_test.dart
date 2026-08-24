@@ -1,3 +1,4 @@
+import 'package:feature_mind/src/addons/built_in_addon_registry.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_graph_pending.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_linker.dart';
@@ -5,7 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const linker = ChatEntityLinker();
-  const pending = ChatEntityGraphPending();
+  final pending = ChatEntityGraphPending();
+  final builtIn = BuiltInAddonRegistry.create();
+
+  String formatViaCoordinator(ChatEntityGraph graph, String query) =>
+      builtIn.graphCoordinator.formatPending(graph: graph, query: query);
 
   test('matches claim pending questions without the word track', () {
     expect(pending.wantsPending("What's pending on my claim?"), isTrue);
@@ -28,17 +33,17 @@ void main() {
       'All documents received after surgery at City Hospital.',
     );
 
-    final markdown = pending.format(
-      graph: graph,
-      query: "What's pending on my claim?",
+    final markdown = formatViaCoordinator(
+      graph,
+      "What's pending on my claim?",
     );
 
     expect(markdown, contains('Stored for Niva Bupa claim 9001001'));
     expect(markdown, contains('Insurer: Niva Bupa'));
     expect(markdown, contains('Documents: received'));
     expect(markdown, contains('Not on the graph yet'));
-    expect(markdown, contains('Settlement outcome'));
-    expect(markdown, contains('Policy number'));
+    expect(markdown, contains('Settlement Notes'));
+    expect(markdown, contains('Policy Number'));
     expect(markdown, isNot(contains('Claim documents (not marked received)')));
     expect(markdown, contains('Also linked'));
     expect(markdown, contains('City Hospital'));
@@ -50,9 +55,9 @@ void main() {
       'Star Insurance Claim ID 111222',
     );
 
-    final markdown = pending.format(
-      graph: graph,
-      query: 'What is pending on my claim?',
+    final markdown = formatViaCoordinator(
+      graph,
+      'What is pending on my claim?',
     );
 
     expect(markdown, contains('Claim documents (not marked received)'));
@@ -67,9 +72,9 @@ void main() {
         'surgery at City Hospital on 12 Sep',
       );
 
-      final markdown = pending.format(
-        graph: graph,
-        query: "What's pending on my hospital recovery?",
+      final markdown = formatViaCoordinator(
+        graph,
+        "What's pending on my hospital recovery?",
       );
 
       expect(markdown, contains('City Hospital'));
@@ -93,9 +98,9 @@ void main() {
         'auth ref PREAUTH-44',
       );
 
-      final markdown = pending.format(
-        graph: graph,
-        query: "What's pending on my hospital recovery?",
+      final markdown = formatViaCoordinator(
+        graph,
+        "What's pending on my hospital recovery?",
       );
 
       expect(markdown, contains('Required Tests List: CBC and ECG'));
@@ -114,9 +119,9 @@ void main() {
       'buying Tower B floor 14',
     );
 
-    final markdown = pending.format(
-      graph: graph,
-      query: "What's pending on my flat?",
+    final markdown = formatViaCoordinator(
+      graph,
+      "What's pending on my flat?",
     );
 
     expect(markdown, contains('Not on the graph yet'));

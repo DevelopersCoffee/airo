@@ -81,6 +81,21 @@ export 'src/search/meeting_embedding_store.dart';
 export 'src/search/meeting_text_chunker.dart';
 export 'src/search/semantic_search_ranker.dart';
 
+// Explicit capability x platform qualification matrix and state derivation
+// (docs/mind/platform-capability-matrix.md). The resolved state is capped by
+// actual runtime signals so the UI never claims Production from a flag alone.
+export 'src/qualification/mind_qualification.dart';
+
+// Unified resource/thermal/battery governor + failure-isolation capture health
+// (docs/mind/real-time-architecture.md §3). Recording and STT are invariants;
+// only the intelligence tiers degrade under pressure.
+export 'src/governor/mind_resource_governor.dart';
+export 'src/governor/mind_capture_health.dart';
+
+// Streaming transcript sequencer: monotonic sequence numbers, dedup, and
+// deterministic partial/stable/final reconciliation (real-time spec §4-5).
+export 'src/transcript/mind_transcript_sequencer.dart';
+
 // Module contract + host seam + routes — the assistant hub, merged in from
 // `feature_assistant` (`docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md`,
 // Phase 2).
@@ -379,9 +394,12 @@ export 'src/capture/application/meeting_processing_job_runner.dart';
 export 'src/assistant/consent/recording_consent_prompt.dart';
 export 'src/capture/application/meeting_capture_providers.dart';
 export 'src/capture/application/audio_retention_preference.dart';
+export 'src/capture/application/live_capture_preferences.dart';
 export 'src/capture/application/speech_language_preference.dart';
+export 'src/capture/domain/live_intelligence_mode.dart';
 export 'src/capture/presentation/meeting_capture_screen.dart';
 export 'src/capture/presentation/audio_retention_settings_tile.dart';
+export 'src/capture/presentation/live_capture_settings_tiles.dart';
 export 'src/capture/presentation/speech_language_settings_tile.dart';
 export 'src/processing/application/processing_profile_preference.dart';
 export 'src/processing/domain/processing_profile.dart';

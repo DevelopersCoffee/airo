@@ -445,7 +445,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (lifeTrackRecordConnector != null) {
       connectors.add(lifeTrackRecordConnector);
     }
-    connectors.add(ChatEntityGraphConnector());
+    connectors.add(
+      ChatEntityGraphConnector(
+        graphCoordinator: ref.read(graphWorkflowCoordinatorProvider),
+      ),
+    );
     return AgentConnectorRegistry(connectors: connectors);
   }
 
@@ -685,9 +689,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       id = chats.first.id;
     }
     final turns = await _workspace.loadTranscript(id);
-    final folderId = _folderIdFor(id, chats);
-    final graph = await _workspace.loadSharedGraph(folderId);
-    await chatEntityGraphSession.replaceGraph(graph);
+    chatEntityGraphSession.bindConversation(id);
+    final graph = await chatEntityGraphSession.ensureLoaded();
     if (!mounted) return;
     setState(() {
       _conversationId = id;
@@ -719,9 +722,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return null;
   }
 
-  Future<void> _applySharedGraph(String? folderId) async {
-    final graph = await _workspace.loadSharedGraph(folderId);
-    await chatEntityGraphSession.replaceGraph(graph);
+  Future<void> _loadEphemeralGraphForActiveConversation() async {
+    chatEntityGraphSession.bindConversation(_conversationId);
+    final graph = await chatEntityGraphSession.ensureLoaded();
     if (mounted) setState(() => _entityGraph = graph);
   }
 
@@ -736,8 +739,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _conversationId ??= await _workspace.createChat();
     final id = _conversationId!;
     await _workspace.replaceTranscript(id, turns);
-    await _workspace.saveSharedGraph(_folderIdFor(id), _entityGraph);
-    await _workspace.saveChatGraph(id, _entityGraph);
+    // Ephemeral add-on graphs are not persisted to workspace storage (§8).
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_activeChatPref, id);
@@ -768,7 +770,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
     await _refreshChatList();
     if (targetFolder != previousFolder) {
-      await _applySharedGraph(targetFolder);
+      await _loadEphemeralGraphForActiveConversation();
     }
   }
 
@@ -808,7 +810,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ..clear()
         ..addAll(turns.map(_messageFromTurn));
     });
-    await _applySharedGraph(_folderIdFor(id));
+    await _loadEphemeralGraphForActiveConversation();
   }
 
   Future<void> _moveChat(String chatId, String? folderId) async {
@@ -816,13 +818,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     await _workspace.moveChatToFolder(chatId, folderId);
     await _refreshChatList();
     if (chatId == _conversationId) {
-      await _applySharedGraph(folderId);
+      await _loadEphemeralGraphForActiveConversation();
     }
   }
 
   Future<void> _removeChat(String id) async {
     final wasActive = id == _conversationId;
     final folderId = _folderIdFor(id);
+    chatEntityGraphSession.clearConversation(id);
     if (wasActive) {
       _conversationId = null;
     } else {
@@ -840,7 +843,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _resetResearchUi();
     setState(() => _messages.clear());
     await _refreshChatList();
-    await _applySharedGraph(folderId);
+    await _loadEphemeralGraphForActiveConversation();
   }
 
   void _openMemoryGraph() {
@@ -1813,7 +1816,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _messages.add(
           AgentChatMessage(
-            text: 'Okay, I will not store that claim journey on this device.',
+            text: 'Okay, I will not store that journey on this device.',
             isUser: false,
           ),
         );
@@ -2368,7 +2371,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               result.message ??
               (result.isError
                   ? 'I could not save that journey locally.'
-                  : 'Saved the journey on this device.'),
+                  : 'Saved this journey on this device.'),
           isUser: false,
           traces: [
             AgentActionTrace(

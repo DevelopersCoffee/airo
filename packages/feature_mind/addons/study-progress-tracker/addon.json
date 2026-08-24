@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "id": "study-progress-tracker",
+  "version": "1.0.0",
+  "behaviors": ["graph_workflow"],
+  "capabilities": [],
+  "tools": [],
+  "adapter": {
+    "kind": "required_built_in",
+    "contract": "graph_workflow_v1"
+  },
+  "workflow": {
+    "subject_kind": "study_progress",
+    "template_id": "study_progress_v1",
+    "template_asset": "lifetrack_template.json",
+    "fallback_keywords": [
+      "chapter",
+      "coursework",
+      "exam",
+      "homework",
+      "revision",
+      "study progress",
+      "study",
+      "syllabus"
+    ],
+    "record_follow_up_hint": "Ask what is pending on this study track whenever you want a status check.",
+    "dedupe_field_labels": [
+      "Subject",
+      "Last Topic",
+      "Exam Date"
+    ]
+  },
+  "built_in_priority": 5
+}

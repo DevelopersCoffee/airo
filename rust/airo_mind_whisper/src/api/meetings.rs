@@ -34,7 +34,9 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{LazyLock, Mutex};
+use std::thread::JoinHandle;
 
 use flutter_rust_bridge::frb;
 
@@ -45,20 +47,25 @@ use crate::frb_generated::StreamSink;
 
 use crate::transcript_store;
 use crate::WhisperSpeechEngine;
+use airo_mind_audio::{
+    probe_resource_snapshot, rms_energy, CaptureFanout, IntelligencePolicy, LiveSpeechConfig,
+    LiveSpeechPipeline, ResourceGovernor, SpeakerActivityTracker,
+};
+use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_core::models;
 use airo_mind_core::wav::Pcm;
 use airo_mind_core::{
     ActionStatus, AudioInput, CancelToken, DecisionStatus, EngineError, Meeting, MeetingActionItem,
-    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex,
-    Supervisor, TranscriptSegment, TranscriptionOptions,
+    MeetingDecision, MeetingMetric, MeetingStore, ResourceBudget, SearchIndex, Supervisor,
+    TranscriptSegment, TranscriptionOptions,
 };
-use airo_mind_audio::{LiveSpeechConfig, LiveSpeechPipeline};
-use airo_mind_core::engine::TranscriptSegmentState;
 use airo_mind_diarize::{
     diarize_segments, product_diarization_strategy, resolve_embedder, DiarizationStrategy,
     SpeakerEmbedder, SpeakerEnrollmentStore,
 };
+use airo_mind_meeting::IncrementalConversationIr;
 use airo_mind_transcript::Segment;
+use airo_mind_transcript::VocabularyIntelligence;
 
 // ---------------------------------------------------------------------------
 // Wire types
@@ -472,6 +479,9 @@ pub enum TranscriptEvent {
     Cancelled,
     /// Ring overflow, thermal backoff, or another recoverable live degradation.
     Degraded { message: String },
+    /// One incremental Conversation IR fact (JSON of `ConversationIrEvent`).
+    /// Evidence is a segment id, never raw audio (ADR-0022).
+    ConversationIr { json: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -495,6 +505,11 @@ static LIBRARY: Mutex<Option<Library>> = Mutex::new(None);
 /// Models directory from the last successful `initialize` — used to pick
 /// diarization strategy (ECAPA optional weights).
 static MODELS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+
+/// Parent of `MindConfig.store_path` — live fan-out WAVs live in
+/// `{parent}/mind_recordings/{meeting_id}.wav`, matching Dart's app-support
+/// layout (`mind_service` store + `nextMeetingRecordingPath`).
+static STORE_PARENT_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 static SPEECH_MEMORY_BUDGET_MB: Mutex<Option<u32>> = Mutex::new(None);
 
@@ -521,10 +536,24 @@ struct LiveSessionState {
     sink: StreamSink<TranscriptEvent>,
     /// One degradation notice per session — ring overflow can drop many frames.
     degraded_notified: bool,
+    /// Provisional live speaker lanes (`P1`); reconciled after recording.
+    speaker_activity: SpeakerActivityTracker,
+    last_window_energy: f32,
+    /// Authoritative file writer. Live STT consumes a bounded channel, not this handle.
+    fanout: Option<CaptureFanout>,
+    live_tx: Option<SyncSender<Vec<i16>>>,
+    conversation_ir: IncrementalConversationIr,
+    intelligence_policy: IntelligencePolicy,
 }
 
 static LIVE_SESSIONS: LazyLock<Mutex<HashMap<String, LiveSessionState>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static LIVE_WORKERS: LazyLock<Mutex<HashMap<String, JoinHandle<()>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+static LIVE_VOCABULARY: LazyLock<VocabularyIntelligence> =
+    LazyLock::new(VocabularyIntelligence::with_defaults);
 
 /// Cross-meeting speaker enrollment profiles synced from Dart (#504).
 static SPEAKER_ENROLLMENT: LazyLock<Mutex<SpeakerEnrollmentStore>> =
@@ -575,8 +604,8 @@ fn ensure_speech_engine_for_requirement(
         .clone()
         .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
 
-    let speech_model = models::resolve(&requirement, &models_dir, &[], false)
-        .map_err(|e| e.to_string())?;
+    let speech_model =
+        models::resolve(&requirement, &models_dir, &[], false).map_err(|e| e.to_string())?;
 
     if lock(&LOADED_SPEECH_PATH).as_deref() == Some(&speech_model.path) {
         return Ok(());
@@ -620,6 +649,89 @@ fn maybe_emit_live_degraded(session: &mut LiveSessionState, message: &str) -> Re
         .map_err(|e| e.to_string())
 }
 
+fn sanitize_meeting_id(meeting_id: &str) -> String {
+    let safe: String = meeting_id
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if safe.is_empty() {
+        "meeting".into()
+    } else {
+        safe
+    }
+}
+
+fn live_fanout_path(meeting_id: &str) -> Option<PathBuf> {
+    let parent = lock(&STORE_PARENT_DIR).clone()?;
+    Some(
+        parent
+            .join("mind_recordings")
+            .join(format!("{}.wav", sanitize_meeting_id(meeting_id))),
+    )
+}
+
+/// Settings override written by Dart (`mind_live_intelligence_mode`).
+fn read_live_intelligence_mode() -> String {
+    let Some(parent) = lock(&STORE_PARENT_DIR).clone() else {
+        return "automatic".into();
+    };
+    std::fs::read_to_string(parent.join("mind_live_intelligence_mode"))
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|raw| !raw.is_empty())
+        .unwrap_or_else(|| "automatic".into())
+}
+
+fn spawn_live_worker(session_id: String, rx: Receiver<Vec<i16>>) {
+    let worker_id = session_id.clone();
+    let spawned = std::thread::Builder::new()
+        .name(format!("airo-live-{session_id}"))
+        .spawn(move || loop {
+            let chunk = match rx.recv() {
+                Ok(samples) => samples,
+                Err(_) => break,
+            };
+            let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                {
+                    let mut sessions = lock(&LIVE_SESSIONS);
+                    let Some(session) = sessions.get_mut(&worker_id) else {
+                        return;
+                    };
+                    if session.paused {
+                        return;
+                    }
+                    session.pipeline.push_pcm(&chunk);
+                    session.last_window_energy = rms_energy(&chunk);
+                }
+                let _ = run_live_pipeline_step(&worker_id);
+            }));
+            if panicked.is_err() {
+                let mut sessions = lock(&LIVE_SESSIONS);
+                if let Some(session) = sessions.get_mut(&worker_id) {
+                    let _ = maybe_emit_live_degraded(
+                        session,
+                        "Live intelligence degraded — native worker recovered. Recording continues.",
+                    );
+                }
+            }
+        });
+    if let Ok(handle) = spawned {
+        lock(&LIVE_WORKERS).insert(session_id, handle);
+    }
+}
+
+fn stop_live_worker(session_id: &str) {
+    if let Some(handle) = lock(&LIVE_WORKERS).remove(session_id) {
+        let _ = handle.join();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The capability surface
 // ---------------------------------------------------------------------------
@@ -642,10 +754,15 @@ pub fn initialize(config: MindConfig) -> Result<(), String> {
     *lock(&SPEECH_MEMORY_BUDGET_MB) = Some(config.memory_budget_mb);
     *lock(&INITIALIZED_SPEECH_LANGUAGE) = Some(config.speech_language);
     *lock(&LIBRARY) = Some(Library { store, index });
+    *lock(&STORE_PARENT_DIR) = PathBuf::from(&config.store_path)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .or_else(|| Some(PathBuf::from(".")));
 
-    ensure_speech_engine_for_requirement(
-        models::speech_file_requirement(config.memory_budget_mb, config.speech_language.into()),
-    )?;
+    ensure_speech_engine_for_requirement(models::speech_file_requirement(
+        config.memory_budget_mb,
+        config.speech_language.into(),
+    ))?;
     crate::mind_runtime_state::open_mind_runtime(&config.models_dir)?;
     // Metal device globals are C++ function-local statics. Register after
     // load so this handler runs *before* ggml's unique_ptr destructor.
@@ -887,22 +1004,62 @@ pub fn transcribe_recording(
     })
 }
 
+fn vocabulary_correct_stable(text: &str) -> String {
+    LIVE_VOCABULARY.correct(text).corrected_text
+}
+
+fn provisional_speaker_label(index: u8) -> String {
+    format!("sp{index}")
+}
+
 fn emit_live_delta(
     session: &mut LiveSessionState,
     session_id: &str,
     segment: TranscriptSegment,
 ) -> Result<(), String> {
+    let raw_text = segment.text.trim().to_string();
+    let display_text = match segment.state {
+        TranscriptSegmentState::Partial => raw_text.clone(),
+        TranscriptSegmentState::Stable | TranscriptSegmentState::Final => {
+            vocabulary_correct_stable(&raw_text)
+        }
+    };
+
+    let speaker_label = match segment.state {
+        TranscriptSegmentState::Partial => Some(provisional_speaker_label(
+            session.speaker_activity.active_speaker_index(),
+        )),
+        TranscriptSegmentState::Stable => {
+            let index = session.speaker_activity.on_utterance(
+                segment.start_ms,
+                segment.end_ms,
+                session.last_window_energy,
+            );
+            Some(provisional_speaker_label(index))
+        }
+        TranscriptSegmentState::Final => session
+            .segments
+            .last()
+            .and_then(|record| record.speaker_label.clone()),
+    };
+
     let segment_id = match segment.state {
         TranscriptSegmentState::Partial => format!("s{}", session.segment_index),
         TranscriptSegmentState::Stable => {
             let id = format!("s{}", session.segment_index);
-            let record = transcript_segment_record(session.segments.len(), &segment);
+            let mut corrected_segment = TranscriptSegment::new(
+                segment.start_ms,
+                segment.end_ms,
+                display_text.clone(),
+                segment.state,
+            );
+            let record = transcript_segment_record(session.segments.len(), &corrected_segment);
             let record = TranscriptSegmentRecord {
                 id: id.clone(),
                 start_ms: record.start_ms,
                 end_ms: record.end_ms,
                 text: record.text,
-                speaker_label: None,
+                speaker_label: speaker_label.clone(),
             };
             if !session.transcript.is_empty() {
                 session.transcript.push(' ');
@@ -914,13 +1071,18 @@ fn emit_live_delta(
         }
         TranscriptSegmentState::Final => {
             if let Some(record) = session.segments.last_mut() {
-                let trimmed = segment.text.trim();
-                record.text = trimmed.to_string();
+                record.text = display_text.clone();
                 record.end_ms = segment.end_ms;
                 record.start_ms = segment.start_ms;
                 record.id.clone()
             } else {
-                let record = transcript_segment_record(session.segments.len(), &segment);
+                let mut corrected_segment = TranscriptSegment::new(
+                    segment.start_ms,
+                    segment.end_ms,
+                    display_text.clone(),
+                    segment.state,
+                );
+                let record = transcript_segment_record(session.segments.len(), &corrected_segment);
                 session.segments.push(record.clone());
                 record.id
             }
@@ -929,9 +1091,9 @@ fn emit_live_delta(
 
     let delta = TranscriptDeltaRecord {
         session_id: session_id.to_string(),
-        segment_id,
-        speaker_label: None,
-        text: segment.text.trim().to_string(),
+        segment_id: segment_id.clone(),
+        speaker_label: speaker_label.clone(),
+        text: display_text.clone(),
         start_ms: segment.start_ms,
         end_ms: segment.end_ms,
         state: TranscriptSegmentStateWire::from(segment.state),
@@ -939,7 +1101,46 @@ fn emit_live_delta(
     session
         .sink
         .add(TranscriptEvent::Delta { delta })
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    if segment.state == TranscriptSegmentState::Stable {
+        emit_live_ir(
+            session,
+            &segment_id,
+            speaker_label,
+            &display_text,
+            segment.start_ms,
+            segment.end_ms,
+        )?;
+    }
+    Ok(())
+}
+
+fn emit_live_ir(
+    session: &mut LiveSessionState,
+    segment_id: &str,
+    speaker_label: Option<String>,
+    text: &str,
+    start_ms: u64,
+    end_ms: u64,
+) -> Result<(), String> {
+    if !ResourceGovernor::live_ir_enabled(session.intelligence_policy) {
+        return Ok(());
+    }
+    let events = session.conversation_ir.on_stable_sentence(
+        segment_id,
+        speaker_label,
+        text,
+        start_ms,
+        end_ms,
+    );
+    for event in events {
+        let json = serde_json::to_string(&event).map_err(|e| e.to_string())?;
+        session
+            .sink
+            .add(TranscriptEvent::ConversationIr { json })
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
@@ -983,6 +1184,13 @@ fn run_live_pipeline_step(session_id: &str) -> Result<(), String> {
             "Live transcript quality reduced — audio ring overflow.",
         )?;
     }
+    if report.live_failed {
+        maybe_emit_live_degraded(
+            session,
+            "Live intelligence degraded — inference failed. Recording continues.",
+        )?;
+    }
+    session.last_window_energy = report.window_energy;
 
     for segment in produced {
         emit_live_delta(session, session_id, segment)?;
@@ -1012,6 +1220,17 @@ pub fn start_live_session(
     let cancel = CancelToken::new();
     *lock(&CANCEL) = Some(cancel.clone());
 
+    let (tx, rx) = mpsc::sync_channel::<Vec<i16>>(8);
+    spawn_live_worker(session_id.clone(), rx);
+    let fanout =
+        live_fanout_path(&meeting_id).and_then(|path| CaptureFanout::create_file(path).ok());
+    let stt_model_mb = lock(&SPEECH_MEMORY_BUDGET_MB).unwrap_or(512);
+    let snapshot = probe_resource_snapshot(stt_model_mb);
+    let intelligence_policy = ResourceGovernor::apply_user_mode(
+        ResourceGovernor::policy(&snapshot),
+        &read_live_intelligence_mode(),
+    );
+
     let session = LiveSessionState {
         meeting_id,
         pipeline: LiveSpeechPipeline::new(LiveSpeechConfig::default()),
@@ -1023,9 +1242,22 @@ pub fn start_live_session(
         transcript: String::new(),
         sink,
         degraded_notified: false,
+        speaker_activity: SpeakerActivityTracker::new(1200),
+        last_window_energy: 0.0,
+        fanout,
+        live_tx: Some(tx),
+        conversation_ir: IncrementalConversationIr::new(),
+        intelligence_policy,
     };
 
-    lock(&LIVE_SESSIONS).insert(session_id.clone(), session);
+    if intelligence_policy != IntelligencePolicy::Full {
+        let _ = session.sink.add(TranscriptEvent::Degraded {
+            message: "Live intelligence reduced — thermal or battery policy. Recording continues."
+                .into(),
+        });
+    }
+
+    lock(&LIVE_SESSIONS).insert(session_id, session);
     Ok(())
 }
 
@@ -1037,19 +1269,29 @@ pub fn push_live_pcm(session_id: String, samples: Vec<i16>) -> Result<(), String
     let session = sessions
         .get_mut(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
-    let push_report = session.pipeline.push_pcm(&samples);
-    if push_report.dropped > 0 {
-        maybe_emit_live_degraded(
-            session,
-            "Live transcript quality reduced — audio ring overflow.",
-        )?;
-    }
     if session.paused {
         return Ok(());
     }
-    let session_id = session_id.clone();
-    drop(sessions);
-    run_live_pipeline_step(&session_id)?;
+    if let Some(fanout) = session.fanout.as_mut() {
+        if let Err(error) = fanout.ingest(&samples) {
+            maybe_emit_live_degraded(
+                session,
+                &format!("Live transcript quality reduced — recording write failed ({error})."),
+            )?;
+        }
+    }
+    session.last_window_energy = rms_energy(&samples);
+    let live_busy = session
+        .live_tx
+        .as_ref()
+        .map(|tx| tx.try_send(samples).is_err())
+        .unwrap_or(true);
+    if live_busy {
+        maybe_emit_live_degraded(
+            session,
+            "Live transcript quality reduced — live worker backpressure.",
+        )?;
+    }
     Ok(())
 }
 
@@ -1074,10 +1316,17 @@ pub fn resume_live_session(session_id: String) -> Result<(), String> {
 }
 
 /// Flushes stable hypotheses to `FINAL` and emits [`TranscriptEvent::TranscriptReady`].
-pub fn stop_live_session(session_id: String) -> Result<(), String> {
+///
+/// When `audio_path` is supplied (the recorded file after stop), ECAPA/solo
+/// diarization reconciles provisional live speaker lanes — same pass as
+/// [`transcribe_recording`], without re-running ASR.
+pub fn stop_live_session(session_id: String, audio_path: Option<String>) -> Result<(), String> {
     let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.live_tx = None;
+    session.fanout = None;
+    stop_live_worker(&session_id);
 
     let mut finals = Vec::new();
     session
@@ -1111,6 +1360,16 @@ pub fn stop_live_session(session_id: String) -> Result<(), String> {
         return Err("No speech was found in the live session.".into());
     }
 
+    if let Some(path) = audio_path {
+        let pcm = airo_mind_audio::preprocess_path(std::path::Path::new(&path))?;
+        let models_dir_guard = lock(&MODELS_DIR);
+        let models_dir = models_dir_guard.as_deref();
+        let strategy = models_dir
+            .map(product_diarization_strategy)
+            .unwrap_or(DiarizationStrategy::Solo);
+        apply_diarization_labels(&mut segments, &pcm, strategy, models_dir)?;
+    }
+
     session
         .sink
         .add(TranscriptEvent::TranscriptReady {
@@ -1125,9 +1384,12 @@ pub fn stop_live_session(session_id: String) -> Result<(), String> {
 /// Aborts a live session without persisting transcript output.
 #[frb(sync)]
 pub fn cancel_live_session(session_id: String) -> Result<(), String> {
-    let session = lock(&LIVE_SESSIONS)
+    let mut session = lock(&LIVE_SESSIONS)
         .remove(&session_id)
         .ok_or_else(|| format!("unknown live session {session_id}"))?;
+    session.live_tx = None;
+    session.fanout = None;
+    stop_live_worker(&session_id);
     session.cancel.cancel();
     session
         .sink
@@ -1509,10 +1771,8 @@ mod tests {
 
     #[test]
     fn transcript_segment_record_handles_a_single_segment_recording() {
-        let record = transcript_segment_record(
-            0,
-            &TranscriptSegment::final_text(0, 900, "hello".into()),
-        );
+        let record =
+            transcript_segment_record(0, &TranscriptSegment::final_text(0, 900, "hello".into()));
         assert_eq!(record.id, "s0");
         assert_eq!(record.start_ms, 0);
         assert_eq!(record.end_ms, 900);

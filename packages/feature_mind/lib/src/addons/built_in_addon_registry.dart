@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'draft_diet_plan/draft_diet_plan_adapter.dart';
 import 'generative_addon_coordinator.dart';
 import 'graph_workflow/graph_workflow_coordinator.dart';
+import 'graph_workflow/car_purchase_graph_adapter.dart';
 import 'graph_workflow/hospital_recovery_graph_adapter.dart';
 import 'graph_workflow/insurance_planner_graph_adapter.dart';
 import 'graph_workflow/property_purchase_graph_adapter.dart';
+import 'graph_workflow/university_admission_graph_adapter.dart';
+
+import 'addon_lifecycle_gate.dart';
 
 /// Built-in add-ons registered for the Mind host.
 class BuiltInAddonRegistry {
@@ -20,6 +24,19 @@ class BuiltInAddonRegistry {
   final AddonRegistry registry;
   final GenerativeAddonCoordinator coordinator;
   final GraphWorkflowCoordinator graphCoordinator;
+
+  static void updateEligibility(
+    AddonRegistry registry,
+    String addonId,
+    AddonEligibility eligibility,
+  ) {
+    final wasEligible = registry.eligibilityFor(addonId).isEligible;
+    registry.setEligibility(addonId, eligibility);
+    if (wasEligible && !eligibility.isEligible) {
+      registry.bumpInvocationEpoch();
+    }
+    AddonLifecycleGate().onEligibilityChanged(eligibility);
+  }
 
   static BuiltInAddonRegistry create() {
     final registry = AddonRegistry();
@@ -41,7 +58,8 @@ class BuiltInAddonRegistry {
       manifest: dietManifest,
       generativeAdapter: DraftDietPlanAdapter(),
     );
-    registry.setEligibility(
+    BuiltInAddonRegistry.updateEligibility(
+      registry,
       DraftDietPlanAdapter.addonId,
       const AddonEligibility(
         enabled: true,
@@ -62,7 +80,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -74,7 +92,7 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
     _registerGraphAddon(
       registry,
@@ -86,7 +104,31 @@ class BuiltInAddonRegistry {
         'conversation.current_turn',
         'graph.addon_scope.read',
       },
-      tools: ['query_entity_graph'],
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: UniversityAdmissionGraphAdapter.addonId,
+      priority: 13,
+      subjectKind: 'admission_cycle',
+      adapter: UniversityAdmissionGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
+    );
+    _registerGraphAddon(
+      registry,
+      id: CarPurchaseGraphAdapter.addonId,
+      priority: 11,
+      subjectKind: 'car_purchase',
+      adapter: CarPurchaseGraphAdapter(),
+      scopes: {
+        'conversation.current_turn',
+        'graph.addon_scope.read',
+      },
+      tools: ['query_entity_graph', 'record_lifetrack_facts'],
     );
 
     final graphCoordinator = GraphWorkflowCoordinator(registry);
@@ -120,7 +162,8 @@ class BuiltInAddonRegistry {
       }),
       graphAdapter: adapter,
     );
-    registry.setEligibility(
+    BuiltInAddonRegistry.updateEligibility(
+      registry,
       id,
       AddonEligibility(enabled: true, grantedScopes: scopes),
     );

@@ -7,7 +7,7 @@ use airo_mind_core::engine::{
 
 use crate::ring::{PcmRingBuffer, RingPushReport};
 use crate::stabilizer::TranscriptStabilizer;
-use crate::vad::{EnergyVad, VadState};
+use crate::vad::{rms_energy, EnergyVad, VadState};
 use crate::TARGET_SAMPLE_RATE;
 
 /// Configuration for a live session pipeline.
@@ -35,11 +35,15 @@ impl Default for LiveSpeechConfig {
 }
 
 /// Outcome of one [`LiveSpeechPipeline::step`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LiveStepReport {
     pub ring_push: RingPushReport,
     pub degraded: bool,
     pub vad_state: VadState,
+    /// RMS energy of the inference window used this tick.
+    pub window_energy: f32,
+    /// Live inference failed this tick; the caller must keep recording.
+    pub live_failed: bool,
 }
 
 /// Native-owned PCM path: ring → VAD → bounded window → engine → stabilizer.
@@ -99,16 +103,18 @@ impl LiveSpeechPipeline {
         }
 
         let window = self.ring.tail(self.config.window_samples);
+        let window_energy = rms_energy(&window);
         let vad_state = self.vad.process(&window);
         let ring_push = RingPushReport {
             accepted: 0,
             dropped: 0,
         };
 
+        let mut live_failed = false;
         if vad_state == VadState::Speech && window.len() >= self.config.window_samples / 4 {
             let offset_ms = self.elapsed_samples.saturating_sub(window.len() as u64) * 1000
                 / TARGET_SAMPLE_RATE as u64;
-            transcribe(
+            match transcribe(
                 AudioInput {
                     samples: &window,
                     sample_rate_hz: TARGET_SAMPLE_RATE,
@@ -128,7 +134,11 @@ impl LiveSpeechPipeline {
                     }
                     Ok(())
                 },
-            )?;
+            ) {
+                Ok(()) => {}
+                Err(EngineError::Cancelled) => return Err(EngineError::Cancelled),
+                Err(_) => live_failed = true,
+            }
         }
 
         if vad_state == VadState::SpeechEnded {
@@ -141,6 +151,8 @@ impl LiveSpeechPipeline {
             ring_push,
             degraded: self.ring.dropped_samples() > 0,
             vad_state,
+            window_energy,
+            live_failed,
         })
     }
 
@@ -158,16 +170,18 @@ impl LiveSpeechPipeline {
         }
 
         let window = self.ring.tail(self.config.window_samples);
+        let window_energy = rms_energy(&window);
         let vad_state = self.vad.process(&window);
         let ring_push = RingPushReport {
             accepted: 0,
             dropped: 0,
         };
 
+        let mut live_failed = false;
         if vad_state == VadState::Speech && window.len() >= self.config.window_samples / 4 {
             let offset_ms = self.elapsed_samples.saturating_sub(window.len() as u64) * 1000
                 / TARGET_SAMPLE_RATE as u64;
-            engine.transcribe(
+            match engine.transcribe(
                 AudioInput {
                     samples: &window,
                     sample_rate_hz: TARGET_SAMPLE_RATE,
@@ -187,7 +201,11 @@ impl LiveSpeechPipeline {
                     }
                     Ok(())
                 },
-            )?;
+            ) {
+                Ok(()) => {}
+                Err(EngineError::Cancelled) => return Err(EngineError::Cancelled),
+                Err(_) => live_failed = true,
+            }
         }
 
         if vad_state == VadState::SpeechEnded {
@@ -200,6 +218,8 @@ impl LiveSpeechPipeline {
             ring_push,
             degraded: self.ring.dropped_samples() > 0,
             vad_state,
+            window_energy,
+            live_failed,
         })
     }
 
@@ -277,7 +297,9 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Partial),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Partial),
             "expected partial from engine window"
         );
 
@@ -294,8 +316,147 @@ mod tests {
         .unwrap();
 
         assert!(
-            events.iter().any(|s| s.state == TranscriptSegmentState::Stable),
+            events
+                .iter()
+                .any(|s| s.state == TranscriptSegmentState::Stable),
             "expected stable after silence boundary"
+        );
+    }
+
+    #[test]
+    fn ring_overflow_marks_step_degraded() {
+        let config = LiveSpeechConfig {
+            ring_capacity_samples: 64,
+            window_samples: 32,
+            vad_energy_threshold: 0.01,
+            vad_silence_ms: 300,
+        };
+        let mut pipe = LiveSpeechPipeline::new(config);
+        let engine = WindowSpeech;
+        let cancel = CancelToken::new();
+
+        pipe.push_pcm(&loud_pcm(256));
+        assert!(pipe.ring_dropped_samples() > 0, "ring should drop oldest");
+
+        let report = pipe
+            .step(
+                &engine,
+                &TranscriptionOptions::default(),
+                &cancel,
+                &mut |_| Ok(()),
+            )
+            .unwrap();
+        assert!(report.degraded, "overflow should mark step degraded");
+        assert!(!report.live_failed);
+    }
+
+    struct FailingSpeech;
+
+    impl SpeechEngine for FailingSpeech {
+        fn resource_request(&self) -> ResourceRequest {
+            ResourceRequest::new(512)
+        }
+
+        fn transcribe(
+            &self,
+            _audio: AudioInput<'_>,
+            _options: &TranscriptionOptions,
+            _cancel: &CancelToken,
+            _sink: &mut dyn FnMut(TranscriptSegment) -> Result<(), EngineError>,
+        ) -> Result<(), EngineError> {
+            Err(EngineError::Backend("stt crashed".into()))
+        }
+    }
+
+    #[test]
+    fn inference_failure_marks_live_failed_and_does_not_abort_the_pipeline() {
+        let config = LiveSpeechConfig {
+            ring_capacity_samples: 16_000,
+            window_samples: 4_800,
+            vad_energy_threshold: 0.01,
+            vad_silence_ms: 300,
+        };
+        let mut pipe = LiveSpeechPipeline::new(config);
+        pipe.push_pcm(&loud_pcm(8_000));
+        let report = pipe
+            .step(
+                &FailingSpeech,
+                &TranscriptionOptions::default(),
+                &CancelToken::new(),
+                &mut |_| Ok(()),
+            )
+            .expect("live failure must not surface as a pipeline error");
+        assert!(report.live_failed);
+        pipe.push_pcm(&loud_pcm(8_000));
+        let again = pipe
+            .step(
+                &FailingSpeech,
+                &TranscriptionOptions::default(),
+                &CancelToken::new(),
+                &mut |_| Ok(()),
+            )
+            .unwrap();
+        assert!(again.live_failed);
+    }
+
+    #[test]
+    fn fake_engine_partial_and_stable_latencies_are_measurable() {
+        let config = LiveSpeechConfig {
+            ring_capacity_samples: 16_000,
+            window_samples: 4_800,
+            vad_energy_threshold: 0.01,
+            vad_silence_ms: 300,
+        };
+        let mut pipe = LiveSpeechPipeline::new(config);
+        let engine = WindowSpeech;
+        let cancel = CancelToken::new();
+        let mut events = Vec::new();
+
+        let t0 = std::time::Instant::now();
+        pipe.push_pcm(&loud_pcm(8_000));
+        pipe.step(
+            &engine,
+            &TranscriptionOptions::default(),
+            &cancel,
+            &mut |seg| {
+                events.push((seg, t0.elapsed()));
+                Ok(())
+            },
+        )
+        .unwrap();
+        let partial_latency = events
+            .iter()
+            .find(|(s, _)| s.state == TranscriptSegmentState::Partial)
+            .map(|(_, d)| *d)
+            .expect("partial");
+        assert!(
+            partial_latency.as_millis() < 500,
+            "in-process fake engine partial was {:?}",
+            partial_latency
+        );
+
+        pipe.push_pcm(&silent_pcm(8_000));
+        let t1 = std::time::Instant::now();
+        pipe.step(
+            &engine,
+            &TranscriptionOptions::default(),
+            &cancel,
+            &mut |seg| {
+                events.push((seg, t1.elapsed()));
+                Ok(())
+            },
+        )
+        .unwrap();
+        let stable_latency = events
+            .iter()
+            .rev()
+            .find(|(s, _)| s.state == TranscriptSegmentState::Stable)
+            .map(|(_, d)| *d)
+            .expect("stable");
+        assert!(
+            stable_latency.as_millis() < 1_000,
+            "in-process fake engine stable was {:?}",
+            stable_latency
         );
     }
 }

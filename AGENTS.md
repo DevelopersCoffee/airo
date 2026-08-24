@@ -68,3 +68,37 @@ a `commit-msg` hook rejects the rest (`make install-hooks`).
 | TV / leanback UI | `.claude/skills/android-tv-design/SKILL.md` |
 | Any screen that spans phone, tablet, TV, or web | [docs/ui/RESPONSIVE_STANDARDS.md](docs/ui/RESPONSIVE_STANDARDS.md) |
 | Editing this file or the docs it points at | [docs/agents/CONTEXT_ENGINEERING.md](docs/agents/CONTEXT_ENGINEERING.md) |
+
+## Cursor Cloud specific instructions
+
+The Cloud Agent VM boots with Flutter **3.44.4** (`/opt/flutter`, symlinked to
+`/usr/local/bin` as `flutter`/`dart`/`melos`, so they're on `PATH` by default —
+no profile sourcing needed). The startup update script runs `melos bootstrap`
+then `bash scripts/run-ci-codegen.sh`; everything below is context that isn't
+obvious from that.
+
+- **This is a Dart pub workspace, not classic Melos linking.** `melos bootstrap`
+  resolves the whole tree with a single root `dart pub get`, so its
+  `-> 0 packages bootstrapped` line is expected success, not an error. There are
+  no committed `pubspec_overrides.yaml`.
+- **`feature_mind` freezed output is gitignored and must be generated before the
+  app analyzes/compiles.** `scripts/run-ci-codegen.sh` does this (and
+  deliberately skips app-level `build_runner` — riverpod_generator 4.0.8 cannot
+  compile on the analyzer 12 pin, and the committed Drift output is enough).
+- `app/lib/firebase_options.dart` is a committed placeholder; when unconfigured,
+  Firebase is gracefully skipped/deferred, so login/sync just aren't exercised.
+- **No emulator/physical device is available — run on Flutter web.** Serve the
+  app with `cd app && flutter run -d web-server --web-hostname 0.0.0.0 --web-port 8080 -t lib/main.dart`
+  (swap the `-t` entrypoint for other flavors: `main_tv.dart`, `main_coins.dart`,
+  `main_mind.dart`, `main_qualification.dart`). The `web-server` device compiles
+  Dart→JS lazily in the browser, so the first load shows a blank/white screen for
+  ~30s–3min — this is normal, keep waiting. Log in with the "Fill Demo
+  Credentials" button (demo / demo123).
+- **Known web-only limits (not bugs):** Drift/SQLite persistence in the finance
+  ("Coins") feature is unavailable on web (native `dart:ffi` path), and IPTV
+  remote-playlist fetches are blocked by the VM egress policy. The Games
+  ("Arena") feature is a fully self-contained way to exercise core functionality.
+- Lint/test: `flutter analyze` / `flutter test` per package, or `melos run
+  analyze` / `melos run test` across the workspace (see `melos` scripts in the
+  root `pubspec.yaml`). Web build sanity check for native-path changes:
+  `cd app && flutter build web --release`.

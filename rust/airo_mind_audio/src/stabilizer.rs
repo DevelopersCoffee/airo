@@ -9,6 +9,12 @@ pub struct TranscriptStabilizer {
     hypothesis: Option<TranscriptSegment>,
 }
 
+impl Default for TranscriptStabilizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TranscriptStabilizer {
     pub fn new() -> Self {
         Self {
