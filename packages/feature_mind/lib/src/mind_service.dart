@@ -21,6 +21,11 @@ import 'model_installer.dart';
 import 'models/download_model_provider.dart';
 import 'models/model_descriptor_adapter.dart';
 import 'models/model_provider.dart';
+import 'processing/application/meeting_quality_store.dart';
+import 'processing/application/segment_transcription_retry.dart';
+import 'processing/application/processing_profile_bridge.dart';
+import 'processing/application/transcript_quality_evaluator.dart';
+import 'processing/domain/processing_plan.dart';
 import 'runtime/ports/operation_log_port.dart';
 import 'search/meeting_embedding_store.dart';
 import 'search/semantic_search_ranker.dart';
@@ -80,6 +85,7 @@ class MindProgress {
     this.segments = const [],
     this.meetingId,
     this.error,
+    this.qualityReport,
   });
 
   final MindStage stage;
@@ -93,6 +99,7 @@ class MindProgress {
   final List<TranscriptSegment> segments;
   final String? meetingId;
   final String? error;
+  final MeetingTranscriptQualityReport? qualityReport;
 
   MindProgress copyWith({
     MindStage? stage,
@@ -101,6 +108,7 @@ class MindProgress {
     List<TranscriptSegment>? segments,
     String? meetingId,
     String? error,
+    MeetingTranscriptQualityReport? qualityReport,
   }) {
     return MindProgress(
       stage: stage ?? this.stage,
@@ -109,6 +117,7 @@ class MindProgress {
       segments: segments ?? this.segments,
       meetingId: meetingId ?? this.meetingId,
       error: error ?? this.error,
+      qualityReport: qualityReport ?? this.qualityReport,
     );
   }
 }
@@ -188,6 +197,33 @@ class MindService {
     modelMissing: modelMissing,
     pinnedLanguageCode: pinnedLanguageCode,
   );
+
+  /// Applies the adaptive planner's effective profile to the speech bridge.
+  void applyFinalProcessingPlan(ProcessingPlan plan) {
+    _speech.setFinalProcessingProfile(plan.effectiveProfile.rustProfile);
+  }
+
+  /// Loads persisted transcript quality metadata for [meetingId], if any.
+  Future<MeetingTranscriptQualityReport?> transcriptQualityReport(
+    String meetingId,
+  ) async {
+    final store = await _qualityStore();
+    return store.read(meetingId);
+  }
+
+  Future<MeetingQualityStore> _qualityStore() async {
+    final dir = await modelsDirectory();
+    return MeetingQualityStore(storePath: p.join(dir.path, 'meetings.log'));
+  }
+
+  Future<void> _persistQualityReport(
+    String meetingId,
+    MeetingTranscriptQualityReport? report,
+  ) async {
+    if (report == null) return;
+    final store = await _qualityStore();
+    await store.write(meetingId, report);
+  }
 
   /// Built lazily against [modelsDirectory] rather than in the constructor:
   /// resolving that directory is async, and every other collaborator here is
@@ -467,10 +503,20 @@ class MindService {
           // segments and the eventual transcript.json out of step (`#1629`
           // Gap D needs `segments` to reach `saveMeeting` intact).
           case TranscriptEventTranscriptReady(:final text, :final segments):
+            var labeledSegments = ensureSpeakerLabels(segments);
+            final retry =
+                await const SegmentTranscriptionRetryService().retryIfNeeded(
+              speech: _speech,
+              wavPath: wavPath,
+              segments: labeledSegments,
+              language: language,
+            );
+            labeledSegments = retry.segments;
             progress = progress.copyWith(
               stage: MindStage.extracting,
-              transcript: text,
-              segments: ensureSpeakerLabels(segments),
+              transcript: joinTranscriptSegments(labeledSegments),
+              segments: labeledSegments,
+              qualityReport: retry.report,
             );
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
@@ -575,6 +621,8 @@ class MindService {
         await indexMeetingForSearch(savedMeeting);
       }
 
+      await _persistQualityReport(savedMeetingId, progress.qualityReport);
+
       final log = _operationLog;
       if (log != null) {
         await appendMeetingIrExtractedOp(
@@ -609,6 +657,9 @@ class MindService {
       stage: MindStage.extracting,
       transcript: transcript,
       segments: ensureSpeakerLabels(segments),
+      qualityReport: const TranscriptQualityEvaluator()
+          .evaluateSegments(ensureSpeakerLabels(segments))
+          .toMeetingReport(retryCount: 0, retriedSegmentIds: const []),
     );
     yield progress;
 
@@ -706,6 +757,8 @@ class MindService {
         await indexMeetingForSearch(savedMeeting);
       }
 
+      await _persistQualityReport(savedMeetingId, progress.qualityReport);
+
       final log = _operationLog;
       if (log != null) {
         await appendMeetingIrExtractedOp(
@@ -772,10 +825,20 @@ class MindService {
               baseline: baselineSegments,
               refined: segments,
             );
+            var labeledSegments = ensureSpeakerLabels(reconciled);
+            final retry =
+                await const SegmentTranscriptionRetryService().retryIfNeeded(
+              speech: _speech,
+              wavPath: wavPath,
+              segments: labeledSegments,
+              language: language,
+            );
+            labeledSegments = retry.segments;
             progress = progress.copyWith(
               stage: MindStage.extracting,
-              transcript: joinTranscriptSegments(reconciled),
-              segments: ensureSpeakerLabels(reconciled),
+              transcript: joinTranscriptSegments(labeledSegments),
+              segments: labeledSegments,
+              qualityReport: retry.report,
             );
           case TranscriptEventCancelled():
             yield progress.copyWith(stage: MindStage.idle);
@@ -865,6 +928,8 @@ class MindService {
       if (savedMeeting != null) {
         await indexMeetingForSearch(savedMeeting);
       }
+
+      await _persistQualityReport(savedMeetingId, progress.qualityReport);
 
       final log = _operationLog;
       if (log != null) {

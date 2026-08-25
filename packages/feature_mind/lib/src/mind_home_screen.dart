@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'whisper/api/meetings.dart' as rust;
@@ -10,12 +12,20 @@ import 'meeting_list_metadata.dart';
 import 'agent_chat/data/repositories/chat_workspace_store.dart';
 import 'agent_chat/data/repositories/chat_workspace_store_factory.dart';
 import 'agent_chat/domain/models/chat_transcript_turn.dart';
+import 'capture/application/meeting_capture_providers.dart';
+import 'capture/application/meeting_processing_progress.dart';
 import 'capture/application/speech_language_preference.dart';
+import 'capture/domain/meeting_processing_job.dart';
 import 'export/application/meeting_export_service.dart';
 import 'export/data/meeting_export_gateway.dart';
 import 'meeting_screen.dart';
 import 'mind_service.dart';
 import 'models/model_provider.dart';
+import 'processing/application/adaptive_processing_planner.dart';
+import 'processing/application/processing_profile_preference.dart';
+import 'processing/domain/processing_plan.dart';
+import 'processing/domain/processing_profile.dart';
+import 'processing/presentation/processing_transparency_banner.dart';
 import 'trust/scribe_trust_signals.dart';
 
 /// The whole app. Record, search, open.
@@ -23,16 +33,16 @@ import 'trust/scribe_trust_signals.dart';
 /// One screen because the milestone is one journey. No themes, no settings, no
 /// personalization — those are choices to make once the journey is proven, not
 /// while proving it.
-class MindHomeScreen extends StatefulWidget {
+class MindHomeScreen extends ConsumerStatefulWidget {
   const MindHomeScreen({required this.service, super.key});
 
   final MindService service;
 
   @override
-  State<MindHomeScreen> createState() => _MindHomeScreenState();
+  ConsumerState<MindHomeScreen> createState() => _MindHomeScreenState();
 }
 
-class _MindHomeScreenState extends State<MindHomeScreen> {
+class _MindHomeScreenState extends ConsumerState<MindHomeScreen> {
   final _query = TextEditingController();
 
   // #1663: batch markdown export of every meeting currently listed.
@@ -49,6 +59,15 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
   bool _recording = false;
   bool _paused = false;
   String? _error;
+  int _processingMeetings = 0;
+  List<MeetingProcessingJob> _activeJobs = const [];
+  StreamSubscription<List<MeetingProcessingJob>>? _queueSub;
+  ProcessingPlan? _activeProcessingPlan;
+  bool _selecting = false;
+  final Set<String> _selected = {};
+  bool _bulkWorking = false;
+
+  static const _planner = AdaptiveProcessingPlanner();
 
   /// The file currently being fetched, and how far. First run is now a
   /// download rather than an asset copy
@@ -70,10 +89,84 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       });
     };
     _start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_listenProcessingQueue()));
+  }
+
+  Future<void> _listenProcessingQueue() async {
+    if (!mounted) return;
+    try {
+      final queue = await ref.read(meetingProcessingQueueProvider.future);
+      if (!mounted) return;
+      _updateProcessingCount(queue.current);
+      await _queueSub?.cancel();
+      _queueSub = queue.jobs.listen((jobs) async {
+        if (!mounted) return;
+        final activeJobs = jobs
+            .where(
+              (job) =>
+                  job.status == MeetingProcessingStatus.queued ||
+                  job.status == MeetingProcessingStatus.processing ||
+                  job.status == MeetingProcessingStatus.paused,
+            )
+            .toList(growable: false);
+        final active = activeJobs.length;
+        final previousActive = _processingMeetings;
+        setState(() {
+          _processingMeetings = active;
+          _activeJobs = activeJobs;
+        });
+        if (activeJobs.isNotEmpty) {
+          unawaited(_refreshProcessingPlan(activeJobs.first));
+        } else if (_activeProcessingPlan != null) {
+          setState(() => _activeProcessingPlan = null);
+        }
+        if (previousActive > 0 && active < previousActive) {
+          await _refresh();
+        }
+      });
+    } on Object {
+      // Queue override missing in tests without ProviderScope.
+    }
+  }
+
+  void _updateProcessingCount(List<MeetingProcessingJob> jobs) {
+    if (!mounted) return;
+    final activeJobs = jobs
+        .where(
+          (job) =>
+              job.status == MeetingProcessingStatus.queued ||
+              job.status == MeetingProcessingStatus.processing ||
+              job.status == MeetingProcessingStatus.paused,
+        )
+        .toList(growable: false);
+    setState(() {
+      _processingMeetings = activeJobs.length;
+      _activeJobs = activeJobs;
+    });
+  }
+
+  String _processingStatusLine(MeetingProcessingJob job) {
+    if (job.status == MeetingProcessingStatus.queued) {
+      return 'Waiting to start on this device…';
+    }
+    if (job.status == MeetingProcessingStatus.paused) {
+      return 'Paused — device is warm';
+    }
+    final stage = job.progressStage;
+    if (stage != null) {
+      return meetingProcessingStageLabel(
+        MindStage.values.firstWhere(
+          (value) => value.name == stage,
+          orElse: () => MindStage.transcribing,
+        ),
+      );
+    }
+    return 'Processing on this device…';
   }
 
   @override
   void dispose() {
+    unawaited(_queueSub?.cancel());
     _query.dispose();
     super.dispose();
   }
@@ -211,7 +304,10 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     if (router != null) {
       unawaited(() async {
         await router.push('/record');
-        if (mounted) await _refresh();
+        if (mounted) {
+          await _refresh();
+          await _listenProcessingQueue();
+        }
       }());
       return;
     }
@@ -320,10 +416,174 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     await _moveMeetingToChat(meeting, folder.id);
   }
 
+  Future<void> _refreshProcessingPlan(MeetingProcessingJob job) async {
+    final profile = ref.read(processingProfileProvider);
+    final file = File(job.audioPath);
+    final bytes = file.existsSync() ? await file.length() : null;
+    final memory = await DeviceCapabilityService().getMemoryInfo();
+    final plan = await _planner.plan(
+      intent: ProcessingIntent.finalTranscript,
+      userProfile: profile,
+      memoryInfo: memory,
+      audioBytes: bytes,
+    );
+    if (!mounted) return;
+    setState(() => _activeProcessingPlan = plan);
+  }
+
+  List<rust.MeetingRecord> get _selectedMeetings => [
+    for (final meeting in _meetings)
+      if (_selected.contains(meeting.id)) meeting,
+  ];
+
+  void _toggleSelectMode() {
+    setState(() {
+      _selecting = !_selecting;
+      if (!_selecting) _selected.clear();
+    });
+  }
+
+  Future<void> _bulkDeleteSelected() async {
+    final selected = _selectedMeetings;
+    if (selected.isEmpty) return;
+    final shouldRemove = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${selected.length} meetings?'),
+        content: const Text(
+          'This removes the selected recordings from this device. '
+          'Chat folders stay.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('mind_home_bulk_delete_confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldRemove != true) return;
+    setState(() => _bulkWorking = true);
+    try {
+      for (final meeting in selected) {
+        await widget.service.deleteMeeting(meeting.id);
+      }
+      if (!mounted) return;
+      setState(() {
+        _selecting = false;
+        _selected.clear();
+      });
+      await _refresh();
+    } finally {
+      if (mounted) setState(() => _bulkWorking = false);
+    }
+  }
+
+  Future<String?> _pickChatFolder() async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Choose chat folder'),
+        children: [
+          for (final folder in _folders)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(folder.id),
+              child: Text(folder.name),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop('__new__'),
+            child: const Text('New folder…'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _bulkCopyToChat() async {
+    final selected = _selectedMeetings;
+    if (selected.isEmpty) return;
+    var folderId = await _pickChatFolder();
+    if (folderId == null || !mounted) return;
+    if (folderId == '__new__') {
+      final name = await showDialog<String>(
+        context: context,
+        builder: (context) => _NamePromptDialog(
+          title: 'New chat folder',
+          fieldKey: const Key('mind_home_bulk_new_folder_field'),
+          confirmKey: const Key('mind_home_bulk_new_folder_create'),
+          hint: 'Folder name',
+          confirmLabel: 'Create',
+        ),
+      );
+      if (name == null || name.isEmpty || !mounted) return;
+      final store = _workspace ?? await openChatWorkspaceStore();
+      _workspace = store;
+      final folder = await store.createFolder(name);
+      if (mounted) {
+        setState(() => _folders = [..._folders, folder]);
+      }
+      folderId = folder.id;
+    }
+    setState(() => _bulkWorking = true);
+    try {
+      for (final meeting in selected) {
+        await _moveMeetingToChat(meeting, folderId, quiet: true);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Copied ${selected.length} meetings into a chat folder.',
+          ),
+        ),
+      );
+      setState(() {
+        _selecting = false;
+        _selected.clear();
+      });
+    } finally {
+      if (mounted) setState(() => _bulkWorking = false);
+    }
+  }
+
+  Future<void> _bulkShareSelected() async {
+    final ids = _selectedMeetings.map((m) => m.id).toList();
+    if (ids.isEmpty || _bulkWorking) return;
+    setState(() => _bulkWorking = true);
+    try {
+      final bundles = await _exportService.exportMeetings(ids);
+      if (bundles.isEmpty) return;
+      final ok = await _exportGateway.share(bundles);
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Shared ${bundles.length} meetings.')),
+        );
+        setState(() {
+          _selecting = false;
+          _selected.clear();
+        });
+      }
+    } on Object catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkWorking = false);
+    }
+  }
+
   Future<void> _moveMeetingToChat(
     rust.MeetingRecord meeting,
-    String folderId,
-  ) async {
+    String folderId, {
+    bool quiet = false,
+  }) async {
     final store = _workspace ?? await openChatWorkspaceStore();
     _workspace = store;
     final chatId = await store.createChat(folderId: folderId);
@@ -336,7 +596,7 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
         createdAt: DateTime.now(),
       ),
     ]);
-    if (!mounted) return;
+    if (!mounted || quiet) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Copied this meeting into a chat folder.')),
     );
@@ -358,23 +618,59 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
     final status = _status;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scribe'),
+        title: Text(_selecting ? '${_selected.length} selected' : 'Scribe'),
         actions: [
-          if (status != null && status.isReady)
+          if (status != null && status.isReady && _meetings.isNotEmpty)
+            IconButton(
+              key: const Key('mind_home_select_button'),
+              tooltip: _selecting ? 'Done selecting' : 'Select meetings',
+              onPressed: _toggleSelectMode,
+              icon: Icon(_selecting ? Icons.close : Icons.checklist),
+            ),
+          if (_selecting) ...[
+            IconButton(
+              key: const Key('mind_home_bulk_copy_button'),
+              tooltip: 'Copy to chat folder',
+              onPressed: _selected.isEmpty || _bulkWorking
+                  ? null
+                  : _bulkCopyToChat,
+              icon: const Icon(Icons.drive_file_move_outline),
+            ),
+            IconButton(
+              key: const Key('mind_home_bulk_share_button'),
+              tooltip: 'Share as markdown',
+              onPressed: _selected.isEmpty || _bulkWorking
+                  ? null
+                  : _bulkShareSelected,
+              icon: const Icon(Icons.ios_share),
+            ),
+            IconButton(
+              key: const Key('mind_home_bulk_delete_button'),
+              tooltip: 'Delete selected',
+              onPressed: _selected.isEmpty || _bulkWorking
+                  ? null
+                  : _bulkDeleteSelected,
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+          if (status != null && status.isReady && !_selecting)
             IconButton(
               key: const Key('mind_home_notes_button'),
               tooltip: 'Notes',
               icon: const Icon(Icons.edit_note),
               onPressed: () => context.push('notes'),
             ),
-          if (status != null && status.isReady)
+          if (status != null && status.isReady && !_selecting)
             IconButton(
               key: const Key('mind_home_record_meeting_button'),
               tooltip: 'Record a meeting',
               icon: const Icon(Icons.mic_none),
               onPressed: _openCapture,
             ),
-          if (status != null && status.isReady && _meetings.isNotEmpty)
+          if (status != null &&
+              status.isReady &&
+              _meetings.isNotEmpty &&
+              !_selecting)
             PopupMenuButton<bool>(
               icon: _exportingAll
                   ? const SizedBox(
@@ -435,6 +731,11 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: ScribeTrustSignals(state: widget.service.scribeTrustState()),
         ),
+        if (_activeProcessingPlan != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: ProcessingTransparencyBanner(plan: _activeProcessingPlan),
+          ),
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
@@ -493,6 +794,66 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
               ],
             ),
           ),
+        if (_processingMeetings > 0)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final job in _activeJobs) ...[
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              job.title,
+                              style: Theme.of(context).textTheme.titleSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _processingStatusLine(job),
+                        key: job == _activeJobs.first
+                            ? const Key('mind_home_processing_banner')
+                            : null,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (job.progressDetail != null &&
+                          job.progressDetail!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          job.progressDetail!.trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(),
+                      if (job != _activeJobs.last) const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
         Expanded(
           child: hits != null
               ? _hitList(hits)
@@ -533,8 +894,23 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
       itemBuilder: (_, i) {
         final m = meetings[i];
         final meta = meetingListMetadata(m, audioBytes: _audioBytes[m.id]);
+        final selected = _selected.contains(m.id);
         return ListTile(
           isThreeLine: true,
+          leading: _selecting
+              ? Checkbox(
+                  value: selected,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value ?? false) {
+                        _selected.add(m.id);
+                      } else {
+                        _selected.remove(m.id);
+                      }
+                    });
+                  },
+                )
+              : null,
           title: Text(meta.title),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,8 +927,30 @@ class _MindHomeScreenState extends State<MindHomeScreen> {
               ),
             ],
           ),
-          onTap: () => _open(m.id),
-          trailing: PopupMenuButton<String>(
+          onTap: () {
+            if (_selecting) {
+              setState(() {
+                if (selected) {
+                  _selected.remove(m.id);
+                } else {
+                  _selected.add(m.id);
+                }
+              });
+              return;
+            }
+            unawaited(_open(m.id));
+          },
+          onLongPress: _selecting
+              ? null
+              : () {
+                  setState(() {
+                    _selecting = true;
+                    _selected.add(m.id);
+                  });
+                },
+          trailing: _selecting
+              ? null
+              : PopupMenuButton<String>(
             key: Key('mind_home_meeting_menu_${m.id}'),
             tooltip: 'Meeting actions',
             onSelected: (value) {

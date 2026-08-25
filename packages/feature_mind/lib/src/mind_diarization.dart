@@ -5,6 +5,21 @@ import 'speaker/meeting_speaker_registry.dart';
 /// Stable speaker label for solo recordings (`sp0` in `airo_mind_diarize`).
 const String kMindSoloSpeakerLabel = 'sp0';
 
+/// Counts distinct non-empty speaker labels on a transcript.
+int mindDistinctSpeakerCount(Iterable<String?> speakerLabels) {
+  final labels = <String>{};
+  for (final label in speakerLabels) {
+    if (label == null || label.isEmpty) continue;
+    labels.add(label);
+  }
+  return labels.length;
+}
+
+/// Persona / enrolled names apply only after diarization found 2+ speakers.
+bool mindShouldApplySpeakerPersonaNames(Iterable<String?> speakerLabels) {
+  return mindDistinctSpeakerCount(speakerLabels) > 1;
+}
+
 /// Human-readable label for transcript UI and export (`sp0` → `Speaker 1`).
 String formatMindSpeakerLabel(String label) {
   final match = RegExp(r'^sp(\d+)$').firstMatch(label);
@@ -16,16 +31,23 @@ String formatMindSpeakerLabel(String label) {
 }
 
 /// Display name with optional registry overlay (rename + merge).
+///
+/// When [applyPersonaNames] is false (solo diarization), only generic
+/// `Speaker N` labels are shown — enrolled personas are not applied.
 String mindSpeakerDisplayLabel(
   String label, {
   MeetingSpeakerRegistry registry = MeetingSpeakerRegistry.empty,
   Map<String, String> globalEnrolledNames = const {},
+  bool applyPersonaNames = true,
 }) {
+  final canonical = registry.canonicalLabel(label);
+  if (!applyPersonaNames) {
+    return formatMindSpeakerLabel(canonical);
+  }
   final enrolledName = globalEnrolledNames[label];
   if (enrolledName != null && enrolledName.isNotEmpty) {
     return enrolledName;
   }
-  final canonical = registry.canonicalLabel(label);
   final custom = registry.displayNameFor(canonical);
   if (custom != null && custom.isNotEmpty) {
     return custom;

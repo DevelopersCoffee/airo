@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1306602193;
+  int get rustContentHash => -1087405386;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -192,6 +192,10 @@ abstract class RustLibApi extends BaseApi {
     required String query,
   });
 
+  void crateApiMeetingsSetFinalProcessingProfile({
+    required FinalProcessingProfile profile,
+  });
+
   Future<SpeechLanguage> crateApiMeetingsSpeechLanguageDefault();
 
   Stream<TranscriptEvent> crateApiMeetingsStartLiveSession({
@@ -199,15 +203,19 @@ abstract class RustLibApi extends BaseApi {
     String? language,
   });
 
-  Future<void> crateApiMeetingsStopLiveSession({
-    required String sessionId,
-    String? audioPath,
-  });
+  Future<void> crateApiMeetingsStopLiveSession({required String sessionId});
 
   Future<void> crateApiMeetingsSyncSpeakerEnrollmentJson({required String raw});
 
   Stream<TranscriptEvent> crateApiMeetingsTranscribeRecording({
     required String wavPath,
+    String? language,
+  });
+
+  String crateApiMeetingsTranscribeRecordingRange({
+    required String wavPath,
+    required BigInt startMs,
+    required BigInt endMs,
     String? language,
   });
 
@@ -1138,6 +1146,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "search_meetings", argNames: ["query"]);
 
   @override
+  void crateApiMeetingsSetFinalProcessingProfile({
+    required FinalProcessingProfile profile,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_final_processing_profile(profile, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiMeetingsSetFinalProcessingProfileConstMeta,
+        argValues: [profile],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsSetFinalProcessingProfileConstMeta =>
+      const TaskConstMeta(
+        debugName: "set_final_processing_profile",
+        argNames: ["profile"],
+      );
+
+  @override
   Future<SpeechLanguage> crateApiMeetingsSpeechLanguageDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -1146,7 +1182,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1181,7 +1217,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 33,
+              funcId: 34,
               port: port_,
             );
           },
@@ -1205,20 +1241,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiMeetingsStopLiveSession({
-    required String sessionId,
-    String? audioPath,
-  }) {
+  Future<void> crateApiMeetingsStopLiveSession({required String sessionId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          sse_encode_opt_String(audioPath, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1227,7 +1259,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiMeetingsStopLiveSessionConstMeta,
-        argValues: [sessionId, audioPath],
+        argValues: [sessionId],
         apiImpl: this,
       ),
     );
@@ -1236,7 +1268,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiMeetingsStopLiveSessionConstMeta =>
       const TaskConstMeta(
         debugName: "stop_live_session",
-        argNames: ["sessionId", "audioPath"],
+        argNames: ["sessionId"],
       );
 
   @override
@@ -1251,7 +1283,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1289,7 +1321,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 36,
+              funcId: 37,
               port: port_,
             );
           },
@@ -1313,6 +1345,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  String crateApiMeetingsTranscribeRecordingRange({
+    required String wavPath,
+    required BigInt startMs,
+    required BigInt endMs,
+    String? language,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(wavPath, serializer);
+          sse_encode_u_64(startMs, serializer);
+          sse_encode_u_64(endMs, serializer);
+          sse_encode_opt_String(language, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiMeetingsTranscribeRecordingRangeConstMeta,
+        argValues: [wavPath, startMs, endMs, language],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiMeetingsTranscribeRecordingRangeConstMeta =>
+      const TaskConstMeta(
+        debugName: "transcribe_recording_range",
+        argNames: ["wavPath", "startMs", "endMs", "language"],
+      );
+
+  @override
   Future<void> crateApiMeetingsUnloadSpeech() {
     return handler.executeNormal(
       NormalTask(
@@ -1321,7 +1387,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 37,
+            funcId: 39,
             port: port_,
           );
         },
@@ -1351,7 +1417,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 38,
+            funcId: 40,
             port: port_,
           );
         },
@@ -1444,6 +1510,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
+  }
+
+  @protected
+  FinalProcessingProfile dco_decode_final_processing_profile(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FinalProcessingProfile.values[raw as int];
   }
 
   @protected
@@ -1816,8 +1888,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return TranscriptEvent_Cancelled();
       case 4:
         return TranscriptEvent_Degraded(message: dco_decode_String(raw[1]));
-      case 5:
-        return TranscriptEvent_ConversationIr(json: dco_decode_String(raw[1]));
       default:
         throw Exception("unreachable");
     }
@@ -1961,6 +2031,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FinalProcessingProfile sse_decode_final_processing_profile(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FinalProcessingProfile.values[inner];
   }
 
   @protected
@@ -2478,9 +2557,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 4:
         var var_message = sse_decode_String(deserializer);
         return TranscriptEvent_Degraded(message: var_message);
-      case 5:
-        var var_json = sse_decode_String(deserializer);
-        return TranscriptEvent_ConversationIr(json: var_json);
       default:
         throw UnimplementedError('');
     }
@@ -2647,6 +2723,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_final_processing_profile(
+    FinalProcessingProfile self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -3085,9 +3170,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case TranscriptEvent_Degraded(message: final message):
         sse_encode_i_32(4, serializer);
         sse_encode_String(message, serializer);
-      case TranscriptEvent_ConversationIr(json: final json):
-        sse_encode_i_32(5, serializer);
-        sse_encode_String(json, serializer);
     }
   }
 

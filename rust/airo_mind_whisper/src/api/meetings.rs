@@ -109,6 +109,24 @@ impl From<SpeechLanguage> for models::ModelLanguage {
     }
 }
 
+/// Final-transcript quality profile exposed to Dart for the adaptive planner.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FinalProcessingProfile {
+    Fast,
+    Balanced,
+    MaximumQuality,
+}
+
+impl From<FinalProcessingProfile> for airo_mind_core::models::FinalProcessingProfile {
+    fn from(value: FinalProcessingProfile) -> Self {
+        match value {
+            FinalProcessingProfile::Fast => Self::Fast,
+            FinalProcessingProfile::Balanced => Self::Balanced,
+            FinalProcessingProfile::MaximumQuality => Self::MaximumQuality,
+        }
+    }
+}
+
 /// Where the models and the store live. Supplied by Dart, which owns the
 /// platform's notion of an application directory.
 pub struct MindConfig {
@@ -497,6 +515,9 @@ static SPEECH_MEMORY_BUDGET_MB: Mutex<Option<u32>> = Mutex::new(None);
 
 static INITIALIZED_SPEECH_LANGUAGE: Mutex<Option<SpeechLanguage>> = Mutex::new(None);
 
+static FINAL_PROCESSING_PROFILE: Mutex<FinalProcessingProfile> =
+    Mutex::new(FinalProcessingProfile::Balanced);
+
 /// Path of the whisper weights currently registered on the Supervisor.
 static LOADED_SPEECH_PATH: Mutex<Option<String>> = Mutex::new(None);
 
@@ -561,6 +582,17 @@ fn stored_speech_requirement_inputs() -> Result<(u32, models::ModelLanguage), St
         .copied()
         .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
     Ok((budget, speech_language.into()))
+}
+
+/// Dart sets this before each file/batch transcription so the Model Manager
+/// can honor the user's final-transcript quality preference.
+#[frb(sync)]
+pub fn set_final_processing_profile(profile: FinalProcessingProfile) {
+    *lock(&FINAL_PROCESSING_PROFILE) = profile;
+}
+
+fn stored_final_processing_profile() -> FinalProcessingProfile {
+    *lock(&FINAL_PROCESSING_PROFILE)
 }
 
 /// Loads or swaps the registered speech engine when the resolved model path
@@ -817,6 +849,67 @@ pub fn embed_speaker_segment(
         .map_err(|e| e.to_string())
 }
 
+/// Re-transcribes one time range from a recording using maximum-quality
+/// weights. Used by the adaptive planner's segment-level retry — only the
+/// suspicious slice is reprocessed, not the whole file.
+#[frb(sync)]
+pub fn transcribe_recording_range(
+    wav_path: String,
+    start_ms: u64,
+    end_ms: u64,
+    language: Option<String>,
+) -> Result<String, String> {
+    use airo_mind_core::wav::Pcm;
+    use airo_mind_diarize::slice_segment_pcm_padded;
+
+    let (budget, speech_language) = stored_speech_requirement_inputs()?;
+    ensure_speech_engine_for_requirement(models::speech_final_requirement(
+        budget,
+        speech_language,
+        airo_mind_core::models::FinalProcessingProfile::MaximumQuality,
+    ))?;
+
+    let pcm = airo_mind_audio::preprocess_path(std::path::Path::new(&wav_path))?;
+    let core_pcm = Pcm {
+        samples: pcm.samples,
+        sample_rate_hz: pcm.sample_rate_hz,
+        channels: pcm.channels,
+    };
+    let slice = slice_segment_pcm_padded(&core_pcm, start_ms, end_ms, 250);
+    if slice.is_empty() {
+        return Err("No audio in the requested time range.".into());
+    }
+
+    let cancel = CancelToken::new();
+    let options = TranscriptionOptions { language };
+    let mut transcript = String::new();
+    {
+        let mut engines = lock(&ENGINES);
+        let supervisor = engines
+            .as_mut()
+            .ok_or_else(|| "Airo Mind is not initialised".to_string())?;
+        supervisor
+            .run_speech(
+                AudioInput {
+                    samples: &slice,
+                    sample_rate_hz: core_pcm.sample_rate_hz,
+                    channels: core_pcm.channels,
+                },
+                &options,
+                &cancel,
+                &mut |segment| {
+                    if !transcript.is_empty() {
+                        transcript.push(' ');
+                    }
+                    transcript.push_str(segment.text.trim());
+                    Ok(())
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(transcript.trim().to_string())
+}
+
 /// Recording → transcript, streaming throughout.
 ///
 /// Runs on a `flutter_rust_bridge` worker thread, never the Dart main isolate.
@@ -839,6 +932,17 @@ pub fn transcribe_recording(
     let emit = |event: TranscriptEvent| -> Result<(), String> {
         sink.add(event).map_err(|e| e.to_string())
     };
+
+    // File/batch imports must use the highest-quality speech weights available
+    // (`speech_file_requirement`), not the Draft-tier engine left loaded after
+    // a live capture session (`speech_live_requirement`).
+    let (budget, speech_language) = stored_speech_requirement_inputs()?;
+    let profile = stored_final_processing_profile();
+    ensure_speech_engine_for_requirement(models::speech_final_requirement(
+        budget,
+        speech_language,
+        profile.into(),
+    ))?;
 
     let pcm = airo_mind_audio::preprocess_path(std::path::Path::new(&wav_path))?;
 

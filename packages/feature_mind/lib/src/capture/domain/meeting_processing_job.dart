@@ -68,6 +68,8 @@ class MeetingProcessingJob {
     this.completedTranscript,
     this.completedSegments,
     this.refineBaselineSegments,
+    this.progressStage,
+    this.progressDetail,
   });
 
   /// Stable id for this job — the recording session id it was enqueued from.
@@ -103,6 +105,12 @@ class MeetingProcessingJob {
   /// Live baseline for `Live + refine` — file ASR reconciles by these ids.
   final List<TranscriptSegment>? refineBaselineSegments;
 
+  /// In-flight pipeline stage (`MindStage.name`). Not persisted — UI only.
+  final String? progressStage;
+
+  /// Human-readable stage copy for banners. Not persisted.
+  final String? progressDetail;
+
   bool get hasCompletedTranscript =>
       completedTranscript != null && completedSegments != null;
 
@@ -116,6 +124,8 @@ class MeetingProcessingJob {
     String? completedTranscript,
     List<TranscriptSegment>? completedSegments,
     List<TranscriptSegment>? refineBaselineSegments,
+    String? progressStage,
+    String? progressDetail,
   }) {
     return MeetingProcessingJob(
       id: id,
@@ -130,6 +140,8 @@ class MeetingProcessingJob {
       completedSegments: completedSegments ?? this.completedSegments,
       refineBaselineSegments:
           refineBaselineSegments ?? this.refineBaselineSegments,
+      progressStage: progressStage ?? this.progressStage,
+      progressDetail: progressDetail ?? this.progressDetail,
     );
   }
 

@@ -313,6 +313,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
     this.onRememberSpeaker,
     this.onSegmentTap,
     this.globalEnrolledNames = const {},
+    this.applyPersonaNames = true,
   });
 
   final List<TranscriptSegmentView> segments;
@@ -325,6 +326,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
   final void Function(String speakerLabel)? onRememberSpeaker;
   final void Function(TranscriptSegmentView segment)? onSegmentTap;
   final Map<String, String> globalEnrolledNames;
+  final bool applyPersonaNames;
 
   @override
   Widget build(BuildContext context) {
@@ -431,6 +433,7 @@ class MeetingIrTranscriptList extends StatelessWidget {
                             segment.speakerLabel!,
                             registry: speakerRegistry,
                             globalEnrolledNames: globalEnrolledNames,
+                            applyPersonaNames: applyPersonaNames,
                           ),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(

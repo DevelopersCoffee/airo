@@ -103,7 +103,7 @@ void main() {
       );
     });
 
-    test('uses enrolled and renamed speaker display names', () {
+    test('uses enrolled and renamed speaker display names when multi-speaker', () {
       final md = renderTranscriptMarkdown(
         title: 'Standup',
         recordedAt: DateTime.utc(2026, 8, 14),
@@ -123,9 +123,54 @@ void main() {
           'sp1': 'Bob',
         }),
         globalEnrolledNames: {'enrolled_0': 'Alice'},
+        applyPersonaNames: true,
       );
       expect(md, contains('[00:00:00] Alice: Hello from Alice.'));
       expect(md, contains('[00:00:01] Bob: Bob here.'));
+    });
+
+    test('skips persona names when only one diarized speaker', () {
+      final md = renderTranscriptMarkdown(
+        title: 'Solo',
+        recordedAt: DateTime.utc(2026, 8, 14),
+        lines: const [
+          TranscriptExportLine(
+            startMs: 0,
+            text: 'Hello.',
+            speakerLabel: 'sp0',
+          ),
+          TranscriptExportLine(
+            startMs: 1000,
+            text: 'Again.',
+            speakerLabel: 'sp0',
+          ),
+        ],
+        globalEnrolledNames: {'sp0': 'Alice'},
+        applyPersonaNames: false,
+      );
+      expect(md, contains('[00:00:00] Speaker 1: Hello.'));
+      expect(md, isNot(contains('Alice:')));
+    });
+
+    test('renderTranscriptPlainText matches export speaker labels', () {
+      final text = renderTranscriptPlainText(
+        lines: const [
+          TranscriptExportLine(
+            startMs: 0,
+            text: 'First line.',
+            speakerLabel: 'sp0',
+          ),
+          TranscriptExportLine(
+            startMs: 5000,
+            text: 'Second line.',
+            speakerLabel: 'sp1',
+          ),
+        ],
+        speakerRegistry: const MeetingSpeakerRegistry(displayNames: {
+          'sp1': 'Bob',
+        }),
+      );
+      expect(text, '[00:00:00] Speaker 1: First line.\n[00:00:05] Bob: Second line.');
     });
 
     test('skips blank lines', () {

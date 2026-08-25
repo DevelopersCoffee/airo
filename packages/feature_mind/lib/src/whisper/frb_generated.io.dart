@@ -62,6 +62,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  FinalProcessingProfile dco_decode_final_processing_profile(dynamic raw);
+
+  @protected
   int dco_decode_i_16(dynamic raw);
 
   @protected
@@ -247,6 +250,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  FinalProcessingProfile sse_decode_final_processing_profile(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_i_16(SseDeserializer deserializer);
@@ -475,6 +483,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_final_processing_profile(
+    FinalProcessingProfile self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_16(int self, SseSerializer serializer);

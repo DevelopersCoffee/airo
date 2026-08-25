@@ -91,7 +91,7 @@ class NotebookL10n {
     'record': 'Record',
     'importAudio': 'Import audio',
     'importPodcast': 'Import podcast',
-    'podcastUrl': 'Podcast or audio URL',
+    'podcastUrl': 'Podcast, audio, or YouTube URL',
     'export': 'Export',
     'copy': 'Copy',
     'share': 'Share',

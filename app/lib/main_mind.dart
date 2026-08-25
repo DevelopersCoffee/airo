@@ -329,6 +329,10 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
     MindRuntimeNavigation.openHub = () => _router.go('/runtime');
     MindRuntimeNavigation.openIntelligence = () => _router.go('/models');
     MindRuntimeNavigation.openSettings = () => _router.go(RouteNames.settings);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Restore and keep the post-meeting queue alive for the whole session.
+      unawaited(ref.read(meetingProcessingQueueProvider.future));
+    });
   }
 
   @override
@@ -352,6 +356,7 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
       theme: AiroTheme.light,
       darkTheme: AiroTheme.defaultDark,
       themeMode: themeMode,
+      themeAnimationDuration: Duration.zero,
       routerConfig: _router,
       builder: (context, child) => MindMacOsRoot(
         child: AiroDisplayScale(

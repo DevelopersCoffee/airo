@@ -45,11 +45,12 @@ impl<E: SpeakerEmbedder> Diarizer for EmbeddingDiarizer<E> {
             })
             .collect();
 
-        let assignments = crate::cluster::cluster_embeddings_greedy_with_enrollment(
+        let (assignments, refined) = crate::cluster::cluster_embeddings_product(
             &embeddings,
             self.similarity_threshold,
             &enrollment_hints,
         );
+        crate::diarization_log::log_diarization_result(&embeddings, &assignments, refined);
 
         let segments: Vec<DiarizedSegment> = input
             .segments

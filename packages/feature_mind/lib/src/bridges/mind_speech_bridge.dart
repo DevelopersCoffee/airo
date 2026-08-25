@@ -252,7 +252,18 @@ abstract interface class MindSpeechBridge {
   /// one with no matching id.
   Future<rust.TranscriptDocumentRecord?> getTranscript(String meetingId);
 
+  /// Re-transcribes [startMs]–[endMs] from [wavPath] with maximum-quality weights.
+  String transcribeRange({
+    required String wavPath,
+    required int startMs,
+    required int endMs,
+    String? language,
+  });
+
   void cancel();
+
+  /// Applies the adaptive planner's final-transcript profile before file ASR.
+  void setFinalProcessingProfile(rust.FinalProcessingProfile profile);
 
   // The meeting library. Reads, not part of the transcribe/generate/save
   // pipeline, but owned by the same library that owns the store — kept on
@@ -389,6 +400,23 @@ class RustMindSpeechBridge implements MindSpeechBridge {
 
   @override
   void cancel() => rust.cancelProcessing();
+
+  @override
+  void setFinalProcessingProfile(rust.FinalProcessingProfile profile) =>
+      rust.setFinalProcessingProfile(profile: profile);
+
+  @override
+  String transcribeRange({
+    required String wavPath,
+    required int startMs,
+    required int endMs,
+    String? language,
+  }) => rust.transcribeRecordingRange(
+    wavPath: wavPath,
+    startMs: BigInt.from(startMs),
+    endMs: BigInt.from(endMs),
+    language: language,
+  );
 
   @override
   Future<List<rust.MeetingRecord>> meetings() => rust.listMeetings();

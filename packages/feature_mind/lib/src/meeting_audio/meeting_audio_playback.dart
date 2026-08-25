@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 /// Plays a meeting's source recording and seeks to a transcript timestamp.
 ///
@@ -50,7 +51,7 @@ class MeetingAudioPlayback extends ChangeNotifier {
       return;
     }
     _path = path;
-    await player.play(DeviceFileSource(path));
+    await player.play(DeviceFileSource(path, mimeType: _mimeTypeForPath(path)));
   }
 
   Future<void> seekAndPlay(String path, int startMs) async {
@@ -58,7 +59,7 @@ class MeetingAudioPlayback extends ChangeNotifier {
     final position = Duration(milliseconds: startMs < 0 ? 0 : startMs);
     if (_path != path) {
       _path = path;
-      await player.play(DeviceFileSource(path));
+      await player.play(DeviceFileSource(path, mimeType: _mimeTypeForPath(path)));
     }
     await player.seek(position);
     if (!_playing) {
@@ -83,6 +84,32 @@ class MeetingAudioPlayback extends ChangeNotifier {
       notifyListeners();
     });
     return player;
+  }
+
+  static String? _mimeTypeForPath(String path) {
+    switch (p.extension(path).toLowerCase()) {
+      case '.m4a':
+      case '.m4b':
+      case '.mp4':
+        return 'audio/mp4';
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.wav':
+        return 'audio/wav';
+      case '.aac':
+        return 'audio/aac';
+      case '.ogg':
+      case '.opus':
+        return 'audio/ogg';
+      case '.flac':
+        return 'audio/flac';
+      case '.caf':
+        return 'audio/x-caf';
+      case '.webm':
+        return 'audio/webm';
+      default:
+        return null;
+    }
   }
 
   @override

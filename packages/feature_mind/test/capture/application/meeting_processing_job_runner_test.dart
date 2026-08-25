@@ -374,4 +374,32 @@ void main() {
       expect(audioFile.existsSync(), isFalse);
     },
   );
+
+  test('rejects empty transcript so silent imports do not save blank meetings', () async {
+    speech.transcriptEvents = const [
+      TranscriptEventTranscriptReady('', []),
+    ];
+    generation.meetingIntelligenceEvents = const [
+      MeetingIntelligenceEventMinutesReady('Minutes.'),
+    ];
+    final audioFile = File('${tempDir.path}/empty.wav')
+      ..writeAsStringSync('audio');
+    final runner = MeetingProcessingJobRunner(
+      mindService: mindService,
+      retentionPolicy: () => AudioRetentionPolicy.keepAfterTranscript,
+    );
+
+    await expectLater(
+      runner.call(
+        MeetingProcessingJob(
+          id: 'm-empty',
+          audioPath: audioFile.path,
+          title: 'Empty',
+          enqueuedAtMs: 0,
+          source: MeetingProcessingSource.podcast,
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 }
