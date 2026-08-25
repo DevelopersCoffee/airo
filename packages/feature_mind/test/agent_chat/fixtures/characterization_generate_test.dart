@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:feature_mind/src/agent_chat/data/services/assistant_chat_context_builder.dart';
 import 'package:feature_mind/src/agent_chat/data/services/diet_plan_plugin_prompt.dart';
 import 'package:feature_mind/src/agent_chat/domain/models/chat_entity_graph.dart';
-import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_graph_projector.dart';
+import 'package:feature_mind/src/addons/graph_workflow/legacy_chat_entity_graph_projector.dart';
 import 'package:feature_mind/src/agent_chat/domain/services/chat_entity_linker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
