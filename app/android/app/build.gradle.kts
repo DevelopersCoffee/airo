@@ -413,15 +413,15 @@ dependencies {
         // Wave B (F4.2): connection pooling, keepalive, custom DNS via
         // okhttp3.Dns. See tasks/tv-zero-copy-cast-phase2-waveB-task1-okhttp-proposal.md
         // for the full proposal this was confirmed against.
-        implementation("com.squareup.okhttp3:okhttp:5.4.0")
+        implementation("com.squareup.okhttp3:okhttp:5.5.0")
         implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
-        testImplementation("com.squareup.okhttp3:okhttp:5.4.0")
+        testImplementation("com.squareup.okhttp3:okhttp:5.5.0")
         // Test-only, never ships in the APK. Standard purpose-built local
         // HTTP server for exercising OkHttp code -- switched to from
         // com.sun.net.httpserver.HttpServer after that failed to resolve
         // on the Android Gradle Plugin's unit-test classpath (confirmed by
         // compile errors, not assumed).
-        testImplementation("com.squareup.okhttp3:mockwebserver3:5.4.0")
+        testImplementation("com.squareup.okhttp3:mockwebserver3:5.5.0")
     }
 
 }
