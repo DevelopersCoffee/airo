@@ -39,6 +39,7 @@ import '../../../agent_chat/data/services/preferences_reliability_checkpoint_sto
 import '../../../agent_chat/data/services/gguf_instruct_prompt.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
+import '../../../agent_chat/application/chat_model_config_preferences.dart';
 import '../../../agent_chat/domain/models/agent_plugin_catalog.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
@@ -71,6 +72,7 @@ import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
 import '../../../agent_chat/presentation/widgets/grounded_answer_block.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/mind_safety_banner.dart';
+import '../../../agent_chat/presentation/widgets/chat_model_config_dialog.dart';
 import '../../../agent_chat/presentation/widgets/pick_assistant_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../reasoning/chat_reasoning_request.dart';
@@ -1327,6 +1329,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         icon: const Icon(Icons.tune, size: 20),
                       ),
                       IconButton(
+                        key: const Key('agent_chat_model_config_button'),
+                        tooltip: 'Model config',
+                        onPressed: _openModelConfig,
+                        icon: const Icon(Icons.settings_outlined, size: 20),
+                      ),
+                      IconButton(
                         key: const Key('agent_chat_copy_transcript_button'),
                         tooltip: 'Copy transcript',
                         onPressed: _messages.isEmpty ? null : _copyTranscript,
@@ -1899,7 +1907,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       historyEmpty: _messages.where((m) => m.isUser).length <= 1,
       estimatedTokens: TokenCounter.estimate('$systemPrompt\n$message'),
       modelContextLimit: _selectedContextLimit(),
-      definition: addonPlan?.reliabilityDefinition() ??
+      definition:
+          addonPlan?.reliabilityDefinition() ??
           (selectedModelIdForGate != null &&
                   _shouldUseReasoning(selectedModelIdForGate)
               ? AiroPromptRegistry.reasoningEngine
@@ -2085,9 +2094,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     });
     if (checkpoint.state != ResearchPhase.paused) {
-      unawaited(
-        _runDeepResearch(checkpoint.question, resumeFrom: checkpoint),
-      );
+      unawaited(_runDeepResearch(checkpoint.question, resumeFrom: checkpoint));
     }
   }
 
@@ -2584,7 +2591,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       historyEmpty: false,
       estimatedTokens: estimated,
       modelContextLimit: contextLimit,
-      definition: addonPlan?.reliabilityDefinition() ??
+      definition:
+          addonPlan?.reliabilityDefinition() ??
           (_shouldUseReasoning(selectedModelId)
               ? AiroPromptRegistry.reasoningEngine
               : _personaSession.isPinned
@@ -2620,11 +2628,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           stopwatch: stopwatch,
         );
       }
+      final modelConfig = ref.read(chatModelConfigProvider);
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: modelPrompt,
         systemPrompt: systemPrompt,
-        maxOutputTokens: addonPlan?.maxOutputTokens,
+        maxOutputTokens: addonPlan?.maxOutputTokens ?? modelConfig.maxTokens,
+        temperature: modelConfig.temperature,
+        topP: modelConfig.topP,
+        topK: modelConfig.topK,
+        preferGpu: modelConfig.preferGpu,
         constraint: generationConstraint,
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
@@ -3108,35 +3121,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final history = _chatHistoryMessages();
     final addonPlan = _generativePlan(currentPrompt, history);
     final session = _personaSession;
-    if (session.isPinned) {
-      final pinnedAddonApplies =
-          addonPlan != null && session.pinnedId == addonPlan.identity.id.value;
-      return contextBuilder.buildSystemPrompt(
-        currentUserPrompt: pinnedAddonApplies
-            ? addonPlan.prompt.userPrompt
-            : currentPrompt,
-        compact: useCompact,
-        pluginPlaybooks: session.playbooks(),
-        pinnedPersonaIdentity: session.identityPreamble(),
-        history: pinnedAddonApplies
-            ? addonPlan.contextHistory(history)
-            : history,
-      );
-    }
-    return contextBuilder.buildSystemPrompt(
-      currentUserPrompt: addonPlan?.prompt.userPrompt ?? currentPrompt,
-      compact: useCompact,
-      pluginPlaybooks: _enabledGenerativePluginPlaybooks(
-        currentPrompt: currentPrompt,
-        history: history,
-        activeAddonId: addonPlan?.identity.id.value,
-      ),
-      history: addonPlan != null
-          ? addonPlan.contextHistory(history)
-          : ref
-              .read(generativeAddonCoordinatorProvider)
-              .collapseThreadHistory(history),
-    );
+    final assembled = session.isPinned
+        ? contextBuilder.buildSystemPrompt(
+            currentUserPrompt:
+                addonPlan != null &&
+                    session.pinnedId == addonPlan.identity.id.value
+                ? addonPlan.prompt.userPrompt
+                : currentPrompt,
+            compact: useCompact,
+            pluginPlaybooks: session.playbooks(),
+            pinnedPersonaIdentity: session.identityPreamble(),
+            history:
+                addonPlan != null &&
+                    session.pinnedId == addonPlan.identity.id.value
+                ? addonPlan.contextHistory(history)
+                : history,
+          )
+        : contextBuilder.buildSystemPrompt(
+            currentUserPrompt: addonPlan?.prompt.userPrompt ?? currentPrompt,
+            compact: useCompact,
+            pluginPlaybooks: _enabledGenerativePluginPlaybooks(
+              currentPrompt: currentPrompt,
+              history: history,
+              activeAddonId: addonPlan?.identity.id.value,
+            ),
+            history: addonPlan != null
+                ? addonPlan.contextHistory(history)
+                : ref
+                      .read(generativeAddonCoordinatorProvider)
+                      .collapseThreadHistory(history),
+          );
+    return ref.read(chatModelConfigProvider).mergeSystemPrompt(assembled);
   }
 
   List<String> _enabledGenerativePluginPlaybooks({
@@ -3449,6 +3464,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       readiness: readiness,
       catalog: catalog,
     );
+  }
+
+  Future<void> _openModelConfig() async {
+    final next = await showChatModelConfigDialog(
+      context: context,
+      initial: ref.read(chatModelConfigProvider),
+    );
+    if (next == null || !mounted) return;
+    await ref.read(chatModelConfigProvider.notifier).save(next);
   }
 
   Future<void> _selectAssistantModel(AssistantModelCandidate candidate) async {

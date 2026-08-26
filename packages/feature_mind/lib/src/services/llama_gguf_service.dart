@@ -77,12 +77,14 @@ class LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async {
     final outcome = await loadModelOutcome(
       model,
       contextSize: contextSize,
       threads: threads,
       memoryBudgetMb: memoryBudgetMb,
+      preferGpu: preferGpu,
     );
     return outcome.succeeded;
   }
@@ -92,6 +94,7 @@ class LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async {
     final path = model.filePath?.trim();
     if (path == null || path.isEmpty) {
@@ -116,7 +119,7 @@ class LlamaGgufService {
           modelPath: path,
           threads: threads,
           contextSize: safeContext,
-          gpuLayers: gpu.recommendedGpuLayers,
+          gpuLayers: preferGpu ? gpu.recommendedGpuLayers : 0,
         );
         _loaded = true;
         return const GgufLoadOutcome.success();

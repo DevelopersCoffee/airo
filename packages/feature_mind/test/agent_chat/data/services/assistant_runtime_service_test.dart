@@ -533,6 +533,80 @@ void main() {
       },
     );
 
+    test('forwards chat sampling config to the GGUF generator', () async {
+      final package = OfflineModelInfo(
+        id: 'qwen2-1.5b-q4',
+        name: 'Qwen2 1.5B',
+        family: ModelFamily.qwen,
+        fileSizeBytes: 1_100_000_000,
+        filePath: '/models/qwen2-1.5b-q4.gguf',
+        provider: AIProvider.gguf,
+      );
+      final runtimeId = assistantModelIdForOfflineModel(package.id);
+      final llama = _FakeLlamaGgufService(
+        isAvailableResult: true,
+        loadModelResult: true,
+        generatedChunks: ['ok'],
+      );
+      final service = AssistantRuntimeService(
+        llamaGguf: llama,
+        loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Mac',
+          platformLabel: 'MACOS',
+          candidates: [
+            AssistantModelCandidate(
+              id: runtimeId,
+              name: package.name,
+              runtime: 'GGUF',
+              description: 'Installed package',
+              bestFor: const [AssistantTask.chat],
+              tags: const ['Local'],
+              privacyLabel: 'Private',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+          ],
+          recommended: AssistantModelCandidate(
+            id: runtimeId,
+            name: package.name,
+            runtime: 'GGUF',
+            description: 'Installed package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Private',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+          defaultPackages: const {},
+        ),
+      );
+
+      await service
+          .generateTextStream(
+            selectedModelId: runtimeId,
+            prompt: 'say hello',
+            maxOutputTokens: 4000,
+            temperature: 1,
+            topP: 0.95,
+            topK: 1,
+            preferGpu: false,
+          )
+          .toList();
+
+      expect(llama.lastMaxTokens, 4000);
+      expect(llama.lastTemperature, 1);
+      expect(llama.lastTopP, 0.95);
+      expect(llama.lastTopK, 1);
+      expect(llama.loadedPreferGpu, isFalse);
+    });
+
     test(
       'prefills the assistant turn instead of relying on prefix GBNF',
       () async {
@@ -1814,8 +1888,10 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async {
     loadedContextSize = contextSize;
+    loadedPreferGpu = preferGpu;
     return loadModelResult;
   }
 
@@ -1825,8 +1901,10 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async {
     loadedContextSize = contextSize;
+    loadedPreferGpu = preferGpu;
     return loadModelResult
         ? const GgufLoadOutcome.success()
         : GgufLoadOutcome.engineError('test_load_failed');
@@ -1843,6 +1921,9 @@ class _FakeLlamaGgufService extends LlamaGgufService {
   }) {
     lastPrompt = prompt;
     lastMaxTokens = maxTokens;
+    lastTemperature = temperature;
+    lastTopP = topP;
+    lastTopK = topK;
     lastGrammar = grammar;
     return Stream<String>.fromIterable(generatedChunks);
   }
@@ -1854,7 +1935,11 @@ class _FakeLlamaGgufService extends LlamaGgufService {
 
   String? lastPrompt;
   int? lastMaxTokens;
+  double? lastTemperature;
+  double? lastTopP;
+  int? lastTopK;
   String? lastGrammar;
+  bool? loadedPreferGpu;
 }
 
 class _UrlOnlyLiteRtClient implements LiteRtLmClient {
