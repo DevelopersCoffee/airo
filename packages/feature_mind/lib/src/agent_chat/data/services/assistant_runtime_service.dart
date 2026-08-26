@@ -692,6 +692,11 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
     String? grammar,
+    int? maxOutputTokens,
+    double? temperature,
+    double? topP,
+    int? topK,
+    bool preferGpu = true,
   }) async {
     await _ensureCheckpointsHydrated();
     lastGenerationStats = null;
@@ -794,6 +799,11 @@ class AssistantRuntimeService {
             package: package,
             prompt: prompt,
             systemPrompt: systemPrompt,
+            maxOutputTokens: maxOutputTokens,
+            temperature: temperature,
+            topP: topP,
+            topK: topK,
+            preferGpu: preferGpu,
             emitRequestTrace: false,
             grammar: constrained ? grammar : null,
           )) {
@@ -835,6 +845,10 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
     int? maxOutputTokens,
+    double? temperature,
+    double? topP,
+    int? topK,
+    bool preferGpu = true,
     GenerationConstraint? constraint,
   }) async* {
     await _ensureCheckpointsHydrated();
@@ -854,6 +868,10 @@ class AssistantRuntimeService {
             prompt: prompt,
             systemPrompt: systemPrompt,
             maxOutputTokens: maxOutputTokens,
+            temperature: temperature,
+            topP: topP,
+            topK: topK,
+            preferGpu: preferGpu,
             assistantPrefill: constraint?.forcedPrefix,
           );
           return;
@@ -863,6 +881,11 @@ class AssistantRuntimeService {
         selectedModelId: runtimeId,
         prompt: constrainedPrompt,
         systemPrompt: systemPrompt,
+        maxOutputTokens: maxOutputTokens,
+        temperature: temperature,
+        topP: topP,
+        topK: topK,
+        preferGpu: preferGpu,
       );
       return;
     }
@@ -914,6 +937,10 @@ class AssistantRuntimeService {
     required String prompt,
     String? systemPrompt,
     int? maxOutputTokens,
+    double? temperature,
+    double? topP,
+    int? topK,
+    bool preferGpu = true,
     bool emitRequestTrace = true,
     String? grammar,
     String? assistantPrefill,
@@ -930,7 +957,7 @@ class AssistantRuntimeService {
         ),
       );
     }
-    await _ensureGgufReady(runtimeId, package);
+    await _ensureGgufReady(runtimeId, package, preferGpu: preferGpu);
     final instructPrompt = formatGgufInstructPrompt(
       prompt: prompt,
       systemPrompt: systemPrompt,
@@ -950,6 +977,9 @@ class AssistantRuntimeService {
     await for (final token in _llamaGguf.generate(
       prompt: instructPrompt,
       maxTokens: maxOutputTokens ?? ggufMaxOutputTokens(package),
+      temperature: temperature ?? 0.7,
+      topP: topP ?? 0.9,
+      topK: topK ?? 40,
       grammar: grammar,
     )) {
       accumulated += token;
@@ -997,8 +1027,9 @@ class AssistantRuntimeService {
 
   Future<void> _ensureGgufReady(
     String runtimeId,
-    OfflineModelInfo package,
-  ) async {
+    OfflineModelInfo package, {
+    bool preferGpu = true,
+  }) async {
     if (!await _llamaGguf.isAvailable()) {
       throw AssistantRuntimeUnavailableException(
         runtimeId,
@@ -1008,6 +1039,7 @@ class AssistantRuntimeService {
     final loaded = await _llamaGguf.loadModelOutcome(
       package,
       contextSize: _effectiveContextLength(package),
+      preferGpu: preferGpu,
     );
     if (loaded.succeeded) return;
     final copy = GgufLoadDiagnostics.describe(

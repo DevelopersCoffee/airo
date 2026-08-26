@@ -203,6 +203,7 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async => loadModelResult;
 
   @override
@@ -211,6 +212,7 @@ class _FakeLlamaGgufService extends LlamaGgufService {
     int? contextSize,
     int threads = 4,
     int memoryBudgetMb = 4096,
+    bool preferGpu = true,
   }) async {
     return loadModelResult
         ? const GgufLoadOutcome.success()
