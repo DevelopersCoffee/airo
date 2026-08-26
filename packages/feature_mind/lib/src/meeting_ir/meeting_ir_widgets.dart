@@ -314,6 +314,8 @@ class MeetingIrTranscriptList extends StatelessWidget {
     this.onSegmentTap,
     this.globalEnrolledNames = const {},
     this.applyPersonaNames = true,
+    this.suspiciousSegmentIds = const {},
+    this.suspiciousSignals = const {},
   });
 
   final List<TranscriptSegmentView> segments;
@@ -327,6 +329,9 @@ class MeetingIrTranscriptList extends StatelessWidget {
   final void Function(TranscriptSegmentView segment)? onSegmentTap;
   final Map<String, String> globalEnrolledNames;
   final bool applyPersonaNames;
+  final Set<String> suspiciousSegmentIds;
+  /// Maps segment id → list of quality signal strings from [SegmentQualityIssue].
+  final Map<String, List<String>> suspiciousSignals;
 
   @override
   Widget build(BuildContext context) {
@@ -342,25 +347,44 @@ class MeetingIrTranscriptList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final segment in segments)
-          InkWell(
-            key: segmentKeys[segment.id],
-            onTap: onSegmentTap == null ? null : () => onSegmentTap!(segment),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: highlightedIds.contains(segment.id)
-                    ? scheme.tertiaryContainer
-                    : null,
-                borderRadius: BorderRadius.circular(8),
-                border: highlightedIds.contains(segment.id)
-                    ? Border.all(color: scheme.tertiary)
-                    : null,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          _buildSegmentRow(context, scheme, segment),
+      ],
+    );
+  }
+
+  Widget _buildSegmentRow(
+    BuildContext context,
+    ColorScheme scheme,
+    TranscriptSegmentView segment,
+  ) {
+    final isHighlighted = highlightedIds.contains(segment.id);
+    final isSuspicious = suspiciousSegmentIds.contains(segment.id);
+    const suspiciousColor = Color(0xFFF59E0B); // amber-500
+    return InkWell(
+      key: segmentKeys[segment.id],
+      onTap: onSegmentTap == null ? null : () => onSegmentTap!(segment),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isHighlighted
+              ? scheme.tertiaryContainer
+              : isSuspicious
+                  ? suspiciousColor.withValues(alpha: 0.10)
+                  : null,
+          borderRadius: BorderRadius.circular(8),
+          border: isHighlighted
+              ? Border.all(color: scheme.tertiary)
+              : isSuspicious
+                  ? Border.all(
+                      color: suspiciousColor.withValues(alpha: 0.55),
+                    )
+                  : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   Text(
                     formatTimestamp(segment.startMs),
                     key: Key('meeting_ir_seek_${segment.id}'),
@@ -462,11 +486,85 @@ class MeetingIrTranscriptList extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
+                  if (isSuspicious)
+                    Tooltip(
+                      message: (suspiciousSignals[segment.id] ?? const [])
+                          .join(', '),
+                      child: IconButton(
+                        key: Key('meeting_ir_quality_${segment.id}'),
+                        icon: const Icon(
+                          Icons.warning_amber_outlined,
+                          size: 16,
+                        ),
+                        color: const Color(0xFFF59E0B),
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => _showQualitySignals(
+                          context,
+                          segment,
+                          suspiciousSignals[segment.id] ?? const [],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
+          );
+  }
+
+  static void _showQualitySignals(
+    BuildContext context,
+    TranscriptSegmentView segment,
+    List<String> signals,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_outlined, color: Color(0xFFF59E0B)),
+            SizedBox(width: 8),
+            Text('Low confidence segment'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (signals.isNotEmpty) ...[
+              const Text('Quality signals detected:'),
+              const SizedBox(height: 8),
+              for (final signal in signals)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• '),
+                      Expanded(child: Text(signal)),
+                    ],
+                  ),
+                ),
+            ] else
+              const Text('No specific signals recorded.'),
+            const SizedBox(height: 12),
+            Text(
+              '"${segment.text.trim()}"',
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Dismiss'),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

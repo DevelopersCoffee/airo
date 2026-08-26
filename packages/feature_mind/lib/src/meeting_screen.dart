@@ -289,6 +289,18 @@ class _MeetingScreenState extends State<MeetingScreen> {
   MeetingTranscriptQualityReport? get _activeQualityReport =>
       _qualityReport ?? _progress.qualityReport;
 
+  Set<String> get _suspiciousSegmentIds {
+    final issues = _activeQualityReport?.segmentIssues;
+    if (issues == null || issues.isEmpty) return const {};
+    return {for (final issue in issues) issue.segmentId};
+  }
+
+  Map<String, List<String>> get _suspiciousSignals {
+    final issues = _activeQualityReport?.segmentIssues;
+    if (issues == null || issues.isEmpty) return const {};
+    return {for (final issue in issues) issue.segmentId: issue.signals};
+  }
+
   bool get _isRunning =>
       _progress.stage == MindStage.transcribing ||
       _progress.stage == MindStage.extracting ||
@@ -948,6 +960,8 @@ class _MeetingScreenState extends State<MeetingScreen> {
                     _globalProfiles,
                   ),
                   applyPersonaNames: _applySpeakerPersonaNames,
+                  suspiciousSegmentIds: _suspiciousSegmentIds,
+                  suspiciousSignals: _suspiciousSignals,
                 ),
               ],
               if (stored != null) ...[
