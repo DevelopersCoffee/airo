@@ -1,5 +1,21 @@
 /// Stub implementation of package_info_plus for lean TV builds.
+///
+/// This stub has no platform channel, so it cannot read the real
+/// `versionName`/`versionCode` Gradle stamps into the APK. It reports what
+/// the build *would* have stamped instead, which only stays true if these
+/// values track `app/pubspec_tv.yaml` — Gradle takes `versionCode` and
+/// `versionName` straight from the pubspec Flutter was pointed at.
+///
+/// Drift here is not cosmetic: the only consumer is `AppInfoTile`, whose
+/// entire purpose is telling support which build a user is on. It reported
+/// `0.0.2 (2)` against a real `0.0.7-preview+12` APK until this was fixed.
+/// `app/test/core/tv_stub_version_test.dart` fails if they diverge again.
 library;
+
+/// Kept equal to the `version:` field of `app/pubspec_tv.yaml`, which is
+/// `<_stubVersion>+<_stubBuildNumber>`.
+const String _stubVersion = '0.0.7-preview';
+const String _stubBuildNumber = '12';
 
 class PackageInfo {
   PackageInfo({
@@ -19,9 +35,11 @@ class PackageInfo {
     return _fromPlatform ??
         PackageInfo(
           appName: 'Airo TV',
+          // Matches `variantApplicationId` for the "tv" variant in
+          // app/android/app/build.gradle.kts.
           packageName: 'io.airo.app.tv',
-          version: '0.0.2',
-          buildNumber: '2',
+          version: _stubVersion,
+          buildNumber: _stubBuildNumber,
         );
   }
 

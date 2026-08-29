@@ -163,7 +163,13 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
             ),
           );
         case EpgReminderOutcome.unavailable:
-          break;
+          // Unreachable while the button is gated on the gateway above, but
+          // a reminder that cannot be set must never fail silently.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Reminders are not available on this device.'),
+            ),
+          );
       }
     } finally {
       _reminderOperationsInFlight.remove(programId);
@@ -176,6 +182,15 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
     required VoidCallback onWatchNow,
   }) async {
     final scheduler = ref.read(epgReminderSchedulerProvider);
+    // Without a notification gateway `scheduleReminder` can only answer
+    // `unavailable`, so the button would be a control that silently does
+    // nothing. That is the permanent state on TV: `main_tv.dart` never
+    // overrides `epgReminderNotificationGatewayProvider` (only the phone
+    // entrypoint does), and the TV flavor stubs `flutter_local_notifications`
+    // anyway, so there is nothing to wire it to.
+    final canScheduleReminders = ref
+        .read(epgReminderNotificationGatewayProvider)
+        .isAvailable;
     final isReminded = await scheduler.isReminded(program.programId);
     if (!mounted) return;
     await showDialog<void>(
@@ -188,7 +203,9 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
           Navigator.of(dialogContext).pop();
           onWatchNow();
         },
-        onToggleReminder: program.startsAt.isAfter(DateTime.now().toUtc())
+        onToggleReminder:
+            canScheduleReminders &&
+                program.startsAt.isAfter(DateTime.now().toUtc())
             ? () {
                 Navigator.of(dialogContext).pop();
                 unawaited(_toggleReminder(channel, program));
