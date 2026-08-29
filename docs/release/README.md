@@ -8,7 +8,7 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) | prepared | TV BACK fix, playlist merge, Coins AI; Mind under qualification |
+| [Airo v0.0.7](./AIRO_v0.0.7.md) | prepared | TV BACK fix, playlist merge, Coins AI; Mind under qualification |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | 2026-08-04 | Aggregate TV / full / Coins / macOS TV wave |
 | [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
 | [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | 2026-07-22 | Search, favorites, guide setup, provider add-flows, diagnostics |
@@ -21,7 +21,7 @@ Documentation for Airo releases and version history.
 
 ## Latest public release: Airo v0.0.6
 
-Next candidate: [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) (prepared, not tagged).
+Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 
 ### v0.0.6 highlights
 - **Four SKUs from one orchestrator wave** — Airo TV, full app, Airo Coins, macOS TV.
@@ -30,7 +30,7 @@ Next candidate: [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) (prepared, not t
 
 ### Quick Links
 - [Airo v0.0.6 Notes](./AIRO_v0.0.6.md)
-- [Airo v0.0.7-preview Notes](./AIRO_v0.0.7-preview.md)
+- [Airo v0.0.7 Notes](./AIRO_v0.0.7.md)
 - [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
 - [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
@@ -64,7 +64,7 @@ Next candidate: [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) (prepared, not t
 
 | Document | Description |
 |----------|-------------|
-| [Airo v0.0.7-preview](./AIRO_v0.0.7-preview.md) | Next candidate: TV BACK, playlist merge, Coins AI; prepared, not tagged |
+| [Airo v0.0.7](./AIRO_v0.0.7.md) | Next candidate: TV BACK, playlist merge, Coins AI; prepared, not tagged |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | Aggregate TV / full / Coins / macOS TV stable wave |
 | [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |
 | [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | Search, favorites, guide setup, provider add-flows, diagnostics |

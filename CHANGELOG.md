@@ -4,11 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
-## v0.0.7-preview — unreleased
+## v0.0.7 — unreleased
 
-Preview cut of the `0.0.7` line across Airo TV, the full app, Airo Coins, and
-macOS TV. Prepared notes: [docs/release/AIRO_v0.0.7-preview.md](docs/release/AIRO_v0.0.7-preview.md).
-Not tagged until Rust Core CI is green on the freeze SHA.
+Stable cut of the `0.0.7` line across Airo TV, the full app, Airo Coins, and
+macOS TV. Prepared notes: [docs/release/AIRO_v0.0.7.md](docs/release/AIRO_v0.0.7.md).
+Not tagged until Rust Core CI is green on the freeze SHA and the Fire TV
+Stick + Pixel 9 device gate passes on the dry-run artifacts.
 
 ### Added
 

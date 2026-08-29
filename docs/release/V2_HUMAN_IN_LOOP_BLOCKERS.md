@@ -1,7 +1,7 @@
 # V2 Human-In-Loop Blocker Index
 
 Last checked: 2026-08-13. v2 branch/tag strategy dropped this date — base
-branch is `main`, release line is `0.0.7-preview`; blockers below are
+branch is `main`, release line is `0.0.7`; blockers below are
 unaffected by the rename.
 
 This index lists open v2 release blockers that cannot be completed by code

@@ -205,8 +205,6 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
         return ref.watch(tvSourceManagementSectionBuilderProvider)(
           key: ValueKey('tv_settings_section_sources'),
         );
-      case IptvSettingsSectionId.accessibility:
-        return const _AccessibilityComingSoon();
       case IptvSettingsSectionId.privacy:
         return const TvPrivacySection(
           key: ValueKey('tv_settings_section_privacy'),
@@ -221,30 +219,5 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
         // shared enum other shells also declare visibility for.
         return const SizedBox.shrink();
     }
-  }
-}
-
-class _AccessibilityComingSoon extends StatelessWidget {
-  const _AccessibilityComingSoon();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Accessibility',
-            style: TextStyle(color: colorScheme.onSurface, fontSize: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming soon',
-            style: TextStyle(color: colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
   }
 }
