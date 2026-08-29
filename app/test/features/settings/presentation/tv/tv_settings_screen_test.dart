@@ -26,14 +26,19 @@ void main() {
   }
 
   testWidgets(
-    'renders all four section names and shows Theme selected by default',
+    'renders every section name and shows Theme selected by default',
     (tester) async {
       await pumpScreen(tester);
 
       expect(find.text('Theme'), findsOneWidget);
       expect(find.text('Playback'), findsOneWidget);
       expect(find.text('Sources'), findsOneWidget);
-      expect(find.text('Accessibility'), findsOneWidget);
+      expect(find.text('Privacy'), findsOneWidget);
+
+      // Accessibility was a rail stop whose detail pane only ever said
+      // "Coming soon". On a D-pad rail that is a focus stop leading nowhere,
+      // so the entry is gone rather than parked.
+      expect(find.text('Accessibility'), findsNothing);
 
       expect(
         find.byKey(const ValueKey('tv_settings_section_theme')),

@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 /// one: mobile currently exposes `playlistSource` and `epgGuideSource` as two
 /// separate entries, while TV exposes one combined `sources` entry; mobile
 /// exposes `country` and `audio`, which TV does not yet expose at all; TV
-/// exposes an `accessibility` stub, which mobile does not yet show. Declaring
+/// exposes `privacy`, which mobile does not yet show. Declaring
 /// each of those as its own descriptor with an explicit
 /// [IptvSettingsSectionDescriptor.visibleForShells] set records the real gaps
 /// from `tasks/ssot_airo_airo_tv_gap_analysis.md` as data, so a future pass
@@ -30,7 +30,6 @@ enum IptvSettingsSectionId {
   epgGuideSource,
   country,
   audio,
-  accessibility,
   privacy,
 }
 
@@ -119,12 +118,6 @@ final List<IptvSettingsSectionDescriptor> iptvSettingsSections = [
     label: 'Audio Settings',
     icon: Icons.settings_voice,
     visibleForShells: {ShellId.mobile},
-  ),
-  IptvSettingsSectionDescriptor(
-    id: IptvSettingsSectionId.accessibility,
-    label: 'Accessibility',
-    icon: Icons.accessibility_new_outlined,
-    visibleForShells: {ShellId.tv},
   ),
   // Phase 1 streaming telemetry consent (F7.5, tv-zero-copy-cast-phase1
   // Task 7). TV-only for now: only main_tv.dart bootstraps
