@@ -163,4 +163,76 @@ void main() {
       expect(liveActivations, 0);
     },
   );
+
+  testWidgets('BACK dismisses an overlay instead of closing the app', (
+    tester,
+  ) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: TvShell(child: SizedBox.expand(child: Text('Live surface'))),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settingsRailItem = tester.widget<TvFocusable>(
+      find.ancestor(
+        of: find.text('Settings'),
+        matching: find.byType(TvFocusable),
+      ),
+    );
+    settingsRailItem.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme'), findsOneWidget);
+
+    // `true` means the shell consumed BACK. Were it `false`, the key would
+    // fall through to IPTVScreen.didPopRoute and ultimately SystemNavigator
+    // .pop() — the store-rejecting "BACK exits the app" behaviour.
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme'), findsNothing);
+    expect(find.text('Live surface'), findsOneWidget);
+    expect(container.read(tvNavigationIndexProvider), 0);
+  });
+
+  testWidgets('BACK is left to the player while fullscreen', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: TvShell(child: SizedBox.expand())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settingsRailItem = tester.widget<TvFocusable>(
+      find.ancestor(
+        of: find.text('Settings'),
+        matching: find.byType(TvFocusable),
+      ),
+    );
+    settingsRailItem.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+
+    container.read(isFullscreenModeProvider.notifier).state = true;
+    await tester.pumpAndSettle();
+
+    // In fullscreen BACK means "leave fullscreen", which IPTVScreen owns.
+    // The shell must not swallow it, or exiting fullscreen would take two
+    // presses on a real remote.
+    expect(await tester.binding.handlePopRoute(), isFalse);
+  });
 }

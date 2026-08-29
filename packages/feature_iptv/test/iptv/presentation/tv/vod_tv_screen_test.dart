@@ -1,3 +1,4 @@
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -106,5 +107,35 @@ void main() {
       );
       expect(find.text('Example Movie'), findsOneWidget);
     },
+  );
+
+  testWidgets(
+    'selecting an item plays it and calls onItemSelected',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      var closed = 0;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => [movie]),
+          ],
+          child: MaterialApp(home: VodTvScreen(onItemSelected: () => closed++)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Example Movie'));
+      await tester.pump();
+
+      // Without this the shell keeps the VOD grid painted over the retained
+      // live surface, so playback starts behind an opaque overlay.
+      expect(closed, 1);
+    },
+    experimentalLeakTesting: LeakTesting.settings.withIgnored(
+      notDisposed: {'VideoPlayerController': null},
+    ),
   );
 }

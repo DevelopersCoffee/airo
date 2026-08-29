@@ -13,7 +13,12 @@ import '../widgets/vod_grid.dart';
 /// path's dark, full-bleed layout (`AiroTvShell` in `tv_ux/`) since both
 /// screens live in the same TV shell.
 class VodTvScreen extends ConsumerWidget {
-  const VodTvScreen({super.key});
+  const VodTvScreen({super.key, this.onItemSelected});
+
+  /// Invoked after an item starts playing, so a shell that paints this
+  /// screen as an overlay on top of retained playback can dismiss itself
+  /// and reveal the video. Null when the screen owns the whole route.
+  final VoidCallback? onItemSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,6 +88,7 @@ class VodTvScreen extends ConsumerWidget {
     );
     ref.read(pendingVodHistoryItemProvider.notifier).state = item;
     ref.read(iptvStreamingServiceProvider).playChannel(syntheticChannel);
+    onItemSelected?.call();
   }
 }
 
