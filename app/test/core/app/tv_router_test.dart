@@ -462,6 +462,31 @@ void main() {
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 
+  testWidgets('unmatched deep link offers a way back to live TV', (
+    tester,
+  ) async {
+    // The canonical link is registered with android:pathPrefix, so Android
+    // delivers deeper paths under /airo/iptv even though only the exact path
+    // is routable. These used to hit go_router's default error page, which
+    // renders outside TvShell — no rail, and BACK closes the app.
+    await pumpTvRouter(
+      tester,
+      initialLocation: '/airo/iptv/watch/12345',
+      surfaceSize: const Size(1280, 720),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('That link could not be opened'), findsOneWidget);
+
+    await tester.tap(find.text('Go to Live TV'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('That link could not be opened'), findsNothing);
+    // Same landing the legacy-login redirect asserts: the live route with an
+    // empty playlist. The point is that the remote reached a real screen.
+    expect(find.text('Add your playlist'), findsOneWidget);
+  });
+
   testWidgets('favorites route renders the real favorites screen', (
     tester,
   ) async {

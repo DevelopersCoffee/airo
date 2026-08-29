@@ -40,6 +40,15 @@ class TvRouter {
   static GoRouter createRouter({String initialLocation = TvRouteNames.live}) {
     return GoRouter(
       initialLocation: initialLocation,
+      // The canonical deep link is registered with `android:pathPrefix`, so
+      // Android hands this router any deeper path under `/airo/iptv` — but
+      // `IptvDeepLinkIntent.tryParse` only accepts the exact path (all of its
+      // payload rides in query parameters), and no route matches the rest.
+      // Without this those links landed on go_router's default red error
+      // page, which has no way out on a remote: it is outside the shell, so
+      // there is no navigation rail, and BACK closes the app.
+      errorBuilder: (context, state) =>
+          _TvRouteNotFoundScreen(location: state.uri.toString()),
       redirect: (context, state) {
         final location = state.matchedLocation;
         if (location == TvRouteNames.home ||
@@ -118,6 +127,80 @@ class TvRouter {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Shown when no route matches — most often a deep link under the
+/// `/airo/iptv` prefix that carries a path segment the canonical link shape
+/// does not use. Replaces go_router's default error page, which on a remote
+/// is a dead end: it renders outside [TvShell], so there is no navigation
+/// rail to escape through, and BACK leaves the app.
+class _TvRouteNotFoundScreen extends StatelessWidget {
+  const _TvRouteNotFoundScreen({required this.location});
+
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(48),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.link_off, size: 56, color: colors.onSurfaceVariant),
+                const SizedBox(height: 20),
+                Text(
+                  'That link could not be opened',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  location,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                TvFocusable(
+                  autofocus: true,
+                  onSelect: () => context.go(TvRouteNames.live),
+                  semanticLabel: 'Go to Live TV',
+                  semanticButton: true,
+                  borderRadius: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Go to Live TV',
+                      style: TextStyle(
+                        color: colors.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
