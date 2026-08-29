@@ -153,6 +153,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onMultiviewToggle: widget.showVideoStage
           ? (channel) => _toggleMultiview(context, channel)
           : null,
+      onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
