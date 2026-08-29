@@ -43,6 +43,14 @@ class SiblingApp {
   final bool isPublishedAndroid;
   final bool isPublishedIos;
 
+  /// Whether this app has a live listing on any platform.
+  ///
+  /// Used to decide whether a "More Airo Apps" section is worth rendering at
+  /// all. A card whose listing is live on one platform still renders its
+  /// "Coming soon" state on the other — that per-platform choice stays in
+  /// `SiblingAppCard`, which is the only place that may read `dart:io`.
+  bool get isPublishedAnywhere => isPublishedAndroid || isPublishedIos;
+
   /// Reserved for future deep-link-if-installed support. Unused in v1.
   final String? deepLinkScheme;
 

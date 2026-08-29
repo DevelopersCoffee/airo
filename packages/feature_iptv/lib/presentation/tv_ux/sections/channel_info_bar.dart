@@ -18,6 +18,7 @@ class ChannelInfoBar extends ConsumerWidget {
     this.onPlaylistSourceTap,
     this.onWaysToWatchTap,
     this.onScreenshotTap,
+    this.showShareAction = true,
   });
 
   final IPTVChannel? channel;
@@ -25,6 +26,14 @@ class ChannelInfoBar extends ConsumerWidget {
   /// Opens Airo TV help when the video stage (and its overlay actions) is
   /// hidden by a grid-first TV layout. Null hides the button.
   final VoidCallback? onHelpTap;
+
+  /// Whether sharing can actually reach somewhere the viewer can use.
+  ///
+  /// False on the ten-foot layout: `share_plus` is stubbed there, so
+  /// [_copyShareDetails] always falls through to the clipboard — and a
+  /// remote has nowhere to paste it. The button reported "share message
+  /// copied" for a clipboard the user could never open.
+  final bool showShareAction;
 
   /// Opens the playlist-source sheet. Wired on TV where the phone app bar
   /// (the usual home of this action) is suppressed; null hides the button.
@@ -91,20 +100,21 @@ class ChannelInfoBar extends ConsumerWidget {
               icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
             ),
           ),
-          TvFocusable(
-            semanticLabel: 'Share',
-            enabled: channel != null,
-            onSelect: channel == null
-                ? null
-                : () => _copyShareDetails(context, ref, channel!),
-            child: IconButton(
-              onPressed: channel == null
+          if (showShareAction)
+            TvFocusable(
+              semanticLabel: 'Share',
+              enabled: channel != null,
+              onSelect: channel == null
                   ? null
                   : () => _copyShareDetails(context, ref, channel!),
-              tooltip: 'Share',
-              icon: const Icon(Icons.share_outlined),
+              child: IconButton(
+                onPressed: channel == null
+                    ? null
+                    : () => _copyShareDetails(context, ref, channel!),
+                tooltip: 'Share',
+                icon: const Icon(Icons.share_outlined),
+              ),
             ),
-          ),
           if (onScreenshotTap != null)
             TvFocusable(
               key: const ValueKey('channel-info-screenshot'),
