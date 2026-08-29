@@ -144,7 +144,16 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       multiviewChannelIds: {
         for (final session in multiview.sessions) session.id,
       },
-      onMultiviewToggle: (channel) => _toggleMultiview(context, channel),
+      // [MultiviewStage] is built inside `videoStage`, which is only mounted
+      // when `showVideoStage` is true — and TV passes false. Wiring the
+      // toggle regardless meant the remote's menu key answered "X added to
+      // multiview" for a stage that never appears. `ChannelLibraryGrid`
+      // treats a null callback as "this device has no multiview", so it also
+      // drops the menu-key binding and the per-tile button.
+      onMultiviewToggle: widget.showVideoStage
+          ? (channel) => _toggleMultiview(context, channel)
+          : null,
+      onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,

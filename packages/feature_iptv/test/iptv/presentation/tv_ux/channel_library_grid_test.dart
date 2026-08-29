@@ -59,6 +59,57 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('filtered-to-empty explains itself and offers a way back', (
+    tester,
+  ) async {
+    // The shell only builds this grid once the unfiltered library is
+    // non-empty, so zero channels means the filters excluded everything.
+    // It used to render a blank panel under the sort row.
+    var cleared = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: const [],
+              metadataByChannelId: const {},
+              onClearFilters: () => cleared++,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No channels match your filters'), findsOneWidget);
+
+    await tester.tap(find.text('Clear filters'));
+    await tester.pump();
+    expect(cleared, 1);
+  });
+
+  testWidgets('filtered-to-empty omits the action when it cannot clear', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(channels: [], metadataByChannelId: {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No channels match your filters'), findsOneWidget);
+    expect(find.text('Clear filters'), findsNothing);
+  });
+
   testWidgets('tapping a tile invokes onChannelSelected', (tester) async {
     IPTVChannel? tapped;
     await tester.pumpWidget(
