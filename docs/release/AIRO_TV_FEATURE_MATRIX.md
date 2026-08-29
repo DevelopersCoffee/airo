@@ -1,7 +1,7 @@
 # Airo TV Feature Matrix
 
 Current public release: [`v0.0.6`](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6).
-Next candidate: [`v0.0.7-preview`](./AIRO_v0.0.7-preview.md) (prepared, not tagged).
+Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ Next candidate: [`v0.0.7-preview`](./AIRO_v0.0.7-preview.md) (prepared, not tagg
 | XMLTV guide | Supported | User-configured XMLTV sources only; no bundled guide feed. |
 | Smart playlists and canonical channels | Supported | Local filtering and canonical identity matching help preserve personal organization across imports. |
 | Provider add-flows | Supported | User-authorized Xtream, Stalker, Jellyfin, and M3U sources. |
-| Unified live playlist merge | Under qualification | M3U, Xtream, and Stalker live sources merge into one browse list in 0.0.7-preview; device evidence is still being gathered. |
+| Unified live playlist merge | Under qualification | M3U, Xtream, and Stalker live sources merge into one browse list in 0.0.7; device evidence is still being gathered. |
 | Channel health warmup | Supported | Visible channels are warmed with bounded async stream checks so unavailable streams can be signaled before playback. |
 | Picture-in-picture | Under qualification | Video-only PiP layout is test-covered; full device evidence is still being gathered. |
 | Phone-hosted TV streaming | Under qualification | Debug entry point and protocol tests exist; real phone-to-receiver dogfood is not yet complete. |

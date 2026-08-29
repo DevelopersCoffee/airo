@@ -28,7 +28,7 @@ checklist.
 
 **Base branch/worktree:** Confirmed from latest `origin/main` for all release
 work (v2 branch/tag strategy dropped 2026-08-13; current release line is
-`0.0.7-preview`).
+`0.0.7`).
 
 **Decision:** Ready.
 
