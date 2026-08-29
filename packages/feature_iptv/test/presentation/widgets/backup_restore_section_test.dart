@@ -107,6 +107,78 @@ void main() {
 
     expect(state.atomicWrites, 0);
     expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('No backup file was selected.'), findsOneWidget);
+  });
+
+  testWidgets('save does not claim success when nothing was written', (
+    tester,
+  ) async {
+    final state = _FakeStateStore(
+      AiroBackupSnapshot(
+        playlistSources: const [],
+        favorites: const [],
+        epgSources: const [],
+        settings: const {},
+      ),
+    );
+    final service = AiroBackupService(store: state);
+    final controller = AiroBackupDocumentController(
+      service: service,
+      // The TV build: `file_picker` is stubbed, so no file is ever written.
+      documents: _FakeDocumentGateway(null, succeeds: false),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          iptvBackupServiceProvider.overrideWithValue(service),
+          iptvBackupDocumentControllerProvider.overrideWithValue(controller),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BackupRestoreSection())),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('backup-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Backup file saved.'), findsNothing);
+    expect(find.text('No backup file was saved.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('backup-share-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The backup was not shared.'), findsOneWidget);
+  });
+
+  testWidgets('save reports success when a file really was written', (
+    tester,
+  ) async {
+    final state = _FakeStateStore(
+      AiroBackupSnapshot(
+        playlistSources: const [],
+        favorites: const [],
+        epgSources: const [],
+        settings: const {},
+      ),
+    );
+    final service = AiroBackupService(store: state);
+    final controller = AiroBackupDocumentController(
+      service: service,
+      documents: _FakeDocumentGateway(null),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          iptvBackupServiceProvider.overrideWithValue(service),
+          iptvBackupDocumentControllerProvider.overrideWithValue(controller),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BackupRestoreSection())),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('backup-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Backup file saved.'), findsOneWidget);
   });
 
   testWidgets('favorites overflow shares a portable M3U document', (
@@ -160,19 +232,24 @@ class _FakeStateStore implements AiroBackupStateStore {
 }
 
 class _FakeDocumentGateway implements AiroBackupDocumentGateway {
-  _FakeDocumentGateway(this.document);
+  _FakeDocumentGateway(this.document, {this.succeeds = true});
 
   final AiroBackupDocument? document;
+
+  /// False models the TV build, where `file_picker` and `share_plus` are
+  /// stubbed and neither operation ever completes.
+  final bool succeeds;
   final List<AiroBackupDocument> shared = [];
 
   @override
   Future<AiroBackupDocument?> pick() async => document;
 
   @override
-  Future<void> save(AiroBackupDocument document) async {}
+  Future<bool> save(AiroBackupDocument document) async => succeeds;
 
   @override
-  Future<void> share(AiroBackupDocument document) async {
+  Future<bool> share(AiroBackupDocument document) async {
     shared.add(document);
+    return succeeds;
   }
 }

@@ -7,9 +7,9 @@ import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 import 'package:share_plus/share_plus.dart';
 
 typedef BackupDocumentSaver =
-    Future<void> Function(AiroBackupDocument document);
+    Future<bool> Function(AiroBackupDocument document);
 typedef BackupDocumentSharer =
-    Future<void> Function(AiroBackupDocument document);
+    Future<bool> Function(AiroBackupDocument document);
 typedef BackupDocumentPicker = Future<AiroBackupDocument?> Function();
 
 class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
@@ -24,26 +24,32 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
   final BackupDocumentPicker picker;
 
   @override
-  Future<void> save(AiroBackupDocument document) => saver(document);
+  Future<bool> save(AiroBackupDocument document) => saver(document);
 
   @override
-  Future<void> share(AiroBackupDocument document) => sharer(document);
+  Future<bool> share(AiroBackupDocument document) => sharer(document);
 
   @override
   Future<AiroBackupDocument?> pick() => picker();
 
-  static Future<void> _save(AiroBackupDocument document) async {
-    await FilePicker.saveFile(
+  static Future<bool> _save(AiroBackupDocument document) async {
+    // A null destination means the dialog was cancelled, or — on TV, where
+    // `file_picker` is dependency-overridden to a stub — that there was
+    // never a dialog at all. Either way nothing reached disk.
+    final destination = await FilePicker.saveFile(
       dialogTitle: 'Save Airo TV backup',
       fileName: document.fileName,
       type: FileType.custom,
       allowedExtensions: const ['json'],
       bytes: Uint8List.fromList(utf8.encode(document.contents)),
     );
+    return destination != null;
   }
 
-  static Future<void> _share(AiroBackupDocument document) async {
-    await SharePlus.instance.share(
+  static Future<bool> _share(AiroBackupDocument document) async {
+    // `dismissed` and `unavailable` (the TV stub's only answer) both mean
+    // the document was not handed off.
+    final result = await SharePlus.instance.share(
       ShareParams(
         subject: 'Airo TV backup',
         files: [
@@ -55,6 +61,7 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
         ],
       ),
     );
+    return result.status == ShareResultStatus.success;
   }
 
   static Future<AiroBackupDocument?> _pick() async {
