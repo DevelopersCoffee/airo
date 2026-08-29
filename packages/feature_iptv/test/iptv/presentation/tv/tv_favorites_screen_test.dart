@@ -1,3 +1,4 @@
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,4 +79,46 @@ void main() {
 
     expect(find.textContaining('looks like'), findsNothing);
   });
+
+  testWidgets(
+    'selecting a favorite plays it and calls onChannelSelected',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const [oldChannel]),
+          favoriteChannelsProvider.overrideWith(
+            (ref) async => const [oldChannel],
+          ),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(StreamingState()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      var closed = 0;
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: TvFavoritesScreen(onChannelSelected: () => closed++),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('BBC One HD'));
+      await tester.pump();
+
+      // Without this the shell keeps the favorites grid painted over the
+      // retained live surface, so playback starts behind an opaque overlay.
+      expect(closed, 1);
+    },
+    experimentalLeakTesting: LeakTesting.settings.withIgnored(
+      notDisposed: {'VideoPlayerController': null},
+    ),
+  );
 }

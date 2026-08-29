@@ -14,7 +14,12 @@ import '../widgets/channel_load_error_view.dart';
 /// Lists channels the user has favorited on TV, with a way to unfavorite
 /// and jump straight into playback. See CV-021 / issue #826.
 class TvFavoritesScreen extends ConsumerWidget {
-  const TvFavoritesScreen({super.key});
+  const TvFavoritesScreen({super.key, this.onChannelSelected});
+
+  /// Invoked after a favorite starts playing, so a shell that paints this
+  /// screen as an overlay on top of retained playback can dismiss itself
+  /// and reveal the video. Null when the screen owns the whole route.
+  final VoidCallback? onChannelSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,9 +27,15 @@ class TvFavoritesScreen extends ConsumerWidget {
     final currentChannel = ref.watch(currentChannelProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Padding(
+    // An opaque background is load-bearing, not decoration: TvShell stacks
+    // this screen over the still-mounted live channel grid, so a bare Column
+    // renders both layers' text on top of each other.
+    return AiroResponsiveScaffold(
+      overrideFormFactor: AiroFormFactor.tv,
+      useResponsiveCenter: false,
+      backgroundColor: colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
-      child: Column(
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -105,6 +116,7 @@ class TvFavoritesScreen extends ConsumerWidget {
                         ref
                             .read(iptvStreamingServiceProvider)
                             .playChannel(channel);
+                        onChannelSelected?.call();
                       },
                       onSecondaryAction: () {
                         ref.read(channelFavoriteTogglerProvider)(channel.id);

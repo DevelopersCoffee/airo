@@ -143,14 +143,33 @@ class _TvShellState extends ConsumerState<TvShell> {
       ],
     );
 
-    return Scaffold(
-      body: isPlayerFullscreen
-          ? body
-          : Padding(
-              key: const Key('tv-title-safe-inset'),
-              padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
-              child: body,
-            ),
+    // BACK must return to the previous screen, which for an overlay means
+    // dismissing it — both store review guidelines require this. Without
+    // this gate the key falls through to `IPTVScreen.didPopRoute`, which
+    // either closes the app outright or (in ten-foot mode after any prior
+    // fullscreen session) swallows it, stranding the user in Settings with
+    // only D-pad LEFT to the rail as an escape.
+    //
+    // Fullscreen playback is deliberately exempt: there BACK means "leave
+    // fullscreen", which is `IPTVScreen`'s job, and the overlay is not
+    // painted anyway.
+    final overlayHandlesBack = _overlay != null && !isPlayerFullscreen;
+
+    return PopScope(
+      canPop: !overlayHandlesBack,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _closeOverlay();
+      },
+      child: Scaffold(
+        body: isPlayerFullscreen
+            ? body
+            : Padding(
+                key: const Key('tv-title-safe-inset'),
+                padding: tvTitleSafeInsets(MediaQuery.sizeOf(context)),
+                child: body,
+              ),
+      ),
     );
   }
 
@@ -234,8 +253,13 @@ class _TvShellState extends ConsumerState<TvShell> {
         overrideFormFactor: AiroFormFactor.tv,
         onChannelSelected: _closeOverlay,
       ),
-      _TvOverlayScreen.vod => const VodTvScreen(),
-      _TvOverlayScreen.favorites => const TvFavoritesScreen(),
+      // Both start playback on the retained live surface underneath, so they
+      // have to dismiss themselves the same way the guide does — otherwise
+      // the user hears audio start while still staring at the grid.
+      _TvOverlayScreen.vod => VodTvScreen(onItemSelected: _closeOverlay),
+      _TvOverlayScreen.favorites => TvFavoritesScreen(
+        onChannelSelected: _closeOverlay,
+      ),
       _TvOverlayScreen.settings => const TvSettingsScreen(),
     };
   }
