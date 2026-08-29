@@ -825,6 +825,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           body: VideoPlayerWidget(
             showControls: true,
             initiallyFullscreen: true,
+            enableTouchGestures: !widget.tenFootMode,
             onFullscreenToggle: _toggleFullscreen,
           ),
         ),
@@ -936,6 +937,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               showControls: true,
               initiallyFullscreen: true,
               handleNativeFullscreen: false,
+              // Brightness/volume drag zones and the lock button are
+              // touch-only concepts with no remote equivalent.
+              enableTouchGestures: !widget.tenFootMode,
               // Only the ten-foot host hands BACK to the player, because only
               // Fire OS duplicates the platform half. On touch, guardRouteBack
               // below answers that pop; letting the player answer it too would
@@ -1489,6 +1493,11 @@ class _StreamTabContent extends ConsumerWidget {
                     showControls: true,
                     enableSwipeChannelChange: true,
                     handleNativeFullscreen: false,
+                    // `playlistSourceInInfoBar` is this widget's ten-foot
+                    // signal — it is what it forwards as `tenFootMode`
+                    // below. Brightness/volume drag zones and the lock
+                    // button have no remote equivalent.
+                    enableTouchGestures: !playlistSourceInInfoBar,
                     onFullscreenToggle: onFullscreenToggle,
                     showPictureInPicture: !playlistSourceInInfoBar,
                     // This screen already renders its own persistent
