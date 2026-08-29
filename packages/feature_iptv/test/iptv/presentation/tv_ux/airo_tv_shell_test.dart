@@ -5,6 +5,7 @@ import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -341,6 +342,34 @@ void main() {
   testWidgets('TV-sized layout keeps channel rows focusable', (tester) async {
     await pumpAt(tester, 1280);
     expect(find.byType(Focus), findsWidgets);
+  });
+
+  testWidgets('no multiview toggle is offered without a video stage', (
+    tester,
+  ) async {
+    // MultiviewStage is built inside videoStage, so with the stage hidden
+    // the remote's menu key confirmed "X added to multiview" against
+    // something that never renders. A null callback also tells
+    // ChannelLibraryGrid to drop the binding and the per-tile button.
+    await pumpAt(tester, 1280, showVideoStage: false);
+    expect(
+      tester
+          .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
+          .onMultiviewToggle,
+      isNull,
+    );
+  });
+
+  testWidgets('multiview toggle stays wired where the stage does render', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280);
+    expect(
+      tester
+          .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
+          .onMultiviewToggle,
+      isNotNull,
+    );
   });
 
   testWidgets('first TV launch asks for country once', (tester) async {

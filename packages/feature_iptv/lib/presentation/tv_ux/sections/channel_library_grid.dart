@@ -30,6 +30,7 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onVisibleChannelsChanged,
     this.multiviewChannelIds = const {},
     this.onMultiviewToggle,
+    this.onClearFilters,
   });
 
   final List<IPTVChannel> channels;
@@ -42,6 +43,10 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ValueChanged<List<IPTVChannel>>? onVisibleChannelsChanged;
   final Set<String> multiviewChannelIds;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
+
+  /// Resets every filter from the "no matches" state. Null hides that
+  /// action, leaving the explanation without a shortcut.
+  final VoidCallback? onClearFilters;
 
   @override
   State<ChannelLibraryGrid> createState() => _ChannelLibraryGridState();
@@ -129,52 +134,130 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
             SliverToBoxAdapter(
               child: _LibrarySortRow(sort: widget.sort, onSort: widget.onSort),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, _gridSpacing),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisExtent: _cardHeight,
-                  crossAxisSpacing: _gridSpacing,
-                  mainAxisSpacing: _gridSpacing,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final channel = widget.channels[index];
-                    return RepaintBoundary(
-                      key: ValueKey('channel-tile-${channel.id}'),
-                      child: _ChannelTile(
-                        channel: channel,
-                        metadata: widget.metadataByChannelId[channel.id],
-                        availability:
-                            widget.availabilityByChannelId[channel.id],
-                        onSelected: widget.onChannelSelected,
-                        focusPlayDelay: widget.focusPlayDelay,
-                        inMultiview: widget.multiviewChannelIds.contains(
-                          channel.id,
+            // The shell only builds this grid once the unfiltered library is
+            // non-empty (an empty library gets the onboarding view instead),
+            // so zero channels here always means the filters excluded them
+            // all. Without this the panel just rendered blank below the sort
+            // row, which the first-run country prompt makes easy to hit: it
+            // sets a country filter that a playlist may have nothing for.
+            if (widget.channels.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _NoMatchesView(onClearFilters: widget.onClearFilters),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, _gridSpacing),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisExtent: _cardHeight,
+                    crossAxisSpacing: _gridSpacing,
+                    mainAxisSpacing: _gridSpacing,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final channel = widget.channels[index];
+                      return RepaintBoundary(
+                        key: ValueKey('channel-tile-${channel.id}'),
+                        child: _ChannelTile(
+                          channel: channel,
+                          metadata: widget.metadataByChannelId[channel.id],
+                          availability:
+                              widget.availabilityByChannelId[channel.id],
+                          onSelected: widget.onChannelSelected,
+                          focusPlayDelay: widget.focusPlayDelay,
+                          inMultiview: widget.multiviewChannelIds.contains(
+                            channel.id,
+                          ),
+                          onMultiviewToggle: widget.onMultiviewToggle,
                         ),
-                        onMultiviewToggle: widget.onMultiviewToggle,
-                      ),
-                    );
-                  },
-                  childCount: widget.channels.length,
-                  addAutomaticKeepAlives: false,
-                  findChildIndexCallback: (key) {
-                    if (key is! ValueKey<String>) return null;
-                    final value = key.value;
-                    if (!value.startsWith('channel-tile-')) return null;
-                    final channelId = value.substring('channel-tile-'.length);
-                    final index = widget.channels.indexWhere(
-                      (channel) => channel.id == channelId,
-                    );
-                    return index < 0 ? null : index;
-                  },
+                      );
+                    },
+                    childCount: widget.channels.length,
+                    addAutomaticKeepAlives: false,
+                    findChildIndexCallback: (key) {
+                      if (key is! ValueKey<String>) return null;
+                      final value = key.value;
+                      if (!value.startsWith('channel-tile-')) return null;
+                      final channelId = value.substring('channel-tile-'.length);
+                      final index = widget.channels.indexWhere(
+                        (channel) => channel.id == channelId,
+                      );
+                      return index < 0 ? null : index;
+                    },
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Shown when the active filters exclude every channel. On TV the filter
+/// chips are a D-pad journey away, so this offers a focusable way back to
+/// the full library rather than only naming the problem.
+class _NoMatchesView extends StatelessWidget {
+  const _NoMatchesView({required this.onClearFilters});
+
+  final VoidCallback? onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.filter_alt_off, size: 48, color: colors.onSurfaceVariant),
+          const SizedBox(height: 16),
+          Text(
+            'No channels match your filters',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This playlist has channels, but none of them match every filter '
+            'you have applied.',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          if (onClearFilters != null) ...[
+            const SizedBox(height: 20),
+            TvFocusable(
+              autofocus: true,
+              onSelect: onClearFilters!,
+              semanticLabel: 'Clear all filters',
+              semanticButton: true,
+              borderRadius: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Clear filters',
+                  style: TextStyle(
+                    color: colors.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
           ],
-        );
-      },
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:core_entitlements/core_entitlements.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/application/epg_reminder_scheduler.dart';
+import 'package:feature_iptv/application/providers/epg_reminder_providers.dart';
 import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/richer_context_providers.dart';
@@ -43,6 +45,7 @@ void main() {
     TextScaler textScaler = TextScaler.noScaling,
     CompactEpgProgram? guideProgram,
     RicherContextProvider? richerContextProvider,
+    bool remindersAvailable = false,
   }) async {
     if (richerContextProvider != null) {
       SharedPreferences.setMockInitialValues({
@@ -59,6 +62,10 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          if (remindersAvailable)
+            epgReminderNotificationGatewayProvider.overrideWithValue(
+              const _AvailableReminderGateway(),
+            ),
           if (richerContextProvider != null) ...[
             richerContextEntitlementsProvider.overrideWithValue(
               const LaunchPromoEntitlements(),
@@ -183,8 +190,34 @@ void main() {
     expect(find.text('Rating: PG'), findsOneWidget);
     expect(find.text('NEW'), findsOneWidget);
     expect(find.text('Watch now'), findsOneWidget);
-    expect(find.text('Set reminder'), findsOneWidget);
     expect(find.text('City News Live'), findsOneWidget);
+
+    // No notification gateway is wired here, which is the permanent state on
+    // TV. Offering the button anyway gave users a control that silently did
+    // nothing: `scheduleReminder` can only answer `unavailable`.
+    expect(find.text('Set reminder'), findsNothing);
+  });
+
+  testWidgets('programme details offer a reminder once a gateway exists', (
+    tester,
+  ) async {
+    final start = DateTime.now().toUtc().add(const Duration(hours: 1));
+    await pumpScreen(
+      tester,
+      overrideFormFactor: AiroFormFactor.tv,
+      remindersAvailable: true,
+      guideProgram: CompactEpgProgram(
+        programId: 'rich-program',
+        title: 'The Big Match',
+        startsAt: start,
+        endsAt: start.add(const Duration(hours: 1)),
+      ),
+    );
+
+    await tester.tap(find.text('The Big Match'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Set reminder'), findsOneWidget);
   });
 
   testWidgets('programme enrichment is lazy and appears in details', (
@@ -340,4 +373,28 @@ final class _RecordingRicherContextProvider implements RicherContextProvider {
   Future<AttributedSportsDeskRow?> fetchSportsFixtures(
     SportsFixturesRequest request,
   ) async => null;
+}
+
+/// Stands in for the platform notification gateway the phone entrypoint
+/// wires up, so the reminder button's enabled path stays covered.
+class _AvailableReminderGateway implements EpgReminderNotificationGateway {
+  const _AvailableReminderGateway();
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
+  Future<void> schedule({
+    required int notificationId,
+    required String title,
+    required String body,
+    required DateTime at,
+    required String payloadChannelId,
+  }) async {}
+
+  @override
+  Future<void> cancel(int notificationId) async {}
 }
