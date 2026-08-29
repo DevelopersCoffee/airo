@@ -16,16 +16,22 @@ void main() {
       final shared = <AiroBackupDocument>[];
       var pickCount = 0;
       final gateway = PlatformBackupDocumentGateway(
-        saver: (value) async => saved.add(value),
-        sharer: (value) async => shared.add(value),
+        saver: (value) async {
+          saved.add(value);
+          return true;
+        },
+        sharer: (value) async {
+          shared.add(value);
+          return true;
+        },
         picker: () async {
           pickCount++;
           return pickCount == 1 ? document : null;
         },
       );
 
-      await gateway.save(document);
-      await gateway.share(document);
+      expect(await gateway.save(document), isTrue);
+      expect(await gateway.share(document), isTrue);
 
       expect(await gateway.pick(), same(document));
       expect(await gateway.pick(), isNull);
@@ -33,4 +39,18 @@ void main() {
       expect(shared, [document]);
     },
   );
+
+  test('reports failure when the platform writes nothing', () async {
+    // The shape TV always takes: `file_picker` and `share_plus` are
+    // dependency-overridden to stubs, so neither ever completes.
+    const gateway = PlatformBackupDocumentGateway(
+      saver: _refuse,
+      sharer: _refuse,
+    );
+
+    expect(await gateway.save(document), isFalse);
+    expect(await gateway.share(document), isFalse);
+  });
 }
+
+Future<bool> _refuse(AiroBackupDocument document) async => false;

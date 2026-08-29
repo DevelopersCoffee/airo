@@ -70,19 +70,33 @@ class _BackupRestoreSectionState extends ConsumerState<BackupRestoreSection> {
   }
 
   Future<void> _save() async {
-    await ref.read(iptvBackupDocumentControllerProvider).saveBackup();
-    _announce('Backup file saved.');
+    final saved = await ref
+        .read(iptvBackupDocumentControllerProvider)
+        .saveBackup();
+    // Never claim a write that did not happen: on TV `file_picker` is
+    // stubbed, so this always comes back false and the old unconditional
+    // success message sent users away believing they had a backup.
+    _announce(saved ? 'Backup file saved.' : 'No backup file was saved.');
   }
 
   Future<void> _share() async {
-    await ref.read(iptvBackupDocumentControllerProvider).shareBackup();
+    final shared = await ref
+        .read(iptvBackupDocumentControllerProvider)
+        .shareBackup();
+    // The share sheet is its own confirmation when it works; only the
+    // silent-failure case needs saying out loud.
+    if (!shared) _announce('The backup was not shared.');
   }
 
   Future<void> _import() async {
     final preview = await ref
         .read(iptvBackupDocumentControllerProvider)
         .pickAndPreview();
-    if (preview == null || !mounted) return;
+    if (preview == null) {
+      _announce('No backup file was selected.');
+      return;
+    }
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => _BackupPreviewDialog(preview: preview),
