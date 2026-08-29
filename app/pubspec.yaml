@@ -1,99 +1,79 @@
 name: airo_app
-description: "Airo Mind - record a meeting, get searchable minutes, entirely on device"
-publish_to: none
-version: 0.0.1+1
+description: "Airo - AI-powered super app with Gemini Nano integration"
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 0.0.7+12
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.4"
 
-# Flavors are separate pubspecs in this repo (see CLAUDE.md), so this file is
-# the complete dependency profile for `lib/main_mind.dart` -- not a diff
-# against `pubspec.yaml`. Every entry below is here because the compile
-# closure of that entrypoint demands it; nothing is here "for parity".
-#
-# "Demanded by the compile closure" is the only reason anything is listed. No
-# entry is here for parity with pubspec.yaml, and the list was trimmed against
-# `flutter pub get` + `flutter build bundle` until every remaining line was
-# load-bearing.
-#
-# The closure is wider than the scribe journey alone because the Mind shell
-# mounts `AssistantModule` with the super app's `AppAssistantHostAdapter`.
-# That adapter is app-internal and reaches into the Coins providers, the
-# settings model manager, the dictionary, and the bug-report dialog, each of
-# which drags its own package edge. Trimming that closure means narrowing the
-# adapter, which is a code change this profile deliberately does not assume.
-#
-# Verify with:
-#   cp app/pubspec_mind.yaml app/pubspec.yaml && cd app && flutter pub get
-#   flutter build apk --debug --target=lib/main_mind.dart \
-#     --dart-define=APP_VARIANT=mind
-# (restore `app/pubspec.yaml` afterwards -- it must stay the default profile).
-
-# sqlite3_flutter_libs is declared directly below and packages the pinned
-# native library. Same rationale as pubspec.yaml: load that one instead of
-# downloading another binary during the sqlite3 build hook.
+# platform_playlist already brings sqlite3_flutter_libs, which packages the
+# pinned native library. Use it instead of downloading another binary during
+# the sqlite3 build hook.
 hooks:
   user_defines:
     sqlite3:
       source: system
       name: sqlite3
 
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
 
-  # Routing -- main_mind.dart builds a GoRouter directly.
+  # Routing & Navigation
   go_router: ^17.3.0
 
-  # State management -- ProviderScope in AiroMindApp, and 106 of the closure's
-  # files import it. Only flutter_riverpod: nothing in the closure imports
-  # `package:riverpod` directly, and flutter_riverpod 3.4.2 pins the matching
-  # riverpod itself.
+  # State Management
+  riverpod: 3.4.2
   flutter_riverpod: 3.4.2
 
-  # Storage & persistence
-  # shared_preferences: settings + AI preferences persistence.
+  # Storage & Persistence
   shared_preferences: ^2.5.5
-  # drift/sqlite3/path/path_provider: lib/core/database/app_database.dart,
-  # reached from the Coins expense providers the adapter exposes.
+  # NOTE: Drift upgrade requires analyzer ^13, but current Flutter SDK pins analyzer 12.1.0. Until SDK or custom_lint supports newer analyzer, we cannot upgrade drift further.
   drift: ^2.32.1
-  sqlite3_flutter_libs: ^0.5.41
   path: 1.9.1
   path_provider: ^2.1.6
 
-  # connectivity_plus: money sync service (Coins providers).
+  # Connectivity
   connectivity_plus: ^7.3.1
 
-  # dio: dictionary lookup service.
+  # Networking
   dio: ^5.10.0
 
-  # Firebase & authentication -- _initializeFirebase(), AuthService,
-  # GoogleAuthService, and the login/register screens the adapter navigates to.
+  # Firebase & Authentication
   firebase_core: ^4.12.0
   firebase_auth: ^6.5.5
   google_sign_in: 7.2.0
 
-  # audio_service: no Dart file in this closure imports it, but Android's
-  # MainActivity extends AudioServiceFragmentActivity, so dropping it fails
-  # `:app:compileDebugKotlin` with "Unresolved reference
-  # 'AudioServiceFragmentActivity'". Same reason pubspec_tv.yaml keeps it real.
-  audio_service: ^0.18.19
-  # audioplayers: dictionary pronunciation playback.
-  audioplayers: ^6.7.1
-  # flutter_tts: AiroSpeechService (accessibility), used by the adapter.
-  flutter_tts: 4.2.5
+  # Audio & Media
+  audio_service: ^0.18.19  # Latest version with SDK 36 compatibility
+  just_audio: ^0.10.6
+  flutter_chrome_cast: ^1.4.6
 
   # Utilities
-  # uuid + equatable: money models and repositories.
+  intl: ^0.20.3
   uuid: ^4.5.3
-  equatable: ^2.1.0
-  # url_launcher / package_info_plus / image_picker / flutter_image_compress:
-  # the bug-report dialog the adapter opens.
-  url_launcher: 6.3.2
-  package_info_plus: ^10.2.0
-  image_picker: ^1.2.3
-  flutter_image_compress: 2.4.0
 
   # Local packages - Core
   core_domain:
@@ -104,48 +84,112 @@ dependencies:
     path: ../packages/core_ui
   core_ai:
     path: ../packages/core_ai
+  core_workers:
+    path: ../packages/core_workers
   core_auth:
     path: ../packages/core_auth
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
   core_app_shell:
     path: ../packages/core_app_shell
   core_entitlements:
     path: ../packages/core_entitlements
   core_product_shell:
     path: ../packages/core_product_shell
-  airo_pro_bootstrap:
-    path: ../packages/airo_pro_bootstrap
+  platform_downloads:
+    path: ../packages/platform_downloads
 
   # Local packages - Features
-  # feature_mind: the scribe journey and the assistant hub, merged into one
-  # package in Phase 2 of the SSOT plan
-  # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md).
-  feature_mind:
-    path: ../packages/feature_mind
-  platform_calendar:
-    path: ../packages/platform_calendar
-  # feature_coin / feature_coins_core: RouteNames re-exports the Coins route
-  # names, and the adapter's finance chat ingestion uses the Coins services.
+  airo:
+    path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
+  feature_billsplit_core:
+    path: ../packages/feature_billsplit_core
   feature_coins_core:
     path: ../packages/feature_coins_core
-  # feature_iptv: the settings model manager (AI model management) reads the
-  # IPTV settings surface. Reached from the adapter's model-manager provider.
+  # feature_mind: the assistant hub (chat, models, prompt lab, wellbeing).
+  # Phase 2 of the SSOT merge folded feature_assistant into this package
+  # (docs/superpowers/plans/2026-08-07-airo-mind-ssot-plan.md), so the phone
+  # flavour now cross-compiles the whisper.cpp/llama.cpp engines too — the
+  # scribe route itself is not mounted on this shell yet (Phase 4).
+  feature_mind:
+    path: ../packages/feature_mind
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.9
+  equatable: ^2.1.0
+  flame: ^1.37.0
+  flame_audio: ^2.12.1
+  share_plus: ^13.3.0
+  cryptography: ^2.7.0
+  url_launcher: 6.3.2
+  file_picker: ^12.0.0-beta.7
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  audioplayers: ^6.7.1
+  cached_network_image: 3.4.1
+  flutter_tts: 4.2.5
+  # Android/iOS GGUF execution adapter. The app-facing wrapper keeps this
+  # platform plugin behind the core_ai runtime boundary.
+  llama_flutter_android: ^0.2.6
+  chess: 0.8.1
+  stockfish: 1.8.1
+  flutter_contacts: ^2.1.0
+  permission_handler: ^12.0.3
+  image_picker: ^1.2.3
+  google_mlkit_text_recognition: 0.16.0
+  video_player: ^2.13.0
+  wakelock_plus: ^1.5.2
+  package_info_plus: ^10.2.0
+  screenshot: 3.0.0
+  flutter_image_compress: 2.4.0
+  pdfx: ^2.9.2
   feature_iptv:
     path: ../packages/feature_iptv
+  platform_playlist:
+    path: ../packages/platform_playlist
+  platform_device_qualification:
+    path: ../packages/platform_device_qualification
+  platform_channels:
+    path: ../packages/platform_channels
+  platform_player:
+    path: ../packages/platform_player
+  platform_media:
+    path: ../packages/platform_media
+  core_analytics:
+    path: ../packages/core_analytics
+  platform_history:
+    path: ../packages/platform_history
+  platform_streams:
+    path: ../packages/platform_streams
+  platform_streaming_engine:
+    path: ../packages/platform_streaming_engine
+  google_mlkit_image_labeling: ^0.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  # Device journey (#1771 / mind_journey_device_test.dart). Host/CI never
-  # executes it; the Mind shell job only analyses the file.
   integration_test:
     sdk: flutter
+
+  # Code generation
+  build_runner: ^2.15.2
+  drift_dev: 2.32.1
+  # 4.0.8 is the first generator that solves with riverpod 3.4.2 + riverpod_lint
+  # 3.1.8. It cannot compile against the analyzer 12 pin, so CI codegen skips
+  # the app graph and only generates feature_mind (see scripts/run-ci-codegen.sh).
+  riverpod_generator: 4.0.8
+  mocktail: ^1.0.5
+  alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
+  shared_preferences_platform_interface: ^2.4.1
   flutter_lints: 6.0.0
+  custom_lint: ^0.8.1
+  # 3.1.8 is the first riverpod_lint that accepts riverpod 3.4.2
+  riverpod_lint: 3.1.8
 
 dependency_overrides:
-  # Copied verbatim from pubspec.yaml -- these are workspace-wide resolution
-  # facts, not flavor choices.
   video_player_avfoundation:
     path: ../packages/platform_player/third_party/video_player_avfoundation
   meta: ^1.19.0
@@ -155,55 +199,55 @@ dependency_overrides:
   mockito: 5.6.1
   source_gen: ^4.2.0
   build: ^4.0.0
+  # IPTV/TV builds do not ship games, and stockfish 1.8.1's Android plugin is
+  # incompatible with the current AGP toolchain. Use the existing no-native stub
+  # so lean streaming variants can build without bundling the chess engine.
+  stockfish:
+    path: ../packages/stubs/stockfish_stub
+  # flutter_chrome_cast 1.4.6 requires rxdart ^0.28.0, while the current
+  # custom_lint stack requires ^0.27.7. See docs/adr/0007-cast-rxdart-override.md.
   rxdart: ^0.28.0
+  # Platform-owned fork with the iOS contentID fix required for receiver playback.
   flutter_chrome_cast:
     path: ../packages/platform_player/third_party/flutter_chrome_cast
+  # Pub package 1.5.3 declares an Android plugin class but does not ship the
+  # Android source. Keep the upstream Dart/iOS API and provide the missing
+  # Android FLAG_SECURE bridge locally so app builds retain screen protection.
   screen_protector:
     path: ../packages/platform_player/third_party/screen_protector
 
-  # Stubs. Airo Mind ships no games, no OCR and no IPTV playback; these edges
-  # arrive transitively through feature_coin / feature_iptv and are replaced
-  # with the existing no-native stubs so the flavor does not carry their
-  # binaries. Same blocks as pubspec_tv.yaml.
-  stockfish:
-    path: ../packages/stubs/stockfish_stub
-  chess:
-    path: ../packages/stubs/chess_stub
-  flame:
-    path: ../packages/stubs/flame_stub
-  google_mlkit_text_recognition:
-    path: ../packages/stubs/mlkit_stub
-  google_mlkit_image_labeling:
-    path: ../packages/stubs/mlkit_image_labeling_stub
-  media_kit_libs_android_video:
-    path: ../packages/stubs/media_kit_libs_android_video_stub
-  # Same stub pubspec_tv.yaml uses, for the same reason. In this flavour's
-  # dependency set the real package's Android implementation does not resolve,
-  # and the generated registrant then names a class that is not on the compile
-  # classpath:
-  #
-  #   GeneratedPluginRegistrant.java: cannot find symbol
-  #     com.fluttercandies.flutter_image_compress.ImageCompressPlugin
-  #
-  # The cost is bounded and worth stating: image compression becomes a no-op,
-  # so a screenshot attached to a bug report from the Mind flavour is sent at
-  # full size. Nothing on the record -> transcribe -> minutes -> search journey
-  # touches it.
-  flutter_image_compress:
-    path: ../packages/stubs/flutter_image_compress_stub
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
 
+# The following section is specific to Flutter packages.
 flutter:
   config:
-    # Same rationale as pubspec.yaml: several macOS plugins in this graph have
-    # not migrated to SwiftPM, and app/tool/run_mind_macos.sh builds macOS.
+    # Flutter 3.44 enables SwiftPM by default. This app still depends on
+    # several macOS plugins that have not migrated, so keep CocoaPods as the
+    # project-level dependency manager to avoid noisy qualification warnings.
     enable-swift-package-manager: false
 
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
   uses-material-design: true
 
+  # To add assets to your application, add an assets section, like this:
   assets:
     - assets/packs/
     - assets/airo_icon.png
 
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
   fonts:
     - family: AiroCollapse
       fonts:
@@ -218,3 +262,12 @@ flutter:
     - family: AiroMondwest
       fonts:
         - asset: assets/hermes/fonts/Mondwest-Regular.woff2
+  #
+# For details regarding fonts from package dependencies,
+# see https://flutter.dev/to/font-from-package
+
+patrol:
+  android:
+    package_name: io.airo.app
+  ios:
+    bundle_id: com.developerscoffee.airo

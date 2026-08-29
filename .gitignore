@@ -179,3 +179,10 @@ rust/airo_mind_llama/models/*.gguf
 # after a local run is output, not source.
 module-size-report.md
 model-artifact-report.md
+
+# Applied transiently by app/tool/run_mind_macos.sh and
+# scripts/verify-mind-macos-e2e.sh from app/tool/mind_macos_pubspec_overrides.yaml,
+# then removed by their own cleanup trap. A committed copy here fully replaces
+# app/pubspec.yaml's dependency_overrides for every `pub get` (pub's rule, not
+# ours) and silently breaks the full/phone and TV/Coins profiles.
+app/pubspec_overrides.yaml
