@@ -261,11 +261,19 @@ class AiroBackupDocument {
 }
 
 abstract interface class AiroBackupDocumentGateway {
-  Future<void> save(AiroBackupDocument document);
+  /// Returns false when nothing was written, either because the user
+  /// cancelled the save dialog or because the host platform has none at
+  /// all — Android TV and Fire TV ship a stubbed `file_picker`. Callers
+  /// must not report success without checking: a backup the user believes
+  /// exists but does not is worse than a failed export.
+  Future<bool> save(AiroBackupDocument document);
 
-  Future<void> share(AiroBackupDocument document);
+  /// Returns false when the document was not handed off, either because
+  /// the user dismissed the share sheet or because the host platform has
+  /// none (TV ships a stubbed `share_plus`).
+  Future<bool> share(AiroBackupDocument document);
 
-  /// Returns null when the platform picker is cancelled.
+  /// Returns null when the platform picker is cancelled or unavailable.
   Future<AiroBackupDocument?> pick();
 }
 
@@ -278,13 +286,12 @@ class AiroBackupDocumentController {
   final AiroBackupService service;
   final AiroBackupDocumentGateway documents;
 
-  Future<void> saveBackup() async {
-    await documents.save(await _backupDocument());
-  }
+  /// False when no file was written. See [AiroBackupDocumentGateway.save].
+  Future<bool> saveBackup() async => documents.save(await _backupDocument());
 
-  Future<void> shareBackup() async {
-    await documents.share(await _backupDocument());
-  }
+  /// False when the document was not handed off. See
+  /// [AiroBackupDocumentGateway.share].
+  Future<bool> shareBackup() async => documents.share(await _backupDocument());
 
   Future<AiroBackupPreview?> pickAndPreview() async {
     final document = await documents.pick();

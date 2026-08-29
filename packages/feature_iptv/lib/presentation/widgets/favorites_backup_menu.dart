@@ -54,7 +54,7 @@ class FavoritesBackupMenu extends ConsumerWidget {
               group: channel.group,
             ),
         ]);
-        await ref
+        final shared = await ref
             .read(iptvBackupDocumentGatewayProvider)
             .share(
               AiroBackupDocument(
@@ -63,6 +63,15 @@ class FavoritesBackupMenu extends ConsumerWidget {
                 contents: contents,
               ),
             );
+        // Silent on success — the share sheet already confirmed. On TV
+        // `share_plus` is stubbed, so without this the menu item looks
+        // like a dead control.
+        if (shared || !context.mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('Favorites were not shared.')),
+          );
         return;
       case _FavoritesBackupAction.backupRestore:
         if (!context.mounted) return;
