@@ -326,9 +326,21 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
   @override
   void initState() {
     super.initState();
+    // Every callback the macOS menu bar reads has to be assigned here or the
+    // menu item it backs is dead — a null one renders greyed out, and the two
+    // that are invoked through `?.call()` render *enabled* and do nothing.
+    // `MindNativeMenuBarBindings` in feature_mind is the list this must cover.
     MindRuntimeNavigation.openHub = () => _router.go('/runtime');
     MindRuntimeNavigation.openIntelligence = () => _router.go('/models');
     MindRuntimeNavigation.openSettings = () => _router.go(RouteNames.settings);
+    MindRuntimeNavigation.openNewChat = () =>
+        _router.go(AssistantRouteNames.chat);
+    MindRuntimeNavigation.openModelLibrary = () =>
+        _router.go(AssistantRouteNames.models);
+    MindRuntimeNavigation.openDeviceCapabilities = () =>
+        _router.go(AssistantRouteNames.deviceCapabilities);
+    MindRuntimeNavigation.openPromptLab = () =>
+        _router.go(AssistantRouteNames.promptLab);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Restore and keep the post-meeting queue alive for the whole session.
       unawaited(ref.read(meetingProcessingQueueProvider.future));
@@ -340,6 +352,10 @@ class _AiroMindAppState extends ConsumerState<AiroMindApp> {
     MindRuntimeNavigation.openHub = null;
     MindRuntimeNavigation.openIntelligence = null;
     MindRuntimeNavigation.openSettings = null;
+    MindRuntimeNavigation.openNewChat = null;
+    MindRuntimeNavigation.openModelLibrary = null;
+    MindRuntimeNavigation.openDeviceCapabilities = null;
+    MindRuntimeNavigation.openPromptLab = null;
     // The registry owns module teardown, and MindModule's is real work: it
     // releases the microphone and the loaded models. `State.dispose` cannot
     // await, so this is fire-and-forget — the shell is going away either way.
