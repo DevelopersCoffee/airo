@@ -218,5 +218,3 @@ Future<void> initializeLlamaBridge() =>
 ///
 /// Exposed for the test that asserts a transcribe-only run does not load it.
 bool get isLlamaLoaded => _llamaInitialized;
-
-bool deleteWhisperMeeting(String id) => platform.deleteWhisperMeeting(id);
