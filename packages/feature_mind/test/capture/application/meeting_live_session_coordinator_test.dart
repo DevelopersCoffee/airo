@@ -476,6 +476,23 @@ class _LiveSessionBridge implements MindSpeechBridge {
   void cancel() => _inner.cancel();
 
   @override
+  void setFinalProcessingProfile(rust.FinalProcessingProfile profile) =>
+      _inner.setFinalProcessingProfile(profile);
+
+  @override
+  String transcribeRange({
+    required String wavPath,
+    required int startMs,
+    required int endMs,
+    String? language,
+  }) => _inner.transcribeRange(
+    wavPath: wavPath,
+    startMs: startMs,
+    endMs: endMs,
+    language: language,
+  );
+
+  @override
   Future<List<rust.MeetingRecord>> meetings() => _inner.meetings();
 
   @override

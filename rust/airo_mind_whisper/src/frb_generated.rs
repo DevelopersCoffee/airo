@@ -1199,10 +1199,12 @@ fn wire__crate__api__meetings__stop_live_session_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_session_id = <String>::sse_decode(&mut deserializer);
+            let api_audio_path = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::meetings::stop_live_session(api_session_id)?;
+                    let output_ok =
+                        crate::api::meetings::stop_live_session(api_session_id, api_audio_path)?;
                     Ok(output_ok)
                 })())
             }
@@ -2008,6 +2010,10 @@ impl SseDecode for crate::api::meetings::TranscriptEvent {
                     message: var_message,
                 };
             }
+            5 => {
+                let mut var_json = <String>::sse_decode(deserializer);
+                return crate::api::meetings::TranscriptEvent::ConversationIr { json: var_json };
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2641,6 +2647,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::meetings::TranscriptEvent {
             crate::api::meetings::TranscriptEvent::Degraded { message } => {
                 [4.into_dart(), message.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::meetings::TranscriptEvent::ConversationIr { json } => {
+                [5.into_dart(), json.into_into_dart().into_dart()].into_dart()
+            }
             _ => {
                 unimplemented!("");
             }
@@ -3201,6 +3210,10 @@ impl SseEncode for crate::api::meetings::TranscriptEvent {
             crate::api::meetings::TranscriptEvent::Degraded { message } => {
                 <i32>::sse_encode(4, serializer);
                 <String>::sse_encode(message, serializer);
+            }
+            crate::api::meetings::TranscriptEvent::ConversationIr { json } => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(json, serializer);
             }
             _ => {
                 unimplemented!("");
