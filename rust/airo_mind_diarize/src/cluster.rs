@@ -176,26 +176,6 @@ pub fn cluster_adjacent_turn_split(
     labels
 }
 
-/// If greedy clustering yields one speaker but embeddings vary, try adjacent splits.
-pub fn maybe_refine_single_speaker(
-    embeddings: &[SpeakerEmbedding],
-    assignments: &[ClusterAssignment],
-    join_threshold: f32,
-) -> (Vec<ClusterAssignment>, bool) {
-    if should_use_adjacent_turn(embeddings, assignments) {
-        return apply_adjacent_turn_refinement(embeddings, assignments);
-    }
-    let speaker_count = distinct_speaker_count(assignments);
-    if speaker_count != 1 || embeddings.len() < 4 {
-        return (assignments.to_vec(), false);
-    }
-    let min_adjacent = min_adjacent_similarity(embeddings);
-    if min_adjacent >= ADJACENT_SPLIT_SIMILARITY {
-        return (assignments.to_vec(), false);
-    }
-    apply_adjacent_turn_refinement(embeddings, assignments)
-}
-
 /// Product clustering: greedy closest-member, then adjacent-turn when ECAPA
 /// collapses most segments onto one speaker (typical short-segment Q&A).
 pub fn cluster_embeddings_product(

@@ -21,9 +21,6 @@ use crate::stub_embedder::StubSpeakerEmbedder;
 /// most two-speaker recordings without fragmenting one voice.
 pub const DEFAULT_EMBEDDING_SIMILARITY: f32 = 0.95;
 
-/// Adjacent-segment similarity below this toggles speaker in the Q&A fallback.
-pub use crate::cluster::ADJACENT_SPLIT_SIMILARITY;
-
 /// Which diarizer runs for a recording.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum DiarizationStrategy {
