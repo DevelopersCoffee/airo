@@ -7,7 +7,7 @@ void main() {
     test('uses the seven-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
         'Coins',
-        'Assistant',
+        'Mind',
         'Beats',
         'Live',
         'Arena',
@@ -113,7 +113,7 @@ void main() {
 
       expect(phoneTabs.map((t) => t.label).toList(), [
         'Coins',
-        'Assistant',
+        'Mind',
         'Beats',
         'Live',
       ]);
@@ -139,7 +139,7 @@ void main() {
       expect(policy.compactWidthBreakpoint, 600);
       expect(wideLayout.persistentTabs.map((t) => t.label).toList(), [
         'Coins',
-        'Assistant',
+        'Mind',
         'Beats',
         'Live',
         'Arena',

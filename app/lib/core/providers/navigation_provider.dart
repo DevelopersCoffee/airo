@@ -28,7 +28,7 @@ enum AppNavigationTab {
     selectedIcon: Icons.monetization_on,
   ),
   assistant(
-    label: 'Assistant',
+    label: 'Mind',
     path: AssistantRouteNames.assistant,
     icon: Icons.psychology_outlined,
     selectedIcon: Icons.psychology,
