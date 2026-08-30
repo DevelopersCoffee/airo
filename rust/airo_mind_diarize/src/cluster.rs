@@ -183,11 +183,8 @@ pub fn cluster_embeddings_product(
     join_threshold: f32,
     enrollment_hints: &[Option<String>],
 ) -> (Vec<ClusterAssignment>, bool) {
-    let greedy = cluster_embeddings_greedy_with_enrollment(
-        embeddings,
-        join_threshold,
-        enrollment_hints,
-    );
+    let greedy =
+        cluster_embeddings_greedy_with_enrollment(embeddings, join_threshold, enrollment_hints);
     if should_use_adjacent_turn(embeddings, &greedy) {
         apply_adjacent_turn_refinement(embeddings, &greedy)
     } else {

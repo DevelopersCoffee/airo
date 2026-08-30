@@ -104,10 +104,7 @@ pub struct ModelRequirement {
 }
 
 /// File/batch transcription: highest quality tier that fits the memory budget.
-pub fn speech_file_requirement(
-    memory_budget_mb: u32,
-    language: ModelLanguage,
-) -> ModelRequirement {
+pub fn speech_file_requirement(memory_budget_mb: u32, language: ModelLanguage) -> ModelRequirement {
     speech_final_requirement(
         memory_budget_mb,
         language,
@@ -135,9 +132,7 @@ pub fn speech_final_requirement(
 ) -> ModelRequirement {
     let (minimum_quality, maximum_quality) = match profile {
         FinalProcessingProfile::Fast => (ModelQuality::Draft, Some(ModelQuality::Draft)),
-        FinalProcessingProfile::Balanced => {
-            (ModelQuality::Standard, Some(ModelQuality::Standard))
-        }
+        FinalProcessingProfile::Balanced => (ModelQuality::Standard, Some(ModelQuality::Standard)),
         FinalProcessingProfile::MaximumQuality => (ModelQuality::Standard, None),
     };
     ModelRequirement {
