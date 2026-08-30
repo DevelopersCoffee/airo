@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Starts/stops the Android mic-use foreground notification (#1656 AC2).
 ///
@@ -33,8 +34,11 @@ abstract interface class MeetingRecordingServiceGateway {
 
 class PlatformMeetingRecordingServiceGateway
     implements MeetingRecordingServiceGateway {
-  const PlatformMeetingRecordingServiceGateway({MethodChannel? channel})
-    : _channel = channel ?? _defaultChannel;
+  const PlatformMeetingRecordingServiceGateway({
+    MethodChannel? channel,
+    FlutterLocalNotificationsPlugin? notifications,
+  }) : _channel = channel ?? _defaultChannel,
+       _notifications = notifications;
 
   static const MethodChannel _defaultChannel = MethodChannel(
     'com.airo.meeting_recording',
@@ -42,16 +46,46 @@ class PlatformMeetingRecordingServiceGateway
 
   final MethodChannel _channel;
 
+  /// Injected only by tests; production resolves the plugin lazily so
+  /// constructing this gateway never touches a platform channel.
+  final FlutterLocalNotificationsPlugin? _notifications;
+
   @override
   Future<void> start({
     required String notificationTitle,
     String? notificationText,
   }) async {
     if (!(defaultTargetPlatform == TargetPlatform.android)) return;
+    await _ensureNotificationPermission();
     await _channel.invokeMethod<void>('start', {
       'title': notificationTitle,
       'text': notificationText,
     });
+  }
+
+  /// Asks for `POST_NOTIFICATIONS` before the service starts.
+  ///
+  /// The permission is declared in the manifest but was never requested on
+  /// this path — the mic gate above asks for `RECORD_AUDIO` and nothing asked
+  /// for this. On Android 13+ that leaves the foreground service running with
+  /// its notification suppressed, so the user gets no recording indicator and
+  /// no way to tap back into the app (#1656 AC2).
+  ///
+  /// Deliberately does not gate the service on the answer: a declined
+  /// notification costs the indicator, not the recording, and refusing to
+  /// record would be a worse trade for the user than recording quietly.
+  Future<void> _ensureNotificationPermission() async {
+    try {
+      final plugin = _notifications ?? FlutterLocalNotificationsPlugin();
+      await plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    } on Object {
+      // A host without the plugin channel (widget tests) must not stop a
+      // recording from starting.
+    }
   }
 
   @override
