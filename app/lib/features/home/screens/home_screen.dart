@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
             child: _AdaptiveDestinationGrid(
               destinations: [
                 _HomeDestination(
-                  title: 'Assistant',
+                  title: 'Mind',
                   description: 'Think, write, and work with your local AI.',
                   icon: Icons.psychology_outlined,
                   route: AssistantRouteNames.assistant,

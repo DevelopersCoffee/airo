@@ -105,7 +105,7 @@ void main() {
     await pumpShellRoute(tester, initialLocation: '/assistant');
 
     expect(find.byType(AppBar), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Assistant'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Mind'), findsOneWidget);
     expect(find.byKey(const ValueKey('app_shell_home_button')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('app_shell_notifications_button')),
