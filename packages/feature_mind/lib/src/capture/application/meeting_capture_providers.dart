@@ -19,6 +19,7 @@ import '../domain/meeting_processing_job.dart';
 import 'meeting_capture_controller.dart';
 import 'meeting_live_session_coordinator.dart';
 import 'meeting_processing_queue.dart';
+import '../../mind_store_paths.dart';
 
 /// Factory for one microphone encoder per capture session. Widget tests
 /// return the same fake every call so Start can be asserted.
@@ -75,8 +76,13 @@ Future<String> nextMeetingRecordingPath() async {
 /// WAV path the native live fan-out writes. Must stay in lock-step with
 /// `airo_mind_whisper::api::meetings::live_fanout_path`:
 /// `{store_path.parent}/mind_recordings/{meetingId}.wav`.
+///
+/// That parent is `{applicationSupport}/airo_mind`, not application support
+/// itself — see [mindStoreParentDirectory]. This resolved against plain
+/// application support, one segment short, so every live session handed the
+/// processing queue a path Rust had never written to.
 Future<String> nextLiveFanoutRecordingPath(String meetingId) async {
-  final dir = await getApplicationSupportDirectory();
+  final dir = await mindStoreParentDirectory();
   final recordingsDir = Directory(p.join(dir.path, 'mind_recordings'));
   await recordingsDir.create(recursive: true);
   return p.join(recordingsDir.path, '$meetingId.wav');
@@ -91,7 +97,8 @@ final liveFanoutRecordingPathProvider =
 /// refusal without loading the whisper cdylib.
 final meetingLiveSessionCoordinatorFactoryProvider =
     Provider<MeetingLiveSessionCoordinator Function()>(
-      (ref) => () => MeetingLiveSessionCoordinator(),
+      (ref) =>
+          () => MeetingLiveSessionCoordinator(),
     );
 
 Future<String> _processingQueuePath() async {
