@@ -157,6 +157,10 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
+      // Same grid-first signal `onHelpTap` keys off: no video stage means
+      // the ten-foot layout, where `share_plus` is stubbed and the share
+      // falls back to a clipboard a remote cannot reach.
+      showShareAction: widget.showVideoStage,
       onHelpTap: widget.showVideoStage
           ? null
           : () => showAiroTvShellHelpDialog(context),

@@ -182,14 +182,18 @@ class SettingsHubScreen extends ConsumerWidget {
               onTap: () => showXmltvSourceSheet(context),
             ),
 
-            const SizedBox(height: 24),
-
-            Text(
-              'More Airo Apps',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            for (final app in siblingAppsFor(shellId)) SiblingAppCard(app: app),
+            // Hidden entirely while no listing is live: a heading over three
+            // inert "Coming soon" cards promotes nothing.
+            if (publishedSiblingAppsFor(shellId).isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'More Airo Apps',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              for (final app in publishedSiblingAppsFor(shellId))
+                SiblingAppCard(app: app),
+            ],
 
             const SizedBox(height: 24),
 

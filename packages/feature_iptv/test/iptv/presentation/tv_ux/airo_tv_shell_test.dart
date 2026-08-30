@@ -5,6 +5,7 @@ import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -357,6 +358,33 @@ void main() {
           .widget<ChannelLibraryGrid>(find.byType(ChannelLibraryGrid))
           .onMultiviewToggle,
       isNull,
+    );
+  });
+
+  testWidgets('grid-first TV layout hides the unusable Share action', (
+    tester,
+  ) async {
+    // share_plus is stubbed on TV, so the share always fell back to the
+    // clipboard and announced "share message copied" — for a clipboard a
+    // remote has no way to open.
+    await pumpAt(tester, 1280, showVideoStage: false);
+    expect(
+      tester
+          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
+          .showShareAction,
+      isFalse,
+    );
+  });
+
+  testWidgets('Share stays available where the share sheet works', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280);
+    expect(
+      tester
+          .widget<ChannelInfoBar>(find.byType(ChannelInfoBar))
+          .showShareAction,
+      isTrue,
     );
   });
 
