@@ -398,4 +398,22 @@ void main() {
       expect(await staging.exists(), isTrue);
     });
   });
+
+  test('applicationExternal falls back to documents where there is no external '
+      'storage', () async {
+    // getExternalStorageDirectory is Android-only: everywhere else
+    // path_provider registers no implementation and the platform
+    // interface's default throws, so this used to propagate out of every
+    // model download and Clear Model Cache instead of taking the fallback
+    // the option already documented.
+    final external = ModelStorageManager(
+      downloads: downloads,
+      location: ModelStorageLocation.applicationExternal,
+    );
+
+    final dir = await external.getModelsDirectory();
+
+    expect(dir.path, path.join(tempDir.path, 'models'));
+    expect(dir.existsSync(), isTrue);
+  });
 }
