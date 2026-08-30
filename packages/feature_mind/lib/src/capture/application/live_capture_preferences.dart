@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/live_intelligence_mode.dart';
+import '../../mind_store_paths.dart';
 
 const String liveInsightsEnabledKey = 'mind_live_insights_enabled';
 const String liveInsightsAutoExpandKey = 'mind_live_insights_auto_expand';
@@ -82,11 +82,16 @@ class LiveIntelligenceModeNotifier extends StateNotifier<LiveIntelligenceMode> {
 }
 
 /// Sidecar Rust reads at `start_live_session` (store parent).
+///
+/// That parent is `{applicationSupport}/airo_mind`, not application support
+/// itself — see [mindStoreParentDirectory]. This wrote one segment short, so
+/// `read_live_intelligence_mode` never found the file and silently fell back
+/// to "automatic", making the setting inert.
 Future<void> persistLiveIntelligenceModeToNative(
   LiveIntelligenceMode mode,
 ) async {
   try {
-    final dir = await getApplicationSupportDirectory();
+    final dir = await mindStoreParentDirectory();
     File(
       p.join(dir.path, 'mind_live_intelligence_mode'),
     ).writeAsStringSync(mode.storageValue);
