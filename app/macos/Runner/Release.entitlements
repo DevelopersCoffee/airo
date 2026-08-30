@@ -10,9 +10,21 @@
 	<true/>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<key>com.apple.security.files.user-selected.read-only</key>
+	<!-- Read-write, not read-only: meeting export creates a folder and writes
+	     files into a directory the user picked
+	     (feature_mind meeting_export_gateway.dart), and notebook share writes
+	     a file through FilePicker.saveFile. Both are user-initiated saves into
+	     a location the user chose in the panel; read-only silently failed
+	     them in Release while dev builds appeared to work. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Settings -> Backup and restore -> "Create LAN share" binds a local
+	     HTTP server to hand an encrypted backup to another device on the same
+	     network. This was present in DebugProfile.entitlements only, so the
+	     feature worked when run locally and failed in the shipped build. -->
+	<key>com.apple.security.network.server</key>
 	<true/>
 </dict>
 </plist>
