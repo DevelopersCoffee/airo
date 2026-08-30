@@ -16,11 +16,9 @@ abstract final class MindRuntimeNavigation {
   static void Function()? openIntelligence;
   static void Function()? openNewChat;
   static void Function()? openSettings;
-  static void Function()? openModelManager;
   static void Function()? openModelLibrary;
   static void Function()? openDeviceCapabilities;
   static void Function()? openPromptLab;
-  static void Function()? closeWindow;
   static void Function()? openLogs;
 }
 
@@ -158,14 +156,14 @@ class MindNativeMenuBar extends StatelessWidget {
                 ),
               ],
             ),
-            PlatformMenuItem(
-              label: 'Close Window',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyW,
-                meta: true,
-              ),
-              onSelected: MindRuntimeNavigation.closeWindow,
-            ),
+            // No "Close Window" item. Nothing here can close the window:
+            // there is no window-management plugin and its callback was
+            // never assigned, so it rendered permanently greyed out with a
+            // Cmd-W that did nothing. Implementing it needs more care than a
+            // channel call, too — this is a single-window app whose
+            // `MainFlutterWindow` has no reopen path, so a real close would
+            // leave a running process with no window and no way back. The
+            // window's own close button still works.
           ],
         ),
         PlatformMenu(
