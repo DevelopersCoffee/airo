@@ -5,7 +5,12 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = Airo Mind
+//
+// This is the TV shell's name: the macOS release workflow builds only the `tv`
+// profile against this one Runner target. Do not commit another flavour's name
+// here — `app/tool/run_mind_macos.sh` rewrites this line for a local Mind run
+// and restores it on exit, so a stray value means that restore was skipped.
+PRODUCT_NAME = Airo TV
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.developerscoffee.airo.tv
