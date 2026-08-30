@@ -11,8 +11,21 @@
     <!-- Scribe records meetings on device. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
-    <!-- Bug-report attachments (image_picker). -->
+    <!-- Bug-report attachments (image_picker). Declared not-required so Play
+         does not filter Airo Mind off camera-less devices — nothing in Mind
+         needs a camera to work, and the picker falls back to the gallery. -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false"/>
+
+    <!-- flutter_local_notifications reschedules across reboot; without this
+         (and the receivers below) every scheduled agent notification is lost
+         on restart. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <!-- audio_service: MainActivity extends AudioServiceFragmentActivity and
          pubspec_mind.yaml keeps the plugin real, so the service below must be
@@ -33,7 +46,15 @@
         android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"><!--
+        allowBackup is off deliberately. Airo Mind's whole claim is that
+        meetings, transcripts and the vault stay on the device; Android Auto
+        Backup would copy that database and its preferences to the user's
+        Google Drive without them ever asking. The product ships its own
+        explicit transfer paths instead (Settings -> Backup and restore:
+        encrypted file export and LAN share), so nothing is lost by turning
+        the implicit one off. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -99,6 +120,26 @@
             android:name=".MeetingRecordingService"
             android:foregroundServiceType="microphone"
             android:exported="false" />
+
+        <!-- flutter_local_notifications: persist scheduled agent
+             notifications across process death and restore them after
+             reboot. This manifest replaces src/main rather than merging with
+             it, and the plugin's own AAR manifest declares neither receiver,
+             so without these two entries `zonedSchedule` succeeds and the
+             notification simply never arrives. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- Required to query activities that can process text, see:

@@ -62,8 +62,25 @@ class ModelStorageManager {
   Future<Directory> _storageRootDirectory() async {
     switch (location) {
       case ModelStorageLocation.applicationExternal:
-        final external = await getExternalStorageDirectory();
-        if (external != null) return external;
+        // App-scoped external storage is Android-only. Everywhere else
+        // path_provider registers no `getExternalStoragePath`, so the
+        // platform interface's default *throws* rather than returning null —
+        // which made the `external != null` fallback below unreachable and
+        // turned this option into a trap: picking "App managed" on macOS
+        // broke every model download and Clear Model Cache until it was
+        // changed back.
+        //
+        // Falling through to documents keeps the option's documented
+        // behaviour ("uses app-scoped external storage when available")
+        // honest on hosts that have no such thing.
+        try {
+          final external = await getExternalStorageDirectory();
+          if (external != null) return external;
+        } on UnimplementedError {
+          // No implementation registered for this platform.
+        } on UnsupportedError {
+          // Some implementations reject the call rather than omitting it.
+        }
         return getApplicationDocumentsDirectory();
       case ModelStorageLocation.applicationSupport:
         return getApplicationSupportDirectory();
