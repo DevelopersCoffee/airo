@@ -57,6 +57,17 @@ final siblingApps = <SiblingApp>[
 List<SiblingApp> siblingAppsFor(ShellId current) =>
     siblingApps.where((app) => app.id != current).toList(growable: false);
 
+/// [siblingAppsFor], minus anything with no live listing yet.
+///
+/// Settings screens render their "More Airo Apps" section from this, so a
+/// section where every card would be an inert "Coming soon" is not shown at
+/// all. Today that is every entry — the `isPublished*` flags above are still
+/// placeholders — so the section is hidden everywhere until a flag is
+/// flipped, at which point it appears on its own with no other change.
+List<SiblingApp> publishedSiblingAppsFor(ShellId current) => siblingAppsFor(
+  current,
+).where((app) => app.isPublishedAnywhere).toList(growable: false);
+
 Uri _playStoreUrl(String packageId) =>
     Uri.parse('https://play.google.com/store/apps/details?id=$packageId');
 

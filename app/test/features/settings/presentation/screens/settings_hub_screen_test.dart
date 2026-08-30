@@ -72,14 +72,16 @@ void main() {
     expect(find.text('Playlist Source'), findsOneWidget);
     expect(find.text('EPG Guide Source'), findsOneWidget);
     expect(find.text('Picture-in-picture'), findsNothing);
-    expect(find.text('More Airo Apps'), findsOneWidget);
-    expect(find.text('Airo TV'), findsOneWidget);
-    expect(find.text('Airo Coins'), findsOneWidget);
-    expect(find.text('Airo Mind'), findsOneWidget);
-    expect(find.text('Airo'), findsNothing);
+    // No sibling listing is live yet, so the section would be a heading over
+    // three inert "Coming soon" cards. Registry-level coverage for which
+    // apps qualify lives in sibling_app_registry_test.dart.
+    expect(find.text('More Airo Apps'), findsNothing);
+    expect(find.text('Airo TV'), findsNothing);
+    expect(find.text('Airo Coins'), findsNothing);
+    expect(find.text('Airo Mind'), findsNothing);
   });
 
-  testWidgets('a non-default shellId excludes itself, not mobile', (
+  testWidgets('an unpublished sibling roster renders no promotion section', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(400, 1600));
@@ -98,7 +100,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Airo'), findsOneWidget);
+    // Self-exclusion still holds — it is just no longer observable through
+    // this screen, because nothing is published. See
+    // `publishedSiblingAppsFor` tests in core_product_shell.
+    expect(find.text('More Airo Apps'), findsNothing);
     expect(find.text('Airo TV'), findsNothing);
   });
 

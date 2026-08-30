@@ -33,6 +33,19 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
   /// rather than added as a manifest section.
   bool _isAiroAppsSelected = false;
 
+  /// The cross-app cards worth showing. Empty until a store listing goes
+  /// live, since a card with no listing renders an inert "Coming soon".
+  static final _publishedSiblings = publishedSiblingAppsFor(ShellId.tv);
+
+  /// With no sibling cards this pane holds only the build-version tile, so
+  /// promising "More Airo Apps" would be a rail stop that shows no apps.
+  static final String _airoAppsLabel = _publishedSiblings.isEmpty
+      ? 'About'
+      : 'More Airo Apps';
+  static final IconData _airoAppsIcon = _publishedSiblings.isEmpty
+      ? Icons.info_outline
+      : Icons.apps;
+
   /// The sections this screen renders, in shared-manifest order, filtered to
   /// those declared visible on the TV shell.
   static final _sections = iptvSettingsSections
@@ -135,7 +148,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                       focusNode: _airoAppsFocusNode,
                       onSelect: () =>
                           setState(() => _isAiroAppsSelected = true),
-                      semanticLabel: 'More Airo Apps',
+                      semanticLabel: _airoAppsLabel,
                       semanticButton: true,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -148,11 +161,11 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              Icon(Icons.apps, color: colorScheme.onSurface),
+                              Icon(_airoAppsIcon, color: colorScheme.onSurface),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'More Airo Apps',
+                                  _airoAppsLabel,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: colorScheme.onSurface,
@@ -186,8 +199,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
       return ListView(
         key: const ValueKey('tv_settings_section_airo_apps'),
         children: [
-          for (final app in siblingAppsFor(ShellId.tv))
-            SiblingAppCard(app: app),
+          for (final app in _publishedSiblings) SiblingAppCard(app: app),
           const SizedBox(height: 24),
           const AppInfoTile(),
         ],
