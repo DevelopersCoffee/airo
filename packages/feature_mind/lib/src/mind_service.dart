@@ -33,7 +33,6 @@ import 'speaker/global_speaker_enrollment_store.dart';
 import 'trust/scribe_trust_state.dart';
 import 'whisper/api/meetings.dart' as rust;
 import 'whisper/meeting_ir_op_log.dart';
-import 'library_loader.dart';
 
 /// Why Airo Mind cannot start. Each case is one the user can act on, which is
 /// the reason this is a type and not a string.
@@ -1066,9 +1065,17 @@ class MindService {
     _speech,
   ).updateTitle(meeting: meeting, title: title);
 
-  Future<bool> deleteMeeting(String id) async {
-    return deleteWhisperMeeting(id);
-  }
+  /// Goes through the generated binding rather than
+  /// `library_loader`'s `deleteWhisperMeeting`, which resolves
+  /// `airo_mind_whisper_delete_meeting` off `DynamicLibrary.process()`. That
+  /// only finds a symbol the loader published globally, and the engine is not
+  /// loaded that way on every host — on Android the generated loader `dlopen`s
+  /// the `.so` by name, so the symbol need not be in the process table at all
+  /// and the lookup throws `ArgumentError` instead of deleting anything.
+  ///
+  /// The FRB call reuses the library instance FRB already holds, so it makes
+  /// no assumption about global symbol visibility on any platform.
+  Future<bool> deleteMeeting(String id) => rust.deleteMeeting(id: id);
 
   /// Releases the microphone and the model provider. The provider matters
   /// because the download-backed one holds a subscription to the platform

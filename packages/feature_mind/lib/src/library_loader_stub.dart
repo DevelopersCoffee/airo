@@ -11,5 +11,3 @@ Future<ExternalLibrary?> resolveEngineLibrary(String stem) async => null;
 void listenForQuitSignals(void Function() onQuit) {}
 
 void unloadWhisperSpeech() {}
-
-bool deleteWhisperMeeting(String id) => false;
