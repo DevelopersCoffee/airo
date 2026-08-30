@@ -1,3 +1,4 @@
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:core_ui/core_ui.dart';
@@ -42,6 +43,7 @@ void main() {
     Map<String, Object> initialPreferences = const {},
     List<IPTVChannel> Function()? channelLoader,
     List<Override> extraOverrides = const [],
+    bool tenFootMode = false,
   }) {
     SharedPreferences.setMockInitialValues(initialPreferences);
     return FutureBuilder<SharedPreferences>(
@@ -82,6 +84,7 @@ void main() {
               onOpenVod: onOpenVod,
               onSettings: onSettings,
               onPickLocalMediaForTv: onPickLocalMediaForTv,
+              tenFootMode: tenFootMode,
             ),
           ),
         );
@@ -218,6 +221,34 @@ void main() {
 
     expect(find.byType(AppBar), findsOneWidget);
   });
+
+  testWidgets(
+    'ten-foot mode suppresses touch-only player chrome',
+    (tester) async {
+      // Brightness/volume drag zones and the lock button are touch concepts
+      // with no remote equivalent. VideoPlayerWidget already hides them when
+      // enableTouchGestures is false, and its doc comment cited "TV/remote
+      // input" as the reason — but nothing in production ever passed false, so
+      // every Fire TV build shipped the touch chrome anyway.
+      await tester.pumpWidget(createWidget(tenFootMode: true));
+      await tester.pumpAndSettle();
+
+      // A player only mounts once something is playing.
+      await tester.tap(find.text('City News Live').first);
+      await tester.pumpAndSettle();
+
+      final players = tester.widgetList<VideoPlayerWidget>(
+        find.byType(VideoPlayerWidget),
+      );
+      expect(players, isNotEmpty, reason: 'expected a player to be mounted');
+      for (final player in players) {
+        expect(player.enableTouchGestures, isFalse);
+      }
+    },
+    experimentalLeakTesting: LeakTesting.settings.withIgnored(
+      notDisposed: {'VideoPlayerController': null},
+    ),
+  );
 
   testWidgets('browse preview exposes a full player entry point', (
     tester,
