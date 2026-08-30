@@ -14,7 +14,7 @@ library;
 
 /// Kept equal to the `version:` field of `app/pubspec_tv.yaml`, which is
 /// `<_stubVersion>+<_stubBuildNumber>`.
-const String _stubVersion = '0.0.7-preview';
+const String _stubVersion = '0.0.7';
 const String _stubBuildNumber = '12';
 
 class PackageInfo {
