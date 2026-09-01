@@ -221,32 +221,29 @@ void main() {
     expect(removeTarget.height, greaterThanOrEqualTo(48));
   });
 
-  testWidgets(
-    'TV dialog owns focus and CENTER opens the add-playlist form',
-    (tester) async {
-      final container = await buildContainer();
-      addTearDown(container.dispose);
-      await pumpTvManagerDialog(tester, container);
+  testWidgets('TV dialog owns focus and CENTER opens the add-playlist form', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await pumpTvManagerDialog(tester, container);
 
-      final addButton = find.byKey(
-        const ValueKey('playlist-source-add-button'),
-      );
-      final addFocusable = tester.widget<TvFocusable>(
-        find.ancestor(of: addButton, matching: find.byType(TvFocusable)),
-      );
-      expect(addFocusable.focusNode?.hasPrimaryFocus, isTrue);
+    final addButton = find.byKey(const ValueKey('playlist-source-add-button'));
+    final addFocusable = tester.widget<TvFocusable>(
+      find.ancestor(of: addButton, matching: find.byType(TvFocusable)),
+    );
+    expect(addFocusable.focusNode?.hasPrimaryFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.select);
-      await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Add playlist'), findsOneWidget);
-      expect(find.byType(ActionChip), findsNothing);
-      final labelField = tester.widget<TextField>(
-        find.byKey(const ValueKey('playlist-source-label-field')),
-      );
-      expect(labelField.focusNode?.hasPrimaryFocus, isTrue);
-    },
-  );
+    expect(find.text('Add playlist'), findsOneWidget);
+    expect(find.byType(ActionChip), findsNothing);
+    final labelField = tester.widget<TextField>(
+      find.byKey(const ValueKey('playlist-source-label-field')),
+    );
+    expect(labelField.focusNode?.hasPrimaryFocus, isTrue);
+  });
 
   testWidgets(
     'Fire TV BACK leaves the playlist form after dismissing its keyboard',
