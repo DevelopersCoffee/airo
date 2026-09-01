@@ -13,7 +13,7 @@ It reads:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SUPPLY_JSON_KEY` or `SUPPLY_JSON_KEY_FILE` | `play-store-credentials.json` | Path to the Google Play service account JSON file used by Fastlane Supply. |
-| `SUPPLY_PACKAGE_NAME` | `io.airo.app.tv` | Package ID to upload. Override for mobile/tablet profiles. |
+| `SUPPLY_PACKAGE_NAME` | `com.developerscoffee.tv.midas` | Package ID to upload. Override for mobile/tablet profiles. |
 
 Release workflows already write the Play service account JSON from
 `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` to
@@ -23,7 +23,7 @@ Use these package values for v2 Android profiles:
 
 | Profile | `SUPPLY_PACKAGE_NAME` |
 | --- | --- |
-| `tv` | `io.airo.app.tv` |
+| `tv` | `com.developerscoffee.tv.midas` |
 | `full` | `io.airo.app` |
 
 Human setup still required:
@@ -46,7 +46,7 @@ Local smoke check after credentials are available:
 
 ```bash
 cd app/android
-SUPPLY_PACKAGE_NAME=io.airo.app.tv \
+SUPPLY_PACKAGE_NAME=com.developerscoffee.tv.midas \
 SUPPLY_JSON_KEY=play-store-credentials.json \
 bundle exec fastlane supply init
 ```

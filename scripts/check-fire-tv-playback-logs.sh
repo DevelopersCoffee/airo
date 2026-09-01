@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PACKAGE_NAME="${AIRO_ANDROID_TV_PACKAGE:-io.airo.app.tv}"
+PACKAGE_NAME="${AIRO_ANDROID_TV_PACKAGE:-com.developerscoffee.tv.midas}"
 DURATION_SECONDS="${AIRO_FIRE_TV_LOG_DURATION_SECONDS:-5}"
 OUTPUT_FILE="${AIRO_FIRE_TV_LOG_REPORT:-$ROOT_DIR/artifacts/release-qualification/fire-tv-playback-log-report.md}"
 INPUT_FILE=""
@@ -64,7 +64,7 @@ else
     1 >/dev/null
   pid="$(adb -s "$device" shell pidof "$PACKAGE_NAME" | tr -d '\r')"
   if [[ -z "$pid" ]]; then
-    echo "Airo TV process is not running after launcher start" >&2
+    echo "Midas Stream process is not running after launcher start" >&2
     exit 1
   fi
   adb -s "$device" logcat -c
@@ -92,7 +92,8 @@ grep -vF \
   -e 'ioctl c0044901 failed with code -1: Invalid argument' \
   "$normalized_sample" > "$tmp_dir/actionable.log" || true
 actionable_count="$(grep -c . "$tmp_dir/actionable.log" || true)"
-fatal_count="$(grep -Ec 'FATAL EXCEPTION|AndroidRuntime|Process: io\.airo\.app\.tv' "$tmp_dir/actionable.log" || true)"
+escaped_package="${PACKAGE_NAME//./\\.}"
+fatal_count="$(grep -Ec "FATAL EXCEPTION|AndroidRuntime|Process: ${escaped_package}" "$tmp_dir/actionable.log" || true)"
 
 status="PASS"
 if [[ "$actionable_count" -gt 0 ]]; then

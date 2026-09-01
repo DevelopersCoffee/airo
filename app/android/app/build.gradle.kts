@@ -44,13 +44,13 @@ val isTvVariant = appVariant == "tv"
 val isCoinsVariant = appVariant == "coins"
 val isMindVariant = appVariant == "mind"
 val variantApplicationId = when (appVariant) {
-    "tv" -> "io.airo.app.tv"
+    "tv" -> "com.developerscoffee.tv.midas"
     "coins" -> "io.airo.app.coins"
     "mind" -> "io.airo.app.mind"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
-    "tv" -> "Airo TV"
+    "tv" -> "Midas Stream"
     "coins" -> "Airo Coins"
     "mind" -> "Airo Mind"
     else -> "Airo"

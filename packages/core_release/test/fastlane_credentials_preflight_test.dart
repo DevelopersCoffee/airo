@@ -24,15 +24,15 @@ void main() {
     test('accepts TV Play setup when package and credential are present', () {
       final preflight = run(
         environment: const {
-          'SUPPLY_PACKAGE_NAME': 'io.airo.app.tv',
+          'SUPPLY_PACKAGE_NAME': 'com.developerscoffee.tv.midas',
           'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON': 'fixture-google-payload',
         },
       );
 
       expect(preflight.googlePlayReady, isTrue);
       expect(preflight.appStoreConnectReady, isFalse);
-      expect(preflight.expectedAndroidPackageName, 'io.airo.app.tv');
-      expect(preflight.androidPackageName, 'io.airo.app.tv');
+      expect(preflight.expectedAndroidPackageName, 'com.developerscoffee.tv.midas');
+      expect(preflight.androidPackageName, 'com.developerscoffee.tv.midas');
       expect(
         preflight.googlePlayCredentialSource,
         'env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON',
@@ -63,7 +63,7 @@ void main() {
 
       expect(preflight.googlePlayReady, isFalse);
       expect(preflight.expectedAndroidPackageName, 'io.airo.app');
-      expect(preflight.androidPackageName, 'io.airo.app.tv');
+      expect(preflight.androidPackageName, 'com.developerscoffee.tv.midas');
       expect(
         preflight.findings.map((finding) => finding.code),
         contains(AiroFastlaneCredentialFindingCode.packageNameMismatch),
@@ -73,13 +73,13 @@ void main() {
     test('blocks App Store Connect only when iOS upload is in scope', () {
       final deferred = run(
         environment: const {
-          'SUPPLY_PACKAGE_NAME': 'io.airo.app.tv',
+          'SUPPLY_PACKAGE_NAME': 'com.developerscoffee.tv.midas',
           'PLAY_STORE_CREDENTIALS': 'fixture-play-payload',
         },
       );
       final inScope = run(
         environment: const {
-          'SUPPLY_PACKAGE_NAME': 'io.airo.app.tv',
+          'SUPPLY_PACKAGE_NAME': 'com.developerscoffee.tv.midas',
           'PLAY_STORE_CREDENTIALS': 'fixture-play-payload',
         },
         iosUploadInScope: true,
@@ -118,7 +118,7 @@ void main() {
       () {
         final preflight = run(
           environment: const {
-            'SUPPLY_PACKAGE_NAME': 'io.airo.app.tv',
+            'SUPPLY_PACKAGE_NAME': 'com.developerscoffee.tv.midas',
             'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON': 'fixture-google-payload',
             'MATCH_PASSWORD': 'fixture-match-value',
             'ASC_KEY_ID': 'key-id',
@@ -139,7 +139,7 @@ void main() {
     test('public output never exposes credential material', () {
       final output = run(
         environment: const {
-          'SUPPLY_PACKAGE_NAME': 'io.airo.app.tv',
+          'SUPPLY_PACKAGE_NAME': 'com.developerscoffee.tv.midas',
           'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON': 'fixture-google-payload',
           'MATCH_PASSWORD': 'fixture-match-value',
           'ASC_KEY_ID': 'key-id',

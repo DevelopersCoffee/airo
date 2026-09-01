@@ -52,7 +52,7 @@ aab = artifacts["Airo-TV-v2.0.0-Play-Store.aab"]
 macos_zip = artifacts["Airo-TV-v2.0.0-macOS.zip"]
 macos_dmg = artifacts["Airo-TV-v2.0.0-macOS.dmg"]
 assert apk["profileId"] == "tv"
-assert apk["packageId"] == "io.airo.app.tv"
+assert apk["packageId"] == "com.developerscoffee.tv.midas"
 assert apk["artifactType"] == "apk"
 assert apk["distributionChannel"] == "direct-apk"
 assert apk["abi"] == "android-arm64"
@@ -132,11 +132,11 @@ manifest = json.load(open(sys.argv[1], encoding="utf-8"))
 byname = {a["filename"]: a for a in manifest["artifacts"]}
 
 expected_profile = {
-    "Airo-TV-0.0.6.apk": ("tv", "io.airo.app.tv"),
-    "Airo-TV-0.0.6-arm64-v8a.apk": ("tv", "io.airo.app.tv"),
-    "Airo-TV-0.0.6-armeabi-v7a.apk": ("tv", "io.airo.app.tv"),
-    "Airo-TV-0.0.6-x86_64.apk": ("tv", "io.airo.app.tv"),
-    "Airo-TV-0.0.6-Play-Store.aab": ("tv", "io.airo.app.tv"),
+    "Airo-TV-0.0.6.apk": ("tv", "com.developerscoffee.tv.midas"),
+    "Airo-TV-0.0.6-arm64-v8a.apk": ("tv", "com.developerscoffee.tv.midas"),
+    "Airo-TV-0.0.6-armeabi-v7a.apk": ("tv", "com.developerscoffee.tv.midas"),
+    "Airo-TV-0.0.6-x86_64.apk": ("tv", "com.developerscoffee.tv.midas"),
+    "Airo-TV-0.0.6-Play-Store.aab": ("tv", "com.developerscoffee.tv.midas"),
     "Airo-0.0.6-10-arm64.apk": ("full", "io.airo.app"),
     "Airo-0.0.6-10-Play-Store.aab": ("full", "io.airo.app"),
     "AiroCoins-0.0.6-10-arm64.apk": ("coins", "io.airo.app.coins"),

@@ -53,7 +53,7 @@ class AiroMacosUpdateService {
         availability: AiroMacosUpdateAvailability.unavailable,
         currentVersion: currentVersion,
         latestVersion: null,
-        releaseName: 'Airo TV',
+        releaseName: 'Midas Stream',
         releaseUrl: Uri.parse(kAiroMacosReleasesUrl),
         detail: 'Update checks are available in the macOS app.',
       );
@@ -84,7 +84,7 @@ class AiroMacosUpdateService {
   }) {
     final tagName = payload['tag_name'] as String?;
     final releaseName =
-        payload['name'] as String? ?? tagName ?? 'Latest Airo TV release';
+        payload['name'] as String? ?? tagName ?? 'Latest Midas Stream release';
     final releaseUrl =
         _absoluteUri(payload['html_url'] as String?) ??
         Uri.parse(kAiroMacosReleasesUrl);

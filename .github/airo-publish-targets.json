@@ -57,7 +57,7 @@
       "_note": "Enable once GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is provisioned for the TV listing.",
       "profiles": {
         "tv": {
-          "packageId": "io.airo.app.tv",
+          "packageId": "com.developerscoffee.tv.midas",
           "artifactSelector": {
             "artifactType": [
               "aab"
@@ -84,7 +84,7 @@
       "_note": "APKPure models one APK per version -- each version row carries a single Architecture field and the per-ABI splits all share versionCode 10, so they cannot coexist as variants of 0.0.6. The universal APK already contains arm64-v8a, armeabi-v7a and x86_64, so it is the correct upload; the splits stay on the GitHub release for people who want a smaller download. The pipeline still supports multiple APKs per profile if a store ever accepts them. io.airo.app and io.airo.app.coins have no APKPure listing, so their profiles stay disabled until someone registers them by hand.",
       "profiles": {
         "tv": {
-          "packageId": "io.airo.app.tv",
+          "packageId": "com.developerscoffee.tv.midas",
           "artifactSelector": {
             "artifactType": [
               "apk"
@@ -167,7 +167,7 @@
       "enabled": false,
       "profiles": {
         "tv": {
-          "packageId": "io.airo.app.tv",
+          "packageId": "com.developerscoffee.tv.midas",
           "artifactSelector": {
             "artifactType": [
               "apk"
@@ -190,7 +190,7 @@
       "enabled": false,
       "profiles": {
         "tv": {
-          "packageId": "io.airo.app.tv",
+          "packageId": "com.developerscoffee.tv.midas",
           "artifactSelector": {
             "artifactType": [
               "apk"
@@ -213,7 +213,7 @@
       "enabled": false,
       "profiles": {
         "tv": {
-          "packageId": "io.airo.app.tv",
+          "packageId": "com.developerscoffee.tv.midas",
           "artifactSelector": {
             "artifactType": [
               "apk"

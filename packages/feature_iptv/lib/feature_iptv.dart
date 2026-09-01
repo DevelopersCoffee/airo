@@ -1,5 +1,6 @@
 library;
 
+export "product_identity.dart";
 export "src/iptv.dart";
 export "domain/iptv_navigation_manifest.dart";
 export "domain/iptv_settings_manifest.dart";

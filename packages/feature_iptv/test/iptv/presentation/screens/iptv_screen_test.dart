@@ -196,7 +196,7 @@ void main() {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Airo TV'), findsOneWidget);
+      expect(find.text('Midas Stream'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
@@ -213,7 +213,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(AppBar), findsNothing);
-    expect(find.text('Airo TV'), findsNothing);
+    expect(find.text('Midas Stream'), findsNothing);
     expect(find.byType(VideoPlayerWidget), findsOneWidget);
 
     AiroNativePictureInPicture.debugNotifyStateChanged(false);
@@ -513,7 +513,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(handled, isTrue);
-    expect(find.text('Airo TV'), findsOneWidget);
+    expect(find.text('Midas Stream'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
       findsOneWidget,
@@ -663,8 +663,14 @@ void main() {
     await activateAppBarAction(tester, 'Playlist source');
     await tester.tap(find.byKey(const ValueKey('playlist-source-add-button')));
     await tester.pump();
-    await tester.tap(find.text('By country'));
-    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('playlist-source-label-field')),
+      'Country list',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('playlist-source-url-field')),
+      'https://example.com/country.m3u',
+    );
     final saveButton = find.byKey(
       const ValueKey('playlist-source-save-button'),
     );
@@ -690,7 +696,7 @@ void main() {
     await tester.pumpWidget(createEmptyWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Airo TV'), findsOneWidget);
+    expect(find.text('Midas Stream'), findsOneWidget);
     expect(find.byTooltip('Playlist source'), findsOneWidget);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(

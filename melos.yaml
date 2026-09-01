@@ -134,7 +134,7 @@ scripts:
       cd packages/platform_benchmarks
       flutter pub get
       dart run tool/run_airo_tv_playback_soak.dart \
-        --package "${AIRO_TV_PACKAGE:-io.airo.app.tv}" \
+        --package "${AIRO_TV_PACKAGE:-com.developerscoffee.tv.midas}" \
         --device "${AIRO_TV_DEVICE:-}" \
         --duration-seconds "${AIRO_TV_SOAK_DURATION_SECONDS:-1800}" \
         --interval-seconds "${AIRO_TV_SOAK_INTERVAL_SECONDS:-30}" \

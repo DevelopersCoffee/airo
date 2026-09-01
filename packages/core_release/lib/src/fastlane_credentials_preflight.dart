@@ -56,7 +56,7 @@ class AiroFastlaneCredentialsPreflightRequest extends Equatable {
   const AiroFastlaneCredentialsPreflightRequest({
     required this.profileId,
     this.environment = const {},
-    this.defaultAndroidPackageName = 'io.airo.app.tv',
+    this.defaultAndroidPackageName = 'com.developerscoffee.tv.midas',
     this.defaultAndroidCredentialPath =
         'app/android/play-store-credentials.json',
     this.googlePlayCredentialFileExists = false,

@@ -11,10 +11,22 @@ const _channelsUrl = 'https://iptv-org.github.io/api/channels.json';
 const _feedsUrl = 'https://iptv-org.github.io/api/feeds.json';
 const _streamsUrl = 'https://iptv-org.github.io/api/streams.json';
 
-/// Fetches public metadata only. Parsing happens off the UI isolate; failure
-/// deliberately yields no extra metadata rather than blocking playlist browse.
+/// Optional public-catalogue matcher. Production Play builds return no extra
+/// metadata: downloading iptv-org `streams.json` would ship a third-party
+/// stream URL catalogue, which is not allowed for the first listing.
+///
+/// Parsing still happens off the UI isolate when a test or private overlay
+/// opts in with [enablePublicIptvOrgCatalog].
+const bool enablePublicIptvOrgCatalog = bool.fromEnvironment(
+  'AIRO_ENABLE_IPTV_ORG_CATALOG',
+  defaultValue: false,
+);
+
 final channelBrowseMetadataProvider =
     FutureProvider<Map<String, ChannelBrowseMetadata>>((ref) async {
+      if (!enablePublicIptvOrgCatalog) {
+        return const {};
+      }
       try {
         final dio = ref.watch(dioProvider);
         final responses = await Future.wait([

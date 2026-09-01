@@ -9,8 +9,8 @@ access.
 
 | Field | Value |
 | --- | --- |
-| Product | Airo TV |
-| Android package ID | `io.airo.app.tv` |
+| Product | Midas Stream |
+| Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
@@ -30,8 +30,8 @@ This declaration is based on the current v2 TV release behavior:
   may be generated and sent to Google; this is declared under "Device or other
   IDs" below.
 - Playlist and program-guide requests go directly from the device to the
-  servers the user configured, and the public iptv-org catalogue is downloaded
-  and matched on-device. The user's playlist is never uploaded anywhere.
+  servers the user configured. The app does not download a public IPTV
+  catalogue. The user's playlist is never uploaded anywhere.
 
 ## Google Play Data Safety
 
@@ -49,7 +49,7 @@ This declaration is based on the current v2 TV release behavior:
 | Health and fitness | No | No | Not applicable | Not used. |
 | Messages | No | No | Not applicable | Not used. |
 | App activity | No app-owned external collection | No | App functionality | Preferences and playlist state are stored on device. |
-| Web browsing | No | No | Not applicable | Airo TV does not provide a browser. |
+| Web browsing | No | No | Not applicable | Midas Stream does not provide a browser. |
 | App info and performance | No app-owned external collection | No | Diagnostics only if user shares logs manually | Crashlytics is not included in the TV pubspec. |
 | Device or other IDs | **Yes — collected by Firebase SDK, not by the developer** | No | App functionality | `firebase_core` is in `app/pubspec_tv.yaml`. Where Firebase generates a Firebase installation ID (FID), it is sent to Google under Google's own privacy policy. It is not received by DevelopersCoffee, not linked to a user or account, not used for advertising or cross-app tracking, and reset on uninstall or clear-data. No advertising ID permission or analytics SDK is enabled. |
 | IPTV playlist URLs | Local only | No | App functionality | User-provided playlist URLs are stored on device and used to fetch user-selected content. |

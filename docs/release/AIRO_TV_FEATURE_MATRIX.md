@@ -8,7 +8,7 @@ Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 | M3U playlists | Supported | User supplies authorized playlist URLs. |
 | M3U8 streams | Supported | Playback depends on the stream URL and codec support on the device. |
 | Local channel and guide search | Supported | Deterministic search across user-imported channels and available XMLTV guide data; no cloud or LLM query is required. |
-| Android TV | Supported | Package `io.airo.app.tv`; Leanback launcher enabled. |
+| Android TV | Supported | Package `com.developerscoffee.tv.midas`; Leanback launcher enabled. |
 | Pixel/mobile fallback | Supported | Used for smoke testing and responsive layout coverage. |
 | Chromecast controls | Supported | Discovery, play, pause, stop, reload, new session, volume. |
 | Favorites | Supported | Mark/unmark channels from browse and player flows; stored locally. |

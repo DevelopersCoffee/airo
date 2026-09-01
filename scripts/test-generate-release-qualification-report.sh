@@ -25,7 +25,7 @@ cat >"$manifest" <<'JSON'
     {
       "filename": "Airo-TV-v2.0.0.apk",
       "profileId": "tv",
-      "packageId": "io.airo.app.tv",
+      "packageId": "com.developerscoffee.tv.midas",
       "artifactType": "apk",
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }

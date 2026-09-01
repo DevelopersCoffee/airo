@@ -38,7 +38,7 @@ void main() {
 
       expect(preflight.readyForConsoleEntry, isTrue);
       expect(preflight.profileId, 'tv');
-      expect(preflight.packageId, 'io.airo.app.tv');
+      expect(preflight.packageId, 'com.developerscoffee.tv.midas');
       expect(preflight.analyticsSdkPresent, isFalse);
       expect(preflight.crashlyticsSdkPresent, isFalse);
       expect(preflight.advertisingSdkPresent, isFalse);
@@ -178,7 +178,7 @@ void main() {
       () {
         final output = run().toPublicMap();
 
-        expect(output['packageId'], 'io.airo.app.tv');
+        expect(output['packageId'], 'com.developerscoffee.tv.midas');
         expect(
           (output['googlePlayDataSafety']!
               as Map<String, Object?>)['consoleSubmissionRequired'],
