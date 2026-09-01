@@ -68,11 +68,11 @@ class ChannelInfoBar extends ConsumerWidget {
           if (onHelpTap != null)
             TvFocusable(
               key: const ValueKey('airo-tv-shell-help-action'),
-              semanticLabel: 'Airo TV Help',
+              semanticLabel: 'Midas Stream Help',
               onSelect: onHelpTap,
               child: IconButton(
                 onPressed: onHelpTap,
-                tooltip: 'Airo TV Help',
+                tooltip: 'Midas Stream Help',
                 icon: const Icon(Icons.help_outline),
               ),
             ),

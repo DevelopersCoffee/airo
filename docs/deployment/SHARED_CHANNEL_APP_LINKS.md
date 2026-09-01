@@ -15,7 +15,7 @@ directory cannot satisfy that root-domain requirement. The owner of the
 Publish Digital Asset Links entries for:
 
 - `io.airo.app`
-- `io.airo.app.tv`
+- `com.developerscoffee.tv.midas`
 
 Each entry uses
 `delegate_permission/common.handle_all_urls` and the real SHA-256 fingerprint

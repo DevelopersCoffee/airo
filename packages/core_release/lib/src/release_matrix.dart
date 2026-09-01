@@ -453,12 +453,12 @@ class AiroReleaseMatrix extends Equatable {
         ),
         AiroReleaseProfile(
           id: 'tv',
-          displayName: 'Airo TV',
+          displayName: 'Midas Stream',
           artifactNamePart: 'TV',
           releaseLine: AiroReleaseLine.v2,
-          packageId: 'io.airo.app.tv',
+          packageId: 'com.developerscoffee.tv.midas',
           platformPackageIds: const {
-            'android': 'io.airo.app.tv',
+            'android': 'com.developerscoffee.tv.midas',
             'macos': 'com.developerscoffee.airo.tv',
           },
           entrypoint: 'app/lib/main_tv.dart',

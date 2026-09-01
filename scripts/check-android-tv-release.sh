@@ -9,7 +9,7 @@ TV_PUBSPEC="$ROOT_DIR/app/pubspec_tv.yaml"
 RESOURCE_KEEP_FILE="${AIRO_TV_RESOURCE_KEEP_FILE:-$ROOT_DIR/app/android/app/src/main/res/raw/keep.xml}"
 PLUGIN_REGISTRANT="${AIRO_TV_PLUGIN_REGISTRANT:-$ROOT_DIR/app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java}"
 MIN_TARGET_SDK="${AIRO_TV_MIN_TARGET_SDK:-34}"
-TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-io.airo.app.tv}"
+TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-com.developerscoffee.tv.midas}"
 
 fail() {
   local message="$1"

@@ -1,6 +1,8 @@
-# Airo TV Architecture
+# Airo TV / Midas Stream Architecture
 
-Airo TV is the Android TV variant of Airo. It is built from the v2 release line with package name `io.airo.app.tv`.
+The Android TV player is the TV variant of Airo. The first Google Play listing
+ships it as **Midas Stream** with package name `com.developerscoffee.tv.midas`.
+GitHub v0.0.6 artifacts were published as Airo TV (`io.airo.app.tv`).
 
 ## High-Level Flow
 

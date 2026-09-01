@@ -27,7 +27,7 @@ The current v2 profile matrix is maintained in
 
 | Profile | Package ID | Device class | Entrypoint | Store status |
 | --- | --- | --- | --- | --- |
-| `tv` | `io.airo.app.tv` | Android TV, Google TV, Fire TV-compatible APK testing | `app/lib/main_tv.dart` | TV release workflow builds APK and Play AAB; real Play upload needs #585/#681 setup |
+| `tv` | `com.developerscoffee.tv.midas` | Android TV, Google TV, Fire TV-compatible APK testing | `app/lib/main_tv.dart` | TV release workflow builds APK and Play AAB; real Play upload needs #585/#681 setup |
 | `full` | `io.airo.app` | Airo phone and tablet builds | `app/lib/main.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
 | `ios-spm` | `com.developerscoffee.airo` | iOS/iPadOS validation profile | `app/lib/main.dart` | Deferred from the first v2 Android publishing wave |
 
@@ -44,10 +44,10 @@ The Android Gradle config currently uses:
 
 | Field | Current value | Status |
 | --- | --- | --- |
-| App name | `Airo TV - IPTV Player` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Package ID | `io.airo.app.tv` | Registered |
-| Category | Entertainment / Video Players & Editors | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Short description | `Play your own IPTV playlists on Android TV with Cast support.` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| App name | `Midas Stream` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Package ID | `com.developerscoffee.tv.midas` | New Play listing — create the Console app before first upload |
+| Category | Video Players & Editors | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Short description | `Play your own authorized playlists on Android TV.` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
 | Full description | Final copy in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Ready pending stakeholder approval |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
@@ -71,6 +71,7 @@ The TV manifest is `app/android/app/src/tv/AndroidManifest.xml`.
 | `RECEIVE_BOOT_COMPLETED` | WorkManager/plugin compatibility for scheduled/background work | Review before public TV submission |
 | `FOREGROUND_SERVICE` | Foreground playback/service support | Required |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Android media playback foreground service declaration | Required |
+| `FOREGROUND_SERVICE_DATA_SYNC` | WorkManager foreground service type on Android 14+ | Required |
 | `WAKE_LOCK` | Keep playback/session work stable during media use | Required |
 
 The TV manifest explicitly removes biometric/fingerprint, Google Services read,
@@ -114,7 +115,7 @@ iOS to the release scope.
 
 ## IPTV Content Disclaimer
 
-Airo TV is a media player for user-provided playlists and streams. It does not
+Airo TV / Midas Stream is a media player for user-provided playlists and streams. It does not
 provide, host, endorse, verify, or distribute channels, playlists, or streams.
 Users are responsible for ensuring that every content source they load is legal
 in their jurisdiction and that they have the required rights to access it.

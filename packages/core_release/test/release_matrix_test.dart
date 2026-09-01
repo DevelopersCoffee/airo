@@ -14,6 +14,11 @@ void main() {
       expect(matrix.profileById('full').packageId, 'io.airo.app');
       expect(matrix.profileById('full').entrypoint, 'app/lib/main.dart');
       expect(
+        matrix.profileById('tv').packageId,
+        'com.developerscoffee.tv.midas',
+      );
+      expect(matrix.profileById('tv').displayName, 'Midas Stream');
+      expect(
         matrix.profileById('tv').platformPackageIds['macos'],
         'com.developerscoffee.airo.tv',
       );
@@ -166,7 +171,7 @@ void main() {
     test('public maps omit private signing and debug material', () {
       final publicMap = AiroReleaseMatrix.v2Default().toPublicMap().toString();
 
-      expect(publicMap, contains('io.airo.app.tv'));
+      expect(publicMap, contains('com.developerscoffee.tv.midas'));
       expect(publicMap, contains('com.developerscoffee.airo.tv'));
       expect(publicMap, isNot(contains('keystore')));
       expect(publicMap, isNot(contains('signing')));

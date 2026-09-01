@@ -85,7 +85,7 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Airo TV',
+                  'Midas Stream',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,

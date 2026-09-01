@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,32 +6,6 @@ import 'package:platform_playlist/platform_playlist.dart';
 import '../../application/content_source_store.dart';
 import '../../application/providers/content_source_management_providers.dart';
 import '../../application/providers/iptv_providers.dart';
-
-class IptvOrgPlaylistPreset {
-  const IptvOrgPlaylistPreset({required this.label, required this.url});
-
-  final String label;
-  final String url;
-}
-
-const iptvOrgPlaylistPresets = <IptvOrgPlaylistPreset>[
-  IptvOrgPlaylistPreset(
-    label: 'All channels',
-    url: 'https://iptv-org.github.io/iptv/index.m3u',
-  ),
-  IptvOrgPlaylistPreset(
-    label: 'By category',
-    url: 'https://iptv-org.github.io/iptv/index.category.m3u',
-  ),
-  IptvOrgPlaylistPreset(
-    label: 'By language',
-    url: 'https://iptv-org.github.io/iptv/index.language.m3u',
-  ),
-  IptvOrgPlaylistPreset(
-    label: 'By country',
-    url: 'https://iptv-org.github.io/iptv/index.country.m3u',
-  ),
-];
 
 /// Touch-first playlist manager for phone and tablet surfaces.
 ///
@@ -59,8 +31,6 @@ class _PlaylistSourceManagerSheetState
   final _urlFocusNode = FocusNode(debugLabel: 'playlist source URL');
   final _cancelFocusNode = FocusNode(debugLabel: 'playlist source cancel');
   final _saveFocusNode = FocusNode(debugLabel: 'playlist source save');
-  late final List<FocusNode> _presetFocusNodes;
-  Timer? _presetSaveFocusTimer;
   bool _showAddForm = false;
   bool _isSaving = false;
   bool _initialTvFocusScheduled = false;
@@ -74,10 +44,6 @@ class _PlaylistSourceManagerSheetState
     super.initState();
     _labelFocusNode.addListener(_handleTextFieldFocusChanged);
     _urlFocusNode.addListener(_handleTextFieldFocusChanged);
-    _presetFocusNodes = [
-      for (final preset in iptvOrgPlaylistPresets)
-        FocusNode(debugLabel: 'playlist preset ${preset.label}'),
-    ];
     final initialUrl = widget.initialUrl?.trim();
     if (initialUrl != null && initialUrl.isNotEmpty) {
       _showAddForm = true;
@@ -90,14 +56,11 @@ class _PlaylistSourceManagerSheetState
     super.didChangeDependencies();
     if (_initialTvFocusScheduled || !_isTenFootMode) return;
     _initialTvFocusScheduled = true;
-    _requestTvFocus(
-      _showAddForm ? _presetFocusNodes.first : _addSourceFocusNode,
-    );
+    _requestTvFocus(_showAddForm ? _labelFocusNode : _addSourceFocusNode);
   }
 
   @override
   void dispose() {
-    _presetSaveFocusTimer?.cancel();
     _labelFocusNode.removeListener(_handleTextFieldFocusChanged);
     _urlFocusNode.removeListener(_handleTextFieldFocusChanged);
     _labelController.dispose();
@@ -107,9 +70,6 @@ class _PlaylistSourceManagerSheetState
     _urlFocusNode.dispose();
     _cancelFocusNode.dispose();
     _saveFocusNode.dispose();
-    for (final focusNode in _presetFocusNodes) {
-      focusNode.dispose();
-    }
     super.dispose();
   }
 
@@ -120,7 +80,7 @@ class _PlaylistSourceManagerSheetState
       _urlError = null;
       _submitError = null;
     });
-    _requestTvFocus(_presetFocusNodes.first);
+    _requestTvFocus(_labelFocusNode);
   }
 
   void _closeAddForm() {
@@ -184,26 +144,6 @@ class _PlaylistSourceManagerSheetState
       semanticButton: true,
       child: ExcludeFocus(child: child),
     );
-  }
-
-  void _selectPreset(IptvOrgPlaylistPreset preset) {
-    setState(() {
-      _showAddForm = true;
-      _labelController.text = 'IPTV.org · ${preset.label}';
-      _urlController.text = preset.url;
-      _labelError = null;
-      _urlError = null;
-      _submitError = null;
-    });
-    // A preset is already complete. On TV, move straight to the save action
-    // instead of making the viewer traverse two populated text fields and
-    // unnecessarily opening the platform keyboard.
-    _requestTvFocus(_saveFocusNode, preserveTextFieldFocus: false);
-    _presetSaveFocusTimer?.cancel();
-    _presetSaveFocusTimer = Timer(const Duration(milliseconds: 250), () {
-      if (!mounted || !_saveFocusNode.canRequestFocus) return;
-      _saveFocusNode.requestFocus();
-    });
   }
 
   String? _validateUrl(String value) {
@@ -478,52 +418,16 @@ class _PlaylistSourceManagerSheetState
             ),
             const SizedBox(height: 8),
             const Text(
-              'Paste any M3U URL, including category, language, country, '
-              'region, city, or source playlists from IPTV.org.',
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'IPTV.org quick choices',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (
-                  var index = 0;
-                  index < iptvOrgPlaylistPresets.length;
-                  index++
-                )
-                  _adaptiveAction(
-                    tenFootMode: tenFootMode,
-                    focusNode: _presetFocusNodes[index],
-                    autofocus:
-                        tenFootMode &&
-                        index == 0 &&
-                        (widget.initialUrl?.trim().isEmpty ?? true),
-                    onSelect: _isSaving
-                        ? null
-                        : () => _selectPreset(iptvOrgPlaylistPresets[index]),
-                    semanticLabel: iptvOrgPlaylistPresets[index].label,
-                    child: ActionChip(
-                      label: Text(iptvOrgPlaylistPresets[index].label),
-                      onPressed: _isSaving
-                          ? null
-                          : () => _selectPreset(iptvOrgPlaylistPresets[index]),
-                    ),
-                  ),
-              ],
+              'Paste an M3U or M3U8 URL for playlists you own or are '
+              'authorized to use. Midas Stream does not provide channels, '
+              'playlists, or streams.',
             ),
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('playlist-source-label-field'),
               controller: _labelController,
               focusNode: _labelFocusNode,
-              autofocus:
-                  tenFootMode &&
-                  (widget.initialUrl?.trim().isNotEmpty ?? false),
+              autofocus: tenFootMode,
               enabled: !_isSaving,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(

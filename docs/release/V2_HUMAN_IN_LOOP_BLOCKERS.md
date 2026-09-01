@@ -27,7 +27,8 @@ exports, playlist URLs, local IP addresses, or private device logs.
 
 | Issue | Setup | Verification |
 | --- | --- | --- |
-| #574 | Firebase Android client for TV | Closed. Verified `io.airo.app.tv` in the local ignored Android Firebase config and in public Flutter Firebase options with app ID `1:906799550225:android:dfa957aac3a2fdc62206b0`. The `GOOGLE_SERVICES_JSON` GitHub secret exists and was updated; GitHub does not allow reading secret contents back for direct comparison. |
+| #574 | Firebase Android client for Airo TV (`io.airo.app.tv`) | Closed for the previous listing. Does **not** cover Midas Stream. |
+| — | Firebase Android client for Midas Stream | **Open.** Register `com.developerscoffee.tv.midas` in Firebase, regenerate `google-services.json` / `GOOGLE_SERVICES_JSON`, and confirm the Play/Firebase package match before the first AAB upload. |
 
 ### Exact Secret And Input Names
 
@@ -47,7 +48,7 @@ release or distribution run is intentionally started.
 | Dogfood/RC key alias | Secret: `DOGFOOD_KEY_ALIAS` | — |
 | Dogfood/RC key password | Secret: `DOGFOOD_KEY_PASSWORD` | — |
 | Google Play upload service account | Secret: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | #585 |
-| Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app` or `io.airo.app.tv` | #585 |
+| Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app` or `com.developerscoffee.tv.midas` | #585 |
 | Firebase App Distribution service account | Secret: `FIREBASE_SERVICE_ACCOUNT_JSON` | #682 |
 | Firebase App Distribution app IDs | Workflow inputs: `firebase_app_id`, `mobile_firebase_app_id`, `tv_firebase_app_id` depending on release workflow | #682 |
 | Firebase App Distribution tester groups | Workflow inputs: `firebase_tester_groups`, `mobile_firebase_tester_groups`, `tv_firebase_tester_groups` depending on release workflow | #682 |

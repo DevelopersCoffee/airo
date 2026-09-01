@@ -36,7 +36,7 @@ interactions in a real shipping app, not a demo.
 
 | Module | What it does | Status |
 |---|---|---|
-| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.6](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6)** |
+| 📺 **Midas Stream** | Bring-your-own-playlist player for Android TV / Google TV | **Play listing in progress** — see [Midas Stream Play Store gate](docs/release/MIDAS_STREAM_PLAY_STORE_GATE.md) |
 | ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
 | 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
 | 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |
@@ -80,11 +80,12 @@ private provider data or bundled content.
 [View the product story](https://developerscoffee.github.io/airo/tv/#touch-playlists)
 · [Download the 1080×1920 store PNG](https://developerscoffee.github.io/airo/store-assets/airo-tv/05-mobile-multiple-playlist-sources-1080x1920.png)
 
-Airo TV is the focused Android TV build of Airo's media module
-(`io.airo.app.tv`). TV-first channel grid, search, and playback for your own
-M3U/M3U8 playlists.
+Airo TV is the focused Android TV build of Airo's media module. The first
+Google Play listing ships that product as **Midas Stream**
+(`com.developerscoffee.tv.midas`). GitHub v0.0.6 APKs remain `io.airo.app.tv`.
+TV-first channel grid, search, and playback for your own M3U/M3U8 playlists.
 
-- **Bring your own playlist** — Airo TV ships no IPTV content and no bundled channels.
+- **Bring your own playlist** — Midas Stream ships no IPTV content and no bundled channels.
 - **Google Cast support** — requires `_googlecast._tcp` discovery and port `8009` on the local network.
 - **Verifiable releases** — APK, Play Store AAB, macOS preview, and SHA256 checksums on every release.
 - **Honest device support** — Android TV available, Fire TV experimental, mobile partial, macOS preview, iPad verified; see [device paths](https://developerscoffee.github.io/airo/).
@@ -97,7 +98,8 @@ release carrying every product line.
 
 | Product | Package | Download |
 |---|---|---|
-| 📺 **Airo TV** (Android TV / Fire TV) | `io.airo.app.tv` | [Airo-TV-0.0.6.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk) · [arm64-v8a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-arm64-v8a.apk) · [armeabi-v7a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-armeabi-v7a.apk) · [x86_64](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-x86_64.apk) |
+| 📺 **Airo TV** (GitHub v0.0.6) | `io.airo.app.tv` | [Airo-TV-0.0.6.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk) · [arm64-v8a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-arm64-v8a.apk) · [armeabi-v7a](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-armeabi-v7a.apk) · [x86_64](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-x86_64.apk) |
+| 📺 **Midas Stream** (Play Store, first listing) | `com.developerscoffee.tv.midas` | AAB from the TV profile after Pixel qualification — not a rename of the v0.0.6 APK |
 | 🤖 **Airo** (phone / tablet) | `io.airo.app` | [Airo-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-0.0.6-10-arm64.apk) |
 | 🪙 **Airo Coins** | `io.airo.app.coins` | [AiroCoins-0.0.6-10-arm64.apk](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/AiroCoins-0.0.6-10-arm64.apk) |
 | 🖥️ **Airo TV for macOS** | — | [DMG](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.dmg) · [ZIP](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6-macOS.zip) |

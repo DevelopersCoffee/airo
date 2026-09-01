@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_DIR="${AIRO_RELEASE_ARTIFACT_DIR:-$ROOT_DIR/release-artifacts}"
 OUTPUT_DIR="${AIRO_RELEASE_QUALIFICATION_DIR:-$ROOT_DIR/artifacts/release-qualification/$(date -u +%Y%m%dT%H%M%SZ)}"
 PACKAGE_NAME="${AIRO_ANDROID_PACKAGE:-io.airo.app}"
-TV_PACKAGE_NAME="${AIRO_ANDROID_TV_PACKAGE:-io.airo.app.tv}"
+TV_PACKAGE_NAME="${AIRO_ANDROID_TV_PACKAGE:-com.developerscoffee.tv.midas}"
 REQUIRE_ARTIFACTS="${AIRO_REQUIRE_RELEASE_ARTIFACTS:-false}"
 RUN_DEVICE_SMOKE="${AIRO_RUN_DEVICE_SMOKE:-false}"
 RUN_WEB_SMOKE="${AIRO_RUN_WEB_SMOKE:-false}"
@@ -19,7 +19,7 @@ device/web smoke checks.
 
 Environment:
   AIRO_ANDROID_PACKAGE              Android package to launch, default io.airo.app
-  AIRO_ANDROID_TV_PACKAGE           Android TV package, default io.airo.app.tv
+  AIRO_ANDROID_TV_PACKAGE           Android TV package, default com.developerscoffee.tv.midas
   AIRO_REQUIRE_RELEASE_ARTIFACTS    true to fail when no artifacts are found
   AIRO_RUN_DEVICE_SMOKE             true to install/launch APKs through adb
   AIRO_RUN_WEB_SMOKE                true to serve web zip and run Playwright

@@ -320,7 +320,7 @@ jobs:
                 "client_info": {
                   "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
                   "android_client_info": {
-                    "package_name": "io.airo.app.tv"
+                    "package_name": "com.developerscoffee.tv.midas"
                   }
                 },
                 "oauth_client": [],
@@ -343,13 +343,13 @@ jobs:
 
           if [[ -n "$GOOGLE_SERVICES_JSON" ]]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
-            if grep -q '"package_name"[[:space:]]*:[[:space:]]*"io.airo.app.tv"' android/app/google-services.json; then
-              echo "Using GOOGLE_SERVICES_JSON for io.airo.app.tv."
+            if grep -q '"package_name"[[:space:]]*:[[:space:]]*"com.developerscoffee.tv.midas"' android/app/google-services.json; then
+              echo "Using GOOGLE_SERVICES_JSON for com.developerscoffee.tv.midas."
             elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
-              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for io.airo.app.tv."
+              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for com.developerscoffee.tv.midas."
               exit 1
             else
-              echo "::warning::GOOGLE_SERVICES_JSON does not include io.airo.app.tv; using auth-free TV placeholder Firebase config."
+              echo "::warning::GOOGLE_SERVICES_JSON does not include com.developerscoffee.tv.midas; using auth-free TV placeholder Firebase config."
               write_placeholder_config
             fi
           elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
@@ -668,7 +668,7 @@ jobs:
         working-directory: app/android
         env:
           PLAY_TRACK: ${{ inputs.play_track || github.event.inputs.play_track }}
-          SUPPLY_PACKAGE_NAME: io.airo.app.tv
+          SUPPLY_PACKAGE_NAME: com.developerscoffee.tv.midas
           SUPPLY_JSON_KEY: play-store-credentials.json
         run: |
           if [[ -z "$SUPPLY_PACKAGE_NAME" ]]; then
@@ -814,7 +814,7 @@ jobs:
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Package | io.airo.app.tv |"
+            echo "| Package | com.developerscoffee.tv.midas |"
             echo "| Firebase app | $FIREBASE_APP_ID |"
             echo "| Tester groups | $FIREBASE_TESTER_GROUPS |"
             echo "| APK | $apk_name |"
@@ -887,7 +887,7 @@ jobs:
 
           ### Android TV
 
-          - Supports package io.airo.app.tv.
+          - Supports package com.developerscoffee.tv.midas.
           - Supports standard launcher and Leanback launcher entry points.
           - Maintains Pixel/mobile fallback layout coverage.
 

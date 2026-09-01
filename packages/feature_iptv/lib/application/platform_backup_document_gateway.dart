@@ -37,7 +37,7 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
     // `file_picker` is dependency-overridden to a stub — that there was
     // never a dialog at all. Either way nothing reached disk.
     final destination = await FilePicker.saveFile(
-      dialogTitle: 'Save Airo TV backup',
+      dialogTitle: 'Save Midas Stream backup',
       fileName: document.fileName,
       type: FileType.custom,
       allowedExtensions: const ['json'],
@@ -51,7 +51,7 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
     // the document was not handed off.
     final result = await SharePlus.instance.share(
       ShareParams(
-        subject: 'Airo TV backup',
+        subject: 'Midas Stream backup',
         files: [
           XFile.fromData(
             Uint8List.fromList(utf8.encode(document.contents)),
@@ -66,7 +66,7 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
 
   static Future<AiroBackupDocument?> _pick() async {
     final file = await FilePicker.pickFile(
-      dialogTitle: 'Choose an Airo TV backup',
+      dialogTitle: 'Choose a Midas Stream backup',
       type: FileType.custom,
       allowedExtensions: const ['json'],
     );

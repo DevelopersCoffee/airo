@@ -15,9 +15,11 @@ see [V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
 
 Related issues: #681, #585, #657.
 
-- [ ] Create or confirm the Play Console app for each public v2 package ID.
-- [x] Confirm package IDs for Airo and Airo TV: `io.airo.app` and
-      `io.airo.app.tv`.
+- [ ] Create or confirm the Play Console app for each public v2 package ID,
+      including a **new** listing for Midas Stream (`com.developerscoffee.tv.midas`).
+      This is not a rename of `io.airo.app.tv`.
+- [x] Confirm the Airo mobile package ID: `io.airo.app`.
+- [x] Confirm the Midas Stream Android TV package ID: `com.developerscoffee.tv.midas`.
 - [ ] Decide whether mobile and tablet share one adaptive listing or use
       separate listings.
 - [ ] Create a Play service account for release automation.
@@ -41,8 +43,10 @@ Related issues: #682, #574, #756.
 
 - [ ] Create or confirm Firebase apps for each package ID that should receive
       internal APKs.
-- [x] Confirm the TV Firebase Android client for `io.airo.app.tv` is
-      registered and represented in public Flutter Firebase options.
+- [ ] Register a Firebase Android client for Midas Stream
+      (`com.developerscoffee.tv.midas`) and represent it in Flutter Firebase
+      options / `GOOGLE_SERVICES_JSON`. The closed #574 client was
+      `io.airo.app.tv` and does not apply to this package.
 - [x] Confirm `GOOGLE_SERVICES_JSON` exists as a GitHub secret. Secret contents
       cannot be read back from GitHub; compare against the local ignored config
       before publishing.

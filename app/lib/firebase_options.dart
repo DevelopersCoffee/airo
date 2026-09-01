@@ -7,7 +7,7 @@
 // Do not commit real Firebase keys into this file.
 //
 // Supports: Mobile Full (io.airo.app), Mobile Streaming
-// (io.airo.app.streaming), Android TV (io.airo.app.tv), Airo Mind
+// (io.airo.app.streaming), Android TV (com.developerscoffee.tv.midas), Airo Mind
 // (io.airo.app.mind)
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart'
 enum AppVariant {
   full, // io.airo.app - All features
   streaming, // io.airo.app.streaming - Music + IPTV
-  tv, // io.airo.app.tv - IPTV only
+  tv, // com.developerscoffee.tv.midas - IPTV only
   mind, // io.airo.app.mind - Airo Mind standalone shell
 }
 
@@ -150,7 +150,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
-  /// Android TV - io.airo.app.tv
+  /// Android TV - com.developerscoffee.tv.midas
   static const FirebaseOptions androidTv = FirebaseOptions(
     apiKey: 'YOUR_ANDROID_TV_API_KEY',
     appId: 'YOUR_ANDROID_TV_APP_ID',

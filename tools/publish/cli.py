@@ -5,7 +5,7 @@
     python3 -m tools.publish plan   --tag v0.0.6 --profile tv --target apkpure
     python3 -m tools.publish run    --tag v0.0.6 --profile tv --target apkpure --submit
     python3 -m tools.publish login  apkpure
-    python3 -m tools.publish doctor apkpure --package-id io.airo.app.tv
+    python3 -m tools.publish doctor apkpure --package-id com.developerscoffee.tv.midas
 
 Artifacts always come from a published GitHub Release (`--tag`), never a local
 build; `--manifest` exists only for an already-downloaded release directory.
@@ -125,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = sub.add_parser("doctor", help="Dump a store console page so selectors can be re-mapped.")
     doctor.add_argument("target", choices=["apkpure"])
-    doctor.add_argument("--package-id", default="io.airo.app.tv")
+    doctor.add_argument("--package-id", default="com.developerscoffee.tv.midas")
     doctor.add_argument("--storage-state", type=Path, default=None)
     doctor.add_argument("--evidence-dir", type=Path, default=DEFAULT_EVIDENCE_DIR)
     doctor.add_argument("--headed", action="store_true")

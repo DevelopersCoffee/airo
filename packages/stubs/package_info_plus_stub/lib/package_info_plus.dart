@@ -34,10 +34,10 @@ class PackageInfo {
   static Future<PackageInfo> fromPlatform({String? baseUrl}) async {
     return _fromPlatform ??
         PackageInfo(
-          appName: 'Airo TV',
+          appName: 'Midas Stream',
           // Matches `variantApplicationId` for the "tv" variant in
           // app/android/app/build.gradle.kts.
-          packageName: 'io.airo.app.tv',
+          packageName: 'com.developerscoffee.tv.midas',
           version: _stubVersion,
           buildNumber: _stubBuildNumber,
         );

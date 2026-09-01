@@ -58,7 +58,7 @@ Use the playback soak runner when a physical Android TV device or 1 GB profile
 is connected and the app is installed:
 
 ```bash
-AIRO_TV_PACKAGE=io.airo.app.tv \
+AIRO_TV_PACKAGE=com.developerscoffee.tv.midas \
 AIRO_TV_DEVICE=<adb-serial> \
 AIRO_TV_SOAK_DART_HEAP_START_MB=42 \
 AIRO_TV_SOAK_DART_HEAP_END_MB=42 \
