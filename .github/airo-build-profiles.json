@@ -49,9 +49,9 @@
       "description": "Android TV and Fire TV IPTV profile.",
       "entrypoint": "app/lib/main_tv.dart",
       "pubspec": "app/pubspec_tv.yaml",
-      "appId": "io.airo.app.tv",
+      "appId": "com.developerscoffee.tv.midas",
       "platformAppIds": {
-        "android": "io.airo.app.tv",
+        "android": "com.developerscoffee.tv.midas",
         "macos": "com.developerscoffee.airo.tv"
       },
       "appVariant": "tv",

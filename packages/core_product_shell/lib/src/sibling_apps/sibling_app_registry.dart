@@ -27,10 +27,10 @@ final siblingApps = <SiblingApp>[
   ),
   SiblingApp(
     id: ShellId.tv,
-    name: 'Airo TV',
-    pitch: 'Live TV and IPTV built for the big screen.',
+    name: 'Midas Stream',
+    pitch: 'Bring your own authorized playlists to Android TV.',
     iconAsset: _placeholderIconAsset,
-    androidStoreUrl: _playStoreUrl('com.airo.tv'),
+    androidStoreUrl: _playStoreUrl('com.developerscoffee.tv.midas'),
     iosStoreUrl: _appStoreUrl('com.airo.tv'),
   ),
   SiblingApp(

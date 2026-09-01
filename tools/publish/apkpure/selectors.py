@@ -9,7 +9,7 @@ nobody controls but APKPure. Every selector below is therefore:
   broken release can be unblocked without a code change and a PR.
 
 **Status: recorded against the live console on 2026-08-04** for
-io.airo.app.tv, signed in, via CDP. The navigation, upload-form, release-notes,
+com.developerscoffee.tv.midas, signed in, via CDP. The navigation, upload-form, release-notes,
 and publish selectors were read off the real DOM. Three could not be recorded
 because they only appear mid-upload -- ``upload_complete_marker``,
 ``upload_error_marker`` and ``submit_success_marker`` remain heuristics, and the
@@ -38,7 +38,7 @@ CONSOLE_URL_TEMPLATE = f"{CONSOLE_ORIGIN}/console/{{package_id}}"
 #: class-name chains.
 #: Logical step -> ordered candidate selectors, tried in order.
 #:
-#: Recorded against the live console on 2026-08-04 for io.airo.app.tv. The
+#: Recorded against the live console on 2026-08-04 for com.developerscoffee.tv.midas. The
 #: console is a Materialize CSS app: the version table and the upload form both
 #: live on /console/<package>/versions, and there is no separate "new version"
 #: dialog. Ids (#file, #textarea1) come first because they are what the page

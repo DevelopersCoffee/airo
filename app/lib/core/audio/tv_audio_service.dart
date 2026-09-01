@@ -264,8 +264,8 @@ Future<TvAudioHandler> initTvAudioService() async {
   _tvAudioHandler = await AudioService.init(
     builder: () => TvAudioHandler(),
     config: AudioServiceConfig(
-      androidNotificationChannelId: 'com.airo.app.tv.audio',
-      androidNotificationChannelName: 'Airo TV',
+      androidNotificationChannelId: 'com.developerscoffee.tv.midas.audio',
+      androidNotificationChannelName: 'Midas Stream',
       // Keep the foreground service (and its notification) alive on pause —
       // live-TV users pause for long stretches and must keep lock-screen
       // controls. androidNotificationOngoing stays false: audio_service

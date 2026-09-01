@@ -146,7 +146,7 @@ void main() {
       find.byKey(const ValueKey('airo-tv-shell-help-dialog')),
       findsOneWidget,
     );
-    expect(find.text('Airo TV Help'), findsOneWidget);
+    expect(find.text('Midas Stream Help'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();

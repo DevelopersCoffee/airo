@@ -9,7 +9,7 @@
 # - chess: 0.8.1 (requires stockfish)
 
 name: airo_app
-description: "Airo TV - IPTV streaming for Android TV"
+description: "Midas Stream - bring-your-own-playlist player for Android TV"
 publish_to: 'none'
 version: 0.0.7+12
 

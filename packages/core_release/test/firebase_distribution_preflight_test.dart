@@ -32,7 +32,7 @@ void main() {
 
         expect(preflight.ready, isTrue);
         expect(preflight.findings, isEmpty);
-        expect(preflight.targets.single.packageId, 'io.airo.app.tv');
+        expect(preflight.targets.single.packageId, 'com.developerscoffee.tv.midas');
         expect(
           preflight.targets.single.toPublicMap(),
           containsPair('testerGroupCount', 1),

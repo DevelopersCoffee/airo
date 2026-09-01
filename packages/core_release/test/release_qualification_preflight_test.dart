@@ -10,7 +10,7 @@ void main() {
     }) {
       return AiroReleaseArtifactEvidence(
         profileId: 'tv',
-        packageId: 'io.airo.app.tv',
+        packageId: 'com.developerscoffee.tv.midas',
         filename: filename,
         artifactType: 'apk',
         sha256: sha256,

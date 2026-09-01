@@ -9,8 +9,8 @@ must be saved by a maintainer with console access.
 
 | Field | Value |
 | --- | --- |
-| Product | Airo TV |
-| Android package ID | `io.airo.app.tv` |
+| Product | Midas Stream |
+| Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Current release | v0.0.5 |
 | Privacy minimum age posture | Not directed to children under 16 |
@@ -24,7 +24,7 @@ must be saved by a maintainer with console access.
 | App Store Connect | 12+ or stricter if questionnaire output requires it | Future iOS/tvOS scope would allow user-provided streaming URLs. |
 | Target audience | 16+ | Aligns with the current Privacy Policy children's privacy posture. |
 
-Do not market Airo TV as child-directed. Do not select a lower age target
+Do not market Midas Stream as child-directed. Do not select a lower age target
 unless legal/privacy copy is changed first.
 
 ## Questionnaire Answers
@@ -51,7 +51,7 @@ unless legal/privacy copy is changed first.
 Recommended note for internal review:
 
 ```text
-Airo TV is a media player for user-provided IPTV playlist and stream URLs. The
+Midas Stream is a media player for user-provided playlist and stream URLs. The
 app does not provide channels, subscriptions, playlists, streams, ads, gambling,
 chat, purchases, or app-hosted mature content. Because users can enter external
 media URLs, choose the questionnaire option that best represents unrestricted
@@ -73,7 +73,7 @@ store-assigned rating.
 
 ## Human Console Actions
 
-- Complete the Google Play IARC questionnaire for `io.airo.app.tv`.
+- Complete the Google Play IARC questionnaire for `com.developerscoffee.tv.midas`.
 - Save the resulting Play rating certificate or console screenshot.
 - Complete App Store Connect age rating only if iOS/tvOS enters release scope.
 - Attach rating evidence back to #584 before closing the issue.

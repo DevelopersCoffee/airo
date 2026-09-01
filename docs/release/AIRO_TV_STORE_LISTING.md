@@ -1,21 +1,23 @@
-# Airo TV Store Listing Metadata
+# Midas Stream Store Listing Metadata
 
-Canonical listing metadata for the Airo TV v2 Android TV release profile.
-This copy is scoped to the shipped v0.0.5 feature set in
-[Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim planned
-features such as recording, cloud playlists, or bundled channels until the
-feature matrix marks them supported.
+Canonical listing metadata for the first Google Play Android TV listing of
+Midas Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
+[Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
+cloud playlists, bundled channels, or a public IPTV catalogue.
+
+See [Midas Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) for the
+package-ID cutover and human console actions.
 
 ## Release Scope
 
 | Field | Value |
 | --- | --- |
-| Product | Airo TV |
-| Android package ID | `io.airo.app.tv` |
+| Product | Midas Stream |
+| Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Device class | Android TV, Google TV, Fire TV-compatible APK testing |
-| First v2 wave | Android TV / Google Play TV track |
-| iOS / App Store | Deferred from the first v2 Android publishing wave |
+| First Play wave | Android TV / Google Play TV track |
+| iOS / App Store | Deferred from the first Android publishing wave |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
 
@@ -23,44 +25,45 @@ feature matrix marks them supported.
 
 | Field | Final metadata |
 | --- | --- |
-| App name | `Airo TV - IPTV Player` |
-| Short description | `Play your own IPTV playlists on Android TV with Cast support.` |
-| Category | Entertainment / Video Players & Editors |
-| Tags / keywords | IPTV, M3U, M3U8, streaming, live TV, playlist, Android TV, Google TV, Chromecast, Cast |
+| App name | `Midas Stream` |
+| Short description | `Play your own authorized playlists on Android TV.` |
+| Category | Video Players & Editors |
+| Tags / keywords | M3U, M3U8, playlist player, Android TV, Google TV, Chromecast, Cast, HLS |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Content rating | Complete the IARC questionnaire in Play Console before submission. |
 
-Short description length: 61/80 characters.
+Short description length: 51/80 characters.
 
 ### Full Description
 
 ```text
-Airo TV is an IPTV player for Android TV, Google TV, and compatible TV devices.
-Bring your own authorized M3U or M3U8 playlist and watch live streams in a
-clean, remote-friendly interface built for the living room.
+Midas Stream is a media player for Android TV, Google TV, and compatible TV
+devices. Bring your own authorized M3U or M3U8 playlist and watch it in a
+clean, remote-friendly living-room interface.
+
+This app does not include channels, playlists, or subscriptions. You add the
+sources you already have the right to use.
 
 Key features:
 - Import your own M3U/M3U8 playlist URL
-- Browse and search channels by name
-- Add XMLTV guide sources, favorites, and user-authorized provider sources
-- See local channel status signals while browsing supported playlists
+- Browse and search entries by name
+- Add XMLTV guide sources and favorites for playlists you configured
 - Play supported HLS and media streams on TV devices
 - Use Chromecast/Cast controls where supported by your device and network
-- Keep playlists local unless you choose to load a remote playlist URL
+- Keep playlist URLs on the device unless you choose a remote URL
 - Use a TV-focused interface designed for remote navigation
 
 Important content notice:
-Airo TV is a media player only. It does not provide, host, sell, endorse,
+Midas Stream is a media player only. It does not provide, host, sell, endorse,
 verify, or distribute channels, playlists, streams, subscriptions, or IPTV
-services. You must supply your own legal content sources and ensure that you
+services. You must supply your own lawful content sources and ensure that you
 have the rights to access every stream you load.
 
 Supported playlist formats:
 M3U and M3U8.
 
 Playback support depends on the stream format, codec, device capability, and
-network connection. Some planned features, including recording and cloud
-playlists, are not included in this release.
+network connection. Recording and cloud playlists are not included.
 ```
 
 Full description length: 1,122/4,000 characters.
