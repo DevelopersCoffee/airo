@@ -91,7 +91,9 @@ void main() {
     composeApp: () async {
       await configureTvSystemChrome();
 
-      debugPrint('🖥️ Starting Midas Stream (${PlatformFeatures.platformName})');
+      debugPrint(
+        '🖥️ Starting Midas Stream (${PlatformFeatures.platformName})',
+      );
       debugPrint(
         '📺 Features: '
         '${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
