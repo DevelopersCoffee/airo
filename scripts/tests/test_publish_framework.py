@@ -80,7 +80,7 @@ def write_release(root: Path, *, corrupt: bool = False) -> Path:
             {
                 "filename": filename,
                 "profileId": "tv",
-                "packageId": "io.airo.app.tv",
+                "packageId": "com.developerscoffee.tv.midas",
                 "version": "0.0.6",
                 "buildNumber": "12",
                 "artifactType": artifact_type,
@@ -130,7 +130,7 @@ def website_target(output_path: str = "docs/_data/downloads_tv.json") -> dict:
         "enabled": True,
         "profiles": {
             "tv": {
-                "packageId": "io.airo.app.tv",
+                "packageId": "com.developerscoffee.tv.midas",
                 "artifactSelector": {"artifactType": ["apk"], "minCount": 1, "maxCount": 1},
                 "releaseNotes": {"source": "inline", "text": "Fixes and polish."},
                 "options": {
@@ -370,7 +370,7 @@ class RunnerTests(unittest.TestCase):
                     "enabled": True,
                     "profiles": {
                         "tv": {
-                            "packageId": "io.airo.app.tv",
+                            "packageId": "com.developerscoffee.tv.midas",
                             "artifactSelector": {"artifactType": ["apk"]},
                             "releaseNotes": {"source": "inline", "text": "Notes."},
                         }
@@ -396,7 +396,7 @@ class RunnerTests(unittest.TestCase):
                     "enabled": True,
                     "profiles": {
                         "tv": {
-                            "packageId": "io.airo.app.tv",
+                            "packageId": "com.developerscoffee.tv.midas",
                             "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
                             "releaseNotes": {"source": "inline", "text": "Notes."},
                         }
@@ -502,7 +502,7 @@ class SubmitGatingTests(unittest.TestCase):
                         "enabled": True,
                         "profiles": {
                             "tv": {
-                                "packageId": "io.airo.app.tv",
+                                "packageId": "com.developerscoffee.tv.midas",
                                 "artifactSelector": {"artifactType": ["aab"], "maxCount": 1},
                                 "releaseNotes": {"source": "inline", "text": "Notes."},
                                 "options": {"track": "internal"},
@@ -548,7 +548,7 @@ class SubmitGatingTests(unittest.TestCase):
                             "enabled": True,
                             "profiles": {
                                 "tv": {
-                                    "packageId": "io.airo.app.tv",
+                                    "packageId": "com.developerscoffee.tv.midas",
                                     "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
                                     "releaseNotes": {"source": "inline", "text": "Notes."},
                                     "options": {"track": "internal"},
@@ -583,7 +583,7 @@ class SubmitGatingTests(unittest.TestCase):
                             "enabled": True,
                             "profiles": {
                                 "tv": {
-                                    "packageId": "io.airo.app.tv",
+                                    "packageId": "com.developerscoffee.tv.midas",
                                     "artifactSelector": {"artifactType": ["aab"], "maxCount": 1},
                                     "releaseNotes": {"source": "inline", "text": "Notes."},
                                     "options": {"track": "everyone"},
@@ -678,7 +678,7 @@ class BrowserModeTests(unittest.TestCase):
                         "enabled": True,
                         "profiles": {
                             "tv": {
-                                "packageId": "io.airo.app.tv",
+                                "packageId": "com.developerscoffee.tv.midas",
                                 "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
                                 "releaseNotes": {"source": "inline", "text": "Notes."},
                                 "options": options,
@@ -730,7 +730,7 @@ class BrowserOptionPrecedenceTests(unittest.TestCase):
                         "enabled": True,
                         "profiles": {
                             "tv": {
-                                "packageId": "io.airo.app.tv",
+                                "packageId": "com.developerscoffee.tv.midas",
                                 "artifactSelector": {"artifactType": ["apk"], "maxCount": 1},
                                 "releaseNotes": {"source": "inline", "text": "Notes."},
                                 "options": config_options,
@@ -828,7 +828,7 @@ class FilenamePreferenceTests(unittest.TestCase):
         from tools.publish.models import Artifact
         return [
             Artifact(
-                filename=n, profile_id="tv", package_id="io.airo.app.tv", version="0.0.6",
+                filename=n, profile_id="tv", package_id="com.developerscoffee.tv.midas", version="0.0.6",
                 build_number="10", artifact_type="apk", abi="android-arm64",
                 distribution_channel="direct-apk", size_bytes=1, sha256="x", path=Path(n),
             )
@@ -959,7 +959,7 @@ class ManifestIndexTests(unittest.TestCase):
                         {
                             "filename": filename,
                             "profileId": profile_id,
-                            "packageId": "io.airo.app.tv",
+                            "packageId": "com.developerscoffee.tv.midas",
                             "version": "0.0.6",
                             "buildNumber": "10",
                             "artifactType": "apk",
@@ -1043,7 +1043,7 @@ class CliTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["release"]["version"], "0.0.6")
             self.assertEqual(payload["plan"][0]["target"], "github")
-            self.assertEqual(payload["plan"][0]["packageId"], "io.airo.app.tv")
+            self.assertEqual(payload["plan"][0]["packageId"], "com.developerscoffee.tv.midas")
 
     def test_missing_manifest_exits_with_the_manifest_code(self) -> None:
         result = self.run_cli("plan", "--manifest", "/nonexistent/Release-Manifest.json")

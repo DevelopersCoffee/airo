@@ -25,7 +25,7 @@ enum AppPlatform {
   mobileFull,
 
   /// Android TV / Fire TV - IPTV only
-  /// Package: io.airo.app.tv
+  /// Package: com.developerscoffee.tv.midas
   androidTv,
 
   /// iPad - streaming with tablet-optimized UI

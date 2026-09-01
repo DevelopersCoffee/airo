@@ -87,7 +87,7 @@ void main() {
 
         expect(expected.map((client) => client.packageName), [
           'io.airo.app',
-          'io.airo.app.tv',
+          'com.developerscoffee.tv.midas',
         ]);
         expect(expected.map((client) => client.firebaseOptionsName), [
           'android',

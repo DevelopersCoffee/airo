@@ -38,7 +38,7 @@ void main() {
 
     final report = await runner.run(
       const AiroTvPlaybackSoakConfig(
-        packageName: 'io.airo.app.tv',
+        packageName: 'com.developerscoffee.tv.midas',
         deviceSerial: 'pixel-9',
         duration: Duration(seconds: 60),
         sampleInterval: Duration(seconds: 30),
@@ -64,7 +64,7 @@ void main() {
         'shell',
         'monkey',
         '-p',
-        'io.airo.app.tv',
+        'com.developerscoffee.tv.midas',
         '-c',
         'android.intent.category.LAUNCHER',
         '1',
@@ -98,7 +98,7 @@ void main() {
 
       final report = await runner.run(
         const AiroTvPlaybackSoakConfig(
-          packageName: 'io.airo.app.tv',
+          packageName: 'com.developerscoffee.tv.midas',
           duration: Duration(minutes: 30),
           sampleInterval: Duration(minutes: 15),
           dartHeapStartMb: 40,
@@ -130,7 +130,7 @@ void main() {
     expect(
       () => runner.run(
         const AiroTvPlaybackSoakConfig(
-          packageName: 'io.airo.app.tv',
+          packageName: 'com.developerscoffee.tv.midas',
           duration: Duration(seconds: 30),
           sampleInterval: Duration(seconds: 30),
         ),
@@ -162,7 +162,7 @@ void main() {
 
     await runner.write(
       AiroTvPlaybackSoakConfig(
-        packageName: 'io.airo.app.tv',
+        packageName: 'com.developerscoffee.tv.midas',
         duration: const Duration(seconds: 1),
         sampleInterval: const Duration(seconds: 1),
         dartHeapStartMb: 41,
@@ -176,7 +176,7 @@ void main() {
     final markdown = await File('${directory.path}/soak.md').readAsString();
 
     expect(json, contains('"reportId": "airo-tv-playback-soak"'));
-    expect(json, isNot(contains('io.airo.app.tv')));
+    expect(json, isNot(contains('com.developerscoffee.tv.midas')));
     expect(markdown, contains('# Airo Runtime Memory Timeline'));
   });
 }

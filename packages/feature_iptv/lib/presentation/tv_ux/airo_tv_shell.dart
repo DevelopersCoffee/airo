@@ -506,7 +506,7 @@ class _VideoStageWithActions extends StatelessWidget {
               _StageAction(
                 key: const ValueKey('airo-tv-shell-help-action'),
                 icon: Icons.help_outline,
-                tooltip: 'Airo TV Help',
+                tooltip: 'Midas Stream Help',
                 onPressed: onHelp,
               ),
               const SizedBox(width: 4),

@@ -30,7 +30,7 @@ void main() {
       expect(uploadPlan.mode, AiroPlayUploadMode.noUpload);
       expect(uploadPlan.uploadRequested, isFalse);
       expect(uploadPlan.canUpload, isFalse);
-      expect(uploadPlan.packageId, 'io.airo.app.tv');
+      expect(uploadPlan.packageId, 'com.developerscoffee.tv.midas');
       expect(
         uploadPlan.expectedAabFileName,
         'Airo-TV-2.0.0-200-Play-Store.aab',
@@ -144,7 +144,7 @@ void main() {
         serviceAccountAvailable: true,
       ).toPublicMap().toString();
 
-      expect(publicMap, contains('io.airo.app.tv'));
+      expect(publicMap, contains('com.developerscoffee.tv.midas'));
       expect(publicMap, contains('Play-Store.aab'));
       expect(publicMap, isNot(contains('private_key')));
       expect(publicMap, isNot(contains('client_email')));

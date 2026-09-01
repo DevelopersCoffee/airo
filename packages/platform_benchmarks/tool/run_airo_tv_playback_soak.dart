@@ -169,7 +169,7 @@ class _CliOptions {
     stderr.writeln('''
 Usage:
   dart run tool/run_airo_tv_playback_soak.dart \\
-    --package io.airo.app.tv \\
+    --package com.developerscoffee.tv.midas \\
     --device <adb-serial> \\
     --duration-minutes 30 \\
     --interval-seconds 30 \\

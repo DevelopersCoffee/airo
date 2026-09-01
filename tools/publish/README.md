@@ -112,7 +112,7 @@ gets. Adding a listing is a config change, not a code change.
   "enabled": false,
   "profiles": {
     "tv": {
-      "packageId": "io.airo.app.tv",
+      "packageId": "com.developerscoffee.tv.midas",
       "artifactSelector": {
         "artifactType": ["apk"],
         "filenamePattern": "^Airo-TV-{version}\\.apk$",
@@ -222,7 +222,7 @@ console flow but have **not** been recorded against the live DOM. Before the
 first real run:
 
 ```bash
-python3 -m tools.publish doctor apkpure --package-id io.airo.app.tv
+python3 -m tools.publish doctor apkpure --package-id com.developerscoffee.tv.midas
 ```
 
 It reports which selector keys matched nothing, dumps the page HTML and
