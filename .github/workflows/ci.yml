@@ -532,7 +532,7 @@ jobs:
 
       - name: Setup Java
         if: steps.android_scope.outputs.should_build == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
