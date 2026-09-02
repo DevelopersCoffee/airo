@@ -1,14 +1,14 @@
-# Airo TV Volume 2 Gap Analysis
+# Midas Stream Volume 2 Gap Analysis
 
 **Status:** Draft  
 **Date:** 2026-07-13  
 **Source PRD:** `/Users/udaychauhan/.codex/attachments/c2e15728-f98a-401b-8aa3-8527e94362d0/pasted-text.txt`  
 **Volume:** Media Platform, Smart Infrastructure and AI Experience  
-**Review method:** Static repository review plus comparison against existing Airo TV planning docs. No code tests were run.
+**Review method:** Static repository review plus comparison against existing Midas Stream planning docs. No code tests were run.
 
 ## Executive Summary
 
-Volume 2 changes Airo TV from an IPTV app into a universal personal media
+Volume 2 changes Midas Stream from an IPTV app into a universal personal media
 platform. The current repository is not at that architecture yet.
 
 Current strengths:

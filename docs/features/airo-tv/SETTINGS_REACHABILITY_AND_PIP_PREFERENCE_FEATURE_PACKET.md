@@ -1,21 +1,21 @@
-# Airo TV Settings Reachability and PiP Preference Feature Packet
+# Midas Stream Settings Reachability and PiP Preference Feature Packet
 
 ## Critical Agent Gate
 
-**Problem:** Pixel 9 runs the Airo TV build through the compact IPTV layout. The
+**Problem:** Pixel 9 runs the Midas Stream build through the compact IPTV layout. The
 TV Settings route exists, but compact layout bypasses the TV sidebar and the
 mobile IPTV drawer omits Settings, so users cannot reach theme, playback,
 playlist, or EPG guide settings. Playback Settings also has only aspect-ratio
 controls; the historical PiP settings hook exists but no public PiP preference
 is rendered.
 
-**User / actor:** Airo TV users on Pixel 9 and other compact phone/tablet
+**User / actor:** Midas Stream users on Pixel 9 and other compact phone/tablet
 layouts.
 
 **Framework or application layer:** Application UI and IPTV playback preference
 state. No native PiP channel changes.
 
-**Owning agent:** Airo TV Flutter Architect.
+**Owning agent:** Midas Stream Flutter Architect.
 
 **Reviewing agents:** Media Intelligence Architect, Playback Architect, TV
 Experience Architect, Chief UX Officer, Chief QA Officer.
@@ -26,7 +26,7 @@ Experience Architect, Chief UX Officer, Chief QA Officer.
 `packages/feature_iptv/lib/application/player_backgrounding_coordinator.dart`,
 focused tests.
 
-**Open questions:** None. The compact Airo TV product must expose Settings from
+**Open questions:** None. The compact Midas Stream product must expose Settings from
 the drawer because it has no Profile tab.
 
 **Decision:** Ready.
@@ -35,7 +35,7 @@ the drawer because it has no Profile tab.
 
 **Provider agent:** Playback Architect / `feature_iptv` preference state.
 
-**Consumer agent:** Airo TV Flutter Architect / Settings UI and backgrounding
+**Consumer agent:** Midas Stream Flutter Architect / Settings UI and backgrounding
 coordinator.
 
 **Interface/API:** `pictureInPicturePreferenceProvider`, default `true`,
@@ -67,11 +67,11 @@ when PiP preference is disabled.
 
 ## Deterministic Use Cases
 
-### UC-001: Pixel 9 opens Settings from Airo TV drawer
+### UC-001: Pixel 9 opens Settings from Midas Stream drawer
 
-**Actor:** Pixel 9 Airo TV user.
+**Actor:** Pixel 9 Midas Stream user.
 
-**Preconditions:** Airo TV is in compact portrait layout.
+**Preconditions:** Midas Stream is in compact portrait layout.
 
 **Trigger:** User opens the hamburger menu and taps Settings.
 
@@ -84,7 +84,7 @@ Playlist Source, and EPG Guide Source.
 
 ### UC-002: User toggles automatic PiP
 
-**Actor:** Airo TV user.
+**Actor:** Midas Stream user.
 
 **Preconditions:** Playback Settings is open.
 
@@ -101,7 +101,7 @@ arming automatic PiP when disabled.
 
 ### AUTO-001: Compact Settings reachability
 
-**Given:** Compact Airo TV router or compact IPTV screen.
+**Given:** Compact Midas Stream router or compact IPTV screen.
 
 **When:** The user opens the drawer and taps Settings.
 

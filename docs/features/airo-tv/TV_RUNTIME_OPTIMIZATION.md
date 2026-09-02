@@ -1,4 +1,4 @@
-# Airo TV runtime optimization
+# Midas Stream runtime optimization
 
 The Android release host enables R8 and resource shrinking and is distributed
 as an App Bundle for Play device-specific delivery. Flutter ABI selection is
@@ -9,7 +9,7 @@ override Flutter's 32-bit and 64-bit filters.
 Airo activity and Flutter engine. `androidx.profileinstaller` installs the
 profile on supported non-Play paths as well.
 
-At startup, Airo TV configures its constrained image-cache budget and registers
+At startup, Midas Stream configures its constrained image-cache budget and registers
 one framework-owned `AiroMemoryPressureObserver`. Android `onTrimMemory` /
 `onLowMemory` reaches Flutter's `didHaveMemoryPressure`; the observer clears
 pending and live decoded images. Feature widgets do not register separate

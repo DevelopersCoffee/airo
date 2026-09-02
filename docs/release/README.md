@@ -10,10 +10,10 @@ Documentation for Airo releases and version history.
 |---------|------|------------|
 | [Airo v0.0.7](./AIRO_v0.0.7.md) | prepared | TV BACK fix, playlist merge, Coins AI; Mind under qualification |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | 2026-08-04 | Aggregate TV / full / Coins / macOS TV wave |
-| [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
-| [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | 2026-07-22 | Search, favorites, guide setup, provider add-flows, diagnostics |
-| [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | 2026-07-14 | Release trust update, checksums, clean assets, documentation |
-| [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | 2026-07-14 | Android TV IPTV release, Play Store readiness, Cast diagnostics |
+| [Midas Stream v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
+| [Midas Stream v0.0.4](./AIRO_TV_v0.0.4.md) | 2026-07-22 | Search, favorites, guide setup, provider add-flows, diagnostics |
+| [Midas Stream v0.0.2](./AIRO_TV_v0.0.2.md) | 2026-07-14 | Release trust update, checksums, clean assets, documentation |
+| [Midas Stream v0.0.1](./AIRO_TV_v0.0.1.md) | 2026-07-14 | Android TV IPTV release, Play Store readiness, Cast diagnostics |
 | [v1.1.0](./CHANGELOG_v1.1.0.md) | 2025-11-29 | Bill Split, E2E Testing, OCR Integration |
 | [v1.0.0](./RELEASE_v1.0.0_SUMMARY.md) | 2025-11-11 | Initial public release |
 
@@ -24,37 +24,37 @@ Documentation for Airo releases and version history.
 Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 
 ### v0.0.6 highlights
-- **Four SKUs from one orchestrator wave** — Airo TV, full app, Airo Coins, macOS TV.
+- **Four SKUs from one orchestrator wave** — Midas Stream, full app, Airo Coins, macOS TV.
 - **Offline Meeting Intelligence MVP** in the full app — record, transcribe, summarise, search.
 - **Fire TV D-pad and title-safe** fixes from the 0.0.6-rc.1 soak.
 
 ### Quick Links
 - [Airo v0.0.6 Notes](./AIRO_v0.0.6.md)
 - [Airo v0.0.7 Notes](./AIRO_v0.0.7.md)
-- [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
-- [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Midas Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
+- [Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
-- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
+- [Download Midas Stream APK](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
 - [Trust and transparency](../../TRUST.md)
 
 ---
 
-## Previous: Airo TV v0.0.5
+## Previous: Midas Stream v0.0.5
 
 ### New Features
-- **Focused product surface** - Airo TV is the active IPTV product target; obsolete Streaming/IPTV release targets are removed.
+- **Focused product surface** - Midas Stream is the active IPTV product target; obsolete Streaming/IPTV release targets are removed.
 - **Filters and setup** - First-run country selection, country/language/category filters, and deduplicated category values.
-- **Player controls** - Consistent Airo TV overlay controls across compact portrait, landscape, and fullscreen playback.
+- **Player controls** - Consistent Midas Stream overlay controls across compact portrait, landscape, and fullscreen playback.
 - **Channel warmup** - Bounded health checks and nearby-channel warmup improve channel switching responsiveness.
 
 ### Quick Links
-- [Airo TV v0.0.5 Notes](./AIRO_TV_v0.0.5.md)
-- [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
-- [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
-- [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
+- [Midas Stream v0.0.5 Notes](./AIRO_TV_v0.0.5.md)
+- [Midas Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
+- [Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Midas Stream Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
-- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk)
+- [Download Midas Stream APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
 - [Trust and transparency](../../TRUST.md)
 
@@ -66,21 +66,21 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 |----------|-------------|
 | [Airo v0.0.7](./AIRO_v0.0.7.md) | Next candidate: TV BACK, playlist merge, Coins AI; prepared, not tagged |
 | [Airo v0.0.6](./AIRO_v0.0.6.md) | Aggregate TV / full / Coins / macOS TV stable wave |
-| [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |
-| [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | Search, favorites, guide setup, provider add-flows, diagnostics |
-| [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
-| [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
-| [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Airo TV versions |
-| [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
-| [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
+| [Midas Stream v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |
+| [Midas Stream v0.0.4](./AIRO_TV_v0.0.4.md) | Search, favorites, guide setup, provider add-flows, diagnostics |
+| [Midas Stream v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
+| [Midas Stream v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
+| [Midas Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Midas Stream versions |
+| [Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
+| [Midas Stream Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
 | [Midas Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) | First Play listing identity, package ID, and policy posture |
-| [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Final Play listing copy and future App Store draft metadata |
-| [Airo TV Data Safety](./AIRO_TV_DATA_SAFETY.md) | Play Data Safety and future App Privacy declaration worksheet |
-| [Airo TV Content Rating](./AIRO_TV_CONTENT_RATING.md) | IARC and future App Store age rating questionnaire worksheet |
+| [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Final Play listing copy and future App Store draft metadata |
+| [Midas Stream Data Safety](./AIRO_TV_DATA_SAFETY.md) | Play Data Safety and future App Privacy declaration worksheet |
+| [Midas Stream Content Rating](./AIRO_TV_CONTENT_RATING.md) | IARC and future App Store age rating questionnaire worksheet |
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) | Supported v2 profiles, artifact naming, channels, and support policy |
 | [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |
-| [Airo TV macOS Release](./MACOS_AIRO_TV_RELEASE.md) | Direct-download, notarization, and Homebrew Cask runbook for the v2 Airo TV macOS app |
+| [Midas Stream macOS Release](./MACOS_AIRO_TV_RELEASE.md) | Direct-download, notarization, and Homebrew Cask runbook for the v2 Midas Stream macOS app |
 | [V2 License Review](./V2_LICENSE_REVIEW.md) | License-readiness baseline and maintainer decisions before public distribution |
 | [V2 Third-Party Notices](./V2_THIRD_PARTY_NOTICES.md) | Third-party notices for v2 Android release profiles |
 | [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md) | Required release evidence, device matrix, waiver behavior, and qualification report format |
@@ -108,7 +108,7 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 
 - **GitHub Releases**: https://github.com/DevelopersCoffee/airo/releases
 - **GitHub Actions**: https://github.com/DevelopersCoffee/airo/actions
-- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk
+- **Midas Stream APK**: https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk
 
 ---
 

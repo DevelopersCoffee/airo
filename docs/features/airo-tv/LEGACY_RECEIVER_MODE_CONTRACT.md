@@ -1,4 +1,4 @@
-# Airo TV Legacy Receiver Mode Contract
+# Midas Stream Legacy Receiver Mode Contract
 
 This contract defines the v2.0.0.1 platform boundary for Legacy Receiver Mode.
 It turns a runtime device profile into an app-consumable mode decision with
@@ -14,7 +14,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Legacy Receiver Mode is platform/framework behavior. The Airo TV app may consume
+Legacy Receiver Mode is platform/framework behavior. The Midas Stream app may consume
 the contract to render a lightweight home, choose navigation entries, hide
 unavailable modules, reduce motion, and request companion delegation. It must
 not hard-code support tiers, module exclusions, artwork density, or data window

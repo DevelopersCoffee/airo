@@ -12,7 +12,7 @@ in a later phase covering the `feature_coin` presentation layer)
 ## Problem
 
 Airo (the super app, phone/iPad only, no shared/TV devices) needs a second
-module alongside Airo TV: a personal financial vault storing PAN card, bank
+module alongside Midas Stream: a personal financial vault storing PAN card, bank
 account, and credit card references, plus generic tax/financial documents —
 locally, encrypted at rest, unlockable only via biometrics. #927 specifies the
 full v1 scope (crypto + storage + UI + tests) as a single P1 issue; this design
@@ -197,4 +197,4 @@ implementation, covering:
 - Lock screen, list/add/edit UI, masking, tap-to-reveal, copy-with-auto-clear
 - `FLAG_SECURE`, auto-lock timer, clipboard auto-clear
 - `airomoney` → `airo_coin` package rename/gut
-- Super-app shell wiring (new nav destination alongside Airo TV)
+- Super-app shell wiring (new nav destination alongside Midas Stream)

@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-043.
 
 ## Ownership
 
-Local/cloud device merge behavior is platform/framework behavior. Airo TV,
+Local/cloud device merge behavior is platform/framework behavior. Midas Stream,
 companion apps, device pickers, cloud orchestration, presence, routing, and QA
 automation consume this contract to merge LAN advertisements with cloud device
 records without duplicating trust, freshness, or privacy rules in product UI.

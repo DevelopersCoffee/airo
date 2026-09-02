@@ -1,4 +1,4 @@
-# Airo TV Feature Matrix
+# Midas Stream Feature Matrix
 
 Current public release: [`v0.0.6`](https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6).
 Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
@@ -22,4 +22,4 @@ Next candidate: [`v0.0.7`](./AIRO_v0.0.7.md) (prepared, not tagged).
 | Recording | Not supported | No recording or DVR storage. |
 | AI Search | Planned | Local search is intentionally deterministic in this release. |
 | Cloud playlists | Not supported | Playlists stay local unless users load a remote URL directly. |
-| Bundled channels | Not supported | Airo TV does not provide IPTV content. |
+| Bundled channels | Not supported | Midas Stream does not provide IPTV content. |

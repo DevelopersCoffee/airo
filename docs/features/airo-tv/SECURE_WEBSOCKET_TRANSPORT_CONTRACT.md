@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-033.
 
 ## Ownership
 
-Secure command and state transport is platform/framework behavior. Airo TV,
+Secure command and state transport is platform/framework behavior. Midas Stream,
 companion controllers, home nodes, local discovery, command routing, session
 sync, route health, compact EPG sync, and future cloud coordination consume the
 same contract instead of adding product-specific socket shortcuts.

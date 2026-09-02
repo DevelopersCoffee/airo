@@ -1,6 +1,6 @@
-# Airo TV Media Decoder Probe Matrix Contract
+# Midas Stream Media Decoder Probe Matrix Contract
 
-This contract defines the v2.0.0.1 platform probe matrix for Airo TV media
+This contract defines the v2.0.0.1 platform probe matrix for Midas Stream media
 capability and decoder support. It turns a normalized media device capability
 profile into required baseline pass/fail results and optional advanced support
 claims.
@@ -17,7 +17,7 @@ Implementation contract:
 
 Media capability probing is platform/framework behavior. QA and platform
 adapters may populate `AiroMediaDeviceCapabilityProfile` from native probe
-evidence. Airo TV app code may consume the report for playback fallback,
+evidence. Midas Stream app code may consume the report for playback fallback,
 compatibility copy, and feature visibility, but it must not hard-code decoder,
 HDR, HEVC, AV1, or 4K support in screens.
 
@@ -31,7 +31,7 @@ The baseline matrix requires:
 - WebVTT subtitle support on the HLS baseline.
 
 If any required probe fails, the receiver cannot claim baseline media
-compatibility for Lite Receiver or legacy Airo TV profiles.
+compatibility for Lite Receiver or legacy Midas Stream profiles.
 
 ## Optional Advanced Probes
 

@@ -2,25 +2,25 @@
 
 ## Feature Packet
 
-**Primary owner agent:** Airo TV Flutter Architect
+**Primary owner agent:** Midas Stream Flutter Architect
 **Review agents:** Media Intelligence Architect, Chief UX Officer, Chief QA Officer
 **Layer:** Application/domain UI; uses the existing XMLTV source contract unchanged.
-**Sprint:** Airo TV phone usability follow-up
-**Parent roadmap:** Airo TV v2 release qualification
+**Sprint:** Midas Stream phone usability follow-up
+**Parent roadmap:** Midas Stream v2 release qualification
 
 ### Critical Agent Gate
 
-**Problem:** On phone-sized Airo TV, the Guide route explains that an XMLTV
-source must be added in Settings, but the compact Airo TV shell exposes no
+**Problem:** On phone-sized Midas Stream, the Guide route explains that an XMLTV
+source must be added in Settings, but the compact Midas Stream shell exposes no
 Settings entry. The reusable XMLTV source sheet still exists, but its direct
 product entry point is missing. This makes the EPG guide appear unavailable.
 
-**User / actor:** Airo TV phone user configuring an IPTV playlist and guide.
+**User / actor:** Midas Stream phone user configuring an IPTV playlist and guide.
 
 **Framework or application layer:** Application/domain UI. No EPG parsing,
 storage schema, permissions, or platform adapter changes are needed.
 
-**Owning agent:** Airo TV Flutter Architect.
+**Owning agent:** Midas Stream Flutter Architect.
 
 **Reviewing agents:** Media Intelligence Architect (existing XMLTV contract),
 Chief UX Officer (compact navigation), Chief QA Officer (regression coverage).
@@ -40,7 +40,7 @@ Search, Playlist URL, Guide URL, Cast.
 
 **Provider agent:** Media Intelligence Architect / `feature_iptv` XMLTV source
 sheet.
-**Consumer agent:** Airo TV Flutter Architect / phone `IPTVScreen` toolbar.
+**Consumer agent:** Midas Stream Flutter Architect / phone `IPTVScreen` toolbar.
 **Interface/API:** Existing `showXmltvSourceSheet(BuildContext)`.
 **Input shape:** Explicit user tap on the Guide URL toolbar action.
 **Output shape:** Existing XMLTV URL entry sheet.
@@ -61,8 +61,8 @@ TV toolbar and opens the XMLTV source sheet without saving a source.
 
 #### UC-001: Configure an EPG guide from the phone toolbar
 
-**Actor:** Airo TV phone user.
-**Preconditions:** Airo TV opens with an IPTV playlist and no XMLTV source.
+**Actor:** Midas Stream phone user.
+**Preconditions:** Midas Stream opens with an IPTV playlist and no XMLTV source.
 **Trigger:** Tap Guide URL.
 **Happy path:** The XMLTV Guide Source sheet presents the existing URL field
 and Save & Refresh action.
@@ -78,7 +78,7 @@ local XMLTV-source workflow.
 
 **Environment:** Host-only widget test; physical Android device verification
 on Pixel 9.
-**Given:** A compact Airo TV `IPTVScreen` with no XMLTV source configured.
+**Given:** A compact Midas Stream `IPTVScreen` with no XMLTV source configured.
 **When:** The user taps the Guide URL toolbar action.
 **Then:** The XMLTV Guide Source sheet is visible and reports that no source is
 configured.

@@ -1,4 +1,4 @@
-# Airo TV Backend Orchestration Storage Interfaces
+# Midas Stream Backend Orchestration Storage Interfaces
 
 This contract defines the v2.0.0.1 platform boundary for backend-facing
 orchestration storage interfaces.
@@ -12,7 +12,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Backend orchestration storage is platform/framework behavior. Airo TV app code
+Backend orchestration storage is platform/framework behavior. Midas Stream app code
 must not import a backend SDK or write directly to provider collections for
 device registry, presence, sessions, controller membership, command lifecycle,
 or progress. App code may render product journeys and recovery copy while

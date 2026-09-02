@@ -109,6 +109,10 @@ class IPTVChannel extends Equatable {
   /// Never defaulted: an invented value is indistinguishable from a real one
   /// and surfaces as a bogus filter option while enrichment is still loading.
   final String? country;
+
+  /// Original playlist `tvg-id` / XMLTV `channel id`. [tvgId] only keeps
+  /// numeric ids, so string values such as `MTV.in@SD` live here.
+  final String? xmltvId;
   final bool isAudioOnly;
 
   /// Languages supplied by the playlist; empty when it declares none. Left
@@ -135,6 +139,7 @@ class IPTVChannel extends Equatable {
     this.category = ChannelCategory.all,
     this.flavor = ChannelFlavor.general,
     this.country,
+    this.xmltvId,
     this.isAudioOnly = false,
     this.languages = const [],
     this.qualityUrls,
@@ -163,6 +168,7 @@ class IPTVChannel extends Equatable {
       ),
       flavor: ChannelFlavor.fromString(json['flavor'] as String? ?? 'general'),
       country: json['country'] as String?,
+      xmltvId: json['xmltvId'] as String?,
       isAudioOnly: json['isAudioOnly'] as bool? ?? false,
       languages:
           (json['languages'] as List<dynamic>?)?.cast<String>() ?? const [],
@@ -202,6 +208,7 @@ class IPTVChannel extends Equatable {
     'category': category.name,
     'flavor': flavor.name,
     if (country != null) 'country': country,
+    if (xmltvId != null) 'xmltvId': xmltvId,
     'isAudioOnly': isAudioOnly,
     'languages': languages,
     if (qualityUrls != null) 'qualityUrls': qualityUrls,
@@ -253,6 +260,7 @@ class IPTVChannel extends Equatable {
     String? language,
   }) {
     final normalizedGroup = _normalizeGroup(group);
+    final trimmedXmltvId = tvgId?.trim();
     return IPTVChannel(
       id: url.hashCode.toString(),
       name: name,
@@ -260,11 +268,49 @@ class IPTVChannel extends Equatable {
       logoUrl: logo,
       group: normalizedGroup,
       category: _inferCategory(normalizedGroup, name),
+      xmltvId: (trimmedXmltvId == null || trimmedXmltvId.isEmpty)
+          ? null
+          : trimmedXmltvId,
+      country: _countryFromXmltvId(trimmedXmltvId),
       isAudioOnly: _isAudioStream(url, normalizedGroup, name),
       languages: language != null ? [language] : const [],
       tvgId: tvgId != null ? int.tryParse(tvgId) : null,
       tvgName: tvgName,
     );
+  }
+
+  /// XMLTV channel id to query a guide with. Prefers the original playlist
+  /// `tvg-id` (which may be a non-numeric iptv-org id like `MTV.in@SD`) over
+  /// the stream-URL hash stored in [id].
+  String get resolvedEpgChannelId {
+    final xmltv = xmltvId?.trim();
+    if (xmltv != null && xmltv.isNotEmpty) return xmltv;
+    if (tvgId != null) return tvgId.toString();
+    return id;
+  }
+
+  /// Ids to try against an XMLTV/EPG repository. iptv-org playlists use
+  /// `Name.cc@SD` while many guides publish the bare `Name.cc`, so both the
+  /// full id and the id with a trailing `@quality` suffix stripped are
+  /// offered.
+  List<String> get epgLookupIds {
+    final primary = resolvedEpgChannelId;
+    final ids = <String>[primary];
+    final at = primary.lastIndexOf('@');
+    if (at > 0) {
+      final stripped = primary.substring(0, at);
+      if (stripped.isNotEmpty) ids.add(stripped);
+    }
+    return List.unmodifiable(ids);
+  }
+
+  /// Derives an ISO country code from an iptv-org-style xmltv id
+  /// (`MTV.in@SD` → `IN`). Returns null when the id doesn't carry one.
+  static String? _countryFromXmltvId(String? xmltvId) {
+    if (xmltvId == null || xmltvId.isEmpty) return null;
+    final match = RegExp(r'\.([A-Za-z]{2})(?:@|$)').firstMatch(xmltvId);
+    if (match == null) return null;
+    return match.group(1)!.toUpperCase();
   }
 
   /// Sentinel group-title values some providers send for unsorted streams
@@ -412,6 +458,7 @@ class IPTVChannel extends Equatable {
     ChannelCategory? category,
     ChannelFlavor? flavor,
     String? country,
+    String? xmltvId,
     bool? isAudioOnly,
     List<String>? languages,
     Map<String, String>? qualityUrls,
@@ -435,6 +482,7 @@ class IPTVChannel extends Equatable {
       category: category ?? this.category,
       flavor: flavor ?? this.flavor,
       country: country ?? this.country,
+      xmltvId: xmltvId ?? this.xmltvId,
       isAudioOnly: isAudioOnly ?? this.isAudioOnly,
       languages: languages ?? this.languages,
       qualityUrls: qualityUrls ?? this.qualityUrls,

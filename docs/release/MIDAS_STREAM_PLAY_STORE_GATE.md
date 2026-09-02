@@ -4,7 +4,7 @@ Release-engineer scan of `origin/main` (`c23c8a23`) before the identity
 refactor, plus the decisions that make the first Play listing friction-free.
 
 This document is the working gate for `com.developerscoffee.tv.midas`. It does
-not rewrite historical Airo TV evidence under `docs/release/evidence/`.
+not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
 
 ## Scan findings (main)
 
@@ -12,9 +12,9 @@ not rewrite historical Airo TV evidence under `docs/release/evidence/`.
 | --- | --- | --- |
 | Android TV `applicationId` | `io.airo.app.tv` | **New listing** `com.developerscoffee.tv.midas`. Package IDs cannot be renamed in Play Console. |
 | Gradle `namespace` | `io.airo.app` | Keep. Play cares about `applicationId`; moving Kotlin sources is out of scope. |
-| Launcher label | `Airo TV` | `Midas Stream` |
+| Launcher label | `Midas Stream` | `Midas Stream` |
 | macOS bundle ID | `com.developerscoffee.airo.tv` | Unchanged this wave. Not a Play Store artifact. |
-| Store listing / legal URLs | Airo TV copy | Relabeled to Midas Stream; same GitHub Pages paths. |
+| Store listing / legal URLs | Midas Stream copy | Relabeled to Midas Stream; same GitHub Pages paths. |
 | iptv-org one-tap presets | Shipped in the playlist manager | **Removed.** One-tap public playlists are a Play intellectual-property rejection. |
 | iptv-org catalogue fetch | `channels.json` / `feeds.json` / `streams.json` on browse | **Disabled.** `streams.json` is a public stream URL catalogue. |
 | Empty-state disclaimer | Present, said "Airo" | Kept; product name is Midas Stream. |
@@ -34,6 +34,7 @@ not rewrite historical Airo TV evidence under `docs/release/evidence/`.
 | Pubspec | `app/pubspec_tv.yaml` |
 | Category | Video Players & Editors |
 | Content model | Media player for user-supplied M3U/M3U8 URLs only |
+| First Play dart-defines | **Unset.** Do not pass `IPTV_DATA_PLAYLIST_URL` or `IPTV_DATA_MANIFEST_URL`. Privacy currently names only user-configured XMLTV. |
 | Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
 
@@ -71,7 +72,7 @@ and **versionCode** all match. `versionName` (`0.0.1`) is cosmetic.
 
 | Currently installed | Next Midas build | Upgrades in place? |
 | --- | --- | --- |
-| Sideloaded GitHub **Airo TV** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Airo TV first. |
+| Sideloaded GitHub **Midas Stream** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Midas Stream first. |
 | Same package, **ephemeral CI** cert | Production/dogfood-signed build | **No.** Different cert (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Uninstall first. |
 | Same package, **same upload/production key**, lower `versionCode` | `0.0.1+13` | **Yes.** |
 | Play-installed Midas (Play App Signing) | Later Play AAB, same upload key, higher `versionCode` | **Yes.** Play re-signs with the Google-held app signing key. |

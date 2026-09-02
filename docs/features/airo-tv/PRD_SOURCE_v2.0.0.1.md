@@ -4,14 +4,14 @@ ChatGPT Pro
 
 
 Today 4:53 AM
-Airo TV — Product Requirements Document (PRD)
+Midas Stream — Product Requirements Document (PRD)
 Version: 1.0
 Status: Draft
 Platform: iOS, Android, Android TV, Apple TV, macOS
 Positioning: AI-powered BYOC (Bring Your Own Content) IPTV & Media Hub
 
 Executive Summary
-Airo TV is not an IPTV provider.
+Midas Stream is not an IPTV provider.
 
 It is an AI-powered media operating system that helps users organize, discover, watch and interact with their own legally obtained playlists (M3U, Xtream, Jellyfin, Emby, Plex, SMB, WebDAV, local media, etc.).
 
@@ -19,7 +19,7 @@ The competitive advantage is not content.
 
 The competitive advantage is Intelligence.
 
-Instead of acting like VLC with playlists, Airo TV behaves like an AI assistant sitting on top of the user's personal media sources.
+Instead of acting like VLC with playlists, Midas Stream behaves like an AI assistant sitting on top of the user's personal media sources.
 
 Vision
 Build the world's smartest personal television interface.
@@ -972,7 +972,7 @@ AI-first, not menu-first — users should be able to ask instead of browse.
 
 Privacy by design — AI processing stays on-device whenever possible.
 
-BYOC only — Airo TV never provides, bundles, or sells copyrighted content.
+BYOC only — Midas Stream never provides, bundles, or sells copyrighted content.
 
 Instant performance — responsiveness is a competitive advantage.
 
@@ -982,9 +982,9 @@ This PRD provides a strong foundation for a subscription-based AI media platform
 
 
 Today 6:21 AM
-This should become Volume 7, defining Airo TV’s legacy-device strategy, minimum Android support policy, constrained hardware modes, certification framework, and graceful feature degradation.
+This should become Volume 7, defining Midas Stream’s legacy-device strategy, minimum Android support policy, constrained hardware modes, certification framework, and graceful feature degradation.
 
-Airo TV Product Requirements Document
+Midas Stream Product Requirements Document
 Volume 7 — Legacy Android TV Support, Constrained Hardware Optimization and Maximum Device Reach
 Document status: Draft
 Version: 1.0
@@ -994,9 +994,9 @@ Stretch baseline: Earlier Flutter-supported Android versions, subject to depende
 Primary target classes: Android TV, Fire TV, AOSP television boxes, operator boxes and low-cost HDMI streaming devices
 
 1. Purpose
-This document defines how Airo TV should support older and resource-constrained Android television devices.
+This document defines how Midas Stream should support older and resource-constrained Android television devices.
 
-Airo TV should provide meaningful value on hardware that may have:
+Midas Stream should provide meaningful value on hardware that may have:
 
 Android 8 or Android 9
 
@@ -1081,7 +1081,7 @@ Secure communication
 
 3. Maximum Android Reach Policy
 3.1 Support Objective
-Airo TV should support as many Android versions as can be supported responsibly through:
+Midas Stream should support as many Android versions as can be supported responsibly through:
 
 Flutter
 
@@ -1222,7 +1222,7 @@ WebView version
 
 Security patch level
 
-Airo TV must determine a runtime device profile after installation.
+Midas Stream must determine a runtime device profile after installation.
 
 4. Android Version Policy
 4.1 Minimum SDK
@@ -1315,7 +1315,7 @@ Justified as business-critical.
 
 5. Device Capability Profiling
 5.1 Runtime Device Profile
-On first launch, Airo TV should collect a local capability profile.
+On first launch, Midas Stream should collect a local capability profile.
 
 Example:
 
@@ -1400,7 +1400,7 @@ The application should adapt during runtime.
 
 6. Legacy Receiver Mode
 6.1 Purpose
-Legacy Receiver Mode is the default operating profile for devices that cannot safely run the full Airo TV experience.
+Legacy Receiver Mode is the default operating profile for devices that cannot safely run the full Midas Stream experience.
 
 It should preserve the premium character of the application while limiting resource-intensive features.
 
@@ -1976,7 +1976,7 @@ Preserve credentials, favorites and watch progress.
 15.1 Weak Wi-Fi Handling
 Legacy devices often have weaker radios.
 
-Airo TV should:
+Midas Stream should:
 
 Detect repeated packet loss.
 
@@ -2266,7 +2266,7 @@ Unsupported TLS implementations
 
 Compromised third-party firmware
 
-Airo TV must not assume that a supported API level means a secure device.
+Midas Stream must not assume that a supported API level means a secure device.
 
 21.2 Security Requirements
 Use modern TLS where supported.
@@ -2512,7 +2512,7 @@ Use non-technical wording.
 
 Example:
 
-Airo TV has optimized the experience for this television. Search and advanced features can run on your phone while this TV focuses on smooth playback.
+Midas Stream has optimized the experience for this television. Search and advanced features can run on your phone while this TV focuses on smooth playback.
 
 Avoid wording that makes the device feel defective or obsolete.
 
@@ -2783,7 +2783,7 @@ Heavy processing remains offloaded without degrading playback.
 30. Acceptance Criteria
 The legacy Android support strategy is production-ready when:
 
-Airo TV installs and launches on certified Android 8 and Android 9 devices.
+Midas Stream installs and launches on certified Android 8 and Android 9 devices.
 
 Every television screen can be navigated without touch input.
 
@@ -2867,7 +2867,7 @@ WebSockets Are Not a Background Guarantee
 Mobile and television operating systems may suspend connections. Session recovery and platform-specific background behavior remain necessary.
 
 Maximum Reach Must Not Override Security
-Airo TV should not support an obsolete device when it cannot establish secure communication or safely protect user credentials.
+Midas Stream should not support an obsolete device when it cannot establish secure communication or safely protect user credentials.
 
 32. Product Principles
 Maximum Practical Reach
@@ -2892,10 +2892,10 @@ Security Is a Compatibility Requirement
 A device that cannot protect sessions or credentials cannot be treated as fully supported.
 
 Preserve Device Life
-Airo TV should extend the useful life of older televisions and streaming devices where technically responsible.
+Midas Stream should extend the useful life of older televisions and streaming devices where technically responsible.
 
 33. Expected Outcome
-Airo TV can serve both modern and older Android television ecosystems through one adaptive product architecture.
+Midas Stream can serve both modern and older Android television ecosystems through one adaptive product architecture.
 
 Modern devices receive:
 
@@ -2934,20 +2934,20 @@ It is a deliberately optimized receiver experience that uses the broader Airo ec
 This volume should be followed by a platform compatibility and certification specification containing exact device classes, RAM thresholds, codec profiles, Android API support, feature flags and automated benchmark gates.
 
 
-else we can build airo tv as per need for older android with limited useful features so we have to make sure in our modular platform how we can give support for such usecases 
+else we can build midas stream as per need for older android with limited useful features so we have to make sure in our modular platform how we can give support for such usecases 
 
 The right approach is to treat legacy-device support as a separate product profile built from shared modules, not as a reduced version of the full app created through scattered conditionals.
 
-Airo TV Product Requirements Document
+Midas Stream Product Requirements Document
 Volume 8 — Modular Product Profiles, Legacy Editions and Capability-Based Feature Delivery
 Document status: Draft
 Version: 1.0
-Primary objective: Allow Airo TV to ship purpose-built application experiences for older and constrained devices while retaining a shared platform, common protocols and reusable core modules
+Primary objective: Allow Midas Stream to ship purpose-built application experiences for older and constrained devices while retaining a shared platform, common protocols and reusable core modules
 Architecture model: Modular monorepo with capability-based product composition
 Supported product profiles: Full, Standard, Lite Receiver, Embedded Receiver and Experimental Legacy
 
 1. Purpose
-Airo TV must support a wide range of devices without forcing every device to run the same application configuration.
+Midas Stream must support a wide range of devices without forcing every device to run the same application configuration.
 
 The platform should be capable of producing:
 
@@ -2988,7 +2988,7 @@ Clearly defined capabilities
 A focused playback-first experience
 
 2. Product Strategy
-Airo TV should support multiple product experiences from one platform.
+Midas Stream should support multiple product experiences from one platform.
 
                          Airo Platform
                               │
@@ -3427,7 +3427,7 @@ const fullTvFeatures = {
 These examples represent product declarations rather than scattered UI conditions.
 
 7. Compile-Time and Runtime Feature Control
-Airo TV should use two separate control layers.
+Midas Stream should use two separate control layers.
 
 7.1 Compile-Time Inclusion
 Used when a feature:
@@ -4030,7 +4030,7 @@ Cloud storage integrations
 A lite receiver should not contain inactive libraries solely because the full app uses them.
 
 22. Release Channels
-Airo TV may maintain separate release channels:
+Midas Stream may maintain separate release channels:
 
 Full TV stable
 
@@ -4127,14 +4127,14 @@ The final strategy should be selected after validating store capabilities and de
 24. Recommended Packaging Strategy
 Initial recommendation:
 
-Airo TV
+Midas Stream
 For:
 
 Modern and standard Android TV devices
 
 Full-feature experience
 
-Airo TV Lite
+Midas Stream Lite
 For:
 
 Android 8 and Android 9
@@ -4367,7 +4367,7 @@ The platform can retire one product profile without disrupting the rest of the e
 
 Device capability determines the experience rather than Android version alone.
 
-Users receive a coherent Airo TV experience across full, lite and receiver applications.
+Users receive a coherent Midas Stream experience across full, lite and receiver applications.
 
 31. Recommended Engineering Structure
 packages/
@@ -4430,11 +4430,11 @@ Maintainability Is a Feature
 Modularity should reduce the cost of supporting old devices rather than multiply conditional logic throughout the codebase.
 
 33. Expected Outcome
-Airo TV can support old and constrained televisions without weakening the architecture of the primary application.
+Midas Stream can support old and constrained televisions without weakening the architecture of the primary application.
 
 A modern television can run the full product.
 
-An older Android TV can run Airo TV Lite.
+An older Android TV can run Midas Stream Lite.
 
 An extremely constrained box can run Airo Receiver.
 
@@ -4460,14 +4460,14 @@ Cloud continuity
 
 Local communication
 
-This lets Airo TV expand device reach while preserving a premium, reliable experience tailored to what each device can usefully perform.
+This lets Midas Stream expand device reach while preserving a premium, reliable experience tailored to what each device can usefully perform.
 
 
-Yes, you can absolutely collect comprehensive user analytics from Airo TV across all platforms using Google services.
+Yes, you can absolutely collect comprehensive user analytics from Midas Stream across all platforms using Google services.
 Because you are using Flutter, you can implement a single analytics framework that tracks user actions on iPhones, Android phones, tablets, laptops, and older Android TVs (like Android 8/9). [1] 
 The industry standard for this is Google Analytics for Firebase, which connects seamlessly with Flutter.
 ------------------------------
-## 📊 What Google Analytics Can Track for Airo TV
+## 📊 What Google Analytics Can Track for Midas Stream
 By implementing Google Analytics, you can gather high-value insights to improve your product and marketing: [2, 3, 4] 
 
 * Platform Tracking: See exactly what percentage of your users stream on Older Android TVs vs. iPhones vs. Laptops.
@@ -4497,7 +4497,7 @@ void main() async {
   // Initialize Firebase for the specific platform (iOS/Android/TV)
   await Firebase.initializeApp();
   
-  runApp(const AiroTVApp());
+  runApp(const MidasStreamApp());
 }
 
 ------------------------------
@@ -4506,7 +4506,7 @@ Do not just track basic page views. To understand your business use cases, you m
 Create a dedicated AnalyticsService class to handle this cleanly across your app:
 
 import 'package:firebase_analytics/firebase_analytics.dart';
-class AiroTVAnalytics {
+class MidasStreamAnalytics {
   static final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
 
   // 1. Track when a user plays a stream
@@ -4557,11 +4557,11 @@ When running Google Analytics on low-memory, legacy TV devices, you must tweak y
 
 ------------------------------
 ## 🔒 Privacy and App Store Compliance
-Since Airo TV is positioned as a privacy-first premium hub, you must handle analytics transparently to pass Apple App Store and Google Play Store reviews:
+Since Midas Stream is positioned as a privacy-first premium hub, you must handle analytics transparently to pass Apple App Store and Google Play Store reviews:
 
 * Anonymize IP Addresses: Google Analytics 4 (GA4) anonymizes IP addresses by default.
 * Never Track Personal Stream Links: Do not send the actual username, password, or exact tokenized URL of the user's private IPTV playlist to Google. Only log generic metadata like the channel name ("Sky Sports News") or category ("Sports").
-* User Opt-Out: Add a simple toggle button in your Airo TV settings page letting privacy-conscious users completely turn off analytics collection (_analytics.setAnalyticsCollectionEnabled(false)).
+* User Opt-Out: Add a simple toggle button in your Midas Stream settings page letting privacy-conscious users completely turn off analytics collection (_analytics.setAnalyticsCollectionEnabled(false)).
 
 How would you like to structure your initial dashboard data? If you'd like, I can show you how to link Firebase Crashlytics alongside Analytics so you can automatically get alerts whenever an older TV crashes due to out-of-memory constraints.
 
@@ -4572,18 +4572,18 @@ How would you like to structure your initial dashboard data? If you'd like, I ca
 [5] [https://www.amagi.com](https://www.amagi.com/blog/power-your-ott-strategy-with-analytics)
 [6] [https://www.bounteous.com](https://www.bounteous.com/insights/2020/04/01/reporting-google-analytics-google-analytics-4-properties/)
 
-This becomes Volume 9, defining Airo TV’s analytics, experimentation, diagnostics, privacy controls, and legacy-device telemetry architecture.
+This becomes Volume 9, defining Midas Stream’s analytics, experimentation, diagnostics, privacy controls, and legacy-device telemetry architecture.
 
-Airo TV Product Requirements Document
+Midas Stream Product Requirements Document
 Volume 9 — Product Analytics, Playback Quality Telemetry, Privacy and Experimentation
 Document status: Draft
 Version: 1.0
-Primary objective: Build a unified, privacy-conscious analytics platform that measures product adoption, playback quality, device performance, reliability and subscription conversion across all Airo TV applications
+Primary objective: Build a unified, privacy-conscious analytics platform that measures product adoption, playback quality, device performance, reliability and subscription conversion across all Midas Stream applications
 Applicable products: Mobile, tablet, Full TV, Lite TV, Receiver, desktop and home node
 Architecture model: Vendor-neutral analytics abstraction with optional Firebase-backed implementations
 
 1. Purpose
-This document defines how Airo TV should collect and use product analytics without compromising its privacy-first positioning.
+This document defines how Midas Stream should collect and use product analytics without compromising its privacy-first positioning.
 
 Analytics should help the team understand:
 
@@ -4611,7 +4611,7 @@ Analytics must not become a system for collecting private viewing behavior, prov
 
 2. Analytics Principles
 2.1 Measure the Product, Not the User’s Private Media
-Airo TV should measure:
+Midas Stream should measure:
 
 Feature usage
 
@@ -4625,7 +4625,7 @@ Device capabilities
 
 Aggregate engagement
 
-Airo TV should avoid collecting:
+Midas Stream should avoid collecting:
 
 Raw playlist URLs
 
@@ -4696,7 +4696,7 @@ All analytics calls must be asynchronous, buffered and non-blocking.
 2.4 Vendor Independence
 Application code must not call Firebase, Google Analytics or another external analytics SDK directly throughout feature modules.
 
-A shared analytics contract should allow Airo TV to:
+A shared analytics contract should allow Midas Stream to:
 
 Use different providers by platform
 
@@ -4766,7 +4766,7 @@ final class PlaybackStartedEvent extends AiroAnalyticsEvent {
 Typed events reduce accidental transmission of sensitive data.
 
 5. Analytics Domains
-Airo TV analytics should be separated into distinct domains.
+Midas Stream analytics should be separated into distinct domains.
 
 5.1 Acquisition Analytics
 Measures:
@@ -5372,7 +5372,7 @@ Crash reports should not upload without permission.
 Users may export a redacted support bundle manually.
 
 14. Consent Model
-Airo TV should separate categories of collection.
+Midas Stream should separate categories of collection.
 
 14.1 Required Operational Data
 May include data strictly necessary for:
@@ -5420,7 +5420,7 @@ Native crash information
 All sensitive values must be redacted.
 
 14.4 Optional Personalized Analytics
-Airo TV should avoid this category initially.
+Midas Stream should avoid this category initially.
 
 It may later include:
 
@@ -5474,7 +5474,7 @@ Export privacy settings
 
 16. Screen Tracking
 16.1 Manual Screen Tracking
-Airo TV should prefer manual screen events.
+Midas Stream should prefer manual screen events.
 
 Reasons:
 
@@ -5823,7 +5823,7 @@ Crashes after specific releases
 Crashes during pairing or handoff
 
 24. Analytics SDK Selection
-Airo TV may use different providers for different purposes.
+Midas Stream may use different providers for different purposes.
 
 Possible categories:
 
@@ -5881,7 +5881,7 @@ Fail silently without affecting application features.
 Package versions must be managed through the dependency governance process rather than hardcoded indefinitely in the requirements document.
 
 26. Self-Hosted Event Gateway
-Airo TV may later operate its own event gateway.
+Midas Stream may later operate its own event gateway.
 
 Benefits:
 
@@ -6004,7 +6004,7 @@ Restricted for raw event exports
 
 30. Experimentation Framework
 30.1 Purpose
-Airo TV may use controlled experiments to test:
+Midas Stream may use controlled experiments to test:
 
 Onboarding flows
 
@@ -6454,7 +6454,7 @@ The analytics platform is production-ready when:
 
 All feature modules use the shared analytics abstraction.
 
-Airo TV can operate normally with analytics disabled.
+Midas Stream can operate normally with analytics disabled.
 
 Playback does not depend on analytics initialization or upload.
 
@@ -6510,10 +6510,10 @@ Every event maps to a documented product or operational decision.
 Exact Channel Names Should Not Be Collected by Default
 Viewing a particular channel, program, news source, religious service, adult category or political broadcast may reveal sensitive interests.
 
-Airo TV should prefer broad categories and anonymous quality metrics.
+Midas Stream should prefer broad categories and anonymous quality metrics.
 
 Firebase Is an Implementation, Not the Architecture
-Firebase may be useful on supported platforms, but Airo TV must retain a vendor-neutral analytics layer for desktop, Fire OS, embedded builds and future platform changes.
+Firebase may be useful on supported platforms, but Midas Stream must retain a vendor-neutral analytics layer for desktop, Fire OS, embedded builds and future platform changes.
 
 Automatic Screen Tracking Is Often Low Value
 TV applications use focus-driven navigation, overlays and playback surfaces that may not map cleanly to mobile route tracking.
@@ -6521,7 +6521,7 @@ TV applications use focus-driven navigation, overlays and playback surfaces that
 Manual semantic events produce better product insights.
 
 Analytics Cannot Remove Dead Provider Links Globally
-Airo TV can use local health data to deprioritize bad streams in the user’s own sources.
+Midas Stream can use local health data to deprioritize bad streams in the user’s own sources.
 
 It should not upload private playlist URLs to a central analytics platform to create a shared blacklist.
 
@@ -6554,7 +6554,7 @@ Consent Must Be Enforced Technically
 A settings toggle is insufficient unless collection, queuing and uploads actually stop.
 
 41. Expected Outcome
-Airo TV gains a reliable measurement system capable of answering:
+Midas Stream gains a reliable measurement system capable of answering:
 
 Are users completing setup?
 
@@ -6572,7 +6572,7 @@ Where do users abandon onboarding?
 
 Are new releases improving or harming playback quality?
 
-At the same time, Airo TV preserves its privacy-first positioning by refusing to collect raw playlists, credentials, URLs, voice queries or detailed viewing histories by default.
+At the same time, Midas Stream preserves its privacy-first positioning by refusing to collect raw playlists, credentials, URLs, voice queries or detailed viewing histories by default.
 
 The resulting analytics system supports better engineering and business decisions without turning the media hub into a surveillance product.
 

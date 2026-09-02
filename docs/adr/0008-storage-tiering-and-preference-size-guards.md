@@ -18,7 +18,7 @@ Historically, package-level code could write arbitrarily large JSON strings to
 preferences. That made startup slower, increased memory spikes, and let bulk
 playlist/cache payloads land in the weakest storage tier.
 
-Hive is not the target storage tier for native Airo TV data. The web database
+Hive is not the target storage tier for native Midas Stream data. The web database
 facade uses a lightweight in-memory adapter until a queryable IndexedDB/Drift
 web store is selected and migrated explicitly.
 
@@ -32,7 +32,7 @@ web store is selected and migrated explicitly.
    `KeyValueStoreValueTooLargeException` before writing oversized values.
 4. Bulk structured data must use a file-backed cache, SQLite/drift, or a native
    platform store depending on access pattern.
-5. Hive is not approved for new native Airo TV persistence. Web storage must use
+5. Hive is not approved for new native Midas Stream persistence. Web storage must use
    an explicitly approved adapter instead of reintroducing Hive.
 
 ## Consequences

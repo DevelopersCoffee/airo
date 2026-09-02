@@ -89,13 +89,13 @@ device class, or store listing.
 
 **Versioning:**
 - Use semantic product release tags for the current product line. Historic
-  per-product tags use `airo-tv-v0.0.x` for Airo TV and `v0.0.x` for the full
+  per-product tags use `airo-tv-v0.0.x` for Midas Stream and `v0.0.x` for the full
   app.
 - Since `v0.0.6-rc.1`, the release orchestrator publishes **one aggregate
   release per wave** under a single `v0.0.x` tag carrying every profile it
-  built — Airo TV, the full app, Airo Coins, and macOS TV. `airo-tv-v*` tags
+  built — Midas Stream, the full app, Airo Coins, and macOS TV. `airo-tv-v*` tags
   are retained for history and are no longer minted per wave. Anything that
-  resolves "the current Airo TV release" must therefore match on the published
+  resolves "the current Midas Stream release" must therefore match on the published
   `Airo-TV-*` assets, not on the tag prefix.
 - The current release train is the aggregate `v0.0.6` line. The next
   candidate is `v0.0.7` (same four SKUs: TV, full, Coins, macOS TV).

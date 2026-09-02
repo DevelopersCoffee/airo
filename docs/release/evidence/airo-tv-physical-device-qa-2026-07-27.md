@@ -1,4 +1,4 @@
-# Airo TV Physical-Device QA — 2026-07-27
+# Midas Stream Physical-Device QA — 2026-07-27
 
 ## Campaign status
 
@@ -132,7 +132,7 @@ TV matrix class.
 
 | Issue | Result | Scope |
 | --- | --- | --- |
-| [#1240 — Pixel 9 Android 17 Coins cold launch remains black](https://github.com/DevelopersCoffee/airo/issues/1240) | FAIL | Adjacent physical Pixel 9 black-box check; installed package was `io.airo.app.coins`, not Airo TV |
+| [#1240 — Pixel 9 Android 17 Coins cold launch remains black](https://github.com/DevelopersCoffee/airo/issues/1240) | FAIL | Adjacent physical Pixel 9 black-box check; installed package was `io.airo.app.coins`, not Midas Stream |
 | [#1243 — Fire TV playback emits approximately 36 vendor property-denial errors/second](https://github.com/DevelopersCoffee/airo/issues/1243) | FAIL | Fire TV playback diagnostics; user-visible performance impact remains unmeasured |
 
 No fix was attempted for either issue.
@@ -147,7 +147,7 @@ No fix was attempted for either issue.
 | #683 exact final-artifact release qualification | NOT RUN | Release owner did not supply the exact final artifact/checksum, device inventory, Fire TV classification, or waiver rules |
 | #1081/#1084 launch gate and tracker | NOT RUN | Tracker-only until the plan's software and evidence dependencies are complete |
 
-Fire TV was used only as an installed Airo TV target. It was not represented as
+Fire TV was used only as an installed Midas Stream target. It was not represented as
 a Google Cast receiver.
 
 ## Evidence gaps and next run

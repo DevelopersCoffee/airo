@@ -1,18 +1,18 @@
-# Airo TV Constrained Resource Scheduler Contract
+# Midas Stream Constrained Resource Scheduler Contract
 
 Issue: ATV-054
 Package: `platform_worker_jobs`
-Layer: Platform framework, consumed by Airo TV application code
+Layer: Platform framework, consumed by Midas Stream application code
 
 ## Purpose
 
-Airo TV Gen 2 must keep playback, pairing, focus navigation, and user state
+Midas Stream Gen 2 must keep playback, pairing, focus navigation, and user state
 responsive on constrained receiver hardware. The constrained resource scheduler
 turns a receiver resource snapshot into a deterministic plan that application
 code can consume before starting background work.
 
 This contract belongs in platform code because the rules are reusable across TV,
-mobile receiver mode, and future edge workers. Airo TV should consume the plan
+mobile receiver mode, and future edge workers. Midas Stream should consume the plan
 instead of duplicating mode, budget, and cleanup decisions in screen or feature
 code.
 
@@ -68,9 +68,9 @@ available.
 | `low_storage` | 160 MB | 128 MB | 16 MB | 8 MB | 24 MB | 12 MB | 1 | 1 |
 | `critical_protection` | 128 MB | 96 MB | 8 MB | 4 MB | 12 MB | 8 MB | 1 | 1 |
 
-## Airo TV Consumption
+## Midas Stream Consumption
 
-Airo TV app code should request a plan before starting non-playback work. If the
+Midas Stream app code should request a plan before starting non-playback work. If the
 job kind is allowed, the app may proceed through the worker scheduler. If the
 job kind is deferred, the app should enqueue the work for a later receiver
 snapshot. If the job kind is blocked, the app should skip the work and surface a

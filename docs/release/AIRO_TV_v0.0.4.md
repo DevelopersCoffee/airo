@@ -1,6 +1,6 @@
-# Airo TV v0.0.4
+# Midas Stream v0.0.4
 
-Airo TV v0.0.4 closes the user-visible IPTV loop while preserving the
+Midas Stream v0.0.4 closes the user-visible IPTV loop while preserving the
 bring-your-own-content boundary. It adds local search, favorites, guide setup,
 provider add-flows, smarter personal lists, clearer playback diagnostics, and
 large-playlist import telemetry without adding accounts, cloud sync, DVR, or
@@ -34,7 +34,7 @@ bundled media.
 
 ## Known limitations
 
-- Airo TV does not provide playlists, channels, subscriptions, or media.
+- Midas Stream does not provide playlists, channels, subscriptions, or media.
   Users must provide content they are authorized to access.
 - No accounts, cloud sync, recording/DVR, or bundled catalog are included.
 - The production Android signing and Firebase runtime secrets are not

@@ -10,7 +10,7 @@ layout: null
 
   Cross-page links in front matter (`related[].url`) are already run
   through `relative_url` by this layout -- write them site-relative, e.g.
-  `/tv/guides/#playlist`. Links written directly in the page's markdown
+  `/midas-stream/guides/#playlist`. Links written directly in the page's markdown
   BODY are not: Kramdown renders `[text](/m3u-player/)` as a literal,
   unprefixed href, which 404s once `site.baseurl` is non-empty. Every body
   link to another page on this site must go through Liquid explicitly:
@@ -44,7 +44,7 @@ layout: null
           <div class="hero-actions" style="margin-top: 24px;">
             <a class="button button-primary" href="#download"
               ><i data-lucide="download" aria-hidden="true"></i>
-              {{ page.primary_cta | default: "Download Airo TV" }}</a
+              {{ page.primary_cta | default: "Download Midas Stream" }}</a
             >
           </div>
         </div>
@@ -85,7 +85,7 @@ layout: null
         <div class="container">
           <div class="section-intro">
             <div>
-              <p class="eyebrow">What Airo TV does here</p>
+              <p class="eyebrow">What Midas Stream does here</p>
               <h2 id="capability-title">{{ page.capabilities_title | default: "Available today" }}</h2>
             </div>
           </div>

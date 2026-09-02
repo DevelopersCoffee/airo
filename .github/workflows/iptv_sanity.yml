@@ -124,7 +124,63 @@ jobs:
             --eligible-channels-xml /tmp/airo.channels.xml \
             --minimum-programmes 1 \
             --minimum-coverage-percent 70
-      
+
+      # -- epg.pw global remap (optional product-default source) ----------
+      # The device never talks to epg.pw (see docs/superpowers/specs/
+      # 2026-09-02-byoc-xmltv-system-guide-design.md); only this CI job
+      # downloads the global ~50MB export, remaps epg.pw's numeric channel
+      # ids onto our iptv-org-style catalog ids, and republishes bounded
+      # per-country shards. A failure here must not fail the job -- the
+      # grab-based guide_IN.xml.gz above already satisfies the release.
+      - name: Fetch epg.pw global XMLTV export
+        id: epgpw_fetch
+        continue-on-error: true
+        run: |
+          if curl --http1.1 --fail --location --retry 3 --max-time 900 \
+            https://epg.pw/xmltv/epg.xml.gz \
+            --output /tmp/epg.pw.xml.gz; then
+            echo "fetched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "epg.pw fetch failed -- skipping the remap/publish step."
+            echo "fetched=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Remap epg.pw ids and republish preferred shards
+        if: steps.epgpw_fetch.outputs.fetched == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          gunzip -c /tmp/epg.pw.xml.gz > /tmp/epg.pw.xml
+          rm -rf /tmp/epg-remap
+          python -m src.epg_pw_remap \
+            --input /tmp/epg.pw.xml \
+            --channels output/current/iptv_channels.json \
+            --output-dir /tmp/epg-remap
+
+          PUBLISH_COUNTRIES=$(python -m src.epg_publish_prefer select-countries \
+            --remap-dir /tmp/epg-remap \
+            --published-directory output/current \
+            --prefer-existing IN)
+          echo "Countries to (re)publish from the epg.pw remap: ${PUBLISH_COUNTRIES:-<none>}"
+
+          if [ -n "$PUBLISH_COUNTRIES" ]; then
+            python -m src.epg_artifacts publish \
+              --channels output/current/iptv_channels.json \
+              --grabbed /tmp/epg-remap/ALL.xml \
+              --output-directory output/current \
+              --manifest output/current/manifest.json \
+              --countries $PUBLISH_COUNTRIES \
+              --minimum-programmes 1
+          fi
+
+          # guide_ALL.xml.gz is a CDN/tooling artifact, never fetched by a
+          # device on boot (see spec: "Do not download guide_ALL.xml.gz on
+          # Android TV / iOS as the default").
+          python -m src.epg_publish_prefer publish-all \
+            --all-xml /tmp/epg-remap/ALL.xml \
+            --output-directory output/current \
+            --manifest output/current/manifest.json
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -179,6 +235,38 @@ jobs:
             -d @/tmp/gist_payload.json
 
           echo "✅ Published to Gist: https://gist.github.com/${{ env.GIST_ID }}"
+
+      - name: Upload guide shards to Cloudflare R2
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ] || \
+             [ -z "${AWS_SECRET_ACCESS_KEY:-}" ] || [ -z "${CLOUDFLARE_R2_BUCKET:-}" ]; then
+            echo "CLOUDFLARE_R2_* secrets are not configured -- skipping the R2 upload."
+            echo "output/current/ is still available from the workflow artifact above."
+            exit 0
+          fi
+
+          export AWS_ENDPOINT_URL="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          # Only the programme-guide overlay is public product content.
+          # iptv_channels.json / the M3U are the stream catalogue and must
+          # never land in the guide prefix (Gist remains their distribution
+          # channel -- see the step above).
+          aws s3 cp output/current/manifest.json \
+            "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/manifest.json" \
+            --content-type application/json \
+            --cache-control 'public, max-age=300'
+          for guide in output/current/guide_*.xml.gz; do
+            [ -e "$guide" ] || continue
+            aws s3 cp "$guide" "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/$(basename "$guide")" \
+              --content-type application/gzip \
+              --cache-control 'public, max-age=300'
+          done
 
   notify-failure:
     name: Notify on Failure

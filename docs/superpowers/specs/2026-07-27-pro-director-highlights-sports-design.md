@@ -1,6 +1,6 @@
 # Planned: AI Director, Highlights, and Sports Command Center
 
-Status: Planned design for Airo TV Pro; no v0.0.5 implementation or
+Status: Planned design for Midas Stream Pro; no v0.0.5 implementation or
 availability claim.
 
 ## Customer outcomes

@@ -86,6 +86,23 @@ void main() {
     expect(find.textContaining('Connection timed out'), findsOneWidget);
   });
 
+  testWidgets('helper text tells users to paste XMLTV, not HTML', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: XmltvSourceSheet())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('XMLTV URL or .xml.gz'), findsOneWidget);
+  });
+
   testWidgets('Remove source button clears the saved config', (tester) async {
     final container = await buildContainer();
     addTearDown(container.dispose);

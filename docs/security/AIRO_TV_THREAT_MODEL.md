@@ -1,10 +1,10 @@
-# Airo TV Threat Model
+# Midas Stream Threat Model
 
-This document describes the data and trust boundaries for Airo TV.
+This document describes the data and trust boundaries for Midas Stream.
 
 ## Scope
 
-Airo TV is an Android TV IPTV player for user-supplied M3U playlists. It does not provide IPTV channels, playlists, or media content.
+Midas Stream is an Android TV IPTV player for user-supplied M3U playlists. It does not provide IPTV channels, playlists, or media content.
 
 ## Assets
 

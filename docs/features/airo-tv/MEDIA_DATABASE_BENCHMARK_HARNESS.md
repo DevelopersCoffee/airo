@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-028.
 
 ## Ownership
 
-Media database benchmark definitions are framework/platform behavior. Airo TV
+Media database benchmark definitions are framework/platform behavior. Midas Stream
 can run or display benchmark outcomes later, but dataset definitions, workload
 steps, budget checks, result schemas, and adapter boundaries belong in
 `packages/core_media_data`.
@@ -21,7 +21,7 @@ This issue does not implement:
 - generated benchmark fixture files
 - provider-specific media content
 - device-lab execution
-- Airo TV screens
+- Midas Stream screens
 - playlist parsing workers
 - distributed EPG workers
 - analytics upload

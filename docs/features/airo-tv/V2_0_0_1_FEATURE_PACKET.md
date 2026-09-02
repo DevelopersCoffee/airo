@@ -1,14 +1,14 @@
-# Airo TV v2.0.0.1 Feature Packet
+# Midas Stream v2.0.0.1 Feature Packet
 
 **Primary owner agent:** Media Agent  
 **Review agents:** Framework Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent, Mobile UI Agent, AI Agent  
 **Layer:** Mixed  
-**Sprint:** V2 Airo TV planning and foundation  
+**Sprint:** V2 Midas Stream planning and foundation  
 **Parent roadmap:** V2 modular media platform  
 
 ## Critical Agent Gate
 
-**Problem:** Airo TV requirements currently combine a full AI media platform,
+**Problem:** Midas Stream requirements currently combine a full AI media platform,
 legacy Android support, modular product profiles, and analytics governance. The
 team needs an implementation-ready v2 scope that preserves BYOC compliance,
 privacy, playback reliability, and modular boundaries.
@@ -135,11 +135,11 @@ and delegated operation contract.
 
 ### UC-001: BYOC first launch
 
-**Actor:** First-time Airo TV user.
+**Actor:** First-time Midas Stream user.
 
 **Preconditions:** No content source configured.
 
-**Trigger:** User opens Airo TV Lite or Full TV profile.
+**Trigger:** User opens Midas Stream Lite or Full TV profile.
 
 **Happy path:** App shows a BYOC setup state and does not display bundled
 channels, playlists, or provider recommendations.

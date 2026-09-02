@@ -1,7 +1,7 @@
 # Immediate Action Player — Design
 
 Status: Draft (spec self-reviewed, pending user review)
-Owner: Airo TV mobile (feature_iptv, platform_player)
+Owner: Midas Stream mobile (feature_iptv, platform_player)
 Related: `docs/superpowers/plans/2026-07-17-cv015-slice2-epg-grid.md` (predecessor EPG grid work), follow-up spec `2026-07-19-live-grid-epg-nav-design.md` (not yet written)
 
 ## Background
@@ -10,7 +10,7 @@ Market scan (Pluto TV, Tubi, YouTube TV, Hulu + Live TV, Sling, Bigo Live — se
 Sources) confirms the 2025/26 norm for live-TV mobile apps: a single tap on a
 channel starts playback immediately, with no intermediate detail/preview
 screen, and cold-start/deep-link entry into a specific channel skips the
-browse grid entirely. Airo TV's mobile `IPTVScreen._playChannel` already plays
+browse grid entirely. Midas Stream's mobile `IPTVScreen._playChannel` already plays
 inline on tap (no detail screen today), so the "Default to Live" work here is
 about (a) auditing/closing any remaining friction on tap-to-play and (b)
 building the missing cold-start/deep-link path, plus native PiP and

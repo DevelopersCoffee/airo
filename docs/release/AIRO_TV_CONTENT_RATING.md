@@ -1,6 +1,6 @@
-# Airo TV Content Rating Worksheet
+# Midas Stream Content Rating Worksheet
 
-Console-ready worksheet for Airo TV content rating submissions. Use this when
+Console-ready worksheet for Midas Stream content rating submissions. Use this when
 completing the Google Play IARC questionnaire and any future App Store Connect
 age rating questionnaire. Final ratings are assigned by the store consoles and
 must be saved by a maintainer with console access.
@@ -12,7 +12,7 @@ must be saved by a maintainer with console access.
 | Product | Midas Stream |
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
-| Current release | v0.0.5 |
+| Current release | v0.0.1+13 |
 | Privacy minimum age posture | Not directed to children under 16 |
 | Content model | Media player for user-provided playlist and stream URLs |
 
@@ -31,11 +31,11 @@ unless legal/privacy copy is changed first.
 
 | Topic | Recommended answer | Evidence / notes |
 | --- | --- | --- |
-| User-generated content | No social or in-app user-generated content platform | Users provide private playlist/stream URLs; Airo TV does not publish, host, or share user content. |
+| User-generated content | No social or in-app user-generated content platform | Users provide private playlist/stream URLs; Midas Stream does not publish, host, or share user content. |
 | Unrestricted internet / web access | Yes if the questionnaire treats user-entered playlist or stream URLs as unrestricted network content | Users can load external media URLs they provide. |
-| Violence in app UI | No | Airo TV UI does not include violent content. User-loaded streams are outside app-provided content. |
-| Sexual content or nudity in app UI | No | Airo TV UI does not include sexual content or nudity. |
-| Profanity or crude humor in app UI | No | Airo TV UI does not include profanity or crude humor. |
+| Violence in app UI | No | Midas Stream UI does not include violent content. User-loaded streams are outside app-provided content. |
+| Sexual content or nudity in app UI | No | Midas Stream UI does not include sexual content or nudity. |
+| Profanity or crude humor in app UI | No | Midas Stream UI does not include profanity or crude humor. |
 | Alcohol, tobacco, drugs, or regulated goods in app UI | No | No app-provided regulated-goods content. |
 | Gambling or contests | No | No gambling feature, betting flow, or contest mechanic. |
 | Horror/fear content in app UI | No | No app-provided horror/fear content. |
@@ -44,7 +44,7 @@ unless legal/privacy copy is changed first.
 | User interaction / chat | No | No chat, social feed, or user-to-user communication in the TV IPTV flow. |
 | Location sharing | No | No location permission in the TV manifest. |
 | Account creation required | No | IPTV playback does not require account sign-in. |
-| Content disclaimer | Yes | Airo TV is a media player only and does not provide channels, playlists, streams, or subscriptions. |
+| Content disclaimer | Yes | Midas Stream is a media player only and does not provide channels, playlists, streams, or subscriptions. |
 
 ## Store Notes
 

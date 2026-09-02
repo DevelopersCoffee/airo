@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-034.
 
 ## Ownership
 
-Distributed EPG work is platform/framework behavior. Airo TV, Lite Receiver,
+Distributed EPG work is platform/framework behavior. Midas Stream, Lite Receiver,
 companion nodes, desktop nodes, home nodes, future cloud orchestration, and QA
 automation consume this contract instead of parsing full XMLTV datasets inside
 receiver screens.

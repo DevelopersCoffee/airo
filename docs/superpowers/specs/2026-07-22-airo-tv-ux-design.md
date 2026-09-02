@@ -1,4 +1,4 @@
-# Airo TV UX Revamp — Design
+# Midas Stream UX Revamp — Design
 
 **Date:** 2026-07-22
 **Status:** Approved (approach + phasing confirmed by Uday)
@@ -80,7 +80,7 @@ metadata dimension.
 
 ## Resume flow (Phase 1)
 
-1. App opens IPTV surface → splash mosaic (branded still/grid, Airo TV logo)
+1. App opens IPTV surface → splash mosaic (branded still/grid, Midas Stream logo)
    renders instantly over video stage.
 2. `lastChannelProvider` read; if channel still exists in current channel
    list, tune starts loading behind splash immediately.

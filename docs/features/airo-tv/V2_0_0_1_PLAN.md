@@ -1,16 +1,16 @@
-# Airo TV v2.0.0.1 Plan
+# Midas Stream v2.0.0.1 Plan
 
 **Status:** Draft  
 **Date:** 2026-07-13  
 **Release line:** V2 modular, based on latest `origin/main`
 **Source:** `docs/features/airo-tv/PRD_SOURCE_v2.0.0.1.md`  
 **GitHub release tracker:** https://github.com/DevelopersCoffee/airo/issues/672  
-**GitHub milestone:** `v2.0.0.1 - Airo TV Platform Hardening`  
+**GitHub milestone:** `v2.0.0.1 - Midas Stream Platform Hardening`  
 **Planning decision:** Scope v2.0.0.1 as a foundation and validation milestone, not a full AI TV launch.
 
 ## Version and Branch Policy
 
-- `v2.0.0.1` is an internal planning milestone label for Airo TV platform
+- `v2.0.0.1` is an internal planning milestone label for Midas Stream platform
   hardening.
 - Public release tags remain semantic v2 tags from the release-line policy:
   `v2.0.0`, `v2.0.1`, `v2.1.0`, and later `v2.x.y` tags.
@@ -28,7 +28,7 @@
 The pasted PRD defines a multi-release product, not a single patch release. It
 now contains nine major bodies of work:
 
-1. Core Airo TV product requirements: BYOC content sources, playlist
+1. Core Midas Stream product requirements: BYOC content sources, playlist
    intelligence, search, player, profiles, recommendations, AI, cloud sync, and
    monetization.
 2. Volume 2: universal media sources, canonical media models, metadata,
@@ -52,12 +52,12 @@ now contains nine major bodies of work:
 9. Volume 9: analytics, playback telemetry, experimentation, privacy controls,
    schema governance, and dashboards.
 
-v2.0.0.1 should establish the platform contracts needed to build Airo TV
+v2.0.0.1 should establish the platform contracts needed to build Midas Stream
 without committing to all premium AI features at once.
 
 ## Product Goal
 
-Create the first implementation-ready plan for Airo TV as a compliant,
+Create the first implementation-ready plan for Midas Stream as a compliant,
 privacy-first BYOC media product that can ship as modular V2 product profiles:
 Full TV, Standard TV, Lite Receiver, Embedded Receiver, Mobile Companion,
 Desktop, and Home Node.
@@ -130,7 +130,7 @@ Desktop, and Home Node.
 
 | Workstream | Outcome |
 | --- | --- |
-| Airo TV Lite shell | TV-first BYOC receiver with D-pad navigation and compact home |
+| Midas Stream Lite shell | TV-first BYOC receiver with D-pad navigation and compact home |
 | Device profiling | Runtime tier selection, codec inventory, memory/storage classification |
 | Local discovery | Android phone discovers Android TV on LAN through a framework-owned discovery adapter |
 | Secure pairing | QR pairing creates a trusted-device relationship with scoped permissions and revocation |
@@ -346,7 +346,7 @@ Deliver:
   contracts.
 - large playlist worker pipeline contract with progress, cancellation, partial
   availability, batch writes, and import diagnostics.
-- media database benchmark harness for representative Airo TV datasets.
+- media database benchmark harness for representative Midas Stream datasets.
 - search-index contract for exact, prefix, token, normalized, alias, fuzzy, and
   history-ranked search.
 - shared Airo media error taxonomy and privacy-safe diagnostics schema.
@@ -727,7 +727,7 @@ Exit criteria:
   TV boxes?
 - Which distribution channels are approved for experimental legacy builds?
 - What evidence is required before marketing claims support for a device class?
-- Should Airo TV Lite ship as a separate listing, device-targeted bundle, or
+- Should Midas Stream Lite ship as a separate listing, device-targeted bundle, or
   adaptive mode inside one app?
 - What manifest format should define product profiles and modules: Dart
   declarations, YAML, generated metadata, or a hybrid?

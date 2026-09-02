@@ -1,4 +1,4 @@
-# Airo TV Cross-Profile Compatibility Test Suite
+# Midas Stream Cross-Profile Compatibility Test Suite
 
 ATV-068 defines the platform manifest for cross-profile compatibility coverage
 across Full TV, Lite Receiver, Embedded Receiver, companion controllers, home
@@ -71,7 +71,7 @@ Scenarios can require stable assertions for:
 
 Accepted suites return only `accepted`.
 
-## Default Airo TV Suite
+## Default Midas Stream Suite
 
 `AiroTvCrossProfileCompatibilitySuites.releaseV2_0_0_1()` includes:
 
@@ -84,9 +84,9 @@ Accepted suites return only `accepted`.
 - unsupported Full TV feature transfer to Lite Receiver
 - trusted delegation failure
 
-## Airo TV Consumption Rule
+## Midas Stream Consumption Rule
 
-Airo TV and release automation should evaluate this suite before claiming
+Midas Stream and release automation should evaluate this suite before claiming
 cross-profile compatibility. Actual host tests, integration tests, device-lab
 runs, protocol fixtures, and evidence storage bind to this manifest, but app
 code should not hard-code cross-profile behavior in screens or widgets.

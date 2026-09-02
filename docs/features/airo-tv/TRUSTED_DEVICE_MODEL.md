@@ -1,7 +1,7 @@
-# Airo TV Trusted Device Model
+# Midas Stream Trusted Device Model
 
 This contract defines the v2.0.0.1 platform boundary for trusted-device
-relationships used by Airo TV, companion controllers, command routing, playback
+relationships used by Midas Stream, companion controllers, command routing, playback
 tickets, and future device-picker flows.
 
 Implementation contract:
@@ -40,7 +40,7 @@ The platform model defines these trust levels:
   administration.
 
 Product code should ask a platform policy whether a relationship satisfies a
-required trust level. Airo TV screens should not hard-code role-specific trust
+required trust level. Midas Stream screens should not hard-code role-specific trust
 shortcuts.
 
 ## Key Descriptor
@@ -74,7 +74,7 @@ Results are deterministic and machine-readable through
 
 ## Consumer Rule
 
-Airo TV, command, playback, pairing UI, device picker, and cloud coordination
+Midas Stream, command, playback, pairing UI, device picker, and cloud coordination
 must consume the platform policy result. Product code may decide copy,
 navigation, and user recovery flows, but the authority decision belongs to
 `core_pairing`.

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 
 import '../../application/providers/guide_providers.dart';
+import 'adaptive_iptv_sheet.dart';
 
 /// Lets the user manually set (or clear) which EPG channel id a specific
 /// [IPTVChannel] should be matched against, for when tvg-id auto-matching
@@ -50,6 +51,7 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
         .setOverride(channelId: widget.channel.id, epgChannelId: id);
     if (!mounted) return;
     ref.invalidate(guideEpgOverridesProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   Future<void> _clear() async {
@@ -59,6 +61,7 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
     if (!mounted) return;
     _idController.text = widget.channel.id;
     ref.invalidate(guideEpgOverridesProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   @override
@@ -101,4 +104,19 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
       ),
     );
   }
+}
+
+/// Presents [EpgMatchOverrideSheet] as an adaptive sheet for the given
+/// playlist [channel] — the entry point BYOC feeds with numeric ids
+/// (epg.pw's `543480`) need to attach a stream to its guide row when
+/// tvg-id auto-matching doesn't apply.
+Future<void> showEpgMatchOverrideSheet(
+  BuildContext context,
+  IPTVChannel channel,
+) async {
+  await showAdaptiveIptvSheet<void>(
+    context: context,
+    maxWidth: 640,
+    builder: (_) => EpgMatchOverrideSheet(channel: channel),
+  );
 }

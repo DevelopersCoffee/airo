@@ -3,7 +3,7 @@
 **Parent issue:** #969 — stream health checker
 **Roadmap:** #958, P0 item 3 (per-stream health check and failover)
 **Base verified:** `origin/main` at `2316cc1ce3e5d0ac80d9af7f328c5004ab6cddce` on 2026-07-22
-**Layer:** Mixed — reusable stream-probe contract plus the Airo TV browse workflow
+**Layer:** Mixed — reusable stream-probe contract plus the Midas Stream browse workflow
 
 ## Feature Packet
 
@@ -22,7 +22,7 @@ or permanently changing a user-owned playlist.
 
 **Problem:** An unavailable stream leaves users to discover failures one channel
 at a time; lists with thousands of channels make this impractical.
-**User / actor:** An Airo TV viewer managing their own M3U or configured source.
+**User / actor:** An Midas Stream viewer managing their own M3U or configured source.
 **Framework or application layer:** Mixed. Stream-probe semantics and resource
 scheduling are reusable platform behavior; filtering, review, and undo are Airo
 TV product behavior.
@@ -158,7 +158,7 @@ completion progress is 3/3.
   cancellation, and concurrency with fake transport tests.
 - Verify: focused `platform_streams` tests and static analysis.
 
-### Task 2: Airo TV scan state and scheduler bridge (M)
+### Task 2: Midas Stream scan state and scheduler bridge (M)
 
 - Add a feature-owned Riverpod controller that snapshots the current filtered
   IDs, maps playback to safe concurrency, consumes the existing worker-job
@@ -175,7 +175,7 @@ completion progress is 3/3.
 
 ### Task 4: Feature evidence and focused validation (S)
 
-- Update #969 and the Airo TV feature documentation with the final contract,
+- Update #969 and the Midas Stream feature documentation with the final contract,
   tests, and rollback behavior. Run formatter, targeted package tests, focused
   analysis, and `git diff --check`; no Android emulator and no remote CI for
   this iterative slice.

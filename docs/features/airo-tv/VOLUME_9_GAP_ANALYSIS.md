@@ -1,4 +1,4 @@
-# Airo TV Volume 9 Gap Analysis
+# Midas Stream Volume 9 Gap Analysis
 
 **Volume:** Product Analytics, Playback Quality Telemetry, Privacy, and
 Experimentation  
@@ -6,12 +6,12 @@ Experimentation
 **Status:** Draft gap analysis  
 **Input:** `/Users/udaychauhan/.codex/attachments/b5293f0d-a03c-49f9-960e-492d4747879c/pasted-text.txt`  
 **Baseline inspected:** app logger, platform media logger, video player
-analytics calls, pubspec dependencies, existing Airo TV plan, requirements
+analytics calls, pubspec dependencies, existing Midas Stream plan, requirements
 review, and feature packet.
 
 ## Executive Summary
 
-Volume 9 defines Airo TV's analytics and telemetry architecture. The goal is
+Volume 9 defines Midas Stream's analytics and telemetry architecture. The goal is
 not broad behavioral tracking; it is privacy-safe measurement of onboarding,
 playback quality, device reliability, handoff, legacy-device health, feature
 adoption, subscription conversion, experimentation, and diagnostics.
@@ -101,7 +101,7 @@ live stream events.
 **Requirement:** Separate required operational data, optional product analytics,
 optional crash reporting, and optional personalized analytics.
 
-**Current state:** No Airo TV analytics consent state or opt-out behavior exists.
+**Current state:** No Midas Stream analytics consent state or opt-out behavior exists.
 
 **Gap:** Add consent settings, collection gates, immediate disable behavior,
 queue deletion after opt-out, analytics ID reset, account-deletion integration,

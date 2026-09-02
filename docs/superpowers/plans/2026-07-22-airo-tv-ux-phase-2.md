@@ -1,4 +1,4 @@
-# Airo TV UX Phase 2 — Responsive Shell Execution Plan
+# Midas Stream UX Phase 2 — Responsive Shell Execution Plan
 
 > **Issue:** #1038  
 > **Base:** `origin/main` at `72fff696`  

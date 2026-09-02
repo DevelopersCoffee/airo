@@ -1,4 +1,4 @@
-# Airo TV Unified Browse Experience Implementation Plan
+# Midas Stream Unified Browse Experience Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1082,7 +1082,7 @@ class ImportProgress extends Equatable {
 
 **Interfaces:**
 - Consumes: `Stream<ImportProgress>` (Task 11).
-- Produces: restyled sheet per spec §5.4 / mockup modal: title "Add Playlist Source", helper line, URL field, green dedupe-promise callout ("Airo TV will deduplicate channels, remove dead links, and build smart rails"), Remove / Cancel / Save. On Save: subscribe to `importPlaylist`, render stage label + `LinearProgressIndicator(value: fraction)`; on `ready` close sheet and refresh `railsProvider` (`ref.invalidate(railsProvider)`); on `failed` show stage-specific error with Retry (spec §8).
+- Produces: restyled sheet per spec §5.4 / mockup modal: title "Add Playlist Source", helper line, URL field, green dedupe-promise callout ("Midas Stream will deduplicate channels, remove dead links, and build smart rails"), Remove / Cancel / Save. On Save: subscribe to `importPlaylist`, render stage label + `LinearProgressIndicator(value: fraction)`; on `ready` close sheet and refresh `railsProvider` (`ref.invalidate(railsProvider)`); on `failed` show stage-specific error with Retry (spec §8).
 
 - [ ] **Step 1: Failing test** — sheet shows progress indicator + stage label while import stream emits, error + Retry on `failed`, closes on `ready`. Override the service provider with a fixture stream.
 - [ ] **Step 2: Run — FAIL.** **Step 3: Implement.** Keep the OverflowBar action-row pattern (pre-existing overflow fix, observation 8184).

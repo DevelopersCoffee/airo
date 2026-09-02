@@ -1,6 +1,6 @@
-# Airo TV Cross-Platform Validation Matrix
+# Midas Stream Cross-Platform Validation Matrix
 
-This matrix defines the v2.0.0.1 platform validation boundary for Airo TV,
+This matrix defines the v2.0.0.1 platform validation boundary for Midas Stream,
 companion, desktop, embedded receiver, and cloud control-plane surfaces.
 
 Implementation contract:
@@ -50,7 +50,7 @@ Implementation contract:
 
 ## Consumer Rule
 
-Airo TV release checks, QA automation, and future device-lab tooling should
+Midas Stream release checks, QA automation, and future device-lab tooling should
 consume `AiroCrossPlatformValidation.matrix()` rather than hard-code per-target
 rules in release scripts or app screens.
 

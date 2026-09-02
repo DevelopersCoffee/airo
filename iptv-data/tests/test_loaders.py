@@ -358,3 +358,20 @@ class TestIptvOrgLoader:
             loader._validate_schema("streams", [{**valid, "url": 42}])
 
         loader._validate_schema("streams", [{**valid, "new_field": "allowed"}])
+
+    def test_logos_schema_allows_null_format(self) -> None:
+        loader = IptvOrgLoader(SourceConfig(enabled=True))
+        loader._validate_schema(
+            "logos",
+            [
+                {
+                    "channel": "1TV.af",
+                    "feed": None,
+                    "in_use": True,
+                    "width": 0,
+                    "height": 0,
+                    "format": None,
+                    "url": "https://github.com/iptv-org/iptv.git",
+                }
+            ],
+        )

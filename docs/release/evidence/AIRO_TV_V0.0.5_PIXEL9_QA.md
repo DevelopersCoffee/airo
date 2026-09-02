@@ -1,4 +1,4 @@
-# Airo TV v0.0.5 Pixel 9 QA Evidence
+# Midas Stream v0.0.5 Pixel 9 QA Evidence
 
 Date: 2026-07-26
 Device: Pixel 9 (`tokay`), Android 17, physical device over wireless ADB
@@ -14,7 +14,7 @@ Playlist fixture: `https://iptv-org.github.io/iptv/index.m3u`
 - Result: `DONE_WITH_CONCERNS`, health score `86/100`
 - Findings:
   - [#1142](https://github.com/DevelopersCoffee/airo/issues/1142):
-    Settings header Back did nothing and Android Back exited Airo TV.
+    Settings header Back did nothing and Android Back exited Midas Stream.
   - [#1143](https://github.com/DevelopersCoffee/airo/issues/1143):
     cold start registered media-kit while `libmpv.so` and
     `libmediakitandroidhelper.so` were absent.

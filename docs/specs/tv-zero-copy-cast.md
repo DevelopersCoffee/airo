@@ -1,4 +1,4 @@
-# Spec: Airo TV — Zero-Copy Cast & Adaptive Buffering Control
+# Spec: Midas Stream — Zero-Copy Cast & Adaptive Buffering Control
 
 Status: draft for review · Requirements source: product v0.1 draft (6 phases)
 Repos: `airo` (this worktree, public) + `airo-pro` (private overlay, see
@@ -7,7 +7,7 @@ Repos: `airo` (this worktree, public) + `airo-pro` (private overlay, see
 
 ## Objective
 
-Airo TV users buffer because community IPTV sources have no SLA and raw
+Midas Stream users buffer because community IPTV sources have no SLA and raw
 MPEG-TS has no ABR ladder — the only remedy when a source degrades is
 switching sources. Users who find content on their phone also have no way to
 move it to the TV without routing media bytes through the phone (mirroring /
@@ -27,8 +27,8 @@ Build:
 Success = the 9 acceptance criteria in §7 of the requirements doc, restated
 as this spec's Success Criteria below.
 
-**Users:** Airo TV viewers on Android TV, Google TV, Fire TV (receivers) and
-Airo TV / Airo Coins-style companion use on Android/iOS phone (senders).
+**Users:** Midas Stream viewers on Android TV, Google TV, Fire TV (receivers) and
+Midas Stream / Airo Coins-style companion use on Android/iOS phone (senders).
 
 ## Business model — this is a Pro feature, unpriced at launch
 

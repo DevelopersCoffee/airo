@@ -156,6 +156,105 @@ void main() {
   });
 
   test(
+    'refreshSystemGuidesForCountries fetches only the requested guide_XX '
+    'shards, never guide_ALL or epg.xml.gz',
+    () async {
+      final adapter = _MultiCountryManifestAdapter({
+        'IN': utf8.encode(
+          _minimalXmltv.replaceAll('chan-1', 'MTV.in'),
+        ),
+        'US': utf8.encode(
+          _minimalXmltv.replaceAll('chan-1', 'World.us'),
+        ),
+        'FR': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'TF1.fr')),
+      });
+      final manifestDio = Dio()..httpClientAdapter = adapter;
+      final manifestService = XmltvSourceRefreshService(
+        dio: manifestDio,
+        sourceStore: sourceStore,
+        repository: repository,
+        downloadDirectoryProvider: () async => tempDir,
+      );
+
+      await manifestService.refreshSystemGuidesForCountries(
+        manifestUrl: 'https://data.example/current/manifest.json',
+        countries: {'in', 'us'},
+      );
+
+      final now = DateTime.utc(2026, 7, 17, 12, 10);
+      final inSlice = await repository.loadCurrentNext(
+        channelIds: const ['MTV.in'],
+        now: now,
+      );
+      final usSlice = await repository.loadCurrentNext(
+        channelIds: const ['World.us'],
+        now: now,
+      );
+      expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
+      expect(usSlice.entryForChannel('World.us')?.current?.title, 'Test Program');
+
+      expect(
+        adapter.requestedPaths,
+        everyElement(
+          anyOf(
+            contains('manifest.json'),
+            contains('guide_IN.xml.gz'),
+            contains('guide_US.xml.gz'),
+          ),
+        ),
+      );
+      expect(
+        adapter.requestedPaths.any((path) => path.contains('guide_FR')),
+        isFalse,
+      );
+      expect(
+        adapter.requestedPaths.any((path) => path.contains('guide_ALL')),
+        isFalse,
+      );
+      expect(
+        adapter.requestedPaths.any((path) => path.contains('epg.xml.gz')),
+        isFalse,
+      );
+
+      final source = (await sourceStore.loadAll()).single;
+      expect(source.kind, XmltvSourceKind.system);
+    },
+  );
+
+  test(
+    'refreshSystemGuidesForCountries skips a country missing from the '
+    'manifest without failing the others',
+    () async {
+      final adapter = _MultiCountryManifestAdapter({
+        'IN': utf8.encode(_minimalXmltv.replaceAll('chan-1', 'MTV.in')),
+      });
+      final manifestDio = Dio()..httpClientAdapter = adapter;
+      final manifestService = XmltvSourceRefreshService(
+        dio: manifestDio,
+        sourceStore: sourceStore,
+        repository: repository,
+        downloadDirectoryProvider: () async => tempDir,
+      );
+
+      await manifestService.refreshSystemGuidesForCountries(
+        manifestUrl: 'https://data.example/current/manifest.json',
+        countries: {'IN', 'ZZ'},
+      );
+
+      final now = DateTime.utc(2026, 7, 17, 12, 10);
+      final inSlice = await repository.loadCurrentNext(
+        channelIds: const ['MTV.in'],
+        now: now,
+      );
+      expect(inSlice.entryForChannel('MTV.in')?.current?.title, 'Test Program');
+      expect(
+        adapter.requestedPaths.any((path) => path.contains('guide_ZZ')),
+        isFalse,
+      );
+    },
+  );
+
+  test(
     'refresh with an invalid URL records an error, does not touch the repository',
     () async {
       await expectLater(
@@ -329,6 +428,58 @@ class _ManifestXmltvAdapter implements HttpClientAdapter {
       );
     }
     return ResponseBody.fromBytes(_guideBytes, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Serves a manifest with one `guide_<CC>` entry per key in [guidesByCountry]
+/// (no `guide_ALL`, no `epg.xml.gz`) and each country's gzip bytes, while
+/// recording every requested path so tests can assert exactly which shards
+/// were fetched.
+class _MultiCountryManifestAdapter implements HttpClientAdapter {
+  _MultiCountryManifestAdapter(Map<String, List<int>> guidesByCountry)
+    : _gzipByCountry = {
+        for (final entry in guidesByCountry.entries)
+          entry.key: Uint8List.fromList(gzip.encode(entry.value)),
+      };
+
+  final Map<String, Uint8List> _gzipByCountry;
+  final List<String> requestedPaths = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requestedPaths.add(options.path);
+    if (options.path.endsWith('manifest.json')) {
+      final manifest = jsonEncode({
+        'files': {
+          for (final country in _gzipByCountry.keys)
+            'guide_$country': 'guide_$country.xml.gz',
+        },
+        'fileChecksums': {
+          for (final country in _gzipByCountry.entries)
+            'guide_${country.key}': sha256.convert(country.value).toString(),
+        },
+      });
+      return ResponseBody.fromBytes(
+        utf8.encode(manifest),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    for (final entry in _gzipByCountry.entries) {
+      if (options.path.endsWith('guide_${entry.key}.xml.gz')) {
+        return ResponseBody.fromBytes(entry.value, 200);
+      }
+    }
+    return ResponseBody.fromBytes(const [], 404);
   }
 
   @override

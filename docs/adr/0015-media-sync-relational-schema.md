@@ -11,7 +11,7 @@ Airo's media graph and per-field sync merge contracts now have stable row
 shapes. Persisting whole records as JSON blobs would make field clocks,
 tombstones, profile deletion, graph traversal, and indexes opaque to SQLite.
 The existing application database also contains unrelated money and meeting
-schemas and is not the correct ownership boundary for Airo TV media sync.
+schemas and is not the correct ownership boundary for Midas Stream media sync.
 
 ## Decision
 
@@ -39,6 +39,6 @@ queries, sync outbox ordering, and deleted entities.
 - Migration failure rolls back its transaction; file-level backup/restore
   remains the operational rollback before callers are switched.
 - Native/Dart adapters expose async relational read/write paths. No deployed
-  Airo TV media/sync blob schema exists in this repository, so there is no
+  Midas Stream media/sync blob schema exists in this repository, so there is no
   legacy blob data to transform; unrelated application stores remain an
   explicit non-goal.

@@ -1,4 +1,4 @@
-# Airo TV and Super App Pixel 9 QA Evidence
+# Midas Stream and Super App Pixel 9 QA Evidence
 
 Date: 2026-07-30
 Base: fetched `origin/main` at `3c4bd8b2`
@@ -9,18 +9,18 @@ Playlist fixture: `https://iptv-org.github.io/iptv/index.m3u`
 ## Critical Agent Gate
 
 **Problem:** The next release candidate needed physical-device proof that the
-Airo TV journey is smooth and crash-free on Pixel 9, that shared IPTV behavior
+Midas Stream journey is smooth and crash-free on Pixel 9, that shared IPTV behavior
 also works inside the Airo Super App, and that release tooling leaves the
 source tree reproducible.
 
-**User / actor:** Airo TV and Airo Super App viewers, QA automation, and release
+**User / actor:** Midas Stream and Airo Super App viewers, QA automation, and release
 engineering.
 
 **Framework or application layer:** Mixed. The IPTV journey is application
 behavior; Android resources and build-profile restoration are shared platform
 and release concerns.
 
-**Owning agents:** Airo TV Flutter Architect and Chief Release/DevOps Officer.
+**Owning agents:** Midas Stream Flutter Architect and Chief Release/DevOps Officer.
 
 **Reviewing agents:** Chief QA Officer, Chief Architect, Chief Performance
 Officer, Media Intelligence Architect, and Coins / Finance Agent for the
@@ -42,9 +42,9 @@ release while the official required gates remain unknown.
 
 ## Deterministic Use Cases
 
-### UC-001: Clean Airo TV first launch
+### UC-001: Clean Midas Stream first launch
 
-**Given:** No Airo TV app data exists on the Pixel 9.
+**Given:** No Midas Stream app data exists on the Pixel 9.
 **When:** The release-profile APK is installed and launched.
 **Then:** A BYOC playlist setup state renders, no bundled channels appear, the
 process remains active, and startup emits no fatal, ANR, native-library, or
@@ -64,7 +64,7 @@ works, Home enters PiP, and PiP settles to video-only playback.
 **Given:** The full Airo release APK is installed without clearing existing app
 data.
 **When:** The user opens the Super App and selects the Live destination.
-**Then:** The shared Airo TV browser and existing channel playback render inside
+**Then:** The shared Midas Stream browser and existing channel playback render inside
 the Super App without a media-control exception.
 
 ### UC-004: Reproducible TV profile build
@@ -92,7 +92,7 @@ fatal, ANR, native-library, playback, media-control, or out-of-memory error.
 
 ## Pixel 9 Results
 
-### Airo TV artifact
+### Midas Stream artifact
 
 - Package: `io.airo.app.tv`
 - Version: `0.0.5` (`versionCode 5`)
@@ -146,7 +146,7 @@ Passed journeys:
   `cd813c74f7b6f6f1d0e2bcf08c0ef2b0e0e4690acd88288f4998a04352741ca2`
 - Installed in place with `-r -d`; existing Super App data was preserved
 - Clean launch passed
-- Live destination rendered the shared Airo TV browser and resumed existing
+- Live destination rendered the shared Midas Stream browser and resumed existing
   live playback
 - The final APK retains the same play, pause, and stop media resources
 - No app fatal exception, ANR, native-library error, or `CustomAction`
@@ -158,7 +158,7 @@ Passed journeys:
    Android threw `IllegalArgumentException: You must specify an icon resource
    id to build a CustomAction` at TV startup and again when playback began.
    A shared Android keep rule now protects the complete media-control icon set
-   for both Airo TV and the Super App. The TV release check and negative fixture
+   for both Midas Stream and the Super App. The TV release check and negative fixture
    enforce the contract.
 
 2. The lightweight TV build restored `pubspec.yaml` but left

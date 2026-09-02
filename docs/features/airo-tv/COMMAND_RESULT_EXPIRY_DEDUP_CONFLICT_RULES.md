@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-041.
 
 ## Ownership
 
-Command lifecycle semantics are platform/framework behavior. Airo TV, companion
+Command lifecycle semantics are platform/framework behavior. Midas Stream, companion
 controllers, LAN transports, cloud orchestration, session recovery, media
 controls, and QA automation consume the contract to avoid executing the same
 command twice and to reject stale or conflicting command intent deterministically.

@@ -15,7 +15,7 @@ We do not add features to comply with this document. We move, delete, and shrink
 ## 2. Layer model
 
 ```
-Products (entrypoints: `main.dart` for Airo, `main_tv.dart` for Airo TV)
+Products (entrypoints: `main.dart` for Airo, `main_tv.dart` for Midas Stream)
   ↓ may depend on
 Feature packages (feature_*)            — UI + orchestration for one domain
   ↓ may depend on

@@ -212,6 +212,85 @@ class XmltvSourceRefreshService {
     required String manifestUrl,
     required String country,
   }) async {
+    final manifestUri = _validManifestUri(manifestUrl);
+    final manifest = await _loadManifest(manifestUri);
+    final normalizedCountry = country.trim().toUpperCase();
+    final guideUri = _resolveGuideUri(
+      manifest,
+      manifestUri: manifestUri,
+      country: normalizedCountry,
+    );
+    if (guideUri == null) {
+      throw StateError('System guide is unavailable for $normalizedCountry.');
+    }
+    final checksum = _checksumFor(manifest, country: normalizedCountry)!;
+    await refresh(
+      guideUri.toString(),
+      kind: XmltvSourceKind.system,
+      expectedSha256: checksum,
+    );
+  }
+
+  /// Fetches only the `guide_$CC` shards present in the manifest for
+  /// [countries] — never `guide_ALL` (a CDN/tooling artifact, not a device
+  /// boot fetch; see the BYOC XMLTV system guide design doc) and never any
+  /// country outside the caller's playlist. A country with no matching
+  /// manifest entry is skipped rather than treated as an error, since the
+  /// system guide only ever covers a subset of countries. Each fetched
+  /// shard becomes its own named source (`xmltv-system-$CC`, priority 1)
+  /// so one country's parse failure doesn't drop another's already-merged
+  /// data. On success for at least one country, persists a single system
+  /// [XmltvSourceConfig] (keyed on [manifestUrl]) recording the refresh —
+  /// the store tracks one row per [XmltvSourceKind], matching the existing
+  /// single-source system/user model.
+  Future<void> refreshSystemGuidesForCountries({
+    required String manifestUrl,
+    required Set<String> countries,
+  }) async {
+    if (countries.isEmpty) return;
+    final manifestUri = _validManifestUri(manifestUrl);
+    final manifest = await _loadManifest(manifestUri);
+
+    var anySucceeded = false;
+    for (final country in countries) {
+      final normalizedCountry = country.trim().toUpperCase();
+      if (normalizedCountry.isEmpty) continue;
+      final guideUri = _resolveGuideUri(
+        manifest,
+        manifestUri: manifestUri,
+        country: normalizedCountry,
+      );
+      if (guideUri == null) continue;
+      final checksum = _checksumFor(manifest, country: normalizedCountry)!;
+      try {
+        final parsed = await _downloadAndParse(
+          guideUri.toString(),
+          expectedSha256: checksum,
+        );
+        repository.updateNamedSource(
+          sourceId: 'xmltv-system-$normalizedCountry',
+          priority: 1,
+          repository: parsed,
+        );
+        anySucceeded = true;
+      } on Object {
+        // One country's bad shard must not drop guides already merged for
+        // other countries, or block the caller's other playlist countries.
+      }
+    }
+
+    if (anySucceeded) {
+      await sourceStore.save(
+        XmltvSourceConfig(
+          url: manifestUri.toString(),
+          kind: XmltvSourceKind.system,
+          lastRefreshedAt: DateTime.now().toUtc(),
+        ),
+      );
+    }
+  }
+
+  Uri _validManifestUri(String manifestUrl) {
     final manifestUri = Uri.tryParse(manifestUrl.trim());
     if (manifestUri == null ||
         manifestUri.host.isEmpty ||
@@ -222,6 +301,10 @@ class XmltvSourceRefreshService {
         'System guide manifest must use HTTPS.',
       );
     }
+    return manifestUri;
+  }
+
+  Future<Map<String, dynamic>> _loadManifest(Uri manifestUri) async {
     final response = await dio.get<dynamic>(
       manifestUri.toString(),
       options: Options(
@@ -230,17 +313,34 @@ class XmltvSourceRefreshService {
             status != null && status >= 200 && status < 300,
       ),
     );
-    final manifest = response.data as Map<String, dynamic>;
-    final normalizedCountry = country.trim().toUpperCase();
-    final key = 'guide_$normalizedCountry';
-    final filename =
-        (manifest['files'] as Map<String, dynamic>?)?[key] as String?;
+    return response.data as Map<String, dynamic>;
+  }
+
+  String? _checksumFor(
+    Map<String, dynamic> manifest, {
+    required String country,
+  }) {
+    final key = 'guide_$country';
     final checksum =
         (manifest['fileChecksums'] as Map<String, dynamic>?)?[key] as String?;
-    if (filename == null ||
-        checksum == null ||
-        !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(checksum)) {
-      throw StateError('System guide is unavailable for $normalizedCountry.');
+    if (checksum == null || !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(checksum)) {
+      return null;
+    }
+    return checksum;
+  }
+
+  /// Resolves the same-origin URI for `guide_$country`, or null when the
+  /// manifest has no entry (missing filename/checksum) for it.
+  Uri? _resolveGuideUri(
+    Map<String, dynamic> manifest, {
+    required Uri manifestUri,
+    required String country,
+  }) {
+    final key = 'guide_$country';
+    final filename =
+        (manifest['files'] as Map<String, dynamic>?)?[key] as String?;
+    if (filename == null || _checksumFor(manifest, country: country) == null) {
+      return null;
     }
     final guideUri = manifestUri.resolve(filename);
     if (guideUri.scheme != manifestUri.scheme ||
@@ -248,10 +348,71 @@ class XmltvSourceRefreshService {
         guideUri.port != manifestUri.port) {
       throw StateError('System guide manifest attempted a cross-origin URL.');
     }
-    await refresh(
-      guideUri.toString(),
-      kind: XmltvSourceKind.system,
-      expectedSha256: checksum,
+    return guideUri;
+  }
+
+  /// Downloads, checksum-verifies, ungzips if needed, and natively parses
+  /// one XMLTV URL. Shared by [refresh] (single source, records to
+  /// [sourceStore]) and [refreshSystemGuidesForCountries] (multiple
+  /// per-country sources, records one summary row).
+  Future<XmltvCompactEpgRepository> _downloadAndParse(
+    String url, {
+    String? expectedSha256,
+  }) async {
+    final downloadDirectory = await downloadDirectoryProvider();
+    await downloadDirectory.create(recursive: true);
+    final token = DateTime.now().microsecondsSinceEpoch;
+    final downloadFile = File(
+      '${downloadDirectory.path}/xmltv_source_$token.download',
     );
+    final guideFile = File('${downloadDirectory.path}/xmltv_source_$token.xml');
+    try {
+      await dio.download(
+        url,
+        downloadFile.path,
+        options: Options(
+          responseType: ResponseType.stream,
+          receiveTimeout: const Duration(seconds: 30),
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 300,
+        ),
+      );
+      if (!await downloadFile.exists() || await downloadFile.length() == 0) {
+        throw StateError('Downloaded XMLTV file was empty.');
+      }
+      if (expectedSha256 != null) {
+        final actualSha256 = await const AiroWorkerExecutor().run(
+          debugName: 'xmltv_source_checksum',
+          kind: AiroWorkerJobKind.epgRefresh,
+          computation: () => sha256.bind(downloadFile.openRead()).first,
+        );
+        if (actualSha256.toString().toLowerCase() !=
+            expectedSha256.toLowerCase()) {
+          throw StateError('Downloaded XMLTV checksum did not match manifest.');
+        }
+      }
+      if (await _isGzip(downloadFile, url)) {
+        await const AiroWorkerExecutor().run<void>(
+          debugName: 'xmltv_source_decompress',
+          kind: AiroWorkerJobKind.epgRefresh,
+          computation: () => gzip.decoder
+              .bind(downloadFile.openRead())
+              .pipe(guideFile.openWrite()),
+        );
+      } else {
+        await downloadFile.rename(guideFile.path);
+      }
+      return await XmltvCompactEpgRepository.fromXmltvFileNative(
+        path: guideFile.path,
+        ingestedAt: DateTime.now().toUtc(),
+      );
+    } finally {
+      if (await guideFile.exists()) {
+        await guideFile.delete();
+      }
+      if (await downloadFile.exists()) {
+        await downloadFile.delete();
+      }
+    }
   }
 }

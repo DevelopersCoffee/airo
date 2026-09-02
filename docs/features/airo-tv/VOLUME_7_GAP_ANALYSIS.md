@@ -1,4 +1,4 @@
-# Airo TV Volume 7 Gap Analysis
+# Midas Stream Volume 7 Gap Analysis
 
 **Volume:** Legacy Android TV Support, Constrained Hardware Optimization, and
 Maximum Device Reach  
@@ -7,12 +7,12 @@ Maximum Device Reach
 **Input:** `/Users/udaychauhan/.codex/attachments/eabe98db-608b-47ca-8e2b-60eb1f5fff0d/pasted-text.txt`  
 **Duplicate source verified:** `/Users/udaychauhan/.codex/attachments/1fab2782-4453-4300-b20c-d7482c6fa449/pasted-text.txt`  
 **Baseline inspected:** Android build configuration, TV pubspec, TV
-form-factor/input/focus helpers, Cast proxy, TV integration tests, prior Airo TV
+form-factor/input/focus helpers, Cast proxy, TV integration tests, prior Midas Stream
 planning docs, and Volume 5 performance analysis.
 
 ## Executive Summary
 
-Volume 7 defines how Airo TV should reach older Android TV, Fire TV, AOSP TV
+Volume 7 defines how Midas Stream should reach older Android TV, Fire TV, AOSP TV
 boxes, operator boxes, and low-cost HDMI devices without lowering the bar for
 security or playback quality. The product principle is clear: constrained TVs
 should be excellent playback receivers, not overloaded media-processing
@@ -32,7 +32,7 @@ The repository already has important starting points:
 - AI memory-budget logic that can inform but not replace TV-wide device
   profiling.
 
-The gaps are mostly architectural and validation-related. There is no Airo TV
+The gaps are mostly architectural and validation-related. There is no Midas Stream
 runtime device profile, Legacy Receiver Mode contract, certification framework,
 hardware/media compatibility matrix, dependency-governance inventory, degraded
 feature policy, constrained-TV resource scheduler, real-device benchmark suite,
@@ -40,7 +40,7 @@ or restricted receiver trust implementation.
 
 ## Requirement Intent
 
-Volume 7 requires Airo TV to support the widest practical set of Android-based
+Volume 7 requires Midas Stream to support the widest practical set of Android-based
 TV devices through capability-based certification, not optimistic OS-version
 claims.
 
@@ -72,13 +72,13 @@ claims.
 
 ### 1. Runtime Device Profile Is Missing
 
-**Requirement:** On first launch, Airo TV should classify Android API, platform,
+**Requirement:** On first launch, Midas Stream should classify Android API, platform,
 model class, CPU, RAM, storage, GPU, hardware codecs, max resolution, audio
 codecs, decoder count, network class, remote capability, thermal APIs, vendor
 restrictions, and device tier.
 
 **Current state:** The app can detect TV vs non-TV and has AI memory helpers,
-but there is no Airo TV device profile model.
+but there is no Midas Stream device profile model.
 
 **Gap:** Define `AiroTvDeviceProfile`, `DeviceTier`,
 `DeviceConstraintState`, and dynamic reclassification rules for memory, storage,

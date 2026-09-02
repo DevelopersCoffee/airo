@@ -2,11 +2,11 @@
 
 **Date:** 2026-08-06 (revised same day against origin/main 9a51c3ab)
 **Status:** Approved design, pre-implementation
-**Pattern precedent:** Airo Coins (ADR-0010 package-first + `core_product_shell` SSOT contract), Airo TV (`pubspec_tv.yaml` trimmed-dependency flavor)
+**Pattern precedent:** Airo Coins (ADR-0010 package-first + `core_product_shell` SSOT contract), Midas Stream (`pubspec_tv.yaml` trimmed-dependency flavor)
 
 ## Goal
 
-Ship "Airo Mind" as a full standalone modular app the way Airo TV and Airo
+Ship "Airo Mind" as a full standalone modular app the way Midas Stream and Airo
 Coins ship: one shared codebase, a shell entrypoint driven by
 `core_product_shell`, a pubspec profile, an Android `APP_VARIANT`, and a build
 script. The standalone app combines:

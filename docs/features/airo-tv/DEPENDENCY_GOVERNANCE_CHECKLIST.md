@@ -1,6 +1,6 @@
-# Airo TV Dependency Governance Checklist
+# Midas Stream Dependency Governance Checklist
 
-This checklist defines the platform dependency-governance contract for Airo TV
+This checklist defines the platform dependency-governance contract for Midas Stream
 v2.0.0.1. Dependency decisions must preserve the API 26 Lite Receiver baseline
 unless a dependency is optional and has a fallback or stub path.
 
@@ -14,7 +14,7 @@ Implementation contract:
 
 ## Required Dependency Fields
 
-Every runtime dependency used by an Airo TV release profile must declare:
+Every runtime dependency used by an Midas Stream release profile must declare:
 
 - package name and version;
 - module/profile that uses it;
@@ -46,7 +46,7 @@ Every runtime dependency used by an Airo TV release profile must declare:
 
 ## Release Rule
 
-A dependency can be accepted for a Lite Receiver or legacy Airo TV profile only
+A dependency can be accepted for a Lite Receiver or legacy Midas Stream profile only
 when `AiroDependencyGovernanceChecklist.evaluate(record).passed == true`.
 
 If a dependency raises the API floor above 26, release tooling may still record
@@ -82,4 +82,4 @@ records.
 Follow-up automation can parse pubspec, Gradle, APK size, or dependency scanner
 output into `AiroDependencyAuditRecord` values. That extraction work must keep
 using the platform contract instead of adding profile-specific checks directly
-inside Airo TV app code.
+inside Midas Stream app code.

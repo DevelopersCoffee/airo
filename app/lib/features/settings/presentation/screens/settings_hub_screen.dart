@@ -69,17 +69,21 @@ class SettingsHubScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            ListTile(
-              leading: const Icon(Icons.import_export_outlined),
-              title: const Text('Airo Mind portability'),
-              subtitle: const Text(
-                'Encrypted export and import for local AI setup',
+            // Mind backup/restore belongs to the super-app and Airo Mind
+            // shells. Midas Stream (`ShellId.tv`) is a BYO playlist player
+            // and must not surface Mind-only settings on compact phones.
+            if (shellId == ShellId.mobile) ...[
+              ListTile(
+                leading: const Icon(Icons.import_export_outlined),
+                title: const Text('Airo Mind portability'),
+                subtitle: const Text(
+                  'Encrypted export and import for local AI setup',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () => context.push('/settings/airo-portability'),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () => context.push('/settings/airo-portability'),
-            ),
-
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
 
             // Every tile below comes from the shared iptvSettingsSections
             // manifest (SSOT with TvSettingsScreen) — grouped under one

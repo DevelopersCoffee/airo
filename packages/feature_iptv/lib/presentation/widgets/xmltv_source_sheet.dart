@@ -47,6 +47,7 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
       if (mounted) {
         setState(() => _isRefreshing = false);
         ref.invalidate(xmltvSourceConfigProvider);
+        ref.invalidate(guidePagedWindowProvider);
       }
     }
   }
@@ -55,6 +56,7 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
     await ref.read(xmltvSourceStoreProvider).clear();
     if (!mounted) return;
     ref.invalidate(xmltvSourceConfigProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   @override
@@ -116,7 +118,9 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
             controller: _urlController,
             decoration: const InputDecoration(
               labelText: 'XMLTV URL',
-              hintText: 'https://example.com/guide.xml',
+              hintText: 'https://example.com/guide.xml.gz',
+              helperText:
+                  'Paste an XMLTV URL or .xml.gz. HTML schedule pages will fail.',
               border: OutlineInputBorder(),
             ),
           ),

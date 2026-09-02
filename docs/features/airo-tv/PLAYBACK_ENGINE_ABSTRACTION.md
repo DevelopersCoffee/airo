@@ -1,7 +1,7 @@
-# Airo TV Playback Engine Abstraction
+# Midas Stream Playback Engine Abstraction
 
 This contract defines the v2.0.0.1 platform boundary for backend-agnostic
-playback used by Airo TV, IPTV, Cast, future native media engines, command
+playback used by Midas Stream, IPTV, Cast, future native media engines, command
 routing, diagnostics, and certification.
 
 Implementation contract:
@@ -64,7 +64,7 @@ analytics payloads, raw crash details, or viewing history.
 
 ## Adapter Rule
 
-Airo TV, IPTV features, command routing, route selection, and future
+Midas Stream, IPTV features, command routing, route selection, and future
 certification checks should consume `platform_player` playback engine contracts.
 Product code may render controls, copy, and recovery flows, but backend
 selection, state semantics, typed errors, and diagnostics belong to the platform

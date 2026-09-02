@@ -136,7 +136,7 @@ class IptvOrgLoader(BaseLoader):
                 "in_use": (bool,),
                 "width": (int,),
                 "height": (int,),
-                "format": (str,),
+                "format": (str, type(None)),
                 "url": (str,),
             },
             "feeds": {

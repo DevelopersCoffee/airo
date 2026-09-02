@@ -1,12 +1,12 @@
-# Airo TV Release Channel and Store Listing Strategy
+# Midas Stream Release Channel and Store Listing Strategy
 
-ATV-067 defines the platform contract for mapping Airo TV product profiles to
+ATV-067 defines the platform contract for mapping Midas Stream product profiles to
 release channels and store-listing strategies.
 
 The reusable contract lives in `packages/product_capabilities` because release
 channels, profile IDs, permissions, module sets, device eligibility, dependency
 isolation, rollout posture, and public capability metadata are shared platform
-concerns. Airo TV app code should consume these manifests and keep only product
+concerns. Midas Stream app code should consume these manifests and keep only product
 journeys, copy, navigation, and workflow decisions.
 
 ## Ownership
@@ -47,7 +47,7 @@ journeys, copy, navigation, and workflow decisions.
 
 Accepted manifests return only `accepted`.
 
-## Default Airo TV Manifests
+## Default Midas Stream Manifests
 
 The package ships defaults for:
 
@@ -61,9 +61,9 @@ Full TV and Standard TV map to `full_tv_stable`. Lite Receiver maps to
 `lite_receiver_stable`. Embedded Receiver maps to `receiver_stable` unless the
 path is vendor-specific or internal certification.
 
-## Airo TV Consumption Rule
+## Midas Stream Consumption Rule
 
-Airo TV must evaluate a store-listing strategy before enabling release
+Midas Stream must evaluate a store-listing strategy before enabling release
 automation, profile-specific package decisions, or store-readiness claims.
 Actual store-console submissions, listing copy, screenshots, rollout controls,
 and vendor account operations remain release/legal artifacts outside this

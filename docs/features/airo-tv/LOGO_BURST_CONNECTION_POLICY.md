@@ -5,10 +5,10 @@ Date: 2026-07-15
 
 ## Decision
 
-Do not add a custom HTTP/2 image fetch adapter for Airo TV logo loading in the
+Do not add a custom HTTP/2 image fetch adapter for Midas Stream logo loading in the
 current v2 slice.
 
-Airo TV channel cards render logos through Flutter image providers
+Midas Stream channel cards render logos through Flutter image providers
 (`AiroNetworkImage` / `NetworkImage`), not through the playlist `Dio` client.
 Adding an HTTP/2 adapter to the playlist fetch path would not change logo
 fetching behavior. Moving logo loading to a custom platform fetcher would be a
@@ -47,7 +47,7 @@ Focused local validation for this slice:
 
 - `packages/platform_channels/test/logo_burst_policy_test.dart`
 - analyzer for `platform_channels` policy/tests
-- analyzer for the Airo TV grid consumer
+- analyzer for the Midas Stream grid consumer
 
 ## Follow-Ups
 

@@ -1,23 +1,23 @@
 # Pixel 9 PiP Video-Only Layout Feature Packet
 
 **Base verified:** `origin/main` at `752e554c86575dc171cd491b3168bb16a92ba95e` on 2026-07-22
-**Layer:** Mixed — Airo TV mobile presentation, shared rail sizing, and its
-Airo TV Android manifest declaration
+**Layer:** Mixed — Midas Stream mobile presentation, shared rail sizing, and its
+Midas Stream Android manifest declaration
 
 ## Critical Agent Gate
 
-**Problem:** On a Pixel 9, Android PiP shrinks the complete Airo TV activity,
-including the Airo TV app bar and its actions, instead of presenting only the
+**Problem:** On a Pixel 9, Android PiP shrinks the complete Midas Stream activity,
+including the Midas Stream app bar and its actions, instead of presenting only the
 active video. The inline panel also spends vertical space on a redundant
 "Featured Player" label and helper subtitle. On the same device, a channel
 card can exceed its horizontal-rail viewport by one pixel, showing Flutter's
 yellow/black overflow warning.
-**User / actor:** A mobile Airo TV viewer who backgrounds a live channel into
+**User / actor:** A mobile Midas Stream viewer who backgrounds a live channel into
 PiP.
 **Framework or application layer:** Mixed. Android already reports PiP state
 through the existing `platform_player` contract; `feature_iptv` decides which
 surface is rendered for that state, `core_ui` derives the bounded rail height
-from its card geometry, and the Airo TV Android manifest declares that its
+from its card geometry, and the Midas Stream Android manifest declares that its
 activity can enter PiP on a phone.
 **Owning agent:** Flutter Architect.
 **Reviewing agents:** Platform Architect, Playback Architect, Chief QA Officer,
@@ -45,14 +45,14 @@ the value is `true`.
 **State changes:** Ephemeral screen-local presentation state only.
 **Errors:** Missing or unsupported platform callbacks retain the normal browse
 screen; playback remains unchanged.
-**Permissions:** No new runtime permission. The Airo TV activity declares its
+**Permissions:** No new runtime permission. The Midas Stream activity declares its
 existing PiP capability in the Android manifest.
 **Privacy/redaction:** No data is read, persisted, or transmitted.
 **Persistence:** None.
 **Versioning/migration:** None; the existing platform callback is unchanged.
 **Tests required:** Widget tests for removal of redundant labels and for the
 PiP callback hiding the app bar while retaining the player; a Pixel 9 build
-smoke test confirms the Airo TV package is installed and launched; a shared
+smoke test confirms the Midas Stream package is installed and launched; a shared
 rail test verifies a real channel card fits without a layout exception.
 
 ## Deterministic Use Cases
@@ -62,7 +62,7 @@ rail test verifies a real channel card fits without a layout exception.
 **Actor:** Pixel 9 viewer.
 **Preconditions:** A live channel is playing in the inline mobile player.
 **Trigger:** Android enters PiP after the viewer leaves the app.
-**Happy path:** The screen switches to the video-only player; the Airo TV app
+**Happy path:** The screen switches to the video-only player; the Midas Stream app
 bar and its actions are absent from the PiP window.
 **Alternate paths:** Exiting PiP restores the normal browse screen.
 **Failure paths:** A host without the PiP callback continues to show the
@@ -72,9 +72,9 @@ normal browse screen without interrupting playback.
 
 ### UC-002: Browse with a configured playlist
 
-**Actor:** Mobile Airo TV viewer.
+**Actor:** Mobile Midas Stream viewer.
 **Preconditions:** At least one channel is available.
-**Trigger:** Viewer opens Airo TV outside PiP.
+**Trigger:** Viewer opens Midas Stream outside PiP.
 **Happy path:** The inline player appears without the "Featured Player" title
 or "Play media from your saved playlist." helper text; the channel-selection
 guidance and playback controls remain available.
@@ -82,7 +82,7 @@ guidance and playback controls remain available.
 
 ### UC-003: Render a channel rail at Pixel 9 density
 
-**Actor:** Mobile Airo TV viewer.
+**Actor:** Mobile Midas Stream viewer.
 **Preconditions:** A browse rail contains a standard channel card with a name
 and subtitle.
 **Trigger:** The card is laid out inside its derived horizontal-rail viewport.

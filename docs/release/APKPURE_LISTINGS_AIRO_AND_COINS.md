@@ -32,7 +32,7 @@ music, games, and reading live in one open-source application, and your data
 stays on the device unless you explicitly load something remote.
 
 What is available today:
-- Airo TV: bring-your-own-playlist IPTV player with EPG and favourites
+- Midas Stream: bring-your-own-playlist IPTV player with EPG and favourites
 - Airo Coins: a secure, local money vault with biometric unlock
 - On-device AI chat with model management and agent skills (in development)
 
@@ -111,4 +111,4 @@ the life of the listing, or to a forced uninstall later. Worth settling first.
 Both need an IARC questionnaire. Truthful answers for this codebase:
 - No ads, no in-app purchases, no user-generated content sharing.
 - No data collected or transmitted by the app itself.
-- Airo TV plays user-supplied streams; content is not provided by Airo.
+- Midas Stream plays user-supplied streams; content is not provided by Airo.

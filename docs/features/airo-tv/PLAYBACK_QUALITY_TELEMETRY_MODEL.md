@@ -6,7 +6,7 @@ ATV-074 is a platform analytics contract. `packages/core_analytics` owns the
 registered playback-quality event schemas, field kinds, validation fixtures,
 privacy filtering, retention metadata, and public serialization.
 
-Airo TV playback code may emit these typed events at product workflow points,
+Midas Stream playback code may emit these typed events at product workflow points,
 but it must not invent ad hoc event names, raw timing fields, media identifiers,
 stream URLs, local paths, IP addresses, or provider payload fields.
 
@@ -61,9 +61,9 @@ The fixture public map exposes event names, owners, purposes, field names,
 expected validation codes, and pass/fail outcomes only. It does not expose raw
 field values.
 
-## Airo TV Consumption Rule
+## Midas Stream Consumption Rule
 
-Airo TV should convert playback runtime measurements into the platform bucket
+Midas Stream should convert playback runtime measurements into the platform bucket
 or category vocabulary before constructing `AiroAnalyticsEvent`. The platform
 registry remains the authority for whether an event can be retained locally or
 sent through a provider adapter.

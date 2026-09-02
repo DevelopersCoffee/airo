@@ -1,4 +1,4 @@
-# Airo TV v0.0.6 candidate
+# Midas Stream v0.0.6 candidate
 
 Status: **prepared, not released**
 Version/build: `0.0.6+8`

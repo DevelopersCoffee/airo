@@ -92,10 +92,10 @@ Full current roster with package ownership lives in
 [COUNCIL.md](./COUNCIL.md) — that file is the source of truth, this list is
 just an index:
 
-- Airo TV domain (Flutter, Rust, Playback, Media Intelligence, TV Experience,
+- Midas Stream domain (Flutter, Rust, Playback, Media Intelligence, TV Experience,
   Platform, Edge Architects; Chief Cloud Officer owns the auth/entitlements/
   session packages) — supersedes the former generic "Media Agent" / "Mobile
-  UI Agent" entries for all Airo TV work.
+  UI Agent" entries for all Midas Stream work.
 - Brain / AI Agent — no packages yet; owns product-layer Brain/chat journeys
   once built. `core_ai` stays with Framework Agent below (runtime/model-routing,
   not a product journey). `core_ai_delegation` and `core_delegation` were
@@ -150,7 +150,7 @@ Owns:
 
 ## Ownership Map
 
-Airo TV package ownership (Flutter, Rust, Playback, Media Intelligence, TV
+Midas Stream package ownership (Flutter, Rust, Playback, Media Intelligence, TV
 Experience, Platform, Edge) plus the Chief Cloud Officer's ownership of
 `core_cloud_orchestration`/`core_auth`/`core_entitlements`/`core_sessions`/
 `core_device_merge`, and the full decision matrix, now live in

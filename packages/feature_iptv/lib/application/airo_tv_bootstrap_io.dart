@@ -150,6 +150,13 @@ Future<void> refreshAiroTvConfiguredXmltvSource(
   await refreshService.refreshConfiguredSources();
 }
 
+/// Refreshes the system (product-default) programme guide for the
+/// countries actually present in the loaded playlist, never the whole
+/// catalog: after the playlist is parsed, every distinct [IPTVChannel.country]
+/// (derived from the playlist's own `tvg-id`, e.g. `MTV.in@SD` -> `IN`) is
+/// requested as its own `guide_$CC` shard. A playlist that declares no
+/// country on any channel falls back to [country] (the
+/// `IPTV_DATA_COUNTRY` dart-define, default `IN`) so a guide still loads.
 Future<bool> refreshAiroTvBundledSystemGuide(
   SharedPreferences prefs, {
   required MutableXmltvCompactEpgRepository repository,
@@ -165,6 +172,15 @@ Future<bool> refreshAiroTvBundledSystemGuide(
   final http = dio ?? Dio();
   final parserService = parser ?? M3UParserService(dio: http, prefs: prefs);
   if (parserService.getPlaylistUrl() != bundledPlaylistUrl) return false;
+  final channels = await parserService.fetchPlaylist();
+  final playlistCountries = {
+    for (final channel in channels)
+      if (channel.country != null && channel.country!.isNotEmpty)
+        channel.country!.toUpperCase(),
+  };
+  final countries = playlistCountries.isNotEmpty
+      ? playlistCountries
+      : {country.toUpperCase()};
   final refreshService = XmltvSourceRefreshService(
     dio: http,
     sourceStore: sourceStore ?? XmltvSourceStore(PreferencesStore(prefs)),
@@ -172,9 +188,9 @@ Future<bool> refreshAiroTvBundledSystemGuide(
     downloadDirectoryProvider:
         downloadDirectoryProvider ?? getTemporaryDirectory,
   );
-  await refreshService.refreshSystemSourceFromManifest(
+  await refreshService.refreshSystemGuidesForCountries(
     manifestUrl: manifestUrl,
-    country: country,
+    countries: countries,
   );
   return true;
 }
@@ -243,6 +259,7 @@ Future<CompactEpgSlice> _buildAiroTvCompactEpgSnapshot({
 List<String> _xmltvGuideAliasesFor(IPTVChannel channel) {
   final aliases = <String>{
     channel.id,
+    ...channel.epgLookupIds,
     if (channel.tvgId != null) channel.tvgId.toString(),
     if (channel.tvgName != null) channel.tvgName!,
     channel.name,

@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-040.
 
 ## Ownership
 
-Universal playback session state is platform/framework behavior. Airo TV,
+Universal playback session state is platform/framework behavior. Midas Stream,
 companion controllers, command routing, cloud orchestration, backend storage
 adapters, recovery flows, route health, and QA automation consume the contract
 to reconcile controller intent with receiver-confirmed playback reality.

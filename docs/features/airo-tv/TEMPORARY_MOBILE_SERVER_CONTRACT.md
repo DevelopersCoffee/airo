@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-023 and ATV-055.
 
 ## Ownership
 
-The secure temporary mobile server boundary is platform/framework code. Airo TV
+The secure temporary mobile server boundary is platform/framework code. Midas Stream
 uses it to decide whether a phone-local media item may be served to a trusted
 receiver, but the app does not own the lifecycle rules.
 

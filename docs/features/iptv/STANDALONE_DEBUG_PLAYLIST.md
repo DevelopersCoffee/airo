@@ -1,6 +1,6 @@
-# Airo TV debug playlist
+# Midas Stream debug playlist
 
-The Airo TV product uses `app/lib/main_tv.dart`.
+The Midas Stream product uses `app/lib/main_tv.dart`.
 
 Debug builds can seed a default playlist URL by passing
 `DEBUG_IPTV_PLAYLIST_URL`:

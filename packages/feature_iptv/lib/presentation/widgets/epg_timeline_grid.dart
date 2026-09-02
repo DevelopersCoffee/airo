@@ -29,11 +29,16 @@ class EpgTimelineGrid extends ConsumerStatefulWidget {
     super.key,
     this.onChannelSelect,
     this.onProgramSelect,
+    this.onMatchEpg,
   });
 
   final void Function(IPTVChannel channel)? onChannelSelect;
   final void Function(IPTVChannel channel, CompactEpgProgram program)?
   onProgramSelect;
+
+  /// Opens the Match EPG sheet for a long-pressed / menu-key'd channel
+  /// label, so BYOC feeds with numeric ids can be attached manually.
+  final void Function(IPTVChannel channel)? onMatchEpg;
 
   static const double pxPerMinute = 4.0;
   static const double rowHeight = 88.0;
@@ -162,6 +167,9 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
                       onProgramFocus: (offset) => _scrollTimelineTo(offset),
                       onChannelSelect: () =>
                           widget.onChannelSelect?.call(channel),
+                      onMatchEpg: widget.onMatchEpg == null
+                          ? null
+                          : () => widget.onMatchEpg!(channel),
                       onProgramSelect: (program) {
                         final callback = widget.onProgramSelect;
                         if (callback != null) {
@@ -236,6 +244,7 @@ class _EpgChannelRow extends StatelessWidget {
     required this.dimensions,
     required this.onProgramFocus,
     required this.onChannelSelect,
+    this.onMatchEpg,
     required this.onProgramSelect,
   });
 
@@ -247,6 +256,7 @@ class _EpgChannelRow extends StatelessWidget {
   final TvUiDimensions dimensions;
   final void Function(double offset) onProgramFocus;
   final VoidCallback onChannelSelect;
+  final VoidCallback? onMatchEpg;
   final void Function(CompactEpgProgram program) onProgramSelect;
 
   @override
@@ -265,7 +275,10 @@ class _EpgChannelRow extends StatelessWidget {
             // EPG data being present.
             child: TvFocusable(
               onSelect: onChannelSelect,
-              semanticLabel: channel.name,
+              onSecondaryAction: onMatchEpg,
+              semanticLabel: onMatchEpg == null
+                  ? channel.name
+                  : 'Match EPG for ${channel.name}',
               semanticHint: 'Press OK to play this channel',
               semanticButton: true,
               child: Padding(

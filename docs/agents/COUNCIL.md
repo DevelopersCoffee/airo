@@ -85,7 +85,7 @@ implementation detail — that's the domain agent's job.
 
 ## Sub-App Domain Agents
 
-### Airo TV domain
+### Midas Stream domain
 
 | Role | Owns (real packages) | Approves | Rejects |
 | --- | --- | --- | --- |

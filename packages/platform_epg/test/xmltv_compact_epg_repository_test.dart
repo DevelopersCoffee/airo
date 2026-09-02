@@ -48,6 +48,26 @@ void main() {
       expect(repository.stats.invalidTimestampCount, 0);
     });
 
+    test('looks up programmes case-insensitively', () async {
+      final repository = XmltvCompactEpgRepository.fromXmltv(
+        content: '''
+<tv>
+  <programme channel="news.one" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Morning News</title>
+  </programme>
+</tv>
+''',
+        ingestedAt: ingestedAt,
+        channelNamesById: const {'news.one': 'News One'},
+      );
+
+      final slice = await repository.loadCurrentNext(
+        channelIds: const ['NEWS.ONE'],
+        now: DateTime.utc(2026, 7, 15, 9, 30),
+      );
+      expect(slice.entryForChannel('NEWS.ONE')?.current?.title, 'Morning News');
+    });
+
     test('normalizes XMLTV timezone offsets to UTC', () async {
       final repository = XmltvCompactEpgRepository.fromXmltv(
         content: '''

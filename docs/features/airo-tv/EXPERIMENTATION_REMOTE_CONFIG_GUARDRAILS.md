@@ -2,13 +2,13 @@
 
 Issue: ATV-078
 Package: `core_experimentation`
-Layer: Platform framework, consumed by Airo TV app and release code
+Layer: Platform framework, consumed by Midas Stream app and release code
 
 ## Purpose
 
-Experimentation and remote-config guardrails define how Airo TV can assign
+Experimentation and remote-config guardrails define how Midas Stream can assign
 anonymous subjects to variants, evaluate remote flags, apply kill switches, and
-block unsafe overrides without coupling feature code to a provider SDK. Airo TV
+block unsafe overrides without coupling feature code to a provider SDK. Midas Stream
 app code consumes evaluated decisions; it must not let remote config bypass
 privacy, security, entitlement, release, or build-composition boundaries.
 
@@ -22,7 +22,7 @@ privacy, security, entitlement, release, or build-composition boundaries.
   eligibility.
 - QA owns deterministic assignment, kill-switch, eligibility, unsafe override,
   and public-map tests.
-- Airo TV app code owns runtime wiring, settings/education UI, and
+- Midas Stream app code owns runtime wiring, settings/education UI, and
   product-specific decision consumption.
 
 ## Platform Contract
@@ -92,5 +92,5 @@ and guardrail codes.
 ## Deferred Work
 
 Provider SDK adapters, server-side assignment persistence, admin tooling,
-dashboard alerts, runtime Airo TV wiring, and user-facing settings/education UI
+dashboard alerts, runtime Midas Stream wiring, and user-facing settings/education UI
 remain separate issues.

@@ -1,14 +1,14 @@
-# Airo TV Device Guide
+# Midas Stream Device Guide
 
 Last reviewed: 2026-07-16
 
-Airo TV is a bring-your-own-content IPTV and personal media player. It does not
+Midas Stream is a bring-your-own-content IPTV and personal media player. It does not
 sell, bundle, recommend, or unlock channels. Use only playlist URLs, EPG data,
 and media sources that you are authorized to access.
 
 This guide mirrors the shape of a public IPTV tutorial hub: setup by device,
 common tutorials, troubleshooting, and a clear feature-status table for current
-Airo TV v2 work.
+Midas Stream v2 work.
 
 ## Supported Device Paths
 
@@ -18,13 +18,13 @@ Airo TV v2 work.
 | Fire TV / Fire TV Stick | Install the compatible Android TV APK path when available for testing. Use the Fire TV remote like a TV D-pad remote. | Compatible/qualification target |
 | Android phone / tablet | Use for mobile playback and validation where a mobile build is available. TV pairing, web-editor style organization, and full companion sync are not complete v2 features yet. | Partial |
 | Chromecast / Google Cast | Cast playback from a supported sender build to a discovered receiver on the same network. VPNs and guest Wi-Fi can block discovery. | Supported by existing Cast work; device QA still applies |
-| Desktop / macOS builds | Use only where an Airo TV desktop artifact is explicitly published for the release line. Feature behavior can differ from TV builds. | Release-dependent |
+| Desktop / macOS builds | Use only where an Midas Stream desktop artifact is explicitly published for the release line. Feature behavior can differ from TV builds. | Release-dependent |
 | Legacy / low-memory TV boxes | Prefer search, recent channels, and compact guide views. Avoid very large playlists until the device passes the v2 qualification profile. | Qualification target |
 
 ## Quick Start: Android TV and Google TV
 
-1. Install the Airo TV build from the approved release channel for the device.
-2. Open Airo TV and confirm that no channels appear until you add your own
+1. Install the Midas Stream build from the approved release channel for the device.
+2. Open Midas Stream and confirm that no channels appear until you add your own
    authorized source.
 3. Add an M3U playlist URL or local test playlist through the available source
    entry flow.
@@ -38,7 +38,7 @@ Airo TV v2 work.
 
 ## Quick Start: Fire TV
 
-1. Install the Fire TV-compatible Airo TV APK only from a trusted release source.
+1. Install the Fire TV-compatible Midas Stream APK only from a trusted release source.
 2. If sideloading is required for testing, enable installation only for the
    installer app you are using, then turn it off again after installation.
 3. Add your own authorized M3U source.
@@ -63,7 +63,7 @@ organization are planned work, not guaranteed current v2 behavior.
 ## Quick Start: Chromecast / Google Cast
 
 1. Put the phone/tablet sender and receiver on the same network.
-2. Start Airo TV from the sender build that includes Cast controls.
+2. Start Midas Stream from the sender build that includes Cast controls.
 3. Open the Cast picker and choose the receiver.
 4. Start a playable stream from an authorized playlist.
 5. If the receiver does not appear, disable guest isolation, check VPN routing,
@@ -73,8 +73,8 @@ organization are planned work, not guaranteed current v2 behavior.
 
 ### 1. Add IPTV Access
 
-Airo TV supports bring-your-own playlists. The expected user input is an
-authorized M3U source. Airo TV should never imply that it provides channels,
+Midas Stream supports bring-your-own playlists. The expected user input is an
+authorized M3U source. Midas Stream should never imply that it provides channels,
 subscriptions, or credentials.
 
 If channels do not appear:
@@ -182,7 +182,7 @@ Tracked work:
 
 ### 9. Network Protection and VPN Behavior
 
-Airo TV does not bundle a VPN. If a user chooses to use a VPN, it can affect
+Midas Stream does not bundle a VPN. If a user chooses to use a VPN, it can affect
 playlist loading, playback, and local device discovery for Cast.
 
 Planned v2 work is an opt-in network-protection mode that can explain protected,
@@ -230,8 +230,8 @@ Tracked work:
 ## Release and Milestone Notes
 
 The tutorial-parity items above are assigned to the active v2 product-hardening
-milestone, `v2.0.0.1 - Airo TV Platform Hardening`, because they are user-facing
-Airo TV capability gaps. Performance-only work remains in the separate Airo TV
+milestone, `v2.0.0.1 - Midas Stream Platform Hardening`, because they are user-facing
+Midas Stream capability gaps. Performance-only work remains in the separate Midas Stream
 v2 performance milestone.
 
 Public user guides must be updated only after each feature reaches release

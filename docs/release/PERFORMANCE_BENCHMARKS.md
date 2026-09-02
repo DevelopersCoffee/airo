@@ -54,7 +54,7 @@ make benchmark-gemini-warmup
 make test-integration
 ```
 
-`melos run bench` is the v2 Airo TV host benchmark smoke. It generates a
+`melos run bench` is the v2 Midas Stream host benchmark smoke. It generates a
 fixture-backed M3U workload from the vendored public `iptv-org` snapshot, runs
 parser/search workloads for at least five iterations, evaluates the median
 metrics against the platform benchmark budget, and writes both machine-readable

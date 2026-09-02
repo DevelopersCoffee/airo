@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-024.
 
 ## Ownership
 
-Media capability detection is platform/framework behavior. Airo TV consumes the
+Media capability detection is platform/framework behavior. Midas Stream consumes the
 result to select routes, choose fallback media, and present product-specific UX,
 but it must not hard-code codec or decoder assumptions in app screens.
 
