@@ -56,6 +56,7 @@ void main() {
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text('Airo Mind portability'), findsOneWidget);
     expect(find.text('IPTV'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Choose your visual theme'), findsOneWidget);
@@ -105,6 +106,7 @@ void main() {
     // `publishedSiblingAppsFor` tests in core_product_shell.
     expect(find.text('More Airo Apps'), findsNothing);
     expect(find.text('Airo TV'), findsNothing);
+    expect(find.text('Airo Mind portability'), findsNothing);
   });
 
   testWidgets('country settings picker updates the global country filter', (
