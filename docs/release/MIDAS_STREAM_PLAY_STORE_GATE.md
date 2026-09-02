@@ -34,6 +34,7 @@ not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
 | Pubspec | `app/pubspec_tv.yaml` |
 | Category | Video Players & Editors |
 | Content model | Media player for user-supplied M3U/M3U8 URLs only |
+| First Play dart-defines | **Unset.** Do not pass `IPTV_DATA_PLAYLIST_URL` or `IPTV_DATA_MANIFEST_URL`. Privacy currently names only user-configured XMLTV. |
 | Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
 
