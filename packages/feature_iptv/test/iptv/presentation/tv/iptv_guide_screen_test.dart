@@ -256,6 +256,36 @@ void main() {
   });
 
   testWidgets(
+    'long-pressing a TV channel label opens Match EPG for that channel',
+    (tester) async {
+      await pumpScreen(tester, overrideFormFactor: AiroFormFactor.tv);
+
+      await tester.longPress(find.text('City News Live'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Match "City News Live" to EPG channel'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'long-pressing a phone channel label opens Match EPG for that channel',
+    (tester) async {
+      await pumpScreen(tester);
+
+      await tester.longPress(find.text('Stadium Sports'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Match "Stadium Sports" to EPG channel'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'shows empty state when there are no channels',
     (tester) async {
       await pumpScreen(tester, visibleChannels: const []);

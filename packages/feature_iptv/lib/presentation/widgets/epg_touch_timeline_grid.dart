@@ -21,11 +21,16 @@ class EpgTouchTimelineGrid extends ConsumerStatefulWidget {
     super.key,
     this.onChannelSelect,
     this.onReminderToggle,
+    this.onMatchEpg,
   });
 
   final void Function(IPTVChannel channel)? onChannelSelect;
   final void Function(IPTVChannel channel, CompactEpgProgram program)?
   onReminderToggle;
+
+  /// Opens the Match EPG sheet for a long-pressed channel label, so BYOC
+  /// feeds with numeric ids can be attached manually.
+  final void Function(IPTVChannel channel)? onMatchEpg;
 
   static const double pxPerMinute = 6.0;
   static const double rowHeight = 64.0;
@@ -228,6 +233,7 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
                     remindersAvailable: remindersAvailable,
                     onChannelSelect: widget.onChannelSelect,
                     onReminderToggle: widget.onReminderToggle,
+                    onMatchEpg: widget.onMatchEpg,
                   );
                 },
               ),
@@ -333,6 +339,7 @@ class _TouchChannelRow extends StatefulWidget {
     required this.remindersAvailable,
     required this.onChannelSelect,
     required this.onReminderToggle,
+    this.onMatchEpg,
   });
 
   final IPTVChannel channel;
@@ -349,6 +356,7 @@ class _TouchChannelRow extends StatefulWidget {
   final void Function(IPTVChannel channel)? onChannelSelect;
   final void Function(IPTVChannel channel, CompactEpgProgram program)?
   onReminderToggle;
+  final void Function(IPTVChannel channel)? onMatchEpg;
 
   @override
   State<_TouchChannelRow> createState() => _TouchChannelRowState();
@@ -397,17 +405,28 @@ class _TouchChannelRowState extends State<_TouchChannelRow> {
         children: [
           SizedBox(
             width: EpgTouchTimelineGrid.channelLabelWidth,
-            child: InkWell(
-              onTap: () => widget.onChannelSelect?.call(widget.channel),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    widget.channel.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+            child: Semantics(
+              label: widget.onMatchEpg == null
+                  ? widget.channel.name
+                  : 'Match EPG for ${widget.channel.name}',
+              button: true,
+              child: InkWell(
+                onTap: () => widget.onChannelSelect?.call(widget.channel),
+                onLongPress: widget.onMatchEpg == null
+                    ? null
+                    : () => widget.onMatchEpg!(widget.channel),
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ExcludeSemantics(
+                      child: Text(
+                        widget.channel.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
                   ),
                 ),
               ),

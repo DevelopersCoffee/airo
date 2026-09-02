@@ -88,6 +88,86 @@ void main() {
     );
 
     test(
+      'override remaps numeric EPG id onto playlist channel id for '
+      'click-through',
+      () async {
+        // IPTVChannel id is the Live/player key; EPG id 543480 must not
+        // leak into the window.
+        const mtvChannel = IPTVChannel(
+          id: 'mtv-hash',
+          name: 'MTV',
+          streamUrl: 'https://example.com/mtv.m3u8',
+          xmltvId: 'MTV.in@SD',
+        );
+        final repo = repoWith([
+          CompactEpgEntry(
+            channelId: '543480',
+            channelName: 'MTV',
+            current: program('p1', 'Hustle', 11, 13),
+          ),
+        ]);
+
+        final window = await queryGuideWindowWithOverrides(
+          channels: const [mtvChannel],
+          overrides: const {'mtv-hash': '543480'},
+          hiddenGroupIds: const {},
+          repository: repo,
+          windowStart: now.subtract(const Duration(hours: 1)),
+          windowEnd: now.add(const Duration(hours: 2)),
+          now: now,
+        );
+
+        final entry = window.entryForChannel('mtv-hash');
+        expect(entry, isNotNull);
+        expect(entry!.programs, hasLength(1));
+        expect(entry.programs.single.title, 'Hustle');
+        expect(window.entryForChannel('543480'), isNull);
+      },
+    );
+
+    test(
+      'first playlist channel claiming a shared xmltv-id wins, both rows '
+      'still exist',
+      () async {
+        const sdChannel = IPTVChannel(
+          id: 'mtv-sd-hash',
+          name: 'MTV SD',
+          streamUrl: 'https://example.com/mtv-sd.m3u8',
+          xmltvId: 'MTV.in@SD',
+        );
+        const hdChannel = IPTVChannel(
+          id: 'mtv-hd-hash',
+          name: 'MTV HD',
+          streamUrl: 'https://example.com/mtv-hd.m3u8',
+          xmltvId: 'MTV.in@HD',
+        );
+        final repo = repoWith([
+          CompactEpgEntry(
+            channelId: 'MTV.in',
+            channelName: 'MTV',
+            current: program('p1', 'Hustle', 11, 13),
+          ),
+        ]);
+
+        final window = await queryGuideWindowWithOverrides(
+          channels: const [sdChannel, hdChannel],
+          overrides: const {},
+          hiddenGroupIds: const {},
+          repository: repo,
+          windowStart: now.subtract(const Duration(hours: 1)),
+          windowEnd: now.add(const Duration(hours: 2)),
+          now: now,
+        );
+
+        // Both playlist rows exist for label taps, but only the first to
+        // claim the shared `MTV.in` alias (after `@quality` is stripped)
+        // gets that guide's programmes via putIfAbsent.
+        expect(window.entryForChannel('mtv-sd-hash')?.programs, isNotEmpty);
+        expect(window.entryForChannel('mtv-hd-hash'), isNull);
+      },
+    );
+
+    test(
       'excludes channels in hidden groups from the query (CV-021)',
       () async {
         var queriedIds = <String>[];

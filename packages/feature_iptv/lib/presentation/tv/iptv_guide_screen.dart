@@ -12,6 +12,7 @@ import '../../application/providers/guide_providers.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../widgets/epg_touch_timeline_grid.dart';
 import '../widgets/epg_timeline_grid.dart';
+import '../widgets/epg_match_override_sheet.dart';
 import '../widgets/richer_context_prototype.dart';
 import '../widgets/channel_load_error_view.dart';
 
@@ -97,12 +98,18 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
                               ),
                             );
                           },
+                          onMatchEpg: (channel) => unawaited(
+                            showEpgMatchOverrideSheet(context, channel),
+                          ),
                         )
                       : EpgTouchTimelineGrid(
                           onChannelSelect: selectChannel,
                           onReminderToggle: (channel, program) {
                             unawaited(_toggleReminder(channel, program));
                           },
+                          onMatchEpg: (channel) => unawaited(
+                            showEpgMatchOverrideSheet(context, channel),
+                          ),
                         ),
                 ),
               ],
