@@ -1,4 +1,4 @@
-# Airo TV v0.0.6-rc.1 local-file Cast qualification
+# Midas Stream v0.0.6-rc.1 local-file Cast qualification
 
 Status: **COMPLETE FOR PARKED SCOPE — BRAVIA playback controls deferred by
 release-owner direction on 2026-08-02**
@@ -166,7 +166,7 @@ as passing and must be completed in a later receiver qualification.
 - Physical Fire TV Stick model `AFTSSS`, Android 9 / API 28,
   `armeabi-v7a`, at `192.168.1.9:5555`.
 - Installed the fresh 32-bit candidate and launched its ten-foot shell.
-- Installed package is Airo TV only (`io.airo.app.tv`, version code 1006,
+- Installed package is Midas Stream only (`io.airo.app.tv`, version code 1006,
   signing-certificate short hash `31730cfb`); Airo Super App was not installed
   or exercised on Fire TV.
 - `firetv/ten-foot.png` and `firetv/ten-foot.xml` capture the sidebar and

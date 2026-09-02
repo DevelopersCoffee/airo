@@ -65,7 +65,7 @@ Modify the non-production branch of the existing step (currently starting around
                 -keyalg RSA \
                 -keysize 2048 \
                 -validity 10000 \
-                -dname "CN=Airo TV CI Validation,O=DevelopersCoffee,C=US"
+                -dname "CN=Midas Stream CI Validation,O=DevelopersCoffee,C=US"
               {
                 echo "storeFile=ci-validation.keystore"
                 echo "storePassword=ci-validation-password"
@@ -133,7 +133,7 @@ Expected: no diff — same certificate fingerprint (`SHA256` line) both runs.
 ```bash
 gh issue create --repo DevelopersCoffee/airo \
   --title "CI: airo-mobile-tablet-release.yml has the same ephemeral-signing-key bug as airo-tv-release.yml" \
-  --body "Same root cause fixed for Airo TV in <PR from Task 1's step below>: keytool -genkeypair regenerates a random key every run when production_signing=false, breaking RC-to-RC mobile/tablet updates the same way. Apply the same actions/cache fix to airo-mobile-tablet-release.yml:340-380 (adjust line numbers to that file)." \
+  --body "Same root cause fixed for Midas Stream in <PR from Task 1's step below>: keytool -genkeypair regenerates a random key every run when production_signing=false, breaking RC-to-RC mobile/tablet updates the same way. Apply the same actions/cache fix to airo-mobile-tablet-release.yml:340-380 (adjust line numbers to that file)." \
   --label bug
 ```
 

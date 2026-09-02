@@ -2,7 +2,7 @@
 
 Canonical listing metadata for the first Google Play Android TV listing of
 Midas Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
-[Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
+[Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
 cloud playlists, bundled channels, or a public IPTV catalogue.
 
 See [Midas Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) for the
@@ -78,7 +78,7 @@ Full description length: 1,122/4,000 characters.
 | Demo video | Optional YouTube URL | Recommended after screenshots. |
 
 Screenshot capture guidance is maintained in
-[Airo TV Release Media Assets](./AIRO_TV_MEDIA_ASSETS.md).
+[Midas Stream Release Media Assets](./AIRO_TV_MEDIA_ASSETS.md).
 
 ## Apple App Store Draft
 
@@ -88,7 +88,7 @@ until maintainers explicitly add iOS or tvOS to the release scope.
 
 | Field | Draft metadata |
 | --- | --- |
-| App name | `Airo TV - IPTV Player` |
+| App name | `Midas Stream - IPTV Player` |
 | Subtitle | `IPTV playlist player` |
 | Category | Entertainment |
 | Keywords | `iptv,m3u,m3u8,streaming,live tv,playlist,chromecast,android tv,player,channels` |
@@ -100,11 +100,11 @@ Keyword length: 78/100 characters.
 ### App Store Description Draft
 
 ```text
-Airo TV is an IPTV playlist player for users who bring their own authorized
+Midas Stream is an IPTV playlist player for users who bring their own authorized
 content sources. Import an M3U or M3U8 playlist URL, search channels by name,
 and watch supported live streams through a clean interface.
 
-Airo TV does not provide channels, playlists, subscriptions, or IPTV services.
+Midas Stream does not provide channels, playlists, subscriptions, or IPTV services.
 Users are responsible for loading only legal content sources that they have the
 right to access.
 ```

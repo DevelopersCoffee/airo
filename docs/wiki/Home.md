@@ -3,7 +3,7 @@
 Welcome to the public user guide for Airo, a modular, local-first platform for
 focused experiences.
 
-Airo TV is the available focused product. Other module areas have their own
+Midas Stream is the available focused product. Other module areas have their own
 public claim states: Airo Coins is **in development**, while additional AI,
 productivity, media, and entertainment directions remain subject to release
 evidence. The wiki must not be read as proof that code present in the

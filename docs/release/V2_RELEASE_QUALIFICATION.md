@@ -60,9 +60,9 @@ Store-only AAB artifacts require build integrity, checksum, and upload-result
 evidence before production store submission. Play upload automation is tracked
 separately in #681.
 
-### Airo TV Native Media Contract
+### Midas Stream Native Media Contract
 
-The Airo TV Android profile is video_player-only. Its TV-specific pubspec
+The Midas Stream Android profile is video_player-only. Its TV-specific pubspec
 replaces the transitive `media_kit_libs_android_video` native bundle with a
 no-plugin stub, while Gradle excludes the corresponding mpv/helper libraries.
 Release qualification runs `scripts/check-android-tv-release.sh` against the
@@ -76,9 +76,9 @@ Run the deterministic contract fixtures locally with:
 scripts/test-check-android-tv-native-media.sh
 ```
 
-### Airo TV Viewport Evidence
+### Midas Stream Viewport Evidence
 
-The Airo TV IPTV browser release audit additionally requires responsive
+The Midas Stream IPTV browser release audit additionally requires responsive
 viewport evidence for:
 
 - `1920x1080` Android TV 1080p;
@@ -89,7 +89,7 @@ viewport evidence for:
 Capture this evidence through `app/lib/main_qualification.dart` and the
 reusable `platform_device_qualification` simulated-device profiles. Attach the
 screenshots or browser validation notes to the release qualification evidence
-before closing the Airo TV UI audit.
+before closing the Midas Stream UI audit.
 
 When browser-only evidence is enough for a pre-device release audit slice, run:
 

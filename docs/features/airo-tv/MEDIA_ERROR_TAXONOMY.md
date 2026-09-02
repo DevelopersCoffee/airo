@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-030.
 
 ## Ownership
 
-Shared media error classification is platform behavior. Airo TV can map stable
+Shared media error classification is platform behavior. Midas Stream can map stable
 message keys to localized copy later, but category, severity, retryability,
 safe context references, diagnostic handles, and redaction rules belong in
 `packages/platform_media`.

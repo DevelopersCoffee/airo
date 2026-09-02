@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-038.
 
 ## Ownership
 
-Device identity and registration are platform/framework behavior. Airo TV,
+Device identity and registration are platform/framework behavior. Midas Stream,
 companion apps, local discovery, cloud orchestration, presence, command routing,
 and QA automation consume the contract to reason about registered devices,
 revocation, duplicate handling, reset state, scoped grants, and key lifecycle.

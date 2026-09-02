@@ -1,4 +1,4 @@
-# Airo TV Local Sync And Handoff Contract
+# Midas Stream Local Sync And Handoff Contract
 
 This contract defines the v2.0.0.1 platform boundary for local playback-session
 sync, receiver-authoritative revisions, deterministic conflicts, and two-phase
@@ -59,7 +59,7 @@ continue until the destination is ready and commit is accepted.
 
 ## Consumer Rule
 
-Airo TV, companion apps, command routing, playback engines, local LAN adapters,
+Midas Stream, companion apps, command routing, playback engines, local LAN adapters,
 and future cloud orchestration must consume `core_sessions`. Product code may
 render progress, conflicts, and recovery copy, but session authority, revision
 merge behavior, sync validation, and handoff preflight belong to this platform
@@ -68,4 +68,4 @@ contract.
 ## Out Of Scope
 
 This issue does not implement WebSocket transport, cloud orchestration,
-encrypted persistence, playback execution, device picker UI, or Airo TV screens.
+encrypted persistence, playback execution, device picker UI, or Midas Stream screens.

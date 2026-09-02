@@ -1,8 +1,8 @@
-# Airo TV / Midas Stream Architecture
+# Midas Stream / Midas Stream Architecture
 
 The Android TV player is the TV variant of Airo. The first Google Play listing
 ships it as **Midas Stream** with package name `com.developerscoffee.tv.midas`.
-GitHub v0.0.6 artifacts were published as Airo TV (`io.airo.app.tv`).
+GitHub v0.0.6 artifacts were published as Midas Stream (`io.airo.app.tv`).
 
 ## High-Level Flow
 
@@ -33,8 +33,8 @@ User-supplied Playlist Provider or Cast Receiver
 
 ## Release Boundary
 
-Airo TV is released from `v2`. If work is not explicitly for v2, it should not be included in the Airo TV release branch.
+Midas Stream is released from `v2`. If work is not explicitly for v2, it should not be included in the Midas Stream release branch.
 
 ## Data Boundary
 
-Airo TV does not host IPTV content. Playlist URLs and playback targets originate from the user or from playlist files supplied by the user.
+Midas Stream does not host IPTV content. Playlist URLs and playback targets originate from the user or from playlist files supplied by the user.

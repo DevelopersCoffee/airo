@@ -1,4 +1,4 @@
-# Airo TV Volume 3 Gap Analysis
+# Midas Stream Volume 3 Gap Analysis
 
 **Source:** `/Users/udaychauhan/.codex/attachments/a839c12f-79ec-42ca-a6de-bd73735f03f1/pasted-text.txt`  
 **Date:** 2026-07-13  
@@ -7,7 +7,7 @@ Flutter engineering, shared playback, sync, and adaptive UI.
 
 ## Executive Summary
 
-Volume 3 moves Airo TV from a TV app into a connected media platform. The
+Volume 3 moves Midas Stream from a TV app into a connected media platform. The
 current repository has useful pieces for that direction: a modular Flutter
 workspace, Android TV entrypoint, Riverpod feature modules, IPTV playback,
 basic TV focus widgets, local AI packages, and some sync metrics. It does not
@@ -218,7 +218,7 @@ state sync, conflict detection, retries, timestamps, and logical versioning.
 Current state:
 - `app/lib/core/sync/sync_metrics.dart` tracks generic sync metrics.
 - `core_data` has offline repository/outbox concepts.
-- There is no Airo TV state schema for profiles, favorites, watch history,
+- There is no Midas Stream state schema for profiles, favorites, watch history,
   playlist metadata, EPG mappings, parental rules, device preferences, AI
   preferences, or trusted devices.
 

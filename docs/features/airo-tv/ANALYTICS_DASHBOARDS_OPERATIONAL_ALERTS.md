@@ -2,14 +2,14 @@
 
 Issue: ATV-080
 Package: `core_analytics`
-Layer: Platform framework, consumed by Airo TV reporting, SRE, and future
+Layer: Platform framework, consumed by Midas Stream reporting, SRE, and future
 provider adapters
 
 ## Purpose
 
 Analytics dashboard and alert contracts define the stable metric surfaces,
 required metrics, alert rules, thresholds, severity, evaluation windows, and
-runbook ids Airo TV uses for release and operational visibility. Product code
+runbook ids Midas Stream uses for release and operational visibility. Product code
 submits typed events and consumes evaluated reporting specs; it must not
 hard-code vendor dashboard definitions or alert thresholds in app screens.
 
@@ -39,7 +39,7 @@ hard-code vendor dashboard definitions or alert thresholds in app screens.
 purpose, retention class, surface, dashboard requirement, aggregate-only flag,
 and whether the metric may drive alerts.
 
-The standard Airo TV catalog includes required metrics for weekly active
+The standard Midas Stream catalog includes required metrics for weekly active
 receivers, playback startup latency, legacy decoder fallback rate, pairing
 success rate, subscription conversion rate, crash rate by profile, provider
 outage rate, and privacy deletion latency.
@@ -94,6 +94,6 @@ history, crash stacks, or diagnostics dumps.
 ## Deferred Work
 
 Vendor dashboard provisioning, alert delivery integrations, production SLO
-tuning, Airo TV reporting UI, and executive report rendering remain separate
+tuning, Midas Stream reporting UI, and executive report rendering remain separate
 issues. This issue defines the reusable platform contract those features must
 consume.

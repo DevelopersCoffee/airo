@@ -1,13 +1,13 @@
-# Airo TV Delegation Task Framework
+# Midas Stream Delegation Task Framework
 
 ATV-063 defines the reusable platform framework for delegating work from
-constrained Airo TV profiles to trusted helper nodes.
+constrained Midas Stream profiles to trusted helper nodes.
 
 The contract lives in `packages/core_delegation` because delegation lifecycle,
 deduplication, timeout, encrypted-payload checks, cancellation, result
 versioning, and fallback behavior are shared by search, EPG, metadata, artwork,
 source-resolution, stream-health, subtitle, playback, and transcoding flows.
-Airo TV app code should consume the framework decision and keep only
+Midas Stream app code should consume the framework decision and keep only
 user-facing workflow and copy.
 
 ## Ownership
@@ -20,7 +20,7 @@ user-facing workflow and copy.
 - Security owns encrypted-payload requirements and redacted public maps.
 - QA owns failure fixtures for timeout, cancellation, duplicate suppression,
   candidate rejection, fallback, and unavailable states.
-- Airo TV app code consumes dispatch decisions and fallback state; it must not
+- Midas Stream app code consumes dispatch decisions and fallback state; it must not
   reimplement delegation lifecycle checks inside screens.
 
 ## Task Request
@@ -88,11 +88,11 @@ state is needed.
 
 String output and public maps do not include raw result references.
 
-## Airo TV Consumption Rule
+## Midas Stream Consumption Rule
 
-Airo TV should run delegation policy before it stops local playback, hides local
+Midas Stream should run delegation policy before it stops local playback, hides local
 UI, shows remote search/guide data, or claims helper-node support. If policy
-returns fallback, Airo TV should show the user-visible unavailable state or use a
+returns fallback, Midas Stream should show the user-visible unavailable state or use a
 compact local fallback rather than attempting direct app-layer delegation.
 
 ## Public Serialization

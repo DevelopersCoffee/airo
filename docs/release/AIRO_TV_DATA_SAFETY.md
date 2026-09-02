@@ -1,6 +1,6 @@
-# Airo TV Data Safety And App Privacy Declarations
+# Midas Stream Data Safety And App Privacy Declarations
 
-Console-ready privacy declaration worksheet for the Airo TV v2 release profile.
+Console-ready privacy declaration worksheet for the Midas Stream v2 release profile.
 Use this when completing Google Play Data Safety and any future Apple App
 Privacy labels. Final submission still requires a maintainer with store-console
 access.
@@ -19,7 +19,7 @@ access.
 This declaration is based on the current v2 TV release behavior:
 
 - User-provided playlist URLs and app preferences are stored locally.
-- Airo TV does not provide channels, playlists, streams, or subscriptions.
+- Midas Stream does not provide channels, playlists, streams, or subscriptions.
 - App-owned Firebase Analytics and Firebase Crashlytics SDKs are not included
   in `app/pubspec_tv.yaml`.
 - Google Cast analytics logging is explicitly disabled during Cast

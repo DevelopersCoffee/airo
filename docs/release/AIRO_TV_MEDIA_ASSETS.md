@@ -1,6 +1,6 @@
-# Airo TV Release Media Assets
+# Midas Stream Release Media Assets
 
-Every Airo TV release should include screenshots and a short demo video before store submission.
+Every Midas Stream release should include screenshots and a short demo video before store submission.
 
 ## Current Store Assets
 
@@ -31,7 +31,7 @@ Python environment does not already provide it.
 
 The current v0.0.5 release includes guide-source setup and local favorites, but
 does not include recording, cloud playlists, or AI Search. Do not add store
-screenshots for planned features until [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+screenshots for planned features until [Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
 marks them supported.
 
 ## Demo Video

@@ -1,4 +1,4 @@
-# Airo TV Route Scoring And Decision Logs
+# Midas Stream Route Scoring And Decision Logs
 
 This contract defines the v2.0.0.1 platform boundary for deterministic,
 explainable, privacy-safe media route scoring.
@@ -49,7 +49,7 @@ diagnostics.
 
 ## Consumer Rule
 
-Airo TV screens, route inspectors, playback adapters, and QA automation should
+Midas Stream screens, route inspectors, playback adapters, and QA automation should
 consume `AiroMediaRouteScoringPolicy` output. Product code should not implement
 separate route ranking, phone-proxy penalty, tie-breaking, or raw diagnostic
 formatting.

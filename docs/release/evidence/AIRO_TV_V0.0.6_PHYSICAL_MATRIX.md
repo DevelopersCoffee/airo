@@ -1,4 +1,4 @@
-# Airo TV v0.0.6 physical-device matrix
+# Midas Stream v0.0.6 physical-device matrix
 
 Candidate: `0.0.6+8`
 State: **prepared; mandatory device execution incomplete**

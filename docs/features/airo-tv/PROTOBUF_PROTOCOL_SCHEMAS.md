@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-032.
 
 ## Ownership
 
-Binary protocol schema governance is platform behavior. Airo TV, companion
+Binary protocol schema governance is platform behavior. Midas Stream, companion
 controllers, local discovery, secure WebSocket transport, command routing,
 session state, route health, and EPG sync can consume the protocol contracts,
 but message-family descriptors, field numbers, schema compatibility, sequence

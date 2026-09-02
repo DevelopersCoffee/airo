@@ -1,4 +1,4 @@
-# Airo TV Media Location And Access Model
+# Midas Stream Media Location And Access Model
 
 This contract defines the v2.0.0.1 platform boundary for representing where
 media can be reached and how a receiver is granted scoped playback access
@@ -55,7 +55,7 @@ credential-like diagnostics in logs, analytics, UI, or route decisions.
 ## Consumer Rule
 
 Media routing, playback engines, local discovery adapters, companion
-controllers, and Airo TV screens should consume location ids, locality, kind,
+controllers, and Midas Stream screens should consume location ids, locality, kind,
 scope, and validation results. Product code should not pass raw source values
 through navigation arguments, analytics events, diagnostics, or route decisions.
 

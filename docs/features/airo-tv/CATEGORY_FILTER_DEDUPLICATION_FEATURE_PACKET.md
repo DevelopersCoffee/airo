@@ -3,10 +3,10 @@
 ## Feature Packet
 
 **Primary owner agent:** Media Intelligence Architect
-**Review agents:** Airo TV Flutter Architect, Chief UX Officer, Chief QA Officer
+**Review agents:** Midas Stream Flutter Architect, Chief UX Officer, Chief QA Officer
 **Layer:** `feature_iptv` application filter presentation.
-**Sprint:** Airo TV phone discovery follow-up
-**Parent roadmap:** Airo TV v2 release qualification
+**Sprint:** Midas Stream phone discovery follow-up
+**Parent roadmap:** Midas Stream v2 release qualification
 
 ### Critical Agent Gate
 
@@ -14,14 +14,14 @@
 as separate category choices. Selecting one spelling currently excludes the
 equivalent spelling, creating duplicate categories and unexpected results.
 
-**User / actor:** Airo TV user narrowing a playlist by category.
+**User / actor:** Midas Stream user narrowing a playlist by category.
 
 **Framework or application layer:** Application filtering. Playlist data and
 the `IPTVChannel.group` schema remain lossless and unchanged.
 
 **Owning agent:** Media Intelligence Architect (`feature_iptv`).
 
-**Reviewing agents:** Airo TV Flutter Architect, Chief UX Officer, Chief QA
+**Reviewing agents:** Midas Stream Flutter Architect, Chief UX Officer, Chief QA
 Officer.
 
 **Impacted modules/files:** Shared channel-filter dimensions and matching,
@@ -39,7 +39,7 @@ case-equivalent labels. It must not merge distinct editorial labels such as
 ### Cross-Agent Contract
 
 **Provider agent:** `feature_iptv` channel filter provider.
-**Consumer agent:** Airo TV category picker and browse list.
+**Consumer agent:** Midas Stream category picker and browse list.
 **Interface/API:** Existing `channelFilterDimensions` and
 `applyChannelFilters`.
 **Input shape:** Raw `IPTVChannel.group` strings and an optional selected

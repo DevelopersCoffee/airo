@@ -1,7 +1,7 @@
-# Airo TV Profile-Aware Capability Advertisement
+# Midas Stream Profile-Aware Capability Advertisement
 
 ATV-062 defines the reusable platform publication model that tells controllers,
-routers, handoff flows, and diagnostics which Airo TV capabilities are safe to
+routers, handoff flows, and diagnostics which Midas Stream capabilities are safe to
 use for the active product profile, compiled build, and runtime device.
 
 The contract lives in `packages/product_capabilities` because profile-aware
@@ -20,7 +20,7 @@ this model without rebuilding profile rules in app code.
   provider payloads, account data, raw credential material, or device logs.
 - Release and DevEx own build-composition checks that prevent runtime flags from
   exposing modules absent from the compiled profile.
-- Airo TV app code consumes the platform advertisement and should not construct
+- Midas Stream app code consumes the platform advertisement and should not construct
   profile-specific capability claims inside screens.
 
 ## Advertisement Fields
@@ -75,7 +75,7 @@ profile manifest is valid, the capability is present in the profile, the backing
 module is included and compiled, and the module lifecycle is valid for the
 profile.
 
-## Default Airo TV Advertisements
+## Default Midas Stream Advertisements
 
 The package ships helpers for:
 
@@ -87,9 +87,9 @@ device pass. Lite Receiver publishes compact receiver capabilities and reports
 stable unsupported reasons for heavy features such as Full EPG, local AI,
 recording, downloads, and multiview.
 
-## Airo TV Consumption Rule
+## Midas Stream Consumption Rule
 
-Airo TV should use the platform advertisement before exposing remote-control
+Midas Stream should use the platform advertisement before exposing remote-control
 commands, handoff options, guide/search sections, diagnostics panels, or
 controller UX. If a capability is absent from `runtimeSafeCapabilities`, app
 code should use the unsupported reason instead of screen-local conditionals.

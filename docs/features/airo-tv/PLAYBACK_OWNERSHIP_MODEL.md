@@ -1,4 +1,4 @@
-# Airo TV Playback Ownership Model
+# Midas Stream Playback Ownership Model
 
 This contract defines the v2.0.0.1 platform boundary for playback control
 authority after media routing selects a path.
@@ -27,7 +27,7 @@ Implementation contract:
 - monotonic session revision;
 - optional ownership lease expiry.
 
-The snapshot is platform state. Airo TV screens should not infer ownership from
+The snapshot is platform state. Midas Stream screens should not infer ownership from
 local widget state, current route, focused screen, or controller presence.
 
 ## Operation Authority
@@ -61,7 +61,7 @@ diagnostic dumps.
 
 ## Consumer Rule
 
-Airo TV, companion controllers, playback engines, route inspectors, and
+Midas Stream, companion controllers, playback engines, route inspectors, and
 analytics adapters should consume `AiroPlaybackOwnershipSnapshot` and
 `AiroPlaybackOwnershipPolicy`. Product code may present ownership state, but it
 should not implement separate pause/seek/resume/health/analytics authority

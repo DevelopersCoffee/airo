@@ -1,4 +1,4 @@
-# Airo TV Volume 4 Gap Analysis
+# Midas Stream Volume 4 Gap Analysis
 
 **Source:** `/Users/udaychauhan/.codex/attachments/a91522db-dca0-436d-9264-7516949d1ea8/pasted-text.txt`  
 **Date:** 2026-07-13  
@@ -7,7 +7,7 @@ mobile streaming, smart buffering, session ownership, and Edge Media Node.
 
 ## Executive Summary
 
-Volume 4 corrects an important architectural risk: Airo TV should not treat the
+Volume 4 corrects an important architectural risk: Midas Stream should not treat the
 phone as the default media server. The phone should orchestrate playback, while
 the destination device, cloud origin, NAS, desktop, or future Edge Media Node
 serves media bytes whenever possible. Phone-hosted streaming should happen only
@@ -309,7 +309,7 @@ Planning impact:
 
 ## Final Assessment
 
-Volume 4 should be added to the Airo TV plan as the architecture that keeps the
+Volume 4 should be added to the Midas Stream plan as the architecture that keeps the
 platform from becoming a battery-draining cast clone. The correct next step is
 not to expand the local proxy. It is to define route planning, media location,
 device/media compatibility, session ownership, and secure last-resort mobile

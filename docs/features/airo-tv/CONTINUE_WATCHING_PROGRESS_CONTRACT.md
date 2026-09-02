@@ -1,4 +1,4 @@
-# Airo TV Continue-Watching Progress Contract
+# Midas Stream Continue-Watching Progress Contract
 
 This contract defines the v2.0.0.1 platform boundary for cross-device
 continue-watching progress, cloud opt-in behavior, local-only mode, retention,
@@ -14,7 +14,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Continue-watching progress is platform/framework state. Airo TV app code may
+Continue-watching progress is platform/framework state. Midas Stream app code may
 render rows, cards, settings, and opt-out copy, but schema, revisions,
 retention, safe IDs, and sync eligibility belong to the platform contract.
 

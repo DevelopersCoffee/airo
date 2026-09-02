@@ -1,4 +1,4 @@
-# Airo TV D-pad Diagnostic — Fire TV Stick 3rd Gen — 2026-07-27
+# Midas Stream D-pad Diagnostic — Fire TV Stick 3rd Gen — 2026-07-27
 
 ## Result
 
@@ -28,7 +28,7 @@ pass and must not be used to close the #589 physical D-pad slice.
 
 | Step | Result | Observation |
 | --- | --- | --- |
-| Launch Airo TV | INCONCLUSIVE | `MainActivity` was foreground and live playback was visible; launch used ADB |
+| Launch Midas Stream | INCONCLUSIVE | `MainActivity` was foreground and live playback was visible; launch used ADB |
 | Move among Home controls | INCONCLUSIVE | Visible focus rings appeared on Search, Share, a channel-card action, and picker elements |
 | Open Language picker | INCONCLUSIVE | TV-native picker opened and displayed an A–Z rail plus language option groups |
 | Enter A–Z rail | INCONCLUSIVE | Diagnostic traversal exposed focus on the `B` rail entry |

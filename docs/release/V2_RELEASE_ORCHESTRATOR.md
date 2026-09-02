@@ -18,7 +18,7 @@ artifacts without creating public GitHub Releases or uploading to Google Play.
 ## Current Scope
 
 The orchestrator currently validates the release contract, calls the existing
-Airo TV release workflow through `workflow_call`, optionally calls the
+Midas Stream release workflow through `workflow_call`, optionally calls the
 mobile/tablet release workflow when a mobile profile is selected, optionally
 calls the same mobile/tablet workflow again for Airo Coins when the selection
 includes coins, optionally
@@ -70,7 +70,7 @@ the artifact name, package ID, version/build number, checksum, and source ref
 from the generated release manifest.
 
 When `macos_profile` is `tv`, the orchestrator calls
-`.github/workflows/airo-macos-release.yml` to build `Airo TV.app`, produce ZIP
+`.github/workflows/airo-macos-release.yml` to build `Midas Stream.app`, produce ZIP
 and DMG artifacts, generate `SHA256SUMS`, write a macOS release manifest, and
 generate Homebrew Cask metadata. `macos_require_notarization`
 controls whether the macOS leg may complete with unsigned/non-notarized

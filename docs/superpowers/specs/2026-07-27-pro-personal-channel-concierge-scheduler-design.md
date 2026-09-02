@@ -1,6 +1,6 @@
 # Planned: Personal Channel, Media Concierge, and Scheduler
 
-Status: Planned design for Airo TV Pro; no v0.0.5 implementation or delivery
+Status: Planned design for Midas Stream Pro; no v0.0.5 implementation or delivery
 date.
 
 ## Customer outcomes

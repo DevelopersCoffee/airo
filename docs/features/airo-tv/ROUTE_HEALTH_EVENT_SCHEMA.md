@@ -5,7 +5,7 @@ Status: v2 platform contract for ATV-025.
 ## Ownership
 
 Route health events are platform/framework session state. Playback engines,
-receiver adapters, route recovery, companion controllers, and Airo TV screens
+receiver adapters, route recovery, companion controllers, and Midas Stream screens
 consume the same typed event stream instead of polling playback state or
 inventing app-specific health payloads.
 
@@ -91,4 +91,4 @@ redacted and whose constructor rejects unsafe raw values.
 - `AiroFakeRouteHealthEventSink` for deterministic host-only tests.
 
 No adapter in this issue collects player state, opens a socket, uploads
-analytics, or updates Airo TV UI.
+analytics, or updates Midas Stream UI.

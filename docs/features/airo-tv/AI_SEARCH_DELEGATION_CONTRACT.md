@@ -1,7 +1,7 @@
-# Airo TV AI Search Delegation Contract
+# Midas Stream AI Search Delegation Contract
 
 This contract defines the v2.0.0.1 platform boundary for future natural-language
-and AI-assisted search. Lite Receiver and legacy Airo TV profiles must not
+and AI-assisted search. Lite Receiver and legacy Midas Stream profiles must not
 bundle heavyweight AI runtimes to expose search entry points. They should route
 eligible work through a shared delegation contract.
 
@@ -36,7 +36,7 @@ Implementation contract:
 
 ## Release Rule
 
-Natural-language search can be added to Airo TV without changing receiver
+Natural-language search can be added to Midas Stream without changing receiver
 contracts only when consumers use `AiroAiDelegationRequest`,
 `AiroAiDelegationCandidate`, `AiroAiDelegationSelector`, and
 `AiroAiSearchResult`.

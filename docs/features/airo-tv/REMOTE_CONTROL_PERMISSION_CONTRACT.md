@@ -1,4 +1,4 @@
-# Airo TV Remote Control Permission Contract
+# Midas Stream Remote Control Permission Contract
 
 This contract defines the v2.0.0.1 platform boundary for remote-control
 authorization, local-only mode, approval-required mode, profile restrictions,
@@ -14,7 +14,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Remote-control authorization is platform/framework behavior. Airo TV app code
+Remote-control authorization is platform/framework behavior. Midas Stream app code
 may render local-only settings, approval prompts, profile copy, and recovery
 flows, but it must consume platform decision codes rather than duplicating
 authorization rules in feature code.

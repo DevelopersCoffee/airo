@@ -1,4 +1,4 @@
-# Airo TV Volume 6 Gap Analysis
+# Midas Stream Volume 6 Gap Analysis
 
 **Volume:** Cloud Playback Orchestration, Device Presence, Remote Control, and
 Continuity  
@@ -6,12 +6,12 @@ Continuity
 **Status:** Draft gap analysis  
 **Input:** Volume 6 pasted requirements attachment  
 **Baseline inspected:** current repository docs, Firebase bootstrap/auth,
-generic sync/outbox, IPTV Cast models/providers, and existing Airo TV planning
+generic sync/outbox, IPTV Cast models/providers, and existing Midas Stream planning
 docs.
 
 ## Executive Summary
 
-Volume 6 extends the Airo TV architecture from same-network connected devices
+Volume 6 extends the Midas Stream architecture from same-network connected devices
 to optional cloud-assisted orchestration. The strongest product constraint is
 that the cloud coordinates trusted devices, commands, state, presence, and
 continuity; it must not become a media proxy, credential vault for provider
@@ -23,7 +23,7 @@ The current repository has useful adjacent building blocks:
 - `core_data` has generic offline-first outbox/sync patterns.
 - `platform_player` and `feature_iptv` have Cast-style device discovery,
   session snapshots, and play/pause/volume flows.
-- Prior Airo TV plans already define local discovery, trusted-device pairing,
+- Prior Midas Stream plans already define local discovery, trusted-device pairing,
   route ownership, media routing, native media, performance, and product
   profiles.
 
@@ -72,7 +72,7 @@ Same-network playback must keep working when the cloud is unavailable.
 presence, state, transfer, authorization, protocol versions, offline expiry,
 recovery, push fallback, audit, and revocation.
 
-**Current state:** No Airo TV cloud orchestration module, service interface, or
+**Current state:** No Midas Stream cloud orchestration module, service interface, or
 backend contract exists. Current Firebase usage is app bootstrap/auth, not an
 Airo playback control plane.
 
@@ -89,7 +89,7 @@ rename/revoke/reset, duplicate detection, key rotation, and security alerts.
 
 **Current state:** Cast devices have transient ID/name/host fields. Generic
 device information is used for diagnostics and AI capability checks, but not as
-a secure Airo TV identity.
+a secure Midas Stream identity.
 
 **Gap:** Define `AiroDeviceRecord`, `DeviceRegistration`, device key storage,
 scoped refresh tokens, reinstall/reset behavior, duplicate handling, revocation
@@ -102,7 +102,7 @@ Buffering, Busy, Sleeping, Backgrounded, Offline, Unreachable, and Update
 Required, backed by expiring leases and adaptive heartbeats.
 
 **Current state:** The repo has generic social/user presence references and Cast
-discovery states, but no Airo TV device-presence model.
+discovery states, but no Midas Stream device-presence model.
 
 **Gap:** Add presence leases, heartbeat rules, background behavior by platform,
 privacy-safe visibility, local/cloud merge semantics, and stale-state handling.
@@ -113,7 +113,7 @@ privacy-safe visibility, local/cloud merge semantics, and stale-state handling.
 synchronization, degraded/reconnecting states, missed-event recovery, duplicate
 event rejection, credential refresh, exponential backoff, and push wake fallback.
 
-**Current state:** No Airo TV secure WebSocket transport, command relay, or push
+**Current state:** No Midas Stream secure WebSocket transport, command relay, or push
 provider integration is present.
 
 **Gap:** Define transport interfaces and fakes before choosing the provider.
@@ -155,7 +155,7 @@ permissions, deterministic conflict rules, profile and parental restrictions,
 server arbitration for transfer ownership, and stale-command conflict handling.
 
 **Current state:** No multi-controller membership or permission model exists for
-Airo TV sessions.
+Midas Stream sessions.
 
 **Gap:** Define session membership, controller roles, elevated auth actions,
 parental/profile filters, restart semantics, and progress conflict rules.
@@ -194,7 +194,7 @@ position, duration, completion state, updater, and revision. Receiver persists
 on pause/stop/background/transfer/completion/shutdown.
 
 **Current state:** Some media-hub UI shows progress, and generic sync exists,
-but there is no Airo TV cross-device progress schema.
+but there is no Midas Stream cross-device progress schema.
 
 **Gap:** Add progress model, conflict policy, retention controls, local-only
 mode behavior, and privacy settings before enabling cloud progress sync.
@@ -218,7 +218,7 @@ optional and permissioned. Users need local-only mode, same-account remote mode,
 approval-required mode, profile/device permissions, and platform-dependent
 remote wake behavior.
 
-**Current state:** No Airo TV remote network control setting or cloud discovery
+**Current state:** No Midas Stream remote network control setting or cloud discovery
 toggle exists.
 
 **Gap:** Add privacy and entitlement controls before implementation. Core

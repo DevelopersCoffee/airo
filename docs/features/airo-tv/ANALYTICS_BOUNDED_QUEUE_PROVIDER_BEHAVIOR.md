@@ -6,7 +6,7 @@ ATV-073 is a platform contract. `packages/core_analytics` owns bounded queue
 policy, priority eviction, queue snapshots, provider outage backoff, and
 playback-aware upload gating.
 
-Airo TV application code may display queue or provider state in diagnostics, but
+Midas Stream application code may display queue or provider state in diagnostics, but
 it must not implement a parallel analytics queue, retry policy, or playback
 upload gate.
 

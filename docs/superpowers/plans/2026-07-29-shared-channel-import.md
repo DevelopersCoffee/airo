@@ -60,7 +60,7 @@ Keep `/iptv`, `airo://iptv`, legacy `/airo/iptv`, and canonical
 `/airo/iptv/` parsing. Add canonical serialization tests and enforce bounded
 decoded values.
 
-### 4. Merge Personal channels into Airo TV
+### 4. Merge Personal channels into Midas Stream
 
 Expose the repository through Riverpod and merge its records into
 `iptvChannelsProvider` after playlist/provider channels. Deduplicate by exact

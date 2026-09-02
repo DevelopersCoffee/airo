@@ -1,7 +1,7 @@
 # Live Grid Navigation (EPG) — Design
 
 Status: Draft (spec self-reviewed, pending user review)
-Owner: Airo TV mobile + TV guide surfaces (feature_iptv)
+Owner: Midas Stream mobile + TV guide surfaces (feature_iptv)
 Related: `docs/superpowers/plans/2026-07-17-cv015-slice2-epg-grid.md` (predecessor EPG grid work — shipped `EpgTimelineGrid` + `guide_providers.dart`), `docs/superpowers/specs/2026-07-19-immediate-action-player-design.md` (predecessor Player spec — this spec reuses its `/iptv?channel=<id>` deep-link route for reminder notification taps)
 
 ## Background

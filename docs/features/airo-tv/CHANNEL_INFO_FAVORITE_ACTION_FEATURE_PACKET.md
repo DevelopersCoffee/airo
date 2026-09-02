@@ -3,18 +3,18 @@
 ## Feature Packet
 
 **Primary owner agent:** Media Intelligence Architect
-**Review agents:** Airo TV Flutter Architect, Chief UX Officer, Chief QA Officer
+**Review agents:** Midas Stream Flutter Architect, Chief UX Officer, Chief QA Officer
 **Layer:** Application presentation using the existing local favorites contract.
-**Sprint:** Airo TV phone discovery follow-up
-**Parent roadmap:** Airo TV v2 release qualification
+**Sprint:** Midas Stream phone discovery follow-up
+**Parent roadmap:** Midas Stream v2 release qualification
 
 ### Critical Agent Gate
 
-**Problem:** The favorite heart in the compact Airo TV channel information bar
+**Problem:** The favorite heart in the compact Midas Stream channel information bar
 is tappable but has an empty callback. It gives no state change, visual
 feedback, or path into the existing Favorites screen.
 
-**User / actor:** Airo TV user watching a selected live channel.
+**User / actor:** Midas Stream user watching a selected live channel.
 
 **Framework or application layer:** Application UI only. The existing
 `platform_favorites` local storage and `feature_iptv` favorite providers are
@@ -22,7 +22,7 @@ unchanged.
 
 **Owning agent:** Media Intelligence Architect (`feature_iptv`).
 
-**Reviewing agents:** Airo TV Flutter Architect (Riverpod/widget structure),
+**Reviewing agents:** Midas Stream Flutter Architect (Riverpod/widget structure),
 Chief UX Officer (clear interactive state), Chief QA Officer (regression).
 
 **Impacted modules/files:** `ChannelInfoBar`, focused widget test, and this
@@ -60,7 +60,7 @@ and renders disabled when no channel is selected.
 
 #### UC-001: Favorite the active channel
 
-**Actor:** Airo TV user.
+**Actor:** Midas Stream user.
 **Preconditions:** A selected channel is not favorited.
 **Trigger:** Tap Favorite in the channel info bar.
 **Happy path:** The channel id is locally saved, the heart becomes filled, and

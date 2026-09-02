@@ -1,8 +1,8 @@
-# Airo TV Design Revamp — P0 Spacing/Alignment Polish Implementation Plan
+# Midas Stream Design Revamp — P0 Spacing/Alignment Polish Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Tighten spacing, alignment, and typographic rhythm across the Airo TV browse screen and sidebar to an 8-point grid, without changing any screen's structure, navigation behavior, or D-pad focus flow.
+**Goal:** Tighten spacing, alignment, and typographic rhythm across the Midas Stream browse screen and sidebar to an 8-point grid, without changing any screen's structure, navigation behavior, or D-pad focus flow.
 
 **Architecture:** This is a polish pass over the existing `IptvTvScreen`/`TvShell` widget tree (built earlier in the `tv-design-revamp` branch). No new widgets, no new providers, no routing changes. Every task is a targeted numeric/layout edit to an existing widget's `build()` method, verified by the existing widget-test suite plus a manual macOS visual check. This is explicitly **not** the TV-first navigation rethink (removing toolbar buttons, horizontal category chips, bigger cards, focus-order redesign) — that is P1 and requires its own plan because it changes structure and D-pad flow, which this plan does not touch.
 
@@ -260,7 +260,7 @@ Expected: all pass (6 tests total between the two files).
 
 ```bash
 git add app/lib/core/app/tv_shell.dart
-git commit -m "fix(app): tighten Airo TV sidebar to a consistent 24/56/28/16/24 spacing rhythm"
+git commit -m "fix(app): tighten Midas Stream sidebar to a consistent 24/56/28/16/24 spacing rhythm"
 ```
 
 ---
@@ -772,16 +772,16 @@ cd app
 nohup flutter run -d macos -t lib/main_tv.dart --dart-define=APP_VARIANT=tv --dart-define=APP_PLATFORM=androidTv > /tmp/airo_tv_p0_verify.log 2>&1 &
 disown
 ```
-Wait for `✓ Built build/macos/Build/Products/Debug/Airo TV.app` to appear in the log (poll with `tail -5 /tmp/airo_tv_p0_verify.log`), typically 60-120 seconds.
+Wait for `✓ Built build/macos/Build/Products/Debug/Midas Stream.app` to appear in the log (poll with `tail -5 /tmp/airo_tv_p0_verify.log`), typically 60-120 seconds.
 
 - [ ] **Step 5: Activate, resize, and screenshot the window**
 
 ```bash
-osascript -e 'tell application "Airo TV" to activate'
+osascript -e 'tell application "Midas Stream" to activate'
 sleep 1.5
 osascript -e '
 tell application "System Events"
-  tell process "Airo TV"
+  tell process "Midas Stream"
     set position of window 1 to {0, 30}
     set size of window 1 to {1440, 870}
   end tell
@@ -805,7 +805,7 @@ Open `/tmp/airo_tv_p0_verify.png` and confirm:
 - [ ] **Step 7: Clean up the running app**
 
 ```bash
-pkill -9 -f "Airo TV"
+pkill -9 -f "Midas Stream"
 pkill -9 -f "flutter run.*main_tv"
 ```
 

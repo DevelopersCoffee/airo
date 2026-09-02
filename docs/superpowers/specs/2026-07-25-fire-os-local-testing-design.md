@@ -5,17 +5,17 @@ Status: Approved
 
 ## Goal
 
-Get Airo TV running on a physical Fire TV Stick over the local network for manual
+Get Midas Stream running on a physical Fire TV Stick over the local network for manual
 testing. No Amazon Appstore submission work (no Amazon IAP, no Fire App Builder
 compliance, no store listing) — this is device bring-up and QA only, per
 [Amazon's "Porting an Existing App to Fire OS" guide](https://developer.amazon.com/docs/app-porting/port-existing-app.html).
 
 ## Current state (verified in repo)
 
-- Airo TV already builds as a standard Android leanback app — Fire OS runs stock
+- Midas Stream already builds as a standard Android leanback app — Fire OS runs stock
   Android APKs, no native Amazon SDK required for sideload testing.
 - TV flavor exists: `APP_VARIANT=tv` dart-define, applicationId `io.airo.app.tv`,
-  label "Airo TV" (`app/android/app/build.gradle.kts`).
+  label "Midas Stream" (`app/android/app/build.gradle.kts`).
 - TV manifest (`app/android/app/src/tv/AndroidManifest.xml`) already has:
   - `android.software.leanback` required feature
   - `android.hardware.touchscreen` not required

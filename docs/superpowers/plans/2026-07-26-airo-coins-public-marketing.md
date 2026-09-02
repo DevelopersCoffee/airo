@@ -2,10 +2,10 @@
 
 ## Intake and clarity gate
 
-**Problem:** The public site centers Airo TV and gives the developing Coins
+**Problem:** The public site centers Midas Stream and gives the developing Coins
 module no clear, truthful place beside it.
 
-**User / outcome:** A visitor can see Airo TV and Airo Coins as focused modules
+**User / outcome:** A visitor can see Midas Stream and Airo Coins as focused modules
 under Airo, understand their different release states, and enter a dedicated
 Coins story without mistaking it for a released currency, wallet, investment,
 bank, or financial-advice product.
@@ -56,14 +56,14 @@ state changes.
 | Secure personal-record vault direction | In development | ADR-0009; Phase 0 spec | Outcomes only |
 | Locked, masked, reveal-on-demand journey | In development | Phase 0 spec | Concept UI only |
 | Local-first financial organization | Planned | Coins sharing plan | No advice or money movement |
-| Airo TV is available | Available | Existing release evidence | Preserve BYOC boundary |
+| Midas Stream is available | Available | Existing release evidence | Preserve BYOC boundary |
 
 ## Deterministic use cases
 
 ### UC-001: Discover the two products
 
 Given the homepage on any supported viewport, a visitor can identify Airo as
-the umbrella, Airo TV as available, and Airo Coins as in development. With
+the umbrella, Midas Stream as available, and Airo Coins as in development. With
 JavaScript disabled, both entries and links remain usable. No data is created.
 
 ### UC-002: Understand the Coins boundary
@@ -74,7 +74,7 @@ requests no financial data, wallet connection, signup, or permission.
 
 ### UC-003: Avoid product confusion
 
-Airo TV retains its product/release journey. Coins has no download CTA and
+Midas Stream retains its product/release journey. Coins has no download CTA and
 does not imply it is bundled into TV. Direct `/tv/` and `/coins/` routes keep
 the same hierarchy at narrow widths and under reduced motion.
 

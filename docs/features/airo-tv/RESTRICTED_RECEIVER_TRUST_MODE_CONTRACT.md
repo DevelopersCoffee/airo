@@ -2,7 +2,7 @@
 
 Issue: ATV-056
 Package: `core_pairing`
-Layer: Platform framework, consumed by Airo TV application code
+Layer: Platform framework, consumed by Midas Stream application code
 
 ## Purpose
 
@@ -15,7 +15,7 @@ authority.
 
 This contract belongs in platform code because receiver trust decisions are
 shared by pairing, receiver modes, media routing, remote control, secure
-playback tickets, and QA automation. Airo TV should consume the decision result
+playback tickets, and QA automation. Midas Stream should consume the decision result
 instead of encoding restricted trust rules in screens or feature workflows.
 
 ## Platform Contract

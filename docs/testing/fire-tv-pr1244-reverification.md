@@ -130,7 +130,7 @@ scripts/check-fire-tv-playback-logs.sh \
   --output artifacts/release-qualification/fire-tv-playback-log-report.md
 ```
 
-The check launches the declared leanback activity, samples only the Airo TV
+The check launches the declared leanback activity, samples only the Midas Stream
 PID for a bounded window, aggregates the three exact known signatures, and
 fails if any other error remains. It never publishes raw logcat, which may
 contain media URLs, LAN identifiers, or device identifiers.
