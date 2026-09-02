@@ -61,9 +61,11 @@ void main() {
         );
         return;
       }
+      // Play listing `com.developerscoffee.tv.midas` — not the retired
+      // `io.airo.app.tv` client (`dfa957aac3a2fdc62206b0`).
       expect(
         DefaultFirebaseOptions.androidTv.appId,
-        '1:906799550225:android:dfa957aac3a2fdc62206b0',
+        '1:906799550225:android:c5df8d843e7dd6002206b0',
       );
     });
 
