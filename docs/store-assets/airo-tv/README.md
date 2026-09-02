@@ -1,13 +1,14 @@
-# Airo TV Store Assets
+# Midas Stream Store Assets
 
-Store-ready Android TV listing assets. The checked-in images remain the
-reviewed baseline; release candidates are captured from the live Flutter TV
-runtime and uploaded as workflow evidence.
+Store-ready Android TV listing assets for `com.developerscoffee.tv.midas`.
+The checked-in images remain the reviewed baseline; release candidates are
+captured from the live Flutter TV runtime and uploaded as workflow evidence.
 
 ## Assets
 
 | File | Size | Purpose |
 | --- | --- | --- |
+| `play-icon-512x512.png` | 512x512 | Play Console high-res icon (32-bit PNG from xxxhdpi launcher) |
 | `01-tv-home-channel-grid.png` | 1920x1080 | TV browse surface with channel categories and grid |
 | `02-tv-now-playing.png` | 1920x1080 | TV now-playing state with highlighted current channel |
 | `03-tv-search-dialog.png` | 1920x1080 | Channel search dialog |

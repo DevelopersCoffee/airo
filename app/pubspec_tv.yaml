@@ -11,7 +11,7 @@
 name: airo_app
 description: "Midas Stream - bring-your-own-playlist player for Android TV"
 publish_to: 'none'
-version: 0.0.7+12
+version: 0.0.1+13
 
 environment:
   sdk: ">=3.12.2 <4.0.0"

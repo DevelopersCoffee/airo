@@ -22,6 +22,14 @@ Each entry uses
 of the corresponding release signing certificate. Do not use a debug
 fingerprint or a guessed value.
 
+For `com.developerscoffee.tv.midas` publish **both** fingerprints from
+[midas-stream-play-app-signing.json](../release/midas-stream-play-app-signing.json):
+
+- Play App Signing deployment cert (Play-installed builds):
+  `A3:D1:19:3D:7D:B3:00:65:E1:BD:47:85:2D:31:7B:86:3E:51:97:32:7B:13:5E:C6:50:E0:DC:60:42:DB:2D:FB`
+- Upload / sideload cert (`app/android/release.keystore`):
+  `78:D9:A4:1D:A5:97:0F:B0:B8:9C:1D:D7:96:60:BF:5E:97:F0:63:70:23:C4:14:B5:01:ED:D0:87:84:84:1A:B9`
+
 ## Apple target
 
 Publish an Apple App Site Association `applinks.details` entry for:

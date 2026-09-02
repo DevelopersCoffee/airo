@@ -52,16 +52,53 @@ Users paste an authorized playlist URL. Tests may still use iptv-org URLs as
 **fixtures the test itself supplies**, which is not the same as shipping a
 preset in production UI.
 
+## Release plan
+
+1. **v0.0.1 preview (this wave):** production-signed Pixel sideload / internal
+   UAT. `versionName` is `0.0.1`, `versionCode` is **13**.
+2. **v0.0.1 hard release (after UAT):** same `versionName` on Play. Keep
+   `versionCode` at 13 if Pixel never received this build from Play; bump the
+   code if a Play-signed install already shipped.
+
+Pixel sideload uses the **upload** key. Play-installed APKs use Google's **app
+signing** key. A Pixel preview install will **not** upgrade in place to the
+Play listing — uninstall the sideload before installing from Play.
+
+## Upgrade path (v0.0.1)
+
+Android upgrades in place only when **package name**, **signing certificate**,
+and **versionCode** all match. `versionName` (`0.0.1`) is cosmetic.
+
+| Currently installed | Next Midas build | Upgrades in place? |
+| --- | --- | --- |
+| Sideloaded GitHub **Airo TV** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Airo TV first. |
+| Same package, **ephemeral CI** cert | Production/dogfood-signed build | **No.** Different cert (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Uninstall first. |
+| Same package, **same upload/production key**, lower `versionCode` | `0.0.1+13` | **Yes.** |
+| Play-installed Midas (Play App Signing) | Later Play AAB, same upload key, higher `versionCode` | **Yes.** Play re-signs with the Google-held app signing key. |
+
+`app/pubspec_tv.yaml` was `0.0.7+12` (`versionCode` 12). A Play listing of
+`0.0.1+1` would be a **downgrade** over any already-installed Midas build with
+code 12. Preview and first Play AAB must ship `versionCode >= 13`
+(`0.0.1+13`).
+
+That is why earlier CI/RC installs needed delete-and-reinstall: unsigned
+ephemeral keystores change every run. Production signing from
+`app/android/release.keystore` (GitHub `ANDROID_RELEASE_KEYSTORE_BASE64`) is
+stable. Do not mix `~/airo-release.keystore`.
+
+Public fingerprints: [midas-stream-play-app-signing.json](./midas-stream-play-app-signing.json).
+
 ## Human console actions (not code)
 
-These still block upload even after this branch is green:
-
-1. Create a **new** Play Console app for `com.developerscoffee.tv.midas`.
-2. Register a Firebase Android app for that package and update secrets.
-3. Confirm the production upload keystore and Play App Signing.
-4. Complete IARC / Data Safety using the worksheets in this folder.
-5. Export a 512×512 high-res icon and TV screenshots under the Midas Stream name.
-6. Pixel-line install and smoke (user-owned next step).
+| Step | Status |
+| --- | --- |
+| Create Play Console app `com.developerscoffee.tv.midas` | Done (app id `4972670245912164415`) |
+| Register Firebase Android client | Done (`1:906799550225:android:c5df8d843e7dd6002206b0`) |
+| Confirm upload keystore + Play App Signing | Play App Signing enrolled; first AAB signed with `app/android/release.keystore` |
+| GitHub production signing + `GOOGLE_SERVICES_JSON` | Set from local Gradle keystore and merged `google-services.json` |
+| Complete IARC / Data Safety | Worksheets ready; Console submit still required |
+| 512×512 icon + TV screenshots | Exported under `docs/store-assets/airo-tv/` |
+| Pixel-line install and smoke | v0.0.1 preview UAT (this PR); Play hard release after UAT |
 
 ## Out of scope this wave
 
