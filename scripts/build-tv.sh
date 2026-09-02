@@ -14,6 +14,7 @@ BUILD_AAB=true
 BUILD_APK=true
 SPLIT_PER_ABI=false
 SIGNING_CREATED=false
+VERSION_ARGS=()
 
 resolve_keytool() {
     if command -v keytool >/dev/null 2>&1; then
@@ -52,6 +53,8 @@ while [[ $# -gt 0 ]]; do
         --apk-only) BUILD_AAB=false; shift ;;
         --aab-only) BUILD_APK=false; shift ;;
         --split-per-abi) SPLIT_PER_ABI=true; shift ;;
+        --build-name) VERSION_ARGS+=(--build-name="$2"); shift 2 ;;
+        --build-number) VERSION_ARGS+=(--build-number="$2"); shift 2 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -120,14 +123,16 @@ if [[ "$FULL_BUILD" == true ]]; then
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
             "${APK_PLATFORM_ARGS[@]}" \
-            --tree-shake-icons
+            --tree-shake-icons \
+            "${VERSION_ARGS[@]}"
     fi
     if [[ "$BUILD_AAB" == true ]]; then
         flutter build appbundle --release \
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
-            --tree-shake-icons
+            --tree-shake-icons \
+            "${VERSION_ARGS[@]}"
     fi
     echo -e "\033[0;32m✓ TV artifacts created (full dependencies)\033[0m"
     exit 0
@@ -174,7 +179,8 @@ if [[ "$BUILD_APK" == true ]]; then
         "${APK_PLATFORM_ARGS[@]}" \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
-        --obfuscate
+        --obfuscate \
+        "${VERSION_ARGS[@]}"
 fi
 
 if [[ "$BUILD_AAB" == true ]]; then
@@ -186,7 +192,8 @@ if [[ "$BUILD_AAB" == true ]]; then
         --dart-define=APP_PLATFORM=androidTv \
         --tree-shake-icons \
         --split-debug-info=build/debug-info-tv \
-        --obfuscate
+        --obfuscate \
+        "${VERSION_ARGS[@]}"
 fi
 
 echo -e "\033[0;32m✓ TV artifacts created successfully!\033[0m"

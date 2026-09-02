@@ -1,0 +1,65 @@
+{
+  "product": "Midas Stream",
+  "packageName": "com.developerscoffee.tv.midas",
+  "playConsole": {
+    "developerAccountId": "6967640737175083152",
+    "appId": "4972670245912164415",
+    "dashboard": "https://play.google.com/console/u/0/developers/6967640737175083152/app/4972670245912164415/app-dashboard",
+    "appSigning": "https://play.google.com/console/u/0/developers/6967640737175083152/app/4972670245912164415/keymanagement"
+  },
+  "playAppSigning": {
+    "status": "enrolled",
+    "uploadKeyRegistered": false,
+    "note": "Google holds the app signing key. The upload-key certificate appears in Play Console after the first signed AAB. Sideloaded APKs use the upload key; Play-installed APKs use the deployment cert.",
+    "sourceZip": "~/Downloads/certificates.zip",
+    "appSigningKey": {
+      "file": "deployment_cert.der",
+      "owner": "CN=Android, OU=Android, O=Google Inc.",
+      "sha1": "F2:20:01:4E:5F:CE:82:72:2B:6C:AF:8D:F0:92:60:C9:73:02:E1:AC",
+      "sha256": "A3:D1:19:3D:7D:B3:00:65:E1:BD:47:85:2D:31:7B:86:3E:51:97:32:7B:13:5E:C6:50:E0:DC:60:42:DB:2D:FB"
+    },
+    "hybridClassicalKey": {
+      "file": "hybrid_classical_cert.der",
+      "sha1": "C6:AB:99:7D:94:C0:FC:61:22:E5:64:8D:4D:F9:DC:9F:8F:4C:32:28",
+      "sha256": "5C:98:6F:BB:1D:01:DC:B0:26:EE:6D:BD:08:73:E4:BC:DC:62:BE:9E:FE:91:CC:D8:06:F8:F9:82:7A:42:AB:C4"
+    },
+    "hybridPqcKey": {
+      "file": "hybrid_pqc_cert.der",
+      "sha1": "83:48:9D:10:C9:D5:FF:9A:E4:63:0B:72:48:3B:EE:42:E2:15:31:60",
+      "sha256": "28:81:83:6B:81:A8:75:D3:E2:18:B4:F1:FA:2A:47:B0:96:89:63:14:F9:FF:18:55:C3:11:76:E3:52:E4:50:EA"
+    }
+  },
+  "uploadKey": {
+    "keystore": "app/android/release.keystore",
+    "alias": "airo-release",
+    "doNotUse": "~/airo-release.keystore (different file, different password)",
+    "sha1": "8E:68:7F:27:7B:47:AB:22:90:C9:0E:C8:44:43:14:33:A1:0A:1A:22",
+    "sha256": "78:D9:A4:1D:A5:97:0F:B0:B8:9C:1D:D7:96:60:BF:5E:97:F0:63:70:23:C4:14:B5:01:ED:D0:87:84:84:1A:B9",
+    "validUntil": "2053-09-30"
+  },
+  "firebase": {
+    "projectId": "devscoffee-airo",
+    "androidAppId": "1:906799550225:android:c5df8d843e7dd6002206b0"
+  },
+  "githubSecrets": {
+    "ANDROID_RELEASE_KEYSTORE_BASE64": "app/android/release.keystore (base64)",
+    "KEYSTORE_PASSWORD": "app/android/key.properties storePassword",
+    "KEY_ALIAS": "airo-release",
+    "KEY_PASSWORD": "app/android/key.properties keyPassword",
+    "GOOGLE_SERVICES_JSON": "app/android/app/google-services.json (must include com.developerscoffee.tv.midas)",
+    "FIREBASE_OPTIONS_DART_B64": "generated androidTv client for Midas Stream"
+  },
+  "digitalAssetLinks": [
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.developerscoffee.tv.midas",
+        "sha256_cert_fingerprints": [
+          "A3:D1:19:3D:7D:B3:00:65:E1:BD:47:85:2D:31:7B:86:3E:51:97:32:7B:13:5E:C6:50:E0:DC:60:42:DB:2D:FB",
+          "78:D9:A4:1D:A5:97:0F:B0:B8:9C:1D:D7:96:60:BF:5E:97:F0:63:70:23:C4:14:B5:01:ED:D0:87:84:84:1A:B9"
+        ]
+      }
+    }
+  ]
+}

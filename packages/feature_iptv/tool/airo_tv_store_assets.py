@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Airo TV store-listing PNG assets.
+"""Generate Midas Stream store-listing PNG assets.
 
 The images are deterministic release assets for store submissions. They use
 demo playlist/channel data only and do not include private playlist URLs,
@@ -64,6 +64,7 @@ def main() -> None:
     draw_search().save(out / "03-tv-search-dialog.png")
     draw_playlist().save(out / "04-tv-playlist-source.png")
     draw_feature_graphic().save(out / "feature-graphic-1024x500.png")
+    draw_play_icon().save(out / "play-icon-512x512.png")
 
     for asset in sorted(out.glob("*.png")):
         print(asset.relative_to(repo_root()))
@@ -99,7 +100,7 @@ def canvas(size: tuple[int, int], fill: str = "bg") -> Image.Image:
 def draw_shell(title: str, subtitle: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     image = canvas((1920, 1080))
     draw = ImageDraw.Draw(image)
-    draw.text((118, 68), "AIRO TV", fill=COLORS["text"], font=font(46, True))
+    draw.text((118, 68), "MIDAS STREAM", fill=COLORS["text"], font=font(46, True))
     pill(draw, (1605, 74, 1810, 122), "BYO playlist", "panel2", "line2")
     draw.text((112, 158), title, fill=COLORS["text"], font=font(56, True))
     draw.text((114, 226), subtitle, fill=COLORS["muted"], font=font(26))
@@ -180,7 +181,7 @@ def draw_search() -> Image.Image:
 def draw_playlist() -> Image.Image:
     image, draw = draw_shell(
         "Use your own playlist",
-        "Airo TV does not include channels or media subscriptions.",
+        "Midas Stream does not include channels or media subscriptions.",
     )
 
     left = (112, 318, 920, 934)
@@ -215,11 +216,28 @@ def draw_playlist() -> Image.Image:
     return image
 
 
+def draw_play_icon() -> Image.Image:
+    """Export the Play high-res icon from the shipped xxxhdpi launcher."""
+    launcher = (
+        repo_root()
+        / "app"
+        / "android"
+        / "app"
+        / "src"
+        / "main"
+        / "res"
+        / "mipmap-xxxhdpi"
+        / "ic_launcher.png"
+    )
+    source = Image.open(launcher).convert("RGBA")
+    return source.resize((512, 512), Image.Resampling.LANCZOS)
+
+
 def draw_feature_graphic() -> Image.Image:
     image = canvas((1024, 500), "bg2")
     draw = ImageDraw.Draw(image)
-    draw.text((52, 86), "Airo TV", fill=COLORS["text"], font=font(74, True))
-    draw.text((56, 176), "IPTV playlist player for Android TV", fill=COLORS["muted"], font=font(30, True))
+    draw.text((52, 86), "Midas Stream", fill=COLORS["text"], font=font(74, True))
+    draw.text((56, 176), "BYO playlist player for Android TV", fill=COLORS["muted"], font=font(30, True))
     pill(draw, (56, 252, 174, 300), "M3U/M3U8", "panel", "line2")
     pill(draw, (192, 252, 296, 300), "Search", "panel", "line2")
     pill(draw, (314, 252, 396, 300), "Cast", "panel", "line2")

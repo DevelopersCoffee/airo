@@ -72,9 +72,9 @@ Full description length: 1,122/4,000 characters.
 
 | Asset | Requirement | Status |
 | --- | --- | --- |
-| App icon | 512x512 PNG, 32-bit, alpha allowed | Launcher icon exists; export final Play asset before submission. |
-| Feature graphic | 1024x500 PNG/JPG | Required before Play submission. |
-| TV screenshots | 2-8 landscape screenshots, 1920x1080 recommended | Required before Play submission. |
+| App icon | 512x512 PNG, 32-bit, alpha allowed | Exported: `docs/store-assets/airo-tv/play-icon-512x512.png`. |
+| Feature graphic | 1024x500 PNG/JPG | Ready in `docs/store-assets/airo-tv/feature-graphic-1024x500.png`. |
+| TV screenshots | 2-8 landscape screenshots, 1920x1080 recommended | Ready in `docs/store-assets/airo-tv/` (`01`–`04`). |
 | Demo video | Optional YouTube URL | Recommended after screenshots. |
 
 Screenshot capture guidance is maintained in
