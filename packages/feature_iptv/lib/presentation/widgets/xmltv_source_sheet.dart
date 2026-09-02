@@ -116,7 +116,9 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
             controller: _urlController,
             decoration: const InputDecoration(
               labelText: 'XMLTV URL',
-              hintText: 'https://example.com/guide.xml',
+              hintText: 'https://example.com/guide.xml.gz',
+              helperText:
+                  'Paste an XMLTV URL or .xml.gz. HTML schedule pages will fail.',
               border: OutlineInputBorder(),
             ),
           ),
