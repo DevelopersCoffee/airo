@@ -17,7 +17,12 @@ whole point of aligning ids with the playlist.
 from __future__ import annotations
 
 import argparse
+import gzip
+import hashlib
+import json
+import os
 import re
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -187,19 +192,106 @@ def remap_epg_pw_xmltv(
     return output
 
 
+def catalog_from_iptv_org_api(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Shape iptv-org ``channels.json`` into the remap catalog payload."""
+    channels = []
+    for row in rows:
+        channel_id = row.get("id")
+        if not channel_id:
+            continue
+        channels.append(
+            {
+                "id": str(channel_id),
+                "name": str(row.get("name") or channel_id),
+                "country": str(row.get("country") or _UNKNOWN_COUNTRY).upper(),
+            }
+        )
+    return {"channels": channels}
+
+
+def write_gzip_guides(
+    remapped: dict[str, bytes],
+    output_directory: Path,
+    *,
+    skip_all: bool = True,
+    countries: set[str] | None = None,
+) -> dict[str, str]:
+    """Write ``guide_XX.xml.gz`` (mtime=0) and return SHA-256 checksums."""
+    output_directory.mkdir(parents=True, exist_ok=True)
+    checksums: dict[str, str] = {}
+    for country, xml_bytes in remapped.items():
+        if skip_all and country == "ALL":
+            continue
+        if countries is not None and country not in countries:
+            continue
+        filename = f"guide_{country}.xml.gz"
+        destination = output_directory / filename
+        with tempfile.NamedTemporaryFile(
+            dir=output_directory, suffix=".xml.gz.tmp", delete=False
+        ) as temporary:
+            with gzip.GzipFile(
+                filename="", fileobj=temporary, mode="wb", mtime=0
+            ) as archive:
+                archive.write(xml_bytes)
+            temporary_path = Path(temporary.name)
+        checksum = hashlib.sha256(temporary_path.read_bytes()).hexdigest()
+        os.replace(temporary_path, destination)
+        checksums[f"guide_{country}"] = checksum
+    return checksums
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--channels", type=Path, required=True)
+    parser.add_argument("--channels", type=Path)
+    parser.add_argument("--iptv-org-channels", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
-    args = parser.parse_args()
-
-    channels_payload = __import__("json").loads(
-        args.channels.read_text(encoding="utf-8")
+    parser.add_argument(
+        "--gzip-guides",
+        action="store_true",
+        help="Write guide_XX.xml.gz + manifest.json (skips ALL).",
     )
+    parser.add_argument(
+        "--countries",
+        nargs="*",
+        help="When --gzip-guides is set, only write these country shards.",
+    )
+    args = parser.parse_args()
+    if bool(args.channels) == bool(args.iptv_org_channels):
+        parser.error("provide exactly one of --channels or --iptv-org-channels")
+
+    if args.iptv_org_channels is not None:
+        channels_payload = catalog_from_iptv_org_api(
+            json.loads(args.iptv_org_channels.read_text(encoding="utf-8"))
+        )
+    else:
+        channels_payload = json.loads(args.channels.read_text(encoding="utf-8"))
+
     remapped = remap_epg_pw_xmltv(args.input.read_bytes(), channels_payload)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.gzip_guides:
+        wanted = (
+            {code.upper() for code in args.countries} if args.countries else None
+        )
+        if wanted:
+            missing = sorted(code for code in wanted if code not in remapped)
+            if missing:
+                raise SystemExit(
+                    "missing remapped guide for: " + ", ".join(missing)
+                )
+        checksums = write_gzip_guides(
+            remapped, args.output_dir, countries=wanted
+        )
+        if not checksums:
+            raise SystemExit("no country guides written")
+        files = {key: f"{key}.xml.gz" for key in checksums}
+        manifest = {"files": files, "fileChecksums": checksums}
+        (args.output_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
+        return
+
     for country, xml_bytes in remapped.items():
         (args.output_dir / f"{country}.xml").write_bytes(xml_bytes)
 

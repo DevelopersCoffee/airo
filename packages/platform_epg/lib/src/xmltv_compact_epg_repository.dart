@@ -54,6 +54,9 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
          for (final entry in programsByChannel.entries)
            entry.key: List.unmodifiable(entry.value),
        },
+       _canonicalByLower = {
+         for (final key in programsByChannel.keys) key.toLowerCase(): key,
+       },
        _channelNamesById = Map.unmodifiable(channelNamesById),
        _channelNumbersById = Map.unmodifiable(channelNumbersById);
 
@@ -314,8 +317,17 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
   final XmltvCompactEpgIngestStats stats;
   final CompactEpgSourceRef? sourceRef;
   final Map<String, List<CompactEpgProgram>> _programsByChannel;
+  final Map<String, String> _canonicalByLower;
   final Map<String, String> _channelNamesById;
   final Map<String, String> _channelNumbersById;
+
+  List<CompactEpgProgram> _programsFor(String channelId) {
+    final canonical = _programsByChannel.containsKey(channelId)
+        ? channelId
+        : _canonicalByLower[channelId.toLowerCase()];
+    if (canonical == null) return const [];
+    return _programsByChannel[canonical] ?? const [];
+  }
 
   @override
   Future<CompactEpgSlice> loadCurrentNext({
@@ -324,7 +336,7 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
   }) async {
     final entries = <CompactEpgEntry>[];
     for (final channelId in channelIds) {
-      final programs = _programsByChannel[channelId] ?? const [];
+      final programs = _programsFor(channelId);
       final entry = CompactEpgEntry.fromPrograms(
         channelId: channelId,
         channelName: _channelNamesById[channelId] ?? channelId,
@@ -357,7 +369,7 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
   Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async {
     final entries = <CompactEpgWindowEntry>[];
     for (final channelId in query.channelIds) {
-      final programs = _programsByChannel[channelId] ?? const [];
+      final programs = _programsFor(channelId);
       final windowed = [
         for (final program in programs)
           if (program.endsAt.isAfter(query.windowStart) &&

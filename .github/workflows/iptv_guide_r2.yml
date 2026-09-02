@@ -1,0 +1,147 @@
+name: IPTV country guide to R2
+
+# Cheap product-default EPG publish. Fetches one epg.pw country pack (~660KB
+# for IN), remaps numeric ids onto iptv-org catalog ids, and uploads only
+# guide_XX.xml.gz + manifest.json. Does not clone iptv-org/epg, does not
+# fetch the global ~50MB export, and never uploads a playlist/M3U.
+
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+    inputs:
+      country:
+        description: 'ISO country code for the epg.pw country pack'
+        required: false
+        default: 'IN'
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+  COUNTRY: ${{ github.event.inputs.country || 'IN' }}
+
+jobs:
+  publish:
+    name: Publish guide shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: iptv-data
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Normalize country
+        id: country
+        working-directory: .
+        run: |
+          set -euo pipefail
+          COUNTRY="$(printf '%s' "${{ env.COUNTRY }}" | tr '[:lower:]' '[:upper:]')"
+          if [[ ! "$COUNTRY" =~ ^[A-Z]{2}$ ]]; then
+            echo "::error::Country must be a two-letter ISO code, got: ${COUNTRY}"
+            exit 1
+          fi
+          echo "code=$COUNTRY" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch country XMLTV pack and iptv-org catalog
+        env:
+          COUNTRY: ${{ steps.country.outputs.code }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guide-r2
+          curl --fail --location --retry 3 --max-time 120 \
+            "https://epg.pw/xmltv/epg_${COUNTRY}.xml.gz" \
+            --output "/tmp/guide-r2/epg_${COUNTRY}.xml.gz"
+          gunzip -c "/tmp/guide-r2/epg_${COUNTRY}.xml.gz" > /tmp/guide-r2/epg.xml
+          curl --fail --location --retry 3 --max-time 120 \
+            https://iptv-org.github.io/api/channels.json \
+            --output /tmp/guide-r2/channels.json
+
+      - name: Remap ids and write gzip shards
+        env:
+          COUNTRY: ${{ steps.country.outputs.code }}
+        run: |
+          set -euo pipefail
+          rm -rf output/r2
+          python -m src.epg_pw_remap \
+            --input /tmp/guide-r2/epg.xml \
+            --iptv-org-channels /tmp/guide-r2/channels.json \
+            --output-dir output/r2 \
+            --gzip-guides \
+            --countries "$COUNTRY"
+
+      - name: Verify remapped shard
+        env:
+          COUNTRY: ${{ steps.country.outputs.code }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip
+          import json
+          import os
+          from pathlib import Path
+
+          country = os.environ["COUNTRY"]
+          output = Path("output/r2")
+          key = f"guide_{country}"
+          manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+          filename = manifest["files"][key]
+          checksum = manifest["fileChecksums"][key]
+          raw = (output / filename).read_bytes()
+          import hashlib
+          actual = hashlib.sha256(raw).hexdigest()
+          if actual != checksum:
+              raise SystemExit(f"checksum mismatch for {filename}")
+          xml = gzip.decompress(raw)
+          from xml.etree import ElementTree as ET
+          root = ET.fromstring(xml)
+          leaked = [
+              value
+              for value in (
+                  [el.get("id") or "" for el in root.findall("channel")]
+                  + [el.get("channel") or "" for el in root.findall("programme")]
+              )
+              if value.isdigit()
+          ]
+          if leaked:
+              raise SystemExit(
+                  "raw epg.pw numeric id leaked into published XMLTV: "
+                  + ", ".join(sorted(set(leaked))[:8])
+              )
+          print(f"{filename} bytes={len(raw)} sha256={checksum}")
+          PY
+
+      - name: Upload guide shards to Cloudflare R2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ] || [ -z "${AWS_ACCESS_KEY_ID:-}" ] || \
+             [ -z "${AWS_SECRET_ACCESS_KEY:-}" ] || [ -z "${CLOUDFLARE_R2_BUCKET:-}" ]; then
+            echo "CLOUDFLARE_R2_* secrets are not configured -- skipping the R2 upload."
+            echo "output/r2/ is still available from the workflow logs above."
+            exit 0
+          fi
+
+          export AWS_ENDPOINT_URL="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          aws s3 cp output/r2/manifest.json \
+            "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/manifest.json" \
+            --content-type application/json \
+            --cache-control 'public, max-age=300'
+          for guide in output/r2/guide_*.xml.gz; do
+            [ -e "$guide" ] || continue
+            aws s3 cp "$guide" "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/$(basename "$guide")" \
+              --content-type application/gzip \
+              --cache-control 'public, max-age=300'
+          done

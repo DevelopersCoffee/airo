@@ -171,6 +171,7 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
     ref.watch(guideEpgOverridesProvider.future);
     ref.watch(hiddenGroupIdsProvider.future);
     ref.watch(compactEpgRepositoryProvider);
+    ref.watch(xmltvSourceConfigProvider.future);
 
     final generation = ++_loadGeneration;
     _inFlight = null;

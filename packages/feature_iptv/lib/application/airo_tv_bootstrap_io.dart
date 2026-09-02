@@ -259,6 +259,7 @@ Future<CompactEpgSlice> _buildAiroTvCompactEpgSnapshot({
 List<String> _xmltvGuideAliasesFor(IPTVChannel channel) {
   final aliases = <String>{
     channel.id,
+    ...channel.epgLookupIds,
     if (channel.tvgId != null) channel.tvgId.toString(),
     if (channel.tvgName != null) channel.tvgName!,
     channel.name,

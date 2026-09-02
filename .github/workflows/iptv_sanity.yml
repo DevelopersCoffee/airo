@@ -258,10 +258,14 @@ jobs:
           # never land in the guide prefix (Gist remains their distribution
           # channel -- see the step above).
           aws s3 cp output/current/manifest.json \
-            "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/manifest.json"
+            "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/manifest.json" \
+            --content-type application/json \
+            --cache-control 'public, max-age=300'
           for guide in output/current/guide_*.xml.gz; do
             [ -e "$guide" ] || continue
-            aws s3 cp "$guide" "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/$(basename "$guide")"
+            aws s3 cp "$guide" "s3://${CLOUDFLARE_R2_BUCKET}/iptv-data/$(basename "$guide")" \
+              --content-type application/gzip \
+              --cache-control 'public, max-age=300'
           done
 
   notify-failure:

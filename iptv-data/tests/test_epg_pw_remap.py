@@ -1,6 +1,13 @@
+import gzip
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from src.epg_pw_remap import normalize_name, remap_epg_pw_xmltv
+from src.epg_pw_remap import (
+    catalog_from_iptv_org_api,
+    normalize_name,
+    remap_epg_pw_xmltv,
+    write_gzip_guides,
+)
 
 
 def _catalog(*channels: dict[str, object]) -> dict[str, object]:
@@ -122,3 +129,34 @@ def test_all_is_the_union_of_every_country() -> None:
         "MTV.in",
         "AlJazeera.qa",
     }
+
+
+def test_catalog_from_iptv_org_api_shapes_rows() -> None:
+    payload = catalog_from_iptv_org_api(
+        [
+            {"id": "MTV.in", "name": "MTV", "country": "in"},
+            {"id": "", "name": "skip"},
+            {"name": "no id"},
+            {"id": "Bare.zz"},
+        ]
+    )
+    assert payload == {
+        "channels": [
+            {"id": "MTV.in", "name": "MTV", "country": "IN"},
+            {"id": "Bare.zz", "name": "Bare.zz", "country": "ZZ"},
+        ]
+    }
+
+
+def test_write_gzip_guides_skips_all_and_filters_countries(tmp_path: Path) -> None:
+    remapped = {
+        "IN": b"<tv/>",
+        "US": b"<tv/>",
+        "ALL": b"<tv/>",
+    }
+    checksums = write_gzip_guides(remapped, tmp_path, countries={"IN"})
+    assert set(checksums) == {"guide_IN"}
+    assert (tmp_path / "guide_IN.xml.gz").is_file()
+    assert not (tmp_path / "guide_US.xml.gz").exists()
+    assert not (tmp_path / "guide_ALL.xml.gz").exists()
+    assert gzip.decompress((tmp_path / "guide_IN.xml.gz").read_bytes()) == b"<tv/>"

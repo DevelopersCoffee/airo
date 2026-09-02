@@ -235,6 +235,19 @@ void main() {
     expect(container.read(guidePagedWindowProvider).window, isNotNull);
   });
 
+  test('invalidating xmltv source config reloads the paged window', () async {
+    final repo = _CountingRepository(buildRepo());
+    final container = await buildContainer(repository: repo);
+
+    await settleInitial(container);
+    expect(repo.loadWindowCalls, 3);
+
+    container.invalidate(xmltvSourceConfigProvider);
+    await settleInitial(container);
+
+    expect(repo.loadWindowCalls, 6);
+  });
+
   test('nowTickerProvider emits UTC instants', () async {
     final container = await buildContainer();
 

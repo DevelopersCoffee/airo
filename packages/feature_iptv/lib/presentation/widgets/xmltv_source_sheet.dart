@@ -47,6 +47,7 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
       if (mounted) {
         setState(() => _isRefreshing = false);
         ref.invalidate(xmltvSourceConfigProvider);
+        ref.invalidate(guidePagedWindowProvider);
       }
     }
   }
@@ -55,6 +56,7 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
     await ref.read(xmltvSourceStoreProvider).clear();
     if (!mounted) return;
     ref.invalidate(xmltvSourceConfigProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   @override
