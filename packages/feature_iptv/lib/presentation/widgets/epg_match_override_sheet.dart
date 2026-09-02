@@ -50,6 +50,7 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
         .setOverride(channelId: widget.channel.id, epgChannelId: id);
     if (!mounted) return;
     ref.invalidate(guideEpgOverridesProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   Future<void> _clear() async {
@@ -59,6 +60,7 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
     if (!mounted) return;
     _idController.text = widget.channel.id;
     ref.invalidate(guideEpgOverridesProvider);
+    ref.invalidate(guidePagedWindowProvider);
   }
 
   @override

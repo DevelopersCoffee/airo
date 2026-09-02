@@ -34,6 +34,47 @@ void main() {
     expect(decoded.streamSources, channel.streamSources);
   });
 
+  group('IPTVChannel xmltv id', () {
+    test('fromM3U keeps a string tvg-id and infers country', () {
+      final channel = IPTVChannel.fromM3U(
+        name: 'MTV',
+        url: 'https://cdn.example.com/mtv.m3u8',
+        tvgId: 'MTV.in@SD',
+      );
+
+      expect(channel.xmltvId, 'MTV.in@SD');
+      expect(channel.tvgId, isNull);
+      expect(channel.country, 'IN');
+      expect(channel.resolvedEpgChannelId, 'MTV.in@SD');
+      expect(channel.epgLookupIds, ['MTV.in@SD', 'MTV.in']);
+    });
+
+    test('fromM3U still parses a numeric tvg-id', () {
+      final channel = IPTVChannel.fromM3U(
+        name: 'Channel',
+        url: 'https://cdn.example.com/live.m3u8',
+        tvgId: '101',
+      );
+
+      expect(channel.tvgId, 101);
+      expect(channel.xmltvId, '101');
+      expect(channel.resolvedEpgChannelId, '101');
+      expect(channel.epgLookupIds, ['101']);
+      expect(channel.country, isNull);
+    });
+
+    test('resolvedEpgChannelId falls back to id when no tvg-id is set', () {
+      const channel = IPTVChannel(
+        id: 'hash-1',
+        name: 'Channel',
+        streamUrl: 'https://cdn.example.com/live.m3u8',
+      );
+
+      expect(channel.resolvedEpgChannelId, 'hash-1');
+      expect(channel.epgLookupIds, ['hash-1']);
+    });
+  });
+
   group('IPTVChannel group normalization', () {
     test('fromM3U maps sentinel "Undefined" group to Uncategorized', () {
       final channel = IPTVChannel.fromM3U(

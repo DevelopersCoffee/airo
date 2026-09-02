@@ -20,9 +20,17 @@ Future<CompactEpgWindow> queryGuideWindowWithOverrides({
   final queryIds = <String>[];
   for (final channel in channels) {
     if (hiddenGroupIds.contains(channel.group)) continue;
-    final epgId = overrides[channel.id] ?? channel.id;
-    epgIdToChannelId[epgId] = channel.id;
-    queryIds.add(epgId);
+    // Manual override wins; otherwise try the playlist's own xmltv-id
+    // candidates (full id, then the id with `@quality` stripped). The
+    // first playlist channel to claim an EPG id keeps it — later channels
+    // sharing the same alias still get their own row via a distinct id.
+    final override = overrides[channel.id];
+    final candidates = override != null ? [override] : channel.epgLookupIds;
+    for (final epgId in candidates) {
+      if (epgId.trim().isEmpty) continue;
+      epgIdToChannelId.putIfAbsent(epgId, () => channel.id);
+      queryIds.add(epgId);
+    }
   }
 
   final rawWindow = await repository.loadWindow(
@@ -34,19 +42,28 @@ Future<CompactEpgWindow> queryGuideWindowWithOverrides({
     ),
   );
 
-  final remappedEntries = [
-    for (final entry in rawWindow.entries)
-      CompactEpgWindowEntry(
-        channelId: epgIdToChannelId[entry.channelId] ?? entry.channelId,
+  // Never leak a raw EPG id (numeric or xmltv-org) into the returned
+  // window: every entry is keyed by the playlist IPTVChannel.id so a Guide
+  // tap can play that row's stream directly (click-through). One playlist
+  // channel can match on more than one alias; keep only its first entry.
+  final remappedByChannelId = <String, CompactEpgWindowEntry>{};
+  for (final entry in rawWindow.entries) {
+    final channelId = epgIdToChannelId[entry.channelId];
+    if (channelId == null) continue;
+    remappedByChannelId.putIfAbsent(
+      channelId,
+      () => CompactEpgWindowEntry(
+        channelId: channelId,
         channelName: entry.channelName,
         channelNumber: entry.channelNumber,
         programs: entry.programs,
         sourceRef: entry.sourceRef,
       ),
-  ];
+    );
+  }
 
   return CompactEpgWindow(
-    entries: remappedEntries,
+    entries: remappedByChannelId.values.toList(growable: false),
     windowStart: rawWindow.windowStart,
     windowEnd: rawWindow.windowEnd,
     generatedAt: rawWindow.generatedAt,
