@@ -1,22 +1,22 @@
-# Airo Super-App / Midas Stream SSOT Consolidation Feature Packet
+# Airo Super-App / Aika Stream SSOT Consolidation Feature Packet
 
 ## Feature Packet
 
 **Primary owner agent:** Chief Architect  
-**Review agents:** Media Intelligence Architect, Midas Stream Flutter Architect, Chief QA Officer, Chief Documentation Officer, Chief Release/DevOps Officer  
+**Review agents:** Media Intelligence Architect, Aika Stream Flutter Architect, Chief QA Officer, Chief Documentation Officer, Chief Release/DevOps Officer  
 **Layer:** Mixed — framework contracts plus application-shell composition  
 **Sprint:** SSOT consolidation planning  
 **Parent roadmap:** Super-app + modular-app platform alignment
 
 ### Critical Agent Gate
 
-**Problem:** Airo and Midas Stream already share parts of the IPTV stack, but they do
+**Problem:** Airo and Aika Stream already share parts of the IPTV stack, but they do
 not share one product-composition contract. Startup, feature registration,
 settings composition, navigation composition, and TV dependency shaping are
-owned in different places. That allows Midas Stream work to diverge from Airo and
+owned in different places. That allows Aika Stream work to diverge from Airo and
 forces manual duplication when a shared IPTV setting or menu option changes.
 
-**User / actor:** Platform engineers, Midas Stream feature engineers, release
+**User / actor:** Platform engineers, Aika Stream feature engineers, release
 engineers, and users who expect the same IPTV capabilities to appear in both
 the super-app and the TV app without regression.
 
@@ -26,7 +26,7 @@ framework-level. Mobile and TV shell composition remains application-level.
 **Owning agent:** Chief Architect.
 
 **Reviewing agents:** Media Intelligence Architect (`feature_iptv` contracts),
-Midas Stream Flutter Architect (TV rendering and shell adoption), Chief QA Officer
+Aika Stream Flutter Architect (TV rendering and shell adoption), Chief QA Officer
 (no-break migration proof), Chief Documentation Officer (architecture and ADR
 record), Chief Release/DevOps Officer (app-shell and manifest strategy).
 
@@ -54,7 +54,7 @@ until the package boundary and compatibility plan are accepted.
 ### Cross-Agent Contract
 
 **Provider agent:** Chief Architect + Media Intelligence Architect  
-**Consumer agent:** Midas Stream Flutter Architect, super-app shell owners, release
+**Consumer agent:** Aika Stream Flutter Architect, super-app shell owners, release
 tooling  
 **Interface/API:** Shared product-shell manifest and shared IPTV composition
 contracts  
@@ -96,11 +96,11 @@ regression tests, route/startup assembly tests, and shell smoke validation.
 
 #### UC-001: Shared IPTV setting appears in both shells
 
-**Actor:** Midas Stream feature engineer  
+**Actor:** Aika Stream feature engineer  
 **Preconditions:** IPTV settings are declared in the shared settings-section
 manifest.  
 **Trigger:** Add or change one shared IPTV setting section.  
-**Happy path:** Airo mobile settings and Midas Stream settings both render the
+**Happy path:** Airo mobile settings and Aika Stream settings both render the
 updated option through their own adapters without duplicating the setting
 definition.  
 **Failure paths:** A setting is added only to one shell-specific screen or
@@ -120,9 +120,9 @@ set and semantic labels through their own renderers.
 **Data created/updated/deleted:** None.  
 **Privacy expectations:** No new data collection.
 
-#### UC-003: Midas Stream modular work is adopted by the super-app without breakage
+#### UC-003: Aika Stream modular work is adopted by the super-app without breakage
 
-**Actor:** Midas Stream feature engineer  
+**Actor:** Aika Stream feature engineer  
 **Preconditions:** Shared IPTV behavior lives in shared contracts/packages;
 shell-specific widgets remain adapters only.  
 **Trigger:** Implement a shared IPTV capability or preference in the TV-focused
@@ -218,7 +218,7 @@ logic only
 
 - create shared IPTV navigation descriptor list
 - create shared IPTV settings-section descriptor list
-- rewire current Airo and Midas Stream renderers
+- rewire current Airo and Aika Stream renderers
 
 ### Phase 3: Split `feature_iptv`
 

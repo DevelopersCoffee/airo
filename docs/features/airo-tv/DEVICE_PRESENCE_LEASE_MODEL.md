@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-039.
 
 ## Ownership
 
-Device presence is platform/framework behavior. Midas Stream, companion apps, cloud
+Device presence is platform/framework behavior. Aika Stream, companion apps, cloud
 orchestration, backend adapters, device pickers, command routing, and QA
 automation consume the contract to evaluate whether devices are currently
 available without inventing app-local freshness rules.

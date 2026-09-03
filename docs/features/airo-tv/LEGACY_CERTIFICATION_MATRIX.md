@@ -1,6 +1,6 @@
-# Midas Stream Legacy Certification Matrix
+# Aika Stream Legacy Certification Matrix
 
-This matrix defines the first platform certification contract for Midas Stream
+This matrix defines the first platform certification contract for Aika Stream
 v2.0.0.1 legacy and Lite Receiver support. Support claims must be based on
 evidence against these gates, not Android version alone.
 

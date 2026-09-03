@@ -8,7 +8,7 @@
 
 Airo Coin is the finance module of the Airo super app: a **local-first, privacy-first personal finance manager**. All data lives on-device, encrypted at rest, biometric-locked. An **on-device LLM** (tool-calling over local data) powers categorization, insights, and a natural-language finance assistant — no financial data ever leaves the phone by default.
 
-Like Midas Stream, Airo Coin is **modular**: shippable standalone (its own entrypoint) and embeddable as a module inside the super app shell, following module.yaml governance.
+Like Aika Stream, Airo Coin is **modular**: shippable standalone (its own entrypoint) and embeddable as a module inside the super app shell, following module.yaml governance.
 
 ## Product pillars
 

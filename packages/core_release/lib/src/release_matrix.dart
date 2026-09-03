@@ -453,7 +453,7 @@ class AiroReleaseMatrix extends Equatable {
         ),
         AiroReleaseProfile(
           id: 'tv',
-          displayName: 'Midas Stream',
+          displayName: 'Aika Stream',
           artifactNamePart: 'TV',
           releaseLine: AiroReleaseLine.v2,
           packageId: 'com.developerscoffee.tv.midas',

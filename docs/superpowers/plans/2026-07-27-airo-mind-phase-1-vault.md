@@ -371,7 +371,7 @@
   whose custody is supposed to be singular. Derived `PartialEq` is not
   constant-time. Where equality is genuinely needed, implement it via
   `subtle::ConstantTimeEq`.
-- **Never add `airo_mind` to `airo_core`.** Separate workspace member. `airo_core` is on the Midas Stream shipping critical path and must not gain crypto or storage dependencies.
+- **Never add `airo_mind` to `airo_core`.** Separate workspace member. `airo_core` is on the Aika Stream shipping critical path and must not gain crypto or storage dependencies.
 - **CI runs `cargo test --all`, `cargo clippy --all -- -D warnings`, `cargo fmt --check`** across `rust/Cargo.toml` (`.github/workflows/rust-core.yml`). A new workspace member is covered automatically. Clippy warnings fail the build.
 - **No panics.** Every fallible path returns `Result<_, VaultError>`. `unwrap()` and `expect()` are permitted in `#[cfg(test)]` only.
 - **Every secret type implements `Zeroize` + `ZeroizeOnDrop`.** Seeds, private keys, content keys, context keys.
@@ -1054,7 +1054,7 @@ git add rust/Cargo.toml rust/airo_mind/
 git commit -m "feat(mind): scaffold airo_mind crate with vault error type
 
 New workspace member, deliberately separate from airo_core: airo_core is
-on the Midas Stream shipping critical path and must not gain crypto or storage
+on the Aika Stream shipping critical path and must not gain crypto or storage
 dependencies.
 
 Refs #1204"
@@ -1578,7 +1578,7 @@ git add rust/Cargo.toml rust/airo_mind/
 git commit -m "feat(mind): scaffold airo_mind crate with vault error type
 
 New workspace member, deliberately separate from airo_core: airo_core is
-on the Midas Stream shipping critical path and must not gain crypto or storage
+on the Aika Stream shipping critical path and must not gain crypto or storage
 dependencies.
 
 Refs #1204"

@@ -84,7 +84,7 @@ Future<void> _shareIptvVideoFrame(Uint8List pngBytes) async {
           name: 'airo-tv-frame.png',
         ),
       ],
-      subject: 'Midas Stream video frame',
+      subject: 'Aika Stream video frame',
     ),
   );
 }

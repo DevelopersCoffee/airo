@@ -337,7 +337,7 @@ class _TvSidebarLogo extends StatelessWidget {
 
     return TvFocusable(
       onSelect: onSelect,
-      semanticLabel: 'Midas Stream home',
+      semanticLabel: 'Aika Stream home',
       semanticButton: true,
       child: Column(
         children: [

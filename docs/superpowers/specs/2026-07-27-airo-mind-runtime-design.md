@@ -586,7 +586,7 @@ Constrained by `PLATFORM_CONSTITUTION.md` §2 and §4.
 | Shell registration | `core_product_shell` `AppModule` — depends on #1187 |
 
 **Why a separate Rust crate.** `airo_core` is described as "playlist, EPG,
-search and dedup" and is on the shipping critical path for Midas Stream. Adding
+search and dedup" and is on the shipping critical path for Aika Stream. Adding
 crypto, an embedded database, and sync to it puts binary size, build time, and
 regression risk onto a product that needs none of it. Separate crate, separate
 FRB codegen target, separate size budget.

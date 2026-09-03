@@ -38,7 +38,7 @@ without redefining typography, shape, spacing, chrome, or motion.
 - No changes to persistence, permissions, model routing, playback, or finance
   calculations.
 - Existing theme storage value `cyber` remains valid for migration safety.
-- Bedtime and Midas Stream remain distinct modes while sharing the new geometry,
+- Bedtime and Aika Stream remain distinct modes while sharing the new geometry,
   typography, and interaction grammar where appropriate.
 - All four layout families in `RESPONSIVE_STANDARDS.md` remain supported.
 

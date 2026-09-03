@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-037.
 
 ## Ownership
 
-Cloud orchestration is platform/framework behavior. Midas Stream, companion apps,
+Cloud orchestration is platform/framework behavior. Aika Stream, companion apps,
 home nodes, command routing, session sync, device registry, presence, playback
 ticket brokering, notification wake, recovery, backend adapters, and QA
 automation consume this contract to coordinate devices and state without making

@@ -1,6 +1,6 @@
-# Midas Stream Analytics Event Schema Registry
+# Aika Stream Analytics Event Schema Registry
 
-ATV-070 defines the platform schema registry for Midas Stream analytics events.
+ATV-070 defines the platform schema registry for Aika Stream analytics events.
 Feature modules submit `AiroAnalyticsEvent` instances that are validated against
 registered schemas before local retention or provider upload.
 
@@ -64,7 +64,7 @@ Category, bucket, and stable-ID values must use stable snake_case strings.
 `AiroAnalyticsRetentionClass` currently covers operational 30-day, product
 90-day, diagnostics 30-day, crash 90-day, and aggregate-only classes.
 
-## Default Midas Stream Schemas
+## Default Aika Stream Schemas
 
 `AiroTvAnalyticsSchemas.registry()` includes initial v2.0.0.1 schemas for:
 
@@ -101,9 +101,9 @@ accepted and rejected fixture cases for pairing, handoff, discovery, command
 latency, delegation, and companion availability telemetry without exposing raw
 field values in public maps.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream and feature modules must use registered schemas rather than arbitrary
+Aika Stream and feature modules must use registered schemas rather than arbitrary
 analytics maps. Unknown events, unexpected fields, missing required fields,
 wrong field kinds, owner/purpose mismatches, and privacy violations are rejected
 before any provider adapter receives the event.

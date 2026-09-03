@@ -49,7 +49,7 @@ configuration shows the existing recovery state.
 
 **Provider agent:** Media Intelligence Architect
 
-**Consumer agent:** Midas Stream Flutter application
+**Consumer agent:** Aika Stream Flutter application
 
 **Interface/API:** `M3UParserService` accepts an optional stable source
 namespace. Existing callers that omit it retain legacy keys and filenames.

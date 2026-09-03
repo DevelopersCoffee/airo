@@ -159,7 +159,7 @@ See [Contributing Guide](./getting-started/START_HERE.md) for details.
 ## 📄 Legal
 
 - [Privacy Policy](./legal/privacy-policy/) — How we handle your data
-- [Terms & Conditions](./legal/terms-conditions/) — Rules for using Midas Stream
+- [Terms & Conditions](./legal/terms-conditions/) — Rules for using Aika Stream
 
 ---
 

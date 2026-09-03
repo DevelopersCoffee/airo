@@ -24,7 +24,7 @@ This issue does not implement:
 - desktop services
 - AI workers
 - local discovery
-- Midas Stream UI
+- Aika Stream UI
 
 The contract only makes future work compatible with v2 protocol decisions.
 

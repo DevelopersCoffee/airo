@@ -2,17 +2,17 @@
 
 Issue: ATV-058
 Package: `platform_certification`
-Layer: Platform framework, consumed by Midas Stream release and QA workflows
+Layer: Platform framework, consumed by Aika Stream release and QA workflows
 
 ## Purpose
 
-Midas Stream starts legacy support at Android TV API 26. API 23-25 devices may be
+Aika Stream starts legacy support at Android TV API 26. API 23-25 devices may be
 evaluated only as internal experimental receiver candidates. They must not be
 advertised as publicly supported until a future release deliberately changes
 the certification and support policy.
 
 This contract belongs in `platform_certification` because lower-API support is a
-device certification and release-claim decision, not an Midas Stream screen or
+device certification and release-claim decision, not an Aika Stream screen or
 feature-module decision.
 
 ## Candidate Range

@@ -419,7 +419,7 @@ class _PlaylistSourceManagerSheetState
             const SizedBox(height: 8),
             const Text(
               'Paste an M3U or M3U8 URL for playlists you own or are '
-              'authorized to use. Midas Stream does not provide channels, '
+              'authorized to use. Aika Stream does not provide channels, '
               'playlists, or streams.',
             ),
             const SizedBox(height: 12),

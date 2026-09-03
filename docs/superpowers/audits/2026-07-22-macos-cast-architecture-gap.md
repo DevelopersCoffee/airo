@@ -4,7 +4,7 @@ Date: 2026-07-22
 
 ## Trigger
 
-The macOS Midas Stream app exposed the same Cast picker used by Pixel/iPad, but the
+The macOS Aika Stream app exposed the same Cast picker used by Pixel/iPad, but the
 picker stayed at `Ready to search` / no receiver discovery on macOS.
 
 ## Finding

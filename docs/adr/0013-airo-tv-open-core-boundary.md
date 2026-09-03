@@ -1,4 +1,4 @@
-# ADR 0013: Midas Stream open-core boundary
+# ADR 0013: Aika Stream open-core boundary
 
 - Status: Accepted
 - Date: 2026-07-27
@@ -6,7 +6,7 @@
 
 ## Context
 
-Midas Stream must remain a complete self-hosted media player. Classification cannot
+Aika Stream must remain a complete self-hosted media player. Classification cannot
 turn ordinary playback, accessibility, import, local data, or device support
 into an upgrade prompt. Conversely, advanced intelligence and cross-device
 services need an explicit commercial boundary.
@@ -22,7 +22,7 @@ user-supplied source import, parsing, EPG, accessibility, discovery, local
 storage, export/backup, performance, device compatibility, and reusable
 framework contracts.
 
-Midas Stream Pro (`pro`) includes personalized intelligence, recommendation and
+Aika Stream Pro (`pro`) includes personalized intelligence, recommendation and
 knowledge graphs, cross-device/cloud synchronization, enterprise identity or
 management, licensed enrichment services, and advanced multi-feed/sports
 workflows. Provider SDK adapters and private entitlement presentation stay
@@ -34,7 +34,7 @@ labeled children. A reusable CE contract does not make a private capability
 available, and a Pro adapter does not make the underlying player incomplete.
 
 Classification is not a release claim. Open work is `Planned`; merged but
-unqualified work is `Under qualification`; Midas Stream Pro remains `In testing`
+unqualified work is `Under qualification`; Aika Stream Pro remains `In testing`
 until a public artifact and release evidence prove availability.
 
 ## Consequences

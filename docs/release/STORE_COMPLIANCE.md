@@ -17,7 +17,7 @@ These URLs were verified with HTTP 200 responses on July 14, 2026.
 | Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Live |
 | Terms & Conditions | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Live |
 
-The Terms page opens with the IPTV content disclaimer: Midas Stream is a media
+The Terms page opens with the IPTV content disclaimer: Aika Stream is a media
 player only and does not provide channels, playlists, or streams.
 
 ## Android Release Profiles
@@ -40,15 +40,15 @@ The Android Gradle config currently uses:
 - release signing from `app/android/key.properties` locally or CI signing
   secrets in release workflows
 
-## Midas Stream Metadata
+## Aika Stream Metadata
 
 | Field | Current value | Status |
 | --- | --- | --- |
-| App name | `Midas Stream` | Ready in [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| App name | `Aika Stream` | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
 | Package ID | `com.developerscoffee.tv.midas` | New Play listing — create the Console app before first upload |
-| Category | Video Players & Editors | Ready in [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Short description | `Play your own authorized playlists on Android TV.` | Ready in [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Full description | Final copy in [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Ready pending stakeholder approval |
+| Category | Video Players & Editors | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Short description | `Play your own authorized playlists on Android TV.` | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Full description | Final copy in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Ready pending stakeholder approval |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
 | Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
@@ -57,7 +57,7 @@ The Android Gradle config currently uses:
 | Screenshots | TV screenshots required, 1920x1080 landscape | Ready in `docs/store-assets/airo-tv/` |
 | Feature graphic | 1024x500 PNG/JPG required for Play | Ready in `docs/store-assets/airo-tv/` |
 
-### Midas Stream Permissions
+### Aika Stream Permissions
 
 The TV manifest is `app/android/app/src/tv/AndroidManifest.xml`.
 
@@ -115,7 +115,7 @@ iOS to the release scope.
 
 ## IPTV Content Disclaimer
 
-Midas Stream / Midas Stream is a media player for user-provided playlists and streams. It does not
+Aika Stream / Aika Stream is a media player for user-provided playlists and streams. It does not
 provide, host, endorse, verify, or distribute channels, playlists, or streams.
 Users are responsible for ensuring that every content source they load is legal
 in their jurisdiction and that they have the required rights to access it.
@@ -134,11 +134,11 @@ Before submitting a public v2 Android release:
 - [ ] Complete account, credential, signing, and repository-governance items in
       [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md).
 - [ ] Confirm stakeholder approval for
-      [Midas Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
+      [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
 - [ ] Complete Data Safety/App Privacy console forms from
-      [Midas Stream Data Safety](./AIRO_TV_DATA_SAFETY.md).
+      [Aika Stream Data Safety](./AIRO_TV_DATA_SAFETY.md).
 - [ ] Complete content rating store-console forms from
-      [Midas Stream Content Rating](./AIRO_TV_CONTENT_RATING.md).
+      [Aika Stream Content Rating](./AIRO_TV_CONTENT_RATING.md).
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
 - [x] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.

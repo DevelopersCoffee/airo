@@ -1,12 +1,12 @@
-# Midas Stream Player Control Surface Parity Feature Packet
+# Aika Stream Player Control Surface Parity Feature Packet
 
 ## Critical Agent Gate
 
-**Problem:** The compact Midas Stream phone/player path lacks visible controls that users expect from the previous TV Explorer-style surface: subtitle Off/track control, visible phone volume and channel controls, DVR rewind, explicit PiP, quality selection, and removal or implementation of no-op action buttons.
+**Problem:** The compact Aika Stream phone/player path lacks visible controls that users expect from the previous TV Explorer-style surface: subtitle Off/track control, visible phone volume and channel controls, DVR rewind, explicit PiP, quality selection, and removal or implementation of no-op action buttons.
 
-**User / actor:** Midas Stream users on Pixel 9, phones/tablets, macOS, and TV devices browsing IPTV channels.
+**User / actor:** Aika Stream users on Pixel 9, phones/tablets, macOS, and TV devices browsing IPTV channels.
 
-**Framework or application layer:** Mixed. `platform_player` and `platform_media` own playback state/track selection contracts. `feature_iptv` owns Midas Stream product UI and IPTV workflow wiring.
+**Framework or application layer:** Mixed. `platform_player` and `platform_media` own playback state/track selection contracts. `feature_iptv` owns Aika Stream product UI and IPTV workflow wiring.
 
 **Owning agent:** Media Intelligence Architect.
 
@@ -14,7 +14,7 @@
 
 **Impacted modules/files:** `packages/platform_player`, `packages/platform_media`, `packages/feature_iptv`, focused widget/service tests.
 
-**Base branch/worktree:** Existing worktree `codex/remove-legacy-product-targets`, originally based on `origin/main` for the active Midas Stream consolidation slice.
+**Base branch/worktree:** Existing worktree `codex/remove-legacy-product-targets`, originally based on `origin/main` for the active Aika Stream consolidation slice.
 
 **Open questions:** None blocking. Share is implemented as a clipboard copy because `feature_iptv` does not own a share dependency; Like/Ways-to-watch are removed until backed by a real contract.
 
@@ -44,13 +44,13 @@
 
 **Versioning/migration:** Additive method on internal playback engine contract; all implementations in repo are updated in the same slice.
 
-**Tests required:** Platform player fake engine, platform media streaming service, Midas Stream player widget controls, channel info bar no-op removal/copy share.
+**Tests required:** Platform player fake engine, platform media streaming service, Aika Stream player widget controls, channel info bar no-op removal/copy share.
 
 ## Deterministic Use Cases
 
 ### UC-001: Captions Off
 
-**Actor:** Phone Midas Stream user.
+**Actor:** Phone Aika Stream user.
 
 **Preconditions:** Current stream exposes subtitle tracks.
 
@@ -66,7 +66,7 @@
 
 ### UC-002: Visible Phone Controls
 
-**Actor:** Pixel 9 Midas Stream user.
+**Actor:** Pixel 9 Aika Stream user.
 
 **Preconditions:** A channel is playing in the compact shell.
 
@@ -82,7 +82,7 @@
 
 ### UC-003: No Dead Action Buttons
 
-**Actor:** Midas Stream browser user.
+**Actor:** Aika Stream browser user.
 
 **Preconditions:** A channel is selected.
 
@@ -118,7 +118,7 @@
 
 **Given:** Pixel 9 connected over ADB.
 
-**When:** Build and install Midas Stream, open compact portrait player, play a test channel.
+**When:** Build and install Aika Stream, open compact portrait player, play a test channel.
 
 **Then:** New controls are visible and tappable; unsupported options are disabled rather than dead.
 

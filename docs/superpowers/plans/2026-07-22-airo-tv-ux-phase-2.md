@@ -1,4 +1,4 @@
-# Midas Stream UX Phase 2 — Responsive Shell Execution Plan
+# Aika Stream UX Phase 2 — Responsive Shell Execution Plan
 
 > **Issue:** #1038  
 > **Base:** `origin/main` at `72fff696`  

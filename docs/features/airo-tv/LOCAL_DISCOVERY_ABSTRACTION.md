@@ -1,4 +1,4 @@
-# Midas Stream Local Discovery Abstraction
+# Aika Stream Local Discovery Abstraction
 
 This contract defines the v2.0.0.1 platform boundary for same-network Airo node
 discovery. It prepares the project for mDNS/DNS-SD service `_airotv._tcp`
@@ -52,7 +52,7 @@ states rather than branch on platform-specific discovery APIs.
 
 ## Release Rule
 
-Midas Stream, companion, pairing, command, and AI flows should consume
+Aika Stream, companion, pairing, command, and AI flows should consume
 `platform_network_discovery` snapshots. Standalone playback must continue when
 local discovery is unavailable, denied, blocked by multicast restrictions, or
 not yet implemented for a platform.

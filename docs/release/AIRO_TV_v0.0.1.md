@@ -1,10 +1,10 @@
-# Midas Stream v0.0.1
+# Aika Stream v0.0.1
 
-Midas Stream v0.0.1 is the initial Android TV release from the Airo v2 release line.
+Aika Stream v0.0.1 is the initial Android TV release from the Airo v2 release line.
 
 ## Release Metadata
 
-- Product: Midas Stream, part of Airo
+- Product: Aika Stream, part of Airo
 - Package name: `io.airo.app.tv`
 - Version: `0.0.1+1`
 - Tag: `airo-tv-v0.0.1`
@@ -21,13 +21,13 @@ Midas Stream v0.0.1 is the initial Android TV release from the Airo v2 release l
 
 ## Play Store Readiness Notes
 
-Midas Stream is a player app. It does not provide IPTV channels, playlists, or copyrighted media. Bring a playlist you are allowed to watch; the app brings the popcorn energy.
+Aika Stream is a player app. It does not provide IPTV channels, playlists, or copyrighted media. Bring a playlist you are allowed to watch; the app brings the popcorn energy.
 
 Google Cast support depends on the receiver advertising `_googlecast._tcp` and allowing local network reachability on port `8009`. If discovery fails, users should verify the TV/Chromecast is powered on, on the same network, and not blocked by router/client isolation.
 
 ## Release Pipeline
 
-Use the `Midas Stream Release` GitHub Actions workflow to cut a release branch from `v2`, build Android TV artifacts, optionally upload to a Play testing track, and publish the GitHub release.
+Use the `Aika Stream Release` GitHub Actions workflow to cut a release branch from `v2`, build Android TV artifacts, optionally upload to a Play testing track, and publish the GitHub release.
 
 Default workflow inputs for this release:
 

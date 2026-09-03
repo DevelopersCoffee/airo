@@ -441,7 +441,7 @@ class AiroContentRatingPreflightRunner {
       AiroContentRatingQuestionAnswer(
         topic: 'App-hosted mature content',
         answer: yesNo(request.hasAppHostedMatureContent),
-        note: 'Midas Stream is a media player and does not host media content.',
+        note: 'Aika Stream is a media player and does not host media content.',
       ),
       AiroContentRatingQuestionAnswer(
         topic: 'Violence in app UI',
@@ -462,7 +462,7 @@ class AiroContentRatingPreflightRunner {
         topic: 'Content disclaimer',
         answer: 'Yes',
         note:
-            'Midas Stream is a media player only; users are responsible for their '
+            'Aika Stream is a media player only; users are responsible for their '
             'own lawful content sources.',
       ),
     ];

@@ -1,25 +1,25 @@
 ---
 layout: landing
 permalink: /how-to-use-iptv-on-android-tv/
-title: "How to Use IPTV on Android TV — Install and Set Up Midas Stream"
-description: "Install Midas Stream on Android TV or Google TV, add your M3U/M3U8 IPTV playlist, and get playing. Direct APK or Play Store. Open source."
+title: "How to Use IPTV on Android TV — Install and Set Up Aika Stream"
+description: "Install Aika Stream on Android TV or Google TV, add your M3U/M3U8 IPTV playlist, and get playing. Direct APK or Play Store. Open source."
 eyebrow: "How-to"
 hero_title: "How to use IPTV on Android TV."
 lede: "Install, add your playlist, and you're browsing — the same five steps whether you sideload the APK or install through the Play Store."
-primary_cta: "Download Midas Stream"
+primary_cta: "Download Aika Stream"
 steps_title: "Install and start"
 steps_subtitle: "Do this"
 steps:
   - "Open the latest release on a trusted computer or device."
   - "Choose the canonical APK unless your device requires a specific ABI build."
   - "Install the APK through your approved device installation path."
-  - "Open Midas Stream from the TV launcher."
+  - "Open Aika Stream from the TV launcher."
   - "Add your authorized playlist, browse channels, and test playback."
 structured_data:
   "@context": "https://schema.org"
   "@type": HowTo
-  name: How to Use IPTV on Android TV with Midas Stream
-  description: Install Midas Stream on Android TV or Google TV and add an IPTV playlist.
+  name: How to Use IPTV on Android TV with Aika Stream
+  description: Install Aika Stream on Android TV or Google TV and add an IPTV playlist.
   step:
     - "@type": HowToStep
       text: Open the latest release on a trusted computer or device.
@@ -28,7 +28,7 @@ structured_data:
     - "@type": HowToStep
       text: Install the APK through your approved device installation path.
     - "@type": HowToStep
-      text: Open Midas Stream from the TV launcher.
+      text: Open Aika Stream from the TV launcher.
     - "@type": HowToStep
       text: Add your authorized playlist, browse channels, and test playback.
 related_title: "Related"
@@ -46,14 +46,14 @@ related:
     url: /iptv-player-for-fire-tv/
     icon: flame
 faq:
-  - q: "Do I need the Play Store to use IPTV on Android TV with Midas Stream?"
+  - q: "Do I need the Play Store to use IPTV on Android TV with Aika Stream?"
     a: "No. A direct-install APK is published alongside the Play Store AAB, so you can sideload it on any Android TV or Google TV device."
   - q: "Which APK should I install?"
     a: "The canonical/universal APK covers most devices. Only reach for a specific ABI build if your device documentation says it needs one."
   - q: "How do I navigate once it's installed?"
     a: "Use the D-pad to move focus and Select to activate the focused control. Use Back to leave playback or return to the previous screen, and Search instead of scrolling a large playlist."
-  - q: "Does Midas Stream include IPTV channels?"
-    a: "No. Midas Stream ships no channels, playlists, subscriptions, or media catalog on any platform. You add your own authorized M3U/M3U8 playlist after installing."
+  - q: "Does Aika Stream include IPTV channels?"
+    a: "No. Aika Stream ships no channels, playlists, subscriptions, or media catalog on any platform. You add your own authorized M3U/M3U8 playlist after installing."
 ---
 
 Getting IPTV working on Android TV is really two short procedures back

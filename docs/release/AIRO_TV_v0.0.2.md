@@ -1,21 +1,21 @@
-# Midas Stream v0.0.2
+# Aika Stream v0.0.2
 
-Midas Stream v0.0.2 is a release-management and trust-readiness update for the Android TV variant of Airo.
+Aika Stream v0.0.2 is a release-management and trust-readiness update for the Android TV variant of Airo.
 
 ## Highlights
 
 - Published clean release asset names for APK and Play Store AAB downloads.
-- Added a structured release-note format for Midas Stream releases.
+- Added a structured release-note format for Aika Stream releases.
 - Added SHA256 checksum publishing for release artifacts.
 - Documented privacy, security, threat model, roadmap, and release asset expectations.
-- Updated public download links and Midas Stream release documentation.
+- Updated public download links and Aika Stream release documentation.
 
 ## New Features
 
 ### IPTV
 
 - Supports user-supplied M3U playlist URLs.
-- Keeps IPTV content responsibility with the user; Midas Stream does not bundle channels or playlists.
+- Keeps IPTV content responsibility with the user; Aika Stream does not bundle channels or playlists.
 
 ### Search
 
@@ -51,13 +51,13 @@ Midas Stream v0.0.2 is a release-management and trust-readiness update for the A
   - `Airo-TV-v0.0.2-Play-Store.aab`
 - Release assets include `SHA256SUMS` for download verification.
 - Release notes follow a stable, professional template suitable for future versions.
-- README and public site copy point users to the tagged Midas Stream release.
+- README and public site copy point users to the tagged Aika Stream release.
 - Release documentation now includes privacy, security, roadmap, architecture, feature matrix, and reproducible-build references.
 
 ## Bug Fixes
 
-- Fixed broken and misleading Midas Stream download references that pointed to generic or missing release assets.
-- Removed debug-looking public APK names from the Midas Stream release flow.
+- Fixed broken and misleading Aika Stream download references that pointed to generic or missing release assets.
+- Removed debug-looking public APK names from the Aika Stream release flow.
 
 ## Performance
 
@@ -66,9 +66,9 @@ Midas Stream v0.0.2 is a release-management and trust-readiness update for the A
 
 ## Developer Changes
 
-- Updated the Midas Stream release workflow defaults for `v0.0.2`.
+- Updated the Aika Stream release workflow defaults for `v0.0.2`.
 - Added SHA256 checksum generation to the release pipeline.
-- Added a reusable Midas Stream release template.
+- Added a reusable Aika Stream release template.
 - Added trust documentation used by the README and release process.
 
 ## Breaking Changes

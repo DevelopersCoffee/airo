@@ -34,7 +34,7 @@ qualification in the working copy.
 
 | Surface | State | Notes |
 | --- | --- | --- |
-| Midas Stream BACK after playback (#1430) | **Available** (on the hard gate) | Closed in tree; requires Stick install + D-pad + BACK-after-playback evidence before this notes file is published. |
+| Aika Stream BACK after playback (#1430) | **Available** (on the hard gate) | Closed in tree; requires Stick install + D-pad + BACK-after-playback evidence before this notes file is published. |
 | Unified live playlist merge (M3U / Xtream / Stalker) | **Available** (on the hard gate) | In tree; requires Fire TV playlist-merge smoke (#1605) before publish. |
 | Honest TV backup failure copy (#1918) | **Available** | Covered by the same TV install check; no extra device row. |
 | BACK dismisses shell overlays (#1917) | **Available** | Exercised together with #1430 on the Stick. |
@@ -59,7 +59,7 @@ qualification in the working copy.
 
 ## What is new since v0.0.6
 
-**Midas Stream**
+**Aika Stream**
 
 - BACK on the channel-browse grid after returning from playback (#1430).
 - BACK dismisses shell overlays (#1917).
@@ -170,6 +170,6 @@ is enough; #1023 (mini-player Watch) stays a known issue.
 - [Execution plan](../superpowers/plans/2026-08-30-airo-0.0.7-release.md)
 - [V2 release orchestrator](./V2_RELEASE_ORCHESTRATOR.md)
 - [v0.0.6 stable notes](./AIRO_v0.0.6.md)
-- [Midas Stream feature matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Aika Stream feature matrix](./AIRO_TV_FEATURE_MATRIX.md)
 - [Human-in-loop blockers](./V2_HUMAN_IN_LOOP_BLOCKERS.md)
 - [Release checklist](./RELEASE_CHECKLIST.md)

@@ -34,7 +34,7 @@ class PackageInfo {
   static Future<PackageInfo> fromPlatform({String? baseUrl}) async {
     return _fromPlatform ??
         PackageInfo(
-          appName: 'Midas Stream',
+          appName: 'Aika Stream',
           // Matches `variantApplicationId` for the "tv" variant in
           // app/android/app/build.gradle.kts.
           packageName: 'com.developerscoffee.tv.midas',

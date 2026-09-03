@@ -33,7 +33,7 @@ Tag: `v0.0.6`.
 
 ## What is new since v0.0.6-rc.1
 
-**Midas Stream**
+**Aika Stream**
 
 - Fire TV D-pad focus and BACK paths restored after the #1244 regression.
 - The TV shell is held inside both the horizontal and vertical title-safe bands,
@@ -69,7 +69,7 @@ Tag: `v0.0.6`.
 | Issue | Impact |
 | --- | --- |
 | #1240 | Airo Coins can open to a persistent black screen on Pixel 9 / Android 17. Not re-verified against the new coins shell in this cut. |
-| #1430 | Midas Stream: BACK is intermittently swallowed on the channel-browse grid after returning from playback. |
+| #1430 | Aika Stream: BACK is intermittently swallowed on the channel-browse grid after returning from playback. |
 | #1243 | Fire TV live playback emits repeated vendor property-denial errors in logcat; playback is unaffected. |
 | #1025 | `platform_player` overlays can stack — error state, idle play button, and hover controls render together. |
 | #1023 | `feature_iptv`: mini-player "Watch" does not open the fullscreen player on macOS. |
@@ -92,5 +92,5 @@ build number, source ref, and workflow run.
 
 - [V2 release orchestrator](./V2_RELEASE_ORCHESTRATOR.md)
 - [v0.0.6-rc.1 preview notes](./AIRO_v0.0.6-rc.1.md)
-- [Midas Stream release template](./AIRO_TV_RELEASE_TEMPLATE.md)
+- [Aika Stream release template](./AIRO_TV_RELEASE_TEMPLATE.md)
 - [Release checklist](./RELEASE_CHECKLIST.md)

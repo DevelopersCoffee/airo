@@ -1,4 +1,4 @@
-# Midas Stream Volume 5 Gap Analysis
+# Aika Stream Volume 5 Gap Analysis
 
 **Source:** `/Users/udaychauhan/.codex/attachments/5c1636f1-d66c-4c5a-8cbb-b515a64bd242/pasted-text.txt`  
 **Duplicate source verified:** `/Users/udaychauhan/.codex/attachments/dd85e91a-cb79-4375-8b85-4d1d5308f2a0/pasted-text.txt`  
@@ -8,7 +8,7 @@ background workers, performance budgets, and constrained-device architecture.
 
 ## Executive Summary
 
-Volume 5 defines the performance architecture Midas Stream needs before it can scale
+Volume 5 defines the performance architecture Aika Stream needs before it can scale
 to large IPTV/VOD libraries, low-powered TV devices, local phone-to-TV control,
 distributed EPG processing, stream intelligence, and high-bitrate playback. Its
 central requirement is a clean split: Flutter owns product experience and
@@ -21,12 +21,12 @@ The current repository has useful foundations: modular Flutter packages,
 storage, background database creation, a basic M3U parser, offline/sync
 abstractions, Cast proxy tests, app-level performance logging, and AI memory
 budget logic. It does not yet have a native media engine abstraction, media
-probing, large streamed import pipeline, Midas Stream media database schema, search
+probing, large streamed import pipeline, Aika Stream media database schema, search
 index architecture, Protobuf local protocol, secure WebSocket transport,
 distributed EPG worker, resource scheduler, shared Airo media error taxonomy,
 benchmark harness, or device-class certification suite.
 
-The biggest product implication is that Midas Stream cannot rely on Flutter widgets,
+The biggest product implication is that Aika Stream cannot rely on Flutter widgets,
 `SharedPreferences`, and `video_player` alone for the Volume 5 goals. The plan
 needs a performance foundation track before claiming support for 100,000-item
 libraries, high-bitrate constrained-TV playback, or real-time local protocol
@@ -49,8 +49,8 @@ sync.
 | Protobuf protocol | No Protobuf dependency or Airo protocol schema found | Missing |
 | Secure WebSocket transport | No Airo WebSocket protocol dependency or service found | Missing |
 | Distributed EPG processing | `platform_epg` is placeholder-level; no worker/snapshot/transfer pipeline found | Missing |
-| Media database schema | Existing app DB is finance/meeting/sync oriented, not Midas Stream media library oriented | Missing |
-| Performance benchmark harness | No representative Midas Stream import/search/playback benchmark suite found | Missing |
+| Media database schema | Existing app DB is finance/meeting/sync oriented, not Aika Stream media library oriented | Missing |
+| Performance benchmark harness | No representative Aika Stream import/search/playback benchmark suite found | Missing |
 
 ## Major Gaps
 
@@ -88,7 +88,7 @@ Current state:
 - Drift opens the native database in the background.
 - The M3U parser loads the full response as a string and splits it into lines.
 - Search/filter behavior is largely provider/UI-side for IPTV lists.
-- There is no Midas Stream job queue or worker-isolate contract.
+- There is no Aika Stream job queue or worker-isolate contract.
 
 Gap:
 - No explicit UI-isolate budget enforcement.
@@ -126,7 +126,7 @@ Planning impact:
 - The existing parser is suitable as a prototype, not as the Volume 5 import
   pipeline.
 
-### 4. Midas Stream Media Database Architecture Is Missing
+### 4. Aika Stream Media Database Architecture Is Missing
 
 Volume 5 requires indexed stores for media library data, user state, operational
 cache, and secure data, with migration, compaction, corruption detection,
@@ -135,7 +135,7 @@ pagination, streaming results, export/restore, and benchmark-based DB choice.
 Current state:
 - The app has Drift tables for finance, meeting, sync, and outbox data.
 - `core_data` has sqflite and secure-storage abstractions.
-- There is no dedicated Midas Stream media-library schema for channels, movies,
+- There is no dedicated Aika Stream media-library schema for channels, movies,
   series, episodes, sources, playlists, categories, EPG mappings, stream health,
   probe results, or search indexes.
 
@@ -266,7 +266,7 @@ Current state:
 - It is sync-oriented and has basic interval/network/charging options.
 
 Gap:
-- No unified Midas Stream scheduler.
+- No unified Aika Stream scheduler.
 - No priority classes for active playback recovery, pairing security, import,
   EPG, health checks, warm-up, or cache cleanup.
 - No resource arbitration with player buffering, memory pressure, overheating,
@@ -312,7 +312,7 @@ Gap:
 - No shared media/platform error taxonomy.
 - No redaction-enforced diagnostics for signed URLs, credentials, voice
   content, local IPs, or viewing history.
-- No local-only diagnostics export contract for Midas Stream.
+- No local-only diagnostics export contract for Aika Stream.
 - No performance metric schema for frame timing, query latency, import speed,
   protocol RTT, player startup, rebuffering, failover, memory, and decoder
   fallback.
@@ -328,7 +328,7 @@ and desktop, plus performance, protocol, and media test suites.
 
 Current state:
 - Some widget and unit tests exist around IPTV/Cast/live-edge behavior.
-- No Midas Stream benchmark harness for large import/search/playback/protocol
+- No Aika Stream benchmark harness for large import/search/playback/protocol
   workloads was found.
 
 Gap:
@@ -391,7 +391,7 @@ Planning impact:
 
 ## Final Assessment
 
-Volume 5 is the architecture that determines whether Midas Stream can scale beyond a
+Volume 5 is the architecture that determines whether Aika Stream can scale beyond a
 small IPTV demo. The current codebase has enough modular shape to host the work,
 but the performance-critical systems are not yet in place. The next planning
 step should be to define native media, media storage, import workers, protocol

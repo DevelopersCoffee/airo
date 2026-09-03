@@ -1,6 +1,6 @@
-# Midas Stream Legacy UI And Focus Performance Budget
+# Aika Stream Legacy UI And Focus Performance Budget
 
-This contract defines the v2.0.0.1 platform budget for legacy Midas Stream UI,
+This contract defines the v2.0.0.1 platform budget for legacy Aika Stream UI,
 remote focus behavior, artwork loading, and rebuild boundaries.
 
 Implementation contract:
@@ -12,7 +12,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Legacy UI performance budgets are platform/framework behavior. Midas Stream app code
+Legacy UI performance budgets are platform/framework behavior. Aika Stream app code
 may consume the budget to configure focus wrappers, channel grids, poster
 loading, animation durations, and selector/rebuild boundaries. It must not
 hard-code focus latency, blur, parallax, artwork cache, or D-pad thresholds in

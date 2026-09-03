@@ -1,6 +1,6 @@
-# Midas Stream Dependency Governance Audit Contract
+# Aika Stream Dependency Governance Audit Contract
 
-This contract defines the v2.0.0.1 release audit layer for Midas Stream dependency
+This contract defines the v2.0.0.1 release audit layer for Aika Stream dependency
 governance. It builds on the platform dependency checklist and evaluates many
 dependency records into one release/profile report.
 
@@ -16,7 +16,7 @@ Implementation contract:
 
 Dependency governance is platform/release behavior. Release tooling may parse
 pubspecs, Gradle files, APK size evidence, and dependency review notes into
-`AiroDependencyAuditRecord` values. Midas Stream application code must consume the
+`AiroDependencyAuditRecord` values. Aika Stream application code must consume the
 resulting report or profile decision; it must not duplicate release policy in
 app modules.
 

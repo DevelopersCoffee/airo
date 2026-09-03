@@ -1,4 +1,4 @@
-# ADR 0014: Planned Midas Stream Pro AI sequencing
+# ADR 0014: Planned Aika Stream Pro AI sequencing
 
 - Status: Accepted design sequence
 - Date: 2026-07-27

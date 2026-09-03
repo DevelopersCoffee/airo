@@ -12,7 +12,7 @@ build_number: "10"
 release_url: https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6
 products:
   tv:
-    label: Midas Stream
+    label: Aika Stream
     package_id: io.airo.app.tv
     universal_apk: Airo-TV-0.0.6.apk
     arm64_apk: Airo-TV-0.0.6-arm64-v8a.apk
@@ -27,6 +27,6 @@ products:
     package_id: io.airo.app.coins
     arm64_apk: AiroCoins-0.0.6-10-arm64.apk
   macos:
-    label: Midas Stream for macOS
+    label: Aika Stream for macOS
     dmg: Airo-TV-0.0.6-macOS.dmg
     zip: Airo-TV-0.0.6-macOS.zip

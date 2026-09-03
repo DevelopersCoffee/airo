@@ -1,4 +1,4 @@
-# Midas Stream v2.0.0.1 Requirements Review
+# Aika Stream v2.0.0.1 Requirements Review
 
 **Status:** Draft  
 **Date:** 2026-07-13  
@@ -10,7 +10,7 @@
 
 | Area | Requirement | Disposition for v2.0.0.1 |
 | --- | --- | --- |
-| Positioning | BYOC only; Midas Stream never provides content | Must-have |
+| Positioning | BYOC only; Aika Stream never provides content | Must-have |
 | Vision | AI-powered personal TV interface | Principle, not v2.0.0.1 scope |
 | Users | casual users, sports fans, power users, families | Keep as personas |
 | Content sources | M3U, Xtream, Jellyfin, Plex, Emby, local, NAS, SMB, FTP/SFTP, WebDAV, DLNA | Start with M3U/Xtream and existing BYOC packages; defer the rest |
@@ -136,7 +136,7 @@
 | Upgrade/downgrade migration | preserve account, favorites, recent, progress, device pairing, essential settings | Contract now |
 | Reliability boundaries | profile guarantees and exclusions | Must-have |
 | Testing | module, composition, cross-profile, protocol compatibility, delegation failure tests | QA workstream |
-| Packaging | recommend Midas Stream, Midas Stream Lite, Airo Receiver | Release decision |
+| Packaging | recommend Aika Stream, Aika Stream Lite, Airo Receiver | Release decision |
 
 ### Volume 9: Analytics and Privacy Telemetry
 
@@ -272,7 +272,7 @@ v2.0.0.1 should be considered ready when the team has:
 - No Legacy Receiver Mode contract or certification automation exists yet.
 - No product profile manifest or module lifecycle manifest schema exists yet.
 - No composition validator or cross-profile compatibility suite exists yet.
-- No release-channel or store-listing decision exists for Midas Stream, Midas Stream Lite,
+- No release-channel or store-listing decision exists for Aika Stream, Aika Stream Lite,
   and Airo Receiver.
 - No legal/compliance review is attached for Stalker Portal, recording,
   timeshift, or provider-specific integrations.

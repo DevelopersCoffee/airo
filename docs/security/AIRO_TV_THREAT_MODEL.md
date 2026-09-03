@@ -1,10 +1,10 @@
-# Midas Stream Threat Model
+# Aika Stream Threat Model
 
-This document describes the data and trust boundaries for Midas Stream.
+This document describes the data and trust boundaries for Aika Stream.
 
 ## Scope
 
-Midas Stream is an Android TV IPTV player for user-supplied M3U playlists. It does not provide IPTV channels, playlists, or media content.
+Aika Stream is an Android TV IPTV player for user-supplied M3U playlists. It does not provide IPTV channels, playlists, or media content.
 
 ## Assets
 

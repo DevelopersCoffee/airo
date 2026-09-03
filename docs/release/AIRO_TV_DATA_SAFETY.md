@@ -1,6 +1,6 @@
-# Midas Stream Data Safety And App Privacy Declarations
+# Aika Stream Data Safety And App Privacy Declarations
 
-Console-ready privacy declaration worksheet for the Midas Stream v2 release profile.
+Console-ready privacy declaration worksheet for the Aika Stream v2 release profile.
 Use this when completing Google Play Data Safety and any future Apple App
 Privacy labels. Final submission still requires a maintainer with store-console
 access.
@@ -9,7 +9,7 @@ access.
 
 | Field | Value |
 | --- | --- |
-| Product | Midas Stream |
+| Product | Aika Stream |
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
@@ -19,7 +19,7 @@ access.
 This declaration is based on the current v2 TV release behavior:
 
 - User-provided playlist URLs and app preferences are stored locally.
-- Midas Stream does not provide channels, playlists, streams, or subscriptions.
+- Aika Stream does not provide channels, playlists, streams, or subscriptions.
 - App-owned Firebase Analytics and Firebase Crashlytics SDKs are not included
   in `app/pubspec_tv.yaml`.
 - Google Cast analytics logging is explicitly disabled during Cast
@@ -49,7 +49,7 @@ This declaration is based on the current v2 TV release behavior:
 | Health and fitness | No | No | Not applicable | Not used. |
 | Messages | No | No | Not applicable | Not used. |
 | App activity | No app-owned external collection | No | App functionality | Preferences and playlist state are stored on device. |
-| Web browsing | No | No | Not applicable | Midas Stream does not provide a browser. |
+| Web browsing | No | No | Not applicable | Aika Stream does not provide a browser. |
 | App info and performance | No app-owned external collection | No | Diagnostics only if user shares logs manually | Crashlytics is not included in the TV pubspec. |
 | Device or other IDs | **Yes — collected by Firebase SDK, not by the developer** | No | App functionality | `firebase_core` is in `app/pubspec_tv.yaml`. Where Firebase generates a Firebase installation ID (FID), it is sent to Google under Google's own privacy policy. It is not received by DevelopersCoffee, not linked to a user or account, not used for advertising or cross-app tracking, and reset on uninstall or clear-data. No advertising ID permission or analytics SDK is enabled. |
 | IPTV playlist URLs | Local only | No | App functionality | User-provided playlist URLs are stored on device and used to fetch user-selected content. |

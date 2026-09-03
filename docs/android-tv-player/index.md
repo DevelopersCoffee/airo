@@ -1,12 +1,12 @@
 ---
 layout: landing
 permalink: /android-tv-player/
-title: "Android TV Player Built for the Remote — Midas Stream"
-description: "Midas Stream is a leanback-first Android TV and Google TV player: D-pad navigation, title-safe layout, and direct-install or Play Store setup. Open source."
+title: "Android TV Player Built for the Remote — Aika Stream"
+description: "Aika Stream is a leanback-first Android TV and Google TV player: D-pad navigation, title-safe layout, and direct-install or Play Store setup. Open source."
 eyebrow: "Android TV / Google TV player"
 hero_title: "Built for the remote, not ported to it."
-lede: "Midas Stream is a leanback-first player: D-pad navigation, focus that survives playback, and layout that respects the TV-safe frame — on Android TV and Google TV, direct-install or through the Play Store."
-primary_cta: "Download Midas Stream"
+lede: "Aika Stream is a leanback-first player: D-pad navigation, focus that survives playback, and layout that respects the TV-safe frame — on Android TV and Google TV, direct-install or through the Play Store."
+primary_cta: "Download Aika Stream"
 capabilities_title: "What the Android TV build does"
 capabilities:
   - title: Leanback D-pad navigation
@@ -36,7 +36,7 @@ related:
     url: /midas-stream/guides/#android-tv
     icon: tv
   - title: Bring an M3U/M3U8 playlist
-    text: Load a playlist source once Midas Stream is installed.
+    text: Load a playlist source once Aika Stream is installed.
     url: /m3u-player/
     icon: list-plus
   - title: Install on Fire TV instead
@@ -44,12 +44,12 @@ related:
     url: /midas-stream/guides/#fire-tv
     icon: flame
 faq:
-  - q: "Is Midas Stream available on the Google Play Store?"
+  - q: "Is Aika Stream available on the Google Play Store?"
     a: "Yes, a Play Store AAB is published for the Android TV / Google TV profile alongside a direct-install APK."
-  - q: "Does Midas Stream work with a standard Android TV remote?"
+  - q: "Does Aika Stream work with a standard Android TV remote?"
     a: "Yes. Navigation is built leanback-first for D-pad input, including focus that holds correctly through playback and returns to the right place afterward."
-  - q: "Can Midas Stream play local files from a USB drive on Android TV?"
-    a: "Yes. Midas Stream supports direct, permission-scoped browsing of USB and removable media on Android TV, separate from loading a playlist URL."
+  - q: "Can Aika Stream play local files from a USB drive on Android TV?"
+    a: "Yes. Aika Stream supports direct, permission-scoped browsing of USB and removable media on Android TV, separate from loading a playlist URL."
   - q: "Is this the same app as the Fire TV version?"
     a: "It's the same Android TV build, but Fire TV is tracked as a separate, experimental qualification path rather than a fully supported target — see the Fire TV install guide for current status."
 ---
@@ -59,7 +59,7 @@ is always the remote: focus jumps to the wrong element, search wants a
 keyboard, or a full-screen player forgets where you were when you back
 out of it.
 
-Midas Stream is built the other way — leanback first. Every screen is
+Aika Stream is built the other way — leanback first. Every screen is
 designed for directional D-pad navigation from the start, including the
 parts that are easy to get wrong: focus that survives returning from
 playback, layout that stays inside the TV-safe frame instead of
@@ -71,5 +71,5 @@ sideloading, or a Play Store AAB for Google TV devices — and once it's
 running, what you do with it is [load your own M3U/M3U8
 playlist]({{ '/m3u-player/' | relative_url }}) or browse local files directly from a
 connected USB drive. Either way, the point of this page is the
-platform experience underneath: Midas Stream was written for a couch and a
+platform experience underneath: Aika Stream was written for a couch and a
 remote, not adapted to one.

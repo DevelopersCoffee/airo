@@ -1,4 +1,4 @@
-# Midas Stream Volume 8 Gap Analysis
+# Aika Stream Volume 8 Gap Analysis
 
 **Volume:** Modular Product Profiles, Legacy Editions, and Capability-Based
 Feature Delivery  
@@ -6,7 +6,7 @@ Feature Delivery
 **Status:** Draft gap analysis  
 **Input:** `/Users/udaychauhan/.codex/attachments/bd12346f-2147-469c-9a63-c1d809ce8801/pasted-text.txt`  
 **Baseline inspected:** Android variant build configuration, TV pubspec,
-platform feature configuration, feature flags, existing Midas Stream plan,
+platform feature configuration, feature flags, existing Aika Stream plan,
 requirements review, and prior gap analyses.
 
 ## Executive Summary
@@ -34,7 +34,7 @@ release-channel matrix, or cross-profile compatibility suite.
 
 ## Requirement Intent
 
-Volume 8 requires Midas Stream to ship multiple product experiences from one shared
+Volume 8 requires Aika Stream to ship multiple product experiences from one shared
 platform:
 
 | Product profile | Role |
@@ -58,8 +58,8 @@ safely use.
 | `pubspec_tv.yaml` | Demonstrates a lighter TV dependency set with stubs | Separate/manual mechanism; not a first-class product profile build system |
 | `PlatformFeatures` | Basic platform-to-feature map for mobile full, mobile streaming, Android TV, iPad | Too broad for Volume 8; no resource budgets, dependencies, permission rules, release channel, or capability publication |
 | `feature_flags.dart` | Compile-time performance overlay flag exists | No feature flag model tied to product profiles or absent-module protection |
-| Existing package layout | Modular packages exist for core, IPTV, platform, history, favorites, AI | No enforced dependency direction or composition tests for Midas Stream profiles |
-| Existing Midas Stream plan | Names product profiles and capability contracts | Needs concrete profile manifests, delegation, remote views, module lifecycle, and release-channel gates |
+| Existing package layout | Modular packages exist for core, IPTV, platform, history, favorites, AI | No enforced dependency direction or composition tests for Aika Stream profiles |
+| Existing Aika Stream plan | Names product profiles and capability contracts | Needs concrete profile manifests, delegation, remote views, module lifecycle, and release-channel gates |
 
 ## Major Gaps
 
@@ -69,7 +69,7 @@ safely use.
 Experimental Legacy should be first-class product profiles.
 
 **Current state:** The plan names these profiles, but the code has broad
-platform variants instead of Midas Stream product profiles.
+platform variants instead of Aika Stream product profiles.
 
 **Gap:** Define `ProductProfile`, `ProductProfileManifest`,
 `ProfileCapabilitySet`, profile guarantees, exclusions, navigation, permissions,
@@ -81,7 +81,7 @@ resource budgets, release channel, and support level.
 media IDs, source refs, command protocol, security, errors, redaction,
 capabilities, compatibility, and local config should be lightweight shared core.
 
-**Current state:** Core packages exist, but there is no Midas Stream shared-core
+**Current state:** Core packages exist, but there is no Aika Stream shared-core
 boundary proving optional product features are not imported by core modules.
 
 **Gap:** Add dependency-direction rules and CI checks. Core must not import full
@@ -117,7 +117,7 @@ security risk should be compile-time excluded from constrained profiles.
 search, EPG window, AI, multiview, recording, cloud continuity, max resolution,
 decoder count, and profile.
 
-**Current state:** Capability ideas exist in planning, but no concrete Midas Stream
+**Current state:** Capability ideas exist in planning, but no concrete Aika Stream
 profile capability schema exists.
 
 **Gap:** Extend connected-device capability advertisements with
@@ -141,7 +141,7 @@ feature bundles.
 compact, remote, no-op, delegated, cloud, and fallback implementations.
 
 **Current state:** Some feature packages are modular, but there is no shared
-Midas Stream provider interface across profile implementations.
+Aika Stream provider interface across profile implementations.
 
 **Gap:** Define interfaces such as `EpgRepository`, `SearchProvider`,
 `AiProvider`, `DiagnosticsProvider`, and `MediaSourceResolver`, with profile
@@ -260,11 +260,11 @@ should prove:
 
 ## Product Packaging Impact
 
-Volume 8 strengthens the recommendation that Midas Stream should ship at least three
+Volume 8 strengthens the recommendation that Aika Stream should ship at least three
 clearly defined TV products over time:
 
-- **Midas Stream:** Full/standard modern TV experience.
-- **Midas Stream Lite:** legacy and low-memory TV receiver-focused experience.
+- **Aika Stream:** Full/standard modern TV experience.
+- **Aika Stream Lite:** legacy and low-memory TV receiver-focused experience.
 - **Airo Receiver:** embedded/operator/thin receiver experience.
 
 The immediate v2.0.0.1 scope should remain contracts and validation. Separate
@@ -274,7 +274,7 @@ are reviewed.
 
 ## Open Questions
 
-- Should Midas Stream Lite be a separate app listing, device-targeted app bundle
+- Should Aika Stream Lite be a separate app listing, device-targeted app bundle
   variant, or one adaptive app mode?
 - What exact module manifest format should be used: Dart declarations, YAML, or
   generated build metadata?

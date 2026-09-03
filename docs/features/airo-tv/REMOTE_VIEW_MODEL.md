@@ -1,11 +1,11 @@
-# Midas Stream Remote View Model
+# Aika Stream Remote View Model
 
 ATV-064 defines the reusable platform model for compact remote views consumed by
-Lite Receiver, Embedded Receiver, and other constrained Midas Stream profiles.
+Lite Receiver, Embedded Receiver, and other constrained Aika Stream profiles.
 
 The contract lives in `packages/core_remote_views` because compact remote views
 need shared data limits, cache/expiry rules, redaction-oriented public maps, and
-profile-specific render tiers. Midas Stream app code should consume accepted remote
+profile-specific render tiers. Aika Stream app code should consume accepted remote
 views and keep only layout, focus behavior, and product copy.
 
 ## Ownership
@@ -15,7 +15,7 @@ views and keep only layout, focus behavior, and product copy.
 - Data owns stable IDs, cache policy, expiry, and item limits.
 - UI owns render tiers and profile-appropriate presentation rules.
 - Security owns unsafe-reference rejection and redacted public maps.
-- Midas Stream app code must not fetch full datasets for constrained profiles when a
+- Aika Stream app code must not fetch full datasets for constrained profiles when a
   compact remote view is available.
 
 ## Remote View Fields
@@ -70,9 +70,9 @@ Remote view validation returns stable codes for:
 
 Accepted views return only `accepted`.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should validate remote views before displaying search results, compact
+Aika Stream should validate remote views before displaying search results, compact
 guide rows, favorites, compact cards, or backup streams. Invalid or expired
 views should be discarded or replaced by a local fallback/unavailable state
 rather than rendered directly.

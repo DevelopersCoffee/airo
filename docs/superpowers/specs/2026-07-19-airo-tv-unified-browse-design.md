@@ -1,8 +1,8 @@
-# Midas Stream Unified Browse Experience — Design Spec
+# Aika Stream Unified Browse Experience — Design Spec
 
 **Date:** 2026-07-19
 **Status:** Approved pending user review
-**Source design:** Claude Design handoff bundle (`MidasStream-handoff.zip`, `Midas Stream.dc.html`) — dark green-accent theme, rail-based browse, minimal player overlay.
+**Source design:** Claude Design handoff bundle (`MidasStream-handoff.zip`, `Aika Stream.dc.html`) — dark green-accent theme, rail-based browse, minimal player overlay.
 **Supersedes:** current split mobile/TV IPTV browse screens (`iptv_screen.dart`, `iptv_tv_screen.dart` browse portions).
 
 ## 1. Goal

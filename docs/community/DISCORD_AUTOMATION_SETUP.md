@@ -139,7 +139,7 @@ Airo Dev  [bot]
 - **`/release` slash command** — use the official
   [GitHub Discord App](https://discord.com/application-directory/foo) for
   two-way interaction (close issues from Discord, etc.).
-- **Airo Coin / Midas Stream topics** — once dedicated product channels exist,
+- **Airo Coin / Aika Stream topics** — once dedicated product channels exist,
   add separate webhook secrets and duplicate the workflow with a channel-filter
   condition (`if: contains(github.event.issue.labels.*.name, 'airo-tv')`).
 - **Community Voice digest** — a weekly scheduled workflow that summarises

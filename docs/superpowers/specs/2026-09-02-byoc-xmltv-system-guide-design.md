@@ -1,12 +1,12 @@
 # BYOC XMLTV and first-party system guide — Design
 
 Status: Approved (2026-09-02)
-Owner: Midas Stream / `feature_iptv` + `iptv-data` pipeline
+Owner: Aika Stream / `feature_iptv` + `iptv-data` pipeline
 Related: `docs/features/airo-tv/MULTI_SOURCE_EPG.md`, `docs/release/MIDAS_STREAM_PLAY_STORE_GATE.md`, `packages/feature_iptv/lib/application/xmltv_source_refresh_service.dart`
 
 ## Decision
 
-Midas Stream remains a **bring-your-own-content player**. Programme guides follow the same split as playlists:
+Aika Stream remains a **bring-your-own-content player**. Programme guides follow the same split as playlists:
 
 | Role | Source | Who fetches |
 |---|---|---|

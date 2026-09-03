@@ -5,7 +5,7 @@ Status: v2 platform contract for ATV-042.
 ## Ownership
 
 Playback-ticket service behavior is platform/framework security and media
-behavior. Midas Stream, companion controllers, restricted receivers, media routing,
+behavior. Aika Stream, companion controllers, restricted receivers, media routing,
 cloud orchestration, and QA automation consume the contract to grant receiver
 playback without exposing provider credentials or raw media references.
 

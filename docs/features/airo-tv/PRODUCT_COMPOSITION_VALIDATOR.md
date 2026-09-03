@@ -1,11 +1,11 @@
-# Midas Stream Product Composition Validator
+# Aika Stream Product Composition Validator
 
-ATV-061 defines the reusable platform validator that proves an Midas Stream product
+ATV-061 defines the reusable platform validator that proves an Aika Stream product
 profile, compiled module set, module lifecycle manifests, and runtime feature
 flags are internally consistent.
 
 The validator lives in `packages/product_capabilities` because build-time and
-runtime composition rules are shared platform contracts. Midas Stream app code should
+runtime composition rules are shared platform contracts. Aika Stream app code should
 consume accepted composition results and keep only product navigation, screens,
 copy, and workflow decisions.
 
@@ -17,7 +17,7 @@ copy, and workflow decisions.
 - QA owns Full TV, Lite Receiver, and negative composition fixtures.
 - Release owns the rule that runtime flags cannot expose modules absent from the
   compiled profile.
-- Midas Stream app code must not route to unavailable modules or start modules whose
+- Aika Stream app code must not route to unavailable modules or start modules whose
   composition validation failed.
 
 ## Manifest Fields
@@ -50,7 +50,7 @@ adds build/runtime checks for:
 Accepted results contain only `accepted`. Rejected results expose stable
 composition codes plus profile-level and module-level validation maps.
 
-## Default Midas Stream Compositions
+## Default Aika Stream Compositions
 
 The package ships default compositions for:
 
@@ -61,9 +61,9 @@ Full TV compiles the modules in the default Full TV profile and enables Full
 EPG, diagnostics, and analytics flags. Lite Receiver compiles only the default
 Lite Receiver modules and enables diagnostics only.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should evaluate the product composition before exposing navigation,
+Aika Stream should evaluate the product composition before exposing navigation,
 remote-control routes, handoff flows, diagnostics panels, or background module
 startup. If composition validation rejects a profile/module/flag combination,
 the app should treat that module as unavailable rather than falling back to

@@ -1,4 +1,4 @@
-# Midas Stream UX Phase 3 — Remote Overlay Plan
+# Aika Stream UX Phase 3 — Remote Overlay Plan
 
 > Issue #1039. Base: `origin/main` at `d46dbade`.
 

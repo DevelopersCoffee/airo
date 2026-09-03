@@ -1,11 +1,11 @@
 ---
 name: run-airo-tv
-description: Launch and drive the Midas Stream Flutter app (main_tv.dart entrypoint) on a target device — macOS desktop, Chrome, Android/Fire TV, or phone. Use whenever asked to run, start, or preview Midas Stream.
+description: Launch and drive the Aika Stream Flutter app (main_tv.dart entrypoint) on a target device — macOS desktop, Chrome, Android/Fire TV, or phone. Use whenever asked to run, start, or preview Aika Stream.
 ---
 
-# Run Midas Stream
+# Run Aika Stream
 
-Midas Stream is the TV-flavored Flutter entrypoint at `app/lib/main_tv.dart` (distinct from
+Aika Stream is the TV-flavored Flutter entrypoint at `app/lib/main_tv.dart` (distinct from
 `main.dart`, `main_tv.dart`, `main_qualification.dart`).
 
 ## 1. Pick a device

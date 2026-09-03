@@ -1,4 +1,4 @@
-# Midas Stream vX.Y.Z
+# Aika Stream vX.Y.Z
 
 One sentence describing what this release represents.
 

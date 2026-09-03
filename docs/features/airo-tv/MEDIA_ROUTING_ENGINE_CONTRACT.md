@@ -1,4 +1,4 @@
-# Midas Stream Media Routing Engine Contract
+# Aika Stream Media Routing Engine Contract
 
 This contract defines the v2.0.0.1 platform boundary for media route
 preflight and route selection. The goal is direct playback first and
@@ -44,7 +44,7 @@ playlist contents, or credential-bearing diagnostics.
 
 ## Consumer Rule
 
-Midas Stream screens, playback engines, local discovery adapters, and future route
+Aika Stream screens, playback engines, local discovery adapters, and future route
 inspectors should consume `AiroMediaRoutingEngine` decisions. Product code may
 present user-facing fallback prompts, but it should not implement separate route
 priority or phone-proxy eligibility logic.

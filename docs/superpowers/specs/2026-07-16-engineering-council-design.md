@@ -8,7 +8,7 @@
 Airo has agent-governance docs (`docs/agents/AGENT_POLICY.md`, `RULES.md`) but
 the domain roster in `AGENT_POLICY.md` (Brain, Coins/Finance, Meeting
 Intelligence, Routine OS) reflects an earlier "Airo Super App LLM OS" framing.
-Current work (per repo state and recent history) is dominated by the Midas Stream
+Current work (per repo state and recent history) is dominated by the Aika Stream
 sub-app: playback, EPG, Rust parsing, multi-source failover, TV shell. There
 is no domain roster that matches this work, no per-role reviewer definition
 usable by an AI coding tool, and no module-ownership manifest format.
@@ -41,7 +41,7 @@ agent.
 
 **Sub-App Domain Agents** — one roster per sub-app, owning real packages.
 
-*Midas Stream domain* (new, matches current work):
+*Aika Stream domain* (new, matches current work):
 
 | Role | Owns (real packages) |
 | --- | --- |

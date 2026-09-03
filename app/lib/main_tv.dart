@@ -92,7 +92,7 @@ void main() {
       await configureTvSystemChrome();
 
       debugPrint(
-        '🖥️ Starting Midas Stream (${PlatformFeatures.platformName})',
+        '🖥️ Starting Aika Stream (${PlatformFeatures.platformName})',
       );
       debugPrint(
         '📺 Features: '

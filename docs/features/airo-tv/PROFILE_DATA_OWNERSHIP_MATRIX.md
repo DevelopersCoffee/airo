@@ -1,11 +1,11 @@
-# Midas Stream Profile Data Ownership Matrix
+# Aika Stream Profile Data Ownership Matrix
 
 ATV-066 defines the reusable platform matrix for deciding which product profile
 owns, stores, syncs, preserves, or delegates each media data domain.
 
 The contract lives in `packages/core_media_data` because playlist indexes, EPG
 data, favorites, progress, AI embeddings, stream health, artwork, thumbnails,
-and credential references are shared data concerns. Midas Stream app code should
+and credential references are shared data concerns. Aika Stream app code should
 consume these rules and keep only product workflow decisions.
 
 ## Ownership
@@ -17,7 +17,7 @@ consume these rules and keep only product workflow decisions.
 - Media owns the domain list and which datasets are heavy or delegatable.
 - QA owns matrix fixtures for Full TV, Lite Receiver, Embedded Receiver,
   upgrade, downgrade, and cloud-preservation paths.
-- Midas Stream app code must not hard-code data ownership in screens or widgets.
+- Aika Stream app code must not hard-code data ownership in screens or widgets.
 
 ## Data Domains
 
@@ -67,7 +67,7 @@ consume these rules and keep only product workflow decisions.
 
 Accepted matrices return only `accepted`.
 
-## Default Midas Stream Matrices
+## Default Aika Stream Matrices
 
 The package ships defaults for:
 
@@ -81,9 +81,9 @@ thumbnail work, and preserves unsupported AI embedding state. Embedded Receiver
 uses stricter cache budgets and delegated read-only heavy data. Credential
 references always use encrypted vault storage.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should evaluate the matrix before reading, writing, syncing, hiding, or
+Aika Stream should evaluate the matrix before reading, writing, syncing, hiding, or
 deleting profile data. Downgrades from Full TV to Lite/Embedded must preserve
 unsupported profile state instead of deleting it. Upgrades from Lite/Embedded to
 Full TV must use the declared rehydrate/adopt strategy.

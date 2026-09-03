@@ -2,12 +2,12 @@
 
 Issue: ATV-081
 Package: `core_analytics`
-Layer: Platform framework, consumed by backend adapters and Midas Stream analytics
+Layer: Platform framework, consumed by backend adapters and Aika Stream analytics
 configuration
 
 ## Purpose
 
-The self-hosted event gateway option defines the reusable contract Midas Stream can
+The self-hosted event gateway option defines the reusable contract Aika Stream can
 use if analytics ingestion moves away from a vendor SDK. The contract covers
 schema validation, privacy validation, regional residency, rate limits,
 retention policy support, deletion support, and public gateway diagnostics. It
@@ -41,7 +41,7 @@ deployment.
 - retention-policy support flag;
 - deletion-request support flag.
 
-`AiroTvAnalyticsSelfHostedGateways.standard()` uses the Midas Stream schema registry,
+`AiroTvAnalyticsSelfHostedGateways.standard()` uses the Aika Stream schema registry,
 standard retention/data-access policy, United States, European Union, and India
 regional buckets, and a bounded 120-event-per-minute default.
 
@@ -95,5 +95,5 @@ viewing history, crash stacks, or diagnostics dumps.
 
 HTTP ingestion, request signing, auth keys, storage schemas, regional cloud
 deployment, backend deletion/export jobs, dashboard wiring, production rate
-limits, and Midas Stream runtime adapter wiring remain separate issues. This issue
+limits, and Aika Stream runtime adapter wiring remain separate issues. This issue
 defines the platform contract those features must consume.

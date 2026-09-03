@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Get Midas Stream deployed to a physical Fire TV Stick over the local network, run it through a manual test checklist, and log real-device evidence into the device guide.
+**Goal:** Get Aika Stream deployed to a physical Fire TV Stick over the local network, run it through a manual test checklist, and log real-device evidence into the device guide.
 
-**Architecture:** No new app code. Midas Stream already builds as a standard leanback Android APK (`APP_VARIANT=tv` flavor) — Fire OS runs stock Android APKs directly. This plan wires up isolated worktree, ADB-over-WiFi deploy pipeline, and manual verification, then records findings.
+**Architecture:** No new app code. Aika Stream already builds as a standard leanback Android APK (`APP_VARIANT=tv` flavor) — Fire OS runs stock Android APKs directly. This plan wires up isolated worktree, ADB-over-WiFi deploy pipeline, and manual verification, then records findings.
 
 **Tech Stack:** Flutter (`flutter build apk` / `flutter run`), ADB, existing `app/android` Gradle `tv` flavor.
 
@@ -93,7 +93,7 @@ Expected: an IP in the same subnet as `<stick-ip>` (e.g. both `192.168.1.x`). If
 
 **Interfaces:**
 - Consumes: `<stick-ip>` from Task 2, worktree at `/Users/udaychauhan/workspace/airo-fire-os` from Task 1.
-- Produces: Midas Stream (`io.airo.app.tv`) installed and launched on the Stick, ready for Task 4's manual checklist.
+- Produces: Aika Stream (`io.airo.app.tv`) installed and launched on the Stick, ready for Task 4's manual checklist.
 
 - [ ] **Step 1: Connect ADB over WiFi**
 
@@ -146,7 +146,7 @@ Expected: `Success`. (Swap in `app-release.apk` if you built release.)
 ```bash
 adb -s <stick-ip>:5555 shell monkey -p io.airo.app.tv -c android.intent.category.LAUNCHER 1
 ```
-Expected: no error output; the Fire TV screen switches to the Midas Stream splash/home screen. Confirm visually (physically look at the TV, or screen-mirror if available) that the app launched — the ADB command exiting 0 only proves the intent was sent, not that the UI rendered.
+Expected: no error output; the Fire TV screen switches to the Aika Stream splash/home screen. Confirm visually (physically look at the TV, or screen-mirror if available) that the app launched — the ADB command exiting 0 only proves the intent was sent, not that the UI rendered.
 
 - [ ] **Step 6: (Iteration mode, optional) Use flutter run instead of build+install for faster cycles**
 

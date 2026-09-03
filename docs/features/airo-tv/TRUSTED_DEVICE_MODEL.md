@@ -1,7 +1,7 @@
-# Midas Stream Trusted Device Model
+# Aika Stream Trusted Device Model
 
 This contract defines the v2.0.0.1 platform boundary for trusted-device
-relationships used by Midas Stream, companion controllers, command routing, playback
+relationships used by Aika Stream, companion controllers, command routing, playback
 tickets, and future device-picker flows.
 
 Implementation contract:
@@ -40,7 +40,7 @@ The platform model defines these trust levels:
   administration.
 
 Product code should ask a platform policy whether a relationship satisfies a
-required trust level. Midas Stream screens should not hard-code role-specific trust
+required trust level. Aika Stream screens should not hard-code role-specific trust
 shortcuts.
 
 ## Key Descriptor
@@ -74,7 +74,7 @@ Results are deterministic and machine-readable through
 
 ## Consumer Rule
 
-Midas Stream, command, playback, pairing UI, device picker, and cloud coordination
+Aika Stream, command, playback, pairing UI, device picker, and cloud coordination
 must consume the platform policy result. Product code may decide copy,
 navigation, and user recovery flows, but the authority decision belongs to
 `core_pairing`.

@@ -3,7 +3,7 @@
 ## Executive Summary
 
 This document provides a phased plan for configuring Firebase across multiple app variants
-(Airo and Midas Stream) while maintaining a single Firebase project.
+(Airo and Aika Stream) while maintaining a single Firebase project.
 
 **Key Decision:** Use **ONE Firebase project** with **multiple Android app registrations**.
 
@@ -28,7 +28,7 @@ This document provides a phased plan for configuring Firebase across multiple ap
 | Variant | Package Name | App Nickname |
 |---------|-------------|--------------|
 | Airo | `io.airo.app` | Airo |
-| Android TV | `io.airo.app.tv` | Midas Stream |
+| Android TV | `io.airo.app.tv` | Aika Stream |
 
 5. **DO NOT** download individual files - proceed to next step
 

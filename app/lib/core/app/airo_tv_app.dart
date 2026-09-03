@@ -45,7 +45,7 @@ class _AiroTvAppState extends ConsumerState<AiroTvApp> {
     final selectedTheme = ref.watch(appThemeDefinitionProvider);
 
     return MaterialApp.router(
-      title: 'Midas Stream',
+      title: 'Aika Stream',
       theme: _buildTvTheme(context, selectedTheme.lightTheme),
       darkTheme: _buildTvTheme(context, selectedTheme.darkTheme),
       themeMode: selectedTheme.themeMode,

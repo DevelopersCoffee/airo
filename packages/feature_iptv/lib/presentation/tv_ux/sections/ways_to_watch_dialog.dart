@@ -37,7 +37,7 @@ class WaysToWatchDialog extends StatelessWidget {
               key: const ValueKey('ways-to-watch-fit'),
               icon: Icons.fit_screen_outlined,
               title: 'Fit Screen',
-              description: 'Keep video fitted inside the Midas Stream window.',
+              description: 'Keep video fitted inside the Aika Stream window.',
               autofocus: true,
               onSelect: onFitScreen,
             ),

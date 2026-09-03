@@ -228,7 +228,7 @@ const _formHtml = '''
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Add playlist to Midas Stream</title>
+<title>Add playlist to Aika Stream</title>
 <style>
 body{font-family:sans-serif;max-width:480px;margin:48px auto;padding:0 20px;color:#1a1a1a}
 h1{font-size:20px}

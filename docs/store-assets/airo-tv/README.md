@@ -1,4 +1,4 @@
-# Midas Stream Store Assets
+# Aika Stream Store Assets
 
 Store-ready Android TV listing assets for `com.developerscoffee.tv.midas`.
 The checked-in images remain the reviewed baseline; release candidates are

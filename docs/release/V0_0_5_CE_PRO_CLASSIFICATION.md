@@ -16,7 +16,7 @@ All entries below are public planning records, not shipped-feature claims.
 The range above treats #959–#969 and #971–#972 as CE. It does not include
 #951 or #954, which are Pro service/context work.
 
-## Midas Stream Pro
+## Aika Stream Pro
 
 | Area | Issues |
 | --- | --- |
