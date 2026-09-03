@@ -26,7 +26,11 @@ or personal account details.
 qualification capture. Third-party playback imagery, channel branding, and
 personal notification icons were replaced with owned Airo demo artwork. It is
 a candidate for the next qualified mobile listing; the published
-`v0.0.6-rc.1` release does not include multiple-playlist merge.
+`v0.0.6-rc.1` release does not include multiple-playlist merge. It is a manual
+physical-device capture, not output of the generator script below, still
+carries the older "Airo TV" header and iptv-org sample playlist URLs, and is
+**not part of the first Aika Stream TV listing** — it is left untouched until
+it is recaptured for that rebrand.
 
 ## Capture a release candidate
 
