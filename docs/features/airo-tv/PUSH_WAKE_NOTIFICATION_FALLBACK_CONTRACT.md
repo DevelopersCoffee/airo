@@ -1,4 +1,4 @@
-# Midas Stream Push Wake And Notification Fallback Contract
+# Aika Stream Push Wake And Notification Fallback Contract
 
 This contract defines the v2.0.0.1 platform boundary for push wake,
 notification fallback, reconnect fallback, and user-action-required states.
@@ -12,7 +12,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Push wake is platform/framework behavior. Midas Stream app code may render copy for
+Push wake is platform/framework behavior. Aika Stream app code may render copy for
 unavailable wake, visible notification prompts, or local reconnect guidance, but
 must consume platform decision codes. Product code must not assume remote wake
 works on every Android TV, Fire TV, mobile, desktop, or home-node environment.

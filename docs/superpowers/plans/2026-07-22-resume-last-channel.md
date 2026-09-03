@@ -1,4 +1,4 @@
-# Resume Last Channel (Midas Stream UX Phase 1) Implementation Plan
+# Resume Last Channel (Aika Stream UX Phase 1) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -175,7 +175,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'iptv_providers.dart';
 
 /// SharedPreferences key holding the id of the last successfully tuned
-/// live channel (Midas Stream UX Phase 1 — resume flow).
+/// live channel (Aika Stream UX Phase 1 — resume flow).
 const String iptvLastChannelKey = 'iptv_last_channel';
 
 /// Pure resume-target lookup: stored id -> channel in the current list.
@@ -371,7 +371,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'providers/iptv_providers.dart';
 import 'providers/last_channel_provider.dart';
 
-/// Lifecycle of the launch-time resume attempt (Midas Stream UX Phase 1).
+/// Lifecycle of the launch-time resume attempt (Aika Stream UX Phase 1).
 enum ResumeStatus { idle, noTarget, tuning, done, failed }
 
 /// One-shot orchestrator: resolve resume target, tune it, report status.
@@ -553,7 +553,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// Branded launch splash for the resume-last-channel flow (Midas Stream UX
+/// Branded launch splash for the resume-last-channel flow (Aika Stream UX
 /// Phase 1). Timing contract:
 ///   dismiss at max(minDisplay, playbackReady), capped at maxDisplay;
 ///   any tap or key event dismisses immediately.
@@ -642,7 +642,7 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Midas Stream',
+                  'Aika Stream',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -933,7 +933,7 @@ git commit -m "feat(iptv): launch both IPTV surfaces through resume gate
 
 Last-watched live channel auto-resumes behind a ~3s branded splash
 (cap 6s, any input skips). No auto-play when nothing stored or the
-channel is gone. Midas Stream UX revamp Phase 1.
+channel is gone. Aika Stream UX revamp Phase 1.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```

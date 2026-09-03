@@ -53,7 +53,7 @@ class AiroTvShellHelpDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       key: const ValueKey('airo-tv-shell-help-dialog'),
-      title: const Text('Midas Stream Help'),
+      title: const Text('Aika Stream Help'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: SingleChildScrollView(

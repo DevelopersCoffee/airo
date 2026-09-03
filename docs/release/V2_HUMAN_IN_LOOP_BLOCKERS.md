@@ -21,14 +21,14 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | — | Stable dogfood keystore | Without `DOGFOOD_KEYSTORE_BASE64` set, every non-production-signed RC build gets a fresh throwaway cert and RCs cannot upgrade over each other (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Generate a stable keystore reserved for dogfood/RC builds (separate from the production release keystore) and add it as a secret. |
 | #585 | Store automation credentials | Create/confirm Play Console service account, app access, upload permissions, first tracks, and App Store Connect credentials only if iOS/iPadOS enters scope. |
 | #682 | Firebase App Distribution | Create/confirm Firebase apps, app IDs, tester groups, and service account/token for internal QA uploads. |
-| #803 | macOS notarization | Provide Apple Developer ID application certificate + notarization credentials (`APPLE_ID`, app-specific password, Team ID) so `airo-macos-release.yml` can sign and notarize the Midas Stream DMG. |
+| #803 | macOS notarization | Provide Apple Developer ID application certificate + notarization credentials (`APPLE_ID`, app-specific password, Team ID) so `airo-macos-release.yml` can sign and notarize the Aika Stream DMG. |
 
 ## Recently Resolved Release Setup
 
 | Issue | Setup | Verification |
 | --- | --- | --- |
-| #574 | Firebase Android client for Midas Stream (`io.airo.app.tv`) | Closed for the previous listing. Does **not** cover Midas Stream. |
-| — | Firebase Android client for Midas Stream | **Open.** Register `com.developerscoffee.tv.midas` in Firebase, regenerate `google-services.json` / `GOOGLE_SERVICES_JSON`, and confirm the Play/Firebase package match before the first AAB upload. |
+| #574 | Firebase Android client for Aika Stream (`io.airo.app.tv`) | Closed for the previous listing. Does **not** cover Aika Stream. |
+| — | Firebase Android client for Aika Stream | **Open.** Register `com.developerscoffee.tv.midas` in Firebase, regenerate `google-services.json` / `GOOGLE_SERVICES_JSON`, and confirm the Play/Firebase package match before the first AAB upload. |
 
 ### Exact Secret And Input Names
 
@@ -68,7 +68,7 @@ release or distribution run is intentionally started.
 | Issue | Blocker | Human action needed |
 | --- | --- | --- |
 | #683 | Release qualification matrix evidence | Provide physical-device list or BrowserStack/Firebase Test Lab matrix, waiver policy, waiver approver, and final report for actual artifacts. |
-| #589 | Midas Stream UI/UX release audit | Provide physical Android TV / Fire TV D-pad validation and remaining viewport/accessibility evidence after repo-only hardening. |
+| #589 | Aika Stream UI/UX release audit | Provide physical Android TV / Fire TV D-pad validation and remaining viewport/accessibility evidence after repo-only hardening. |
 | #590 | Cast active-receiver switching | Run physical Cast validation from Pixel 9 or equivalent Android phone to BRAVIA/Chromecast-class receiver. |
 | #716 | iPad Air qualification | Run iPad Air UI/UX qualification and attach defect report or waiver. |
 | #459 / #453 | Cast V1 QA matrix and epic | Provide real-device Cast QA evidence so the Cast V1 epic can close. |
@@ -88,7 +88,7 @@ release or distribution run is intentionally started.
 | Issue | Blocker | Human action needed |
 | --- | --- | --- |
 | #673 | Local workspace cleanup | Decide which local stashes should be kept, backed up, applied, or dropped. |
-| #568 | Kotlin Gradle Plugin future warning | The lean Midas Stream path now uses a functional KGP-free wake-lock override, and physical AFTSSS playback verified `FLAG_KEEP_SCREEN_ON` throughout a 30-minute soak. Remaining work is the maintainer decision on whether broader full-app/debug KGP warnings stay deferred. |
+| #568 | Kotlin Gradle Plugin future warning | The lean Aika Stream path now uses a functional KGP-free wake-lock override, and physical AFTSSS playback verified `FLAG_KEEP_SCREEN_ON` throughout a 30-minute soak. Remaining work is the maintainer decision on whether broader full-app/debug KGP warnings stay deferred. |
 
 ## Product Or Service Setup Outside The Narrow Release Track
 

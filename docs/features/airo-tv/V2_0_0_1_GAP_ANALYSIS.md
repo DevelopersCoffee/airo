@@ -1,4 +1,4 @@
-# Midas Stream v2.0.0.1 Gap Analysis
+# Aika Stream v2.0.0.1 Gap Analysis
 
 **Status:** Draft  
 **Date:** 2026-07-13  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Airo already has a useful media foundation for a V2 Midas Stream Lite path:
+Airo already has a useful media foundation for a V2 Aika Stream Lite path:
 
 - Android TV entrypoint: `app/lib/main_tv.dart`
 - BYOC M3U import and local cache: `packages/platform_playlist_import`
@@ -36,7 +36,7 @@ slice.
 
 | Level | Meaning | Release impact |
 | --- | --- | --- |
-| P0 | Blocks safe implementation of Midas Stream MVP | Must resolve before implementation or launch claim |
+| P0 | Blocks safe implementation of Aika Stream MVP | Must resolve before implementation or launch claim |
 | P1 | Required for first useful Lite/TV release | Can be sequenced after P0 contracts |
 | P2 | Premium or expansion capability | Defer until MVP proves activation and playback reliability |
 
@@ -56,14 +56,14 @@ slice.
 | Cast | Partial | Cast controller, Cast request model, local HTTP proxy | This is Cast sender support, not secure Airo receiver pairing/handoff |
 | Voice search | Stub | `MockVoiceSearchService` returns empty results | No platform speech recognition, permission model, or AI routing |
 | AI search/recommendations | Experimental/partial | Edge IPTV assistant can parse intents through rule/native backend | Not integrated as product search; no privacy contract, model lifecycle, or companion delegation |
-| Profiles | Missing | No Midas Stream profile model found | Adult/kids/guest/sports profiles not implemented |
+| Profiles | Missing | No Aika Stream profile model found | Adult/kids/guest/sports profiles not implemented |
 | Parental AI | Missing | No profile restriction engine found | Requires security/family-safety review |
 | Favorites/recent | Partial | `platform_history` stores recent channels locally; `platform_favorites` package exists | Favorites/profile sync and cross-device progress missing |
 | EPG | Minimal | `platform_epg` package exists | No compact current/next EPG contract or ingestion path found |
-| Cloud sync | Missing | app has core sync folder but no Midas Stream sync contract | PRD cloud sync requires encrypted metadata-only sync |
+| Cloud sync | Missing | app has core sync folder but no Aika Stream sync contract | PRD cloud sync requires encrypted metadata-only sync |
 | Analytics | Missing | No `firebase_analytics` dependency or shared `AnalyticsService` found | Must design before measuring success metrics |
 | Monetization | Missing | No billing dependency found | Premium model is only conceptual |
-| Legacy certification | Missing | No certification docs/tests/devices in Midas Stream area | Required before Android 8/9 support claims |
+| Legacy certification | Missing | No certification docs/tests/devices in Aika Stream area | Required before Android 8/9 support claims |
 
 ## P0 Gaps
 
@@ -178,7 +178,7 @@ API models, EPG handling, and tests are absent.
 navigation, codec certification, long playback, low-storage, and network
 recovery testing.
 
-**Current state:** There are docs and some TV code, but no Midas Stream certification
+**Current state:** There are docs and some TV code, but no Aika Stream certification
 matrix, no physical device inventory, no benchmark gates, and no pass/fail
 records.
 
@@ -258,7 +258,7 @@ results.
 favorites, history, restrictions, recommendations, watch progress, and voice
 profile; AI parental rules later.
 
-**Current state:** No Midas Stream profile storage or restriction engine found.
+**Current state:** No Aika Stream profile storage or restriction engine found.
 
 **Required work:**
 - Define `MediaProfile`, `ProfileRestriction`, and `ProfileStorage`.
@@ -271,7 +271,7 @@ profile; AI parental rules later.
 settings, and playlist metadata; never upload videos, credentials, viewing
 habits, or voice recordings by default.
 
-**Current state:** No Midas Stream cloud sync contract or cross-profile sync was
+**Current state:** No Aika Stream cloud sync contract or cross-profile sync was
 found.
 
 **Required work:**
@@ -386,11 +386,11 @@ cleanup.
 
 ## Go/No-Go Assessment
 
-**Go for:** Midas Stream Lite planning, profile/capability contracts, secure storage
+**Go for:** Aika Stream Lite planning, profile/capability contracts, secure storage
 work, BYOC M3U hardening, compact TV shell improvements, and analytics
 abstraction.
 
-**No-go for now:** Full Midas Stream PRD launch, AI-first marketing claims, Android
+**No-go for now:** Full Aika Stream PRD launch, AI-first marketing claims, Android
 8/9 support claims, cloud sync, premium subscriptions, recording/timeshift,
 multi-view, Stalker Portal, and broad provider integrations.
 

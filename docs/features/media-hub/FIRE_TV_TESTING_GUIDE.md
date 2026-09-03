@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive testing procedures for Fire TV support in the Midas Stream Media Hub feature. Fire TV devices require specific testing for platform detection, safe zones, remote button mapping, and D-pad navigation.
+This guide provides comprehensive testing procedures for Fire TV support in the Aika Stream Media Hub feature. Fire TV devices require specific testing for platform detection, safe zones, remote button mapping, and D-pad navigation.
 
 ---
 

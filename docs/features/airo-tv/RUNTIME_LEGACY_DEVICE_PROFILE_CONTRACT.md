@@ -1,4 +1,4 @@
-# Midas Stream Runtime Legacy Device Profile Contract
+# Aika Stream Runtime Legacy Device Profile Contract
 
 This contract defines the v2.0.0.1 platform boundary for runtime device
 profiling, legacy-device support tier classification, and dynamic
@@ -13,7 +13,7 @@ Implementation contract:
 
 ## Ownership Boundary
 
-Runtime device profiling is platform/framework behavior. Midas Stream app code may
+Runtime device profiling is platform/framework behavior. Aika Stream app code may
 consume profile decisions to choose navigation, feature visibility, settings
 copy, and compatibility messaging, but it must not hard-code runtime support
 tiers in app screens.

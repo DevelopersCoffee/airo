@@ -1,4 +1,4 @@
-# Midas Stream Rust FFI Core Boundary
+# Aika Stream Rust FFI Core Boundary
 
 ## Scope
 
@@ -9,7 +9,7 @@ It creates the repo boundary without enabling a new remote CI matrix.
 
 - Framework Agent owns `rust/airo_core` and the FFI-safe native API surface.
 - Framework Agent owns `packages/core_native` as the Dart package boundary.
-- Midas Stream and feature packages consume public APIs exported by `core_native`.
+- Aika Stream and feature packages consume public APIs exported by `core_native`.
 - Feature packages must not import generated FFI files or Rust bridge internals.
 
 ## Package Contract
@@ -36,7 +36,7 @@ boundary.
 2. Do not import `packages/core_native/lib/src/frb_generated.dart`.
 3. Keep product-specific orchestration in application packages.
 4. Move reusable native, parsing, indexing, or storage contracts into platform
-   packages before consuming them from Midas Stream.
+   packages before consuming them from Aika Stream.
 5. Keep every FFI-facing API deterministic, documented, and covered by both
    Rust and Dart fallback tests.
 

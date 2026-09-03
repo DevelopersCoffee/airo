@@ -50,7 +50,7 @@ val variantApplicationId = when (appVariant) {
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
-    "tv" -> "Midas Stream"
+    "tv" -> "Aika Stream"
     "coins" -> "Airo Coins"
     "mind" -> "Airo Mind"
     else -> "Airo"

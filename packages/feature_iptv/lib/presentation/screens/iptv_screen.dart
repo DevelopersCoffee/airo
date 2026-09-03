@@ -996,7 +996,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               : _playLocalFileOnTv,
         ),
         appBar: AppBar(
-          title: const Text('Midas Stream'),
+          title: const Text('Aika Stream'),
           actions: [
             IconButton(
               icon: const Icon(Icons.search),
@@ -1604,7 +1604,7 @@ class _BringYourOwnPlaylistView extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Midas Stream is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+            'Aika Stream is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),

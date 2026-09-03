@@ -1,7 +1,7 @@
-# Midas Stream AI Search Delegation Contract
+# Aika Stream AI Search Delegation Contract
 
 This contract defines the v2.0.0.1 platform boundary for future natural-language
-and AI-assisted search. Lite Receiver and legacy Midas Stream profiles must not
+and AI-assisted search. Lite Receiver and legacy Aika Stream profiles must not
 bundle heavyweight AI runtimes to expose search entry points. They should route
 eligible work through a shared delegation contract.
 
@@ -36,7 +36,7 @@ Implementation contract:
 
 ## Release Rule
 
-Natural-language search can be added to Midas Stream without changing receiver
+Natural-language search can be added to Aika Stream without changing receiver
 contracts only when consumers use `AiroAiDelegationRequest`,
 `AiroAiDelegationCandidate`, `AiroAiDelegationSelector`, and
 `AiroAiSearchResult`.

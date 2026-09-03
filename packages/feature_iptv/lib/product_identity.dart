@@ -5,7 +5,7 @@
 /// `io.airo.app.tv` / "Airo TV" are a different listing and must not be
 /// described as this package.
 abstract final class TvStoreProduct {
-  static const displayName = 'Midas Stream';
+  static const displayName = 'Aika Stream';
   static const androidPackageId = 'com.developerscoffee.tv.midas';
   static const publisher = 'DevelopersCoffee';
 }

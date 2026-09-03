@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-036.
 
 ## Ownership
 
-Benchmark device-class gates are platform certification behavior. Midas Stream,
+Benchmark device-class gates are platform certification behavior. Aika Stream,
 Lite Receiver, companion apps, desktop companions, QA automation, release gates,
 and future device-lab tooling consume this contract to decide whether a device
 class can support advertised performance and compatibility claims.

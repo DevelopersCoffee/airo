@@ -1,6 +1,6 @@
-# Midas Stream Cross-Platform Validation Matrix
+# Aika Stream Cross-Platform Validation Matrix
 
-This matrix defines the v2.0.0.1 platform validation boundary for Midas Stream,
+This matrix defines the v2.0.0.1 platform validation boundary for Aika Stream,
 companion, desktop, embedded receiver, and cloud control-plane surfaces.
 
 Implementation contract:
@@ -50,7 +50,7 @@ Implementation contract:
 
 ## Consumer Rule
 
-Midas Stream release checks, QA automation, and future device-lab tooling should
+Aika Stream release checks, QA automation, and future device-lab tooling should
 consume `AiroCrossPlatformValidation.matrix()` rather than hard-code per-target
 rules in release scripts or app screens.
 

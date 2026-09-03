@@ -12,7 +12,7 @@ Accepted and implementation updated: 2026-07-27
 
 ## Context
 
-Airo and Midas Stream already share parts of the IPTV implementation, but they do
+Airo and Aika Stream already share parts of the IPTV implementation, but they do
 not share one product-composition contract.
 
 Today:
@@ -27,8 +27,8 @@ Today:
 - `app/pubspec_tv.yaml` is a copied product manifest rather than a first-class
   modular app shell
 
-This prevents “single source of truth” behavior for Airo and Midas Stream. A shared
-IPTV change can require editing multiple shell-owned files, and modular Midas Stream
+This prevents “single source of truth” behavior for Airo and Aika Stream. A shared
+IPTV change can require editing multiple shell-owned files, and modular Aika Stream
 work can drift from the super-app.
 
 The repository already has governance and planning rules that require explicit
@@ -115,7 +115,7 @@ Issue `#1187` implements the first accepted composition slice:
 - Registry composition rejects duplicate enabled module IDs and conflicting
   route paths/names, including nested route identities, before application
   bootstrap.
-- The super-app, Midas Stream, and Airo Coins entrypoints each create a fresh
+- The super-app, Aika Stream, and Airo Coins entrypoints each create a fresh
   shell-scoped registry.
 - Coins and IPTV declare supported shells once and preserve their existing
   super-app route prefixes.
@@ -155,9 +155,9 @@ do not merge product-only host sources back into the Coins source set.
 
 ### Positive
 
-- Airo and Midas Stream gain one source of truth for shared IPTV settings and
+- Airo and Aika Stream gain one source of truth for shared IPTV settings and
   navigation.
-- Modular Midas Stream work can be adopted by the super-app through shared
+- Modular Aika Stream work can be adopted by the super-app through shared
   contracts instead of manual shell duplication.
 - Ownership boundaries become clearer: shared truth in packages, renderers in
   shells/adapters.

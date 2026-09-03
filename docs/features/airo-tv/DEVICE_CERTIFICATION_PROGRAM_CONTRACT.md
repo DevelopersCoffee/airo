@@ -1,6 +1,6 @@
-# Midas Stream Device Certification Program Contract
+# Aika Stream Device Certification Program Contract
 
-This contract defines the v2.0.0.1 platform program layer for Midas Stream device
+This contract defines the v2.0.0.1 platform program layer for Aika Stream device
 certification. It evaluates a set of target device classes against the legacy
 certification matrix and produces the support claims release tooling may
 advertise.
@@ -18,7 +18,7 @@ Implementation contract:
 Device certification is platform/release behavior. QA automation and device-lab
 runs provide `AiroCertificationEvidence`; platform code evaluates that evidence
 against stable target and gate contracts; release tooling consumes the program
-report before publishing support claims. Midas Stream application code must not infer
+report before publishing support claims. Aika Stream application code must not infer
 Certified, Compatible, Experimental, or Unsupported status from app screens or
 runtime heuristics.
 

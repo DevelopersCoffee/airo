@@ -1,10 +1,10 @@
-# Midas Stream — first Play Store gate
+# Aika Stream — first Play Store gate
 
 Release-engineer scan of `origin/main` (`c23c8a23`) before the identity
 refactor, plus the decisions that make the first Play listing friction-free.
 
 This document is the working gate for `com.developerscoffee.tv.midas`. It does
-not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
+not rewrite historical Aika Stream evidence under `docs/release/evidence/`.
 
 ## Scan findings (main)
 
@@ -12,12 +12,12 @@ not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
 | --- | --- | --- |
 | Android TV `applicationId` | `io.airo.app.tv` | **New listing** `com.developerscoffee.tv.midas`. Package IDs cannot be renamed in Play Console. |
 | Gradle `namespace` | `io.airo.app` | Keep. Play cares about `applicationId`; moving Kotlin sources is out of scope. |
-| Launcher label | `Midas Stream` | `Midas Stream` |
+| Launcher label | `Aika Stream` | `Aika Stream` |
 | macOS bundle ID | `com.developerscoffee.airo.tv` | Unchanged this wave. Not a Play Store artifact. |
-| Store listing / legal URLs | Midas Stream copy | Relabeled to Midas Stream; same GitHub Pages paths. |
+| Store listing / legal URLs | Aika Stream copy | Relabeled to Aika Stream; same GitHub Pages paths. |
 | iptv-org one-tap presets | Shipped in the playlist manager | **Removed.** One-tap public playlists are a Play intellectual-property rejection. |
 | iptv-org catalogue fetch | `channels.json` / `feeds.json` / `streams.json` on browse | **Disabled.** `streams.json` is a public stream URL catalogue. |
-| Empty-state disclaimer | Present, said "Airo" | Kept; product name is Midas Stream. |
+| Empty-state disclaimer | Present, said "Airo" | Kept; product name is Aika Stream. |
 | TV manifest `usesCleartextTraffic` | `false`, but network-security-config permits HTTP | Honest BYOC playback tradeoff; disclosed in privacy policy. |
 | `RECEIVE_BOOT_COMPLETED` | Declared | Keep for WorkManager restore; justify in Play declarations. |
 | `FOREGROUND_SERVICE_DATA_SYNC` | Missing on TV while WorkManager declares `dataSync` | **Added** so Android 14+ does not crash a foreground WorkManager job. |
@@ -28,7 +28,7 @@ not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
 
 | Field | Value |
 | --- | --- |
-| App name | Midas Stream |
+| App name | Aika Stream |
 | Android package | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Pubspec | `app/pubspec_tv.yaml` |
@@ -40,7 +40,7 @@ not rewrite historical Midas Stream evidence under `docs/release/evidence/`.
 
 ## Play policy posture
 
-Midas Stream is a **bring-your-own-content player**. It does not provide,
+Aika Stream is a **bring-your-own-content player**. It does not provide,
 host, sell, or recommend channels, playlists, or streams. The first listing
 must not:
 
@@ -70,15 +70,15 @@ Play listing — uninstall the sideload before installing from Play.
 Android upgrades in place only when **package name**, **signing certificate**,
 and **versionCode** all match. `versionName` (`0.0.1`) is cosmetic.
 
-| Currently installed | Next Midas build | Upgrades in place? |
+| Currently installed | Next Aika Stream build | Upgrades in place? |
 | --- | --- | --- |
-| Sideloaded GitHub **Midas Stream** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Midas Stream first. |
+| Sideloaded GitHub **Aika Stream** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Aika Stream first. |
 | Same package, **ephemeral CI** cert | Production/dogfood-signed build | **No.** Different cert (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Uninstall first. |
 | Same package, **same upload/production key**, lower `versionCode` | `0.0.1+13` | **Yes.** |
-| Play-installed Midas (Play App Signing) | Later Play AAB, same upload key, higher `versionCode` | **Yes.** Play re-signs with the Google-held app signing key. |
+| Play-installed Aika Stream (Play App Signing) | Later Play AAB, same upload key, higher `versionCode` | **Yes.** Play re-signs with the Google-held app signing key. |
 
 `app/pubspec_tv.yaml` was `0.0.7+12` (`versionCode` 12). A Play listing of
-`0.0.1+1` would be a **downgrade** over any already-installed Midas build with
+`0.0.1+1` would be a **downgrade** over any already-installed Aika Stream build with
 code 12. Preview and first Play AAB must ship `versionCode >= 13`
 (`0.0.1+13`).
 

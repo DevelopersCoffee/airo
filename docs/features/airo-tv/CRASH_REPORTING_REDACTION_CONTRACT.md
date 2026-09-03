@@ -7,7 +7,7 @@ owns the crash report envelope, redaction policy, consent/local-only upload
 blocking, no-op/local/provider-backed crash reporting adapters, and public
 serialization.
 
-Midas Stream application code may submit crash summaries to the platform adapter. It
+Aika Stream application code may submit crash summaries to the platform adapter. It
 must not import a crash vendor SDK directly, upload raw crash payloads, or
 implement separate redaction rules in app code.
 

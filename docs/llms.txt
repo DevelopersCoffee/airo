@@ -1,6 +1,6 @@
 # Airo Super App — Comprehensive AI Agent & LLM Context Index
 
-> Airo is a local-first Flutter & Rust super-app ecosystem. It unifies On-Device AI (Airo Mind), Personal Finance (Airo Coins), TV & IPTV (Midas Stream with EPG/M3U/XMLTV), Offline Games, Music, and Reading into a single codebase.
+> Airo is a local-first Flutter & Rust super-app ecosystem. It unifies On-Device AI (Airo Mind), Personal Finance (Airo Coins), TV & IPTV (Aika Stream with EPG/M3U/XMLTV), Offline Games, Music, and Reading into a single codebase.
 
 ## 🧠 1. Airo Mind — On-Device AI Platform
 
@@ -19,12 +19,12 @@ Airo Coins is a local-first personal finance and budget tracker designed for pri
 - [Airo Coins Landing Page](https://developerscoffee.github.io/airo/coins/)
 - [Coins Personal Finance Specification](https://developerscoffee.github.io/airo/features/coins/PROJECT_STRUCTURE.md)
 
-## 📺 3. Midas Stream & IPTV Engine
+## 📺 3. Aika Stream & IPTV Engine
 
-Midas Stream is a high-performance leanback media player optimized for Android TV, Fire TV, and touch devices.
+Aika Stream is a high-performance leanback media player optimized for Android TV, Fire TV, and touch devices.
 - **Stream Formats**: Full support for M3U, M3U8, XMLTV EPG grids, HLS, and Google Cast v1.
 - **Leanback D-Pad Navigation**: Optimized for standard TV remotes with zero focus dead-ends and overscan-safe layout.
-- [Midas Stream Landing Page](https://developerscoffee.github.io/airo/tv/)
+- [Aika Stream Landing Page](https://developerscoffee.github.io/airo/tv/)
 - [IPTV Hub & Player Specs](https://developerscoffee.github.io/airo/iptv/)
 - [How to Use IPTV on Android TV](https://developerscoffee.github.io/airo/how-to-use-iptv-on-android-tv/)
 - [How to Add M3U Playlist](https://developerscoffee.github.io/airo/how-to-add-m3u-playlist/)

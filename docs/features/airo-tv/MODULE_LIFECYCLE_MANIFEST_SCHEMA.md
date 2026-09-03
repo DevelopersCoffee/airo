@@ -1,9 +1,9 @@
-# Midas Stream Module Lifecycle Manifest Schema
+# Aika Stream Module Lifecycle Manifest Schema
 
 ATV-060 defines the reusable platform contract that describes whether a product
-module can be started for a given Midas Stream product profile.
+module can be started for a given Aika Stream product profile.
 
-The schema lives in `packages/product_capabilities` so Midas Stream app code can
+The schema lives in `packages/product_capabilities` so Aika Stream app code can
 consume a stable platform boundary instead of hard-coding reusable lifecycle,
 budget, permission, dependency, fallback, or feature-flag rules.
 
@@ -15,7 +15,7 @@ budget, permission, dependency, fallback, or feature-flag rules.
 - Release owns profile/channel compatibility and feature-flag gates.
 - QA owns automation that validates dependencies, budgets, permissions,
   background work, fallbacks, and supported profiles.
-- Midas Stream app code consumes the accepted manifests and keeps only product
+- Aika Stream app code consumes the accepted manifests and keeps only product
   journeys, screen composition, copy, and profile-specific workflow logic.
 
 ## Manifest Fields
@@ -59,7 +59,7 @@ budget, permission, dependency, fallback, or feature-flag rules.
 
 Accepted results contain only `accepted`.
 
-## Default Midas Stream Manifests
+## Default Aika Stream Manifests
 
 The package ships default lifecycle manifests for the first composition layer:
 
@@ -72,9 +72,9 @@ Later module issues should add lifecycle manifests for recording, downloads,
 multiview, diagnostics, analytics, cloud sync, phone remote, and any vendor
 adapter modules before app-layer composition starts them.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should compose screens and workflows from modules whose lifecycle
+Aika Stream should compose screens and workflows from modules whose lifecycle
 manifest validates against the active `ProductProfileManifest`. App code should
 not start modules directly when the platform policy reports an unsupported
 profile, missing dependency, exceeded budget, permission mismatch, unsafe

@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-035.
 
 ## Ownership
 
-Resource scheduling is platform/framework behavior. Midas Stream, Lite Receiver,
+Resource scheduling is platform/framework behavior. Aika Stream, Lite Receiver,
 playback, playlist import, distributed EPG, stream health, cache cleanup,
 protocol sync, and QA automation consume this contract instead of creating
 feature-specific background job rules.

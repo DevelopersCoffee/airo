@@ -85,7 +85,7 @@ implementation detail — that's the domain agent's job.
 
 ## Sub-App Domain Agents
 
-### Midas Stream domain
+### Aika Stream domain
 
 | Role | Owns (real packages) | Approves | Rejects |
 | --- | --- | --- | --- |

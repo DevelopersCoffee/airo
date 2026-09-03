@@ -273,7 +273,7 @@ just_audio: ^0.10.5      # Not for TV
 |-------------|--------------|-----------------|
 | `io.airo.app` | Airo Mobile | ✅ (existing) |
 | `io.airo.app.streaming` | Airo Streaming | ✅ (for Google Sign-In) |
-| `io.airo.app.tv` | Midas Stream | ✅ (for Google Sign-In) |
+| `io.airo.app.tv` | Aika Stream | ✅ (for Google Sign-In) |
 
 **SHA-1 fingerprints** (same keystore for all variants):
 ```bash
@@ -631,7 +631,7 @@ class TvTypography {
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
-        android:label="Midas Stream"
+        android:label="Aika Stream"
         android:icon="@mipmap/ic_launcher_tv"
         android:banner="@drawable/tv_banner">
 

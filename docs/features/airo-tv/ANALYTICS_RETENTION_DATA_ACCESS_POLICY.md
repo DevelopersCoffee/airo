@@ -2,14 +2,14 @@
 
 Issue: ATV-079
 Package: `core_analytics`
-Layer: Platform framework, consumed by Midas Stream app, privacy flows, and provider
+Layer: Platform framework, consumed by Aika Stream app, privacy flows, and provider
 adapters
 
 ## Purpose
 
 Analytics retention and data-access policy defines how long each analytics
 category may keep raw data, which deletion steps are required for consent or
-privacy requests, and which roles can access each retention class. Midas Stream app
+privacy requests, and which roles can access each retention class. Aika Stream app
 code consumes the policy for settings and privacy workflows; it must not
 hard-code retention windows, deletion steps, or data-access roles.
 
@@ -22,7 +22,7 @@ hard-code retention windows, deletion steps, or data-access roles.
   requirements, and public serialization boundaries.
 - Framework owns `core_analytics` models, validation codes, deletion-plan
   builders, and deterministic access evaluation.
-- Midas Stream app code owns user-facing copy and workflow routing that consumes the
+- Aika Stream app code owns user-facing copy and workflow routing that consumes the
   platform policy.
 
 ## Retention Classes
@@ -70,7 +70,7 @@ defines the required steps and stable result surface.
 - production-data flag;
 - approval flag.
 
-The standard Midas Stream policy permits product analysts only for product
+The standard Aika Stream policy permits product analysts only for product
 measurement over product or aggregate data. Privacy officers can evaluate
 privacy requests. Security auditors can evaluate security investigations over
 operational, diagnostics, crash, or aggregate data. Release engineers can use
@@ -102,6 +102,6 @@ stacks, or diagnostics dumps.
 ## Deferred Work
 
 Provider-specific deletion/export APIs, backend data-warehouse enforcement,
-data-access approval tooling, and Midas Stream settings screens remain separate
+data-access approval tooling, and Aika Stream settings screens remain separate
 issues. This issue defines the reusable platform contract those features must
 consume.

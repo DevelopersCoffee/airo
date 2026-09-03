@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Midas Stream store-listing PNG assets.
+"""Generate Aika Stream store-listing PNG assets.
 
 The images are deterministic release assets for store submissions. They use
 demo playlist/channel data only and do not include private playlist URLs,
@@ -100,7 +100,7 @@ def canvas(size: tuple[int, int], fill: str = "bg") -> Image.Image:
 def draw_shell(title: str, subtitle: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     image = canvas((1920, 1080))
     draw = ImageDraw.Draw(image)
-    draw.text((118, 68), "MIDAS STREAM", fill=COLORS["text"], font=font(46, True))
+    draw.text((118, 68), "AIKA STREAM", fill=COLORS["text"], font=font(46, True))
     pill(draw, (1605, 74, 1810, 122), "BYO playlist", "panel2", "line2")
     draw.text((112, 158), title, fill=COLORS["text"], font=font(56, True))
     draw.text((114, 226), subtitle, fill=COLORS["muted"], font=font(26))
@@ -181,7 +181,7 @@ def draw_search() -> Image.Image:
 def draw_playlist() -> Image.Image:
     image, draw = draw_shell(
         "Use your own playlist",
-        "Midas Stream does not include channels or media subscriptions.",
+        "Aika Stream does not include channels or media subscriptions.",
     )
 
     left = (112, 318, 920, 934)
@@ -236,7 +236,7 @@ def draw_play_icon() -> Image.Image:
 def draw_feature_graphic() -> Image.Image:
     image = canvas((1024, 500), "bg2")
     draw = ImageDraw.Draw(image)
-    draw.text((52, 86), "Midas Stream", fill=COLORS["text"], font=font(74, True))
+    draw.text((52, 86), "Aika Stream", fill=COLORS["text"], font=font(74, True))
     draw.text((56, 176), "BYO playlist player for Android TV", fill=COLORS["muted"], font=font(30, True))
     pill(draw, (56, 252, 174, 300), "M3U/M3U8", "panel", "line2")
     pill(draw, (192, 252, 296, 300), "Search", "panel", "line2")

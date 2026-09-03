@@ -2,13 +2,13 @@
 
 Issue: ATV-059
 Package: `product_capabilities`
-Layer: Platform framework, consumed by Midas Stream app and release code
+Layer: Platform framework, consumed by Aika Stream app and release code
 
 ## Purpose
 
 Product profile manifests define which modules, capabilities, navigation
 entries, permissions, resource budgets, guarantees, release channel, and support
-level a product surface may expose. Midas Stream app code consumes these manifests to
+level a product surface may expose. Aika Stream app code consumes these manifests to
 hide unavailable sections and avoid profile-specific shortcuts in screens.
 
 This contract belongs in `product_capabilities` because profile composition is a
@@ -51,7 +51,7 @@ release material, raw credentials, or device logs.
 - release-channel/profile mismatches;
 - support-level/release-channel mismatches.
 
-## Midas Stream Defaults
+## Aika Stream Defaults
 
 `AiroTvProductProfiles.fullTv()` uses `full_tv_stable`, certified support,
 Full TV navigation, Full EPG capability, diagnostics, analytics, and stable

@@ -1,6 +1,6 @@
-# Midas Stream debug playlist
+# Aika Stream debug playlist
 
-The Midas Stream product uses `app/lib/main_tv.dart`.
+The Aika Stream product uses `app/lib/main_tv.dart`.
 
 Debug builds can seed a default playlist URL by passing
 `DEBUG_IPTV_PLAYLIST_URL`:

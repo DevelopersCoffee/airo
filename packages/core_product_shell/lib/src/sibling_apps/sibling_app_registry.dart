@@ -27,7 +27,7 @@ final siblingApps = <SiblingApp>[
   ),
   SiblingApp(
     id: ShellId.tv,
-    name: 'Midas Stream',
+    name: 'Aika Stream',
     pitch: 'Bring your own authorized playlists to Android TV.',
     iconAsset: _placeholderIconAsset,
     androidStoreUrl: _playStoreUrl('com.developerscoffee.tv.midas'),

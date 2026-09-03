@@ -1,6 +1,6 @@
-# Midas Stream Analytics Privacy Filter Tests
+# Aika Stream Analytics Privacy Filter Tests
 
-ATV-071 defines the platform privacy-filter test suite for Midas Stream analytics.
+ATV-071 defines the platform privacy-filter test suite for Aika Stream analytics.
 The reusable fixtures live in `packages/core_analytics` because analytics
 privacy validation must run before provider upload, local diagnostics retention,
 schema acceptance, or feature-module instrumentation.
@@ -11,7 +11,7 @@ schema acceptance, or feature-module instrumentation.
 - QA owns deterministic fixture coverage and expected violation codes.
 - Framework owns reusable fixture models, public serialization, and the
   platform privacy filter.
-- Midas Stream app code consumes the filter and fixtures instead of implementing
+- Aika Stream app code consumes the filter and fixtures instead of implementing
   feature-local redaction checks.
 
 ## Fixture Contract
@@ -28,7 +28,7 @@ schema acceptance, or feature-module instrumentation.
 values. Public output exposes only stable case IDs, fields, sample classes,
 expected privacy codes, and whether rejection is expected.
 
-## Standard Midas Stream Suite
+## Standard Aika Stream Suite
 
 `AiroTvAnalyticsPrivacyFilterSuites.standard()` covers:
 
@@ -48,7 +48,7 @@ Each fixture is converted to an `AiroAnalyticsEvent` and evaluated through
 `AiroAnalyticsPrivacyFilter.standard`. Rejected cases must produce the expected
 `AiroAnalyticsPrivacyCode`; approved cases must produce no violations.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
 Feature modules may submit approved bucket/category analytics values such as
 `source_type` or `startup_bucket`. They must never submit raw media labels,

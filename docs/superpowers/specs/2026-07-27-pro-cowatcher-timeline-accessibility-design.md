@@ -1,6 +1,6 @@
 # Planned: Co-Watcher, AI Timeline, and AI Accessibility
 
-Status: Planned design for Midas Stream Pro. Accessibility fundamentals remain
+Status: Planned design for Aika Stream Pro. Accessibility fundamentals remain
 Community Edition and are never entitlement-gated.
 
 ## Customer outcomes

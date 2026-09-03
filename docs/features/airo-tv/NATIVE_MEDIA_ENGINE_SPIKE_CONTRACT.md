@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-027.
 
 ## Ownership
 
-Native media engine evaluation is platform/framework behavior. Midas Stream can
+Native media engine evaluation is platform/framework behavior. Aika Stream can
 consume the eventual engine decision, but backend selection, surface
 requirements, diagnostics, and decoder fallback rules belong in platform
 contracts.

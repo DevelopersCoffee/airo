@@ -70,7 +70,7 @@ class SettingsHubScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             // Mind backup/restore belongs to the super-app and Airo Mind
-            // shells. Midas Stream (`ShellId.tv`) is a BYO playlist player
+            // shells. Aika Stream (`ShellId.tv`) is a BYO playlist player
             // and must not surface Mind-only settings on compact phones.
             if (shellId == ShellId.mobile) ...[
               ListTile(

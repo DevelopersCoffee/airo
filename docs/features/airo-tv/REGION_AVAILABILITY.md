@@ -1,6 +1,6 @@
 # Region availability contract
 
-Midas Stream uses region information only to make stream availability hints and
+Aika Stream uses region information only to make stream availability hints and
 automatic selection safer. It is not an entitlement or rights decision, and a
 user can still manually try a channel.
 

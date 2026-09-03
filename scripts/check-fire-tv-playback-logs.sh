@@ -64,7 +64,7 @@ else
     1 >/dev/null
   pid="$(adb -s "$device" shell pidof "$PACKAGE_NAME" | tr -d '\r')"
   if [[ -z "$pid" ]]; then
-    echo "Midas Stream process is not running after launcher start" >&2
+    echo "Aika Stream process is not running after launcher start" >&2
     exit 1
   fi
   adb -s "$device" logcat -c

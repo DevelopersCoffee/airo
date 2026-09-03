@@ -196,7 +196,7 @@ void main() {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Midas Stream'), findsOneWidget);
+      expect(find.text('Aika Stream'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
@@ -213,7 +213,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(AppBar), findsNothing);
-    expect(find.text('Midas Stream'), findsNothing);
+    expect(find.text('Aika Stream'), findsNothing);
     expect(find.byType(VideoPlayerWidget), findsOneWidget);
 
     AiroNativePictureInPicture.debugNotifyStateChanged(false);
@@ -513,7 +513,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(handled, isTrue);
-    expect(find.text('Midas Stream'), findsOneWidget);
+    expect(find.text('Aika Stream'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
       findsOneWidget,
@@ -696,7 +696,7 @@ void main() {
     await tester.pumpWidget(createEmptyWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Midas Stream'), findsOneWidget);
+    expect(find.text('Aika Stream'), findsOneWidget);
     expect(find.byTooltip('Playlist source'), findsOneWidget);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(

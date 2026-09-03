@@ -1,4 +1,4 @@
-# Midas Stream Adaptive UI Mode Contract
+# Aika Stream Adaptive UI Mode Contract
 
 This contract defines the v2.0.0.1 platform boundary for adaptive UI mode
 resolution across TV, mobile companion, tablet, desktop, and constrained
@@ -41,18 +41,18 @@ requiring different focus, navigation, typography, and density behavior.
 - minimum target size;
 - focus persistence requirement.
 
-These outputs are stable contracts for Midas Stream screens, IPTV widgets, companion
+These outputs are stable contracts for Aika Stream screens, IPTV widgets, companion
 remote surfaces, and future profile navigation manifests.
 
 ## Consumer Rule
 
-Midas Stream app code should consume `core_ui` adaptive mode results. Product code
+Aika Stream app code should consume `core_ui` adaptive mode results. Product code
 may choose screen-specific layout and copy, but it should not invent separate
 remote/touch/pointer behavior models or hard-code density and accessibility
 rules in individual screens.
 
 ## Out Of Scope
 
-This issue does not rewrite Midas Stream or IPTV screens, add golden tests, implement
+This issue does not rewrite Aika Stream or IPTV screens, add golden tests, implement
 runtime platform detection, certify physical remotes, define navigation
 manifests, or enforce legacy performance budgets.

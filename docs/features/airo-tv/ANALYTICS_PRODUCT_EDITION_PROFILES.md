@@ -2,27 +2,27 @@
 
 Issue: ATV-077
 Package: `core_analytics`
-Layer: Platform framework, consumed by Midas Stream app and release code
+Layer: Platform framework, consumed by Aika Stream app and release code
 
 ## Purpose
 
 Analytics product-edition profiles define which analytics purposes, event
 families, event names, queue budgets, crash budgets, local retention windows,
-provider posture, and local-only rules each product surface may use. Midas Stream app
+provider posture, and local-only rules each product surface may use. Aika Stream app
 code selects a platform profile and submits typed events; it must not hard-code
 event allowlists, upload posture, or reduced telemetry shortcuts in screens.
 
 ## Ownership
 
 - Framework owns `AiroAnalyticsProductEditionProfile`, validation codes,
-  default Midas Stream profile fixtures, service-configuration derivation, and public
+  default Aika Stream profile fixtures, service-configuration derivation, and public
   serialization.
 - Security and Privacy owns local-only restrictions, allowed-purpose reduction,
   external-upload blocking, consent intersection, and public-map redaction.
 - QA owns profile validation tests for Full TV, Standard TV, Lite Receiver,
   Embedded Receiver, mobile companion, desktop companion, and malformed
   profiles.
-- Midas Stream app code owns runtime profile selection, settings UI copy, and
+- Aika Stream app code owns runtime profile selection, settings UI copy, and
   user-visible workflow decisions that consume the selected platform profile.
 
 ## Profile Contract
@@ -49,7 +49,7 @@ numeric budgets only. They must not include media titles, URLs, local paths,
 local IP addresses, credentials, device logs, store-console accounts, provider
 payloads, or raw diagnostics.
 
-## Default Midas Stream Profiles
+## Default Aika Stream Profiles
 
 - Full TV: complete event set; operational, product, playback-quality,
   diagnostics, crash, and personalized purposes; vendor-adapter upload allowed

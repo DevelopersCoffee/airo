@@ -1,6 +1,6 @@
 # Xtream Codes source contract
 
-Midas Stream treats Xtream Codes as a bring-your-own-content source. Users must
+Aika Stream treats Xtream Codes as a bring-your-own-content source. Users must
 have authorization from their provider.
 
 ## Setup and storage

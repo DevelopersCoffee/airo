@@ -7,7 +7,7 @@ registered pairing, handoff, discovery, command-route, delegation, and companion
 availability event schemas, validation fixtures, retention metadata, redaction,
 and public serialization.
 
-Midas Stream, companion apps, and device ecosystem modules may emit these typed
+Aika Stream, companion apps, and device ecosystem modules may emit these typed
 events at workflow points. They must not define app-local analytics maps, raw
 device identifiers, local-network addresses, hostnames, prompt text, transcripts,
 contact data, or provider payload fields.
@@ -68,9 +68,9 @@ The fixture public map exposes event names, owners, purposes, field names,
 expected validation codes, and pass/fail outcomes only. It does not expose raw
 field values.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should translate pairing, handoff, command, delegation, and companion
+Aika Stream should translate pairing, handoff, command, delegation, and companion
 runtime observations into the platform category or bucket vocabulary before
 constructing `AiroAnalyticsEvent`. The schema registry remains the authority for
 whether an event can be retained locally or sent through a provider adapter.

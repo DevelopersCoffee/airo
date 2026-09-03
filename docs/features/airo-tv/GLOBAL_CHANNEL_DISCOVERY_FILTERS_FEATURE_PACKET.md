@@ -2,23 +2,23 @@
 
 ## Feature Packet
 
-**Primary owner agent:** Midas Stream Flutter Architect
+**Primary owner agent:** Aika Stream Flutter Architect
 **Review agents:** Media Intelligence Architect, Chief UX Officer, Chief QA Officer
 **Layer:** Shared IPTV application presentation; no playlist, EPG, or platform
 adapter schema changes.
-**Sprint:** Midas Stream phone discovery follow-up
-**Parent roadmap:** Midas Stream v2 release qualification
+**Sprint:** Aika Stream phone discovery follow-up
+**Parent roadmap:** Aika Stream v2 release qualification
 
 ### Critical Agent Gate
 
-**Problem:** The compact Midas Stream browser displays raw country and language
+**Problem:** The compact Aika Stream browser displays raw country and language
 codes, provides a second search control alongside the app-bar search, and
 does not show the channel artwork already supplied by playlists. More
 importantly, country/language filtering only works for channels that happen to
 match a remote enrichment response, and its scope is not carried into the
 EPG guide.
 
-**User / actor:** An Midas Stream phone, tablet, desktop, or TV user narrowing a
+**User / actor:** An Aika Stream phone, tablet, desktop, or TV user narrowing a
 large playlist by market and language before selecting a channel or opening
 the guide.
 
@@ -26,7 +26,7 @@ the guide.
 shared filter provider. Playlist parsing, XMLTV loading, worker boundaries,
 and platform adapters are unchanged.
 
-**Owning agent:** Midas Stream Flutter Architect.
+**Owning agent:** Aika Stream Flutter Architect.
 
 **Reviewing agents:** Media Intelligence Architect (playlist/EPG filter
 contract), Chief UX Officer (compact discovery), Chief QA Officer (provider
@@ -48,7 +48,7 @@ row search chip is removed.
 ### Cross-Agent Contract
 
 **Provider agent:** `feature_iptv` channel discovery provider.
-**Consumer agents:** compact Midas Stream browser and XMLTV Guide.
+**Consumer agents:** compact Aika Stream browser and XMLTV Guide.
 **Interface/API:** `ChannelFilters`, `channelFilterDimensions`,
 `applyChannelFilters`, and `applyChannelScope`.
 **Inputs:** Playlist `IPTVChannel.country` / `languages`; optional matched

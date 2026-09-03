@@ -6,7 +6,7 @@
 
 ## Implemented contract
 
-- Midas Stream queries bounded, paged guide windows and renders virtualized channel
+- Aika Stream queries bounded, paged guide windows and renders virtualized channel
   rows. The lite-receiver current/next snapshot contract is unchanged.
 - Native Rust and Dart fallback XMLTV parsing retain optional subtitle,
   description, categories, episode number, icon URL, rating, and

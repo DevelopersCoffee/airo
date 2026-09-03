@@ -1,6 +1,6 @@
-# Midas Stream Analytics Service Contract
+# Aika Stream Analytics Service Contract
 
-ATV-069 defines the platform analytics service contract for Midas Stream v2.0.0.1.
+ATV-069 defines the platform analytics service contract for Aika Stream v2.0.0.1.
 Feature modules submit typed events to `packages/core_analytics`; they must not
 call Firebase, Google Analytics, Crashlytics, or another vendor SDK directly.
 
@@ -12,7 +12,7 @@ call Firebase, Google Analytics, Crashlytics, or another vendor SDK directly.
   semantics, prohibited payload validation, and redaction requirements.
 - QA owns no-op, local diagnostics, provider failure, consent withdrawal,
   privacy pattern, and timed-event tests.
-- Midas Stream app code owns settings UI, user copy, and product workflow decisions
+- Aika Stream app code owns settings UI, user copy, and product workflow decisions
   that consume this platform contract.
 
 ## Service Boundary
@@ -40,7 +40,7 @@ by an isolated adapter. If that sender fails, the service returns
 `provider_unavailable` instead of throwing through playback, UI, or feature
 code.
 
-Crash reporting follows the same platform boundary. Midas Stream submits
+Crash reporting follows the same platform boundary. Aika Stream submits
 `AiroCrashReport` to `core_analytics`; redaction, consent/local-only upload
 blocking, local diagnostic storage, no-op behavior, and provider failure
 handling remain platform responsibilities.
@@ -67,7 +67,7 @@ The configuration validator rejects local-only external uploads, unisolated
 vendor adapters, blocking analytics, invalid queue budgets, and non-resettable
 installation IDs.
 
-Product-edition analytics profiles are also platform-owned. Midas Stream selects an
+Product-edition analytics profiles are also platform-owned. Aika Stream selects an
 `AiroAnalyticsProductEditionProfile` for Full TV, Standard TV, Lite Receiver,
 Embedded Receiver, mobile companion, desktop companion, or local-only mode, then
 derives service configuration from that profile. The profile contract defines
@@ -82,7 +82,7 @@ and public audit-safe maps before app or provider code consumes analytics data.
 Dashboard and alert catalogs remain platform-owned.
 `AiroAnalyticsDashboardCatalog` defines dashboard surfaces, aggregate metric
 specs, alert thresholds, severity, evaluation windows, and runbook ids without
-embedding provider-specific dashboard objects in Midas Stream app code.
+embedding provider-specific dashboard objects in Aika Stream app code.
 
 Self-hosted event gateway policy is also a platform boundary.
 `AiroAnalyticsSelfHostedGatewayPolicy` evaluates schema safety, local-only
@@ -112,7 +112,7 @@ events are removed immediately from the local diagnostics service.
 
 Consent transitions report stable codes for accepted changes, optional queue
 cleanup, local-only external upload blocking, collection disablement, and reset
-generation state. Midas Stream settings UI can render those results, but the
+generation state. Aika Stream settings UI can render those results, but the
 underlying cleanup and blocking rules remain in `core_analytics`.
 
 ## Privacy Rules
@@ -130,9 +130,9 @@ privacy filter rejects:
 Timed events record duration buckets such as `1_3s`; they do not persist raw
 duration values.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream, feature modules, playback, pairing, handoff, and diagnostics code
+Aika Stream, feature modules, playback, pairing, handoff, and diagnostics code
 should depend on `core_analytics` or a platform adapter built on it.
 Experimentation and remote-config code should consume `core_experimentation`.
 Product code may decide which typed event to submit, but consent, privacy

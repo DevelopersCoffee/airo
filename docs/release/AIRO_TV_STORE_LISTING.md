@@ -1,18 +1,18 @@
-# Midas Stream Store Listing Metadata
+# Aika Stream Store Listing Metadata
 
 Canonical listing metadata for the first Google Play Android TV listing of
-Midas Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
-[Midas Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
+Aika Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
+[Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
 cloud playlists, bundled channels, or a public IPTV catalogue.
 
-See [Midas Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) for the
+See [Aika Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) for the
 package-ID cutover and human console actions.
 
 ## Release Scope
 
 | Field | Value |
 | --- | --- |
-| Product | Midas Stream |
+| Product | Aika Stream |
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Device class | Android TV, Google TV, Fire TV-compatible APK testing |
@@ -25,7 +25,7 @@ package-ID cutover and human console actions.
 
 | Field | Final metadata |
 | --- | --- |
-| App name | `Midas Stream` |
+| App name | `Aika Stream` |
 | Short description | `Play your own authorized playlists on Android TV.` |
 | Category | Video Players & Editors |
 | Tags / keywords | M3U, M3U8, playlist player, Android TV, Google TV, Chromecast, Cast, HLS |
@@ -37,7 +37,7 @@ Short description length: 51/80 characters.
 ### Full Description
 
 ```text
-Midas Stream is a media player for Android TV, Google TV, and compatible TV
+Aika Stream is a media player for Android TV, Google TV, and compatible TV
 devices. Bring your own authorized M3U or M3U8 playlist and watch it in a
 clean, remote-friendly living-room interface.
 
@@ -54,7 +54,7 @@ Key features:
 - Use a TV-focused interface designed for remote navigation
 
 Important content notice:
-Midas Stream is a media player only. It does not provide, host, sell, endorse,
+Aika Stream is a media player only. It does not provide, host, sell, endorse,
 verify, or distribute channels, playlists, streams, subscriptions, or IPTV
 services. You must supply your own lawful content sources and ensure that you
 have the rights to access every stream you load.
@@ -78,7 +78,7 @@ Full description length: 1,122/4,000 characters.
 | Demo video | Optional YouTube URL | Recommended after screenshots. |
 
 Screenshot capture guidance is maintained in
-[Midas Stream Release Media Assets](./AIRO_TV_MEDIA_ASSETS.md).
+[Aika Stream Release Media Assets](./AIRO_TV_MEDIA_ASSETS.md).
 
 ## Apple App Store Draft
 
@@ -88,7 +88,7 @@ until maintainers explicitly add iOS or tvOS to the release scope.
 
 | Field | Draft metadata |
 | --- | --- |
-| App name | `Midas Stream - IPTV Player` |
+| App name | `Aika Stream - IPTV Player` |
 | Subtitle | `IPTV playlist player` |
 | Category | Entertainment |
 | Keywords | `iptv,m3u,m3u8,streaming,live tv,playlist,chromecast,android tv,player,channels` |
@@ -100,11 +100,11 @@ Keyword length: 78/100 characters.
 ### App Store Description Draft
 
 ```text
-Midas Stream is an IPTV playlist player for users who bring their own authorized
+Aika Stream is an IPTV playlist player for users who bring their own authorized
 content sources. Import an M3U or M3U8 playlist URL, search channels by name,
 and watch supported live streams through a clean interface.
 
-Midas Stream does not provide channels, playlists, subscriptions, or IPTV services.
+Aika Stream does not provide channels, playlists, subscriptions, or IPTV services.
 Users are responsible for loading only legal content sources that they have the
 right to access.
 ```

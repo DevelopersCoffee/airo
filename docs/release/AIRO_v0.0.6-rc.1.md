@@ -58,5 +58,5 @@ history (`airo-tv-v*` and `v*`).
 - **Fire TV D-pad focus (#1272):** focus paths and modal focus ownership from
   #1244 remain unmet on physical Fire TV; empty IPTV state renders under the
   nav rail.
-- Midas Stream ships no playlists, channels, or media; users provide their own
+- Aika Stream ships no playlists, channels, or media; users provide their own
   authorized content.

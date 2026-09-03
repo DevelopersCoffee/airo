@@ -1,7 +1,7 @@
-# Midas Stream Command Envelope
+# Aika Stream Command Envelope
 
 This contract defines the v2.0.0.1 platform boundary for connected-device
-commands used by Midas Stream, companion controllers, playback sessions, AI
+commands used by Aika Stream, companion controllers, playback sessions, AI
 delegation, local transports, and future cloud coordination.
 
 Implementation contract:
@@ -67,7 +67,7 @@ local paths, local IP addresses, user text, analytics payloads, or diagnostics.
 
 ## Consumer Rule
 
-Midas Stream, companion remote controls, playback sessions, AI delegation, and cloud
+Aika Stream, companion remote controls, playback sessions, AI delegation, and cloud
 coordination should consume `core_commands`. Product code may render progress,
 copy, and recovery flows, but command authority, expiry, idempotency, and
 payload privacy belong to the platform contract.

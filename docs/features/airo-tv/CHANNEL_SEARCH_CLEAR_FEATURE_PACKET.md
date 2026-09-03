@@ -3,10 +3,10 @@
 ## Feature Packet
 
 **Primary owner agent:** Media Intelligence Architect
-**Review agents:** Midas Stream Flutter Architect, Chief UX Officer, Chief QA Officer
+**Review agents:** Aika Stream Flutter Architect, Chief UX Officer, Chief QA Officer
 **Layer:** `feature_iptv` application filter presentation.
-**Sprint:** Midas Stream phone discovery follow-up
-**Parent roadmap:** Midas Stream v2 release qualification
+**Sprint:** Aika Stream phone discovery follow-up
+**Parent roadmap:** Aika Stream v2 release qualification
 
 ### Critical Agent Gate
 
@@ -15,7 +15,7 @@ library filter row without a direct clear action. On a compact phone viewport,
 users can be left with a very small result set and no obvious way to restore
 the complete, scrollable channel library.
 
-**User / actor:** Midas Stream user searching a channel library on phone, tablet,
+**User / actor:** Aika Stream user searching a channel library on phone, tablet,
 desktop, or TV.
 
 **Framework or application layer:** Application presentation. Channel models,
@@ -23,7 +23,7 @@ search indexing, storage schemas, and platform contracts are unchanged.
 
 **Owning agent:** Media Intelligence Architect (`feature_iptv`).
 
-**Reviewing agents:** Midas Stream Flutter Architect, Chief UX Officer, Chief QA
+**Reviewing agents:** Aika Stream Flutter Architect, Chief UX Officer, Chief QA
 Officer.
 
 **Impacted modules/files:** Responsive filter row, search overlay, focused
@@ -40,7 +40,7 @@ category, country, and language filters remain intact.
 ### Cross-Agent Contract
 
 **Provider agent:** Existing `feature_iptv` channel filter provider.
-**Consumer agent:** Midas Stream channel-library filter row and search overlay.
+**Consumer agent:** Aika Stream channel-library filter row and search overlay.
 **Interface/API:** Existing `ChannelFiltersNotifier.setSearch`.
 **Input shape:** A locally entered channel-search string.
 **Output shape:** Existing filtered channel list, or the complete list within
@@ -59,7 +59,7 @@ is labeled, and clears search without clearing other filters.
 
 #### UC-001: Restore the channel library after search
 
-**Actor:** Midas Stream user on a compact Pixel 9 viewport or TV.
+**Actor:** Aika Stream user on a compact Pixel 9 viewport or TV.
 **Preconditions:** A channel query is active and the library shows matching
 results.
 **Trigger:** The user activates `Clear search`.

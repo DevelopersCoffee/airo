@@ -6,7 +6,7 @@ ATV-072 is a platform contract. `packages/core_analytics` owns consent state,
 local-only enforcement, provider upload blocking, local queue cleanup, reset
 generation state, and public transition serialization.
 
-Midas Stream application code consumes these platform results when rendering settings
+Aika Stream application code consumes these platform results when rendering settings
 or diagnostics. It must not implement independent queue deletion, upload
 blocking, or consent-purpose rules.
 

@@ -1,6 +1,6 @@
 # Multi-source EPG merge
 
-`platform_epg` owns the reusable merge and refresh boundary. Midas Stream consumes
+`platform_epg` owns the reusable merge and refresh boundary. Aika Stream consumes
 only bounded `CompactEpgWindow` values and does not parse XMLTV in presentation
 code.
 
@@ -48,4 +48,4 @@ Every channel supplied by at least one source reports uncovered time as
 `CompactEpgGap`. A gap is metadata, never a programme: playback, reminders,
 and details must not treat it as content. A policy may label short gaps as
 adjacent to the preceding programme, but it never extends that programme.
-Midas Stream renders gaps as non-focusable “No listing” blocks.
+Aika Stream renders gaps as non-focusable “No listing” blocks.

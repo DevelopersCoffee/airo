@@ -4,7 +4,7 @@ Status: v2 platform contract for ATV-031.
 
 ## Ownership
 
-Performance instrumentation is a shared platform contract. Midas Stream, media
+Performance instrumentation is a shared platform contract. Aika Stream, media
 playback, playlist import, search, protocol, and UI code can emit samples
 later, but metric names, units, buckets, safe dimensions, budget evaluation, and
 sink boundaries belong in `packages/core_analytics`.

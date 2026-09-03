@@ -1,5 +1,5 @@
 {
-  "product": "Midas Stream",
+  "product": "Aika Stream",
   "packageName": "com.developerscoffee.tv.midas",
   "playConsole": {
     "developerAccountId": "6967640737175083152",
@@ -47,7 +47,7 @@
     "KEY_ALIAS": "airo-release",
     "KEY_PASSWORD": "app/android/key.properties keyPassword",
     "GOOGLE_SERVICES_JSON": "app/android/app/google-services.json (must include com.developerscoffee.tv.midas)",
-    "FIREBASE_OPTIONS_DART_B64": "generated androidTv client for Midas Stream"
+    "FIREBASE_OPTIONS_DART_B64": "generated androidTv client for Aika Stream"
   },
   "digitalAssetLinks": [
     {

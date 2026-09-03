@@ -1,4 +1,4 @@
-# Midas Stream Connected-Node Protocol
+# Aika Stream Connected-Node Protocol
 
 This contract defines the v2.0.0.1 platform boundary for connected Airo nodes.
 It must exist before local discovery, QR pairing, phone remote, command routing,
@@ -61,7 +61,7 @@ Stable blocker codes:
 
 ## Release Rule
 
-Midas Stream, companion, discovery, pairing, command, AI, and cloud layers should use
+Aika Stream, companion, discovery, pairing, command, AI, and cloud layers should use
 `core_protocol` for node identity and capability compatibility. Product code may
 render the resulting state, but it should not invent a separate node model or
 advertise private media/account data.

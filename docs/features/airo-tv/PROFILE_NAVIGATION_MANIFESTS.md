@@ -1,12 +1,12 @@
-# Midas Stream Profile Navigation Manifests
+# Aika Stream Profile Navigation Manifests
 
-ATV-065 defines reusable platform navigation manifests for Midas Stream product
+ATV-065 defines reusable platform navigation manifests for Aika Stream product
 profiles. The goal is to prevent Full, Lite, and Embedded profiles from exposing
 empty routes or sections backed by unavailable modules.
 
 The contract lives in `packages/product_capabilities` because navigation
 availability depends on product profiles, modules, capabilities, and product
-composition. Midas Stream app code should consume accepted navigation manifests and
+composition. Aika Stream app code should consume accepted navigation manifests and
 keep only screen layout, focus behavior, and copy.
 
 ## Ownership
@@ -16,7 +16,7 @@ keep only screen layout, focus behavior, and copy.
   favorites, recent, and diagnostics sections.
 - Framework owns validation against profile and composition manifests.
 - QA owns cross-profile fixtures proving unavailable sections cannot render.
-- Midas Stream app code must not create profile-specific route shortcuts in screens.
+- Aika Stream app code must not create profile-specific route shortcuts in screens.
 
 ## Manifest Fields
 
@@ -52,7 +52,7 @@ keep only screen layout, focus behavior, and copy.
 
 Accepted manifests return only `accepted`.
 
-## Default Midas Stream Manifests
+## Default Aika Stream Manifests
 
 The package ships default manifests for:
 
@@ -64,9 +64,9 @@ Full TV may use rich and standard sections, including Guide. Lite Receiver uses
 lightweight sections only and excludes Guide/Profile-management routes.
 Embedded Receiver stays minimal with Home, Live, and Settings.
 
-## Midas Stream Consumption Rule
+## Aika Stream Consumption Rule
 
-Midas Stream should validate a navigation manifest against the active
+Aika Stream should validate a navigation manifest against the active
 `ProductProfileManifest` and, when available, `ProductCompositionManifest`
 before rendering sections or registering routes. Rejected navigation sections
 should be omitted or replaced by an unavailable state rather than rendered as

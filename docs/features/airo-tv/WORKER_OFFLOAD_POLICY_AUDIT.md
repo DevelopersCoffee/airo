@@ -5,7 +5,7 @@ Date: 2026-07-15
 
 ## Policy
 
-Midas Stream presentation code must not own heavy parsing, serialization, cache
+Aika Stream presentation code must not own heavy parsing, serialization, cache
 hydration, or direct isolate scheduling. Reusable work belongs behind platform
 packages and must use `platform_worker_jobs` / `AiroWorkerExecutor` or a
 native/Rust backend.
@@ -21,7 +21,7 @@ The check fails when:
 - `compute()` or `Isolate.run()` appears outside
   `packages/platform_worker_jobs/lib/src/worker_executor.dart`.
 - `jsonDecode()`, `jsonEncode()`, newline-oriented parser splitting, or M3U
-  markers appear in presentation, screen, widget, or Midas Stream feature UI paths.
+  markers appear in presentation, screen, widget, or Aika Stream feature UI paths.
 
 ## Current Audit
 
@@ -30,7 +30,7 @@ Accepted platform worker boundary:
 - `packages/platform_worker_jobs` owns direct isolate execution.
 - `packages/platform_playlist_import` consumes `AiroWorkerExecutor` for M3U
   parse and structured cache JSON encode/decode.
-- Midas Stream consumes `platform_playlist_import`; it does not parse user playlists
+- Aika Stream consumes `platform_playlist_import`; it does not parse user playlists
   in screen/widget code.
 
 Explicitly allowed current platform/domain serialization:

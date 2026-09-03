@@ -2,7 +2,7 @@
 
 ## V1 Scope
 
-Midas Stream uses Google Cast sender behavior. The mobile app starts a Cast
+Aika Stream uses Google Cast sender behavior. The mobile app starts a Cast
 session, then the receiver fetches and plays the public media URL.
 
 Supported V1 receivers:

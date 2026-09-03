@@ -17,7 +17,7 @@ void main() {
         matrix.profileById('tv').packageId,
         'com.developerscoffee.tv.midas',
       );
-      expect(matrix.profileById('tv').displayName, 'Midas Stream');
+      expect(matrix.profileById('tv').displayName, 'Aika Stream');
       expect(
         matrix.profileById('tv').platformPackageIds['macos'],
         'com.developerscoffee.airo.tv',

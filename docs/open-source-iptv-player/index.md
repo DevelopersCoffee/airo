@@ -1,16 +1,16 @@
 ---
 layout: landing
 permalink: /open-source-iptv-player/
-title: "Open Source IPTV Player — MIT Licensed | Midas Stream"
-description: "Midas Stream is an MIT-licensed, open-source IPTV player for Android TV, Fire TV, and macOS. Public source, public issues, no bundled channels."
+title: "Open Source IPTV Player — MIT Licensed | Aika Stream"
+description: "Aika Stream is an MIT-licensed, open-source IPTV player for Android TV, Fire TV, and macOS. Public source, public issues, no bundled channels."
 eyebrow: "Open-source IPTV player"
 hero_title: "Open source, MIT licensed, publicly built."
-lede: "Midas Stream's source is public under the MIT licence — the same repository that ships the release also carries every open issue, every pull request, and the roadmap behind them."
-primary_cta: "Download Midas Stream"
+lede: "Aika Stream's source is public under the MIT licence — the same repository that ships the release also carries every open issue, every pull request, and the roadmap behind them."
+primary_cta: "Download Aika Stream"
 capabilities_title: "What open source actually gets you here"
 capabilities:
   - title: MIT licence
-    text: Midas Stream is published under the MIT licence — permissive, with no requirement to open-source anything you build separately.
+    text: Aika Stream is published under the MIT licence — permissive, with no requirement to open-source anything you build separately.
     status: available
     status_label: Available
   - title: Public source, public history
@@ -30,7 +30,7 @@ capabilities:
     status: available
     status_label: Available
   - title: No hidden subscriptions
-    text: No mandatory account and no hidden subscription for the Midas Stream player flow.
+    text: No mandatory account and no hidden subscription for the Aika Stream player flow.
     status: available
     status_label: Available
 related_title: "See it yourself"
@@ -48,18 +48,18 @@ related:
     url: /midas-stream/#roadmap
     icon: map
 faq:
-  - q: "What licence is Midas Stream published under?"
+  - q: "What licence is Aika Stream published under?"
     a: "The MIT licence — permissive, and it does not require anything you build on top of Airo to also be open source."
-  - q: "Can I audit what Midas Stream does with an IPTV playlist before installing it?"
+  - q: "Can I audit what Aika Stream does with an IPTV playlist before installing it?"
     a: "Yes. The full source that produces the published release builds is public on GitHub, including the release workflow that builds and signs the APKs."
-  - q: "Does open source mean Midas Stream includes free IPTV channels?"
-    a: "No. Open source describes the licence and the code, not the content. Midas Stream ships no channels, playlists, subscriptions, or media catalog on any platform."
+  - q: "Does open source mean Aika Stream includes free IPTV channels?"
+    a: "No. Open source describes the licence and the code, not the content. Aika Stream ships no channels, playlists, subscriptions, or media catalog on any platform."
   - q: "Where are bugs and known issues tracked?"
     a: "In the open, on the same GitHub repository as the source — including issues linked directly from this site rather than left undisclosed."
 ---
 
 "Open source" gets used loosely enough that it's worth being specific.
-Midas Stream is published under the [MIT
+Aika Stream is published under the [MIT
 licence](https://github.com/DevelopersCoffee/airo/blob/main/LICENSE) —
 about as permissive as licences get, and it puts no obligation on
 anything you build separately. The [full
@@ -74,7 +74,7 @@ page]({{ '/iptv-player-for-fire-tv/' | relative_url }}) rather than pretending t
 exist. The roadmap is public too, including the things marked *not
 adopted* rather than only the shipped feature list.
 
-None of that changes what Midas Stream actually plays: your own M3U/M3U8
+None of that changes what Aika Stream actually plays: your own M3U/M3U8
 playlist and, optionally, an XMLTV guide. Open source is about the
-licence and the process, not a bundled channel catalog — Midas Stream
+licence and the process, not a bundled channel catalog — Aika Stream
 doesn't have one of those on any platform.

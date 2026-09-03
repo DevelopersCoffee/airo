@@ -2,11 +2,11 @@
 layout: landing
 permalink: /how-to-use-iptv-legally/
 title: "How to Use IPTV Legally — What Makes a Source Authorized"
-description: "What makes an IPTV source authorized, what Midas Stream does and does not provide, and why the app ships no channel catalog. A trust page, not a disclaimer wall."
+description: "What makes an IPTV source authorized, what Aika Stream does and does not provide, and why the app ships no channel catalog. A trust page, not a disclaimer wall."
 eyebrow: "How-to"
 hero_title: "How to use IPTV legally."
-lede: "The short version: only load a playlist or guide from a source you already have the right to access. Everything below explains why Midas Stream is built around that line instead of around a catalog."
-primary_cta: "Download Midas Stream"
+lede: "The short version: only load a playlist or guide from a source you already have the right to access. Everything below explains why Aika Stream is built around that line instead of around a catalog."
+primary_cta: "Download Aika Stream"
 capabilities_title: "What makes a source authorized"
 capabilities:
   - title: You have a subscription or licence for it
@@ -27,7 +27,7 @@ capabilities:
     status_label: Verify first
 related_title: "Related"
 related:
-  - title: What Midas Stream actually ships
+  - title: What Aika Stream actually ships
     text: The full product page and content boundary.
     url: /midas-stream/
     icon: tv
@@ -36,16 +36,16 @@ related:
     url: /how-to-add-m3u-playlist/
     icon: list-plus
   - title: Privacy policy
-    text: What Midas Stream does and doesn't collect.
+    text: What Aika Stream does and doesn't collect.
     url: /legal/privacy-policy/
     icon: shield
 faq:
-  - q: "Does Midas Stream provide IPTV channels or streams?"
-    a: "No. Midas Stream ships no channels, playlists, subscriptions, or media catalog on any platform. It only plays M3U/M3U8 and XMLTV sources you supply yourself."
-  - q: "Why doesn't Midas Stream include any channels at all?"
-    a: "Because it's a player, not a service. Shipping a catalog would mean Midas Stream — or whoever built it — is making a claim about the right to distribute that content. Not shipping one keeps that question entirely with the source you choose to load."
-  - q: "Is it legal to use Midas Stream?"
-    a: "Midas Stream itself is open-source software with no content of its own — using it is no different from using any other media player. What matters is whether the specific playlist or stream you load is one you're authorized to access, which is true of any IPTV player, not something specific to Midas Stream."
+  - q: "Does Aika Stream provide IPTV channels or streams?"
+    a: "No. Aika Stream ships no channels, playlists, subscriptions, or media catalog on any platform. It only plays M3U/M3U8 and XMLTV sources you supply yourself."
+  - q: "Why doesn't Aika Stream include any channels at all?"
+    a: "Because it's a player, not a service. Shipping a catalog would mean Aika Stream — or whoever built it — is making a claim about the right to distribute that content. Not shipping one keeps that question entirely with the source you choose to load."
+  - q: "Is it legal to use Aika Stream?"
+    a: "Aika Stream itself is open-source software with no content of its own — using it is no different from using any other media player. What matters is whether the specific playlist or stream you load is one you're authorized to access, which is true of any IPTV player, not something specific to Aika Stream."
   - q: "How do I know if a playlist I found online is authorized?"
     a: "If you can't identify who operates the stream and whether they have the right to distribute it, treat that as a reason to look for the source directly — a licensed service, a broadcaster's own feed, or something clearly public — rather than a playlist of unknown origin."
 ---
@@ -54,7 +54,7 @@ Most "is IPTV legal" pages either dodge the question with a legal
 disclaimer, or quietly point you toward the thing they're supposedly
 warning you about. Neither is useful, so here's the actual distinction:
 **IPTV is a delivery method, not a content source.** The M3U/M3U8 and
-XMLTV formats Midas Stream reads are used by legitimate services and pirated
+XMLTV formats Aika Stream reads are used by legitimate services and pirated
 ones alike — the format tells you nothing about whether a given stream
 is authorized.
 
@@ -68,7 +68,7 @@ because of anything about the M3U format, but because of what it
 usually means when a stream that should require a paid licence is being
 handed around for free.
 
-Midas Stream's own answer to this is structural, not just a policy: it ships
+Aika Stream's own answer to this is structural, not just a policy: it ships
 no catalog at all. There is nothing to browse until you add a source,
 which means the authorization question is entirely yours to answer —
-Midas Stream isn't making that call on your behalf by pre-loading anything.
+Aika Stream isn't making that call on your behalf by pre-loading anything.

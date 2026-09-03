@@ -40,9 +40,9 @@ device-only behavior, full-screen system UI, or feature-specific states:
 | Error state | Recoverable failures show actionable retry/error UI | Feature-specific manual flows |
 | Loading state | Long-running operations show progress without layout jumps | Feature-specific manual flows |
 
-## Midas Stream Browser Viewport Qualification
+## Aika Stream Browser Viewport Qualification
 
-For Midas Stream IPTV release candidates, capture browser or qualification-app
+For Aika Stream IPTV release candidates, capture browser or qualification-app
 screenshots for the viewports below before closing the UI release audit:
 
 | Viewport | Qualification profile | Required result |
@@ -63,7 +63,7 @@ For repeatable browser evidence, run:
 scripts/validate_airo_tv_browser_viewports.sh
 ```
 
-The script builds the Midas Stream web profile bundle from `app/lib/main_tv.dart`,
+The script builds the Aika Stream web profile bundle from `app/lib/main_tv.dart`,
 serves the deterministic IPTV fixture, checks the viewport matrix with
 Playwright, and writes screenshots under
 `artifacts/airo-tv-browser-viewports/`.

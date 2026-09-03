@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give Midas Stream a typed `ContentSource` contract (M3U, Xtream Codes, Stalker Portal, Jellyfin) with capability flags and secure credential storage, plus working adapters for all four, so the app is no longer hard-wired to a single M3U fetch/parse path.
+**Goal:** Give Aika Stream a typed `ContentSource` contract (M3U, Xtream Codes, Stalker Portal, Jellyfin) with capability flags and secure credential storage, plus working adapters for all four, so the app is no longer hard-wired to a single M3U fetch/parse path.
 
 **Architecture:** Repurpose the empty `packages/platform_playlist` scaffold (per Chief Architect decision 2026-07-16 — do not create a new package) into the home for an `abstract class ContentSource` hierarchy, a `ContentSourceCredentialStore` built on `core_data`'s real `SecureStore`/`FlutterSecureStore`, and one adapter per source kind. Each adapter produces `platform_channels`' `IPTVChannel` for live/VOD listings and a `platform_epg` `CompactEpgRepository` implementation for guide data — both existing, unmodified contracts — so `feature_iptv` and the TV UI need no changes to consume a new source type. The M3U path is wrapped, not rewritten: `platform_playlist_import`'s `M3UParserService` keeps doing the fetching/parsing/caching; `platform_playlist` just exposes it as a `ContentSource` variant.
 
@@ -105,7 +105,7 @@ rmdir packages/platform_playlist/lib/src/models packages/platform_playlist/lib/s
 
 ```yaml
 name: platform_playlist
-description: "Typed ContentSource contract (M3U, Xtream Codes, Stalker Portal, Jellyfin) and provider adapters for Midas Stream."
+description: "Typed ContentSource contract (M3U, Xtream Codes, Stalker Portal, Jellyfin) and provider adapters for Aika Stream."
 version: 0.0.1
 publish_to: none
 
@@ -291,7 +291,7 @@ void main() {
 
 ```dart
 /// Typed ContentSource contract (M3U, Xtream Codes, Stalker Portal,
-/// Jellyfin) and provider adapters for Midas Stream.
+/// Jellyfin) and provider adapters for Aika Stream.
 library platform_playlist;
 
 export 'src/content_source.dart';
@@ -1735,7 +1735,7 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'https://jellyfin.example.com'));
     dio.httpClientAdapter = _FakeJellyfinAdapter({
       '/Users/AuthenticateByName': (options) {
-        expect(options.headers['X-Emby-Authorization'], contains('Client="Midas Stream"'));
+        expect(options.headers['X-Emby-Authorization'], contains('Client="Aika Stream"'));
         return Response(
           requestOptions: options,
           statusCode: 200,
@@ -1883,7 +1883,7 @@ class JellyfinClient {
   final String _password;
 
   static const String _authHeader =
-      'MediaBrowser Client="Midas Stream", Device="Midas Stream Client", '
+      'MediaBrowser Client="Aika Stream", Device="Aika Stream Client", '
       'DeviceId="airo-tv", Version="2.0.0"';
 
   Future<JellyfinAuthResult> authenticate() async {

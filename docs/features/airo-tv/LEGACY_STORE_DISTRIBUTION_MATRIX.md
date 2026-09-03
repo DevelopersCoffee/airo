@@ -2,14 +2,14 @@
 
 Issue: ATV-057
 Package: `platform_certification`
-Layer: Platform framework, consumed by Midas Stream release workflows
+Layer: Platform framework, consumed by Aika Stream release workflows
 
 ## Purpose
 
-Midas Stream legacy receiver releases need a reusable distribution policy for Google
+Aika Stream legacy receiver releases need a reusable distribution policy for Google
 Play TV, Amazon Appstore, direct APK delivery, and operator boxes. The policy
 must be deterministic so release automation can decide which channel claims are
-allowed without hard-coding store rules in Midas Stream product code.
+allowed without hard-coding store rules in Aika Stream product code.
 
 This contract belongs in `platform_certification` because that package already
 owns validation matrices, store-policy gates, physical-device evidence, and

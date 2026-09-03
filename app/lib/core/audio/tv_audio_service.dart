@@ -265,7 +265,7 @@ Future<TvAudioHandler> initTvAudioService() async {
     builder: () => TvAudioHandler(),
     config: AudioServiceConfig(
       androidNotificationChannelId: 'com.developerscoffee.tv.midas.audio',
-      androidNotificationChannelName: 'Midas Stream',
+      androidNotificationChannelName: 'Aika Stream',
       // Keep the foreground service (and its notification) alive on pause —
       // live-TV users pause for long stretches and must keep lock-screen
       // controls. androidNotificationOngoing stays false: audio_service

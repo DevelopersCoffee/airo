@@ -1,7 +1,7 @@
-# Midas Stream macOS Release
+# Aika Stream macOS Release
 
 This runbook covers the first macOS release path for the existing v2 `tv`
-profile. The release remains scoped to the modular Midas Stream IPTV player and uses
+profile. The release remains scoped to the modular Aika Stream IPTV player and uses
 GitHub Release assets plus generated Homebrew Cask metadata. Mac App Store,
 Setapp, MacPorts, and sandbox submission are out of scope.
 
@@ -11,7 +11,7 @@ Setapp, MacPorts, and sandbox submission are out of scope.
 | Entrypoint | `app/lib/main_tv.dart` |
 | Pubspec | `app/pubspec_tv.yaml` |
 | Flutter defines | `APP_VARIANT=tv`, `APP_PLATFORM=androidTv`, `APP_VERSION=<build_name>` |
-| App bundle | `Midas Stream.app` |
+| App bundle | `Aika Stream.app` |
 | Bundle ID | `com.developerscoffee.airo.tv` |
 
 `APP_PLATFORM=androidTv` is intentional for the macOS build because it is the
@@ -29,8 +29,8 @@ separate desktop product decision and release profile are approved.
 
 ## Cut And Build
 
-Use the `Midas Stream macOS Release` workflow for macOS-only validation or the `V2
-Release Orchestrator` workflow when publishing the full Midas Stream release set.
+Use the `Aika Stream macOS Release` workflow for macOS-only validation or the `V2
+Release Orchestrator` workflow when publishing the full Aika Stream release set.
 
 Recommended workflow inputs:
 
@@ -46,7 +46,7 @@ require_notarization=false
 
 The macOS workflow fetches `origin/main` and `origin/main`, verifies the selected
 ref contains latest `origin/main`, creates or updates the release branch, builds
-`Midas Stream.app`, and packages release artifacts.
+`Aika Stream.app`, and packages release artifacts.
 
 For local validation on macOS:
 
@@ -56,7 +56,7 @@ scripts/build-macos-tv.sh
 
 ## In-App Update Check
 
-The macOS TV build exposes an `Update` action in the Midas Stream header. It checks
+The macOS TV build exposes an `Update` action in the Aika Stream header. It checks
 the latest GitHub Release and opens the release page when a newer release
 contains a macOS `.zip` or `.dmg` asset. Android TV/mobile releases are ignored
 for this check, so users do not see an update prompt unless a desktop artifact
@@ -104,7 +104,7 @@ SHA256SUMS
 homebrew/airo-tv.rb
 ```
 
-The DMG is built from a staging folder that contains both `Midas Stream.app` and an
+The DMG is built from a staging folder that contains both `Aika Stream.app` and an
 `Applications` symlink, so testers get the standard Finder install gesture
 instead of a bare app bundle view when the disk image opens.
 
