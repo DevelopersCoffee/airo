@@ -91,9 +91,7 @@ void main() {
     composeApp: () async {
       await configureTvSystemChrome();
 
-      debugPrint(
-        '🖥️ Starting Aika Stream (${PlatformFeatures.platformName})',
-      );
+      debugPrint('🖥️ Starting Aika Stream (${PlatformFeatures.platformName})');
       debugPrint(
         '📺 Features: '
         '${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
