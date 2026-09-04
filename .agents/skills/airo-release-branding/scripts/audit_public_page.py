@@ -45,12 +45,13 @@ class Inventory(HTMLParser):
 
 
 def ships_tv_artifacts(repository: str, tag: str) -> bool:
-    """True when a release carries Airo TV artifacts.
+    """True when a release carries Aika Stream / TV artifacts.
 
-    The orchestrator publishes one aggregate release per wave, so an Airo TV
+    The orchestrator publishes one aggregate release per wave, so an Aika Stream
     build now arrives under a shared `v*` tag alongside the full app, Airo
     Coins, and macOS. Membership is decided by the assets, not the tag name --
-    the historic `v1.x` monolith tags must not qualify.
+    the historic `v1.x` monolith tags must not qualify. Historical GitHub names
+    still start with `Airo-TV-`.
     """
     command = [
         "gh",
@@ -95,7 +96,7 @@ def latest_public_tv_release(repository: str) -> str:
             return tag
         if tag.startswith("v") and ships_tv_artifacts(repository, tag):
             return tag
-    raise RuntimeError("No published, non-release-candidate Airo TV release found")
+    raise RuntimeError("No published, non-release-candidate Aika Stream release found")
 
 
 def local_target(base: Path, raw: str) -> Path | None:
@@ -122,12 +123,23 @@ def main() -> int:
 
     root = args.root.resolve()
     platform_page = root / "docs" / "index.html"
-    tv_page = root / "docs" / "tv" / "index.html"
+    tv_page = root / "docs" / "aika-stream" / "index.html"
     legacy_guides = root / "docs" / "airo-tv" / "guides" / "index.html"
-    tv_guides = root / "docs" / "tv" / "guides" / "index.html"
+    tv_guides = root / "docs" / "aika-stream" / "guides" / "index.html"
+    tv_redirect = root / "docs" / "tv" / "index.html"
+    guides_redirect = root / "docs" / "tv" / "guides" / "index.html"
     site_script = root / "docs" / "assets" / "airo-tv" / "site.js"
     site_styles = root / "docs" / "assets" / "airo-tv" / "site.css"
-    required_files = (platform_page, tv_page, legacy_guides, tv_guides, site_script, site_styles)
+    required_files = (
+        platform_page,
+        tv_page,
+        legacy_guides,
+        tv_guides,
+        tv_redirect,
+        guides_redirect,
+        site_script,
+        site_styles,
+    )
     errors = [f"missing required file: {path.relative_to(root)}" for path in required_files if not path.is_file()]
     if errors:
         for error in errors:
@@ -150,7 +162,7 @@ def main() -> int:
     required_tv_sections = {"product", "browse", "difference", "devices", "capability-matrix", "guides", "community", "pro-vision", "roadmap", "trust"}
     missing_tv_sections = sorted(required_tv_sections - tv.ids)
     if missing_tv_sections:
-        errors.append("missing Airo TV page sections: " + ", ".join(missing_tv_sections))
+        errors.append("missing Aika Stream page sections: " + ", ".join(missing_tv_sections))
 
     required_guides = {"android-tv", "fire-tv", "mobile", "cast", "macos", "playlist", "troubleshooting"}
     missing_guides = sorted(required_guides - legacy.ids)
@@ -159,15 +171,15 @@ def main() -> int:
 
     platform_snippets = {
         '<h1 id="hero-title">Airo</h1>': "Airo platform hero identity",
-        "Airo TV is available": "active module status",
-        "./tv/": "Airo TV product hand-off",
-        "Airo TV Pro": "advanced TV edition name",
+        "Aika Stream is available": "active module status",
+        "./aika-stream/": "Aika Stream product hand-off",
+        "Aika Stream Pro": "advanced TV edition name",
         "Exploring": "future module qualifier",
     }
     tv_snippets = {
-        release_tag: "published Airo TV release tag",
-        '<h1 id="hero-title">Airo TV</h1>': "Airo TV product hero identity",
-        "Airo TV includes no channels": "application content boundary",
+        release_tag: "published Aika Stream release tag",
+        '<h1 id="hero-title">Aika Stream</h1>': "Aika Stream product hero identity",
+        "Aika Stream includes no channels": "application content boundary",
         "Make your own playlist feel smaller.": "browse-and-organization product story",
         "Saved browse views": "planned saved-view disclosure",
         'data-live-channel="Vevo Pop"': "approved hero preview identity",
@@ -177,7 +189,7 @@ def main() -> int:
         "community-voice": "Community Voice link",
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
-        "Airo TV Pro": "advanced TV edition name",
+        "Aika Stream Pro": "advanced TV edition name",
         "In testing": "unreleased Pro status",
         "unsigned and not notarized": "macOS limitation",
         "Deferred for the current v2 release wave": "iOS limitation",
@@ -243,26 +255,41 @@ def main() -> int:
         "Airo Money": "unsupported Airo sub-brand",
         "Airo Life": "unsupported Airo sub-brand",
         "Airo Play": "unsupported Airo sub-brand",
+        "Midas Stream": "retired Play listing name",
+        "Download Airo TV": "retired product download CTA",
     }
     all_public_text = platform_text + tv_text + legacy_text + tv_guides_text
     for snippet, label in forbidden.items():
         if snippet in all_public_text:
             errors.append(f"forbidden {label}: {snippet}")
 
-    for page_name, inventory in (("platform", platform), ("Airo TV", tv)):
+    product_chrome_forbidden = {
+        "Airo <small>TV</small>": "retired Airo TV header brand",
+        ">Airo TV</span": "retired Airo TV footer brand",
+        "Midas Stream": "retired Play listing name",
+    }
+    for snippet, label in product_chrome_forbidden.items():
+        if snippet in tv_text or snippet in tv_guides_text:
+            errors.append(f"forbidden Aika Stream chrome {label}: {snippet}")
+
+    redirect_text, _ = inspect_html(tv_redirect)
+    if "Aika Stream" not in redirect_text or "../aika-stream/" not in redirect_text:
+        errors.append("missing /tv/ redirect to Aika Stream")
+
+    for page_name, inventory in (("platform", platform), ("Aika Stream", tv)):
         if inventory.autoplay_videos:
             errors.append(f"{page_name} page video must not use autoplay")
 
     if platform.live_demo_roots:
         errors.append("platform page must not contain a live-demo root")
     if tv.live_demo_roots != 1:
-        errors.append("Airo TV page must contain exactly one hero preview root")
+        errors.append("Aika Stream page must contain exactly one hero preview root")
     if tv.live_demo_videos != 1:
-        errors.append("Airo TV page must contain exactly one hero preview video")
+        errors.append("Aika Stream page must contain exactly one hero preview video")
     if tv.muted_live_demo_videos != 1:
-        errors.append("Airo TV hero preview must begin muted")
+        errors.append("Aika Stream hero preview must begin muted")
     if tv.preloading_live_demo_videos:
-        errors.append("Airo TV hero preview must use preload=none")
+        errors.append("Aika Stream hero preview must use preload=none")
 
     for html_path, inventory in ((platform_page, platform), (tv_page, tv), (legacy_guides, legacy), (tv_guides, tv_guide)):
         for raw in inventory.sources:
@@ -279,7 +306,7 @@ def main() -> int:
     source_count = len(platform.sources) + len(tv.sources) + len(legacy.sources) + len(tv_guide.sources)
     print(f"PASS: split public pages match release-branding contract for {release_tag}")
     print(f"PASS: {source_count} public-page assets resolve locally")
-    print(f"PASS: {len(required_guides)} legacy device guides and the /tv/guides hub are present")
+    print(f"PASS: {len(required_guides)} device guides and the /aika-stream/guides hub are present")
     return 0
 
 

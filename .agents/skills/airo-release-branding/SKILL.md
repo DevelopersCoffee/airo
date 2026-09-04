@@ -28,7 +28,7 @@ into shipped-product claims.
    `Available` from merged code alone.
 6. Update the page contract:
    - preserve Airo as the modular super-app umbrella;
-   - present Airo TV as the active modular product;
+   - present Aika Stream as the active modular product (never Airo TV or Midas Stream in public chrome);
    - keep download, device, guide, Community Voice, roadmap, trust, and legal
      sections current;
    - translate issue titles into customer problems while retaining public

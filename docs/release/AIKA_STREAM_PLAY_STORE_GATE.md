@@ -97,14 +97,25 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Register Firebase Android client | Done (`1:906799550225:android:c5df8d843e7dd6002206b0`) |
 | Confirm upload keystore + Play App Signing | Play App Signing enrolled; first AAB signed with `app/android/release.keystore` |
 | GitHub production signing + `GOOGLE_SERVICES_JSON` | Set from local Gradle keystore and merged `google-services.json` |
-| Complete IARC / Data Safety | Worksheets ready; Console submit still required |
-| 512×512 icon + TV screenshots | Exported under `docs/store-assets/airo-tv/` |
-| Pixel-line install and smoke | v0.0.1 preview UAT (this PR); Play hard release after UAT |
+| Complete IARC / Data Safety | IARC done. Data Safety saved (Device or other IDs only). Send for review from Publishing overview after listing graphics. |
+| 512×512 icon + TV screenshots | Exported under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). **Console Save still required** before any AAB upload — that Save is what replaces the Midas Stream header. |
+| Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
+| First Play AAB filename | Drop `Aika-Stream-0.0.1.aab` (same signed bytes as CI `Airo-TV-0.0.1-Play-Store.aab`). Remove any draft already named `Airo-TV-*-Play-Store.aab` first. Do **not** rebuild or bump `versionCode`. |
 
 ## Out of scope this wave
 
 - Renaming the Airo super-app, Coins, or Mind packages.
-- macOS bundle ID / Homebrew cask rename.
+- macOS bundle ID / Homebrew cask rename. The current preview DMG still
+  mounts as `Airo TV.app`.
 - Rewriting historical qualification evidence.
-- Changing GitHub artifact filenames (`Airo-TV-*.apk`); Play uploads the AAB
-  `applicationId`, not the GitHub file name.
+- Changing GitHub artifact filenames (`Airo-TV-*.apk` / `Airo-TV-*-Play-Store.aab`)
+  in CI for this first listing. Play reads package, `versionCode`, and cert.
+  Rename the existing signed AAB to `Aika-Stream-0.0.1.aab` for the Console
+  drop only.
+
+Do not upload the AAB until all of these are true:
+
+1. Store listing **name + graphics** are saved (Console chrome is Aika Stream,
+   not Midas Stream).
+2. Public product pages show Aika Stream in the header and download CTA.
+3. The draft release contains one file: `Aika-Stream-0.0.1.aab` (`0.0.1+13`).

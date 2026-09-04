@@ -60,9 +60,9 @@
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <div class="container nav-shell">
-        <a class="brand" href="../" aria-label="Airo platform home"
+        <a class="brand" href="./" aria-label="Aika Stream home"
           ><img src="../assets/airo-tv/airo-icon.svg" alt="" /><span
-            >Airo <small>TV</small></span
+            >Aika <small>Stream</small></span
           ></a
         ><button
           class="menu-button"
@@ -99,6 +99,8 @@
         aria-labelledby="hero-title"
         data-live-demo
         data-live-channel="Vevo Pop"
+        data-live-fallback-channel="YRF Music"
+        data-live-fallback-source="https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01412-xiaomiasia-yrfmusic-xiaomi/playlist.m3u8"
         data-live-retry-label="Try the muted preview again"
         data-live-autoplay-muted
       >
@@ -119,8 +121,8 @@
               <a
                 class="button button-primary"
                 href="https://github.com/DevelopersCoffee/airo/releases/tag/v0.0.6"
-                ><i data-lucide="download" aria-hidden="true"></i> Download Airo
-                TV</a
+                ><i data-lucide="download" aria-hidden="true"></i> Download Aika
+                Stream</a
               ><a class="button button-secondary" href="#browse"
                 >Explore browsing
                 <i data-lucide="arrow-down" aria-hidden="true"></i
@@ -147,7 +149,7 @@
                   preload="none"
                   poster="../store-assets/airo-tv/01-tv-home-channel-grid.png"
                   data-live-demo-video
-                  aria-label="Vevo Pop public live preview"
+                  aria-label="Public live preview, Vevo Pop or YRF Music backup"
                 ></video
                 ><span class="hero-preview-scanlines" aria-hidden="true"></span>
               </div>
@@ -167,11 +169,12 @@
                 details
               </summary>
               <p>
-                Vevo Pop is a public HLS listing. When the muted preview starts,
-                your browser connects directly to the operator, which may serve
-                advertising, apply regional limits, or change availability. Airo
-                does not host, proxy, cache, transcode, copy, or rebroadcast the
-                channel.
+                Vevo Pop is a public HLS listing; if it is unavailable, the
+                preview automatically switches to the YRF Music public listing
+                instead. When the muted preview starts, your browser connects
+                directly to the operator, which may serve advertising, apply
+                regional limits, or change availability. Airo does not host,
+                proxy, cache, transcode, copy, or rebroadcast the channel.
               </p>
             </details>
             <div class="hero-preview-feedback">
@@ -985,7 +988,7 @@
       <div class="container">
         <div class="footer-grid">
           <div>
-            <a class="brand" href="../"
+            <a class="brand" href="./"
               ><img src="../assets/airo-tv/airo-icon.svg" alt="" /><span
                 >Aika Stream</span
               ></a

@@ -208,12 +208,15 @@
     const demoStatus = root.querySelector("[data-live-demo-status]");
     if (!demoVideo || !demoStart || !demoButton || !demoStatus) return null;
 
-    const channelName = root.dataset.liveChannel || "live sample";
+    let channelName = root.dataset.liveChannel || "live sample";
     const retryLabel = root.dataset.liveRetryLabel || "Try live sample again";
     const autoplayMuted = "liveAutoplayMuted" in root.dataset;
     const autoplayAnchor = root.id ? "#" + root.id : "";
     const initialButtonMarkup = demoButton.innerHTML;
     const idleStatus = demoStatus.textContent;
+    const fallbackSource = root.dataset.liveFallbackSource || "";
+    const fallbackChannelName = root.dataset.liveFallbackChannel || "backup live sample";
+    let fallbackUsed = false;
     let demoHls = null;
     let demoStarted = false;
     let demoRecovering = false;
@@ -327,6 +330,18 @@
     }
 
     function failDemo(message) {
+      if (fallbackSource && !fallbackUsed) {
+        fallbackUsed = true;
+        channelName = fallbackChannelName;
+        demoButton.dataset.liveSource = fallbackSource;
+        const resumeAutomatically = demoAutomaticStart;
+        destroyDemoStream();
+        setDemoStatus("Switching to the " + fallbackChannelName + " backup preview...", "loading");
+        window.setTimeout(function () {
+          startDemoPlayback(resumeAutomatically);
+        }, 300);
+        return;
+      }
       setDemoStatus(message, "error");
       resetDemoAfterFailure();
     }
