@@ -45,7 +45,7 @@ related:
     icon: scroll
   - title: Public roadmap
     text: What's shipped, in progress, planned, and not adopted.
-    url: /midas-stream/#roadmap
+    url: /aika-stream/#roadmap
     icon: map
 faq:
   - q: "What licence is Aika Stream published under?"

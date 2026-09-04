@@ -29,7 +29,7 @@ related_title: "Related"
 related:
   - title: What Aika Stream actually ships
     text: The full product page and content boundary.
-    url: /midas-stream/
+    url: /aika-stream/
     icon: tv
   - title: Add an authorized playlist
     text: Once you have one, here's how.

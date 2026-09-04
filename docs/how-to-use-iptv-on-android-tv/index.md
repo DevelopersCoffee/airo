@@ -35,7 +35,7 @@ related_title: "Related"
 related:
   - title: Full Android TV device guide
     text: Remote controls and troubleshooting, in detail.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
   - title: Add your M3U/M3U8 playlist
     text: The playlist step, in detail.

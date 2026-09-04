@@ -40,7 +40,7 @@ related:
     icon: list-plus
   - title: Full device guide
     text: Source setup and troubleshooting, in detail.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: book-open
 faq:
   - q: "What actually happens when my provider re-issues the playlist?"

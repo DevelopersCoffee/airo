@@ -29,7 +29,7 @@ related_title: "Next steps"
 related:
   - title: Full Android TV setup guide
     text: Step-by-step install, source, browse, search, and play.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
   - title: More about the M3U/M3U8 format
     text: What Aika Stream does with the playlist file itself.

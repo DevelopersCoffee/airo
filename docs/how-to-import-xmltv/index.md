@@ -43,7 +43,7 @@ related:
     icon: list-plus
   - title: Full device guide
     text: Source setup, remote controls, and troubleshooting.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: book-open
 faq:
   - q: "The guide loaded but shows no programme data. What's wrong?"

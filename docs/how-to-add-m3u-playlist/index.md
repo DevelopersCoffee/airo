@@ -39,7 +39,7 @@ related_title: "Related"
 related:
   - title: Full Android TV / Fire TV device guide
     text: Device-specific install steps, remote controls, and troubleshooting.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: book-open
   - title: More about the M3U/M3U8 format
     text: What Aika Stream does with the playlist file itself.

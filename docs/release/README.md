@@ -73,7 +73,7 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 | [Aika Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Aika Stream versions |
 | [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
 | [Aika Stream Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
-| [Aika Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) | First Play listing identity, package ID, and policy posture |
+| [Aika Stream Play Store gate](./AIKA_STREAM_PLAY_STORE_GATE.md) | First Play listing identity, package ID, and policy posture |
 | [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Final Play listing copy and future App Store draft metadata |
 | [Aika Stream Data Safety](./AIRO_TV_DATA_SAFETY.md) | Play Data Safety and future App Privacy declaration worksheet |
 | [Aika Stream Content Rating](./AIRO_TV_CONTENT_RATING.md) | IARC and future App Store age rating questionnaire worksheet |

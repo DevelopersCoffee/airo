@@ -10,7 +10,7 @@ layout: null
 
   Cross-page links in front matter (`related[].url`) are already run
   through `relative_url` by this layout -- write them site-relative, e.g.
-  `/midas-stream/guides/#playlist`. Links written directly in the page's markdown
+  `/aika-stream/guides/#playlist`. Links written directly in the page's markdown
   BODY are not: Kramdown renders `[text](/m3u-player/)` as a literal,
   unprefixed href, which 404s once `site.baseurl` is non-empty. Every body
   link to another page on this site must go through Liquid explicitly:

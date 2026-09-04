@@ -24,7 +24,7 @@ Airo Coins is a local-first personal finance and budget tracker designed for pri
 Aika Stream is a high-performance leanback media player optimized for Android TV, Fire TV, and touch devices.
 - **Stream Formats**: Full support for M3U, M3U8, XMLTV EPG grids, HLS, and Google Cast v1.
 - **Leanback D-Pad Navigation**: Optimized for standard TV remotes with zero focus dead-ends and overscan-safe layout.
-- [Aika Stream Landing Page](https://developerscoffee.github.io/airo/tv/)
+- [Aika Stream Landing Page](https://developerscoffee.github.io/airo/aika-stream/)
 - [IPTV Hub & Player Specs](https://developerscoffee.github.io/airo/iptv/)
 - [How to Use IPTV on Android TV](https://developerscoffee.github.io/airo/how-to-use-iptv-on-android-tv/)
 - [How to Add M3U Playlist](https://developerscoffee.github.io/airo/how-to-add-m3u-playlist/)
