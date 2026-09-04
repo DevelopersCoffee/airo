@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 for workflow in \
-  "$ROOT_DIR/.github/workflows/airo-tv-release.yml" \
+  "$ROOT_DIR/.github/workflows/aika-stream-release.yml" \
   "$ROOT_DIR/.github/workflows/airo-mobile-tablet-release.yml"; do
   grep -q 'id-token: write' "$workflow"
   grep -q 'attestations: write' "$workflow"

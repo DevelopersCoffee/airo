@@ -86,7 +86,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | First Play tracks selected | Pending | #681 |
 | Play service account JSON stored as GitHub secret | Pending human setup; Fastlane config reads env-provided credential path | #585, #681, [Fastlane Credential Setup](./FASTLANE_CREDENTIALS.md) |
 | Production Android signing secrets stored in GitHub | Pending | #585, #677 |
-| AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
+| AAB build for TV | Ready in CI | `.github/workflows/aika-stream-release.yml` |
 | AAB build for mobile/tablet | Ready in CI for selected v2 profile | `.github/workflows/airo-mobile-tablet-release.yml` |
 | Play upload automation for TV | Ready after credentials and track selection | `tv_play_track` in `.github/workflows/release-orchestrator.yml` |
 | Play upload automation for mobile/tablet | Ready after credentials, selected profile, and track selection | `mobile_play_track` in `.github/workflows/release-orchestrator.yml` |

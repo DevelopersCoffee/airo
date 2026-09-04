@@ -385,7 +385,7 @@ jobs:
         run: |
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
             .github/workflows/release-orchestrator.yml \
-            .github/workflows/airo-tv-release.yml \
+            .github/workflows/aika-stream-release.yml \
             .github/workflows/airo-mobile-tablet-release.yml \
             .github/workflows/airo-macos-release.yml
           python3 -m py_compile \
@@ -466,7 +466,7 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
-    uses: ./.github/workflows/airo-tv-release.yml
+    uses: ./.github/workflows/aika-stream-release.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
       build_name: ${{ needs.prepare.outputs.build_name }}

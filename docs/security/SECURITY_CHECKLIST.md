@@ -15,7 +15,7 @@
     `androidStreaming`/`ios`/`macos`/`windows` entries as placeholders until those
     apps are registered -- `DefaultFirebaseOptions.isCurrentPlatformConfigured`
     already skips Firebase init for any placeholder appId.
-  - **CI**: `airo-tv-release.yml`, `airo-mobile-tablet-release.yml`, and
+  - **CI**: `aika-stream-release.yml`, `airo-mobile-tablet-release.yml`, and
     `build-and-release.yml` write the real file from a base64-encoded
     `FIREBASE_OPTIONS_DART_B64` repository secret, falling back to the
     checked-in placeholder template when the secret isn't set (same pattern as

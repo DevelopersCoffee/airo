@@ -8,7 +8,9 @@ captured from the live Flutter TV runtime and uploaded as workflow evidence.
 
 | File | Size | Purpose |
 | --- | --- | --- |
-| `play-icon-512x512.png` | 512x512 | Play Console high-res icon (32-bit PNG from xxxhdpi launcher) |
+| `play-icon-512x512.png` | 512x512 | Play Console high-res icon (full-bleed royal-blue A + yellow play triangle) |
+| `play-icon-circle-crop-check.png` | 512x512 | Circle-crop check that the play triangle survives Play's mask |
+| `play-icon-master.png` | 1024x1024 | Master PNG of the same mark (source export was 1024, not 2048) |
 | `01-tv-home-channel-grid.png` | 1920x1080 | TV browse surface with channel categories and grid |
 | `02-tv-now-playing.png` | 1920x1080 | TV now-playing state with highlighted current channel |
 | `03-tv-search-dialog.png` | 1920x1080 | Channel search dialog |
