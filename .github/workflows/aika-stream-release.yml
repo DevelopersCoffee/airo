@@ -1,4 +1,4 @@
-name: Airo TV Release
+name: Aika Stream Release
 
 on:
   workflow_call:
@@ -14,7 +14,7 @@ on:
         value: ${{ jobs.build-tv.outputs.signing_cert }}
     inputs:
       version:
-        description: 'Airo TV artifact and release version label'
+        description: 'Aika Stream artifact and release version label'
         required: true
         type: string
       build_name:
@@ -26,7 +26,7 @@ on:
         required: true
         type: string
       release_ref:
-        description: 'Git ref to cut the release from; use main for the active Airo TV release line'
+        description: 'Git ref to cut the release from; use main for the active Aika Stream release line'
         required: true
         type: string
       release_branch:
@@ -60,25 +60,25 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Airo TV artifact and release version label'
+        description: 'Aika Stream artifact and release version label'
         required: true
-        default: 'airo-tv-v0.0.6'
+        default: 'aika-stream-v0.0.1'
       build_name:
         description: 'Android versionName, for example 0.0.6'
         required: true
-        default: '0.0.6'
+        default: '0.0.1'
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '8'
+        default: '13'
       release_ref:
-        description: 'Git ref to cut the release from; use main for the active Airo TV release line'
+        description: 'Git ref to cut the release from; use main for the active Aika Stream release line'
         required: true
         default: 'main'
       release_branch:
         description: 'Release branch to create/update from release_ref before building'
         required: true
-        default: 'release/airo-tv-v0.0.6'
+        default: 'release/aika-stream-v0.0.1'
       publish_github_release:
         description: 'Create/update the GitHub release and attach artifacts'
         required: true
@@ -118,7 +118,7 @@ on:
         default: ''
 
 concurrency:
-  group: airo-tv-release-${{ github.ref }}
+  group: aika-stream-release-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -468,7 +468,7 @@ jobs:
       - name: Run release quality gates
         run: |
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
-            .github/workflows/airo-tv-release.yml \
+            .github/workflows/aika-stream-release.yml \
             .github/workflows/release-orchestrator.yml
           bash -n scripts/build-tv.sh scripts/check-android-tv-release.sh scripts/test-check-android-tv-native-media.sh scripts/patch-android-plugin-gradle.sh
           python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py

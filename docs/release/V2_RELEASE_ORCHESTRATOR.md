@@ -27,7 +27,7 @@ the selected profile artifacts, generates the top-level evidence bundle,
 optionally publishes a single aggregate GitHub Release, and writes the release
 summary.
 
-The TV leg reuses `.github/workflows/airo-tv-release.yml` so package checks,
+The TV leg reuses `.github/workflows/aika-stream-release.yml` so package checks,
 Leanback validation, release artifact naming, checksums, manifest generation,
 debug-symbol retention, and optional Play track upload remain owned by the TV
 workflow. The orchestrator disables the TV-only GitHub Release publisher and
