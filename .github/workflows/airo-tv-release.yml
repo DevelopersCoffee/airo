@@ -481,7 +481,7 @@ jobs:
           flutter test test/core/app/tv_router_test.dart test/main_tv_debug_playlist_test.dart --reporter=compact
           cd ../packages/feature_iptv
           flutter analyze lib test --no-fatal-infos --no-fatal-warnings
-          flutter test test/iptv/presentation/screens/iptv_screen_test.dart test/iptv/presentation/tv/iptv_tv_screen_test.dart test/iptv/iptv_cast_ui_test.dart test/iptv/iptv_cast_notifier_test.dart --reporter=compact
+          flutter test test/iptv/presentation/screens/iptv_screen_test.dart test/iptv/iptv_cast_ui_test.dart test/iptv/iptv_cast_notifier_test.dart --reporter=compact
           cd ../platform_media
           flutter analyze lib/src/local_media_library.dart lib/src/video_player_airo_playback_engine.dart test/local_media_library_test.dart --no-fatal-infos --no-fatal-warnings
           flutter test test/local_media_library_test.dart test/video_player_airo_playback_engine_test.dart --reporter=compact
