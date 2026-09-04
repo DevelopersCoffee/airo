@@ -56,10 +56,11 @@ preset in production UI.
 ## Release plan
 
 1. **v0.0.1 preview (this wave):** production-signed Pixel sideload / internal
-   UAT. `versionName` is `0.0.1`, `versionCode` is **13**.
-2. **v0.0.1 hard release (after UAT):** same `versionName` on Play. Keep
-   `versionCode` at 13 if Pixel never received this build from Play; bump the
-   code if a Play-signed install already shipped.
+   UAT. `versionName` is `0.0.1`. Play already consumed `versionCode` **13**
+   when the first AAB was attached, so the Play drop is **14** (`0.0.1+14`).
+2. **v0.0.1 hard release (after UAT):** same `versionName` on Play. Never reuse
+   a `versionCode` Play has already seen, even if that AAB was removed from a
+   draft.
 
 Pixel sideload uses the **upload** key. Play-installed APKs use Google's **app
 signing** key. A Pixel preview install will **not** upgrade in place to the
@@ -74,13 +75,14 @@ and **versionCode** all match. `versionName` (`0.0.1`) is cosmetic.
 | --- | --- | --- |
 | Sideloaded GitHub **Aika Stream** `io.airo.app.tv` | `com.developerscoffee.tv.midas` | **No.** Different `applicationId`. Uninstall Aika Stream first. |
 | Same package, **ephemeral CI** cert | Production/dogfood-signed build | **No.** Different cert (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Uninstall first. |
-| Same package, **same upload/production key**, lower `versionCode` | `0.0.1+13` | **Yes.** |
+| Same package, **same upload/production key**, lower `versionCode` | `0.0.1+14` | **Yes.** |
 | Play-installed Aika Stream (Play App Signing) | Later Play AAB, same upload key, higher `versionCode` | **Yes.** Play re-signs with the Google-held app signing key. |
 
 `app/pubspec_tv.yaml` was `0.0.7+12` (`versionCode` 12). A Play listing of
 `0.0.1+1` would be a **downgrade** over any already-installed Aika Stream build with
 code 12. Preview and first Play AAB must ship `versionCode >= 13`
-(`0.0.1+13`).
+(`0.0.1+13`). Play consumed 13 on the first Console attach, so the listing
+drop is `0.0.1+14`.
 
 That is why earlier CI/RC installs needed delete-and-reinstall: unsigned
 ephemeral keystores change every run. Production signing from
@@ -100,7 +102,7 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 | Complete IARC / Data Safety | IARC done. Data Safety saved (Device or other IDs only). Send for review from Publishing overview after listing graphics. |
 | 512×512 icon + TV screenshots | Exported under `docs/store-assets/airo-tv/` (`01`–`04`, skip `05`). **Console Save still required** before any AAB upload — that Save is what replaces the Midas Stream header. |
 | Pixel-line install and smoke | v0.0.1 preview UAT; Play hard release after listing graphics + internal track |
-| First Play AAB filename | Drop `Aika-Stream-0.0.1.aab` (same signed bytes as CI `Airo-TV-0.0.1-Play-Store.aab`). Remove any draft already named `Airo-TV-*-Play-Store.aab` first. Do **not** rebuild or bump `versionCode`. |
+| First Play AAB filename | Drop `Aika-Stream-0.0.1-14.aab` (rename of CI `Airo-TV-0.0.1-Play-Store.aab`, `versionCode` **14**). Remove any draft that used version 13 first. |
 
 ## Out of scope this wave
 
@@ -110,12 +112,11 @@ Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-
 - Rewriting historical qualification evidence.
 - Changing GitHub artifact filenames (`Airo-TV-*.apk` / `Airo-TV-*-Play-Store.aab`)
   in CI for this first listing. Play reads package, `versionCode`, and cert.
-  Rename the existing signed AAB to `Aika-Stream-0.0.1.aab` for the Console
-  drop only.
+  Rename the CI AAB to `Aika-Stream-0.0.1-14.aab` for the Console drop only.
 
 Do not upload the AAB until all of these are true:
 
 1. Store listing **name + graphics** are saved (Console chrome is Aika Stream,
    not Midas Stream).
 2. Public product pages show Aika Stream in the header and download CTA.
-3. The draft release contains one file: `Aika-Stream-0.0.1.aab` (`0.0.1+13`).
+3. The draft release contains one file: `Aika-Stream-0.0.1-14.aab` (`0.0.1+14`).
