@@ -5,7 +5,7 @@ Aika Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
 [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
 cloud playlists, bundled channels, or a public IPTV catalogue.
 
-See [Aika Stream Play Store gate](./MIDAS_STREAM_PLAY_STORE_GATE.md) for the
+See [Aika Stream Play Store gate](./AIKA_STREAM_PLAY_STORE_GATE.md) for the
 package-ID cutover and human console actions.
 
 ## Release Scope

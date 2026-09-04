@@ -33,7 +33,7 @@ related_title: "Set it up"
 related:
   - title: Fire TV install guide
     text: Use the compatible APK path safely and understand the experimental status.
-    url: /midas-stream/guides/#fire-tv
+    url: /aika-stream/guides/#fire-tv
     icon: flame
   - title: Prefer Android TV or Google TV?
     text: The fully supported platform, same app.

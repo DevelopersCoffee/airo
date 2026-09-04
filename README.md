@@ -36,7 +36,7 @@ interactions in a real shipping app, not a demo.
 
 | Module | What it does | Status |
 |---|---|---|
-| 📺 **Aika Stream** | Bring-your-own-playlist player for Android TV / Google TV | **Play listing in progress** — see [Aika Stream Play Store gate](docs/release/MIDAS_STREAM_PLAY_STORE_GATE.md) |
+| 📺 **Aika Stream** | Bring-your-own-playlist player for Android TV / Google TV | **Play listing in progress** — see [Aika Stream Play Store gate](docs/release/AIKA_STREAM_PLAY_STORE_GATE.md) |
 | ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
 | 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
 | 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |

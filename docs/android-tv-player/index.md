@@ -33,7 +33,7 @@ related_title: "Set it up"
 related:
   - title: Set up Android TV or Google TV
     text: Install, add a source, browse, search, and play.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
   - title: Bring an M3U/M3U8 playlist
     text: Load a playlist source once Aika Stream is installed.
@@ -41,7 +41,7 @@ related:
     icon: list-plus
   - title: Install on Fire TV instead
     text: Use the compatible APK path and understand the experimental status.
-    url: /midas-stream/guides/#fire-tv
+    url: /aika-stream/guides/#fire-tv
     icon: flame
 faq:
   - q: "Is Aika Stream available on the Google Play Store?"

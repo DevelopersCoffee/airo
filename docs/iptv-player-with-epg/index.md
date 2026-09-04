@@ -41,7 +41,7 @@ related:
     icon: list-plus
   - title: Add an authorized source
     text: Step-by-step setup for playlist and guide sources.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: list-plus
 faq:
   - q: "Does an IPTV player with EPG mean it comes with programme data included?"

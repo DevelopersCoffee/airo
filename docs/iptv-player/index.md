@@ -37,15 +37,15 @@ related_title: "Set it up"
 related:
   - title: Set up Android TV or Google TV
     text: Install, add an authorized source, browse, search, and play.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
   - title: Install on Fire TV
     text: Use the compatible APK safely and understand experimental status.
-    url: /midas-stream/guides/#fire-tv
+    url: /aika-stream/guides/#fire-tv
     icon: flame
   - title: See the full Aika Stream product page
     text: Devices, capability matrix, and the public roadmap.
-    url: /midas-stream/
+    url: /aika-stream/
     icon: arrow-right
 faq:
   - q: "Does Aika Stream come with channels or a free trial subscription?"
@@ -60,8 +60,8 @@ faq:
 
 Most IPTV apps bundle a channel catalog, a subscription, or both. Aika Stream
 does neither — it is a player, not a service. You supply an
-[M3U or M3U8 playlist]({{ '/midas-stream/guides/#playlist' | relative_url }}) and, if you have one, an
-[XMLTV guide]({{ '/midas-stream/#capability-matrix' | relative_url }}), and Aika Stream turns that into a
+[M3U or M3U8 playlist]({{ '/aika-stream/guides/#playlist' | relative_url }}) and, if you have one, an
+[XMLTV guide]({{ '/aika-stream/#capability-matrix' | relative_url }}), and Aika Stream turns that into a
 TV-first channel grid with search and favorites.
 
 That also means Aika Stream can't tell you what to watch, because it has no

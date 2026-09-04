@@ -87,7 +87,7 @@ ephemeral keystores change every run. Production signing from
 `app/android/release.keystore` (GitHub `ANDROID_RELEASE_KEYSTORE_BASE64`) is
 stable. Do not mix `~/airo-release.keystore`.
 
-Public fingerprints: [midas-stream-play-app-signing.json](./midas-stream-play-app-signing.json).
+Public fingerprints: [aika-stream-play-app-signing.json](./aika-stream-play-app-signing.json).
 
 ## Human console actions (not code)
 

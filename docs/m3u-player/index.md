@@ -37,11 +37,11 @@ related_title: "Load your playlist"
 related:
   - title: Add an authorized M3U source
     text: Use an M3U or M3U8 URL you are allowed to access.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: list-plus
   - title: Set up Android TV or Google TV
     text: Install, add your playlist, browse, search, and play.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
   - title: Pair it with an XMLTV guide
     text: Add programme data and clearer playback-recovery states alongside your M3U source.

@@ -29,7 +29,7 @@ related_title: "Set it up"
 related:
   - title: Add an authorized XMLTV source
     text: Pair a guide URL with your existing playlist.
-    url: /midas-stream/guides/#playlist
+    url: /aika-stream/guides/#playlist
     icon: calendar
   - title: Don't have a playlist yet?
     text: Start with an M3U or M3U8 source — the guide pairs with it once both are loaded.
@@ -37,7 +37,7 @@ related:
     icon: list-plus
   - title: Set up Android TV or Google TV
     text: Install, add your sources, browse, search, and play.
-    url: /midas-stream/guides/#android-tv
+    url: /aika-stream/guides/#android-tv
     icon: tv
 faq:
   - q: "Does Aika Stream come with a built-in programme guide?"
