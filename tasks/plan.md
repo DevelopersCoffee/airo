@@ -28,7 +28,7 @@ Before copy or page implementation, the release owner must reconcile this
 previously conflicting evidence:
 
 - `docs/index.html` describes **Airo TV v0.0.3** as available.
-- `docs/release/AIRO_TV_FEATURE_MATRIX.md` still says its unshipped items are
+- `docs/release/AIKA_STREAM_FEATURE_MATRIX.md` still says its unshipped items are
   “not included in v0.0.2”.
 - Legacy lean target pubspecs formerly used
   `0.0.3-rc.1+3`.

@@ -2,7 +2,7 @@
 
 Canonical listing metadata for the first Google Play Android TV listing of
 Aika Stream (`com.developerscoffee.tv.midas`). Feature claims stay inside
-[Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim recording,
+[Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md). Do not claim recording,
 cloud playlists, bundled channels, or a public IPTV catalogue.
 
 See [Aika Stream Play Store gate](./AIKA_STREAM_PLAY_STORE_GATE.md) for the
@@ -78,7 +78,7 @@ Full description length: 1,122/4,000 characters.
 | Demo video | Optional YouTube URL | Recommended after screenshots. |
 
 Screenshot capture guidance is maintained in
-[Aika Stream Release Media Assets](./AIRO_TV_MEDIA_ASSETS.md).
+[Aika Stream Release Media Assets](./AIKA_STREAM_MEDIA_ASSETS.md).
 
 ## Apple App Store Draft
 

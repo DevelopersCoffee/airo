@@ -577,7 +577,7 @@ jobs:
           cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-x86_64.apk"
           cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab"
           cp docs/release/AIRO_TV_RELEASE_TEMPLATE.md "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Template.md"
-          cp docs/release/AIRO_TV_MEDIA_ASSETS.md "release-artifacts/Airo-TV-${BUILD_NAME}-Media-Checklist.md"
+          cp docs/release/AIKA_STREAM_MEDIA_ASSETS.md "release-artifacts/Airo-TV-${BUILD_NAME}-Media-Checklist.md"
           scripts/generate-release-manifest.py \
             --artifacts-dir release-artifacts \
             --profile-id tv \
