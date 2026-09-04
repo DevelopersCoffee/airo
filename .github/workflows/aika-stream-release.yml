@@ -70,7 +70,7 @@ on:
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '13'
+        default: '14'
       release_ref:
         description: 'Git ref to cut the release from; use main for the active Aika Stream release line'
         required: true

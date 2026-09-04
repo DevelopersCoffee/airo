@@ -12,7 +12,7 @@ must be saved by a maintainer with console access.
 | Product | Aika Stream |
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
-| Current release | v0.0.1+13 |
+| Current release | v0.0.1+14 |
 | Privacy minimum age posture | Not directed to children under 16 |
 | Content model | Media player for user-provided playlist and stream URLs |
 
