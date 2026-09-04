@@ -2,7 +2,7 @@
 
 - Added the offline Intent Engine v1 adapter, contract validation, confidence
   fallback, and local playlist/EPG/history execution boundary.
-- Added the responsive Airo TV Explorer shell with persistent channel filters,
+- Added the responsive Aika Stream Explorer shell with persistent channel filters,
   saved filters, hotbar shortcuts, and resume-last-channel behavior.
 - Added Ways to Watch for fitted, fullscreen, supported floating-window, and
   Cast playback.
@@ -14,7 +14,7 @@
   track/subtitle/quality selection.
 - Limited concurrent multiview decoders to two on web and mobile and four on
   desktop, with a hard ceiling of four and clear capacity feedback.
-- Changed channel sharing to copy versioned Airo TV deep links that can restore
+- Changed channel sharing to copy versioned Aika Stream deep links that can restore
   the active Explorer filters and tune the channel without exposing stream
   URLs.
 - Added video-frame sharing from a capture boundary that excludes Explorer
