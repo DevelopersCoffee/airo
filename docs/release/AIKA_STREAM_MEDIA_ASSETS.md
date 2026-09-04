@@ -31,7 +31,7 @@ Python environment does not already provide it.
 
 The current v0.0.5 release includes guide-source setup and local favorites, but
 does not include recording, cloud playlists, or AI Search. Do not add store
-screenshots for planned features until [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+screenshots for planned features until [Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md)
 marks them supported.
 
 ## Demo Video

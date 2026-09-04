@@ -16,7 +16,7 @@ into shipped-product claims.
    `origin/v2` for Airo TV work.
 3. Collect evidence from these public sources:
    - latest Airo TV GitHub release and known limitations;
-   - `docs/release/AIRO_TV_FEATURE_MATRIX.md`;
+   - `docs/release/AIKA_STREAM_FEATURE_MATRIX.md`;
    - `docs/release/V2_DISTRIBUTION_MATRIX.md`;
    - `docs/release/V2_RELEASE_QUALIFICATION.md`;
    - open public milestones and `community-voice` issues.

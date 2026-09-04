@@ -32,7 +32,7 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 - [Airo v0.0.6 Notes](./AIRO_v0.0.6.md)
 - [Airo v0.0.7 Notes](./AIRO_v0.0.7.md)
 - [Aika Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
-- [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
 - [Download Aika Stream APK](https://github.com/DevelopersCoffee/airo/releases/download/v0.0.6/Airo-TV-0.0.6.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
@@ -51,8 +51,8 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 ### Quick Links
 - [Aika Stream v0.0.5 Notes](./AIRO_TV_v0.0.5.md)
 - [Aika Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
-- [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
-- [Aika Stream Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
+- [Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md)
+- [Aika Stream Media Assets](./AIKA_STREAM_MEDIA_ASSETS.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
 - [Download Aika Stream APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
@@ -71,12 +71,12 @@ Next candidate: [Airo v0.0.7](./AIRO_v0.0.7.md) (prepared, not tagged).
 | [Aika Stream v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
 | [Aika Stream v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
 | [Aika Stream Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Aika Stream versions |
-| [Aika Stream Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
-| [Aika Stream Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
+| [Aika Stream Feature Matrix](./AIKA_STREAM_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
+| [Aika Stream Media Assets](./AIKA_STREAM_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
 | [Aika Stream Play Store gate](./AIKA_STREAM_PLAY_STORE_GATE.md) | First Play listing identity, package ID, and policy posture |
-| [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Final Play listing copy and future App Store draft metadata |
-| [Aika Stream Data Safety](./AIRO_TV_DATA_SAFETY.md) | Play Data Safety and future App Privacy declaration worksheet |
-| [Aika Stream Content Rating](./AIRO_TV_CONTENT_RATING.md) | IARC and future App Store age rating questionnaire worksheet |
+| [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) | Final Play listing copy and future App Store draft metadata |
+| [Aika Stream Data Safety](./AIKA_STREAM_DATA_SAFETY.md) | Play Data Safety and future App Privacy declaration worksheet |
+| [Aika Stream Content Rating](./AIKA_STREAM_CONTENT_RATING.md) | IARC and future App Store age rating questionnaire worksheet |
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) | Supported v2 profiles, artifact naming, channels, and support policy |
 | [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |

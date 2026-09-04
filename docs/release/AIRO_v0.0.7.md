@@ -170,6 +170,6 @@ is enough; #1023 (mini-player Watch) stays a known issue.
 - [Execution plan](../superpowers/plans/2026-08-30-airo-0.0.7-release.md)
 - [V2 release orchestrator](./V2_RELEASE_ORCHESTRATOR.md)
 - [v0.0.6 stable notes](./AIRO_v0.0.6.md)
-- [Aika Stream feature matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Aika Stream feature matrix](./AIKA_STREAM_FEATURE_MATRIX.md)
 - [Human-in-loop blockers](./V2_HUMAN_IN_LOOP_BLOCKERS.md)
 - [Release checklist](./RELEASE_CHECKLIST.md)

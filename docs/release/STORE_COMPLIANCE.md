@@ -44,11 +44,11 @@ The Android Gradle config currently uses:
 
 | Field | Current value | Status |
 | --- | --- | --- |
-| App name | `Aika Stream` | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| App name | `Aika Stream` | Ready in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) |
 | Package ID | `com.developerscoffee.tv.midas` | New Play listing — create the Console app before first upload |
-| Category | Video Players & Editors | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Short description | `Play your own authorized playlists on Android TV.` | Ready in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
-| Full description | Final copy in [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Ready pending stakeholder approval |
+| Category | Video Players & Editors | Ready in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) |
+| Short description | `Play your own authorized playlists on Android TV.` | Ready in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) |
+| Full description | Final copy in [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md) | Ready pending stakeholder approval |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
 | Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
@@ -92,11 +92,11 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Play upload automation for mobile/tablet | Ready after credentials, selected profile, and track selection | `mobile_play_track` in `.github/workflows/release-orchestrator.yml` |
 | Firebase App Distribution upload automation | Ready after Firebase app IDs, tester groups, and credential secret are configured | `firebase_distribution` in `.github/workflows/release-orchestrator.yml` |
 | GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/release-orchestrator.yml` |
-| IARC content rating completed | Pending store-console action; worksheet ready | #584, `docs/release/AIRO_TV_CONTENT_RATING.md` |
+| IARC content rating completed | Pending store-console action; worksheet ready | #584, `docs/release/AIKA_STREAM_CONTENT_RATING.md` |
 | Data Safety form completed | Pending store-console action | #583 |
-| Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIRO_TV_STORE_LISTING.md` |
+| Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIKA_STREAM_STORE_LISTING.md` |
 | TV screenshots and feature graphic uploaded | Assets ready in repo; pending Play Console upload | `docs/store-assets/airo-tv/` |
-| Data Safety and App Privacy declarations | Ready for console entry | #583, `docs/release/AIRO_TV_DATA_SAFETY.md` |
+| Data Safety and App Privacy declarations | Ready for console entry | #583, `docs/release/AIKA_STREAM_DATA_SAFETY.md` |
 | Release qualification evidence attached | Pending actual release evidence | #683 |
 
 ## App Store / iOS Checklist
@@ -134,11 +134,11 @@ Before submitting a public v2 Android release:
 - [ ] Complete account, credential, signing, and repository-governance items in
       [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md).
 - [ ] Confirm stakeholder approval for
-      [Aika Stream Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
+      [Aika Stream Store Listing Metadata](./AIKA_STREAM_STORE_LISTING.md).
 - [ ] Complete Data Safety/App Privacy console forms from
-      [Aika Stream Data Safety](./AIRO_TV_DATA_SAFETY.md).
+      [Aika Stream Data Safety](./AIKA_STREAM_DATA_SAFETY.md).
 - [ ] Complete content rating store-console forms from
-      [Aika Stream Content Rating](./AIRO_TV_CONTENT_RATING.md).
+      [Aika Stream Content Rating](./AIKA_STREAM_CONTENT_RATING.md).
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
 - [x] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
