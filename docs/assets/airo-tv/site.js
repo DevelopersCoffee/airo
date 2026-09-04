@@ -150,6 +150,54 @@
     }
   }
 
+  const heroes = document.querySelectorAll(".hero");
+  const finePointer = window.matchMedia("(pointer: fine)").matches;
+
+  if (!reducedMotion && finePointer && heroes.length) {
+    heroes.forEach(function (hero) {
+      const glow = document.createElement("div");
+      glow.className = "hero-glow";
+      glow.setAttribute("aria-hidden", "true");
+      hero.prepend(glow);
+
+      const board = hero.querySelector(".hero-preview-board");
+      let pointerFrameRequested = false;
+      let lastEvent = null;
+
+      function applyPointer() {
+        pointerFrameRequested = false;
+        if (!lastEvent) return;
+        const rect = hero.getBoundingClientRect();
+        const x = ((lastEvent.clientX - rect.left) / rect.width) * 100;
+        const y = ((lastEvent.clientY - rect.top) / rect.height) * 100;
+        hero.style.setProperty("--pointer-x", x + "%");
+        hero.style.setProperty("--pointer-y", y + "%");
+        if (board) {
+          const tiltY = ((x - 50) / 50) * 4;
+          const tiltX = ((50 - y) / 50) * 3;
+          board.style.setProperty("--tilt-y", tiltY + "deg");
+          board.style.setProperty("--tilt-x", tiltX + "deg");
+        }
+      }
+
+      hero.addEventListener("pointermove", function (event) {
+        lastEvent = event;
+        hero.classList.add("has-pointer");
+        if (pointerFrameRequested) return;
+        pointerFrameRequested = true;
+        window.requestAnimationFrame(applyPointer);
+      });
+
+      hero.addEventListener("pointerleave", function () {
+        hero.classList.remove("has-pointer");
+        if (board) {
+          board.style.setProperty("--tilt-x", "0deg");
+          board.style.setProperty("--tilt-y", "0deg");
+        }
+      });
+    });
+  }
+
   const liveDemoInstances = [];
 
   function initializeLiveDemo(root) {
