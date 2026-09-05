@@ -32,6 +32,7 @@ not rewrite historical Aika Stream evidence under `docs/release/evidence/`.
 | Android package | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
 | Pubspec | `app/pubspec_tv.yaml` |
+| Device class | Android TV, Google TV, Fire TV, and Android phone/tablet (`android.software.leanback` set `required="false"` in `app/android/app/src/tv/AndroidManifest.xml`) |
 | Category | Video Players & Editors |
 | Content model | Media player for user-supplied M3U/M3U8 URLs only |
 | First Play dart-defines | **Unset.** Do not pass `IPTV_DATA_PLAYLIST_URL` or `IPTV_DATA_MANIFEST_URL`. Privacy currently names only user-configured XMLTV. |

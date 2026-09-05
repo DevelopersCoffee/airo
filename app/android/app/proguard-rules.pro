@@ -72,7 +72,12 @@
 # ============================================
 # AndroidX / Jetpack
 # ============================================
--keep class androidx.** { *; }
+# No blanket keep: every AndroidX artifact ships its own consumer
+# proguard-rules.pro (AGP merges these automatically), and androidx is
+# the single largest package tree Flutter pulls in -- keeping all of it
+# was the main driver of Play Console's low optimization/obfuscation/
+# shrinking scores. -dontwarn stays broad since AndroidX has legitimate
+# optional-dependency warnings across modules we don't all use.
 -dontwarn androidx.**
 
 # Lifecycle
@@ -89,18 +94,6 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
-
-# ============================================
-# Audio Players (just_audio, audioplayers)
-# ============================================
--keep class com.google.android.exoplayer2.** { *; }
--dontwarn com.google.android.exoplayer2.**
-
-# ============================================
-# Video Player
-# ============================================
--keep class com.google.android.exoplayer.** { *; }
--dontwarn com.google.android.exoplayer.**
 
 # ============================================
 # Flame Game Engine

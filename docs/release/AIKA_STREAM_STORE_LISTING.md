@@ -15,8 +15,8 @@ package-ID cutover and human console actions.
 | Product | Aika Stream |
 | Android package ID | `com.developerscoffee.tv.midas` |
 | Entrypoint | `app/lib/main_tv.dart` |
-| Device class | Android TV, Google TV, Fire TV-compatible APK testing |
-| First Play wave | Android TV / Google Play TV track |
+| Device class | Android TV, Google TV, Fire TV-compatible APK testing, plus Android phone/tablet |
+| First Play wave | Android TV / Google Play TV track, expanded to phone/tablet (`android.software.leanback` no longer `required`) |
 | iOS / App Store | Deferred from the first Android publishing wave |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
