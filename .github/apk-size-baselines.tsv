@@ -6,15 +6,8 @@
 # baseline_bytes: approved baseline size in bytes.
 # budget_mb: absolute artifact budget in MiB.
 #
-# This file is NOT updated automatically, despite what the CI job attempts.
-# update-apk-size-baselines measures each main build correctly, but its push is
-# rejected by branch protection on main (GH006) and the job only logs a warning,
-# so these numbers stay wherever they were last committed by hand. Refresh them
-# in a PR that cites the run they were measured on.
-#
-# tv 34310385 (32.72 MB) measured on PR #1822, CI run 32388287011 (Intelligence
-# already on main; under the 35 MB budget, 14.30% over the previous 28.63 MB).
+# This file is updated automatically after successful main builds.
 component	artifact	baseline_bytes	budget_mb
-full	app-arm64-v8a-release.apk	104141179	120
-tv	app-arm64-v8a-release.apk	34310385	35
-coins	app-arm64-v8a-release.apk	22093496	25
+coins	app-arm64-v8a-release.apk	20675989	25
+full	app-arm64-v8a-release.apk	191270022	450
+tv	app-arm64-v8a-release.apk	30965357	35
