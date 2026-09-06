@@ -80,6 +80,14 @@ jobs:
           scripts/test-check-android-sdk-baseline.sh
           scripts/check-android-sdk-baseline.sh
 
+      # A new blanket `-keep class <pkg>.** { *; }` silently re-tanks the Play
+      # Console App Bundle Explorer optimization score the way the old
+      # androidx.** keep did (65b0b2d5) -- catch it here, not after upload.
+      - name: Enforce ProGuard blanket-keep budget
+        run: |
+          chmod +x scripts/check-proguard-keep-budget.sh
+          scripts/check-proguard-keep-budget.sh
+
       - name: Validate platform build profiles
         run: |
           chmod +x scripts/check-ci-cache-policy.py scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
