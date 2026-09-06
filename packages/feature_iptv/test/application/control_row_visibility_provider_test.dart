@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('all rows default visible and persist with approved keys', () async {
+  test('every row but stats defaults visible, and toggles persist with '
+      'approved keys', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final container = ProviderContainer(
@@ -15,14 +16,17 @@ void main() {
 
     final initial = container.read(controlRowVisibilityProvider);
     for (final row in AiroTvControlRow.values) {
-      expect(initial.isVisible(row), isTrue);
+      // Stats (codec/resolution/bitrate) is diagnostic detail off by
+      // default so it doesn't cost a permanent row for viewers who never
+      // open settings to turn it on.
+      expect(initial.isVisible(row), row != AiroTvControlRow.stats);
     }
 
     await container
         .read(controlRowVisibilityProvider.notifier)
-        .setVisible(AiroTvControlRow.stats, false);
+        .setVisible(AiroTvControlRow.stats, true);
 
-    expect(preferences.getBool('iptv_row_stats_visible'), isFalse);
+    expect(preferences.getBool('iptv_row_stats_visible'), isTrue);
   });
 
   test('stored row values hydrate on provider construction', () async {

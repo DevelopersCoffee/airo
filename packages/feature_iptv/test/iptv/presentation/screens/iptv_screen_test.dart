@@ -183,7 +183,7 @@ void main() {
         findsNothing,
       );
 
-      expect(find.text('Name'), findsOneWidget);
+      expect(find.text('Sort: Name'), findsOneWidget);
       expect(find.text('City News Live'), findsWidgets);
     } finally {
       debugDefaultTargetPlatformOverride = null;
@@ -899,7 +899,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Sort: Name'), findsOneWidget);
     expect(find.text('City News Live'), findsWidgets);
     expect(find.text('News'), findsWidgets);
     expect(find.text('LIVE'), findsWidgets);

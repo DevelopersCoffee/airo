@@ -23,7 +23,12 @@ class ControlRowVisibilityState {
 
   factory ControlRowVisibilityState.defaults() {
     return ControlRowVisibilityState({
-      for (final row in AiroTvControlRow.values) row: true,
+      for (final row in AiroTvControlRow.values)
+        // Stats is diagnostic/advanced info (codec, resolution, bitrate) —
+        // useful, but not something most viewers need permanently taking up
+        // a row above the grid. Off by default; the settings dialog turns
+        // it back on, and that choice is persisted like any other row.
+        row: row != AiroTvControlRow.stats,
     });
   }
 
