@@ -1,0 +1,31 @@
+# Config for the `flutter_launcher_icons` dev_dependency in pubspec.yaml.
+# Android-only: generates a proper Adaptive Icon (mipmap-anydpi-v26 +
+# foreground/background layers) for the phone/tablet product (io.airo.app),
+# replacing the flat per-density PNGs that OEM launchers otherwise
+# mask/crop inconsistently.
+#
+# adaptive_icon_foreground/background are NOT the original flat icon reused
+# twice -- that was tried first and rejected: the flat icon has no
+# transparent margin, so a circular/squircle OEM mask crops straight into
+# its square corners (visible seam, looks broken). assets/launcher_icon/
+# holds the flat icon's diagonal blue gradient and white glyph separated
+# into their own layers (gradient bilinearly reconstructed from the
+# flat icon's sampled corner colors, glyph extracted by how much whiter than
+# that local background estimate each pixel is), so the mask crops a
+# seamless gradient instead of hard edges. Legacy pre-API26 devices still
+# get the original flat mipmap-xxxhdpi/ic_launcher.png via `image_path`,
+# unchanged.
+# Run: cd app && dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
+flutter_launcher_icons:
+  android: "ic_launcher"
+  image_path: "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+  adaptive_icon_background: "assets/launcher_icon/adaptive_background.png"
+  adaptive_icon_foreground: "assets/launcher_icon/adaptive_foreground.png"
+  min_sdk_android: 26
+  remove_alpha_ios: false
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false

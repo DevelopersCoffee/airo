@@ -186,6 +186,7 @@ dev_dependencies:
   shared_preferences_platform_interface: ^2.4.1
   flutter_lints: 6.0.0
   custom_lint: ^0.8.1
+  flutter_launcher_icons: ^0.14.3
   # 3.1.8 is the first riverpod_lint that accepts riverpod 3.4.2
   riverpod_lint: 3.1.8
 
