@@ -47,32 +47,38 @@ and close the touch-grid filter gap.
   `https://epgshare01.online/epgshare01/epg_ripper_{SLUG}1.xml.gz` (slug is
   a country code or provider name, e.g. `IN`, `US_LOCALS`, `PLEX`).
 
-**Allow-list, not a crawl.** Add `iptv-data/config/epg_sources.yaml` listing
-the country codes (and, for epgshare01, the specific provider slugs) this
-pipeline is allowed to fetch. Start with the countries the default playlist
-already ships for, plus `IN`/`US`/`GB` explicitly since those are the
-current or likely near-term product defaults. Never enumerate a source's
-directory listing and fetch everything it contains.
+**Allow-list, not a crawl.** No new config file: both new sources accept
+the exact same plain two-letter code the pipeline already uses for
+`epg.pw` (`iptv-epg.org/files/epg-{cc}.xml`,
+`epgshare01.online/epgshare01/epg_ripper_{CC}1.xml.gz` — confirmed against
+real filenames on that host, e.g. `epg_ripper_IN1.xml.gz`,
+`epg_ripper_AE1.xml.gz`). Reuse the workflow's existing `$COUNTRY`
+input/cron value for all three fetches. Never enumerate a source's
+directory listing and fetch everything it contains, and never fetch
+epgshare01's `ALL_SOURCES` file (~205MB) — same reasoning as the existing
+`guide_ALL` device-fetch ban.
 
-**Selection logic.** `epg_publish_prefer.py` currently does a 2-way
-comparison (existing published guide vs. the epg.pw remap) for countries in
-`prefer_existing_over_remap`. Extend `select_countries_to_publish` into a
-3-way (in general, N-way) comparison: for every allow-listed country, fetch
-whichever of the three sources are configured for it, run each through the
-existing `epg_pw_remap` id-remap step (so all candidates end up keyed on
-iptv-org channel ids, not source-native ids), count matched programmes for
-each, and publish the highest-scoring candidate under the unchanged
-`guide_{CC}.xml.gz` key. Countries with only one available source publish
-that one unconditionally, same as today. This keeps the manifest schema and
-every app-side reader untouched — M1 ships with zero Dart changes.
+**Selection logic.** `epg_publish_prefer.py`'s existing
+`select_countries_to_publish` belongs to the *other*, heavier pipeline
+(`iptv_sanity.yml`) and is untouched by this work. Add a new, separate
+function, `select_best_source_per_country`, used only by
+`iptv_guide_r2.yml`: given one directory per source (each already run
+through `epg_pw_remap.remap_epg_pw_xmltv` — the function generalizes past
+its name, since it keeps an id unchanged when it's already a catalog id
+and only falls back to name-matching otherwise, so it's equally correct
+for epgshare01/iptv-epg.org output that already ships iptv-org-style ids),
+pick whichever source has the most `<programme>` elements for that
+country. No regression guard against the previously-published guide:
+`iptv_guide_r2.yml` has never had one (it republishes unconditionally
+today), so this stays consistent rather than inventing new protective
+complexity this cron never needed.
 
-**Workflow.** `iptv_guide_r2.yml` gains one fetch+verify step per new
-source (reusing the existing gzip, checksum, and "no leaked numeric id"
-guard steps), then a scoring step that picks the winner before the existing
-R2 upload step runs. Keep the 20-minute job timeout; if a fetch fails or
-times out, that candidate is simply excluded from scoring — it must never
-fail the whole job (mirrors the existing "missing ffprobe → unchecked,
-never blocks publication" policy elsewhere in this pipeline).
+**Workflow.** `iptv_guide_r2.yml` gains one fetch+remap step per new
+source (soft-fail: a 404 or timeout produces no file for that source,
+never fails the job — reusing the existing gzip/checksum/leaked-id-guard
+steps only for the winning candidate), then a scoring step
+(`select-best-source` CLI subcommand) that picks the winner before the
+existing R2 upload step runs. Keep the 20-minute job timeout.
 
 **Catalog side-output.** The same scoring step writes
 `iptv-data/output/current/epg_catalog.json`: one entry per published
@@ -102,9 +108,12 @@ section at the bottom. Above it, a new "Browse guides" list:
   time.
 - A `TextField` filters rows by country name/code client-side (the catalog
   is at most a few hundred rows — no server-side search needed).
-- Selecting a row calls the same `xmltvSourceRefreshServiceProvider.refresh`
-  path the paste box uses today, pointed at that catalog entry's resolved
-  guide URL — no new refresh code path.
+- Selecting a row calls the already-shipped
+  `XmltvSourceRefreshService.refreshSystemGuidesForCountries(manifestUrl:
+  ..., countries: {entry.countryCode})` — the same method
+  `airo_tv_bootstrap_io.dart` already uses to fetch a system guide shard —
+  passing just that one country. No new URL-resolution or download code
+  path; the catalog only supplies which country to ask for.
 
 **Testing:** widget test for search-filters-rows and for
 row-tap-triggers-refresh-with-expected-url; a fake/fixture
@@ -112,12 +121,12 @@ row-tap-triggers-refresh-with-expected-url; a fake/fixture
 
 ## M3 — Viewer polish (touch grid)
 
-`epg_touch_timeline_grid.dart` gets what the TV grid
-(`iptv_guide_screen.dart`) already has plus what neither has yet:
+`iptv_guide_screen.dart` already renders one shared search `TextField`
+(wired to `guideSearchQueryProvider`) above whichever grid loads —
+`EpgTimelineGrid` (TV) or `EpgTouchTimelineGrid` (phone) — so both
+surfaces already have search; correct that. What's actually missing,
+added to that same shared header so both grids get it for free:
 
-- **Search bar** — wire the existing `guideSearchQueryProvider` /
-  `guideFilteredChannelsProvider` into the touch grid's header (TV already
-  does this; touch currently has no search entry point at all).
 - **Favorites-only toggle** — a filter chip that intersects
   `guideFilteredChannelsProvider`'s output with the existing favorites set
   (reuse whatever backs `MobileFavoritesScreen`'s favorite-channel list —
@@ -127,14 +136,15 @@ row-tap-triggers-refresh-with-expected-url; a fake/fixture
   selecting a chip narrows `guideFilteredChannelsProvider`'s input the same
   way the search query does.
 
-All three are additive filters composed on top of the existing provider,
-not a parallel filter stack. Apply the same three to the TV grid's existing
-header row for parity, since it already has the search field to extend.
+Both are additive filters composed into `guideFilteredChannelsProvider`
+alongside the existing search/scope filtering, not a parallel filter
+stack. Because the header lives once in `_IptvGuideScreenState.build()`,
+adding the chips there gives both the TV and touch grid the same controls
+in one change.
 
 **Testing:** provider-level tests for chip/favorite/search composition
-(pure logic, no widget pump needed for the compositional cases); one widget
-test per surface confirming the controls render and narrow the visible
-channel list.
+(pure logic, no widget pump needed); one widget test confirming the new
+controls render in the shared header and narrow the visible channel list.
 
 ## Rollout / sequencing
 
