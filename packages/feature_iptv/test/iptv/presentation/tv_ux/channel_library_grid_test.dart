@@ -23,41 +23,43 @@ void main() {
     ),
   ];
 
-  testWidgets('grid renders every channel as a tile with sort chips', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: {
-                'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
-                'two': ChannelBrowseMetadata(country: 'US', language: 'en'),
-              },
-              availabilityByChannelId: {
-                'one': StreamAvailability.available,
-                'two': StreamAvailability.unavailable,
-              },
+  testWidgets(
+    'grid renders every channel as a tile with a compact sort trigger',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: {
+                  'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
+                  'two': ChannelBrowseMetadata(country: 'US', language: 'en'),
+                },
+                availabilityByChannelId: {
+                  'one': StreamAvailability.available,
+                  'two': StreamAvailability.unavailable,
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Name'), findsOneWidget);
-    expect(find.text('Category'), findsOneWidget);
-    expect(find.text('Language'), findsOneWidget);
-    expect(find.text('Country'), findsOneWidget);
-    expect(find.byKey(const ValueKey('channel-tile-one')), findsOneWidget);
-    expect(find.byKey(const ValueKey('channel-tile-two')), findsOneWidget);
-    expect(find.text('One'), findsOneWidget);
-    expect(find.text('ABC'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      // One compact "Sort: Name" trigger replaces four always-visible chips
+      // (#compact-tv-chrome) — the other three columns live inside the
+      // sheet it opens, not permanently on screen.
+      expect(find.text('Sort: Name'), findsOneWidget);
+      expect(find.text('Category'), findsNothing);
+      expect(find.byKey(const ValueKey('channel-tile-one')), findsOneWidget);
+      expect(find.byKey(const ValueKey('channel-tile-two')), findsOneWidget);
+      expect(find.text('One'), findsOneWidget);
+      expect(find.text('ABC'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('filtered-to-empty explains itself and offers a way back', (
     tester,
@@ -134,31 +136,64 @@ void main() {
     expect(tapped?.id, 'one');
   });
 
-  testWidgets('sort chip tap invokes onSort with the tapped column', (
-    tester,
-  ) async {
-    ChannelSortColumn? sorted;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 800,
-            height: 600,
-            child: ChannelLibraryGrid(
-              channels: channels,
-              metadataByChannelId: const {},
-              onSort: (column) => sorted = column,
+  testWidgets(
+    'tapping the sort trigger then a column in the sheet invokes onSort',
+    (tester) async {
+      ChannelSortColumn? sorted;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                onSort: (column) => sorted = column,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('Category'));
-    await tester.pump();
+      await tester.tap(find.text('Sort: Name'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('channel-sort-category')));
+      await tester.pumpAndSettle();
 
-    expect(sorted, ChannelSortColumn.category);
-  });
+      expect(sorted, ChannelSortColumn.category);
+      // The sheet closes after picking a column.
+      expect(find.byKey(const ValueKey('channel-sort-category')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'the sort sheet lists every ChannelSortColumn, including Type — the '
+    'old fixed four-chip row never exposed it at all',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                onSort: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Sort: Name'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('channel-sort-type')), findsOneWidget);
+      expect(find.text('Type'), findsOneWidget);
+    },
+  );
 
   testWidgets('TV action adds and removes channels from multiview', (
     tester,
@@ -187,6 +222,80 @@ void main() {
     await tester.pump();
 
     expect(toggled?.id, 'one');
+  });
+
+  testWidgets(
+    'long-pressing a tile opens an actions menu with Play, split view, and '
+    'favorite entries reflecting current state',
+    (tester) async {
+      IPTVChannel? played;
+      IPTVChannel? multiviewToggled;
+      IPTVChannel? favoriteToggled;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 600,
+              child: ChannelLibraryGrid(
+                channels: channels,
+                metadataByChannelId: const {},
+                onChannelSelected: (channel) => played = channel,
+                multiviewChannelIds: const {'one'},
+                onMultiviewToggle: (channel) => multiviewToggled = channel,
+                favoriteChannelIds: const {'two'},
+                onFavoriteToggle: (channel) => favoriteToggled = channel,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.longPress(find.text('One'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play'), findsOneWidget);
+      // 'one' is already in multiview and is not a favorite.
+      expect(find.text('Remove from split view'), findsOneWidget);
+      expect(find.text('Add to favorites'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('channel-actions-favorite')));
+      await tester.pumpAndSettle();
+
+      expect(favoriteToggled?.id, 'one');
+      expect(played, isNull);
+      expect(multiviewToggled, isNull);
+      // The sheet closes after acting on an entry.
+      expect(find.text('Play'), findsNothing);
+    },
+  );
+
+  testWidgets('long-press actions menu omits entries with no callback wired', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // No onChannelSelected/onMultiviewToggle/onFavoriteToggle wired at all
+    // means there is nothing to show — long-press is a no-op, not a sheet
+    // full of dead entries.
+    await tester.longPress(find.text('One'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Play'), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('one D-pad press moves exactly one channel tile', (tester) async {

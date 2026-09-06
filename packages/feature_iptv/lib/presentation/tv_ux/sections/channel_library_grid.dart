@@ -30,6 +30,8 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.onVisibleChannelsChanged,
     this.multiviewChannelIds = const {},
     this.onMultiviewToggle,
+    this.favoriteChannelIds = const {},
+    this.onFavoriteToggle,
     this.onClearFilters,
   });
 
@@ -43,6 +45,8 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ValueChanged<List<IPTVChannel>>? onVisibleChannelsChanged;
   final Set<String> multiviewChannelIds;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
+  final Set<String> favoriteChannelIds;
+  final ValueChanged<IPTVChannel>? onFavoriteToggle;
 
   /// Resets every filter from the "no matches" state. Null hides that
   /// action, leaving the explanation without a shortcut.
@@ -171,6 +175,10 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                             channel.id,
                           ),
                           onMultiviewToggle: widget.onMultiviewToggle,
+                          isFavorite: widget.favoriteChannelIds.contains(
+                            channel.id,
+                          ),
+                          onFavoriteToggle: widget.onFavoriteToggle,
                         ),
                       );
                     },
@@ -262,6 +270,17 @@ class _NoMatchesView extends StatelessWidget {
   }
 }
 
+const Map<ChannelSortColumn, String> _sortColumnLabels = {
+  ChannelSortColumn.name: 'Name',
+  ChannelSortColumn.category: 'Category',
+  ChannelSortColumn.language: 'Language',
+  ChannelSortColumn.country: 'Country',
+  ChannelSortColumn.type: 'Type',
+};
+
+/// One compact trigger instead of four always-visible chips — same four
+/// sort columns, tucked behind a single control that opens on demand
+/// (#compact-tv-chrome) rather than permanently occupying a full row.
 class _LibrarySortRow extends StatelessWidget {
   const _LibrarySortRow({required this.sort, this.onSort});
 
@@ -270,40 +289,76 @@ class _LibrarySortRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(String label, ChannelSortColumn column) {
-      final active = sort.column == column;
-      return Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: TvFocusable(
-          key: ValueKey('channel-sort-${column.name}'),
-          semanticLabel: 'Sort by $label',
-          onSelect: onSort == null ? null : () => onSort!(column),
-          borderRadius: 8,
-          child: ChoiceChip(
-            label: Text(label),
-            selected: active,
-            avatar: active
-                ? Icon(
-                    sort.ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: onSort == null ? null : (_) => onSort!(column),
-          ),
-        ),
-      );
-    }
-
+    final label = _sortColumnLabels[sort.column] ?? 'Name';
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TvFocusable(
+          key: const ValueKey('channel-sort-trigger'),
+          semanticLabel:
+              'Sort by $label, ${sort.ascending ? 'ascending' : 'descending'}',
+          onSelect: onSort == null ? null : () => _showSortSheet(context),
+          borderRadius: 8,
+          child: Material(
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: onSort == null ? null : () => _showSortSheet(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      sort.ascending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text('Sort: $label'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSortSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            chip('Name', ChannelSortColumn.name),
-            chip('Category', ChannelSortColumn.category),
-            chip('Language', ChannelSortColumn.language),
-            chip('Country', ChannelSortColumn.country),
+            for (final column in ChannelSortColumn.values)
+              ListTile(
+                key: ValueKey('channel-sort-${column.name}'),
+                leading: sort.column == column
+                    ? Icon(
+                        sort.ascending
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
+                      )
+                    : const SizedBox(width: 24),
+                title: Text(_sortColumnLabels[column] ?? column.name),
+                selected: sort.column == column,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onSort?.call(column);
+                },
+              ),
           ],
         ),
       ),
@@ -320,6 +375,8 @@ class _ChannelTile extends StatefulWidget {
     this.focusPlayDelay,
     required this.inMultiview,
     this.onMultiviewToggle,
+    required this.isFavorite,
+    this.onFavoriteToggle,
   });
 
   final IPTVChannel channel;
@@ -329,6 +386,8 @@ class _ChannelTile extends StatefulWidget {
   final Duration? focusPlayDelay;
   final bool inMultiview;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
+  final bool isFavorite;
+  final ValueChanged<IPTVChannel>? onFavoriteToggle;
 
   @override
   State<_ChannelTile> createState() => _ChannelTileState();
@@ -375,6 +434,30 @@ class _ChannelTileState extends State<_ChannelTile> {
     widget.onSelected?.call(widget.channel);
   }
 
+  bool get _hasActions =>
+      widget.onSelected != null ||
+      widget.onMultiviewToggle != null ||
+      widget.onFavoriteToggle != null;
+
+  Future<void> _showActionsMenu(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => _ChannelActionsSheet(
+        channel: widget.channel,
+        onPlay: widget.onSelected == null ? null : _selectNow,
+        inMultiview: widget.inMultiview,
+        onMultiviewToggle: widget.onMultiviewToggle == null
+            ? null
+            : () => widget.onMultiviewToggle!(widget.channel),
+        isFavorite: widget.isFavorite,
+        onFavoriteToggle: widget.onFavoriteToggle == null
+            ? null
+            : () => widget.onFavoriteToggle!(widget.channel),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final country = effectiveChannelCountry(widget.channel, widget.metadata);
@@ -392,9 +475,7 @@ class _ChannelTileState extends State<_ChannelTile> {
           logoUrl: widget.channel.effectiveLogoUrl,
           initials: _initialsFor(widget.channel.name),
           onTap: widget.onSelected == null ? null : _selectNow,
-          onLongPress: widget.onMultiviewToggle == null
-              ? null
-              : () => widget.onMultiviewToggle!(widget.channel),
+          onLongPress: _hasActions ? () => _showActionsMenu(context) : null,
           onFocus: _scheduleFocusPlay,
           onUnfocus: _cancelFocusPlay,
         ),
@@ -464,6 +545,88 @@ class _ChannelTileState extends State<_ChannelTile> {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '?';
     return trimmed.substring(0, 1).toUpperCase();
+  }
+}
+
+/// Long-press menu for a channel tile — the touch equivalent of the grid's
+/// always-visible per-tile split-view toggle, plus favoriting, in one
+/// discoverable place instead of separate small icon targets.
+class _ChannelActionsSheet extends StatelessWidget {
+  const _ChannelActionsSheet({
+    required this.channel,
+    required this.onPlay,
+    required this.inMultiview,
+    required this.onMultiviewToggle,
+    required this.isFavorite,
+    required this.onFavoriteToggle,
+  });
+
+  final IPTVChannel channel;
+  final VoidCallback? onPlay;
+  final bool inMultiview;
+  final VoidCallback? onMultiviewToggle;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    void act(VoidCallback? action) {
+      Navigator.of(context).pop();
+      action?.call();
+    }
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    channel.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onPlay != null)
+            ListTile(
+              key: const ValueKey('channel-actions-play'),
+              leading: const Icon(Icons.play_arrow),
+              title: const Text('Play'),
+              onTap: () => act(onPlay),
+            ),
+          if (onMultiviewToggle != null)
+            ListTile(
+              key: const ValueKey('channel-actions-multiview'),
+              leading: Icon(
+                inMultiview ? Icons.remove_from_queue : Icons.add_to_queue,
+              ),
+              title: Text(
+                inMultiview ? 'Remove from split view' : 'Add to split view',
+              ),
+              onTap: () => act(onMultiviewToggle),
+            ),
+          if (onFavoriteToggle != null)
+            ListTile(
+              key: const ValueKey('channel-actions-favorite'),
+              leading: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+              ),
+              title: Text(
+                isFavorite ? 'Remove from favorites' : 'Add to favorites',
+              ),
+              onTap: () => act(onFavoriteToggle),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 }
 

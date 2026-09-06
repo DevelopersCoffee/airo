@@ -104,6 +104,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final rowVisibility = ref.watch(controlRowVisibilityProvider);
     final multiview = ref.watch(multiviewProvider);
+    final favoriteChannelIds =
+        ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
+    final favoriteToggler = ref.read(channelFavoriteTogglerProvider);
     final playbackStats = ref
         .watch(streamingStateProvider)
         .asData
@@ -170,6 +173,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       onMultiviewToggle: widget.showVideoStage
           ? (channel) => _toggleMultiview(context, channel)
           : null,
+      favoriteChannelIds: favoriteChannelIds,
+      onFavoriteToggle: (channel) => favoriteToggler(channel.id),
       onClearFilters: () => ref.read(channelFiltersProvider.notifier).clear(),
     );
     final infoBar = ChannelInfoBar(

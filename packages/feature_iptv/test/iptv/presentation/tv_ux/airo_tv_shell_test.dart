@@ -2,6 +2,7 @@ import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
+import 'package:feature_iptv/application/providers/control_row_visibility_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
@@ -230,6 +231,14 @@ void main() {
   testWidgets('stats row shows exact live values and hides without a stream', (
     tester,
   ) async {
+    // The stats row now defaults to hidden (#compact-tv-chrome) — opt back
+    // in via the same SharedPreferences key the real settings toggle
+    // writes, so this test exercises the row's content logic rather than
+    // its default visibility.
+    SharedPreferences.setMockInitialValues({
+      channelCountryPromptCompletedStorageKey: true,
+      AiroTvControlRow.stats.storageKey: true,
+    });
     final playing = StreamingState(
       currentChannel: channels.first,
       playbackState: PlaybackState.playing,

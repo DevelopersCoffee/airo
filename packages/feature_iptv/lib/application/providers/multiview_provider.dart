@@ -152,8 +152,15 @@ final multiviewDecoderBudgetProvider = Provider<int>((ref) {
 final iptvMultiviewSessionFactoryProvider =
     Provider<IptvMultiviewSessionFactory>((ref) {
       return (channel) async {
+        // mixWithOthers: true — this instance shares the device with the
+        // pool's other tiles and possibly the primary player. Without it,
+        // the platform's own exclusive audio-focus handling silently
+        // pauses (freezes) whichever instance loses that fight, and no
+        // amount of promoting it via setAudible() afterward recovers it —
+        // see VideoPlayerStreamingService's `_mixWithOthers` doc comment.
         final service = VideoPlayerStreamingService(
           config: StreamingConfig.live,
+          mixWithOthers: true,
         );
         try {
           await service.initialize();

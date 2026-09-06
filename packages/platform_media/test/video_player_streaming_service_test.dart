@@ -204,6 +204,30 @@ void main() {
         expect(openedRequest.allowBackgroundPlayback, isTrue);
       },
     );
+
+    test(
+      'a service constructed with mixWithOthers:true opens with mixWithOthers '
+      'set without requesting allowBackgroundPlayback (MultiView tiles: an '
+      'app-level mute already keeps only one tile audible, so this instance '
+      'must not also compete for exclusive platform audio focus — losing '
+      'that fight silently freezes its video, not just its audio, per '
+      'VideoPlayerStreamingService\'s `_mixWithOthers` doc comment)',
+      () async {
+        final concurrentEngine = VideoPlayerAiroPlaybackEngine();
+        final concurrentService = VideoPlayerStreamingService(
+          engine: concurrentEngine,
+          mixWithOthers: true,
+        );
+        addTearDown(concurrentService.dispose);
+
+        await concurrentService.playChannel(channel());
+
+        final openedRequest = concurrentEngine.currentState.request;
+        expect(openedRequest, isNotNull);
+        expect(openedRequest!.mixWithOthers, isTrue);
+        expect(openedRequest.allowBackgroundPlayback, isFalse);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService multi-source failover', () {
