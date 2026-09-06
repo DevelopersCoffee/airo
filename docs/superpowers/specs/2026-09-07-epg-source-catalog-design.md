@@ -82,9 +82,11 @@ existing R2 upload step runs. Keep the 20-minute job timeout.
 
 **Catalog side-output.** The same scoring step writes
 `iptv-data/output/current/epg_catalog.json`: one entry per published
-country — `{countryCode, countryName, sourceId, programmeCount,
-channelCount, updatedAt}` — sourced from data already computed during
-scoring (no extra fetch). This file is uploaded to R2 alongside
+country — `{countryCode, sourceId, programmeCount, channelCount,
+updatedAt}` — sourced from data already computed during scoring (no extra
+fetch). No display name/flag in the payload: the app already has a
+country-code-to-name-and-flag table (`countryDisplayLabel` in
+`channel_filters_provider.dart`) and must not maintain a second one. This file is uploaded to R2 alongside
 `manifest.json` and is the only new artifact M2 depends on.
 
 **Testing:** extend `iptv-data/tests/test_epg_publish_prefer.py` for the
@@ -102,10 +104,9 @@ section at the bottom. Above it, a new "Browse guides" list:
   `epg_catalog.json` from the same R2 base URL the manifest already comes
   from (reuse `xmltv_source_refresh_service.dart`'s existing R2 base-URL
   resolution — do not hardcode a second URL constant).
-- One row per catalog entry: flag (reuse whatever flag/country-icon widget
-  `feature_iptv` already has for channel countries — check before adding a
-  new one), country name, programme/channel counts, relative "updated"
-  time.
+- One row per catalog entry: flag + country name via the existing
+  `countryDisplayLabel(entry.countryCode)`, programme/channel counts,
+  relative "updated" time.
 - A `TextField` filters rows by country name/code client-side (the catalog
   is at most a few hundred rows — no server-side search needed).
 - Selecting a row calls the already-shipped
