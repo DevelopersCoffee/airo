@@ -82,19 +82,24 @@ class IptvNavigationDrawer extends StatelessWidget {
                 onTap: () => _select(context, _actionFor(destination.id)!),
               ),
             if (showSettings || showPlayOnTv) const Divider(height: 1),
-            if (showSettings)
-              ListTile(
-                key: const ValueKey('iptv-drawer-settings'),
-                leading: const Icon(Icons.settings_outlined),
-                title: const Text('Settings'),
-                onTap: () => _select(context, onSettings!),
-              ),
+            // Secondary actions below the divider, ordered utility-before-
+            // settings (Play file on TV, then Settings last) so Settings
+            // stays the final item in the drawer, matching the standard
+            // nav-drawer pattern of primary destinations first, then
+            // grouped secondary actions, with Settings always last.
             if (onPlayLocalFileOnTv case final onPlayLocalFileOnTv?)
               ListTile(
                 key: const ValueKey('iptv-drawer-play-on-tv'),
                 leading: const Icon(Icons.cast_outlined),
                 title: const Text('Play file on TV'),
                 onTap: () => _select(context, onPlayLocalFileOnTv),
+              ),
+            if (showSettings)
+              ListTile(
+                key: const ValueKey('iptv-drawer-settings'),
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () => _select(context, onSettings!),
               ),
           ],
         ),
