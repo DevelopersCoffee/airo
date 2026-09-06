@@ -37,6 +37,17 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   DateTime? _loadStartTime;
   bool _isBackgroundAudioMode = false;
 
+  /// True for an instance that shares the device with another
+  /// already-playing instance (MultiView's non-featured tiles) — an
+  /// app-level mute already keeps only one tile audible (see
+  /// [setVolume]/[toggleMute]), so this instance must not also compete for
+  /// exclusive Android/iOS audio focus. Without it, the platform's own
+  /// focus-loss handling silently pauses whichever instance loses that
+  /// fight — freezing its video, not just its audio — and nothing in this
+  /// class's own state ever reflects that external pause, so raising this
+  /// instance's volume afterward does not un-freeze it.
+  final bool _mixWithOthers;
+
   // Live edge detection (P0-1 through P0-4)
   final LiveEdgeDetector _liveEdgeDetector;
 
@@ -61,7 +72,12 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     LiveEdgeConfig? liveEdgeConfig,
     this._failoverBackoffBase = const Duration(milliseconds: 250),
     this.mediaSessionDelegate,
-  }) : _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
+    bool mixWithOthers = false,
+  }) : // Public constructor label kept independent of the private field so
+       // callers outside this library can pass it by name.
+       // ignore: prefer_initializing_formals
+       _mixWithOthers = mixWithOthers,
+       _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
        _audioContext = audioContext ?? AudioContextManager(),
        _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
     _setupLiveEdgeCallbacks();
@@ -86,7 +102,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     try {
       await call(delegate);
     } catch (e) {
-      PlatformMediaLogger.info('Media session delegate error: $e', tag: 'MEDIA_SESSION');
+      PlatformMediaLogger.info(
+        'Media session delegate error: $e',
+        tag: 'MEDIA_SESSION',
+      );
     }
   }
 
@@ -222,7 +241,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
                 // reliable pre-open live/VOD signal on IPTVChannel.
                 mediaKind: AiroPlaybackMediaKind.hls,
                 externalSubtitles: externalSubtitles,
-                mixWithOthers: _isBackgroundAudioMode,
+                mixWithOthers: _mixWithOthers || _isBackgroundAudioMode,
                 allowBackgroundPlayback:
                     _isBackgroundAudioMode || channel.isAudioOnly,
                 httpHeaders: source.httpHeaders,
@@ -657,12 +676,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   void _beginMetricsSession(String channelId, String sourceId) {
     _finalizeMetricsSession();
     _metricsActiveSourceId = sourceId;
-    _metricsCollector =
-        StreamingSessionMetricsCollector(
-          sessionId: '$channelId-${DateTime.now().microsecondsSinceEpoch}',
-          activeSourceId: sourceId,
-          networkKey: _placeholderNetworkKey,
-        )..sessionStarted();
+    _metricsCollector = StreamingSessionMetricsCollector(
+      sessionId: '$channelId-${DateTime.now().microsecondsSinceEpoch}',
+      activeSourceId: sourceId,
+      networkKey: _placeholderNetworkKey,
+    )..sessionStarted();
     PlatformMediaLogger.analytics(
       'streaming_session_started',
       params: {'network_key': _placeholderNetworkKey},
