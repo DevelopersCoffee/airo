@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import "package:feature_iptv/application/channel_metadata_enrichment.dart";
+import "package:feature_iptv/application/providers/multiview_provider.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -519,6 +522,65 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'going fullscreen while MultiView has open tiles shows the grid full '
+    'screen instead of collapsing to one channel',
+    (tester) async {
+      final sessionOne = _FakeMultiviewSession(channels[0]);
+      final sessionTwo = _FakeMultiviewSession(channels[1]);
+      final multiviewController = _StaticMultiviewController(
+        MultiviewState(
+          sessions: [sessionOne, sessionTwo],
+          featuredChannelId: sessionOne.id,
+          capacity: 2,
+        ),
+      );
+
+      await tester.pumpWidget(
+        createWidget(
+          streamingState: StreamingState(
+            playbackState: PlaybackState.playing,
+            isLiveStream: true,
+            liveDelay: const Duration(seconds: 1),
+            currentChannel: channels.first,
+          ),
+          extraOverrides: [
+            multiviewProvider.overrideWith((ref) => multiviewController),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The single-channel preview's fullscreen button is gone — MultiView
+      // replaced that whole widget — so this is the only fullscreen entry
+      // point available while tiles are open.
+      expect(
+        find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+        findsNothing,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('airo-tv-multiview-fullscreen-action')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Both tiles are still on screen, not just `channels.first` (the
+      // single-channel fullscreen path's `activeChannel`).
+      expect(find.byKey(ValueKey('player-${sessionOne.id}')), findsOneWidget);
+      expect(find.byKey(ValueKey('player-${sessionTwo.id}')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('fullscreen-multiview-exit')),
+        findsOneWidget,
+      );
+      // The single-channel fullscreen player is not also mounted underneath.
+      expect(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets(
     'hamburger menu opens the drawer and Guide pushes the guide screen',
@@ -1085,6 +1147,64 @@ FocusNode _focusTvFocusable(WidgetTester tester, Finder root) {
     }
   }
   throw StateError('No requestable Focus node under the TV control.');
+}
+
+/// Minimal [IptvMultiviewSession] double for driving [MultiviewState]
+/// directly in tests, without a real playback engine.
+class _FakeMultiviewSession implements IptvMultiviewSession {
+  _FakeMultiviewSession(this.channel);
+
+  @override
+  final IPTVChannel channel;
+
+  @override
+  String get id => channel.id;
+
+  @override
+  StreamingState get currentState => StreamingState(
+    currentChannel: channel,
+    playbackState: PlaybackState.playing,
+  );
+
+  @override
+  Stream<StreamingState> get states => const Stream.empty();
+
+  @override
+  Widget buildView() => SizedBox(key: ValueKey('player-$id'));
+
+  @override
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async {}
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
+  Future<void> setAudible(bool audible) async {}
+
+  @override
+  Future<void> close() async {}
+}
+
+/// Cast-notifier-style test double (see `_StaticCastNotifier` elsewhere in
+/// this suite): starts a [MultiviewController] with a preset state instead
+/// of wiring a real session factory/decoder pool.
+class _StaticMultiviewController extends MultiviewController {
+  _StaticMultiviewController(MultiviewState initial)
+    : super(
+        decoderBudget: initial.capacity,
+        sessionFactory: (_) async => throw UnimplementedError(
+          'Not expected to open new sessions in this test.',
+        ),
+        primaryService: _RecordingStreamingService(played: []),
+      ) {
+    state = initial;
+  }
 }
 
 /// Streaming service double that records [playChannel] calls without touching

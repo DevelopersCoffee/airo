@@ -10,6 +10,7 @@ import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/multiview_provider.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_media/platform_media.dart";
@@ -27,6 +28,7 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/sections/multiview_stage.dart';
 import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
@@ -925,6 +927,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           }
         });
       }
+      // MultiView has its own persistent (non-scoped-to-this-screen)
+      // session state — going fullscreen while tiles are open must keep
+      // showing all of them, not silently collapse to whichever channel
+      // happens to be `activeChannel`. Without this, there was no way to
+      // see MultiView full-screen at all (#reported: "we dont have option
+      // to go in full screen mode" while 3 channels were running).
+      final multiview = ref.watch(multiviewProvider);
+      final inMultiview = multiview.sessions.isNotEmpty;
       return guardRouteBack(
         Focus(
           focusNode: _fullscreenFocusNode,
@@ -933,28 +943,42 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           child: AiroResponsiveScaffold(
             padding: EdgeInsets.zero,
             backgroundColor: Colors.black,
-            body: VideoPlayerWidget(
-              showControls: true,
-              initiallyFullscreen: true,
-              handleNativeFullscreen: false,
-              // Brightness/volume drag zones and the lock button are
-              // touch-only concepts with no remote equivalent.
-              enableTouchGestures: !widget.tenFootMode,
-              // Only the ten-foot host hands BACK to the player, because only
-              // Fire OS duplicates the platform half. On touch, guardRouteBack
-              // below answers that pop; letting the player answer it too would
-              // exit fullscreen and immediately re-enter it.
-              ownsPlatformBack: widget.tenFootMode,
-              // The guarded exit, not the raw toggle: it is a no-op once
-              // fullscreen is already off, so a second handler does nothing.
-              onBack: _exitFullscreen,
-              onFullscreenToggle: _toggleFullscreen,
-              enableSwipeChannelChange: true,
-              // PiP is a phone/tablet multitasking action. Keep it out of
-              // the remote-only Android TV and Fire TV player surfaces.
-              showPictureInPicture: !widget.tenFootMode,
-              useTvTransportBar: widget.tenFootMode,
-            ),
+            body: inMultiview
+                ? _FullscreenMultiview(
+                    sessions: multiview.sessions,
+                    featuredChannelId: multiview.featuredChannelId,
+                    onPromote: (id) =>
+                        ref.read(multiviewProvider.notifier).promote(id),
+                    onSwap: (firstId, secondId) => ref
+                        .read(multiviewProvider.notifier)
+                        .swap(firstId, secondId),
+                    onExit: _exitFullscreen,
+                  )
+                : VideoPlayerWidget(
+                    showControls: true,
+                    initiallyFullscreen: true,
+                    handleNativeFullscreen: false,
+                    // Brightness/volume drag zones and the lock button are
+                    // touch-only concepts with no remote equivalent.
+                    enableTouchGestures: !widget.tenFootMode,
+                    // Only the ten-foot host hands BACK to the player, because
+                    // only Fire OS duplicates the platform half. On touch,
+                    // guardRouteBack below answers that pop; letting the
+                    // player answer it too would exit fullscreen and
+                    // immediately re-enter it.
+                    ownsPlatformBack: widget.tenFootMode,
+                    // The guarded exit, not the raw toggle: it is a no-op
+                    // once fullscreen is already off, so a second handler
+                    // does nothing.
+                    onBack: _exitFullscreen,
+                    onFullscreenToggle: _toggleFullscreen,
+                    enableSwipeChannelChange: true,
+                    // PiP is a phone/tablet multitasking action. Keep it out
+                    // of the remote-only Android TV and Fire TV player
+                    // surfaces.
+                    showPictureInPicture: !widget.tenFootMode,
+                    useTvTransportBar: widget.tenFootMode,
+                  ),
           ),
         ),
       );
@@ -1097,6 +1121,60 @@ Future<void> _showWaysToWatchDialog({
       },
     ),
   );
+}
+
+/// Full-screen home for MultiView — the fullscreen toggle's equivalent of
+/// [VideoPlayerWidget] when tiles are open, so entering fullscreen keeps
+/// showing every active session instead of collapsing to one channel.
+class _FullscreenMultiview extends StatelessWidget {
+  const _FullscreenMultiview({
+    required this.sessions,
+    required this.featuredChannelId,
+    required this.onPromote,
+    required this.onSwap,
+    required this.onExit,
+  });
+
+  final List<IptvMultiviewSession> sessions;
+  final String? featuredChannelId;
+  final ValueChanged<String> onPromote;
+  final void Function(String firstId, String secondId) onSwap;
+  final VoidCallback onExit;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          MultiviewStage(
+            sessions: sessions,
+            featuredChannelId: featuredChannelId,
+            onPromote: onPromote,
+            onSwap: onSwap,
+          ),
+          Positioned(
+            top: 8,
+            left: 8,
+            child: TvFocusable(
+              key: const ValueKey('fullscreen-multiview-exit'),
+              semanticLabel: 'Exit full screen',
+              onSelect: onExit,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.56),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: 'Exit full screen',
+                  onPressed: onExit,
+                  icon: const Icon(Icons.fullscreen_exit, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// IPTV Screen body content (without AppBar) for embedding in MediaHubScreen
@@ -1380,19 +1458,41 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                   key: const ValueKey('fullscreen'),
                   padding: EdgeInsets.zero,
                   backgroundColor: Colors.black,
-                  body: VideoPlayerWidget(
-                    showControls: true,
-                    initiallyFullscreen: true,
-                    handleNativeFullscreen: false,
-                    // Deliberately the guarded exit rather than the raw
-                    // toggle. guardRouteBack() above also answers this same
-                    // pop, and two unguarded toggles would leave fullscreen
-                    // and immediately re-enter it. _exitFullscreen is a no-op
-                    // once fullscreen is already off, so whichever handler
-                    // runs second does nothing.
-                    onBack: _exitFullscreen,
-                    onFullscreenToggle: _toggleFullscreen,
-                    enableSwipeChannelChange: true,
+                  body: Builder(
+                    builder: (context) {
+                      // See _IPTVScreenState's identical branch: MultiView's
+                      // session state is global, not scoped to this screen —
+                      // fullscreen must keep showing every open tile instead
+                      // of silently collapsing to one channel.
+                      final multiview = ref.watch(multiviewProvider);
+                      if (multiview.sessions.isEmpty) {
+                        return VideoPlayerWidget(
+                          showControls: true,
+                          initiallyFullscreen: true,
+                          handleNativeFullscreen: false,
+                          // Deliberately the guarded exit rather than the raw
+                          // toggle. guardRouteBack() above also answers this
+                          // same pop, and two unguarded toggles would leave
+                          // fullscreen and immediately re-enter it.
+                          // _exitFullscreen is a no-op once fullscreen is
+                          // already off, so whichever handler runs second
+                          // does nothing.
+                          onBack: _exitFullscreen,
+                          onFullscreenToggle: _toggleFullscreen,
+                          enableSwipeChannelChange: true,
+                        );
+                      }
+                      return _FullscreenMultiview(
+                        sessions: multiview.sessions,
+                        featuredChannelId: multiview.featuredChannelId,
+                        onPromote: (id) =>
+                            ref.read(multiviewProvider.notifier).promote(id),
+                        onSwap: (firstId, secondId) => ref
+                            .read(multiviewProvider.notifier)
+                            .swap(firstId, secondId),
+                        onExit: _exitFullscreen,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -1482,6 +1582,7 @@ class _StreamTabContent extends ConsumerWidget {
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       onWaysToWatchTap: onWaysToWatchTap,
       onShareVideoFrame: onShareVideoFrame,
+      onFullscreenToggle: onFullscreenToggle,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null

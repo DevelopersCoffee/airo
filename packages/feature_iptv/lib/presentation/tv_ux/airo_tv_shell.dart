@@ -48,6 +48,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.onWaysToWatchTap,
     this.onShareVideoFrame,
     this.videoFrameEncoder,
+    this.onFullscreenToggle,
   });
 
   final List<IPTVChannel> channels;
@@ -73,6 +74,14 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// Test seam for deterministic rendering validation. Production uses the
   /// boundary's PNG encoder.
   final VideoFrameEncoder? videoFrameEncoder;
+
+  /// Enters the host's full-screen player. [videoStage] already carries its
+  /// own fullscreen entry point for the single-channel case, but that
+  /// widget is entirely replaced by [MultiviewStage] once MultiView has open
+  /// tiles — without a fullscreen action wired in here too, there is no way
+  /// to reach full screen at all while MultiView is active. Null hides the
+  /// action (e.g. a host that doesn't support fullscreen).
+  final VoidCallback? onFullscreenToggle;
 
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
@@ -202,6 +211,14 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       autofocus: filterRowAutofocus,
     );
     final videoStage = _VideoStageWithActions(
+      onSettings: () => showAiroTvShellSettingsDialog(context),
+      onHelp: () => showAiroTvShellHelpDialog(context),
+      // The single-channel videoStage carries its own fullscreen button;
+      // only add one here for the case that widget doesn't cover — a
+      // MultiView grid with open tiles.
+      onFullscreenToggle: multiview.sessions.isNotEmpty
+          ? widget.onFullscreenToggle
+          : null,
       child: KeyedSubtree(
         key: const ValueKey('airo-tv-video-capture-scope'),
         child: RepaintBoundary(
@@ -219,8 +236,6 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                 ),
         ),
       ),
-      onSettings: () => showAiroTvShellSettingsDialog(context),
-      onHelp: () => showAiroTvShellHelpDialog(context),
     );
 
     return LayoutBuilder(
@@ -511,18 +526,32 @@ class _VideoStageWithActions extends StatelessWidget {
     required this.child,
     required this.onSettings,
     required this.onHelp,
+    this.onFullscreenToggle,
   });
 
   final Widget child;
   final VoidCallback onSettings;
   final VoidCallback onHelp;
+  final VoidCallback? onFullscreenToggle;
 
   @override
   Widget build(BuildContext context) {
+    final onFullscreenToggle = this.onFullscreenToggle;
     return Stack(
       fit: StackFit.expand,
       children: [
         child,
+        if (onFullscreenToggle != null)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: _StageAction(
+              key: const ValueKey('airo-tv-multiview-fullscreen-action'),
+              icon: Icons.fullscreen,
+              tooltip: 'Full screen',
+              onPressed: onFullscreenToggle,
+            ),
+          ),
         Positioned(
           top: 8,
           right: 8,
