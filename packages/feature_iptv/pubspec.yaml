@@ -87,6 +87,7 @@ dev_dependencies:
 flutter:
   assets:
     - CHANGELOG.md
+    - assets/aika_stream_mark.png
 
   # To add assets to your package, add an assets section, like this:
   # assets:

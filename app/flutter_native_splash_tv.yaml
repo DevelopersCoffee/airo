@@ -1,0 +1,37 @@
+# Aika Stream (Airo TV) native splash config.
+#
+# Generate with:
+#   cd app && dart run flutter_native_splash:create --path=flutter_native_splash_tv.yaml --flavor=tv
+#
+# --flavor=tv writes only into android/app/src/tv/res/ (this repo's TV
+# source set, additively merged into the Android build -- see
+# app/android/app/build.gradle.kts), never touching the phone app's own
+# android/app/src/main/res/ splash.
+#
+# ios: false deliberately -- there is no iOS Aika Stream target yet, and
+# unlike Android this repo has no source-set isolation for iOS, so
+# generating iOS assets now would overwrite the phone app's shared
+# ios/Runner/Base.lproj/LaunchScreen.storyboard with TV branding. Flip this
+# to true (and add an ios/ output review) once Aika Stream actually ships
+# on iOS -- flutter_native_splash is cross-platform for exactly that day.
+flutter_native_splash:
+  color: "#020419"
+  image: ../docs/store-assets/airo-tv/play-icon-master.png
+  android: true
+  ios: false
+  web: false
+
+  # Android 12+ uses the platform SplashScreen API instead of the classic
+  # launch_background drawable. Without this block it falls back to a
+  # default white icon-background circle -- set it explicitly instead of
+  # inheriting whatever the OS default is.
+  #
+  # Uses a separately-padded icon (not play-icon-master.png directly): the
+  # OS crops this image into a circle/mask at its own scale, and the master
+  # icon has no safe-zone margin, so it visibly clipped the "A" glyph's
+  # edges. flutter_native_splash_tv_android12_icon.png insets the same icon
+  # at ~60% within a matching-navy canvas so the crop never touches it.
+  android_12:
+    image: flutter_native_splash_tv_android12_icon.png
+    icon_background_color: "#020419"
+    color: "#020419"

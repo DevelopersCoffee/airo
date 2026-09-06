@@ -29,6 +29,34 @@ flutter run -d macos -t lib/main_tv.dart
 
 Swap `-d macos` for `-d chrome`, `-d <android-device-id>`, etc. as needed.
 
+### Android target: `flutter run` always shows the wrong version, `flutter build` must not
+
+`--target=lib/main_tv.dart` only picks the Dart entrypoint — it does **not** make Flutter
+read `app/pubspec_tv.yaml`. Android's real `versionName`/`versionCode` always come from
+whichever pubspec Flutter defaults to (`app/pubspec.yaml`, the phone app's own version).
+
+`flutter run` has no `--build-name`/`--build-number` flags at all, so a debug `flutter run
+-d <device> -t lib/main_tv.dart ...` session will always install with the phone app's
+version baked in (e.g. Settings shows "0.0.7 (12)" instead of Aika Stream's real version) —
+harmless for a throwaway debug session, but don't read anything into that number.
+
+For anything you actually keep installed or hand to someone (`flutter build apk --release`,
+a local dogfood/sideload build), that same default is a real bug, not a display quirk — it
+silently stamps the wrong `versionCode`, which can collide with what Play has already
+consumed. Always pass explicit `--build-name`/`--build-number` sourced from
+`app/pubspec_tv.yaml` via `scripts/aika_stream_version.sh`:
+
+```bash
+cd /Users/udaychauhan/workspace/airo
+eval "$(scripts/aika_stream_version.sh)"
+cd app
+flutter build apk --release -t lib/main_tv.dart \
+  --dart-define=APP_VARIANT=tv \
+  --dart-define=APP_PLATFORM=androidTv \
+  --build-name="$AIKA_STREAM_BUILD_NAME" \
+  --build-number="$AIKA_STREAM_BUILD_NUMBER"
+```
+
 ### Notes for macOS target
 
 - First launch runs `pod install` for the macOS Runner — can take 30-90s before
